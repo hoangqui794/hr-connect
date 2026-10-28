@@ -61,7 +61,7 @@ export const CvInlineField: React.FC<CvInlineFieldProps> = ({
         readOnly={readOnly}
         maxLength={maxLength}
         autoFocus={autoFocus}
-        style={style}
+        style={{ fontFamily: 'inherit', ...style }}
         className={`${baseClasses} resize-none overflow-hidden ${className}`}
       />
     );
@@ -77,7 +77,7 @@ export const CvInlineField: React.FC<CvInlineFieldProps> = ({
       readOnly={readOnly}
       maxLength={maxLength}
       autoFocus={autoFocus}
-      style={style}
+      style={{ fontFamily: 'inherit', ...style }}
       className={`${baseClasses} ${className}`}
     />
   );

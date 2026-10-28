@@ -7,11 +7,25 @@ import { apiClient } from '../apiClient';
 import type { ApiEnvelope } from '@/types/api/admin';
 import type {
   CvTemplateDto,
+  CvTemplateConfig,
   CreateStructuredCvRequest,
   UpdateStructuredCvRequest,
   StructuredCvDetailDto,
   StructuredCvContent,
 } from '@/types/api/cvBuilder';
+
+const normalizeTemplate = (template: CvTemplateDto & { templateConfig?: CvTemplateConfig | string }): CvTemplateDto => {
+  if (typeof template.templateConfig !== 'string') return template;
+
+  try {
+    return {
+      ...template,
+      templateConfig: JSON.parse(template.templateConfig) as CvTemplateConfig,
+    };
+  } catch {
+    return { ...template, templateConfig: undefined };
+  }
+};
 
 /**
  * Validates structured CV content according to business rules:
@@ -58,10 +72,10 @@ export const cvBuilderApi = {
   async getTemplates(): Promise<CvTemplateDto[]> {
     const res = await apiClient.get<ApiEnvelope<CvTemplateDto[]> | CvTemplateDto[]>('/cv-templates');
     if (Array.isArray(res.data)) {
-      return res.data;
+      return res.data.map(normalizeTemplate);
     }
     if (res.data && 'data' in res.data && Array.isArray(res.data.data)) {
-      return res.data.data;
+      return res.data.data.map(normalizeTemplate);
     }
     return [];
   },

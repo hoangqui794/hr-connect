@@ -1,14 +1,7 @@
 import React, { useEffect } from 'react';
+import { CheckCircleFilled } from '@ant-design/icons';
 import {
-  ArrowRightOutlined,
-  CheckCircleFilled,
-} from '@ant-design/icons';
-import {
-  UserCheck,
-  Users,
-  Briefcase,
   ShieldCheck,
-  Layers,
   Sparkles,
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -19,37 +12,6 @@ import { FeaturedJobsGrid } from './components/FeaturedJobsGrid';
 import { TopEmployersShowcase } from './components/TopEmployersShowcase';
 import { MarketInsightsSection } from './components/MarketInsightsSection';
 import { BrandMark } from '@/components/common/BrandMark';
-
-const ROLE_SOLUTIONS = [
-  {
-    title: 'Ứng viên (Candidate)',
-    description: 'Tìm kiếm cơ hội việc làm mơ ước, tối ưu CV bằng AI chuẩn ATS và theo dõi minh bạch từng vòng ứng tuyển.',
-    icon: UserCheck,
-    action: 'Tìm việc ngay',
-    path: '/jobs',
-  },
-  {
-    title: 'Affiliate Recruiter',
-    description: 'Giới thiệu nhân tài với xác thực ủy quyền Consent, cơ chế chống trùng nguồn tự động và nhận hoa hồng minh bạch.',
-    icon: Users,
-    action: 'Đăng ký Affiliate',
-    path: '/register?role=AFFILIATE',
-  },
-  {
-    title: 'Doanh nghiệp (Client)',
-    description: 'Đăng tin tuyển dụng đa kênh, tiếp cận nguồn ứng viên chất lượng cao đã qua sàng lọc AI và tối ưu chi phí.',
-    icon: Briefcase,
-    action: 'Đăng tin tuyển dụng',
-    path: '/register?role=CLIENT',
-  },
-  {
-    title: 'Internal HR & Admin',
-    description: 'Điều phối toàn diện pipeline phỏng vấn, kiểm soát phân quyền RBAC và truy vết audit log bảo mật tuyệt đối.',
-    icon: ShieldCheck,
-    action: 'Đăng nhập hệ thống',
-    path: '/login',
-  },
-] as const;
 
 const PROCESS_STEPS = [
   {
@@ -77,7 +39,7 @@ const PROCESS_STEPS = [
 const GUARANTEES = [
   'Ứng viên toàn quyền kiểm soát việc ủy quyền và sử dụng thông tin cá nhân',
   'Cơ chế Anti-Duplicate bảo vệ minh bạch 100% nguồn giới thiệu cho Affiliate',
-  'Phân quyền RBAC nghiêm ngặt và tách biệt tuyệt đối theo từng vai trò nghiệp vụ',
+  'Phân quyền RBAC nghiêm ngặt và tách biệt tuyệt đối theo từng nhóm người dùng',
   'Audit Log bất biến ghi nhận mọi thay đổi trạng thái tuyển dụng và bảo hành',
 ] as const;
 
@@ -86,12 +48,6 @@ export const HomePage: React.FC = () => {
   const location = useLocation();
 
   useEffect(() => {
-    if (location.hash === '#roles') {
-      window.requestAnimationFrame(() => {
-        document.getElementById('roles')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-      return;
-    }
     if (location.hash === '#process') {
       window.requestAnimationFrame(() => {
         document.getElementById('process')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -134,66 +90,7 @@ export const HomePage: React.FC = () => {
         <MarketInsightsSection />
 
         {/* ================================================================= */}
-        {/* 6. CỔNG WORKSPACE THEO VAI TRÒ (MULTI-PORTAL GATEWAY)              */}
-        {/* ================================================================= */}
-        <section id="roles" className="scroll-mt-24 px-4 sm:px-6 lg:px-8 py-10 md:py-12 bg-white border-b border-slate-200/80">
-          <div className="max-w-7xl mx-auto">
-            <div className="max-w-2xl">
-              <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-blue-600 mb-1.5">
-                <Layers className="h-3.5 w-3.5" />
-                <span>Không gian làm việc chuyên biệt</span>
-              </div>
-              <h2 className="mb-0 text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-                Mỗi người thấy đúng việc mình cần làm
-              </h2>
-              <p className="mb-0 mt-2 text-xs sm:text-sm leading-relaxed text-slate-500">
-                Workspace chuyên biệt hóa theo từng vai trò, giúp ứng viên, headhunter và doanh nghiệp thao tác nhanh và chuẩn xác.
-              </p>
-            </div>
-
-            <div className="mt-8 grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-4">
-              {ROLE_SOLUTIONS.map((role) => {
-                const Icon = role.icon;
-                return (
-                  <article
-                    key={role.title}
-                    className="group flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-5 shadow-xs hover:shadow-md hover:border-blue-300 transition-all duration-200"
-                  >
-                    <div>
-                      {/* Icon */}
-                      <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50 text-slate-700 transition-colors group-hover:border-blue-200 group-hover:bg-blue-50/70 group-hover:text-blue-600">
-                        <Icon className="h-5 w-5" strokeWidth={1.5} />
-                      </div>
-
-                      {/* Role title */}
-                      <h3 className="mb-0 mt-3.5 text-base font-bold tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors">
-                        {role.title}
-                      </h3>
-
-                      {/* Description */}
-                      <p className="mb-0 mt-1.5 text-xs leading-relaxed text-slate-600">
-                        {role.description}
-                      </p>
-                    </div>
-
-                    {/* Action link */}
-                    <button
-                      type="button"
-                      onClick={() => navigate(role.path)}
-                      className="mt-5 inline-flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-xs font-semibold text-blue-600 transition-colors hover:text-blue-700 group-hover:gap-2.5"
-                    >
-                      <span>{role.action}</span>
-                      <ArrowRightOutlined aria-hidden className="text-[10px] transition-transform duration-200 group-hover:translate-x-0.5" />
-                    </button>
-                  </article>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* ================================================================= */}
-        {/* 7. QUY TRÌNH XUYÊN SUỐT (PROCESS STEPS)                           */}
+        {/* 6. QUY TRÌNH XUYÊN SUỐT (PROCESS STEPS)                           */}
         {/* ================================================================= */}
         <section id="process" className="scroll-mt-24 border-b border-slate-200/80 bg-slate-50/60 px-4 sm:px-6 lg:px-8 py-10 md:py-12">
           <div className="max-w-7xl mx-auto">

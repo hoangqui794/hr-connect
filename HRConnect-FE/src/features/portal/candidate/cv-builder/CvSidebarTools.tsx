@@ -1,5 +1,5 @@
 import React from 'react';
-import { Switch, Radio, Tooltip, Collapse, Spin } from 'antd';
+import { Switch, Tooltip, Collapse, Spin, Select } from 'antd';
 import {
   BgColorsOutlined,
   FontSizeOutlined,
@@ -7,7 +7,11 @@ import {
   CheckCircleOutlined,
   LayoutOutlined,
 } from '@ant-design/icons';
-import type { CvTemplateDto } from '@/types/api/cvBuilder';
+import type {
+  CvFontFamily,
+  CvLayoutStyle,
+  CvTemplateDto,
+} from '@/types/api/cvBuilder';
 
 export interface ColorPreset {
   name: string;
@@ -25,16 +29,27 @@ export const ACCENT_COLOR_PRESETS: ColorPreset[] = [
 ];
 
 export const FONT_PRESETS = [
-  { name: 'Be Vietnam Pro', value: "'Be Vietnam Pro', sans-serif", description: 'Hiện đại, tối ưu tiếng Việt' },
-  { name: 'Roboto', value: "'Roboto', sans-serif", description: 'Rõ ràng, chuyên nghiệp' },
-  { name: 'Inter', value: "'Inter', sans-serif", description: 'Công nghệ, quốc tế' },
-];
+  { name: 'Be Vietnam Pro', value: 'BE_VIETNAM_PRO', description: 'Hiện đại, tối ưu tiếng Việt' },
+  { name: 'Roboto', value: 'ROBOTO', description: 'Rõ ràng, chuyên nghiệp' },
+  { name: 'Inter', value: 'INTER', description: 'Gọn gàng, phù hợp ngành công nghệ' },
+] satisfies Array<{ name: string; value: CvFontFamily; description: string }>;
 
 export const DENSITY_PRESETS = [
   { label: 'Chặt chẽ', value: 'compact' },
   { label: 'Tiêu chuẩn', value: 'normal' },
   { label: 'Thoáng đãng', value: 'spacious' },
 ];
+
+const templateLayoutFromCode = (template: CvTemplateDto): CvLayoutStyle => {
+  if (template.templateConfig?.layout) return template.templateConfig.layout;
+  const code = template.code.toUpperCase();
+  if (code.includes('MODERN')) return 'modern';
+  if (code.includes('COMPACT')) return 'compact';
+  if (code.includes('EXECUTIVE')) return 'executive';
+  if (code.includes('ELEGANT')) return 'elegant';
+  if (code.includes('MINIMAL')) return 'minimal';
+  return 'classic';
+};
 
 export interface SectionVisibility {
   summary: boolean;
@@ -52,8 +67,9 @@ export interface CvSidebarToolsProps {
   onSelectTemplate: (templateId: string | null) => void;
   accentColor: string;
   onAccentColorChange: (color: string) => void;
-  fontFamily: string;
-  onFontFamilyChange: (font: string) => void;
+  fontFamily: CvFontFamily;
+  onFontFamilyChange: (font: CvFontFamily) => void;
+  layout: CvLayoutStyle;
   density: 'compact' | 'normal' | 'spacious';
   onDensityChange: (density: 'compact' | 'normal' | 'spacious') => void;
   sectionVisibility: SectionVisibility;
@@ -69,11 +85,13 @@ export const CvSidebarTools: React.FC<CvSidebarToolsProps> = ({
   onAccentColorChange,
   fontFamily,
   onFontFamilyChange,
+  layout,
   density,
   onDensityChange,
   sectionVisibility,
   onToggleSection,
 }) => {
+  const visibleSectionCount = Object.values(sectionVisibility).filter(Boolean).length;
   const sectionsList: Array<{ key: keyof SectionVisibility; label: string; countHint?: string }> = [
     { key: 'summary', label: 'Tóm tắt / Mục tiêu nghề nghiệp' },
     { key: 'experiences', label: 'Kinh nghiệm làm việc' },
@@ -84,7 +102,7 @@ export const CvSidebarTools: React.FC<CvSidebarToolsProps> = ({
   ];
 
   return (
-    <aside className="w-80 h-full bg-white border-0 border-r border-solid border-slate-200 flex flex-col shrink-0 overflow-y-auto select-none shadow-xs">
+    <aside className="w-[340px] h-full bg-white border-0 border-r border-solid border-slate-200 flex flex-col shrink-0 overflow-y-auto select-none shadow-xs">
       <div className="p-4 border-0 border-b border-solid border-slate-100 flex items-center gap-2">
         <LayoutOutlined className="text-blue-600 text-lg" />
         <h2 className="text-sm font-bold text-slate-800 m-0">Công cụ tùy biến CV</h2>
@@ -111,26 +129,31 @@ export const CvSidebarTools: React.FC<CvSidebarToolsProps> = ({
               <Spin size="small" />
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-2">
-              <div
+            <div className="grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
                 onClick={() => onSelectTemplate(null)}
-                className={`p-2.5 rounded-xl border cursor-pointer transition-all text-left flex flex-col justify-between h-20 ${
+                className={`cv-template-option p-2.5 rounded-xl border cursor-pointer transition-all text-left flex flex-col justify-between min-h-[116px] ${
                   selectedTemplateId === null
-                    ? 'border-blue-600 bg-blue-50/50 shadow-xs'
-                    : 'border-slate-200 hover:border-slate-300 bg-slate-50/50'
+                    ? 'border-blue-600 bg-blue-50 shadow-xs ring-1 ring-blue-100'
+                    : 'border-slate-200 hover:border-blue-300 bg-white'
                 }`}
               >
+                <span className="cv-template-mini cv-template-mini--ats" aria-hidden="true">
+                  <i /><i /><i /><i />
+                </span>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-800">Chuẩn ATS</span>
                   {selectedTemplateId === null && <CheckCircleOutlined className="text-blue-600 text-xs" />}
                 </div>
-                <span className="text-[10px] text-slate-500">Tối ưu máy quét tuyển dụng</span>
-              </div>
+                <span className="text-[10px] leading-4 text-slate-500">Một cột, dễ đọc và tối ưu máy quét tuyển dụng</span>
+              </button>
 
               {templates.map((tpl) => {
                 const isSelected = selectedTemplateId === tpl.cvTemplateId;
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={tpl.cvTemplateId}
                     onClick={() => {
                       onSelectTemplate(tpl.cvTemplateId);
@@ -141,28 +164,27 @@ export const CvSidebarTools: React.FC<CvSidebarToolsProps> = ({
                         onDensityChange(tpl.templateConfig.density as any);
                       }
                     }}
-                    className={`p-2.5 rounded-xl border cursor-pointer transition-all text-left flex flex-col justify-between h-20 relative overflow-hidden ${
+                    className={`cv-template-option p-2.5 rounded-xl border cursor-pointer transition-all text-left flex flex-col justify-between min-h-[116px] relative overflow-hidden ${
                       isSelected
-                        ? 'border-blue-600 bg-blue-50/50 shadow-xs'
-                        : 'border-slate-200 hover:border-slate-300 bg-slate-50/50'
+                        ? 'border-blue-600 bg-blue-50 shadow-xs ring-1 ring-blue-100'
+                        : 'border-slate-200 hover:border-blue-300 bg-white'
                     }`}
                   >
+                    <span
+                      className={`cv-template-mini cv-template-mini--${templateLayoutFromCode(tpl)}`}
+                      style={{ '--cv-mini-accent': tpl.templateConfig?.accentColor || '#2563eb' } as React.CSSProperties}
+                      aria-hidden="true"
+                    >
+                      <i /><i /><i /><i />
+                    </span>
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-800 truncate">{tpl.name}</span>
                       {isSelected && <CheckCircleOutlined className="text-blue-600 text-xs shrink-0" />}
                     </div>
-                    <div className="flex items-center gap-1.5 mt-auto">
-                      {tpl.templateConfig?.accentColor && (
-                        <span
-                          className="w-3 h-3 rounded-full inline-block border border-white shadow-xs shrink-0"
-                          style={{ backgroundColor: tpl.templateConfig.accentColor }}
-                        />
-                      )}
-                      <span className="text-[10px] text-slate-500 truncate">
-                        {tpl.templateConfig?.density === 'compact' ? 'Gọn gàng' : 'Tiêu chuẩn'}
-                      </span>
-                    </div>
-                  </div>
+                    <span className="text-[10px] leading-4 text-slate-500 line-clamp-2">
+                      {tpl.description || (tpl.templateConfig?.density === 'compact' ? 'Gọn trong một trang' : 'Bố cục chuyên nghiệp')}
+                    </span>
+                  </button>
                 );
               })}
             </div>
@@ -219,29 +241,24 @@ export const CvSidebarTools: React.FC<CvSidebarToolsProps> = ({
             <span>Font chữ</span>
           </div>
 
-          <div className="space-y-1.5">
-            {FONT_PRESETS.map((font) => {
-              const isSelected = fontFamily.includes(font.name);
-              return (
-                <div
-                  key={font.name}
-                  onClick={() => onFontFamilyChange(font.value)}
-                  className={`p-2.5 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
-                    isSelected
-                      ? 'border-blue-600 bg-blue-50/50 text-blue-900 font-semibold'
-                      : 'border-slate-200 hover:border-slate-300 bg-white text-slate-700'
-                  }`}
-                  style={{ fontFamily: font.value }}
-                >
-                  <div>
-                    <div className="text-xs">{font.name}</div>
-                    <div className="text-[10px] text-slate-400 font-normal">{font.description}</div>
-                  </div>
-                  {isSelected && <CheckCircleOutlined className="text-blue-600 text-xs" />}
+          <Select<CvFontFamily>
+            value={fontFamily}
+            onChange={onFontFamilyChange}
+            className="w-full"
+            aria-label="Chọn font chữ cho toàn bộ CV"
+            options={FONT_PRESETS.map((font) => ({
+              value: font.value,
+              label: (
+                <div className="flex items-center justify-between gap-3 py-0.5">
+                  <span className="font-semibold text-slate-800">{font.name}</span>
+                  <span className="text-[10px] text-slate-500">{font.description}</span>
                 </div>
-              );
-            })}
-          </div>
+              ),
+            }))}
+          />
+          <p className="m-0 text-[10px] leading-4 text-slate-500">
+            Font được áp dụng cho toàn bộ nội dung và file PDF khi lưu.
+          </p>
         </div>
 
         {/* ── 4. GIÃN CÁCH DÒNG (Density) ── */}
@@ -250,19 +267,13 @@ export const CvSidebarTools: React.FC<CvSidebarToolsProps> = ({
             <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Giãn cách dòng</span>
           </div>
 
-          <Radio.Group
+          <Select<'compact' | 'normal' | 'spacious'>
             value={density}
-            onChange={(e) => onDensityChange(e.target.value)}
-            className="w-full grid grid-cols-3 text-center !rounded-xl"
-            buttonStyle="solid"
-            size="small"
-          >
-            {DENSITY_PRESETS.map((d) => (
-              <Radio.Button key={d.value} value={d.value} className="text-xs text-center !rounded-none first:!rounded-l-lg last:!rounded-r-lg">
-                {d.label}
-              </Radio.Button>
-            ))}
-          </Radio.Group>
+            onChange={onDensityChange}
+            className="w-full"
+            aria-label="Chọn độ giãn nội dung CV"
+            options={DENSITY_PRESETS}
+          />
         </div>
 
         {/* ── 5. QUẢN LÝ MỤC NỘI DUNG (Section Visibility) ── */}
@@ -272,21 +283,32 @@ export const CvSidebarTools: React.FC<CvSidebarToolsProps> = ({
             <span>Quản lý các mục</span>
           </div>
 
-          <div className="space-y-2">
-            {sectionsList.map((sec) => (
-              <div
-                key={sec.key}
-                className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs"
-              >
-                <span className="text-slate-700 font-medium truncate max-w-[190px]">{sec.label}</span>
-                <Switch
-                  size="small"
-                  checked={sectionVisibility[sec.key]}
-                  onChange={(checked) => onToggleSection(sec.key, checked)}
-                />
-              </div>
-            ))}
-          </div>
+          <Collapse
+            ghost
+            size="small"
+            className="cv-builder-section-collapse rounded-xl border border-slate-200 bg-slate-50/70"
+            items={[{
+              key: 'sections',
+              label: `${Object.values(sectionVisibility).filter(Boolean).length}/${sectionsList.length} mục đang hiển thị`,
+              children: (
+                <div className="space-y-2">
+                  {sectionsList.map((sec) => (
+                    <div key={sec.key} className="flex items-center justify-between gap-3 py-1 text-xs">
+                      <span className="text-slate-700 font-medium">{sec.label}</span>
+                      <Switch
+                        size="small"
+                        checked={sectionVisibility[sec.key]}
+                        disabled={sectionVisibility[sec.key] && visibleSectionCount === 1}
+                        onChange={(checked) => onToggleSection(sec.key, checked)}
+                        aria-label={`${sectionVisibility[sec.key] ? 'Ẩn' : 'Hiện'} ${sec.label}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ),
+            }]}
+          />
+          <span className="sr-only">Bố cục hiện tại: {layout}</span>
         </div>
       </div>
     </aside>

@@ -3,11 +3,31 @@
  * @description Type definitions for Candidate Structured CV Builder and CV Templates (SF-06).
  */
 
+export type CvLayoutStyle =
+  | 'ats'
+  | 'classic'
+  | 'modern'
+  | 'compact'
+  | 'executive'
+  | 'elegant'
+  | 'minimal';
+
+export type CvFontFamily = 'BE_VIETNAM_PRO' | 'ROBOTO' | 'INTER';
+
+export interface CvPresentationConfig {
+  accentColor: string;
+  density: 'normal' | 'compact' | 'spacious';
+  fontFamily: CvFontFamily;
+  layout: CvLayoutStyle;
+  visibleSections: Array<'summary' | 'experiences' | 'educations' | 'skills' | 'languages' | 'certificates'>;
+}
+
 export interface CvTemplateConfig {
   accentColor?: string;
-  density?: 'normal' | 'compact' | string;
+  density?: 'normal' | 'compact' | 'spacious' | string;
   sections?: string[];
-  fontFamily?: string;
+  fontFamily?: CvFontFamily;
+  layout?: CvLayoutStyle;
 }
 
 export interface CvTemplateDto {
@@ -46,6 +66,7 @@ export interface StructuredCvContent {
   skills: string[];
   languages: string[];
   certificates: string[];
+  presentation?: CvPresentationConfig;
 }
 
 export interface CreateStructuredCvRequest {

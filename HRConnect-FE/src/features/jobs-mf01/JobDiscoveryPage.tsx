@@ -4,10 +4,10 @@
  * role may see (can_view per service type), so the UI just renders the page it gets back.
  * Filters live in the URL so results can be shared and survive Back.
  */
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Alert, Button, Card, Empty, Input, Pagination, Select, Skeleton, Tag, Typography } from 'antd';
-import { ArrowRightOutlined, CheckCircleFilled, EnvironmentOutlined, SearchOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Empty, Input, InputNumber, Pagination, Select, Skeleton, Tag, Typography } from 'antd';
+import { ArrowRightOutlined, CheckCircleFilled, EnvironmentOutlined, FilterOutlined, SearchOutlined, SlidersOutlined } from '@ant-design/icons';
 import type { EmploymentType, Job, JobSearchParams } from '@/types/api/jobs';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useCandidateAppliedJobs } from '@/features/portal/candidate/useCandidateAppliedJobs';
@@ -125,12 +125,23 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
   const serviceTypes = useServiceTypes();
   const { isApplied } = useCandidateAppliedJobs();
 
+  const parseOptionalNumber = (value: string | null) => {
+    if (!value) return undefined;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  };
+
   const params: JobSearchParams = useMemo(
     () => ({
       search: searchParams.get('q') ?? undefined,
       location: searchParams.get('location') ?? undefined,
       employmentType: (searchParams.get('type') as EmploymentType | null) ?? undefined,
       serviceTypeId: searchParams.get('service') ?? undefined,
+      salaryMin: parseOptionalNumber(searchParams.get('salaryMin')),
+      salaryMax: parseOptionalNumber(searchParams.get('salaryMax')),
+      experienceYears: parseOptionalNumber(searchParams.get('experience')),
+      sortBy: (searchParams.get('sortBy') as JobSearchParams['sortBy']) ?? 'POSTED_AT',
+      sortDirection: (searchParams.get('sortDirection') as JobSearchParams['sortDirection']) ?? 'DESC',
       page: Number(searchParams.get('page')) || 1,
       pageSize: PAGE_SIZE,
     }),
@@ -141,59 +152,172 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
   const publicJobs = usePublicJobSearch(params, publicAccess);
   const { data, isLoading, isError, error, isFetching } = publicAccess ? publicJobs : authenticatedJobs;
 
-  const setParam = (key: string, value: string | undefined) => {
+  const [keywordDraft, setKeywordDraft] = useState(params.search ?? '');
+  const [locationDraft, setLocationDraft] = useState(params.location ?? '');
+  const [filtersOpen, setFiltersOpen] = useState(Boolean(params.employmentType || params.serviceTypeId || params.salaryMin || params.salaryMax || params.experienceYears));
+
+  useEffect(() => {
+    setKeywordDraft(params.search ?? '');
+    setLocationDraft(params.location ?? '');
+  }, [params.location, params.search]);
+
+  const setParams = (updates: Record<string, string | undefined>) => {
     const next = new URLSearchParams(searchParams);
-    if (value) next.set(key, value);
-    else next.delete(key);
-    if (key !== 'page') next.delete('page');
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) next.set(key, value);
+      else next.delete(key);
+    });
+    if (!Object.prototype.hasOwnProperty.call(updates, 'page')) next.delete('page');
     setSearchParams(next);
   };
 
+  const setParam = (key: string, value: string | undefined) => setParams({ [key]: value });
+
+  const clearFilters = () => {
+    const next = new URLSearchParams();
+    const tab = searchParams.get('tab');
+    if (tab) next.set('tab', tab);
+    setSearchParams(next);
+  };
+
+  const applyPrimarySearch = () => {
+    setParams({
+      q: keywordDraft.trim() || undefined,
+      location: locationDraft.trim() || undefined,
+    });
+  };
+
+  const activeFilterCount = [params.employmentType, params.serviceTypeId, params.salaryMin, params.salaryMax, params.experienceYears]
+    .filter((value) => value !== undefined && value !== null && value !== '').length;
+  const hasAnyFilter = Boolean(params.search || params.location || activeFilterCount);
+  const sortValue = `${params.sortBy ?? 'POSTED_AT'}_${params.sortDirection ?? 'DESC'}`;
+
   return (
-    <div className="space-y-5">
-      {/* key remounts the uncontrolled inputs when the URL filters change (e.g. "Xóa bộ lọc"). */}
-      <div key={searchParams.toString()} className="rounded-xl border border-solid border-slate-200/80 bg-white p-3 shadow-sm">
-        <div className="grid gap-2.5 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] items-center">
-          <Input.Search
+    <div className="job-discovery space-y-5">
+      <section className="job-search-panel" aria-label="Tìm và lọc việc làm">
+        <form
+          className="job-search-panel__primary"
+          onSubmit={(event) => {
+            event.preventDefault();
+            applyPrimarySearch();
+          }}
+        >
+          <Input
             size="large"
             allowClear
-            defaultValue={params.search}
-            placeholder="Tên vị trí, kỹ năng, công ty..."
-            enterButton={<SearchOutlined aria-label="Tìm" />}
-            onSearch={(v) => setParam('q', v.trim() || undefined)}
+            value={keywordDraft}
+            onChange={(event) => setKeywordDraft(event.target.value)}
+            placeholder="Vị trí, kỹ năng hoặc tên công ty"
+            prefix={<SearchOutlined aria-hidden />}
             aria-label="Từ khóa tìm việc"
           />
           <Input
             size="large"
             allowClear
-            defaultValue={params.location}
-            placeholder="Địa điểm"
+            value={locationDraft}
+            onChange={(event) => setLocationDraft(event.target.value)}
+            placeholder="Tỉnh, thành phố hoặc khu vực"
             prefix={<EnvironmentOutlined aria-hidden />}
-            onPressEnter={(e) => setParam('location', e.currentTarget.value.trim() || undefined)}
-            onBlur={(e) => setParam('location', e.currentTarget.value.trim() || undefined)}
             aria-label="Địa điểm"
           />
-          <Select
-            size="large"
-            allowClear
-            value={params.employmentType}
-            placeholder="Hình thức"
-            onChange={(v) => setParam('type', v)}
-            options={(Object.keys(EMPLOYMENT_TYPE_LABEL) as EmploymentType[]).map((k) => ({ value: k, label: EMPLOYMENT_TYPE_LABEL[k] }))}
-            aria-label="Hình thức làm việc"
-          />
-          <Select
-            size="large"
-            allowClear
-            value={params.serviceTypeId}
-            placeholder="Loại dịch vụ"
-            loading={serviceTypes.isLoading}
-            onChange={(v) => setParam('service', v)}
-            options={(serviceTypes.data ?? []).map((s) => ({ value: s.id, label: SERVICE_TYPE_LABEL[s.code]?.label ?? s.name }))}
-            aria-label="Loại dịch vụ"
-          />
+          <Button type="primary" size="large" htmlType="submit" icon={<SearchOutlined />}>
+            Tìm việc
+          </Button>
+        </form>
+
+        <div className="job-search-panel__toolbar">
+          <Button
+            type="text"
+            icon={<SlidersOutlined />}
+            className={filtersOpen || activeFilterCount ? 'is-active' : ''}
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen((current) => !current)}
+          >
+            Bộ lọc nâng cao{activeFilterCount ? ` (${activeFilterCount})` : ''}
+          </Button>
+          {hasAnyFilter && <Button type="link" onClick={clearFilters}>Xóa tất cả bộ lọc</Button>}
         </div>
-      </div>
+
+        {filtersOpen && (
+          <div className="job-search-panel__advanced">
+            <label className="job-filter-field">
+              <span>Hình thức làm việc</span>
+              <Select
+                size="large"
+                allowClear
+                value={params.employmentType}
+                placeholder="Tất cả hình thức"
+                onChange={(v) => setParam('type', v)}
+                options={(Object.keys(EMPLOYMENT_TYPE_LABEL) as EmploymentType[]).map((k) => ({ value: k, label: EMPLOYMENT_TYPE_LABEL[k] }))}
+                aria-label="Hình thức làm việc"
+              />
+            </label>
+            <label className="job-filter-field">
+              <span>Kinh nghiệm tối thiểu</span>
+              <InputNumber
+                size="large"
+                min={0}
+                max={60}
+                value={params.experienceYears}
+                placeholder="Không yêu cầu"
+                addonAfter="năm"
+                onChange={(value) => setParam('experience', value === null ? undefined : String(value))}
+                aria-label="Số năm kinh nghiệm tối thiểu"
+              />
+            </label>
+            <label className="job-filter-field">
+              <span>Lương từ</span>
+              <InputNumber
+                size="large"
+                min={0}
+                value={params.salaryMin ? params.salaryMin / 1_000_000 : undefined}
+                placeholder="0"
+                addonAfter="triệu"
+                onChange={(value) => setParam('salaryMin', value === null ? undefined : String(Number(value) * 1_000_000))}
+                aria-label="Mức lương tối thiểu"
+              />
+            </label>
+            <label className="job-filter-field">
+              <span>Lương đến</span>
+              <InputNumber
+                size="large"
+                min={0}
+                value={params.salaryMax ? params.salaryMax / 1_000_000 : undefined}
+                placeholder="Không giới hạn"
+                addonAfter="triệu"
+                onChange={(value) => setParam('salaryMax', value === null ? undefined : String(Number(value) * 1_000_000))}
+                aria-label="Mức lương tối đa"
+              />
+            </label>
+            <label className="job-filter-field">
+              <span>Loại dịch vụ tuyển dụng</span>
+              <Select
+                size="large"
+                allowClear
+                value={params.serviceTypeId}
+                placeholder="Tất cả dịch vụ"
+                loading={serviceTypes.isLoading}
+                onChange={(v) => setParam('service', v)}
+                options={(serviceTypes.data ?? []).map((s) => ({ value: s.id, label: SERVICE_TYPE_LABEL[s.code]?.label ?? s.name }))}
+                aria-label="Loại dịch vụ tuyển dụng"
+              />
+            </label>
+          </div>
+        )}
+
+        {hasAnyFilter && (
+          <div className="job-search-panel__active" aria-label="Bộ lọc đang áp dụng">
+            <FilterOutlined aria-hidden />
+            {params.search && <Tag closable onClose={() => setParam('q', undefined)}>Từ khóa: {params.search}</Tag>}
+            {params.location && <Tag closable onClose={() => setParam('location', undefined)}>Địa điểm: {params.location}</Tag>}
+            {params.employmentType && <Tag closable onClose={() => setParam('type', undefined)}>{EMPLOYMENT_TYPE_LABEL[params.employmentType]}</Tag>}
+            {params.experienceYears !== undefined && <Tag closable onClose={() => setParam('experience', undefined)}>Từ {params.experienceYears} năm kinh nghiệm</Tag>}
+            {params.salaryMin !== undefined && <Tag closable onClose={() => setParam('salaryMin', undefined)}>Lương từ {params.salaryMin / 1_000_000} triệu</Tag>}
+            {params.salaryMax !== undefined && <Tag closable onClose={() => setParam('salaryMax', undefined)}>Lương đến {params.salaryMax / 1_000_000} triệu</Tag>}
+            {params.serviceTypeId && <Tag closable onClose={() => setParam('service', undefined)}>Dịch vụ tuyển dụng</Tag>}
+          </div>
+        )}
+      </section>
 
       {isError ? (
         <Alert type="error" showIcon message="Không tải được danh sách việc làm" description={getApiErrorMessage(error)} />
@@ -208,15 +332,29 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
       ) : !data || data.items.length === 0 ? (
         <div className="rounded-xl border border-solid border-slate-200 bg-white py-14">
           <Empty description="Không tìm thấy việc làm phù hợp. Thử bỏ bớt bộ lọc.">
-            {searchParams.toString() && <Button onClick={() => setSearchParams(new URLSearchParams())}>Xóa bộ lọc</Button>}
+            {hasAnyFilter && <Button onClick={clearFilters}>Xóa bộ lọc</Button>}
           </Empty>
         </div>
       ) : (
         <>
-          <div className="flex items-center justify-between">
+          <div className="job-results-toolbar">
             <Text type="secondary" aria-live="polite">
               {data.totalCount} việc làm{isFetching ? ' · đang cập nhật...' : ''}
             </Text>
+            <Select
+              aria-label="Sắp xếp việc làm"
+              value={sortValue}
+              className="min-w-48"
+              onChange={(value) => {
+                const [sortBy, sortDirection] = value.split('_') as [NonNullable<JobSearchParams['sortBy']>, NonNullable<JobSearchParams['sortDirection']>];
+                setParams({ sortBy, sortDirection });
+              }}
+              options={[
+                { value: 'POSTED_AT_DESC', label: 'Mới đăng gần đây' },
+                { value: 'SALARY_DESC', label: 'Lương cao đến thấp' },
+                { value: 'SALARY_ASC', label: 'Lương thấp đến cao' },
+              ]}
+            />
           </div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-busy={isFetching}>
             {data.items.map((job) => (

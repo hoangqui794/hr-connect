@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { message, Modal, Spin, Result, Button } from 'antd';
@@ -12,11 +12,34 @@ import {
   validateStructuredCvContent,
 } from '@/services/api/cvBuilderApi';
 import type {
+  CvFontFamily,
+  CvLayoutStyle,
+  CvPresentationConfig,
   StructuredCvContent,
   StructuredCvDetailDto,
 } from '@/types/api/cvBuilder';
 import { useAuthStore } from '@/stores/authStore';
 import { getApiErrorMessage } from '@/services/apiClient';
+import { candidateCvApi } from '@/services/api/mf02/candidateCvApi';
+import './cv-builder.css';
+
+const DEFAULT_PRESENTATION: CvPresentationConfig = {
+  accentColor: '#1e3a8a',
+  density: 'normal',
+  fontFamily: 'BE_VIETNAM_PRO',
+  layout: 'ats',
+  visibleSections: ['summary', 'experiences', 'educations', 'skills', 'languages', 'certificates'],
+};
+
+const inferTemplateLayout = (code?: string): CvLayoutStyle => {
+  const normalized = (code || '').toUpperCase();
+  if (normalized.includes('MODERN')) return 'modern';
+  if (normalized.includes('COMPACT')) return 'compact';
+  if (normalized.includes('EXECUTIVE')) return 'executive';
+  if (normalized.includes('ELEGANT')) return 'elegant';
+  if (normalized.includes('MINIMAL')) return 'minimal';
+  return 'classic';
+};
 
 export const CandidateCvBuilderPage: React.FC = () => {
   const { cvId } = useParams<{ cvId?: string }>();
@@ -33,8 +56,9 @@ export const CandidateCvBuilderPage: React.FC = () => {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
     searchParams.get('template') || null
   );
-  const [accentColor, setAccentColor] = useState<string>('#1e3a8a');
-  const [fontFamily, setFontFamily] = useState<string>("'Be Vietnam Pro', sans-serif");
+  const [accentColor, setAccentColor] = useState<string>(DEFAULT_PRESENTATION.accentColor);
+  const [fontFamily, setFontFamily] = useState<CvFontFamily>(DEFAULT_PRESENTATION.fontFamily);
+  const [layout, setLayout] = useState<CvLayoutStyle>(DEFAULT_PRESENTATION.layout);
   const [density, setDensity] = useState<'compact' | 'normal' | 'spacious'>('normal');
   const [sectionVisibility, setSectionVisibility] = useState<SectionVisibility>({
     summary: true,
@@ -62,6 +86,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
 
   const [previewOpen, setPreviewOpen] = useState<boolean>(false);
   const [saveSuccessData, setSaveSuccessData] = useState<StructuredCvDetailDto | null>(null);
+  const initialTemplateAppliedRef = useRef(false);
 
   // 1. Fetch available templates
   const { data: templates = [], isLoading: isLoadingTemplates } = useQuery({
@@ -90,6 +115,22 @@ export const CandidateCvBuilderPage: React.FC = () => {
       setSelectedTemplateId(existingCv.cvTemplateId || null);
 
       const loadedContent = existingCv.structuredContent || ({} as StructuredCvContent);
+      const presentation = loadedContent.presentation;
+      if (presentation) {
+        setAccentColor(presentation.accentColor || DEFAULT_PRESENTATION.accentColor);
+        setDensity(presentation.density || DEFAULT_PRESENTATION.density);
+        setFontFamily(presentation.fontFamily || DEFAULT_PRESENTATION.fontFamily);
+        setLayout(presentation.layout || DEFAULT_PRESENTATION.layout);
+        const visibleSections = new Set(presentation.visibleSections || DEFAULT_PRESENTATION.visibleSections);
+        setSectionVisibility({
+          summary: visibleSections.has('summary'),
+          experiences: visibleSections.has('experiences'),
+          educations: visibleSections.has('educations'),
+          skills: visibleSections.has('skills'),
+          languages: visibleSections.has('languages'),
+          certificates: visibleSections.has('certificates'),
+        });
+      }
       setContent({
         fullName: loadedContent.fullName || '',
         headline: loadedContent.headline || '',
@@ -150,21 +191,52 @@ export const CandidateCvBuilderPage: React.FC = () => {
     }
   }, [mode, existingCv, currentUser]);
 
-  // Sync template styles if a template is selected
+  const applyTemplatePresentation = useCallback((templateId: string | null) => {
+    const selectedTemplate = templateId
+      ? templates.find((template) => template.cvTemplateId === templateId)
+      : undefined;
+    const config = selectedTemplate?.templateConfig;
+
+    setSelectedTemplateId(templateId);
+    setAccentColor(config?.accentColor || DEFAULT_PRESENTATION.accentColor);
+    setDensity(
+      config?.density === 'compact' || config?.density === 'spacious'
+        ? config.density
+        : DEFAULT_PRESENTATION.density
+    );
+    setFontFamily(config?.fontFamily || DEFAULT_PRESENTATION.fontFamily);
+    setLayout(
+      config?.layout ||
+        (templateId ? inferTemplateLayout(selectedTemplate?.code) : DEFAULT_PRESENTATION.layout)
+    );
+    const configuredSections = new Set(
+      (config?.sections || DEFAULT_PRESENTATION.visibleSections).map((section: string) => {
+        if (section === 'experience') return 'experiences';
+        if (section === 'education') return 'educations';
+        return section;
+      })
+    );
+    setSectionVisibility({
+      summary: configuredSections.has('summary'),
+      experiences: configuredSections.has('experiences'),
+      educations: configuredSections.has('educations'),
+      skills: configuredSections.has('skills'),
+      languages: configuredSections.has('languages'),
+      certificates: configuredSections.has('certificates'),
+    });
+  }, [templates]);
+
+  // Apply an initial URL/legacy template once. New CVs and older CVs do not yet
+  // contain presentation settings, so their selected template supplies them.
   useEffect(() => {
-    if (selectedTemplateId && templates.length > 0) {
-      const tpl = templates.find((t) => t.cvTemplateId === selectedTemplateId);
-      if (tpl?.templateConfig?.accentColor) {
-        setAccentColor(tpl.templateConfig.accentColor);
-      }
-      if (
-        tpl?.templateConfig?.density &&
-        ['compact', 'normal', 'spacious'].includes(tpl.templateConfig.density)
-      ) {
-        setDensity(tpl.templateConfig.density as any);
-      }
+    if (initialTemplateAppliedRef.current || templates.length === 0) return;
+
+    const hasSavedPresentation = Boolean(existingCv?.structuredContent?.presentation);
+    if (selectedTemplateId && !hasSavedPresentation) {
+      applyTemplatePresentation(selectedTemplateId);
     }
-  }, [selectedTemplateId, templates]);
+    initialTemplateAppliedRef.current = true;
+  }, [applyTemplatePresentation, existingCv, selectedTemplateId, templates]);
 
   // Update content helper
   const handleUpdateContent = (updated: Partial<StructuredCvContent>) => {
@@ -213,6 +285,15 @@ export const CandidateCvBuilderPage: React.FC = () => {
         skills: content.skills || [],
         languages: content.languages || [],
         certificates: content.certificates || [],
+        presentation: {
+          accentColor,
+          density,
+          fontFamily,
+          layout,
+          visibleSections: Object.entries(sectionVisibility)
+            .filter(([, visible]) => visible)
+            .map(([section]) => section) as CvPresentationConfig['visibleSections'],
+        },
       };
 
       const validation = validateStructuredCvContent(structuredContent, title);
@@ -221,11 +302,16 @@ export const CandidateCvBuilderPage: React.FC = () => {
       }
 
       if (mode === 'edit' && cvId) {
-        return cvBuilderApi.updateStructuredCv(cvId, {
+        const updated = await cvBuilderApi.updateStructuredCv(cvId, {
           title: title.trim(),
           cvTemplateId: selectedTemplateId,
           structuredContent,
         });
+        if (isPrimary && !existingCv?.isPrimary) {
+          await candidateCvApi.setPrimary(cvId);
+          return { ...updated, isPrimary: true };
+        }
+        return updated;
       } else {
         return cvBuilderApi.createStructuredCv({
           title: title.trim(),
@@ -274,7 +360,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
 
   if (mode === 'edit' && isLoadingExisting) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#f0f2f5] gap-3">
+      <div className="h-full w-full flex flex-col items-center justify-center bg-[#f0f2f5] gap-3">
         <Spin size="large" />
         <span className="text-sm font-medium text-slate-600">Đang tải dữ liệu CV...</span>
       </div>
@@ -283,7 +369,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
 
   if (mode === 'edit' && isErrorExisting) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-[#f0f2f5] p-4">
+      <div className="h-full w-full flex items-center justify-center bg-[#f0f2f5] p-4">
         <Result
           status="error"
           title="Không thể tải nội dung CV"
@@ -299,7 +385,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden bg-[#f0f2f5] text-slate-900 select-none">
+    <div className="h-full w-full flex flex-col overflow-hidden bg-[#eef2f7] text-slate-900 select-none">
       {/* ── 1. TOPBAR ── */}
       <CvTopbar
         title={title}
@@ -315,17 +401,18 @@ export const CandidateCvBuilderPage: React.FC = () => {
       />
 
       {/* ── 2. MAIN WORKSPACE: SIDEBAR + LIVE CANVAS ── */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="cv-builder-workspace flex-1 flex overflow-hidden">
         {/* Left Toolbox Sidebar */}
         <CvSidebarTools
           templates={templates}
           isLoadingTemplates={isLoadingTemplates}
           selectedTemplateId={selectedTemplateId}
-          onSelectTemplate={setSelectedTemplateId}
+          onSelectTemplate={applyTemplatePresentation}
           accentColor={accentColor}
           onAccentColorChange={setAccentColor}
           fontFamily={fontFamily}
           onFontFamilyChange={setFontFamily}
+          layout={layout}
           density={density}
           onDensityChange={setDensity}
           sectionVisibility={sectionVisibility}
@@ -338,6 +425,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
           onChangeContent={handleUpdateContent}
           accentColor={accentColor}
           fontFamily={fontFamily}
+          layout={layout}
           density={density}
           sectionVisibility={sectionVisibility}
         />
@@ -350,6 +438,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
         content={content}
         accentColor={accentColor}
         fontFamily={fontFamily}
+        layout={layout}
         density={density}
         sectionVisibility={sectionVisibility}
         pdfUrl={saveSuccessData?.pdfUrl || existingCv?.pdfUrl}

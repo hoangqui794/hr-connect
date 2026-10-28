@@ -150,30 +150,6 @@ const CandidateDetailStatus: React.FC<{ stage: ReturnType<typeof candidateStage>
   </span>
 );
 
-const STANDARDIZED_STEPS = [
-  'Đã nộp',
-  'Đang được xem',
-  'Phỏng vấn',
-  'Đi làm',
-] as const;
-
-const getStandardizedStepIndex = (group: CandidateApplicationDisplayGroup): number => {
-  switch (group) {
-    case 'SUBMITTED':
-      return 0;
-    case 'IN_REVIEW':
-    case 'SELECTED':
-      return 1;
-    case 'INTERVIEW':
-    case 'OFFER':
-      return 2;
-    case 'HIRED':
-      return 3;
-    default:
-      return 0;
-  }
-};
-
 const parseJobTitleAndCode = (title: string) => {
   const match = title.match(/^\[(.*?)\]\s*(.*)$/);
   if (match) {
@@ -200,46 +176,20 @@ const PublicApplicationProgress: React.FC<{ application: CandidateApplication }>
     );
   }
 
-  const currentStep = getStandardizedStepIndex(application.displayGroup);
+  const currentStep = stage.step;
 
   return (
-    <div className="w-full py-1.5" aria-label={`Tiến độ: ${stage.label}`}>
-      <div className="relative flex items-center justify-between">
-        {/* Connecting line */}
-        <div className="absolute left-[12%] right-[12%] top-[5px] h-[2px] bg-slate-200 -z-0" />
-        <div
-          className="absolute left-[12%] top-[5px] h-[2px] bg-emerald-500 -z-0 transition-all duration-300"
-          style={{ width: `${(currentStep / (STANDARDIZED_STEPS.length - 1)) * 76}%` }}
-        />
-
-        {STANDARDIZED_STEPS.map((stepLabel, idx) => {
-          const isPassed = idx < currentStep;
-          const isCurrent = idx === currentStep;
-
-          return (
-            <div key={stepLabel} className="relative z-10 flex flex-col items-center">
-              {isCurrent ? (
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-600 ring-4 ring-emerald-100" />
-              ) : isPassed ? (
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-600 border border-emerald-600" />
-              ) : (
-                <span className="h-2.5 w-2.5 rounded-full bg-white border-2 border-slate-300" />
-              )}
-              <span
-                className={`mt-2 text-[11px] leading-tight text-center ${
-                  isCurrent
-                    ? 'font-bold text-emerald-700'
-                    : isPassed
-                    ? 'font-medium text-slate-700'
-                    : 'text-slate-400'
-                }`}
-              >
-                {stepLabel}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+    <div className="candidate-card-progress" aria-label={`Tiến độ: ${stage.label}`}>
+      {CANDIDATE_STEPS.map((stepLabel, idx) => {
+        const reached = idx <= currentStep;
+        const current = idx === currentStep;
+        return (
+          <div key={stepLabel} className={`candidate-card-progress__step${reached ? ' is-reached' : ''}${current ? ' is-current' : ''}`}>
+            <span className="candidate-card-progress__bar" aria-hidden />
+            <span className="candidate-card-progress__label">{stepLabel}</span>
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -253,37 +203,46 @@ const ApplicationCard: React.FC<{ a: CandidateApplication }> = ({ a }) => {
   const parsed = parseJobTitleAndCode(a.jobTitle);
 
   return (
-    <article className={`candidate-surface candidate-application-card candidate-application-card--${statusClass} flex flex-col gap-4 p-5 ${isClosedOutcome ? 'candidate-application-card--closed' : ''}`}>
-      <div className="candidate-application-card__heading min-w-0">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap mb-1">
+    <article className={`candidate-application-card-v2 candidate-application-card-v2--${statusClass}${isClosedOutcome ? ' is-closed' : ''}`}>
+      <div className="candidate-application-card-v2__header candidate-application-card__heading">
+        <CompanyLogo companyName={a.companyName} size="md" className="candidate-application-card-v2__logo" />
+        <div className="candidate-application-card-v2__identity">
+          <div className="candidate-application-card-v2__title-row">
             {parsed.code && (
-              <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono font-medium">
+              <span className="candidate-application-card-v2__code">
                 [{parsed.code}]
               </span>
             )}
-            <span className="text-[16px] font-semibold leading-snug text-slate-900">{parsed.title}</span>
+            <h2>{parsed.title}</h2>
           </div>
-          <div className="text-[13px] text-slate-600">{a.companyName}</div>
+          <p>{a.companyName}</p>
         </div>
-        <div className="candidate-application-card__status-row mt-3">
-          <span className={`candidate-application-status candidate-application-status--${statusClass}`}>
+        <div className="candidate-application-card-v2__status candidate-application-card__status-row">
+          <span className={`candidate-application-status-v2 candidate-application-status-v2--${statusClass}`} role="status">
             {isPositiveOutcome ? <CheckCircleFilled aria-hidden /> : isClosedOutcome ? <CloseCircleOutlined aria-hidden /> : <HistoryOutlined aria-hidden />}
             {stage.label}
           </span>
         </div>
       </div>
-      <PublicApplicationProgress application={a} />
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-        <span>Nộp {dayjs(a.appliedAt).fromNow()}</span>
+
+      <div className="candidate-application-card-v2__progress">
+        <div className="candidate-application-card-v2__progress-heading">
+          <span>Tiến trình tuyển dụng</span>
+        </div>
+        <PublicApplicationProgress application={a} />
+      </div>
+
+      <div className="candidate-application-card-v2__footer">
+        <div className="candidate-application-card-v2__meta">
+          <span><HistoryOutlined aria-hidden /> Nộp {dayjs(a.appliedAt).fromNow()}</span>
         {a.cvTitle && (
-          <span className="inline-flex items-center gap-1">
+          <span>
             <FilePdfOutlined aria-hidden /> {a.cvTitle}
           </span>
         )}
-      </div>
-      <div className="candidate-application-card__footer">
-        <Button type="link" className="!h-auto !p-0 !font-semibold !text-blue-600 hover:!text-blue-700" onClick={() => navigate(`/candidate/applications/${a.applicationId}`)}>
+          <span>{a.submissionSource === 'AFFILIATE' ? 'Được đối tác tuyển dụng giới thiệu' : 'Bạn tự ứng tuyển'}</span>
+        </div>
+        <Button className="candidate-application-card-v2__action" onClick={() => navigate(`/candidate/applications/${a.applicationId}`)}>
           Xem chi tiết <ArrowRightOutlined aria-hidden />
         </Button>
       </div>
@@ -896,64 +855,81 @@ export const CandidateApplicationsPage: React.FC = () => {
           </ul>
         </CandidateSurface>
       ) : null}
-      <CandidateSurface className="candidate-filter-bar">
-        <Input.Search
-          aria-label="Tìm theo công việc hoặc doanh nghiệp"
-          allowClear
-          value={searchDraft}
-          placeholder="Tên công việc hoặc doanh nghiệp"
-          className="min-w-64 flex-1"
-          onChange={(event) => {
-            setSearchDraft(event.target.value);
-            if (!event.target.value) updateFilters({ search: undefined });
-          }}
-          onSearch={(value) => updateFilters({ search: value.trim() || undefined })}
-        />
-        <Select
-          aria-label="Lọc theo trạng thái"
-          allowClear
-          placeholder="Tất cả trạng thái"
-          value={status}
-          onChange={(value) => updateFilters({ status: value })}
-          className="min-w-52"
-          options={[
-            ['SUBMITTED', 'Đã nộp'],
-            ['IN_REVIEW', 'Đang xem xét'],
-            ['SELECTED', 'Được chọn phỏng vấn'],
-            ['INTERVIEW', 'Phỏng vấn'],
-            ['OFFER', 'Chờ / đã nhận offer'],
-            ['HIRED', 'Đã tuyển'],
-            ['NOT_SELECTED', 'Chưa phù hợp'],
-            ['WITHDRAWN', 'Đã rút đơn'],
-          ].map(([value, label]) => ({ value: value as CandidateApplicationDisplayGroup, label }))}
-        />
-        <Select
-          aria-label="Lọc theo nguồn ứng tuyển"
-          allowClear
-          placeholder="Tất cả nguồn"
-          value={submissionSource}
-          onChange={(value) => updateFilters({ submissionSource: value })}
-          className="min-w-48"
-          options={[
-            { value: 'CANDIDATE', label: 'Tôi tự ứng tuyển' },
-            { value: 'AFFILIATE', label: 'Đối tác tuyển dụng giới thiệu' },
-          ]}
-        />
-        <DatePicker.RangePicker
-          aria-label="Lọc theo ngày ứng tuyển"
-          format="DD/MM/YYYY"
-          value={fromDate && toDate ? [dayjs(fromDate), dayjs(toDate)] : null}
-          onChange={(dates) =>
-            updateFilters({
-              fromDate: dates?.[0]?.startOf('day').toISOString(),
-              toDate: dates?.[1]?.endOf('day').toISOString(),
-            })
-          }
-        />
-        {(status || fromDate || toDate || jobId || search || submissionSource) && (
-          <Button onClick={() => { setSearchDraft(''); setSearchParams({}); }}>Xóa bộ lọc</Button>
-        )}
-      </CandidateSurface>
+      <section className="candidate-applications-filters" aria-label="Lọc đơn ứng tuyển">
+        <div className="candidate-applications-filters__heading">
+          <div>
+            <h2>Tìm đơn ứng tuyển</h2>
+            <p>Lọc theo công việc, trạng thái hoặc thời gian bạn đã nộp hồ sơ.</p>
+          </div>
+          {(status || fromDate || toDate || jobId || search || submissionSource) && (
+            <Button type="link" onClick={() => { setSearchDraft(''); setSearchParams({}); }}>Xóa tất cả bộ lọc</Button>
+          )}
+        </div>
+        <div className="candidate-applications-filters__grid">
+          <label className="candidate-filter-field candidate-filter-field--search">
+            <span>Công việc hoặc doanh nghiệp</span>
+            <Input.Search
+              aria-label="Tìm theo công việc hoặc doanh nghiệp"
+              allowClear
+              value={searchDraft}
+              placeholder="Ví dụ: Backend Developer"
+              onChange={(event) => {
+                setSearchDraft(event.target.value);
+                if (!event.target.value) updateFilters({ search: undefined });
+              }}
+              onSearch={(value) => updateFilters({ search: value.trim() || undefined })}
+            />
+          </label>
+          <label className="candidate-filter-field">
+            <span>Trạng thái hiện tại</span>
+            <Select
+              aria-label="Lọc theo trạng thái"
+              allowClear
+              placeholder="Tất cả trạng thái"
+              value={status}
+              onChange={(value) => updateFilters({ status: value })}
+              options={[
+                ['SUBMITTED', 'Đã nộp'],
+                ['IN_REVIEW', 'Đang xem xét'],
+                ['SELECTED', 'Được chọn phỏng vấn'],
+                ['INTERVIEW', 'Phỏng vấn'],
+                ['OFFER', 'Chờ hoặc đã nhận offer'],
+                ['HIRED', 'Đã tuyển'],
+                ['NOT_SELECTED', 'Chưa phù hợp'],
+                ['WITHDRAWN', 'Đã rút đơn'],
+              ].map(([value, label]) => ({ value: value as CandidateApplicationDisplayGroup, label }))}
+            />
+          </label>
+          <label className="candidate-filter-field">
+            <span>Nguồn ứng tuyển</span>
+            <Select
+              aria-label="Lọc theo nguồn ứng tuyển"
+              allowClear
+              placeholder="Tất cả nguồn"
+              value={submissionSource}
+              onChange={(value) => updateFilters({ submissionSource: value })}
+              options={[
+                { value: 'CANDIDATE', label: 'Tôi tự ứng tuyển' },
+                { value: 'AFFILIATE', label: 'Đối tác tuyển dụng giới thiệu' },
+              ]}
+            />
+          </label>
+          <label className="candidate-filter-field">
+            <span>Ngày ứng tuyển</span>
+            <DatePicker.RangePicker
+              aria-label="Lọc theo ngày ứng tuyển"
+              format="DD/MM/YYYY"
+              value={fromDate && toDate ? [dayjs(fromDate), dayjs(toDate)] : null}
+              onChange={(dates) =>
+                updateFilters({
+                  fromDate: dates?.[0]?.startOf('day').toISOString(),
+                  toDate: dates?.[1]?.endOf('day').toISOString(),
+                })
+              }
+            />
+          </label>
+        </div>
+      </section>
       {apps.isLoading ? (
         <Skeleton active paragraph={{ rows: 6 }} />
       ) : apps.isError ? (
@@ -974,7 +950,7 @@ export const CandidateApplicationsPage: React.FC = () => {
           )}
         </CandidateSurface>
       ) : (
-        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
+        <div className="candidate-applications-list">
           {items.map((a) => (
             <ApplicationCard key={a.applicationId} a={a} />
           ))}

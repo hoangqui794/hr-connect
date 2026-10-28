@@ -18,6 +18,8 @@ import {
 } from '@ant-design/icons';
 import { CvInlineField } from './CvInlineField';
 import type {
+  CvFontFamily,
+  CvLayoutStyle,
   StructuredCvContent,
   StructuredCvExperience,
   StructuredCvEducation,
@@ -28,7 +30,8 @@ export interface CvCanvasProps {
   content: StructuredCvContent;
   onChangeContent: (updated: Partial<StructuredCvContent>) => void;
   accentColor: string;
-  fontFamily: string;
+  fontFamily: CvFontFamily;
+  layout: CvLayoutStyle;
   density: 'compact' | 'normal' | 'spacious';
   sectionVisibility: SectionVisibility;
   readOnly?: boolean;
@@ -54,6 +57,7 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
   onChangeContent,
   accentColor,
   fontFamily,
+  layout,
   density,
   sectionVisibility,
   readOnly = false,
@@ -65,6 +69,12 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
   const [isAddingLang, setIsAddingLang] = useState<boolean>(false);
   const [newCertText, setNewCertText] = useState<string>('');
   const [isAddingCert, setIsAddingCert] = useState<boolean>(false);
+
+  const fontStack = {
+    BE_VIETNAM_PRO: "'Be Vietnam Pro', sans-serif",
+    ROBOTO: "'Roboto', sans-serif",
+    INTER: "'Inter', sans-serif",
+  }[fontFamily];
 
   // Density styles
   const densityStyles = {
@@ -246,16 +256,17 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
         >
           {/* A4 Paper */}
           <div
-            id="cv-paper-canvas"
+            id={readOnly ? 'cv-paper-preview' : 'cv-paper-editor'}
             style={{
               width: '794px',
               minHeight: '1123px',
-              fontFamily: fontFamily,
-            }}
-            className={`bg-white text-slate-800 shadow-xl rounded-sm ${densityStyles.padding} flex flex-col ${densityStyles.sectionGap} border border-slate-200/60 print:shadow-none print:m-0 print:p-0 print:border-none`}
+              fontFamily: fontStack,
+              '--cv-accent': accentColor,
+            } as React.CSSProperties}
+            className={`cv-paper ${readOnly ? 'cv-paper--preview' : 'cv-paper--editor'} cv-paper--${layout} cv-density--${density} bg-white text-slate-800 shadow-xl rounded-sm ${densityStyles.padding} flex flex-col ${densityStyles.sectionGap} border border-slate-200/60 print:shadow-none print:m-0 print:border-none`}
           >
             {/* ── HEADER: PERSONAL INFORMATION ── */}
-            <header className="border-0 border-b-2 border-solid pb-5" style={{ borderColor: accentColor }}>
+            <header className="cv-paper__header border-0 border-b-2 border-solid pb-5" style={{ borderColor: accentColor }}>
               {/* Full Name */}
               <div className="mb-1">
                 <CvInlineField
@@ -321,7 +332,7 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
 
             {/* ── SECTION: SUMMARY ── */}
             {sectionVisibility.summary && (
-              <section className="space-y-2">
+              <section className="cv-paper__section cv-paper__section--summary space-y-2">
                 <div className="flex items-center gap-2 pb-1 border-0 border-b border-solid border-slate-200">
                   <ThunderboltOutlined style={{ color: accentColor }} className="text-sm" />
                   <h3
@@ -346,7 +357,7 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
 
             {/* ── SECTION: WORK EXPERIENCES ── */}
             {sectionVisibility.experiences && (
-              <section className="space-y-3">
+              <section className="cv-paper__section cv-paper__section--experiences space-y-3">
                 <div className="flex items-center justify-between pb-1 border-0 border-b border-solid border-slate-200">
                   <div className="flex items-center gap-2">
                     <ApartmentOutlined style={{ color: accentColor }} className="text-sm" />
@@ -474,7 +485,7 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
 
             {/* ── SECTION: EDUCATIONS ── */}
             {sectionVisibility.educations && (
-              <section className="space-y-3">
+              <section className="cv-paper__section cv-paper__section--educations space-y-3">
                 <div className="flex items-center justify-between pb-1 border-0 border-b border-solid border-slate-200">
                   <div className="flex items-center gap-2">
                     <BookOutlined style={{ color: accentColor }} className="text-sm" />
@@ -601,7 +612,7 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
 
             {/* ── SECTION: SKILLS ── */}
             {sectionVisibility.skills && (
-              <section className="space-y-2.5">
+              <section className="cv-paper__section cv-paper__section--skills space-y-2.5">
                 <div className="flex items-center gap-2 pb-1 border-0 border-b border-solid border-slate-200">
                   <StarOutlined style={{ color: accentColor }} className="text-sm" />
                   <h3
@@ -688,7 +699,7 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Languages */}
               {sectionVisibility.languages && (
-                <section className="space-y-2">
+                <section className="cv-paper__section cv-paper__section--languages space-y-2">
                   <div className="flex items-center gap-2 pb-1 border-0 border-b border-solid border-slate-200">
                     <TranslationOutlined style={{ color: accentColor }} className="text-sm" />
                     <h3
@@ -747,7 +758,7 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
 
               {/* Certificates */}
               {sectionVisibility.certificates && (
-                <section className="space-y-2">
+                <section className="cv-paper__section cv-paper__section--certificates space-y-2">
                   <div className="flex items-center gap-2 pb-1 border-0 border-b border-solid border-slate-200">
                     <TrophyOutlined style={{ color: accentColor }} className="text-sm" />
                     <h3

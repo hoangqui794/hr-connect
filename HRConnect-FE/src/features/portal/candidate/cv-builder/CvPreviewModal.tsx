@@ -2,7 +2,11 @@ import React from 'react';
 import { Modal, Button } from 'antd';
 import { PrinterOutlined, DownloadOutlined, CloseOutlined } from '@ant-design/icons';
 import { CvCanvas } from './CvCanvas';
-import type { StructuredCvContent } from '@/types/api/cvBuilder';
+import type {
+  CvFontFamily,
+  CvLayoutStyle,
+  StructuredCvContent,
+} from '@/types/api/cvBuilder';
 import type { SectionVisibility } from './CvSidebarTools';
 
 export interface CvPreviewModalProps {
@@ -10,7 +14,8 @@ export interface CvPreviewModalProps {
   onClose: () => void;
   content: StructuredCvContent;
   accentColor: string;
-  fontFamily: string;
+  fontFamily: CvFontFamily;
+  layout: CvLayoutStyle;
   density: 'compact' | 'normal' | 'spacious';
   sectionVisibility: SectionVisibility;
   pdfUrl?: string | null;
@@ -23,6 +28,7 @@ export const CvPreviewModal: React.FC<CvPreviewModalProps> = ({
   content,
   accentColor,
   fontFamily,
+  layout,
   density,
   sectionVisibility,
   pdfUrl,
@@ -74,6 +80,7 @@ export const CvPreviewModal: React.FC<CvPreviewModalProps> = ({
           onChangeContent={() => {}}
           accentColor={accentColor}
           fontFamily={fontFamily}
+          layout={layout}
           density={density}
           sectionVisibility={sectionVisibility}
           readOnly={true}

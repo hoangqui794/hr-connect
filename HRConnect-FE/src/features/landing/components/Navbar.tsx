@@ -5,7 +5,7 @@ import {
   DashboardOutlined,
   CompassOutlined,
   SearchOutlined,
-  TeamOutlined,
+  ThunderboltOutlined,
   DollarCircleOutlined,
   BellOutlined,
   MenuOutlined,
@@ -73,9 +73,13 @@ export const Navbar: React.FC = () => {
     },
   ];
 
-  const isRolesActive = location.pathname === '/' && location.hash === '#roles';
-  const isHomeActive = location.pathname === '/' && !isRolesActive;
-  const isJobsActive = location.pathname === '/jobs' || location.pathname.startsWith('/jobs/');
+  const isHomeActive = location.pathname === '/';
+  const isCandidate = isAuthenticated && role === UserRole.CANDIDATE;
+  const isCandidateMatchesActive = isCandidate && location.pathname === '/candidate/jobs' && !new URLSearchParams(location.search).get('tab');
+  const isJobsActive = isCandidate
+    ? location.pathname.startsWith('/candidate/jobs') && !isCandidateMatchesActive
+    : location.pathname === '/jobs' || location.pathname.startsWith('/jobs/');
+  const jobsPath = isCandidate ? '/candidate/jobs?tab=all' : '/jobs';
   const isServicesActive = location.pathname === '/services';
   const isContactActive = location.pathname === '/contact';
 
@@ -126,7 +130,7 @@ export const Navbar: React.FC = () => {
           <Button
             type="text"
             icon={<SearchOutlined />}
-            onClick={() => navigate('/jobs')}
+            onClick={() => navigate(jobsPath)}
             style={{
               color: isJobsActive ? '#1d4ed8' : '#475569',
               fontWeight: 600,
@@ -138,20 +142,22 @@ export const Navbar: React.FC = () => {
             Việc làm
           </Button>
 
-          <Button
-            type="text"
-            icon={<TeamOutlined />}
-            onClick={() => navigate('/#roles')}
-            style={{
-              color: isRolesActive ? '#1d4ed8' : '#475569',
-              fontWeight: 600,
-              fontSize: 14,
-              background: isRolesActive ? '#eff6ff' : 'transparent',
-              borderRadius: 8,
-            }}
-          >
-            Vai trò
-          </Button>
+          {isCandidate && (
+            <Button
+              type="text"
+              icon={<ThunderboltOutlined />}
+              onClick={() => navigate('/candidate/jobs')}
+              style={{
+                color: isCandidateMatchesActive ? '#1d4ed8' : '#475569',
+                fontWeight: 600,
+                fontSize: 14,
+                background: isCandidateMatchesActive ? '#eff6ff' : 'transparent',
+                borderRadius: 8,
+              }}
+            >
+              Phù hợp với bạn
+            </Button>
+          )}
 
           {showServicesPricing && (
             <Button
@@ -305,7 +311,7 @@ export const Navbar: React.FC = () => {
             type="text"
             block
             icon={<SearchOutlined />}
-            onClick={() => navigateAndClose('/jobs')}
+            onClick={() => navigateAndClose(jobsPath)}
             className={`flex items-center justify-start h-10 px-3 font-semibold rounded-lg text-left ${
               isJobsActive ? 'bg-blue-50 text-blue-600' : 'text-slate-700'
             }`}
@@ -313,17 +319,19 @@ export const Navbar: React.FC = () => {
             Việc làm
           </Button>
 
-          <Button
-            type="text"
-            block
-            icon={<TeamOutlined />}
-            onClick={() => navigateAndClose('/#roles')}
-            className={`flex items-center justify-start h-10 px-3 font-semibold rounded-lg text-left ${
-              isRolesActive ? 'bg-blue-50 text-blue-600' : 'text-slate-700'
-            }`}
-          >
-            Vai trò
-          </Button>
+          {isCandidate && (
+            <Button
+              type="text"
+              block
+              icon={<ThunderboltOutlined />}
+              onClick={() => navigateAndClose('/candidate/jobs')}
+              className={`flex items-center justify-start h-10 px-3 font-semibold rounded-lg text-left ${
+                isCandidateMatchesActive ? 'bg-blue-50 text-blue-600' : 'text-slate-700'
+              }`}
+            >
+              Phù hợp với bạn
+            </Button>
+          )}
 
           {showServicesPricing && (
             <Button
@@ -371,7 +379,7 @@ export const Navbar: React.FC = () => {
               onClick={() => navigateAndClose(ROLE_DASHBOARD_ROUTES[role] || '/dashboard')}
               className="h-10 font-bold bg-blue-600 rounded-lg"
             >
-              Vào Dashboard ({role})
+              Vào trang làm việc
             </Button>
 
             <Button

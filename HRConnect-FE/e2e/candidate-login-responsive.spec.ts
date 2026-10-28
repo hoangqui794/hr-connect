@@ -2,13 +2,21 @@ import { expect, test } from '@playwright/test';
 import { mockCandidateApis } from './support/candidateApi';
 
 test('Trang chủ công khai hiển thị lối vào cho Guest', async ({ page }, testInfo) => {
+  const isCompact = testInfo.project.name !== 'desktop-chromium';
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { name: /Kết nối đúng người/i })).toBeVisible();
-  await expect(page.getByText('Việc làm', { exact: true })).toBeVisible();
-  await expect(page.getByText('Giải pháp dịch vụ', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Đăng nhập', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Đăng ký', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Khám phá .* cơ hội nghề nghiệp/i })).toBeVisible();
+  if (isCompact) {
+    await page.getByRole('button', { name: 'Menu điều hướng' }).click();
+    await expect(page.getByRole('button', { name: /Việc làm/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Giải pháp dịch vụ/ })).toBeVisible();
+  } else {
+    await expect(page.getByText('Việc làm', { exact: true })).toBeVisible();
+    await expect(page.getByText('Giải pháp dịch vụ', { exact: true })).toBeVisible();
+  }
+  await expect(page.getByText('Vai trò', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Đăng nhập', exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /Đăng ký/ }).first()).toBeVisible();
   await expect(page.getByRole('button', { name: 'Vào không gian Candidate' })).toHaveCount(0);
 
   await page.screenshot({
@@ -16,12 +24,10 @@ test('Trang chủ công khai hiển thị lối vào cho Guest', async ({ page }
     fullPage: true,
   });
 
-  await page.getByText('Vai trò', { exact: true }).click();
-  await expect(page).toHaveURL(/\/#roles$/);
-  await expect.poll(() => page.locator('#roles').evaluate((element) => element.getBoundingClientRect().top)).toBeLessThan(140);
 });
 
 test('Candidate đăng nhập và mở được workspace trên viewport hiện tại', async ({ page }, testInfo) => {
+  const isCompact = testInfo.project.name !== 'desktop-chromium';
   await mockCandidateApis(page);
   await page.goto('/login');
 
@@ -31,13 +37,22 @@ test('Candidate đăng nhập và mở được workspace trên viewport hiện 
   await page.getByPlaceholder('Nhập mật khẩu').fill('111111Aa@');
   await page.locator('form button[type="submit"]').click();
 
-  await expect(page).toHaveURL(/\/candidate\/dashboard$/);
-
-  await expect(page.getByRole('heading', { name: /Chào E2E/i })).toBeVisible();
-  const brandLink = page.getByRole('link', { name: /HR Connect, về tổng quan/i });
+  await expect(page).toHaveURL(/\/$/);
+  const sharedHeader = page.locator('header').first();
+  const brandLink = sharedHeader.locator('a[href="/"]').first();
   await expect(brandLink).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Tìm việc' })).toBeVisible();
+  if (isCompact) {
+    await sharedHeader.getByRole('button', { name: 'Menu điều hướng' }).click();
+    await expect(page.getByRole('button', { name: /Phù hợp với bạn/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Việc làm/ })).toBeVisible();
+  } else {
+    await expect(sharedHeader.getByRole('button', { name: /Phù hợp với bạn/ })).toBeVisible();
+    await expect(sharedHeader.getByRole('button', { name: /Việc làm/ })).toBeVisible();
+  }
   const initialBrandX = (await brandLink.boundingBox())?.x;
+
+  await page.goto('/candidate/dashboard');
+  await expect(page.getByRole('heading', { name: /Chào E2E/i })).toBeVisible();
 
   const hasHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
@@ -49,18 +64,23 @@ test('Candidate đăng nhập và mở được workspace trên viewport hiện 
     fullPage: true,
   });
 
-  await page.getByRole('link', { name: 'Tìm việc', exact: true }).click();
+  if (isCompact) {
+    await sharedHeader.getByRole('button', { name: 'Menu điều hướng' }).click();
+    await page.getByRole('button', { name: /Phù hợp với bạn/ }).click();
+  } else {
+    await sharedHeader.getByRole('button', { name: /Phù hợp với bạn/ }).click();
+  }
   await expect(page).toHaveURL(/\/candidate\/jobs$/);
-  await expect(page.getByRole('heading', { name: 'Tìm việc làm phù hợp' })).toBeVisible();
+  await expect(page.getByText('Việc phù hợp với bạn', { exact: true })).toBeVisible();
+  await page.getByText('Tất cả việc làm', { exact: true }).click();
+  await expect(page).toHaveURL(/\/candidate\/jobs\?tab=all$/);
+  await expect(page.getByRole('button', { name: /Bộ lọc nâng cao/ })).toBeVisible();
+  await page.getByRole('button', { name: /Bộ lọc nâng cao/ }).click();
   const jobsBrandX = (await brandLink.boundingBox())?.x;
   expect(Math.abs((jobsBrandX ?? 0) - (initialBrandX ?? 0))).toBeLessThan(1);
-  const filterHeights = await Promise.all([
-    page.getByLabel('Từ khóa tìm việc').evaluate((element) => element.closest('.ant-input-group-wrapper')?.getBoundingClientRect().height ?? 0),
-    page.getByLabel('Địa điểm').evaluate((element) => element.closest('.ant-input-affix-wrapper')?.getBoundingClientRect().height ?? 0),
-    page.getByRole('combobox', { name: 'Hình thức làm việc' }).evaluate((element) => element.closest('.ant-select')?.getBoundingClientRect().height ?? 0),
-    page.getByRole('combobox', { name: 'Loại dịch vụ' }).evaluate((element) => element.closest('.ant-select')?.getBoundingClientRect().height ?? 0),
-  ]);
-  expect(Math.max(...filterHeights) - Math.min(...filterHeights)).toBeLessThan(1);
+  await expect(page.getByLabel('Số năm kinh nghiệm tối thiểu')).toBeVisible();
+  await expect(page.getByLabel('Mức lương tối thiểu')).toBeVisible();
+  await expect(page.getByLabel('Mức lương tối đa')).toBeVisible();
 
   const jobsHaveHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
@@ -75,7 +95,7 @@ test('Candidate đăng nhập và mở được workspace trên viewport hiện 
   await page.goto('/candidate/applications');
   await expect(page.getByRole('heading', { name: 'Đơn ứng tuyển của tôi' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Đang chờ bạn xác nhận' })).toBeVisible();
-  await expect(page.getByText('Backend Developer')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Backend Developer', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Xem và xác nhận' })).toBeVisible();
   const applicationsBrandX = (await brandLink.boundingBox())?.x;
   expect(Math.abs((applicationsBrandX ?? 0) - (initialBrandX ?? 0))).toBeLessThan(1);
@@ -86,7 +106,6 @@ test('Candidate đăng nhập và mở được workspace trên viewport hiện 
 
   await page.goto('/candidate/profile');
   await expect(page.getByRole('heading', { name: 'Candidate E2E' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Hồ sơ & CV', exact: true })).not.toHaveAttribute('aria-current', 'page');
   const profileBrandX = (await brandLink.boundingBox())?.x;
   expect(Math.abs((profileBrandX ?? 0) - (initialBrandX ?? 0))).toBeLessThan(1);
   const profileHasHorizontalOverflow = await page.evaluate(
@@ -100,13 +119,20 @@ test('Candidate đăng nhập và mở được workspace trên viewport hiện 
   });
 
   await page.goto('/');
-  await expect(page).toHaveURL(/\/candidate\/dashboard$/);
-  await expect(page.getByRole('heading', { name: /Chào E2E/i })).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
+  if (isCompact) {
+    await sharedHeader.getByRole('button', { name: 'Menu điều hướng' }).click();
+    await expect(page.getByRole('button', { name: /Phù hợp với bạn/ })).toBeVisible();
+  } else {
+    await expect(sharedHeader.getByRole('button', { name: /Phù hợp với bạn/ })).toBeVisible();
+  }
   await expect(page.getByText('Quản lý tìm việc')).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Tài khoản và cài đặt' }).click();
+  if (!isCompact) {
+    await page.getByRole('button', { name: 'Tài khoản ứng viên' }).click();
+  }
   await page.getByText('Đăng xuất', { exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole('heading', { name: /Kết nối đúng người/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Khám phá .* cơ hội nghề nghiệp/i })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Đăng nhập', exact: true })).toBeVisible();
 });

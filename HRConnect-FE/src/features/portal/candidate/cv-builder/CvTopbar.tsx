@@ -136,10 +136,11 @@ export const CvTopbar: React.FC<CvTopbarProps> = ({
         <div className="hidden sm:flex items-center mr-2">
           <Checkbox
             checked={isPrimary}
+            disabled={mode === 'edit' && isPrimary}
             onChange={(e) => onPrimaryChange(e.target.checked)}
             className="text-xs font-medium text-slate-600 select-none"
           >
-            Đặt làm CV chính
+            {mode === 'edit' && isPrimary ? 'Đang là CV chính' : 'Đặt làm CV chính'}
           </Checkbox>
         </div>
 
