@@ -145,8 +145,10 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({
         if (currentAgreement.pricePerQualifiedCv != null) baseValues.pricePerCv = currentAgreement.pricePerQualifiedCv;
         if (currentAgreement.reviewDays != null) baseValues.reviewDays = currentAgreement.reviewDays;
       }
-      const initialReference =
-        currentAgreement?.verificationCode || job.commercialTerms?.agreementReference || generateContractCode();
+      const nextVer = (currentAgreement?.version || 1) + 1;
+      const initialReference = isRevision
+        ? (currentAgreement?.verificationCode ? `${currentAgreement.verificationCode}-V${nextVer}` : generateContractCode())
+        : (currentAgreement?.verificationCode || job.commercialTerms?.agreementReference || generateContractCode());
 
       form.setFieldsValue({
         ...baseValues,
@@ -155,7 +157,7 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({
       });
       setServerError(undefined);
     }
-  }, [open, data, currentAgreement, job.commercialTerms?.agreementReference, form]);
+  }, [open, data, currentAgreement, job.commercialTerms?.agreementReference, isRevision, form]);
 
   const submit = async () => {
     let v: Awaited<ReturnType<typeof form.validateFields>>;

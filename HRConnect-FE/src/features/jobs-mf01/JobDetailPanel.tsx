@@ -62,10 +62,23 @@ const STATUS_TAG_CLASS: Record<Job['status'], string> = {
   CLOSED: 'border-slate-200 bg-slate-100 text-slate-600',
 };
 
-export const JobStatusTag: React.FC<{ status: Job['status']; hasSignedAgreement?: boolean }> = ({
+export const JobStatusTag: React.FC<{
+  status: Job['status'];
+  hasSignedAgreement?: boolean;
+  isChangeRequested?: boolean;
+}> = ({
   status,
   hasSignedAgreement,
+  isChangeRequested,
 }) => {
+  if (status === 'PENDING_AGREEMENT' && isChangeRequested) {
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border border-solid border-amber-300 bg-amber-50 text-amber-800">
+        DN yêu cầu sửa
+      </span>
+    );
+  }
+
   if (status === 'PENDING_AGREEMENT' && hasSignedAgreement) {
     return (
       <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border border-solid border-teal-200 bg-teal-50 text-teal-700">
@@ -255,6 +268,10 @@ interface JobDetailPanelProps {
   isApplicantView?: boolean;
   /** Optional agreement status for agreement-related alerts. */
   agreementStatus?: string;
+  /** Optional reason for change request from business. */
+  changeRequestReason?: string;
+  /** Optional callback to open terms/agreement modal directly from the alert. */
+  onOpenTermsModal?: () => void;
 }
 
 export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
@@ -264,6 +281,8 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   onPaySuccess,
   isApplicantView,
   agreementStatus,
+  changeRequestReason,
+  onOpenTermsModal,
 }) => {
   const navigate = useNavigate();
   const currentRole = useAuthStore((s) => s.role);
@@ -299,12 +318,26 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const paymentDueDays = agreed?.paymentDueDays ?? draft?.paymentDueDays ?? proposed?.paymentDueDays ?? null;
   const NOT_SET = 'Chưa chốt';
 
+  const isChangeRequested = Boolean(
+    agreementStatus === 'CHANGE_REQUESTED' ||
+    job.agreementStatus === 'CHANGE_REQUESTED' ||
+    Boolean(changeRequestReason)
+  );
+
+  const finalChangeReason =
+    changeRequestReason ||
+    job.agreementChangeRequestReason ||
+    draft?.changeRequestReason ||
+    'Doanh nghiệp yêu cầu điều chỉnh các điều khoản trong thỏa thuận dịch vụ.';
+
   const hasSignedAgreement = Boolean(
-    job.hasSignedAgreement ||
-    agreementStatus === 'SIGNED' ||
-    draft?.status === 'SIGNED' ||
-    draft?.hasSignedDocument ||
-    draft?.signedAt
+    !isChangeRequested && (
+      job.hasSignedAgreement ||
+      agreementStatus === 'SIGNED' ||
+      draft?.status === 'SIGNED' ||
+      draft?.hasSignedDocument ||
+      draft?.signedAt
+    )
   );
 
   const isExpired =
@@ -315,7 +348,11 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     <div className={`space-y-6 ${isApplicant ? 'candidate-job-detail-panel' : ''}`}>
       <header className="candidate-job-detail-panel__hero space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <JobStatusTag status={job.status} hasSignedAgreement={hasSignedAgreement} />
+          <JobStatusTag
+            status={job.status}
+            hasSignedAgreement={hasSignedAgreement}
+            isChangeRequested={isChangeRequested}
+          />
           {/* F4: Hiện nguồn mẫu ở trang duyệt job — chỉ hiển thị với Internal HR / Admin ở trang duyệt, Client và ứng viên không thấy */}
           {(isInternalReview || currentRole === UserRole.INTERNAL_HR || currentRole === UserRole.ADMIN) &&
             !isApplicant &&
@@ -350,9 +387,55 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           </div>
         )}
 
-        {/* Thông báo thỏa thuận dịch vụ - Headhunt & CV Sourcing */}
-        {!isApplicant && job.status === 'PENDING_AGREEMENT' && (
-          hasSignedAgreement ? (
+        {/* Thông báo thỏa thuận dịch vụ - Headhunt & CV Sourcing (Chỉ hiển thị cho Client, Internal Review đã có thanh tác vụ phía trên) */}
+        {!isApplicant && !isInternalReview && job.status === 'PENDING_AGREEMENT' && (
+          isChangeRequested ? (
+            <Alert
+              type="warning"
+              showIcon
+              className="border-amber-300 bg-amber-50/90 text-amber-950 rounded-xl shadow-xs"
+              message={
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <span className="font-bold text-amber-900 text-sm">
+                    Doanh nghiệp yêu cầu điều chỉnh thỏa thuận dịch vụ
+                  </span>
+                  <Tag color="warning" className="m-0 font-medium text-xs rounded-full px-2">
+                    Cần xử lý điều chỉnh
+                  </Tag>
+                </div>
+              }
+              description={
+                <div className="mt-2 space-y-2.5">
+                  <div className="rounded-lg border border-solid border-amber-200/90 bg-white/80 p-3 shadow-2xs">
+                    <div className="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-1 flex items-center gap-1.5">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                      Lý do / Ghi chú từ Doanh nghiệp:
+                    </div>
+                    <div className="text-sm font-medium text-slate-900 whitespace-pre-wrap leading-relaxed">
+                      "{finalChangeReason}"
+                    </div>
+                  </div>
+                  <p className="text-xs text-amber-800 m-0">
+                    {isInternalReview
+                      ? 'Vui lòng xem lại các điều khoản hoặc trao đổi với doanh nghiệp, sau đó cập nhật và gửi lại bản thỏa thuận mới.'
+                      : 'Yêu cầu điều chỉnh đã được gửi tới chuyên viên Internal HR để cập nhật lại thỏa thuận.'}
+                  </p>
+                </div>
+              }
+              action={
+                isInternalReview && onOpenTermsModal ? (
+                  <Button
+                    type="primary"
+                    size="small"
+                    className="!bg-amber-600 hover:!bg-amber-700 !border-amber-600 text-white rounded-lg shadow-sm font-medium transition-all active:scale-[0.98]"
+                    onClick={onOpenTermsModal}
+                  >
+                    Gửi bản mới (v{(draft?.version ?? 1) + 1})
+                  </Button>
+                ) : undefined
+              }
+            />
+          ) : hasSignedAgreement ? (
             <Alert
               type="info"
               showIcon
@@ -378,26 +461,18 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             />
           ) : (
             <Alert
-              type={agreementStatus === 'CHANGE_REQUESTED' ? 'warning' : 'info'}
+              type="info"
               showIcon
-              className={
-                agreementStatus === 'CHANGE_REQUESTED'
-                  ? 'border-amber-200 bg-amber-50/70'
-                  : 'border-blue-200 bg-blue-50/70'
-              }
+              className="border-blue-200 bg-blue-50/70"
               message={
-                agreementStatus === 'CHANGE_REQUESTED'
-                  ? 'DN gửi ghi chú điều chỉnh hợp đồng'
-                  : isInternalReview
-                    ? 'Đã gửi hợp đồng cho DN'
-                    : 'Hợp đồng dịch vụ đã soạn xong'
+                isInternalReview
+                  ? 'Đã gửi hợp đồng cho DN'
+                  : 'Hợp đồng dịch vụ đã soạn xong'
               }
               description={
-                agreementStatus === 'CHANGE_REQUESTED'
-                  ? 'Doanh nghiệp đã gửi ghi chú điều chỉnh. Chờ Internal HR xem xét và phản hồi.'
-                  : isInternalReview
-                    ? 'Đã gửi bản hợp đồng có sẵn chữ ký cho Doanh nghiệp tải về ký ngoài hệ thống.'
-                    : 'Internal HR đã soạn xong hợp đồng. Doanh nghiệp vui lòng tải hợp đồng về xem và ký kết.'
+                isInternalReview
+                  ? 'Đã gửi bản hợp đồng có sẵn chữ ký cho Doanh nghiệp tải về ký ngoài hệ thống.'
+                  : 'Internal HR đã soạn xong hợp đồng. Doanh nghiệp vui lòng tải hợp đồng về xem và ký kết.'
               }
               action={
                 !isInternalReview ? (
@@ -418,30 +493,44 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         {/* Thông báo chờ thanh toán phí đăng tin - hiển thị cho Client (Internal Review đã có banner phía trên) */}
         {!isApplicant && !isInternalReview && job.status === 'PENDING_PAYMENT' && (
           <Alert
-            type="warning"
+            type={job.hasSubmittedDeposit ? 'info' : 'warning'}
             showIcon
             message={
               awaitingDeposit
-                ? `Tin đã duyệt · Chờ đặt cọc dịch vụ (${feeText})`
+                ? job.hasSubmittedDeposit
+                  ? `Tin đã duyệt · Đã nộp tiền cọc (${feeText})`
+                  : `Tin đã duyệt · Chờ đặt cọc dịch vụ (${feeText})`
                 : `Tin đã duyệt · Chờ thanh toán phí gói (${feeText})`
             }
             description={
               awaitingDeposit
-                ? 'Vui lòng hoàn tất nộp tiền cọc để kích hoạt dịch vụ tìm kiếm hồ sơ ứng viên.'
+                ? job.hasSubmittedDeposit
+                  ? 'Doanh nghiệp đã gửi thông tin nộp cọc. Đang chờ HR Connect đối soát và công khai tin tuyển dụng.'
+                  : 'Vui lòng hoàn tất nộp tiền cọc để kích hoạt dịch vụ tìm kiếm hồ sơ ứng viên.'
                 : `Vui lòng hoàn tất thanh toán ${feeText} để công bố tin tuyển dụng.`
             }
             action={
               awaitingDeposit ? (
                 <div className="flex items-center gap-2">
-                  <Button
-                    type="primary"
-                    size="small"
-                    icon={<CreditCardOutlined />}
-                    className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98]"
-                    onClick={() => setShowPaymentModal(true)}
-                  >
-                    Nộp cọc
-                  </Button>
+                  {job.hasSubmittedDeposit ? (
+                    <Button
+                      disabled
+                      size="small"
+                      className="!bg-slate-100 !text-slate-400 !border-slate-200 cursor-not-allowed"
+                    >
+                      Đã nộp cọc
+                    </Button>
+                  ) : (
+                    <Button
+                      type="primary"
+                      size="small"
+                      icon={<CreditCardOutlined />}
+                      className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98]"
+                      onClick={() => setShowPaymentModal(true)}
+                    >
+                      Nộp cọc
+                    </Button>
+                  )}
                   <Button
                     size="small"
                     onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}

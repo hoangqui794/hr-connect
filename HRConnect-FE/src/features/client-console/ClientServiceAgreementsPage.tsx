@@ -65,7 +65,7 @@ import {
   sourcingDepositAmount,
 } from '@/features/jobs-mf01/jobDisplay';
 import { PaymentDemoModal } from '@/features/jobs-mf01/PaymentDemoModal';
-import type { ServiceAgreementDto } from '@/types/api/jobs';
+import type { Job, ServiceAgreementDto } from '@/types/api/jobs';
 
 const { Text, Title, Paragraph } = Typography;
 
@@ -329,9 +329,19 @@ export const ClientServiceAgreementsPage: React.FC = () => {
         changeRequestReason: revisionReason.trim(),
       });
       message.success('Đã gửi yêu cầu điều chỉnh tới HR Connect.');
+      try {
+        const changeMap = JSON.parse(localStorage.getItem('hrconnect_change_requested_jobs') || '{}');
+        changeMap[activeJobId] = {
+          reason: revisionReason.trim(),
+          updatedAt: new Date().toISOString(),
+        };
+        localStorage.setItem('hrconnect_change_requested_jobs', JSON.stringify(changeMap));
+      } catch {
+        // ignore
+      }
       setReviseModalOpen(false);
       setRevisionReason('');
-      await Promise.all([refetchCurrent(), refetchHistory()]);
+      await Promise.all([refetchCurrent(), refetchHistory(), refetchJobs()]);
     } catch (err) {
       message.error(getApiErrorMessage(err));
     } finally {
@@ -357,6 +367,18 @@ export const ClientServiceAgreementsPage: React.FC = () => {
     currentAgreement?.status === 'SENT_TO_CLIENT' ||
     currentAgreement?.status === 'ACCEPTED' ||
     currentAgreement?.status === 'AWAITING_SIGNATURE';
+
+  // Helper kiểm tra trạng thái cọc (hỗ trợ cả backend flag và simulation local)
+  const isDeposited = (j?: Job | null) => {
+    if (!j) return false;
+    if (j.hasSubmittedDeposit) return true;
+    try {
+      const list: string[] = JSON.parse(localStorage.getItem('hrconnect_deposited_jobs') || '[]');
+      return list.includes(j.jobId);
+    } catch {
+      return false;
+    }
+  };
 
   // Detection of pending deposit (CV_SOURCING) or pending posting fee (CV_APPLICATION)
   const isAwaitingDeposit = Boolean(
@@ -547,10 +569,14 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                             {job.title}
                           </Text>
                           <Tag
-                            color={isSignedPendingReview ? 'cyan' : statusMeta.color}
+                            color={isSignedPendingReview ? 'cyan' : job.status === 'PENDING_PAYMENT' && isDeposited(job) ? 'processing' : statusMeta.color}
                             className="m-0 text-[10px] font-semibold shrink-0 rounded"
                           >
-                            {isSignedPendingReview ? 'Đã nộp bản ký · Chờ HR duyệt' : statusMeta.label}
+                            {isSignedPendingReview
+                              ? 'Đã nộp bản ký · Chờ HR duyệt'
+                              : job.status === 'PENDING_PAYMENT' && isDeposited(job)
+                                ? 'Đã nộp cọc · Chờ duyệt'
+                                : statusMeta.label}
                           </Tag>
                         </div>
 
@@ -584,9 +610,13 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           </div>
                         )}
                         {job.status === 'PENDING_PAYMENT' && (
-                          <div className="mt-2 pt-1.5 border-t border-amber-100 flex items-center gap-1.5 text-[11px] text-amber-700 font-medium">
-                            <ClockCircleOutlined />
-                            <span>Đã ký thỏa thuận · Chờ đặt cọc</span>
+                          <div
+                            className={`mt-2 pt-1.5 border-t ${
+                              isDeposited(job) ? 'border-blue-100 text-blue-700' : 'border-amber-100 text-amber-700'
+                            } flex items-center gap-1.5 text-[11px] font-medium`}
+                          >
+                            {isDeposited(job) ? <CheckCircleFilled /> : <ClockCircleOutlined />}
+                            <span>{isDeposited(job) ? 'Đã nộp cọc · Chờ HR duyệt' : 'Đã ký thỏa thuận · Chờ đặt cọc'}</span>
                           </div>
                         )}
                       </button>
@@ -666,11 +696,18 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                       {isPendingPayment && (
                         <Button
                           type="primary"
-                          icon={<CreditCardOutlined />}
-                          className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm font-semibold h-9"
-                          onClick={() => setPaymentModalOpen(true)}
+                          icon={isDeposited(activeJob) ? <CheckCircleFilled /> : <CreditCardOutlined />}
+                          disabled={isDeposited(activeJob)}
+                          className={
+                            isDeposited(activeJob)
+                              ? '!bg-slate-100 !text-slate-400 !border-slate-200 cursor-not-allowed rounded-lg shadow-none font-semibold h-9'
+                              : '!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm font-semibold h-9'
+                          }
+                          onClick={() => !isDeposited(activeJob) && setPaymentModalOpen(true)}
                         >
-                          {isAwaitingDeposit
+                          {isDeposited(activeJob)
+                            ? 'Đã nộp cọc (Chờ HR duyệt)'
+                            : isAwaitingDeposit
                             ? `Đặt cọc (${formatMoney(depositAmount, 'VND')})`
                             : 'Thanh toán phí đăng tin'}
                         </Button>
@@ -695,31 +732,54 @@ export const ClientServiceAgreementsPage: React.FC = () => {
 
                   {/* Banner trạng thái Chờ đặt cọc / Chờ thanh toán */}
                   {isPendingPayment ? (
-                    <div className="rounded-xl border border-amber-300 bg-amber-50/90 p-4 text-amber-950 text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-                      <div className="flex items-start gap-3">
-                        <CreditCardOutlined className="text-amber-600 text-xl mt-0.5 shrink-0" />
-                        <div className="space-y-1">
-                          <div className="font-bold text-amber-900 flex items-center gap-2">
-                            {isAwaitingDeposit ? 'Chờ đặt cọc dịch vụ tìm kiếm hồ sơ' : 'Chờ thanh toán phí gói đăng tin'}
-                            <Tag color="warning" className="m-0 font-medium text-xs">Chờ thanh toán</Tag>
-                          </div>
-                          <div className="text-xs text-amber-800 leading-relaxed">
-                            {isAwaitingDeposit
-                              ? `Hợp đồng đã được xác nhận. Quý doanh nghiệp vui lòng nộp tiền cọc (${formatMoney(depositAmount, 'VND')}) để kích hoạt tin tuyển dụng và mở nguồn tìm kiếm hồ sơ.`
-                              : 'Nội dung tin đã được duyệt. Quý doanh nghiệp vui lòng hoàn tất thanh toán phí gói đăng tin để công khai tin tuyển dụng.'}
+                    isDeposited(activeJob) ? (
+                      <div className="rounded-xl border border-blue-200 bg-blue-50/90 p-4 text-blue-950 text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                        <div className="flex items-start gap-3">
+                          <CheckCircleFilled className="text-blue-600 text-xl mt-0.5 shrink-0" />
+                          <div className="space-y-1">
+                            <div className="font-bold text-blue-900 flex items-center gap-2">
+                              Đã xác nhận nộp tiền cọc dịch vụ tìm kiếm hồ sơ
+                              <Tag color="processing" className="m-0 font-medium text-xs">Chờ HR xác nhận</Tag>
+                            </div>
+                            <div className="text-xs text-blue-800 leading-relaxed">
+                              Doanh nghiệp đã hoàn tất gửi thông tin nộp cọc ({formatMoney(depositAmount, 'VND')}). Đội ngũ HR Connect đang đối soát và sẽ kích hoạt tin tuyển dụng trong thời gian sớm nhất.
+                            </div>
                           </div>
                         </div>
+                        <Button
+                          disabled
+                          className="!bg-slate-100 !text-slate-400 !border-slate-200 cursor-not-allowed rounded-xl font-medium shrink-0 self-start sm:self-center"
+                        >
+                          Đã gửi xác nhận nộp cọc
+                        </Button>
                       </div>
-                      <Button
-                        type="primary"
-                        size="middle"
-                        icon={<CreditCardOutlined />}
-                        className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-xl shadow-sm font-bold shrink-0 self-start sm:self-center"
-                        onClick={() => setPaymentModalOpen(true)}
-                      >
-                        {isAwaitingDeposit ? 'Đặt cọc ngay' : 'Thanh toán ngay'}
-                      </Button>
-                    </div>
+                    ) : (
+                      <div className="rounded-xl border border-amber-300 bg-amber-50/90 p-4 text-amber-950 text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                        <div className="flex items-start gap-3">
+                          <CreditCardOutlined className="text-amber-600 text-xl mt-0.5 shrink-0" />
+                          <div className="space-y-1">
+                            <div className="font-bold text-amber-900 flex items-center gap-2">
+                              {isAwaitingDeposit ? 'Chờ đặt cọc dịch vụ tìm kiếm hồ sơ' : 'Chờ thanh toán phí gói đăng tin'}
+                              <Tag color="warning" className="m-0 font-medium text-xs">Chờ thanh toán</Tag>
+                            </div>
+                            <div className="text-xs text-amber-800 leading-relaxed">
+                              {isAwaitingDeposit
+                                ? `Hợp đồng đã được xác nhận. Quý doanh nghiệp vui lòng nộp tiền cọc (${formatMoney(depositAmount, 'VND')}) để kích hoạt tin tuyển dụng và mở nguồn tìm kiếm hồ sơ.`
+                                : 'Nội dung tin đã được duyệt. Quý doanh nghiệp vui lòng hoàn tất thanh toán phí gói đăng tin để công khai tin tuyển dụng.'}
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          type="primary"
+                          size="middle"
+                          icon={<CreditCardOutlined />}
+                          className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-xl shadow-sm font-bold shrink-0 self-start sm:self-center"
+                          onClick={() => setPaymentModalOpen(true)}
+                        >
+                          {isAwaitingDeposit ? 'Đặt cọc ngay' : 'Thanh toán ngay'}
+                        </Button>
+                      </div>
+                    )
                   ) : isPendingResponse && currentAgreement.hasSignedDocument ? (
                     <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 text-emerald-950 text-sm flex items-start gap-3">
                       <CheckCircleFilled className="text-emerald-600 text-lg mt-0.5 shrink-0" />
@@ -828,11 +888,20 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                         {isPendingPayment && (
                           <Button
                             type="primary"
-                            icon={<CreditCardOutlined />}
-                            className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm font-medium"
-                            onClick={() => setPaymentModalOpen(true)}
+                            icon={isDeposited(activeJob) ? <CheckCircleFilled /> : <CreditCardOutlined />}
+                            disabled={isDeposited(activeJob)}
+                            className={
+                              isDeposited(activeJob)
+                                ? '!bg-slate-100 !text-slate-400 !border-slate-200 cursor-not-allowed rounded-lg font-medium'
+                                : '!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm font-medium'
+                            }
+                            onClick={() => !isDeposited(activeJob) && setPaymentModalOpen(true)}
                           >
-                            {isAwaitingDeposit ? 'Đặt cọc' : 'Thanh toán'}
+                            {isDeposited(activeJob)
+                              ? 'Đã nộp cọc'
+                              : isAwaitingDeposit
+                              ? 'Đặt cọc'
+                              : 'Thanh toán'}
                           </Button>
                         )}
                         {isPendingResponse && (

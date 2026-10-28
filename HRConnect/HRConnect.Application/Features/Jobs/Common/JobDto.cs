@@ -78,7 +78,10 @@ public sealed record JobListItemDto(
     DateTime? PostedAt,
     DateTime? ApplicationDeadline,
     bool IsAcceptingApplications,
-    bool HasSignedAgreement = false)
+    bool HasSignedAgreement = false,
+    string? AgreementStatus = null,
+    string? AgreementChangeRequestReason = null,
+    bool HasSubmittedDeposit = false)
 {
     public PublicCompanyDto? Company { get; init; }
 
@@ -109,7 +112,10 @@ public sealed record JobListItemDto(
             job.PostedAt,
             job.ApplicationDeadline,
             JobAccessPolicy.IsAcceptingApplications(job),
-            hasSignedAgreement)
+            hasSignedAgreement,
+            agreement?.Status,
+            agreement?.ChangeRequestReason,
+            job.Status == JobStatuses.Active || (job.StatusReason != null && (job.StatusReason.Contains("DEPOSIT_SUBMITTED") || job.StatusReason.Contains("Đã nộp cọc"))))
         {
             Company = PublicCompanyDto.From(job.Company, logoUrlResolver)
         };
@@ -139,7 +145,10 @@ public sealed record JobDto(
     IReadOnlyList<JobSkillDto> Skills,
     IReadOnlyList<JobStatusHistoryDto> StatusHistories,
     Guid? TemplateId = null,
-    bool HasSignedAgreement = false)
+    bool HasSignedAgreement = false,
+    string? AgreementStatus = null,
+    string? AgreementChangeRequestReason = null,
+    bool HasSubmittedDeposit = false)
 {
     public string? CompanyLogoUrl { get; init; }
 
@@ -209,7 +218,10 @@ public sealed record JobDto(
                 : [],
             job.TemplateId,
             (job.CurrentServiceAgreement ?? job.ServiceAgreements?.FirstOrDefault(x => x.IsCurrent)) is { } a &&
-                (!string.IsNullOrWhiteSpace(a.SignedDocumentStorageKey) || a.SignedAt != null || a.Status == "SIGNED"))
+                (!string.IsNullOrWhiteSpace(a.SignedDocumentStorageKey) || a.SignedAt != null || a.Status == "SIGNED"),
+            (job.CurrentServiceAgreement ?? job.ServiceAgreements?.FirstOrDefault(x => x.IsCurrent))?.Status,
+            (job.CurrentServiceAgreement ?? job.ServiceAgreements?.FirstOrDefault(x => x.IsCurrent))?.ChangeRequestReason,
+            job.Status == JobStatuses.Active || (job.StatusReason != null && (job.StatusReason.Contains("DEPOSIT_SUBMITTED") || job.StatusReason.Contains("Đã nộp cọc"))))
         {
             CompanyLogoUrl = job.Company is null ? null : logoUrlResolver?.Resolve(job.Company) ?? job.Company.LogoUrl
         };
@@ -240,7 +252,10 @@ public sealed record JobDetailDto(
     IReadOnlyList<JobStatusHistoryDto> StatusHistories,
     PublicCompanyDto? Company,
     Guid? TemplateId = null,
-    bool HasSignedAgreement = false)
+    bool HasSignedAgreement = false,
+    string? AgreementStatus = null,
+    string? AgreementChangeRequestReason = null,
+    bool HasSubmittedDeposit = false)
 {
     public static JobDetailDto From(Job job, bool includeStatusHistories = false, bool isReviewer = false,
         ICompanyLogoUrlResolver? logoUrlResolver = null)
@@ -309,7 +324,10 @@ public sealed record JobDetailDto(
             PublicCompanyDto.From(job.Company, logoUrlResolver),
             job.TemplateId,
             (job.CurrentServiceAgreement ?? job.ServiceAgreements?.FirstOrDefault(x => x.IsCurrent)) is { } ag &&
-                (!string.IsNullOrWhiteSpace(ag.SignedDocumentStorageKey) || ag.SignedAt != null || ag.Status == "SIGNED"));
+                (!string.IsNullOrWhiteSpace(ag.SignedDocumentStorageKey) || ag.SignedAt != null || ag.Status == "SIGNED"),
+            (job.CurrentServiceAgreement ?? job.ServiceAgreements?.FirstOrDefault(x => x.IsCurrent))?.Status,
+            (job.CurrentServiceAgreement ?? job.ServiceAgreements?.FirstOrDefault(x => x.IsCurrent))?.ChangeRequestReason,
+            job.Status == JobStatuses.Active || (job.StatusReason != null && (job.StatusReason.Contains("DEPOSIT_SUBMITTED") || job.StatusReason.Contains("Đã nộp cọc"))));
     }
 }
 

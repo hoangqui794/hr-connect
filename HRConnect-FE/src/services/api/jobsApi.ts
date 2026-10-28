@@ -140,6 +140,18 @@ export const jobsApi = {
     return res.data;
   },
 
+  /** POST /jobs/{id}/deposit/notify — Client thông báo đã nộp tiền cọc CV Sourcing. */
+  async notifyDeposit(jobId: string, paymentReference?: string): Promise<{ success: boolean; message: string }> {
+    const res = await apiClient.post<{ success: boolean; message: string }>(`/jobs/${jobId}/deposit/notify`, { paymentReference });
+    return res.data;
+  },
+
+  /** POST /internal/jobs/{id}/deposit/confirm — Internal HR xác nhận nhận tiền cọc và công khai tin. */
+  async confirmDeposit(jobId: string): Promise<JobActionResponse> {
+    const res = await apiClient.post<JobActionResponse>(`/internal/jobs/${jobId}/deposit/confirm`);
+    return res.data;
+  },
+
   // ── Job Templates (MF-01 F1 & F2) ──────────────────────────────────────────
   /** GET /job-templates — search active templates for job creation. */
   async searchTemplates(params: {

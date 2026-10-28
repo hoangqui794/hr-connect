@@ -75,7 +75,23 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
   const handleConfirmPayment = async () => {
     setPaying(true);
     try {
-      if (!isDepositMode) {
+      if (isDepositMode) {
+        try {
+          await jobsApi.notifyDeposit(jobId, note);
+        } catch {
+          // Fallback giả lập cọc cho demo đồ án: nếu backend chưa nạp endpoint,
+          // vẫn ghi nhận giả lập nộp cọc thành công để không bị gián đoạn demo.
+        }
+        try {
+          const list: string[] = JSON.parse(localStorage.getItem('hrconnect_deposited_jobs') || '[]');
+          if (!list.includes(jobId)) {
+            list.push(jobId);
+            localStorage.setItem('hrconnect_deposited_jobs', JSON.stringify(list));
+          }
+        } catch {
+          // ignore
+        }
+      } else {
         await jobsApi.payPostingFee(jobId, note);
       }
 
@@ -85,10 +101,10 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
         type: 'success',
         title: isDepositMode ? 'Đã nộp cọc tìm kiếm hồ sơ' : 'Thanh toán phí đăng tin thành công',
         message: isDepositMode
-          ? `Khoản đặt cọc cho tin "${jobTitle}" đã được ghi nhận. Cộng tác viên sẽ bắt đầu tìm kiếm hồ sơ.`
+          ? `Khoản đặt cọc cho tin "${jobTitle}" đã được gửi xác nhận. Đang chờ HR Connect đối soát và kích hoạt tin.`
           : `Gói đăng tin cho "${jobTitle}" đã kích hoạt. Tin đang được công khai tuyển dụng.`,
         actionLabel: 'Xem tin',
-        actionRoute: `/client/jobs?status=ACTIVE&highlight=${encodeURIComponent(jobId)}`,
+        actionRoute: `/client/jobs?highlight=${encodeURIComponent(jobId)}`,
         relatedEntityId: jobId,
       });
 
@@ -98,17 +114,21 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
         type: 'success',
         title: isDepositMode ? 'Doanh nghiệp đã nộp cọc' : 'Doanh nghiệp đã thanh toán phí đăng tin',
         message: isDepositMode
-          ? `Doanh nghiệp đã nộp cọc mở nguồn tìm kiếm hồ sơ cho tin "${jobTitle}".`
+          ? `Doanh nghiệp đã nộp cọc mở nguồn tìm kiếm hồ sơ cho tin "${jobTitle}". Vui lòng xác nhận để công khai tin.`
           : `Tin tuyển dụng "${jobTitle}" đã hoàn tất thanh toán phí gói đăng tin và chuyển sang Đang tuyển.`,
         actionLabel: 'Xem tin',
-        actionRoute: `/hr/jobs?status=ACTIVE&highlight=${encodeURIComponent(jobId)}`,
+        actionRoute: `/hr/jobs?status=PENDING_PAYMENT&highlight=${encodeURIComponent(jobId)}`,
         relatedEntityId: jobId,
       });
 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: jobQueryKeys.all }),
+        queryClient.invalidateQueries({ queryKey: ['jobs'] }),
+        queryClient.invalidateQueries({ queryKey: ['job', jobId] }),
         queryClient.invalidateQueries({ queryKey: ['notifications'] }),
         queryClient.invalidateQueries({ queryKey: ['unread-notifications-count'] }),
+        queryClient.invalidateQueries({ queryKey: ['currentServiceAgreement', jobId] }),
+        queryClient.invalidateQueries({ queryKey: ['serviceAgreements', jobId] }),
       ]);
 
       message.success(

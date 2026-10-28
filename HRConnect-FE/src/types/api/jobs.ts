@@ -183,6 +183,9 @@ export interface Job {
   commercialTerms?: CommercialTerms | null;
   templateId?: string | null;
   hasSignedAgreement?: boolean;
+  agreementStatus?: string | null;
+  agreementChangeRequestReason?: string | null;
+  hasSubmittedDeposit?: boolean;
 }
 
 export interface JobPostingEligibility {

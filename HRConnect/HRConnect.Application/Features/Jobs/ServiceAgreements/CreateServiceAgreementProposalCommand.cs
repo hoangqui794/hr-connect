@@ -121,6 +121,16 @@ public sealed class CreateServiceAgreementProposalCommandHandler : IRequestHandl
             ? request.AgreementReference.Trim()
             : ("HRC-" + Guid.NewGuid().ToString("N")[..10].ToUpperInvariant());
 
+        var existingWithCode = await _agreements.GetByVerificationCodeAsync(verificationCode, ct);
+        if (existingWithCode != null)
+        {
+            verificationCode = $"{verificationCode}-V{nextVersion}";
+            if (await _agreements.GetByVerificationCodeAsync(verificationCode, ct) != null)
+            {
+                verificationCode = "HRC-" + Guid.NewGuid().ToString("N")[..10].ToUpperInvariant();
+            }
+        }
+
         job.AgreementReference = verificationCode;
 
         var agreement = new ServiceAgreement

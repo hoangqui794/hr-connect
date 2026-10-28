@@ -124,6 +124,10 @@ public sealed class RespondToServiceAgreementCommandHandler : IRequestHandler<Re
             agreement.ChangeRequestReason = request.ChangeRequestReason.Trim();
             agreement.ConcurrencyToken = Guid.NewGuid();
 
+            job.CurrentServiceAgreementId = agreement.ServiceAgreementId;
+            job.UpdatedAt = now;
+            job.ConcurrencyToken = Guid.NewGuid();
+
             job.JobStatusHistories.Add(new JobStatusHistory
             {
                 JobStatusHistoryId = Guid.NewGuid(),

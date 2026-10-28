@@ -60,6 +60,7 @@ public class JobRepository : IJobRepository
             .Include(job => job.JobSkills).ThenInclude(jobSkill => jobSkill.Skill)
             .Include(job => job.JobStatusHistories)
             .Include(job => job.CurrentServiceAgreement)
+            .Include(job => job.ServiceAgreements)
             .FirstOrDefaultAsync(job => job.JobId == jobId, cancellationToken);
 
     public async Task<bool> HasSubmissionsOrApplicationsAsync(
@@ -84,6 +85,7 @@ public class JobRepository : IJobRepository
             .Include(job => job.JobRequirements)
             .Include(job => job.JobSkills).ThenInclude(jobSkill => jobSkill.Skill)
             .Include(job => job.CurrentServiceAgreement)
+            .Include(job => job.ServiceAgreements)
             .Where(job => job.CompanyId == companyId)
             .OrderByDescending(job => job.UpdatedAt)
             .ToListAsync(cancellationToken);
@@ -99,12 +101,28 @@ public class JobRepository : IJobRepository
             .Include(job => job.JobSkills).ThenInclude(jobSkill => jobSkill.Skill)
             .Include(job => job.JobStatusHistories)
             .Include(job => job.CurrentServiceAgreement)
+            .Include(job => job.ServiceAgreements)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(status) && !status.Equals("ALL", StringComparison.OrdinalIgnoreCase))
         {
             var normalizedStatus = status.Trim().ToUpperInvariant();
-            query = query.Where(job => job.Status == normalizedStatus);
+            if (normalizedStatus == "CHANGE_REQUESTED")
+            {
+                query = query.Where(job =>
+                    (job.CurrentServiceAgreement != null && job.CurrentServiceAgreement.Status == "CHANGE_REQUESTED")
+                    || _context.ServiceAgreements.Any(sa => sa.JobId == job.JobId && sa.IsCurrent && sa.Status == "CHANGE_REQUESTED"));
+            }
+            else if (normalizedStatus == "PENDING_AGREEMENT")
+            {
+                query = query.Where(job => job.Status == "PENDING_AGREEMENT"
+                    && (job.CurrentServiceAgreement == null || job.CurrentServiceAgreement.Status != "CHANGE_REQUESTED")
+                    && !_context.ServiceAgreements.Any(sa => sa.JobId == job.JobId && sa.IsCurrent && sa.Status == "CHANGE_REQUESTED"));
+            }
+            else
+            {
+                query = query.Where(job => job.Status == normalizedStatus);
+            }
         }
 
         return await query

@@ -35,7 +35,7 @@ public sealed record NotificationDto(
     {
         if (string.IsNullOrWhiteSpace(entityType)) return null;
 
-        var explicitRoute = TryReadString(metadata, "routeHint");
+        var explicitRoute = TryReadString(metadata, "routeHint") ?? TryReadString(metadata, "actionRoute");
         if (!string.IsNullOrWhiteSpace(explicitRoute) && explicitRoute.StartsWith('/'))
         {
             return explicitRoute;
@@ -44,6 +44,13 @@ public sealed record NotificationDto(
         return entityType.Trim().ToUpperInvariant() switch
         {
             "JOB" => entityId.HasValue ? $"/jobs/{entityId.Value}" : "/jobs",
+            "SERVICE_AGREEMENT" => TryReadString(metadata, "status") == "CHANGE_REQUESTED"
+                ? (TryReadGuid(metadata, "jobId") is { } changeJobId
+                    ? $"/hr/jobs?status=CHANGE_REQUESTED&highlight={changeJobId}"
+                    : "/hr/jobs?status=CHANGE_REQUESTED")
+                : (TryReadGuid(metadata, "jobId") is { } agreementJobId
+                    ? $"/hr/jobs?status=PENDING_AGREEMENT&highlight={agreementJobId}"
+                    : "/hr/jobs?status=PENDING_AGREEMENT"),
             "APPLICATION" or "APPLICATION_STATUS" or "CANDIDATE_APPLICATION" => "/candidate/applications",
             "SUBMISSION" or "SUBMISSION_CONSENT_RESULT" => "/affiliate/submissions",
             "INTERVIEW" => ResolveInterviewRoute(entityId, metadata),

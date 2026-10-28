@@ -21,6 +21,7 @@ using HRConnect.Application.Features.Jobs.Queries.GetJobPostingFee;
 using HRConnect.Application.Features.Jobs.Queries.GetJobPostingEligibility;
 using HRConnect.Application.Features.Jobs.Queries.GetJobCommercialTermsDefaults;
 using HRConnect.Application.Features.Jobs.Commands.RecordJobPostingFeePayment;
+using HRConnect.Application.Features.Jobs.Commands.Deposit;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -137,6 +138,35 @@ public static class JobEndpoints
             }, ct)));
         }).WithName("RecordJobPostingFeePayment").WithSummary("Ghi nhận thanh toán phí đăng tin CV_APPLICATION")
         .WithDescription("Platform Admin, Internal HR hoặc Client ghi nhận thanh toán phí đăng tin. Job đang chờ thanh toán sẽ được mở công khai.");
+
+        jobs.MapPost("/{jobId:guid}/deposit/notify", async (Guid jobId, ClaimsPrincipal user, [FromBody] PayPostingFeeRequest? request, ISender sender, CancellationToken ct) =>
+        {
+            var id = UserId(user); if (id == null) return Results.Unauthorized();
+            var roles = RoleCodes(user);
+            var isAllowed = roles.Any(r => string.Equals(r, "CLIENT_COMPANY_USER", StringComparison.OrdinalIgnoreCase)
+                                        || string.Equals(r, "CLIENT", StringComparison.OrdinalIgnoreCase)
+                                        || string.Equals(r, "INTERNAL_HR", StringComparison.OrdinalIgnoreCase)
+                                        || string.Equals(r, "PLATFORM_ADMIN", StringComparison.OrdinalIgnoreCase))
+                            || user.IsInRole("CLIENT_COMPANY_USER")
+                            || user.IsInRole("INTERNAL_HR")
+                            || user.IsInRole("PLATFORM_ADMIN");
+            if (!isAllowed) return Forbidden();
+
+            var reference = string.IsNullOrWhiteSpace(request?.PaymentReference)
+                ? $"DEP-{jobId.ToString("N")[..8].ToUpper()}"
+                : request.PaymentReference.Trim();
+
+            return await Run(async Task<IResult> () => Results.Ok(new
+            {
+                success = await sender.Send(new NotifyJobDepositCommand
+                {
+                    JobId = jobId,
+                    PaymentReference = reference,
+                    UserId = id.Value
+                }, ct),
+                message = "Đã ghi nhận thông tin nộp cọc. HR Connect sẽ kiểm tra và xác nhận công khai tin."
+            }));
+        }).WithName("NotifyJobDeposit").WithSummary("Client thông báo đã nộp tiền cọc CV Sourcing");
 
         jobs.MapGet("/mine", async (ClaimsPrincipal user, string? status, ISender sender, CancellationToken ct) =>
         {
@@ -358,6 +388,19 @@ public static class JobEndpoints
         }
         ).WithName("RejectJob").WithSummary("Từ chối Job và trả lý do")
         .WithDescription("Yêu cầu permission job.review. Chỉ từ chối Job PENDING_REVIEW; gửi ReasonCode (REJECTED_INCOMPLETE_DESCRIPTION, REJECTED_INCOMPLETE_REQUIREMENTS hoặc REJECTED_OTHER) và ReasonText. Job chuyển sang REJECTED và Client có thể sửa rồi gửi duyệt lại.");
+        review.MapPost("/{jobId:guid}/deposit/confirm", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
+        {
+            var id = UserId(user); if (id == null) return Results.Unauthorized();
+            var isAllowed = ReviewerCan(user, "job.publish") || user.IsInRole("INTERNAL_HR") || user.IsInRole("PLATFORM_ADMIN");
+            if (!isAllowed) return Forbidden();
+
+            return await Run(async Task<IResult> () => Results.Ok(await sender.Send(new ConfirmJobDepositCommand
+            {
+                JobId = jobId,
+                UserId = id.Value
+            }, ct)));
+        }).WithName("ConfirmJobDeposit").WithSummary("Internal HR xác nhận nhận tiền cọc CV Sourcing và công khai tin tuyển dụng");
+
         return app;
     }
 
