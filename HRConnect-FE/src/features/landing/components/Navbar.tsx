@@ -5,14 +5,13 @@ import {
   DashboardOutlined,
   CompassOutlined,
   SearchOutlined,
-  TeamOutlined,
+  ThunderboltOutlined,
   DollarCircleOutlined,
   BellOutlined,
   MenuOutlined,
   LoginOutlined,
   UserAddOutlined,
   CustomerServiceOutlined,
-  FileTextOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
@@ -23,7 +22,6 @@ import { CandidateWorkspaceMenu } from '@/features/portal/candidate/CandidateWor
 import { UserRole } from '@/types/roles';
 import { ROLE_DASHBOARD_ROUTES } from '@/routes/AppRoutes';
 import { BrandMark } from '@/components/common/BrandMark';
-import { CvHeaderDropdown } from '@/components/layout/CvHeaderDropdown';
 
 export const Navbar: React.FC = () => {
   const navigate = useNavigate();
@@ -75,9 +73,13 @@ export const Navbar: React.FC = () => {
     },
   ];
 
-  const isRolesActive = location.pathname === '/' && location.hash === '#roles';
-  const isHomeActive = location.pathname === '/' && !isRolesActive;
-  const isJobsActive = location.pathname === '/jobs' || location.pathname.startsWith('/jobs/');
+  const isHomeActive = location.pathname === '/';
+  const isCandidate = isAuthenticated && role === UserRole.CANDIDATE;
+  const isCandidateMatchesActive = isCandidate && location.pathname === '/candidate/jobs' && !new URLSearchParams(location.search).get('tab');
+  const isJobsActive = isCandidate
+    ? location.pathname.startsWith('/candidate/jobs') && !isCandidateMatchesActive
+    : location.pathname === '/jobs' || location.pathname.startsWith('/jobs/');
+  const jobsPath = isCandidate ? '/candidate/jobs?tab=all' : '/jobs';
   const isServicesActive = location.pathname === '/services';
   const isContactActive = location.pathname === '/contact';
 
@@ -90,12 +92,12 @@ export const Navbar: React.FC = () => {
 
   return (
     <header className="sticky top-0 z-[100] w-full border-b border-slate-200/80 bg-white/90 backdrop-blur-md shadow-sm transition-all">
-      <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="relative w-full flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand Logo */}
         <Link
           to="/"
           title="HR Connect — Nền tảng tuyển dụng, về trang chủ"
-          className="flex cursor-pointer select-none items-center gap-2.5 sm:gap-3 shrink-0 no-underline text-inherit"
+          className="flex cursor-pointer select-none items-center gap-2.5 sm:gap-3 shrink-0 no-underline text-inherit z-10"
         >
           <BrandMark size={36} />
           <span className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 whitespace-nowrap">
@@ -108,8 +110,8 @@ export const Navbar: React.FC = () => {
           </Tag>
         </Link>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden lg:flex items-center gap-1 xl:gap-2">
+        {/* Desktop Navigation - Centered */}
+        <nav className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-1 xl:gap-2">
           <Button
             type="text"
             icon={<CompassOutlined />}
@@ -128,7 +130,7 @@ export const Navbar: React.FC = () => {
           <Button
             type="text"
             icon={<SearchOutlined />}
-            onClick={() => navigate('/jobs')}
+            onClick={() => navigate(jobsPath)}
             style={{
               color: isJobsActive ? '#1d4ed8' : '#475569',
               fontWeight: 600,
@@ -140,23 +142,22 @@ export const Navbar: React.FC = () => {
             Việc làm
           </Button>
 
-          {/* Mega Dropdown Tạo CV theo chuẩn TopCV */}
-          <CvHeaderDropdown />
-
-          <Button
-            type="text"
-            icon={<TeamOutlined />}
-            onClick={() => navigate('/#roles')}
-            style={{
-              color: isRolesActive ? '#1d4ed8' : '#475569',
-              fontWeight: 600,
-              fontSize: 14,
-              background: isRolesActive ? '#eff6ff' : 'transparent',
-              borderRadius: 8,
-            }}
-          >
-            Vai trò
-          </Button>
+          {isCandidate && (
+            <Button
+              type="text"
+              icon={<ThunderboltOutlined />}
+              onClick={() => navigate('/candidate/jobs')}
+              style={{
+                color: isCandidateMatchesActive ? '#1d4ed8' : '#475569',
+                fontWeight: 600,
+                fontSize: 14,
+                background: isCandidateMatchesActive ? '#eff6ff' : 'transparent',
+                borderRadius: 8,
+              }}
+            >
+              Phù hợp với bạn
+            </Button>
+          )}
 
           {showServicesPricing && (
             <Button
@@ -192,7 +193,7 @@ export const Navbar: React.FC = () => {
         </nav>
 
         {/* Desktop Right Controls */}
-        <div className="hidden lg:flex items-center gap-3">
+        <div className="hidden lg:flex items-center gap-3 z-10 ml-auto">
           {isAuthenticated && <NotificationBell />}
 
           {isAuthenticated ? (
@@ -255,7 +256,7 @@ export const Navbar: React.FC = () => {
         </div>
 
         {/* Mobile / Tablet Controls (< lg) */}
-        <div className="flex lg:hidden items-center gap-2">
+        <div className="flex lg:hidden items-center gap-2 z-10">
           {isAuthenticated && <NotificationBell />}
 
           {!isAuthenticated && (
@@ -310,7 +311,7 @@ export const Navbar: React.FC = () => {
             type="text"
             block
             icon={<SearchOutlined />}
-            onClick={() => navigateAndClose('/jobs')}
+            onClick={() => navigateAndClose(jobsPath)}
             className={`flex items-center justify-start h-10 px-3 font-semibold rounded-lg text-left ${
               isJobsActive ? 'bg-blue-50 text-blue-600' : 'text-slate-700'
             }`}
@@ -318,27 +319,19 @@ export const Navbar: React.FC = () => {
             Việc làm
           </Button>
 
-          <Button
-            type="text"
-            block
-            icon={<FileTextOutlined />}
-            onClick={() => navigateAndClose('/candidate/cv-builder')}
-            className="flex items-center justify-start h-10 px-3 font-semibold rounded-lg text-left text-emerald-600 bg-emerald-50/70"
-          >
-            Tạo CV Online (Chuẩn TopCV)
-          </Button>
-
-          <Button
-            type="text"
-            block
-            icon={<TeamOutlined />}
-            onClick={() => navigateAndClose('/#roles')}
-            className={`flex items-center justify-start h-10 px-3 font-semibold rounded-lg text-left ${
-              isRolesActive ? 'bg-blue-50 text-blue-600' : 'text-slate-700'
-            }`}
-          >
-            Vai trò
-          </Button>
+          {isCandidate && (
+            <Button
+              type="text"
+              block
+              icon={<ThunderboltOutlined />}
+              onClick={() => navigateAndClose('/candidate/jobs')}
+              className={`flex items-center justify-start h-10 px-3 font-semibold rounded-lg text-left ${
+                isCandidateMatchesActive ? 'bg-blue-50 text-blue-600' : 'text-slate-700'
+              }`}
+            >
+              Phù hợp với bạn
+            </Button>
+          )}
 
           {showServicesPricing && (
             <Button
@@ -386,7 +379,7 @@ export const Navbar: React.FC = () => {
               onClick={() => navigateAndClose(ROLE_DASHBOARD_ROUTES[role] || '/dashboard')}
               className="h-10 font-bold bg-blue-600 rounded-lg"
             >
-              Vào Dashboard ({role})
+              Vào trang làm việc
             </Button>
 
             <Button

@@ -26,6 +26,7 @@ public class CvBuilderTests
     [Theory]
     [InlineData(null)]
     [InlineData("{\"accentColor\":\"#1D4ED8\",\"density\":\"compact\"}")]
+    [InlineData("{\"accentColor\":\"#881337\",\"density\":\"spacious\",\"layout\":\"elegant\",\"fontFamily\":\"INTER\"}")]
     [InlineData("not json")]
     public void Render_ShouldProduceReadableVietnamesePdfThatPassesCvChecks(string? templateConfig)
     {
@@ -46,6 +47,36 @@ public class CvBuilderTests
 
         using var document = PdfDocument.Open(pdf);
         document.NumberOfPages.Should().BeGreaterThan(1);
+    }
+
+    [Fact]
+    public void Render_ShouldRespectSavedPresentationAndVisibleSections()
+    {
+        var content = Sample() with
+        {
+            Presentation = new CvPresentation(
+                "#172554", "normal", "BE_VIETNAM_PRO", "executive", ["summary", "skills"])
+        };
+
+        var pdf = new CvPdfRenderer().Render(content, null);
+
+        using var document = PdfDocument.Open(pdf);
+        var text = string.Join(" ", document.GetPages().Select(p => p.Text));
+        text.Should().Contain("MỤC TIÊU").And.Contain("KỸ NĂNG");
+        text.Should().NotContain("KINH NGHIỆM").And.NotContain("HỌC VẤN");
+    }
+
+    [Fact]
+    public void Validate_InvalidPresentation_ShouldBeRejected()
+    {
+        var content = Sample() with
+        {
+            Presentation = new CvPresentation("red", "normal", "ROBOTO", "ats", ["summary"])
+        };
+
+        var act = () => CvBuilderHandlers.Validate(content);
+
+        act.Should().Throw<BadRequestException>().Which.ErrorCode.Should().Be("CV_PRESENTATION_INVALID");
     }
 
     [Fact]

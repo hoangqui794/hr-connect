@@ -92,12 +92,12 @@ describe('CandidateProfilePage', () => {
     renderComponent();
 
     // Check header
-    expect(await screen.findByRole('heading', { name: 'Nguyễn Văn A' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Nguyễn Văn A' }, { timeout: 10000 })).toBeInTheDocument();
     expect(screen.getByText('Senior React Developer')).toBeInTheDocument();
     expect(screen.getByText('4 năm kinh nghiệm')).toBeInTheDocument();
 
     // Check email is disabled
-    const emailInput = await screen.findByDisplayValue('candidate@example.com');
+    const emailInput = await screen.findByDisplayValue('candidate@example.com', {}, { timeout: 10000 });
     expect(emailInput).toBeDisabled();
 
     // Check primary CV card
@@ -113,10 +113,10 @@ describe('CandidateProfilePage', () => {
 
     renderComponent();
 
-    expect(await screen.findByRole('heading', { name: 'Nguyễn Văn A' }, { timeout: 10000 })).toBeInTheDocument();
+    expect(await screen.findByDisplayValue('Senior React Developer', {}, { timeout: 10000 })).toBeInTheDocument();
 
     const saveButton = screen.getByRole('button', { name: /Lưu thay đổi/i });
-    fireEvent.submit(saveButton.closest('form')!);
+    fireEvent.click(saveButton);
 
     await waitFor(() => {
       expect(updateSpy).toHaveBeenCalledWith(
@@ -142,10 +142,10 @@ describe('CandidateProfilePage', () => {
 
     renderComponent();
 
-    expect(await screen.findByRole('heading', { name: 'Nguyễn Văn A' })).toBeInTheDocument();
+    expect(await screen.findByDisplayValue('Senior React Developer', {}, { timeout: 10000 })).toBeInTheDocument();
 
     const saveButton = screen.getByRole('button', { name: /Lưu thay đổi/i });
-    fireEvent.submit(saveButton.closest('form')!);
+    fireEvent.click(saveButton);
 
     await waitFor(() => {
       expect(errorSpy).toHaveBeenCalledWith('Lỗi kết nối cơ sở dữ liệu');

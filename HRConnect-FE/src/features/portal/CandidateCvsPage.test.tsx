@@ -8,6 +8,15 @@ import { candidateCvApi } from '@/services/api/mf02Api';
 import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
 
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
 vi.mock('@/services/api/mf02Api', async () => {
   const actual = await vi.importActual<typeof import('@/services/api/mf02Api')>('@/services/api/mf02Api');
   return {
@@ -34,6 +43,7 @@ const renderPage = () => {
 
 describe('CandidateCvsPage', () => {
   beforeEach(() => {
+    mockNavigate.mockClear();
     vi.mocked(candidateCvApi.list).mockResolvedValue([{
       cvId: 'cv-1',
       title: 'CV cũ',
@@ -137,13 +147,16 @@ describe('CandidateCvsPage', () => {
     expect(screen.getByText('CV File PDF')).toBeInTheDocument();
 
     // CV Theo Mẫu has "Sửa nội dung"
-    expect(screen.getByRole('button', { name: 'Sửa nội dung CV Theo Mẫu' })).toBeInTheDocument();
+    const editBtn = screen.getByRole('button', { name: 'Sửa nội dung CV Theo Mẫu' });
+    expect(editBtn).toBeInTheDocument();
+    fireEvent.click(editBtn);
+    expect(mockNavigate).toHaveBeenCalledWith('/candidate/cv-builder/cv-structured-1');
 
     // CV File PDF does NOT have "Sửa nội dung"
     expect(screen.queryByRole('button', { name: 'Sửa nội dung CV File PDF' })).not.toBeInTheDocument();
   });
 
-  it('opens CV builder modal when clicking "Tạo CV mới"', async () => {
+  it('navigates to CV builder when clicking "Tạo CV mới"', async () => {
     renderPage();
     await screen.findByText('CV cũ');
 
@@ -151,7 +164,6 @@ describe('CandidateCvsPage', () => {
     expect(createButtons.length).toBeGreaterThan(0);
     fireEvent.click(createButtons[0]);
 
-    expect(await screen.findByText('Tạo CV mới cho ứng viên')).toBeInTheDocument();
-    expect(screen.getAllByText('Dựng CV theo mẫu đẹp').length).toBeGreaterThanOrEqual(1);
+    expect(mockNavigate).toHaveBeenCalledWith('/candidate/cv-builder');
   });
 });

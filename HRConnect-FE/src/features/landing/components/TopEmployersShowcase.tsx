@@ -14,6 +14,7 @@ interface DynamicEmployer {
   companyId: string;
   name: string;
   industry: string;
+  logoUrl?: string | null;
   activeJobs: number;
 }
 
@@ -40,6 +41,7 @@ export const TopEmployersShowcase: React.FC = () => {
           companyId: job.companyId || 'company',
           name: companyName,
           industry: job.company?.industry || 'Đa lĩnh vực & Dịch vụ',
+          logoUrl: job.companyLogoUrl || job.company?.logoUrl,
           activeJobs: 0,
         });
       }
@@ -137,6 +139,7 @@ export const TopEmployersShowcase: React.FC = () => {
                       <CompanyLogo
                         id={emp.companyId}
                         name={emp.name}
+                        logoUrl={emp.logoUrl}
                         size={40}
                         className="w-full h-full object-contain"
                       />

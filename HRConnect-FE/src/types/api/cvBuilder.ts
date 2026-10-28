@@ -3,11 +3,31 @@
  * @description Type definitions for Candidate Structured CV Builder and CV Templates (SF-06).
  */
 
+export type CvLayoutStyle =
+  | 'ats'
+  | 'classic'
+  | 'modern'
+  | 'compact'
+  | 'executive'
+  | 'elegant'
+  | 'minimal';
+
+export type CvFontFamily = 'BE_VIETNAM_PRO' | 'ROBOTO' | 'INTER';
+
+export interface CvPresentationConfig {
+  accentColor: string;
+  density: 'normal' | 'compact' | 'spacious';
+  fontFamily: CvFontFamily;
+  layout: CvLayoutStyle;
+  visibleSections: Array<'summary' | 'experiences' | 'educations' | 'skills' | 'languages' | 'certificates'>;
+}
+
 export interface CvTemplateConfig {
   accentColor?: string;
-  density?: 'normal' | 'compact' | string;
+  density?: 'normal' | 'compact' | 'spacious' | string;
   sections?: string[];
-  fontFamily?: string;
+  fontFamily?: CvFontFamily;
+  layout?: CvLayoutStyle;
 }
 
 export interface CvTemplateDto {
@@ -34,40 +54,6 @@ export interface StructuredCvEducation {
   description?: string;
 }
 
-export interface StructuredCvProject {
-  id?: string;
-  name: string;
-  role?: string;
-  startDate?: string;
-  endDate?: string;
-  description?: string;
-}
-
-export interface StructuredCvActivity {
-  id?: string;
-  organization: string;
-  role?: string;
-  startDate?: string;
-  endDate?: string;
-  description?: string;
-}
-
-export interface StructuredCvAward {
-  id?: string;
-  title: string;
-  year?: string;
-  issuer?: string;
-}
-
-export interface StructuredCvReference {
-  id?: string;
-  name: string;
-  title?: string;
-  company?: string;
-  email?: string;
-  phone?: string;
-}
-
 export interface StructuredCvContent {
   fullName: string;
   headline?: string;
@@ -80,27 +66,12 @@ export interface StructuredCvContent {
   skills: string[];
   languages: string[];
   certificates: string[];
-  // TopCV Extended Profile fields
-  avatarUrl?: string;
-  dob?: string;
-  gender?: string;
-  website?: string;
-  shortTermGoal?: string;
-  longTermGoal?: string;
-  technicalSkills?: string[];
-  softSkills?: string[];
-  projects?: StructuredCvProject[];
-  activities?: StructuredCvActivity[];
-  awards?: StructuredCvAward[];
-  references?: StructuredCvReference[];
-  interests?: string[];
-  additionalInfo?: string;
-  // Layout customization state saved with CV
-  selectedTemplateCode?: 'STANDARD' | 'MODERN_TWO_COL' | string;
+  presentation?: CvPresentationConfig;
+  selectedTemplateCode?: string;
   accentColor?: string;
   fontFamily?: string;
-  fontSizeScale?: 'small' | 'normal' | 'large';
-  density?: 'compact' | 'normal' | 'spacious';
+  fontSizeScale?: 'small' | 'normal' | 'large' | string;
+  density?: 'compact' | 'normal' | 'spacious' | string;
 }
 
 export interface CreateStructuredCvRequest {

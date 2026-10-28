@@ -7,11 +7,25 @@ import { apiClient } from '../apiClient';
 import type { ApiEnvelope } from '@/types/api/admin';
 import type {
   CvTemplateDto,
+  CvTemplateConfig,
   CreateStructuredCvRequest,
   UpdateStructuredCvRequest,
   StructuredCvDetailDto,
   StructuredCvContent,
 } from '@/types/api/cvBuilder';
+
+const normalizeTemplate = (template: CvTemplateDto & { templateConfig?: CvTemplateConfig | string }): CvTemplateDto => {
+  if (typeof template.templateConfig !== 'string') return template;
+
+  try {
+    return {
+      ...template,
+      templateConfig: JSON.parse(template.templateConfig) as CvTemplateConfig,
+    };
+  } catch {
+    return { ...template, templateConfig: undefined };
+  }
+};
 
 /**
  * Validates structured CV content according to business rules:
@@ -50,129 +64,67 @@ export const validateStructuredCvContent = (
   return { isValid: true };
 };
 
-import { STATIC_CV_TEMPLATES } from '@/features/portal/candidate/cv-builder/constants/templates';
-import {
-  getSavedCvById,
-  saveCandidateCv,
-} from '@/features/portal/candidate/cv-builder/services/cvStorage';
-
 export const cvBuilderApi = {
   /**
    * GET /api/v1/cv-templates
-   * Retrieves available CV layout templates with static fallback.
+   * Retrieves available CV layout templates.
    */
   async getTemplates(): Promise<CvTemplateDto[]> {
-    try {
-      const res = await apiClient.get<ApiEnvelope<CvTemplateDto[]> | CvTemplateDto[]>('/cv-templates');
-      if (Array.isArray(res.data)) {
-        return res.data;
-      }
-      if (res.data && 'data' in res.data && Array.isArray(res.data.data)) {
-        return res.data.data;
-      }
-      return STATIC_CV_TEMPLATES;
-    } catch {
-      return STATIC_CV_TEMPLATES;
+    const res = await apiClient.get<ApiEnvelope<CvTemplateDto[]> | CvTemplateDto[]>('/cv-templates');
+    if (Array.isArray(res.data)) {
+      return res.data.map(normalizeTemplate);
     }
+    if (res.data && 'data' in res.data && Array.isArray(res.data.data)) {
+      return res.data.data.map(normalizeTemplate);
+    }
+    return [];
   },
 
   /**
    * POST /api/v1/candidates/cv/structured
-   * Creates a new CV with localStorage fallback if endpoint is not implemented on backend.
+   * Creates a new CV from a template or platform builder.
    */
   async createStructuredCv(payload: CreateStructuredCvRequest): Promise<StructuredCvDetailDto> {
-    try {
-      const res = await apiClient.post<ApiEnvelope<StructuredCvDetailDto> | StructuredCvDetailDto>(
-        '/candidates/cv/structured',
-        payload
-      );
-      if (res.data && 'data' in res.data && res.data.data) {
-        return res.data.data;
-      }
-      return res.data as StructuredCvDetailDto;
-    } catch {
-      const saved = saveCandidateCv({
-        title: payload.title,
-        selectedTemplateCode: payload.cvTemplateId || 'STANDARD',
-        isPrimary: payload.isPrimary,
-        structuredContent: payload.structuredContent,
-      });
-      return {
-        cvId: saved.cvId,
-        title: saved.title,
-        cvTemplateId: saved.selectedTemplateCode,
-        isPrimary: saved.isPrimary,
-        creationMethod: 'PLATFORM_BUILDER',
-        updatedAt: saved.updatedAt,
-        structuredContent: saved.structuredContent,
-      };
+    const res = await apiClient.post<ApiEnvelope<StructuredCvDetailDto> | StructuredCvDetailDto>(
+      '/candidates/cv/structured',
+      payload
+    );
+    if (res.data && 'data' in res.data && res.data.data) {
+      return res.data.data;
     }
+    return res.data as StructuredCvDetailDto;
   },
 
   /**
    * GET /api/v1/candidates/cv/structured/{cvId}
-   * Retrieves structured CV data from backend or localStorage.
+   * Retrieves structured CV data to populate the edit form.
    */
   async getStructuredCv(cvId: string): Promise<StructuredCvDetailDto> {
-    try {
-      const res = await apiClient.get<ApiEnvelope<StructuredCvDetailDto> | StructuredCvDetailDto>(
-        `/candidates/cv/structured/${encodeURIComponent(cvId)}`
-      );
-      if (res.data && 'data' in res.data && res.data.data) {
-        return res.data.data;
-      }
-      return res.data as StructuredCvDetailDto;
-    } catch {
-      const stored = getSavedCvById(cvId);
-      if (stored) {
-        return {
-          cvId: stored.cvId,
-          title: stored.title,
-          cvTemplateId: stored.selectedTemplateCode,
-          isPrimary: stored.isPrimary,
-          creationMethod: 'PLATFORM_BUILDER',
-          updatedAt: stored.updatedAt,
-          structuredContent: stored.structuredContent,
-        };
-      }
-      throw new Error('Không tìm thấy bản CV trong hệ thống hoặc bộ nhớ lưu trữ.');
+    const res = await apiClient.get<ApiEnvelope<StructuredCvDetailDto> | StructuredCvDetailDto>(
+      `/candidates/cv/structured/${encodeURIComponent(cvId)}`
+    );
+    if (res.data && 'data' in res.data && res.data.data) {
+      return res.data.data;
     }
+    return res.data as StructuredCvDetailDto;
   },
 
   /**
    * PUT /api/v1/candidates/cv/structured/{cvId}
-   * Updates existing structured CV content on backend or localStorage.
+   * Updates existing structured CV content.
    */
   async updateStructuredCv(
     cvId: string,
     payload: UpdateStructuredCvRequest
   ): Promise<StructuredCvDetailDto> {
-    try {
-      const res = await apiClient.put<ApiEnvelope<StructuredCvDetailDto> | StructuredCvDetailDto>(
-        `/candidates/cv/structured/${encodeURIComponent(cvId)}`,
-        payload
-      );
-      if (res.data && 'data' in res.data && res.data.data) {
-        return res.data.data;
-      }
-      return res.data as StructuredCvDetailDto;
-    } catch {
-      const saved = saveCandidateCv({
-        cvId,
-        title: payload.title,
-        selectedTemplateCode: payload.cvTemplateId || undefined,
-        structuredContent: payload.structuredContent,
-      });
-      return {
-        cvId: saved.cvId,
-        title: saved.title,
-        cvTemplateId: saved.selectedTemplateCode,
-        isPrimary: saved.isPrimary,
-        creationMethod: 'PLATFORM_BUILDER',
-        updatedAt: saved.updatedAt,
-        structuredContent: saved.structuredContent,
-      };
+    const res = await apiClient.put<ApiEnvelope<StructuredCvDetailDto> | StructuredCvDetailDto>(
+      `/candidates/cv/structured/${encodeURIComponent(cvId)}`,
+      payload
+    );
+    if (res.data && 'data' in res.data && res.data.data) {
+      return res.data.data;
     }
+    return res.data as StructuredCvDetailDto;
   },
 };
 

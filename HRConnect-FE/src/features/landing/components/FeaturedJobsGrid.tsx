@@ -339,11 +339,12 @@ export const FeaturedJobsGrid: React.FC = () => {
                   <div>
                     {/* Hàng trên: Logo bên trái, Tiêu đề + Công ty bên phải */}
                     <div className="flex items-start gap-3">
-                      <div className="w-12 h-12 rounded-lg border border-slate-200/80 p-1 bg-white flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
+                      <div className="w-12 h-12 rounded-lg border border-slate-200/80 p-0.5 bg-white flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
                         <CompanyLogo
                           id={job.companyId || 'company'}
                           name={job.companyName || 'Doanh nghiệp'}
-                          size={40}
+                          logoUrl={job.companyLogoUrl || job.company?.logoUrl}
+                          size={44}
                           className="w-full h-full object-contain"
                         />
                       </div>

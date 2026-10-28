@@ -116,6 +116,29 @@ describe('cvBuilderApi', () => {
       expect(result).toEqual(mockTemplates);
     });
 
+    it('getTemplates parses the JSON template config returned by the backend', async () => {
+      vi.spyOn(apiClient, 'get').mockResolvedValueOnce({
+        data: {
+          success: true,
+          data: [{
+            cvTemplateId: 'tpl-modern',
+            code: 'MODERN_BLUE',
+            name: 'Hiện đại',
+            templateConfig: '{"accentColor":"#1D4ED8","density":"normal","fontFamily":"INTER","layout":"modern"}',
+          }],
+        },
+      });
+
+      const [template] = await cvBuilderApi.getTemplates();
+
+      expect(template.templateConfig).toEqual({
+        accentColor: '#1D4ED8',
+        density: 'normal',
+        fontFamily: 'INTER',
+        layout: 'modern',
+      });
+    });
+
     it('createStructuredCv calls POST /candidates/cv/structured and returns created CV', async () => {
       const payload: CreateStructuredCvRequest = {
         title: 'CV Fullstack 2026',
