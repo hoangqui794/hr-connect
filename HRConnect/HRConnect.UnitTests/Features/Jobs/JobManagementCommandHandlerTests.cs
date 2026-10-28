@@ -84,13 +84,13 @@ public class JobManagementCommandHandlerTests
         result.Data.Title.Should().Be("Senior Dev"); result.Data.ServiceTypeId.Should().Be(serviceType);
         result.Data.Benefits.Should().Be("Health insurance and annual bonus");
         result.Data.WorkingTime.Should().Be("Monday-Friday, 08:00-17:30");
-        result.Data.MinExperienceYears.Should().Be(2);
-        result.Data.MaxExperienceYears.Should().Be(4);
+        result.Data.MinExperienceYears.Should().Be(2m);
+        result.Data.MaxExperienceYears.Should().Be(4m);
         result.Data.SalaryNegotiable.Should().BeFalse();
         result.Data.SalaryNote.Should().Be("Có thể thương lượng thêm thưởng dự án");
         job.CurrencyCode.Should().Be("USD");
-        job.MinExperienceYears.Should().Be(2);
-        job.MaxExperienceYears.Should().Be(4);
+        job.MinExperienceYears.Should().Be(2m);
+        job.MaxExperienceYears.Should().Be(4m);
         job.SalaryNegotiable.Should().BeFalse();
         job.WorkingTime.Should().Be("Monday-Friday, 08:00-17:30");
         job.SalaryNote.Should().Be("Có thể thương lượng thêm thưởng dự án");

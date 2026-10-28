@@ -73,43 +73,54 @@ public sealed record JobListItemDto(
     bool SalaryNegotiable,
     string CurrencyCode,
     string Status,
-    int? MinExperienceYears,
-    int? MaxExperienceYears,
+    decimal? MinExperienceYears,
+    decimal? MaxExperienceYears,
     DateTime? PostedAt,
     DateTime? ApplicationDeadline,
-    bool IsAcceptingApplications)
+    bool IsAcceptingApplications,
+    bool HasSignedAgreement = false)
 {
     public PublicCompanyDto? Company { get; init; }
 
-    public static JobListItemDto From(Job job, ICompanyLogoUrlResolver? logoUrlResolver = null) => new(
-        job.JobId,
-        job.Title,
-        job.CompanyId,
-        job.Company?.CompanyName,
-        job.ServiceTypeId,
-        job.ServiceType?.Code,
-        job.Location,
-        job.EmploymentType,
-        job.SalaryMin,
-        job.SalaryMax,
-        job.SalaryNegotiable,
-        job.CurrencyCode.Trim(),
-        job.Status,
-        job.MinExperienceYears,
-        job.MaxExperienceYears,
-        job.PostedAt,
-        job.ApplicationDeadline,
-        JobAccessPolicy.IsAcceptingApplications(job))
+    public static JobListItemDto From(Job job, ICompanyLogoUrlResolver? logoUrlResolver = null)
     {
-        Company = PublicCompanyDto.From(job.Company, logoUrlResolver)
-    };
+        var agreement = job.CurrentServiceAgreement ?? job.ServiceAgreements?.FirstOrDefault(x => x.IsCurrent);
+        var hasSignedAgreement = agreement != null &&
+            (!string.IsNullOrWhiteSpace(agreement.SignedDocumentStorageKey) ||
+             agreement.SignedAt != null ||
+             agreement.Status == "SIGNED");
+
+        return new(
+            job.JobId,
+            job.Title,
+            job.CompanyId,
+            job.Company?.CompanyName,
+            job.ServiceTypeId,
+            job.ServiceType?.Code,
+            job.Location,
+            job.EmploymentType,
+            job.SalaryMin,
+            job.SalaryMax,
+            job.SalaryNegotiable,
+            job.CurrencyCode.Trim(),
+            job.Status,
+            job.MinExperienceYears,
+            job.MaxExperienceYears,
+            job.PostedAt,
+            job.ApplicationDeadline,
+            JobAccessPolicy.IsAcceptingApplications(job),
+            hasSignedAgreement)
+        {
+            Company = PublicCompanyDto.From(job.Company, logoUrlResolver)
+        };
+    }
 }
 
 public sealed record JobDto(
     Guid JobId, Guid CompanyId, string? CompanyName, Guid ServiceTypeId, string? ServiceTypeCode,
     string Title, string? Description, string? Benefits, string? Location, string? WorkingTime, string? EmploymentType,
     decimal? SalaryMin, decimal? SalaryMax, bool SalaryNegotiable, string? SalaryNote,
-    int? MinExperienceYears, int? MaxExperienceYears,
+    decimal? MinExperienceYears, decimal? MaxExperienceYears,
     string CurrencyCode, int Quantity,
     string Status, string? StatusReason, DateTime? PostedAt,
     DateTime? ClosedAt, DateTime CreatedAt, DateTime UpdatedAt, Guid ConcurrencyToken,
@@ -127,7 +138,8 @@ public sealed record JobDto(
     IReadOnlyList<JobRequirementDto> Requirements,
     IReadOnlyList<JobSkillDto> Skills,
     IReadOnlyList<JobStatusHistoryDto> StatusHistories,
-    Guid? TemplateId = null)
+    Guid? TemplateId = null,
+    bool HasSignedAgreement = false)
 {
     public string? CompanyLogoUrl { get; init; }
 
@@ -195,7 +207,9 @@ public sealed record JobDto(
                 ? job.JobStatusHistories.OrderBy(x => x.ChangedAt).Select(x => new JobStatusHistoryDto(
                     x.JobStatusHistoryId, x.OldStatus, x.NewStatus, x.ChangedBy, x.ReasonCode, x.ReasonText, x.ChangedAt)).ToList()
                 : [],
-            job.TemplateId)
+            job.TemplateId,
+            (job.CurrentServiceAgreement ?? job.ServiceAgreements?.FirstOrDefault(x => x.IsCurrent)) is { } a &&
+                (!string.IsNullOrWhiteSpace(a.SignedDocumentStorageKey) || a.SignedAt != null || a.Status == "SIGNED"))
         {
             CompanyLogoUrl = job.Company is null ? null : logoUrlResolver?.Resolve(job.Company) ?? job.Company.LogoUrl
         };
@@ -206,7 +220,7 @@ public sealed record JobDetailDto(
     Guid JobId, Guid CompanyId, string? CompanyName, Guid ServiceTypeId, string? ServiceTypeCode,
     string Title, string? Description, string? Benefits, string? Location, string? WorkingTime, string? EmploymentType,
     decimal? SalaryMin, decimal? SalaryMax, bool SalaryNegotiable, string? SalaryNote,
-    int? MinExperienceYears, int? MaxExperienceYears,
+    decimal? MinExperienceYears, decimal? MaxExperienceYears,
     string CurrencyCode, int Quantity,
     string Status, string? StatusReason, DateTime? PostedAt,
     DateTime? ClosedAt, DateTime CreatedAt, DateTime UpdatedAt, Guid ConcurrencyToken,
@@ -225,7 +239,8 @@ public sealed record JobDetailDto(
     IReadOnlyList<JobSkillDto> Skills,
     IReadOnlyList<JobStatusHistoryDto> StatusHistories,
     PublicCompanyDto? Company,
-    Guid? TemplateId = null)
+    Guid? TemplateId = null,
+    bool HasSignedAgreement = false)
 {
     public static JobDetailDto From(Job job, bool includeStatusHistories = false, bool isReviewer = false,
         ICompanyLogoUrlResolver? logoUrlResolver = null)
@@ -292,7 +307,9 @@ public sealed record JobDetailDto(
                     x.JobStatusHistoryId, x.OldStatus, x.NewStatus, x.ChangedBy, x.ReasonCode, x.ReasonText, x.ChangedAt)).ToList()
                 : [],
             PublicCompanyDto.From(job.Company, logoUrlResolver),
-            job.TemplateId);
+            job.TemplateId,
+            (job.CurrentServiceAgreement ?? job.ServiceAgreements?.FirstOrDefault(x => x.IsCurrent)) is { } ag &&
+                (!string.IsNullOrWhiteSpace(ag.SignedDocumentStorageKey) || ag.SignedAt != null || ag.Status == "SIGNED"));
     }
 }
 

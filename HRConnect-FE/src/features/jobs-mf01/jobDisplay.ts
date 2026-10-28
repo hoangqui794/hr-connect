@@ -200,9 +200,10 @@ export const formatSalary = (job?: Partial<Pick<Job, 'salaryMin' | 'salaryMax' |
 };
 
 export const formatExperience = (min: number | null, max: number | null): string => {
-  if (min != null && max != null) return min === max ? `${min} năm` : `${min}–${max} năm`;
-  if (min != null) return `Từ ${min} năm`;
-  if (max != null) return `Tối đa ${max} năm`;
+  const formatNum = (num: number) => (num === 0.5 ? '6 tháng' : `${num} năm`);
+  if (min != null && max != null) return min === max ? formatNum(min) : `${formatNum(min)} – ${formatNum(max)}`;
+  if (min != null) return min === 0 ? 'Không yêu cầu' : min === 0.5 ? 'Từ 6 tháng' : `Từ ${min} năm`;
+  if (max != null) return max === 0.5 ? 'Tối đa 6 tháng' : `Tối đa ${max} năm`;
   return 'Không yêu cầu';
 };
 

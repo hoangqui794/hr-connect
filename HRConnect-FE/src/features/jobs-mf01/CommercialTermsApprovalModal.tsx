@@ -6,7 +6,7 @@
  * Every number, default and allowed range comes from the backend; nothing is hard-coded here.
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Form, Input, Modal, Skeleton, Tag, Tooltip, Upload, message } from 'antd';
+import { Alert, Button, Form, Input, InputNumber, Modal, Skeleton, Tag, Tooltip, Upload, message } from 'antd';
 import { CheckCircleFilled, EditOutlined, FilePdfOutlined, InfoCircleOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
 import type { CommercialTermsInput, ApproveJobInput, Job, ServiceAgreementDto } from '@/types/api/jobs';
 import { getApiErrorMessage } from '@/services/apiClient';
@@ -99,6 +99,33 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({
     `Hop_dong_dich_vu_${job.serviceTypeCode === 'HEADHUNT_COD' ? 'Headhunt' : 'CV_Sourcing'}_${job.title.replace(/\s+/g, '_')}_signed.pdf`
   );
 
+  const watchedValues = Form.useWatch([], form);
+  const values = useMemo(() => watchedValues ?? {}, [watchedValues]);
+
+  const changed = useMemo(() => {
+    if (!data) return [];
+    return fields.filter((f) => {
+      const current = values[f.key];
+      const proposed = data.proposed?.[f.key];
+      if (current == null || proposed == null) return false;
+      return current !== proposed;
+    });
+  }, [fields, values, data]);
+
+  const estimatedTotal = useMemo(() => {
+    if (!isSourcing) return null;
+    const target = values.sourcingTarget;
+    const price = values.pricePerCv;
+    if (target == null || price == null) return null;
+    return target * price;
+  }, [isSourcing, values.sourcingTarget, values.pricePerCv]);
+
+  const estimatedDeposit = useMemo(() => {
+    if (estimatedTotal == null) return null;
+    const percent = values.depositPercent ?? 30;
+    return Math.round((estimatedTotal * percent) / 100);
+  }, [estimatedTotal, values.depositPercent]);
+
   const generateContractCode = () => {
     const now = new Date();
     const year = now.getFullYear();
@@ -139,7 +166,7 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({
     }
     const commercialTerms: CommercialTermsInput = {};
     fields.forEach((f) => {
-      commercialTerms[f.key] = data?.prefill?.[f.key] ?? data?.adminDefaults?.[f.key] ?? null;
+      commercialTerms[f.key] = v[f.key] as number;
     });
     setServerError(undefined);
     try {
@@ -156,10 +183,10 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({
   return (
     <Modal
       open={open}
-      width={720}
+      width={780}
       title={
         isRevision
-          ? 'Chỉnh sửa hợp đồng dịch vụ'
+          ? 'Chỉnh sửa & Gửi lại hợp đồng dịch vụ'
           : 'Soạn & Gửi hợp đồng dịch vụ'
       }
       okText={isRevision ? 'Cập nhật & Gửi hợp đồng' : 'Gửi hợp đồng cho Doanh nghiệp'}
@@ -173,7 +200,7 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({
       onOk={submit}
       destroyOnClose
     >
-      <div className="space-y-4 pt-1">
+      <div className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1">
         <div className="rounded-xl border border-solid border-slate-200 bg-slate-50 px-4 py-3">
           <div className="text-sm font-semibold text-slate-900">{job.title}</div>
           <div className="text-xs text-slate-600">{job.companyName ?? '—'}</div>
@@ -195,99 +222,213 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({
         ) : defaults.isLoading || !data ? (
           <Skeleton active paragraph={{ rows: 6 }} />
         ) : (
-          <Form form={form} layout="vertical" requiredMark={false}>
-            {/* Tệp hợp đồng có sẵn chữ ký - Đã sửa lỗi tràn khung */}
-            <div className="rounded-xl border border-solid border-indigo-200 bg-indigo-50/50 p-4 space-y-3 mb-4 overflow-hidden">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="w-10 h-10 rounded-lg bg-indigo-100/80 border border-indigo-200 flex items-center justify-center text-indigo-700 text-xl shrink-0">
-                    <FilePdfOutlined />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold text-slate-800 truncate" title={contractFileName}>
-                      {contractFileName}
+          <Form form={form} layout="vertical" requiredMark={false} className="space-y-4">
+            {/* PHẦN 1: ĐIỀU KHOẢN THƯƠNG MẠI HỢP ĐỒNG */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-slate-900">
+                  1. Chốt điều khoản thương mại ({isSourcing ? 'Dịch vụ Tìm kiếm hồ sơ' : 'Dịch vụ Tuyển dụng Headhunt'})
+                </span>
+                <span className="text-xs text-slate-500">
+                  Đối chiếu đề xuất của DN & điều chỉnh trước khi tạo hợp đồng
+                </span>
+              </div>
+
+              <div role="table" aria-label="So sánh điều khoản" className="overflow-hidden rounded-xl border border-solid border-slate-200">
+                <div role="row" className="grid grid-cols-[1.1fr_1fr_1.2fr] gap-3 bg-slate-100 px-4 py-2.5 text-xs font-semibold text-slate-700">
+                  <span role="columnheader">Khoản mục</span>
+                  <span role="columnheader">Doanh nghiệp đề xuất</span>
+                  <span role="columnheader">Điều khoản HR chốt</span>
+                </div>
+                {fields.map((f) => {
+                  const proposed = data.proposed?.[f.key];
+                  const adminDefault = data.adminDefaults?.[f.key];
+                  const range = data.ranges?.[f.key];
+                  const isChanged = changed.some((c) => c.key === f.key);
+                  return (
+                    <div
+                      role="row"
+                      key={f.key}
+                      className={`grid grid-cols-[1.1fr_1fr_1.2fr] items-start gap-3 border-0 border-t border-solid border-slate-200 px-4 py-2.5 ${
+                        isChanged ? 'bg-amber-50/70' : 'bg-white'
+                      }`}
+                    >
+                      <div role="cell">
+                        <div className="flex items-center gap-1.5">
+                          <label htmlFor={`term-${f.key}`} className="text-sm font-medium text-slate-900">
+                            {f.label}
+                          </label>
+                          <Tooltip title={f.tip}>
+                            <InfoCircleOutlined className="text-slate-400 text-xs cursor-pointer hover:text-slate-600" />
+                          </Tooltip>
+                        </div>
+                        {f.help && <div className="text-xs text-slate-500">{f.help}</div>}
+                      </div>
+                      <div role="cell" className="text-sm pt-1">
+                        {proposed != null ? (
+                          <span className="font-semibold text-slate-900">{fmt(proposed, f.unit)}</span>
+                        ) : (
+                          <span className="text-slate-400 italic">Không đề xuất</span>
+                        )}
+                        {adminDefault != null && (
+                          <div className="text-xs text-slate-500">Mặc định: {fmt(adminDefault, f.unit)}</div>
+                        )}
+                      </div>
+                      <div role="cell">
+                        <Form.Item
+                          name={f.key}
+                          className="mb-0"
+                          rules={[
+                            { required: true, message: `Nhập ${f.label.toLowerCase()}` },
+                            ...(range
+                              ? [{ type: 'number' as const, min: range.min, max: range.max, message: `Từ ${fmt(range.min, f.unit)} đến ${fmt(range.max, f.unit)}` }]
+                              : []),
+                          ]}
+                        >
+                          <InputNumber
+                            id={`term-${f.key}`}
+                            className="w-full"
+                            min={range?.min}
+                            max={range?.max}
+                            step={f.step}
+                            addonAfter={f.unit}
+                            formatter={f.unit === 'đ' ? (v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.') : undefined}
+                            parser={f.unit === 'đ' ? (v) => Number((v ?? '').replace(/\./g, '')) : undefined}
+                          />
+                        </Form.Item>
+                        {isChanged && (
+                          <Tag color="warning" icon={<EditOutlined />} className="m-0 mt-1 text-[11px]">
+                            Khác đề xuất
+                          </Tag>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-xs text-emerald-700 flex items-center gap-1.5 mt-0.5 font-medium truncate">
-                      <CheckCircleFilled className="text-emerald-600 shrink-0" />
-                      <span className="truncate">Đã đính kèm văn bản hợp đồng có sẵn chữ ký HR Connect</span>
+                  );
+                })}
+              </div>
+
+              {data.proposed?.note && (
+                <div className="rounded-lg border border-solid border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
+                  <span className="font-semibold text-slate-900">Ghi chú từ Doanh nghiệp khi tạo tin: </span>
+                  {data.proposed.note}
+                </div>
+              )}
+
+              {isSourcing && estimatedTotal != null && (
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="text-xs text-slate-600">Tổng giá trị dự tính ({values.sourcingTarget ?? 0} hồ sơ)</div>
+                    <div className="text-base font-bold text-slate-900">{estimatedTotal.toLocaleString('vi-VN')} đ</div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="text-xs text-slate-600">Tiền cọc cần thu ({values.depositPercent ?? 30}%)</div>
+                    <div className="text-base font-bold text-indigo-700">
+                      {estimatedDeposit != null ? `${estimatedDeposit.toLocaleString('vi-VN')} đ` : '—'}
                     </div>
                   </div>
                 </div>
-
-                <Upload
-                  maxCount={1}
-                  accept=".pdf,.doc,.docx"
-                  showUploadList={false}
-                  className="shrink-0"
-                  beforeUpload={(file) => {
-                    setContractFileName(file.name);
-                    message.success(`Đã đính kèm tệp hợp đồng mới: ${file.name}`);
-                    return false;
-                  }}
-                >
-                  <Button size="small" icon={<UploadOutlined />} className="text-xs shrink-0 whitespace-nowrap">
-                    Tải lên file khác
-                  </Button>
-                </Upload>
-              </div>
-
-              <div className="text-xs text-slate-500 bg-white/90 p-2.5 rounded-lg border border-solid border-indigo-100 leading-relaxed">
-                Hợp đồng tạo và upload lên đã có sẵn chữ ký từ HR Connect. Doanh nghiệp sẽ tải file này xuống để xem xét và thực hiện ký kết bên ngoài hệ thống nền tảng.
-              </div>
+              )}
             </div>
 
-            <Form.Item
-              name="agreementReference"
-              label={
-                <span className="font-semibold text-slate-900">
-                  Số hợp đồng / Căn cứ thỏa thuận
-                </span>
-              }
-              rules={[{ required: true, message: 'Vui lòng cung cấp mã số hợp đồng' }]}
-              extra="Mã số hợp đồng được tự động tạo và sẽ hiển thị trực tiếp trên văn bản hợp đồng dịch vụ."
-            >
-              <Input
-                maxLength={200}
-                placeholder="Ví dụ: HRC-HD-202610-8A2F"
-                addonAfter={
-                  <Button
-                    type="link"
-                    size="small"
-                    icon={<ReloadOutlined />}
-                    className="text-xs text-indigo-600 font-medium p-0 h-auto hover:text-indigo-500 flex items-center gap-1"
-                    onClick={() => {
-                      const newCode = generateContractCode();
-                      form.setFieldValue('agreementReference', newCode);
-                      message.info(`Đã tạo mã hợp đồng mới: ${newCode}`);
+            {/* PHẦN 2: VĂN BẢN HỢP ĐỒNG & THÔNG TIN KÝ KẾT */}
+            <div className="space-y-3 pt-2 border-0 border-t border-solid border-slate-200">
+              <span className="text-sm font-semibold text-slate-900 block">
+                2. Văn bản hợp đồng dịch vụ gửi Doanh nghiệp
+              </span>
+
+              {/* Tệp hợp đồng có sẵn chữ ký */}
+              <div className="rounded-xl border border-solid border-indigo-200 bg-indigo-50/50 p-4 space-y-3 overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-10 h-10 rounded-lg bg-indigo-100/80 border border-indigo-200 flex items-center justify-center text-indigo-700 text-xl shrink-0">
+                      <FilePdfOutlined />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-semibold text-slate-800 truncate" title={contractFileName}>
+                        {contractFileName}
+                      </div>
+                      <div className="text-xs text-emerald-700 flex items-center gap-1.5 mt-0.5 font-medium truncate">
+                        <CheckCircleFilled className="text-emerald-600 shrink-0" />
+                        <span className="truncate">Đã đính kèm văn bản hợp đồng có sẵn chữ ký HR Connect</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Upload
+                    maxCount={1}
+                    accept=".pdf,.doc,.docx"
+                    showUploadList={false}
+                    className="shrink-0"
+                    beforeUpload={(file) => {
+                      setContractFileName(file.name);
+                      message.success(`Đã đính kèm tệp hợp đồng mới: ${file.name}`);
+                      return false;
                     }}
                   >
-                    Tạo mã mới
-                  </Button>
+                    <Button size="small" icon={<UploadOutlined />} className="text-xs shrink-0 whitespace-nowrap">
+                      Tải lên file khác
+                    </Button>
+                  </Upload>
+                </div>
+
+                <div className="text-xs text-slate-500 bg-white/90 p-2.5 rounded-lg border border-solid border-indigo-100 leading-relaxed">
+                  Hợp đồng tạo và upload lên đã có sẵn chữ ký từ HR Connect. Doanh nghiệp sẽ tải file này xuống để xem xét và thực hiện ký kết bên ngoài hệ thống nền tảng.
+                </div>
+              </div>
+
+              <Form.Item
+                name="agreementReference"
+                label={
+                  <span className="font-semibold text-slate-900">
+                    Số hợp đồng / Căn cứ thỏa thuận
+                  </span>
                 }
-              />
-            </Form.Item>
+                rules={[{ required: true, message: 'Vui lòng cung cấp mã số hợp đồng' }]}
+                extra="Mã số hợp đồng được tự động tạo và sẽ hiển thị trực tiếp trên văn bản hợp đồng dịch vụ."
+              >
+                <Input
+                  maxLength={200}
+                  placeholder="Ví dụ: HRC-HD-202610-8A2F"
+                  addonAfter={
+                    <Button
+                      type="link"
+                      size="small"
+                      icon={<ReloadOutlined />}
+                      className="text-xs text-indigo-600 font-medium p-0 h-auto hover:text-indigo-500 flex items-center gap-1"
+                      onClick={() => {
+                        const newCode = generateContractCode();
+                        form.setFieldValue('agreementReference', newCode);
+                        message.info(`Đã tạo mã hợp đồng mới: ${newCode}`);
+                      }}
+                    >
+                      Tạo mã mới
+                    </Button>
+                  }
+                />
+              </Form.Item>
 
-            <Form.Item
-              name="note"
-              label={
-                <span className="font-semibold text-slate-900">
-                  Ghi chú hợp đồng gửi Doanh nghiệp
+              <Form.Item
+                name="note"
+                label={
+                  <span className="font-semibold text-slate-900">
+                    Ghi chú hợp đồng gửi Doanh nghiệp
+                  </span>
+                }
+                extra="Nội dung ghi chú này sẽ hiển thị trực tiếp cho Doanh nghiệp xem khi nhận được hợp đồng."
+              >
+                <Input.TextArea
+                  rows={3}
+                  maxLength={1000}
+                  placeholder="Ghi chú về các điểm quan trọng trong hợp đồng hoặc hướng dẫn ký kết cho Doanh nghiệp..."
+                />
+              </Form.Item>
+
+              <div className="flex items-start gap-2 text-xs text-slate-600 pt-1">
+                <InfoCircleOutlined className="mt-0.5 text-sky-600" aria-hidden />
+                <span>
+                  Hệ thống sẽ gửi thông báo đã soạn xong hợp đồng kèm theo các điều khoản chốt ở trên. Doanh nghiệp sẽ tải hợp đồng về để ký và có thể gửi yêu cầu điều chỉnh.
                 </span>
-              }
-              extra="Nội dung ghi chú này sẽ hiển thị trực tiếp cho Doanh nghiệp xem khi nhận được hợp đồng."
-            >
-              <Input.TextArea
-                rows={3}
-                maxLength={1000}
-                placeholder="Ghi chú về các điểm quan trọng trong hợp đồng hoặc hướng dẫn ký kết cho Doanh nghiệp..."
-              />
-            </Form.Item>
-
-            <div className="flex items-start gap-2 text-xs text-slate-600 pt-1">
-              <InfoCircleOutlined className="mt-0.5 text-sky-600" aria-hidden />
-              <span>
-                Hệ thống sẽ gửi thông báo đã soạn xong hợp đồng. Doanh nghiệp sẽ tải hợp đồng về để ký và có thể gửi yêu cầu điều chỉnh.
-              </span>
+              </div>
             </div>
           </Form>
         )}

@@ -81,7 +81,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
   const selectedJobIdParam = searchParams.get('jobId') || '';
 
   // 1. Fetch Client's jobs (focusing on Headhunt and CV Sourcing)
-  const { data: allJobs = [], isLoading: loadingJobs } = useMyJobs();
+  const { data: allJobs = [], isLoading: loadingJobs, refetch: refetchJobs } = useMyJobs();
 
   const eligibleJobs = useMemo(() => {
     return allJobs.filter(
@@ -306,7 +306,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
       message.success('Tải lên hợp đồng đã ký thành công. Đang chờ bên Internal HR kiểm tra và công khai tin tuyển dụng.');
       setUploadModalOpen(false);
       setFileList([]);
-      await Promise.all([refetchCurrent(), refetchHistory()]);
+      await Promise.all([refetchCurrent(), refetchHistory(), refetchJobs()]);
     } catch (err) {
       message.error(getApiErrorMessage(err));
     } finally {
@@ -507,6 +507,15 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                   filteredJobs.map((job) => {
                     const isSelected = job.jobId === activeJobId;
                     const statusMeta = JOB_STATUS[job.status] ?? { label: job.status, color: 'default' };
+                    const isSignedPendingReview =
+                      job.status === 'PENDING_AGREEMENT' &&
+                      Boolean(
+                        job.hasSignedAgreement ||
+                          (job.jobId === activeJobId &&
+                            (currentAgreement?.status === 'SIGNED' ||
+                              Boolean(currentAgreement?.hasSignedDocument) ||
+                              Boolean(currentAgreement?.signedAt)))
+                      );
                     const isAwaitingAction =
                       job.status === 'PENDING_AGREEMENT' || job.status === 'PENDING_PAYMENT';
 
@@ -518,26 +527,30 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           setActiveJobId(job.jobId);
                           setSearchParams({ jobId: job.jobId }, { replace: true });
                         }}
-                        className={`w-full cursor-pointer text-left rounded-xl p-3.5 transition-all border relative ${isSelected
+                        className={`w-full cursor-pointer text-left rounded-xl p-3.5 transition-all border relative ${
+                          isSelected
                             ? 'border-indigo-600 bg-indigo-50/70 shadow-xs ring-1 ring-indigo-500/20 border-l-4 border-l-indigo-600'
-                            : isAwaitingAction
-                              ? 'border-purple-200/90 bg-purple-50/20 hover:border-purple-300 hover:bg-purple-50/40'
-                              : 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/70'
-                          }`}
+                            : isSignedPendingReview
+                              ? 'border-teal-200/90 bg-teal-50/20 hover:border-teal-300 hover:bg-teal-50/40'
+                              : isAwaitingAction
+                                ? 'border-purple-200/90 bg-purple-50/20 hover:border-purple-300 hover:bg-purple-50/40'
+                                : 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/70'
+                        }`}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <Text
                             strong
-                            className={`text-sm line-clamp-1 ${isSelected ? 'text-indigo-950 font-bold' : 'text-slate-800'
-                              }`}
+                            className={`text-sm line-clamp-1 ${
+                              isSelected ? 'text-indigo-950 font-bold' : 'text-slate-800'
+                            }`}
                           >
                             {job.title}
                           </Text>
                           <Tag
-                            color={statusMeta.color}
+                            color={isSignedPendingReview ? 'cyan' : statusMeta.color}
                             className="m-0 text-[10px] font-semibold shrink-0 rounded"
                           >
-                            {statusMeta.label}
+                            {isSignedPendingReview ? 'Đã nộp bản ký · Chờ HR duyệt' : statusMeta.label}
                           </Tag>
                         </div>
 
@@ -555,9 +568,19 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                         </div>
 
                         {job.status === 'PENDING_AGREEMENT' && (
-                          <div className="mt-2 pt-1.5 border-t border-purple-100 flex items-center gap-1.5 text-[11px] text-purple-700 font-medium">
+                          <div
+                            className={`mt-2 pt-1.5 border-t ${
+                              isSignedPendingReview
+                                ? 'border-teal-100 text-teal-700'
+                                : 'border-purple-100 text-purple-700'
+                            } flex items-center gap-1.5 text-[11px] font-medium`}
+                          >
                             <SafetyCertificateOutlined />
-                            <span>Cần ký & tải lên hợp đồng</span>
+                            <span>
+                              {isSignedPendingReview
+                                ? '📄 Đã nộp bản ký · Chờ HR duyệt'
+                                : 'Cần ký & tải lên hợp đồng'}
+                            </span>
                           </div>
                         )}
                         {job.status === 'PENDING_PAYMENT' && (

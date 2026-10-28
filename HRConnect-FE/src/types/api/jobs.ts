@@ -182,6 +182,7 @@ export interface Job {
   proposedTerms?: ProposedTerms | null;
   commercialTerms?: CommercialTerms | null;
   templateId?: string | null;
+  hasSignedAgreement?: boolean;
 }
 
 export interface JobPostingEligibility {

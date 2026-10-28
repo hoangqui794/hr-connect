@@ -62,11 +62,24 @@ const STATUS_TAG_CLASS: Record<Job['status'], string> = {
   CLOSED: 'border-slate-200 bg-slate-100 text-slate-600',
 };
 
-export const JobStatusTag: React.FC<{ status: Job['status'] }> = ({ status }) => (
-  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border border-solid ${STATUS_TAG_CLASS[status]}`}>
-    {JOB_STATUS[status]?.label || status}
-  </span>
-);
+export const JobStatusTag: React.FC<{ status: Job['status']; hasSignedAgreement?: boolean }> = ({
+  status,
+  hasSignedAgreement,
+}) => {
+  if (status === 'PENDING_AGREEMENT' && hasSignedAgreement) {
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border border-solid border-teal-200 bg-teal-50 text-teal-700">
+        Đã nộp bản ký - Chờ HR duyệt
+      </span>
+    );
+  }
+
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border border-solid ${STATUS_TAG_CLASS[status]}`}>
+      {JOB_STATUS[status]?.label || status}
+    </span>
+  );
+};
 
 export const JobTemplateOriginTag: React.FC<{ templateId: string }> = ({ templateId }) => {
   const { data: template, isLoading } = useJobTemplate(templateId);
@@ -286,6 +299,14 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const paymentDueDays = agreed?.paymentDueDays ?? draft?.paymentDueDays ?? proposed?.paymentDueDays ?? null;
   const NOT_SET = 'Chưa chốt';
 
+  const hasSignedAgreement = Boolean(
+    job.hasSignedAgreement ||
+    agreementStatus === 'SIGNED' ||
+    draft?.status === 'SIGNED' ||
+    draft?.hasSignedDocument ||
+    draft?.signedAt
+  );
+
   const isExpired =
     (job.expiresAt && new Date(job.expiresAt) <= new Date()) ||
     (job.status === 'CLOSED' && Boolean(job.statusReason?.toLowerCase().includes('hết hạn')));
@@ -294,7 +315,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     <div className={`space-y-6 ${isApplicant ? 'candidate-job-detail-panel' : ''}`}>
       <header className="candidate-job-detail-panel__hero space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <JobStatusTag status={job.status} />
+          <JobStatusTag status={job.status} hasSignedAgreement={hasSignedAgreement} />
           {/* F4: Hiện nguồn mẫu ở trang duyệt job — chỉ hiển thị với Internal HR / Admin ở trang duyệt, Client và ứng viên không thấy */}
           {(isInternalReview || currentRole === UserRole.INTERNAL_HR || currentRole === UserRole.ADMIN) &&
             !isApplicant &&
@@ -331,41 +352,67 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
 
         {/* Thông báo thỏa thuận dịch vụ - Headhunt & CV Sourcing */}
         {!isApplicant && job.status === 'PENDING_AGREEMENT' && (
-          <Alert
-            type={agreementStatus === 'CHANGE_REQUESTED' ? 'warning' : 'info'}
-            showIcon
-            className={
-              agreementStatus === 'CHANGE_REQUESTED'
-                ? 'border-amber-200 bg-amber-50/70'
-                : 'border-blue-200 bg-blue-50/70'
-            }
-            message={
-              agreementStatus === 'CHANGE_REQUESTED'
-                ? 'DN gửi ghi chú điều chỉnh hợp đồng'
-                : isInternalReview
-                  ? 'Đã gửi hợp đồng cho DN'
-                  : 'Hợp đồng dịch vụ đã soạn xong'
-            }
-            description={
-              agreementStatus === 'CHANGE_REQUESTED'
-                ? 'Doanh nghiệp đã gửi ghi chú điều chỉnh. Chờ Internal HR xem xét và phản hồi.'
-                : isInternalReview
-                  ? 'Đã gửi bản hợp đồng có sẵn chữ ký cho Doanh nghiệp tải về ký ngoài hệ thống.'
-                  : 'Internal HR đã soạn xong hợp đồng. Doanh nghiệp vui lòng tải hợp đồng về xem và ký kết.'
-            }
-            action={
-              !isInternalReview ? (
-                <Button
-                  type="primary"
-                  size="small"
-                  className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98]"
-                  onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
-                >
-                  Xem hợp đồng
-                </Button>
-              ) : undefined
-            }
-          />
+          hasSignedAgreement ? (
+            <Alert
+              type="info"
+              showIcon
+              className="border-teal-200 bg-teal-50/80 text-teal-900"
+              message="Đã nộp hợp đồng ký · Đang chờ kiểm tra & duyệt tin"
+              description={
+                isInternalReview
+                  ? 'Doanh nghiệp đã nộp bản hợp đồng có chữ ký. Vui lòng kiểm tra và xử lý duyệt tin.'
+                  : 'Doanh nghiệp đã tải lên bản hợp đồng có chữ ký. Vui lòng chờ kiểm tra và hoàn tất duyệt tin.'
+              }
+              action={
+                !isInternalReview ? (
+                  <Button
+                    type="primary"
+                    size="small"
+                    className="!bg-teal-600 hover:!bg-teal-700 !border-teal-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98]"
+                    onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
+                  >
+                    Xem hợp đồng
+                  </Button>
+                ) : undefined
+              }
+            />
+          ) : (
+            <Alert
+              type={agreementStatus === 'CHANGE_REQUESTED' ? 'warning' : 'info'}
+              showIcon
+              className={
+                agreementStatus === 'CHANGE_REQUESTED'
+                  ? 'border-amber-200 bg-amber-50/70'
+                  : 'border-blue-200 bg-blue-50/70'
+              }
+              message={
+                agreementStatus === 'CHANGE_REQUESTED'
+                  ? 'DN gửi ghi chú điều chỉnh hợp đồng'
+                  : isInternalReview
+                    ? 'Đã gửi hợp đồng cho DN'
+                    : 'Hợp đồng dịch vụ đã soạn xong'
+              }
+              description={
+                agreementStatus === 'CHANGE_REQUESTED'
+                  ? 'Doanh nghiệp đã gửi ghi chú điều chỉnh. Chờ Internal HR xem xét và phản hồi.'
+                  : isInternalReview
+                    ? 'Đã gửi bản hợp đồng có sẵn chữ ký cho Doanh nghiệp tải về ký ngoài hệ thống.'
+                    : 'Internal HR đã soạn xong hợp đồng. Doanh nghiệp vui lòng tải hợp đồng về xem và ký kết.'
+              }
+              action={
+                !isInternalReview ? (
+                  <Button
+                    type="primary"
+                    size="small"
+                    className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98]"
+                    onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
+                  >
+                    Xem hợp đồng
+                  </Button>
+                ) : undefined
+              }
+            />
+          )
         )}
 
         {/* Thông báo chờ thanh toán phí đăng tin - hiển thị cho Client (Internal Review đã có banner phía trên) */}
@@ -502,9 +549,9 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           ...(!isApplicant && job.maxApplications ? [{ label: 'Hạn mức hồ sơ', value: `Tối đa ${job.maxApplications} hồ sơ hợp lệ` }] : []),
           ...(job.expiresAt
             ? [{
-                label: isApplicant ? 'Hạn nộp hồ sơ' : 'Hạn hiển thị',
-                value: (<span className={isExpired ? 'font-semibold text-red-600' : ''}>{formatDateTime(job.expiresAt)}{isExpired ? ' (Đã hết hạn)' : ''}</span>),
-              }]
+              label: isApplicant ? 'Hạn nộp hồ sơ' : 'Hạn hiển thị',
+              value: (<span className={isExpired ? 'font-semibold text-red-600' : ''}>{formatDateTime(job.expiresAt)}{isExpired ? ' (Đã hết hạn)' : ''}</span>),
+            }]
             : []),
         ].map((fact) => (
           <div key={fact.label} className="min-w-0">

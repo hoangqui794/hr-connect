@@ -11,6 +11,7 @@ import {
   Button,
   Empty,
   Input,
+  Pagination,
   Segmented,
   Skeleton,
   Space,
@@ -96,6 +97,21 @@ export const JobTemplatePicker: React.FC<JobTemplatePickerProps> = ({
   const [searchInput, setSearchInput] = useState<string>('');
   const [debouncedKeyword, setDebouncedKeyword] = useState<string>('');
   const [selectedIndustry, setSelectedIndustry] = useState<JobTemplateIndustry | undefined>(undefined);
+
+  // Pagination states
+  const [systemPage, setSystemPage] = useState<number>(1);
+  const [systemPageSize, setSystemPageSize] = useState<number>(6);
+  const [myJobsPage, setMyJobsPage] = useState<number>(1);
+  const [myJobsPageSize, setMyJobsPageSize] = useState<number>(6);
+
+  // Reset pagination on filter change
+  useEffect(() => {
+    setSystemPage(1);
+  }, [debouncedKeyword, selectedIndustry, sourceType]);
+
+  useEffect(() => {
+    setMyJobsPage(1);
+  }, [debouncedKeyword, sourceType]);
 
   // Preview Drawer state
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
@@ -308,6 +324,16 @@ export const JobTemplatePicker: React.FC<JobTemplatePickerProps> = ({
 
   const templatesList = templatesQuery.data?.items ?? [];
 
+  const paginatedTemplates = useMemo(() => {
+    const start = (systemPage - 1) * systemPageSize;
+    return templatesList.slice(start, start + systemPageSize);
+  }, [templatesList, systemPage, systemPageSize]);
+
+  const paginatedClientJobs = useMemo(() => {
+    const start = (myJobsPage - 1) * myJobsPageSize;
+    return clientJobsList.slice(start, start + myJobsPageSize);
+  }, [clientJobsList, myJobsPage, myJobsPageSize]);
+
   return (
     <section className="rounded-2xl border border-indigo-100/80 bg-gradient-to-br from-indigo-50/40 via-white to-sky-50/30 p-5 shadow-sm transition-all">
       {/* Header Banner */}
@@ -457,64 +483,83 @@ export const JobTemplatePicker: React.FC<JobTemplatePickerProps> = ({
                   />
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
-                  {templatesList.map((tpl) => (
-                    <div
-                      key={tpl.templateId}
-                      className="group relative flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:border-indigo-400 hover:shadow-md"
-                    >
-                      <div className="space-y-1.5">
-                        <div className="flex items-start justify-between gap-2">
-                          <h3 className="m-0 text-sm font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
-                            {tpl.name}
-                          </h3>
-                        </div>
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
+                    {paginatedTemplates.map((tpl) => (
+                      <div
+                        key={tpl.templateId}
+                        className="group relative flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:border-indigo-400 hover:shadow-md"
+                      >
+                        <div className="space-y-1.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className="m-0 text-sm font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
+                              {tpl.name}
+                            </h3>
+                          </div>
 
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <Tag color="blue" className="m-0 text-[11px] border-0 bg-blue-50 text-blue-700">
-                            {formatTemplateIndustry(tpl.industry)}
-                          </Tag>
-                          {tpl.level && (
-                            <Tag color="purple" className="m-0 text-[11px] border-0 bg-purple-50 text-purple-700">
-                              {formatTemplateLevel(tpl.level)}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Tag color="blue" className="m-0 text-[11px] border-0 bg-blue-50 text-blue-700">
+                              {formatTemplateIndustry(tpl.industry)}
                             </Tag>
-                          )}
+                            {tpl.level && (
+                              <Tag color="purple" className="m-0 text-[11px] border-0 bg-purple-50 text-purple-700">
+                                {formatTemplateLevel(tpl.level)}
+                              </Tag>
+                            )}
+                          </div>
+
+                          <p className="m-0 text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                            {tpl.summary || 'Mẫu chuẩn với đầy đủ tiêu chí yêu cầu và quyền lợi hấp dẫn.'}
+                          </p>
                         </div>
 
-                        <p className="m-0 text-xs text-slate-600 line-clamp-2 leading-relaxed">
-                          {tpl.summary || 'Mẫu chuẩn với đầy đủ tiêu chí yêu cầu và quyền lợi hấp dẫn.'}
-                        </p>
-                      </div>
-
-                      <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 text-[11px] text-slate-400">
-                        <div className="flex items-center gap-2">
-                          <span>{tpl.requirementCount} yêu cầu</span>
-                          <span>•</span>
-                          <span>{tpl.usageCount} lượt dùng</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <Button
-                            type="link"
-                            size="small"
-                            icon={<EyeOutlined />}
-                            onClick={() => handleOpenSystemPreview(tpl.templateId)}
-                            className="p-0 text-xs text-slate-500 hover:text-indigo-600"
-                          >
-                            Xem trước
-                          </Button>
-                          <Button
-                            type="primary"
-                            size="small"
-                            onClick={() => handleApplySystemTemplate(tpl)}
-                            className="client-cta text-xs px-2.5 h-6 rounded-md"
-                          >
-                            Áp dụng
-                          </Button>
+                        <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 text-[11px] text-slate-400">
+                          <div className="flex items-center gap-2">
+                            <span>{tpl.requirementCount} yêu cầu</span>
+                            <span>•</span>
+                            <span>{tpl.usageCount} lượt dùng</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Button
+                              type="link"
+                              size="small"
+                              icon={<EyeOutlined />}
+                              onClick={() => handleOpenSystemPreview(tpl.templateId)}
+                              className="p-0 text-xs text-slate-500 hover:text-indigo-600"
+                            >
+                              Xem trước
+                            </Button>
+                            <Button
+                              type="primary"
+                              size="small"
+                              onClick={() => handleApplySystemTemplate(tpl)}
+                              className="client-cta text-xs px-2.5 h-6 rounded-md"
+                            >
+                              Áp dụng
+                            </Button>
+                          </div>
                         </div>
                       </div>
+                    ))}
+                  </div>
+                  {templatesList.length > 0 && (
+                    <div className="flex justify-center pt-2">
+                      <Pagination
+                        current={systemPage}
+                        pageSize={systemPageSize}
+                        total={templatesList.length}
+                        onChange={(p, ps) => {
+                          setSystemPage(p);
+                          setSystemPageSize(ps);
+                        }}
+                        pageSizeOptions={['4', '6', '10']}
+                        showSizeChanger={templatesList.length > 4}
+                        size="small"
+                        showTotal={(total, range) => `${range[0]}-${range[1]} / ${total} mẫu`}
+                      />
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               )}
             </>
           )}
@@ -550,65 +595,84 @@ export const JobTemplatePicker: React.FC<JobTemplatePickerProps> = ({
                   />
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
-                  {clientJobsList.map((job) => {
-                    const statusCfg = JOB_STATUS[job.status] || { label: job.status, color: 'default' };
-                    return (
-                      <div
-                        key={job.jobId}
-                        className="group relative flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:border-indigo-400 hover:shadow-md"
-                      >
-                        <div className="space-y-1.5">
-                          <div className="flex items-start justify-between gap-2">
-                            <h3 className="m-0 text-sm font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
-                              {job.title}
-                            </h3>
-                          </div>
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
+                    {paginatedClientJobs.map((job) => {
+                      const statusCfg = JOB_STATUS[job.status] || { label: job.status, color: 'default' };
+                      return (
+                        <div
+                          key={job.jobId}
+                          className="group relative flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:border-indigo-400 hover:shadow-md"
+                        >
+                          <div className="space-y-1.5">
+                            <div className="flex items-start justify-between gap-2">
+                              <h3 className="m-0 text-sm font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
+                                {job.title}
+                              </h3>
+                            </div>
 
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <Tag color={statusCfg.color} className="m-0 text-[11px] border-0">
-                              {statusCfg.label}
-                            </Tag>
-                            {job.employmentType && (
-                              <Tag color="blue" className="m-0 text-[11px] border-0 bg-blue-50 text-blue-700">
-                                {EMPLOYMENT_TYPE_LABEL[job.employmentType] || job.employmentType}
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <Tag color={statusCfg.color} className="m-0 text-[11px] border-0">
+                                {statusCfg.label}
                               </Tag>
-                            )}
+                              {job.employmentType && (
+                                <Tag color="blue" className="m-0 text-[11px] border-0 bg-blue-50 text-blue-700">
+                                  {EMPLOYMENT_TYPE_LABEL[job.employmentType] || job.employmentType}
+                                </Tag>
+                              )}
+                            </div>
+
+                            <p className="m-0 text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                              {job.description ? job.description.replace(/<[^>]*>?/gm, '') : 'Không có phần mô tả ngắn.'}
+                            </p>
                           </div>
 
-                          <p className="m-0 text-xs text-slate-600 line-clamp-2 leading-relaxed">
-                            {job.description ? job.description.replace(/<[^>]*>?/gm, '') : 'Không có phần mô tả ngắn.'}
-                          </p>
-                        </div>
-
-                        <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 text-[11px] text-slate-400">
-                          <div>
-                            <span>Tuyển {job.quantity || 1} người</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Button
-                              type="link"
-                              size="small"
-                              icon={<EyeOutlined />}
-                              onClick={() => handlePreviewClientJob(job)}
-                              className="p-0 text-xs text-slate-500 hover:text-indigo-600"
-                            >
-                              Xem trước
-                            </Button>
-                            <Button
-                              type="primary"
-                              size="small"
-                              onClick={() => handleApplyClientJob(job)}
-                              className="client-cta text-xs px-2.5 h-6 rounded-md"
-                            >
-                              Dùng tin này
-                            </Button>
+                          <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 text-[11px] text-slate-400">
+                            <div>
+                              <span>Tuyển {job.quantity || 1} người</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Button
+                                type="link"
+                                size="small"
+                                icon={<EyeOutlined />}
+                                onClick={() => handlePreviewClientJob(job)}
+                                className="p-0 text-xs text-slate-500 hover:text-indigo-600"
+                              >
+                                Xem trước
+                              </Button>
+                              <Button
+                                type="primary"
+                                size="small"
+                                onClick={() => handleApplyClientJob(job)}
+                                className="client-cta text-xs px-2.5 h-6 rounded-md"
+                              >
+                                Dùng tin này
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                  {clientJobsList.length > 0 && (
+                    <div className="flex justify-center pt-2">
+                      <Pagination
+                        current={myJobsPage}
+                        pageSize={myJobsPageSize}
+                        total={clientJobsList.length}
+                        onChange={(p, ps) => {
+                          setMyJobsPage(p);
+                          setMyJobsPageSize(ps);
+                        }}
+                        pageSizeOptions={['4', '6', '10']}
+                        showSizeChanger={clientJobsList.length > 4}
+                        size="small"
+                        showTotal={(total, range) => `${range[0]}-${range[1]} / ${total} tin`}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}

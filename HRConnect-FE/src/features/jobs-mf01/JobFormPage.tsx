@@ -79,11 +79,77 @@ import { JobTemplatePicker } from './JobTemplatePicker';
 import {
   EXPERIENCE_YEAR_OPTIONS,
   HEADHUNT_FEE_OPTIONS,
+  JOB_EXPERIENCE_SELECT_OPTIONS,
+  PRESET_EXPERIENCE_VALUES,
   LOCATION_OPTIONS,
   PAYMENT_DUE_DAY_OPTIONS,
   WARRANTY_DAY_OPTIONS,
   WORKING_TIME_OPTIONS,
 } from './jobFormOptions';
+
+interface ExperienceSelectInputProps {
+  value?: number | null;
+  onChange?: (val: number | null) => void;
+  disabled?: boolean;
+}
+
+const ExperienceSelectInput: React.FC<ExperienceSelectInputProps> = ({ value, onChange, disabled }) => {
+  const isCustomValue = value != null && !PRESET_EXPERIENCE_VALUES.includes(value);
+  const [isCustomMode, setIsCustomMode] = useState<boolean>(isCustomValue);
+
+  useEffect(() => {
+    if (value != null && !PRESET_EXPERIENCE_VALUES.includes(value)) {
+      setIsCustomMode(true);
+    }
+  }, [value]);
+
+  const selectValue = isCustomMode ? 'custom' : (value ?? 0);
+
+  const handleSelectChange = (val: number | 'custom') => {
+    if (val === 'custom') {
+      setIsCustomMode(true);
+      if (value === 0 || value == null) {
+        onChange?.(null);
+      }
+    } else {
+      setIsCustomMode(false);
+      onChange?.(val);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <Select
+        size="large"
+        className="w-full"
+        value={selectValue}
+        onChange={handleSelectChange}
+        disabled={disabled}
+        options={JOB_EXPERIENCE_SELECT_OPTIONS.map((opt) => ({
+          value: opt.value,
+          label: opt.label,
+        }))}
+      />
+      {isCustomMode && (
+        <div className="flex items-center gap-2">
+          <InputNumber
+            size="large"
+            min={0}
+            max={50}
+            step={0.5}
+            precision={1}
+            disabled={disabled}
+            className="w-full"
+            placeholder="Nhập số năm kinh nghiệm (VD: 0.5, 1.5, 2.5, 4...)"
+            addonAfter="năm"
+            value={value ?? undefined}
+            onChange={(val) => onChange?.(val != null ? Number(val) : null)}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ─── Interfaces & Constants ──────────────────────────────────────────────────
 
@@ -1325,35 +1391,12 @@ export const JobFormPage: React.FC = () => {
                     label="Kinh nghiệm"
                     rules={[{ type: 'number', min: 0, max: 50, message: 'Từ 0 đến 50 năm.' }]}
                     extra={
-                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
-                        <span>Gợi ý:</span>
-                        {[
-                          { value: 0, label: 'Không yêu cầu' },
-                          { value: 1, label: '1 năm' },
-                          { value: 2, label: '2 năm' },
-                          { value: 3, label: '3 năm' },
-                          { value: 5, label: '5 năm' },
-                        ].map((preset) => (
-                          <button
-                            key={preset.value}
-                            type="button"
-                            onClick={() => form.setFieldValue('minExperienceYears', preset.value)}
-                            className="cursor-pointer rounded border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
-                          >
-                            {preset.label}
-                          </button>
-                        ))}
-                      </div>
+                      <span className="text-xs text-slate-500">
+                        Chọn mốc kinh nghiệm yêu cầu hoặc chọn &quot;Khác&quot; để tự nhập số năm tùy chỉnh (hỗ trợ số lẻ như 1.5, 2.5 năm).
+                      </span>
                     }
                   >
-                    <InputNumber
-                      size="large"
-                      min={0}
-                      max={50}
-                      className="w-full"
-                      placeholder="Nhập số năm kinh nghiệm (0 = Không yêu cầu)"
-                      addonAfter="năm"
-                    />
+                    <ExperienceSelectInput />
                   </Form.Item>
                 </div>
               </section>

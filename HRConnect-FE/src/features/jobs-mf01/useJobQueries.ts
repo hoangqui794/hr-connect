@@ -137,7 +137,7 @@ export const usePostingEligibility = () =>
 export const useJobTemplates = (keyword?: string, industry?: string, enabled = true) =>
   useQuery({
     queryKey: jobQueryKeys.templates(keyword, industry),
-    queryFn: () => jobsApi.searchTemplates({ keyword, industry, pageSize: 20 }),
+    queryFn: () => jobsApi.searchTemplates({ keyword, industry, pageSize: 100 }),
     enabled,
     staleTime: 5 * 60 * 1000,
   });
