@@ -38,7 +38,7 @@ public static class JobEndpoints
 
         publicJobs.MapGet("", async (string? search, string? location, string? employmentType,
             Guid? serviceTypeId, decimal? salaryMin, decimal? salaryMax, int? page, int? pageSize,
-            string? sortBy, string? sortDirection, int? experienceYears,
+            string? sortBy, string? sortDirection, decimal? experienceYears,
             ISender sender, CancellationToken ct) =>
             await Run(async () => Results.Ok(await sender.Send(new GetPublicJobsQuery(
                 [JobAccessPolicy.CandidateRole], false, search, location, employmentType, serviceTypeId,
@@ -146,7 +146,7 @@ public static class JobEndpoints
         ).WithName("GetMyJobs").WithSummary("Lấy danh sách Job của doanh nghiệp hiện tại");
         jobs.MapGet("", async (ClaimsPrincipal user, string? search, string? location, string? employmentType,
             Guid? serviceTypeId, decimal? salaryMin, decimal? salaryMax, int? page, int? pageSize,
-            string? sortBy, string? sortDirection, int? experienceYears, ISender sender, CancellationToken ct) =>
+            string? sortBy, string? sortDirection, decimal? experienceYears, ISender sender, CancellationToken ct) =>
         {
             if (!user.HasClaim("permission", "job.view")) return Forbidden();
             var internalAccess = ReviewerCan(user, "job.review");

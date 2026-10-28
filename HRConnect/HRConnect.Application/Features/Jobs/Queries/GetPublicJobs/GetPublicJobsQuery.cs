@@ -18,7 +18,7 @@ public sealed record GetPublicJobsQuery(
     int PageSize = 20,
     string? SortBy = null,
     string? SortDirection = null,
-    int? ExperienceYears = null) : IRequest<JobPageDto>;
+    decimal? ExperienceYears = null) : IRequest<JobPageDto>;
 
 public sealed record JobPageDto(
     IReadOnlyList<JobDto> Items,

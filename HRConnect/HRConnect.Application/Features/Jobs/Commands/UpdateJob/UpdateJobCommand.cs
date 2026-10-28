@@ -21,8 +21,8 @@ public sealed class UpdateJobCommand : IRequest<JobActionResponse>
     public decimal? SalaryMax { get; set; }
     public bool SalaryNegotiable { get; set; }
     public string? SalaryNote { get; set; }
-    public int? MinExperienceYears { get; set; }
-    public int? MaxExperienceYears { get; set; }
+    public decimal? MinExperienceYears { get; set; }
+    public decimal? MaxExperienceYears { get; set; }
     public string CurrencyCode { get; set; } = "VND";
     public int Quantity { get; set; } = 1;
     public int? SourcingTarget { get; set; }

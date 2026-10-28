@@ -29,9 +29,9 @@ public partial class JobTemplate
 
     public string? EmploymentType { get; set; }
 
-    public int? MinExperienceYears { get; set; }
+    public decimal? MinExperienceYears { get; set; }
 
-    public int? MaxExperienceYears { get; set; }
+    public decimal? MaxExperienceYears { get; set; }
 
     /// <summary>Lower-cased, accent-free name + title + keywords + industry, rebuilt on every save.</summary>
     public string SearchText { get; set; } = null!;

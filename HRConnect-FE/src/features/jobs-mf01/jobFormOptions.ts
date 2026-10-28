@@ -4,6 +4,20 @@ export const EXPERIENCE_YEAR_OPTIONS = Array.from({ length: 16 }, (_, years) => 
   label: years === 0 ? 'Không yêu cầu kinh nghiệm' : years === 15 ? 'Từ 15 năm trở lên' : `Tối thiểu ${years} năm`,
 }));
 
+export const JOB_EXPERIENCE_SELECT_OPTIONS = [
+  { value: 0, label: 'Không yêu cầu kinh nghiệm' },
+  { value: 0.5, label: 'Tối thiểu 6 tháng' },
+  { value: 1, label: 'Tối thiểu 1 năm' },
+  { value: 1.5, label: 'Tối thiểu 1.5 năm' },
+  { value: 2, label: 'Tối thiểu 2 năm' },
+  { value: 2.5, label: 'Tối thiểu 2.5 năm' },
+  { value: 3, label: 'Tối thiểu 3 năm' },
+  { value: 5, label: 'Tối thiểu 5 năm' },
+  { value: 'custom', label: 'Khác' },
+] as const;
+
+export const PRESET_EXPERIENCE_VALUES = [0, 0.5, 1, 1.5, 2, 2.5, 3, 5];
+
 export const LOCATION_OPTIONS = [
   'Hà Nội',
   'TP. Hồ Chí Minh',

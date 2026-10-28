@@ -82,7 +82,7 @@ public sealed record JobTemplatePageDto(
 public sealed record JobTemplateDto(
     Guid TemplateId, string Code, string Name, string Industry, string? Level, string? Keywords, string? Summary,
     string Title, string Description, string? Benefits, string? EmploymentType,
-    int? MinExperienceYears, int? MaxExperienceYears,
+    decimal? MinExperienceYears, decimal? MaxExperienceYears,
     IReadOnlyList<JobTemplateRequirementDto> Requirements,
     bool IsActive, int UsageCount, DateTime UpdatedAt, Guid? ConcurrencyToken);
 
@@ -91,7 +91,7 @@ public sealed record JobTemplateRequirementInput(string RequirementType, string?
 public sealed record JobTemplateInput(
     string Code, string Name, string Industry, string? Level, string? Keywords, string? Summary,
     string Title, string Description, string? Benefits, string? EmploymentType,
-    int? MinExperienceYears, int? MaxExperienceYears,
+    decimal? MinExperienceYears, decimal? MaxExperienceYears,
     IReadOnlyList<JobTemplateRequirementInput> Requirements);
 
 public static class JobTemplateMapping

@@ -52,7 +52,7 @@ public interface IJobRepository
         Guid? serviceTypeId,
         decimal? salaryMin,
         decimal? salaryMax,
-        int experienceYears,
+        decimal? experienceYears,
         int page,
         int pageSize,
         string? sortBy = null,

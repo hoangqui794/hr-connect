@@ -87,8 +87,8 @@ public class CreateJobCommandHandlerTests
         createdJob.WorkingTime.Should().Be("Monday-Friday, 08:00-17:30");
         createdJob.ConcurrencyToken.Should().NotBe(Guid.Empty);
         createdJob.EmploymentType.Should().Be("FULL_TIME");
-        createdJob.MinExperienceYears.Should().Be(3);
-        createdJob.MaxExperienceYears.Should().Be(5);
+        createdJob.MinExperienceYears.Should().Be(3m);
+        createdJob.MaxExperienceYears.Should().Be(5m);
         createdJob.SalaryMin.Should().Be(15_000_000);
         createdJob.SalaryMax.Should().BeNull();
         createdJob.SalaryNegotiable.Should().BeTrue();
@@ -109,8 +109,8 @@ public class CreateJobCommandHandlerTests
         result.Success.Should().BeTrue();
         result.Data.JobId.Should().Be(createdJob.JobId);
         result.Data.Benefits.Should().Be("KPI bonus, insurance and training");
-        result.Data.MinExperienceYears.Should().Be(3);
-        result.Data.MaxExperienceYears.Should().Be(5);
+        result.Data.MinExperienceYears.Should().Be(3m);
+        result.Data.MaxExperienceYears.Should().Be(5m);
         result.Data.SalaryNegotiable.Should().BeTrue();
         result.Data.SalaryNote.Should().Be("Thỏa thuận theo năng lực khi phỏng vấn.");
         result.Data.Status.Should().Be("DRAFT");
