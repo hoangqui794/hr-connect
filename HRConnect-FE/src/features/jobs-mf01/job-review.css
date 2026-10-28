@@ -1,0 +1,315 @@
+.job-review-page {
+  --job-review-border: #e2e8f0;
+  --job-review-muted: #64748b;
+  --job-review-panel: #ffffff;
+}
+
+.job-review-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 10px;
+  border: 1px solid var(--job-review-border);
+  border-radius: 14px;
+  background: var(--job-review-panel);
+  box-shadow: 0 4px 16px -10px rgba(15, 23, 42, 0.18);
+}
+
+.job-review-status-tabs {
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.job-review-status-tabs .ant-segmented {
+  min-width: max-content;
+}
+
+.job-review-search {
+  width: min(100%, 320px);
+  flex: 0 0 auto;
+}
+
+.job-review-search .ant-input-affix-wrapper {
+  min-height: 40px;
+  border-radius: 10px;
+}
+
+.job-review-empty-state {
+  display: flex;
+  min-height: 340px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 48px 24px;
+  border: 1px solid var(--job-review-border);
+  border-radius: 18px;
+  background: #ffffff;
+  text-align: center;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 12px 32px -22px rgba(15, 23, 42, 0.22);
+}
+
+.job-review-empty-icon {
+  display: inline-flex;
+  width: 60px;
+  height: 60px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+  border: 1px solid #bfdbfe;
+  border-radius: 18px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 25px;
+}
+
+.job-review-empty-state h2 {
+  max-width: 38rem;
+  margin: 0;
+  color: #0f172a;
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.job-review-empty-state p {
+  max-width: 38rem;
+  margin: 8px 0 20px;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.job-review-empty-state .ant-btn {
+  min-height: 40px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.job-review-workspace {
+  display: grid;
+  grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
+  align-items: stretch;
+  min-width: 0;
+  overflow: clip;
+  border: 1px solid var(--job-review-border);
+  border-radius: 18px;
+  background: var(--job-review-panel);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 12px 32px -20px rgba(15, 23, 42, 0.24);
+  transition: grid-template-columns 180ms ease-out;
+}
+
+.job-review-workspace.is-queue-collapsed {
+  grid-template-columns: 0 minmax(0, 1fr);
+}
+
+.job-review-queue {
+  min-width: 0;
+  max-height: calc(100vh - 232px);
+  overflow: auto;
+  padding: 14px;
+  border-right: 1px solid var(--job-review-border);
+  background: #f8fafc;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.is-queue-collapsed .job-review-queue {
+  visibility: hidden;
+  padding-inline: 0;
+  border-right: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.job-review-queue-header {
+  position: sticky;
+  top: -14px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -14px -14px 12px;
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid var(--job-review-border);
+  background: rgba(248, 250, 252, 0.96);
+}
+
+.job-review-queue-toggle.ant-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 10px;
+  color: #475569;
+}
+
+.job-review-queue-toggle.ant-btn:hover,
+.job-review-queue-toggle.ant-btn:focus-visible {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+.job-review-queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.job-review-queue-item {
+  width: 100%;
+  min-height: 104px;
+  padding: 13px 14px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #0f172a;
+  text-align: left;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition:
+    border-color 150ms ease-out,
+    background-color 150ms ease-out,
+    box-shadow 150ms ease-out;
+}
+
+.job-review-queue-item:hover {
+  border-color: #bfdbfe;
+  background: #f8fbff;
+}
+
+.job-review-queue-item.is-selected {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  box-shadow:
+    inset 0 0 0 1px rgba(37, 99, 235, 0.08),
+    0 5px 14px -10px rgba(37, 99, 235, 0.5);
+}
+
+.job-review-queue-item:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 2px;
+}
+
+.job-review-detail {
+  position: relative;
+  min-width: 0;
+  background: var(--job-review-panel);
+}
+
+.job-review-action-bar {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  backdrop-filter: blur(10px);
+}
+
+.job-review-detail-content {
+  width: 100%;
+  max-width: 1080px;
+  margin-inline: auto;
+  padding: 24px clamp(20px, 2.4vw, 32px) 32px;
+}
+
+.job-review-restore-queue {
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--job-review-border);
+  background: #ffffff;
+}
+
+.job-review-restore-queue .ant-btn {
+  min-height: 40px;
+  border-radius: 10px;
+  background: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 14px -8px rgba(15, 23, 42, 0.28);
+}
+
+@media (max-width: 1180px) {
+  .job-review-workspace {
+    grid-template-columns: minmax(280px, 310px) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1024px) {
+  .job-review-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .job-review-search {
+    width: 100%;
+  }
+
+  .job-review-workspace,
+  .job-review-workspace.is-queue-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .job-review-queue {
+    max-height: 360px;
+    border-right: 0;
+    border-bottom: 1px solid var(--job-review-border);
+  }
+
+  .job-review-workspace.is-queue-collapsed .job-review-queue {
+    display: none;
+  }
+
+  .job-review-action-bar {
+    position: static;
+  }
+
+  .job-review-detail-content {
+    padding: 20px 16px 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .job-review-toolbar {
+    padding: 8px;
+    border-radius: 12px;
+  }
+
+  .job-review-workspace {
+    border-radius: 14px;
+  }
+
+  .job-review-queue {
+    padding: 12px;
+  }
+
+  .job-review-queue-header {
+    top: -12px;
+    margin: -12px -12px 10px;
+    padding: 12px;
+  }
+
+  .job-review-action-bar {
+    padding: 16px;
+  }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .job-review-workspace,
+  .job-review-queue-item {
+    transition: none;
+  }
+}

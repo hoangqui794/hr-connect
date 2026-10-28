@@ -14,6 +14,14 @@ public sealed record CvExperience(string? Title, string? Company, string? StartD
 
 public sealed record CvEducation(string? School, string? Degree, string? StartDate, string? EndDate, string? Description);
 
+/// <summary>Visual choices saved with the CV so reopening and PDF export keep the same design.</summary>
+public sealed record CvPresentation(
+    string? AccentColor,
+    string? Density,
+    string? FontFamily,
+    string? Layout,
+    IReadOnlyList<string>? VisibleSections = null);
+
 /// <summary>Content the candidate fills in; the FE sends and receives it as structuredContent.</summary>
 public sealed record StructuredCvContent(
     string FullName,
@@ -26,7 +34,8 @@ public sealed record StructuredCvContent(
     IReadOnlyList<CvEducation>? Educations,
     IReadOnlyList<string>? Skills,
     IReadOnlyList<string>? Languages,
-    IReadOnlyList<string>? Certificates);
+    IReadOnlyList<string>? Certificates,
+    CvPresentation? Presentation = null);
 
 public sealed record CvTemplateDto(Guid CvTemplateId, string Code, string Name, string? Description, string? PreviewUrl, string TemplateConfig);
 
@@ -210,6 +219,49 @@ public sealed class CvBuilderHandlers :
         List<string> Words(IReadOnlyList<string>? items, string label) =>
             L(items, label).Select(i => S(i, label, MaxShort)).OfType<string>().ToList();
 
+        CvPresentation? Presentation(CvPresentation? value)
+        {
+            if (value == null) return null;
+
+            var accent = value.AccentColor?.Trim().ToUpperInvariant();
+            if (accent is not { Length: 7 } || accent[0] != '#' || !accent[1..].All(Uri.IsHexDigit))
+            {
+                throw new BadRequestException("Màu CV phải có định dạng #RRGGBB.", "CV_PRESENTATION_INVALID");
+            }
+
+            var density = value.Density?.Trim().ToLowerInvariant();
+            if (density is not ("compact" or "normal" or "spacious"))
+            {
+                throw new BadRequestException("Độ giãn CV không hợp lệ.", "CV_PRESENTATION_INVALID");
+            }
+
+            var font = value.FontFamily?.Trim().ToUpperInvariant();
+            if (font is not ("BE_VIETNAM_PRO" or "ROBOTO" or "INTER"))
+            {
+                throw new BadRequestException("Font CV không được hỗ trợ.", "CV_PRESENTATION_INVALID");
+            }
+
+            var layout = value.Layout?.Trim().ToLowerInvariant();
+            if (layout is not ("ats" or "classic" or "modern" or "compact" or "executive" or "elegant" or "minimal"))
+            {
+                throw new BadRequestException("Bố cục CV không được hỗ trợ.", "CV_PRESENTATION_INVALID");
+            }
+
+            var supportedSections = new HashSet<string>(
+                ["summary", "experiences", "educations", "skills", "languages", "certificates"],
+                StringComparer.OrdinalIgnoreCase);
+            var sections = (value.VisibleSections ?? supportedSections.ToList())
+                .Select(section => section.Trim().ToLowerInvariant())
+                .Distinct()
+                .ToList();
+            if (sections.Count == 0 || sections.Any(section => !supportedSections.Contains(section)))
+            {
+                throw new BadRequestException("Danh sách mục hiển thị trong CV không hợp lệ.", "CV_PRESENTATION_INVALID");
+            }
+
+            return new CvPresentation(accent, density, font, layout, sections);
+        }
+
         var result = new StructuredCvContent(
             fullName,
             S(content.Headline, "Vị trí mong muốn", MaxShort),
@@ -218,7 +270,7 @@ public sealed class CvBuilderHandlers :
             S(content.Address, "Địa chỉ", MaxShort),
             S(content.Summary, "Mục tiêu nghề nghiệp", MaxLong),
             experiences, educations, Words(content.Skills, "Kỹ năng"), Words(content.Languages, "Ngoại ngữ"),
-            Words(content.Certificates, "Chứng chỉ"));
+            Words(content.Certificates, "Chứng chỉ"), Presentation(content.Presentation));
 
         // An empty CV cannot be scored by AI or read by a recruiter.
         if (result.Summary == null && experiences.Count == 0 && educations.Count == 0 && result.Skills!.Count == 0)

@@ -12,7 +12,7 @@ html:has(.candidate-console) {
   --candidate-accent: #2563eb;
   --candidate-accent-soft: #eff6ff;
   --candidate-radius: 1.25rem;
-  font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', system-ui, sans-serif;
+  font-family: 'Be Vietnam Pro', system-ui, sans-serif;
 }
 
 .candidate-page {
@@ -243,14 +243,6 @@ html:has(.candidate-console) {
   background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
 }
 
-.candidate-application-card--closed::before {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  content: '';
-  background: #94a3b8;
-}
-
 .candidate-application-card--not-selected {
   border-color: #ffe4e6;
   background: #fffafb;
@@ -260,10 +252,6 @@ html:has(.candidate-console) {
 .candidate-application-card--not-selected:hover {
   border-color: #fecdd3;
   box-shadow: 0 10px 24px rgb(190 18 60 / 5%);
-}
-
-.candidate-application-card--not-selected::before {
-  background: #fda4af;
 }
 
 .candidate-application-status {
@@ -1052,20 +1040,6 @@ html:has(.candidate-console) {
     box-shadow: 0 12px 32px rgb(30 64 96 / 7%);
   }
 
-  .candidate-job-discovery .ant-card::before,
-  .candidate-application-card::before,
-  .candidate-affiliate-cv-card::before,
-  .candidate-cv-card::before {
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: 3px;
-    border-radius: inherit;
-    background: linear-gradient(180deg, #1686e8 0%, #36b68a 100%);
-    content: '';
-    opacity: 0;
-    transition: opacity 160ms ease;
-  }
-
   .candidate-job-discovery .ant-card-hoverable:hover,
   .candidate-application-card:hover,
   .candidate-affiliate-cv-card:hover,
@@ -1074,11 +1048,6 @@ html:has(.candidate-console) {
     box-shadow: 0 20px 44px rgb(21 75 120 / 12%);
     transform: translateY(-3px);
   }
-
-  .candidate-job-discovery .ant-card-hoverable:hover::before,
-  .candidate-application-card:hover::before,
-  .candidate-affiliate-cv-card:hover::before,
-  .candidate-cv-card:hover::before { opacity: 1; }
 
   .candidate-empty-surface {
     border-style: dashed;
@@ -1531,4 +1500,369 @@ html:has(.candidate-console) {
   border-color: #d9e6f0;
   border-radius: 1rem !important;
   box-shadow: 0 9px 26px rgb(30 64 96 / 6%) !important;
+}
+
+/* Candidate job search — primary search first, advanced criteria on demand. */
+.job-search-panel {
+  overflow: hidden;
+  border: 1px solid #d7e3f1;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 10px 28px rgb(30 64 96 / 7%);
+}
+
+.job-search-panel__primary {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1.65fr) minmax(13rem, 1fr) auto;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.job-search-panel__primary .ant-input-affix-wrapper,
+.job-search-panel__primary .ant-btn {
+  min-height: 3rem;
+  border-radius: 0.75rem;
+}
+
+.job-search-panel__primary .ant-btn {
+  min-width: 8.5rem;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.job-search-panel__toolbar {
+  display: flex;
+  min-height: 3.25rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-top: 1px solid #e6edf5;
+  padding: 0.5rem 1rem;
+  background: #f8fafc;
+}
+
+.job-search-panel__toolbar .ant-btn:first-child {
+  color: #334155;
+  font-weight: 700;
+}
+
+.job-search-panel__toolbar .ant-btn:first-child.is-active {
+  color: #075f9c;
+  background: #eaf5fd;
+}
+
+.job-search-panel__advanced {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.875rem;
+  border-top: 1px solid #e6edf5;
+  padding: 1rem;
+  background: #fbfdff;
+}
+
+.job-filter-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.4rem;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.job-filter-field .ant-select,
+.job-filter-field .ant-input-number,
+.job-filter-field .ant-picker {
+  width: 100%;
+}
+
+.job-filter-field .ant-select-selector,
+.job-filter-field .ant-input-number,
+.job-filter-field .ant-picker {
+  border-radius: 0.65rem !important;
+}
+
+.job-search-panel__active {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  border-top: 1px solid #e6edf5;
+  padding: 0.7rem 1rem;
+  color: #64748b;
+  background: #fff;
+}
+
+.job-search-panel__active .ant-tag {
+  margin: 0;
+  border-color: #bfdbfe;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  color: #1e40af;
+  background: #eff6ff;
+  white-space: nowrap;
+}
+
+.job-results-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.job-results-toolbar .ant-select-selector {
+  border-radius: 0.65rem !important;
+}
+
+/* Candidate application list — scanable status, complete seven-stage journey. */
+.candidate-applications-filters {
+  border: 1px solid #d9e4f1;
+  border-radius: 1rem;
+  padding: 1rem;
+  background: #fff;
+  box-shadow: 0 8px 24px rgb(30 64 96 / 6%);
+}
+
+.candidate-applications-filters__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.candidate-applications-filters__heading h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.candidate-applications-filters__heading p {
+  margin: 0.2rem 0 0;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.candidate-applications-filters__grid {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1.45fr) repeat(3, minmax(10rem, 1fr));
+  gap: 0.75rem;
+}
+
+.candidate-applications-filters .ant-input-affix-wrapper,
+.candidate-applications-filters .ant-input-search-button,
+.candidate-applications-filters .ant-select-selector,
+.candidate-applications-filters .ant-picker {
+  min-height: 2.7rem;
+  border-radius: 0.65rem !important;
+}
+
+.candidate-applications-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.candidate-application-card-v2 {
+  overflow: hidden;
+  border: 1px solid #d8e3ef;
+  border-radius: 1rem;
+  padding: 1.15rem;
+  background: #fff;
+  box-shadow: 0 8px 24px rgb(30 64 96 / 6%);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.candidate-application-card-v2:hover {
+  border-color: #9bc7e7;
+  box-shadow: 0 14px 32px rgb(30 64 96 / 10%);
+  transform: translateY(-1px);
+}
+
+.candidate-application-card-v2.is-closed {
+  border-color: #e2e8f0;
+  background: #fcfdff;
+}
+
+.candidate-application-card-v2__header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.candidate-application-card-v2__status {
+  grid-column: 1 / -1;
+  margin-top: 0.1rem !important;
+}
+
+.candidate-application-card-v2__logo {
+  flex: 0 0 auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.8rem !important;
+}
+
+.candidate-application-card-v2__identity,
+.candidate-application-card-v2__title-row {
+  min-width: 0;
+}
+
+.candidate-application-card-v2__title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.candidate-application-card-v2__title-row h2 {
+  overflow: hidden;
+  margin: 0;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 750;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.candidate-application-card-v2__identity p {
+  overflow: hidden;
+  margin: 0.15rem 0 0;
+  color: #64748b;
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.candidate-application-card-v2__code {
+  flex: 0 0 auto;
+  border-radius: 0.35rem;
+  padding: 0.15rem 0.4rem;
+  color: #475569;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: #f1f5f9;
+}
+
+.candidate-application-status-v2 {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 0.4rem 0.7rem;
+  color: #075f9c;
+  font-size: 0.76rem;
+  font-weight: 750;
+  line-height: 1;
+  background: #eff6ff;
+  white-space: nowrap;
+}
+
+.candidate-application-status-v2--selected,
+.candidate-application-status-v2--interview { border-color: #c4b5fd; color: #6d28d9; background: #f5f3ff; }
+.candidate-application-status-v2--offer { border-color: #fcd34d; color: #9a4b08; background: #fffbeb; }
+.candidate-application-status-v2--hired { border-color: #86efac; color: #047857; background: #ecfdf5; }
+.candidate-application-status-v2--not-selected,
+.candidate-application-status-v2--withdrawn { border-color: #cbd5e1; color: #475569; background: #f8fafc; }
+
+.candidate-application-card-v2__progress {
+  margin-top: 1rem;
+  border-radius: 0.8rem;
+  padding: 0.8rem;
+  background: #f8fafc;
+}
+
+.candidate-application-card-v2__progress-heading {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+.candidate-card-progress {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(4rem, 1fr));
+  gap: 0.3rem;
+  overflow-x: auto;
+  padding-bottom: 0.15rem;
+}
+
+.candidate-card-progress__step {
+  min-width: 0;
+  color: #94a3b8;
+}
+
+.candidate-card-progress__bar {
+  display: block;
+  height: 0.32rem;
+  border-radius: 999px;
+  background: #dbe3ed;
+}
+
+.candidate-card-progress__label {
+  display: block;
+  margin-top: 0.35rem;
+  overflow: hidden;
+  font-size: 0.66rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.candidate-card-progress__step.is-reached { color: #334155; }
+.candidate-card-progress__step.is-reached .candidate-card-progress__bar { background: #49a8df; }
+.candidate-card-progress__step.is-current { color: #075f9c; font-weight: 750; }
+.candidate-card-progress__step.is-current .candidate-card-progress__bar { background: #0369a1; }
+
+.candidate-application-card-v2__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.9rem;
+}
+
+.candidate-application-card-v2__meta {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 0.45rem 1rem;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.candidate-application-card-v2__meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+}
+
+.candidate-application-card-v2__action {
+  flex: 0 0 auto;
+  border-color: #9cc9e7;
+  border-radius: 0.65rem;
+  color: #075f9c;
+  font-weight: 700;
+}
+
+@media (max-width: 1023px) {
+  .job-search-panel__advanced { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .candidate-applications-filters__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 767px) {
+  .job-search-panel__primary { grid-template-columns: 1fr; }
+  .job-search-panel__primary .ant-btn { width: 100%; }
+  .job-search-panel__advanced,
+  .candidate-applications-filters__grid { grid-template-columns: 1fr; }
+  .job-results-toolbar { align-items: stretch; flex-direction: column; }
+  .job-results-toolbar .ant-select { width: 100%; }
+  .candidate-application-card-v2__title-row { align-items: flex-start; flex-direction: column; }
+  .candidate-application-card-v2__title-row h2 { white-space: normal; }
+  .candidate-application-card-v2__footer { align-items: stretch; flex-direction: column; }
+  .candidate-application-card-v2__action { width: 100%; }
 }

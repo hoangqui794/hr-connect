@@ -1,8 +1,12 @@
 import React from 'react';
 import { Modal, Button } from 'antd';
-import { PrinterOutlined, DownloadOutlined } from '@ant-design/icons';
+import { PrinterOutlined, DownloadOutlined, CloseOutlined } from '@ant-design/icons';
 import { CvCanvas } from './CvCanvas';
-import type { StructuredCvContent } from '@/types/api/cvBuilder';
+import type {
+  CvFontFamily,
+  CvLayoutStyle,
+  StructuredCvContent,
+} from '@/types/api/cvBuilder';
 import type { SectionVisibility } from './CvSidebarTools';
 
 export interface CvPreviewModalProps {
@@ -10,10 +14,9 @@ export interface CvPreviewModalProps {
   onClose: () => void;
   content: StructuredCvContent;
   accentColor: string;
-  fontFamily: string;
-  fontSizeScale: 'small' | 'normal' | 'large';
+  fontFamily: CvFontFamily;
+  layout: CvLayoutStyle;
   density: 'compact' | 'normal' | 'spacious';
-  selectedTemplateCode: 'STANDARD' | 'MODERN_TWO_COL';
   sectionVisibility: SectionVisibility;
   pdfUrl?: string | null;
   title: string;
@@ -25,9 +28,8 @@ export const CvPreviewModal: React.FC<CvPreviewModalProps> = ({
   content,
   accentColor,
   fontFamily,
-  fontSizeScale,
+  layout,
   density,
-  selectedTemplateCode,
   sectionVisibility,
   pdfUrl,
   title,
@@ -78,9 +80,8 @@ export const CvPreviewModal: React.FC<CvPreviewModalProps> = ({
           onChangeContent={() => {}}
           accentColor={accentColor}
           fontFamily={fontFamily}
-          fontSizeScale={fontSizeScale}
+          layout={layout}
           density={density}
-          selectedTemplateCode={selectedTemplateCode}
           sectionVisibility={sectionVisibility}
           readOnly={true}
         />

@@ -287,6 +287,9 @@ export interface JobSearchParams {
   serviceTypeId?: string;
   salaryMin?: number;
   salaryMax?: number;
+  experienceYears?: number;
+  sortBy?: 'POSTED_AT' | 'SALARY';
+  sortDirection?: 'ASC' | 'DESC';
   page: number;
   pageSize: number;
 }

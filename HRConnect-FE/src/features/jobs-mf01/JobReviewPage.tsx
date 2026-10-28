@@ -10,7 +10,6 @@ import {
   App as AntApp,
   Badge,
   Button,
-  Empty,
   Input,
   Modal,
   Segmented,
@@ -34,6 +33,9 @@ import {
   FileDoneOutlined,
   FilePdfOutlined,
   InfoCircleOutlined,
+  InboxOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
   ReloadOutlined,
   SafetyCertificateOutlined,
   SearchOutlined,
@@ -48,6 +50,7 @@ import { formatMoney, useCurrentServiceAgreement, useJobDetail, useJobFeeInfo, u
 import { JobDetailPanel, JobTemplateOriginTag } from './JobDetailPanel';
 import { ReasonModal } from './ReasonModal';
 import { CommercialTermsApprovalModal } from './CommercialTermsApprovalModal';
+import './job-review.css';
 import {
   JOB_STATUS,
   REJECT_REASONS,
@@ -73,6 +76,33 @@ const STATUS_TABS: { label: string; value: StatusFilter }[] = [
   { label: 'Tất cả tin', value: 'ALL' },
 ];
 
+const EMPTY_STATE_COPY: Record<StatusFilter, { title: string; description: string }> = {
+  PENDING_REVIEW: {
+    title: 'Không có tin nào đang chờ duyệt',
+    description: 'Hàng đợi đã được xử lý xong. Tin mới do doanh nghiệp gửi sẽ xuất hiện tại đây.',
+  },
+  PENDING_AGREEMENT: {
+    title: 'Chưa có thỏa thuận cần xử lý',
+    description: 'Các tin đã duyệt nội dung và cần hoàn tất thỏa thuận dịch vụ sẽ xuất hiện tại đây.',
+  },
+  PENDING_PAYMENT: {
+    title: 'Chưa có tin chờ thanh toán',
+    description: 'Tin đã được duyệt và đang chờ doanh nghiệp thanh toán hoặc đặt cọc sẽ xuất hiện tại đây.',
+  },
+  ACTIVE: {
+    title: 'Chưa có tin đang tuyển',
+    description: 'Tin đã hoàn tất duyệt, thỏa thuận và thanh toán sẽ được theo dõi tại đây.',
+  },
+  REJECTED: {
+    title: 'Chưa có tin bị từ chối',
+    description: 'Các tin chưa đạt yêu cầu cùng lý do cần chỉnh sửa sẽ xuất hiện tại đây.',
+  },
+  ALL: {
+    title: 'Chưa có tin tuyển dụng',
+    description: 'Tin tuyển dụng do doanh nghiệp tạo sẽ xuất hiện tại đây khi có dữ liệu.',
+  },
+};
+
 const QueueItem: React.FC<{ job: Job; selected: boolean; onSelect: () => void }> = ({ job, selected, onSelect }) => {
   const statusMeta = JOB_STATUS[job.status as JobStatus] ?? { label: job.status, color: 'default' };
 
@@ -82,10 +112,8 @@ const QueueItem: React.FC<{ job: Job; selected: boolean; onSelect: () => void }>
         type="button"
         onClick={onSelect}
         aria-current={selected ? 'true' : undefined}
-        className={`w-full cursor-pointer rounded-lg border p-3 text-left transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 ${selected
-            ? 'border-l-4 border-l-blue-600 border-y-slate-200/80 border-r-slate-200/80 bg-blue-50/40 shadow-xs'
-            : 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/60'
-          }`}
+        aria-pressed={selected}
+        className={`job-review-queue-item ${selected ? 'is-selected' : ''}`}
       >
         <div className="flex items-start justify-between gap-2">
           <div className={`font-semibold text-sm line-clamp-1 leading-snug ${selected ? 'text-blue-900' : 'text-slate-800'}`}>
@@ -133,6 +161,7 @@ export const JobReviewPage: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string>();
   const [rejectOpen, setRejectOpen] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
+  const [queueCollapsed, setQueueCollapsed] = useState(false);
 
   // Hook lấy danh sách theo trạng thái filter
   const queue = useJobReviewQueue(statusFilter);
@@ -180,6 +209,13 @@ export const JobReviewPage: React.FC = () => {
 
   const job = detail.data;
   const busy = approve.isPending || reject.isPending;
+  const hasSearchKeyword = searchKeyword.trim().length > 0;
+  const emptyState = hasSearchKeyword
+    ? {
+        title: 'Không tìm thấy tin phù hợp',
+        description: 'Hãy thử từ khóa ngắn hơn hoặc xóa từ khóa để xem lại toàn bộ tin trong mục này.',
+      }
+    : EMPTY_STATE_COPY[statusFilter];
 
   // Fee and package come from the backend (posting fee record, else the chosen package price).
   const feeInfo = useJobFeeInfo(job);
@@ -501,9 +537,8 @@ export const JobReviewPage: React.FC = () => {
   };
 
   return (
-    <div>
+    <div className="job-review-page">
       <PageHero
-        eyebrow="Vận hành"
         title="Duyệt và quản lý tin tuyển dụng"
         description="Kiểm tra nội dung, điều khoản và quyết định tin nào đủ điều kiện mở tuyển."
         actions={
@@ -514,20 +549,23 @@ export const JobReviewPage: React.FC = () => {
       />
 
       {/* ── Bộ lọc trạng thái & Tìm kiếm ── */}
-      <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-3 rounded-xl border border-solid border-slate-200 shadow-xs">
-        <Segmented
-          options={STATUS_TABS}
-          value={statusFilter}
-          onChange={(val) => handleStatusChange(val as StatusFilter)}
-          className="font-medium p-1 bg-slate-100"
-          size="middle"
-        />
+      <div className="job-review-toolbar">
+        <div className="job-review-status-tabs" aria-label="Lọc tin tuyển dụng theo trạng thái">
+          <Segmented
+            options={STATUS_TABS}
+            value={statusFilter}
+            onChange={(val) => handleStatusChange(val as StatusFilter)}
+            className="font-medium p-1 bg-slate-100"
+            size="middle"
+          />
+        </div>
 
-        <div className="w-full sm:w-72">
+        <div className="job-review-search">
           <Input
             placeholder="Tìm theo vị trí, công ty..."
             prefix={<SearchOutlined className="text-slate-400" />}
             allowClear
+            aria-label="Tìm tin tuyển dụng theo vị trí hoặc công ty"
             value={searchKeyword}
             onChange={(e) => setSearchKeyword(e.target.value)}
           />
@@ -544,48 +582,74 @@ export const JobReviewPage: React.FC = () => {
         />
       ) : queue.isLoading ? (
         <Skeleton active paragraph={{ rows: 8 }} />
+      ) : jobs.length === 0 ? (
+        <section className="job-review-empty-state" aria-live="polite" aria-label={emptyState.title}>
+          <span className="job-review-empty-icon" aria-hidden>
+            {hasSearchKeyword ? <SearchOutlined /> : <InboxOutlined />}
+          </span>
+          <h2>{emptyState.title}</h2>
+          <p>{emptyState.description}</p>
+          {hasSearchKeyword ? (
+            <Button type="primary" onClick={() => setSearchKeyword('')}>
+              Xóa từ khóa tìm kiếm
+            </Button>
+          ) : (
+            <Button
+              icon={<ReloadOutlined />}
+              loading={queue.isFetching}
+              onClick={() => queue.refetch()}
+            >
+              Kiểm tra dữ liệu mới
+            </Button>
+          )}
+        </section>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)] items-start">
+        <div className={`job-review-workspace ${queueCollapsed ? 'is-queue-collapsed' : ''}`}>
           {/* ── Cột danh sách bên trái ── */}
-          <aside className="admin-surface p-3" aria-label="Danh sách tin tuyển dụng">
-            <div className="flex items-center justify-between px-1.5 py-1.5 border-0 border-b border-solid border-slate-100 mb-2.5">
-              <Text strong className="text-sm text-slate-700">
-                {STATUS_TABS.find((t) => t.value === statusFilter)?.label}
-              </Text>
-              <Badge count={jobs.length} color="#0f172a" overflowCount={999} />
+          <aside className="job-review-queue" aria-label="Danh sách tin tuyển dụng">
+            <div className="job-review-queue-header">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <Text strong className="truncate text-sm text-slate-800">
+                  {STATUS_TABS.find((t) => t.value === statusFilter)?.label}
+                </Text>
+                <Badge count={jobs.length} color="#0f172a" overflowCount={999} />
+              </div>
+              <Tooltip title="Thu gọn danh sách">
+                <Button
+                  type="text"
+                  icon={<MenuFoldOutlined />}
+                  aria-label="Thu gọn danh sách tin tuyển dụng"
+                  className="job-review-queue-toggle"
+                  onClick={() => setQueueCollapsed(true)}
+                />
+              </Tooltip>
             </div>
 
-            {jobs.length === 0 ? (
-              <div className="py-12 text-center">
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description={
-                    searchKeyword
-                      ? 'Không tìm thấy tin nào khớp từ khóa.'
-                      : statusFilter === 'PENDING_REVIEW'
-                        ? 'Không có tin nào đang chờ duyệt.'
-                        : statusFilter === 'PENDING_PAYMENT'
-                          ? 'Không có tin nào đang chờ thanh toán.'
-                          : 'Không có tin tuyển dụng nào trong mục này.'
-                  }
+            <ul className="job-review-queue-list">
+              {jobs.map((j) => (
+                <QueueItem
+                  key={j.jobId}
+                  job={j}
+                  selected={j.jobId === selectedId}
+                  onSelect={() => setSelectedId(j.jobId)}
                 />
-              </div>
-            ) : (
-              <ul className="m-0 list-none space-y-2.5 p-0">
-                {jobs.map((j) => (
-                  <QueueItem
-                    key={j.jobId}
-                    job={j}
-                    selected={j.jobId === selectedId}
-                    onSelect={() => setSelectedId(j.jobId)}
-                  />
-                ))}
-              </ul>
-            )}
+              ))}
+            </ul>
           </aside>
 
           {/* ── Cột chi tiết bên phải ── */}
-          <section className="admin-surface" aria-live="polite" aria-busy={detail.isFetching}>
+          <section className="job-review-detail" aria-live="polite" aria-busy={detail.isFetching}>
+            {queueCollapsed && (
+              <div className="job-review-restore-queue">
+                <Button
+                  icon={<MenuUnfoldOutlined />}
+                  onClick={() => setQueueCollapsed(false)}
+                  aria-label="Hiện danh sách tin tuyển dụng"
+                >
+                  Hiện danh sách
+                </Button>
+              </div>
+            )}
             {detail.isError ? (
               <div className="p-6">
                 <Alert type="error" showIcon message={getApiErrorMessage(detail.error)} />
@@ -598,7 +662,7 @@ export const JobReviewPage: React.FC = () => {
               <>
                 {/* ── Action bar theo trạng thái của Job ── */}
                 {job.status === 'PENDING_REVIEW' ? (
-                  <div className="flex flex-col gap-3 rounded-t-2xl border-0 border-b border-solid border-slate-200 bg-slate-50/70 px-6 py-4">
+                  <div className="job-review-action-bar flex flex-col gap-3 border-0 border-b border-solid border-slate-200 bg-slate-50/95 px-6 py-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-start gap-3">
                         <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5 border border-solid border-blue-200/60">
@@ -643,7 +707,7 @@ export const JobReviewPage: React.FC = () => {
                     </div>
                   </div>
                 ) : job.status === 'PENDING_AGREEMENT' ? (
-                  <div className={`rounded-t-2xl border-0 border-b border-solid px-6 py-4 ${currentAgreement?.hasSignedDocument
+                  <div className={`job-review-action-bar border-0 border-b border-solid px-6 py-4 ${currentAgreement?.hasSignedDocument
                       ? 'border-emerald-200 bg-emerald-50/80'
                       : currentAgreement?.status === 'CHANGE_REQUESTED'
                         ? 'border-amber-200 bg-amber-50/80'
@@ -749,7 +813,7 @@ export const JobReviewPage: React.FC = () => {
                     </div>
                   </div>
                 ) : job.status === 'PENDING_PAYMENT' ? (
-                  <div className="flex flex-col gap-3 rounded-t-2xl border-0 border-b border-solid border-slate-200 bg-slate-50/70 px-6 py-4">
+                  <div className="job-review-action-bar flex flex-col gap-3 border-0 border-b border-solid border-slate-200 bg-slate-50/95 px-6 py-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-start gap-3">
                         <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-700 flex items-center justify-center shrink-0 mt-0.5 border border-solid border-blue-200/60">
@@ -793,7 +857,7 @@ export const JobReviewPage: React.FC = () => {
                     </div>
                   </div>
                 ) : job.status === 'ACTIVE' ? (
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-t-2xl border-0 border-b border-solid border-emerald-200 bg-emerald-50/80 px-6 py-3.5">
+                  <div className="job-review-action-bar flex flex-wrap items-center justify-between gap-2 border-0 border-b border-solid border-emerald-200 bg-emerald-50/95 px-6 py-3.5">
                     <div className="flex items-center gap-2 text-emerald-900 text-sm font-medium">
                       <CheckCircleFilled className="text-emerald-600 text-base" />
                       <span>Tin tuyển dụng đã hoàn tất duyệt và thanh toán, đang hoạt động công khai trên hệ thống.</span>
@@ -803,7 +867,7 @@ export const JobReviewPage: React.FC = () => {
                     </Tag>
                   </div>
                 ) : job.status === 'REJECTED' ? (
-                  <div className="flex flex-col gap-2 rounded-t-2xl border-0 border-b border-solid border-rose-200 bg-rose-50/90 px-6 py-3.5">
+                  <div className="job-review-action-bar flex flex-col gap-2 border-0 border-b border-solid border-rose-200 bg-rose-50/95 px-6 py-3.5">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 text-rose-900 text-sm font-semibold">
                         <CloseCircleFilled className="text-rose-600 text-base" />
@@ -821,7 +885,7 @@ export const JobReviewPage: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-t-2xl border-0 border-b border-solid border-slate-200 bg-slate-50 px-6 py-3.5">
+                  <div className="job-review-action-bar flex flex-wrap items-center justify-between gap-2 border-0 border-b border-solid border-slate-200 bg-slate-50/95 px-6 py-3.5">
                     <Text className="text-sm text-slate-700">
                       Trạng thái hiện tại: <span className="font-semibold">{JOB_STATUS[job.status as JobStatus]?.label ?? job.status}</span>
                     </Text>
@@ -829,7 +893,7 @@ export const JobReviewPage: React.FC = () => {
                   </div>
                 )}
 
-                <div className="p-6">
+                <div className="job-review-detail-content">
                   <JobDetailPanel
                     job={job}
                     showHistory

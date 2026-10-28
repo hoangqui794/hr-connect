@@ -15,7 +15,7 @@ export const STATIC_CV_TEMPLATES: CvTemplateDto[] = [
     templateConfig: {
       accentColor: '#2563EB',
       density: 'normal',
-      fontFamily: 'Inter',
+      fontFamily: 'INTER',
     },
   },
   {
@@ -26,7 +26,7 @@ export const STATIC_CV_TEMPLATES: CvTemplateDto[] = [
     templateConfig: {
       accentColor: '#2563EB',
       density: 'normal',
-      fontFamily: 'Inter',
+      fontFamily: 'INTER',
     },
   },
 ];
