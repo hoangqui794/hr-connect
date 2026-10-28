@@ -34,6 +34,40 @@ export interface StructuredCvEducation {
   description?: string;
 }
 
+export interface StructuredCvProject {
+  id?: string;
+  name: string;
+  role?: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+}
+
+export interface StructuredCvActivity {
+  id?: string;
+  organization: string;
+  role?: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+}
+
+export interface StructuredCvAward {
+  id?: string;
+  title: string;
+  year?: string;
+  issuer?: string;
+}
+
+export interface StructuredCvReference {
+  id?: string;
+  name: string;
+  title?: string;
+  company?: string;
+  email?: string;
+  phone?: string;
+}
+
 export interface StructuredCvContent {
   fullName: string;
   headline?: string;
@@ -46,6 +80,27 @@ export interface StructuredCvContent {
   skills: string[];
   languages: string[];
   certificates: string[];
+  // TopCV Extended Profile fields
+  avatarUrl?: string;
+  dob?: string;
+  gender?: string;
+  website?: string;
+  shortTermGoal?: string;
+  longTermGoal?: string;
+  technicalSkills?: string[];
+  softSkills?: string[];
+  projects?: StructuredCvProject[];
+  activities?: StructuredCvActivity[];
+  awards?: StructuredCvAward[];
+  references?: StructuredCvReference[];
+  interests?: string[];
+  additionalInfo?: string;
+  // Layout customization state saved with CV
+  selectedTemplateCode?: 'STANDARD' | 'MODERN_TWO_COL' | string;
+  accentColor?: string;
+  fontFamily?: string;
+  fontSizeScale?: 'small' | 'normal' | 'large';
+  density?: 'compact' | 'normal' | 'spacious';
 }
 
 export interface CreateStructuredCvRequest {

@@ -15,5 +15,10 @@ export interface CandidateCv {
   deleteBehavior: 'HARD_DELETE' | 'ARCHIVE_HISTORY' | string;
   creationMethod?: 'UPLOAD' | 'TEMPLATE_FORM' | 'PLATFORM_BUILDER' | string | null;
   cvTemplateId?: string | null;
+  id?: string;
+  name?: string | null;
+  isOnlineCv?: boolean;
+  fileUrl?: string | null;
+  previewUrl?: string | null;
 }
 

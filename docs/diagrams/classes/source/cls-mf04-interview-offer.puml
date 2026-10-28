@@ -9,12 +9,13 @@ class InterviewEndpoints <<endpoint>> {
 class RecruitmentEndpoints <<endpoint>> {
   +POST /applications/{id}/offers
   +POST /applications/{id}/start-work
+  +POST /internal/placement-reconciliations/{id}
 }
 class ScheduleInterviewCommandHandler <<handler>> {
   +Handle()
 }
 class RecordInterviewResultCommandHandler <<handler>> {
-  +Handle(PASS | FAIL | BACKUP)
+  +Handle(PASS | FAIL | BACKUP | NO_SHOW)
 }
 class OfferHandlers <<handler>> {
   CreateOfferDraft · UpdateOfferDraft · SendOffer
@@ -25,6 +26,7 @@ class ConfirmStartWorkCommandHandler <<handler>> {
 }
 class MarkNotStartedCommandHandler <<handler>> {
   +Handle(reason)
+  +HEADHUNT_COD: Reconciliation PENDING (NOT_STARTED)
 }
 class CorrectPlacementStartDateCommandHandler <<handler>> {
   +Handle() HR/Admin, 7 days
@@ -75,4 +77,21 @@ CorrectPlacementStartDateCommandHandler --> Placement : updates
 Application *-- Interview : 0..*
 Application *-- Offer : 0..*
 Application --> Placement : 0..1
+class PlacementReconciliation <<entity>> {
+  +ClaimedOutcome (STARTED | NOT_STARTED)
+  +Status (PENDING | CONFIRMED | FLAGGED)
+  +ContactChannel · Note · ResolutionAction
+}
+class ReconcilePlacementCommandHandler <<handler>> {
+  +Handle(CONFIRM | FLAG) — Internal HR
+  +CONFIRMED → ServiceFee DUE / OVERDUE
+}
+class ResolveFlaggedReconciliationCommandHandler <<handler>> {
+  +Handle(CONFIRM_REPORTED_OUTCOME | REOPEN_FOR_CLIENT_CONFIRMATION) — Admin
+}
+RecruitmentEndpoints ..> ReconcilePlacementCommandHandler : sends
+ConfirmStartWorkCommandHandler --> PlacementReconciliation : creates PENDING (HEADHUNT_COD)
+PlacementReconciliation --> Placement : 0..1
+ReconcilePlacementCommandHandler --> PlacementReconciliation : CONFIRMED / FLAGGED
+ResolveFlaggedReconciliationCommandHandler --> PlacementReconciliation : resolves FLAGGED
 @enduml

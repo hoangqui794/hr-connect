@@ -91,3 +91,7 @@ tmp/
 # Deployed e2e: saved sessions (tokens) and local evidence never go to git
 HRConnect-FE/e2e-deploy/.auth/
 test-evidence/
+stitch_hrconnect_job_portal*/
+HRConnect-FE/stitch_hrconnect_job_portal*/
+docker-compose*.yml
+**/docker-compose*.yml
