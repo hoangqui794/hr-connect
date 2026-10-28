@@ -9,6 +9,9 @@ export const candidateCvApi = {
   async list(): Promise<CandidateCv[]> {
     return (await apiClient.get<ApiEnvelope<CandidateCv[]>>('/candidates/cv')).data.data;
   },
+  async getAll(): Promise<CandidateCv[]> {
+    return this.list();
+  },
   async upload(file: File, title?: string, isPrimary?: boolean) {
     const body = createMultipartBody({ file, title, isPrimary: isPrimary ? 'true' : undefined });
     return (await apiClient.post<ApiEnvelope<unknown> & { message?: string }>('/candidates/cv', body)).data;

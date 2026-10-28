@@ -12,6 +12,7 @@ import {
   LoginOutlined,
   UserAddOutlined,
   CustomerServiceOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
@@ -22,6 +23,7 @@ import { CandidateWorkspaceMenu } from '@/features/portal/candidate/CandidateWor
 import { UserRole } from '@/types/roles';
 import { ROLE_DASHBOARD_ROUTES } from '@/routes/AppRoutes';
 import { BrandMark } from '@/components/common/BrandMark';
+import { CvHeaderDropdown } from '@/components/layout/CvHeaderDropdown';
 
 export const Navbar: React.FC = () => {
   const navigate = useNavigate();
@@ -137,6 +139,9 @@ export const Navbar: React.FC = () => {
           >
             Việc làm
           </Button>
+
+          {/* Mega Dropdown Tạo CV theo chuẩn TopCV */}
+          <CvHeaderDropdown />
 
           <Button
             type="text"
@@ -311,6 +316,16 @@ export const Navbar: React.FC = () => {
             }`}
           >
             Việc làm
+          </Button>
+
+          <Button
+            type="text"
+            block
+            icon={<FileTextOutlined />}
+            onClick={() => navigateAndClose('/candidate/cv-builder')}
+            className="flex items-center justify-start h-10 px-3 font-semibold rounded-lg text-left text-emerald-600 bg-emerald-50/70"
+          >
+            Tạo CV Online (Chuẩn TopCV)
           </Button>
 
           <Button

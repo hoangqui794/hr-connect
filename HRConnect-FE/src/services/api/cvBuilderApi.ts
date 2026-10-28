@@ -50,67 +50,129 @@ export const validateStructuredCvContent = (
   return { isValid: true };
 };
 
+import { STATIC_CV_TEMPLATES } from '@/features/portal/candidate/cv-builder/constants/templates';
+import {
+  getSavedCvById,
+  saveCandidateCv,
+} from '@/features/portal/candidate/cv-builder/services/cvStorage';
+
 export const cvBuilderApi = {
   /**
    * GET /api/v1/cv-templates
-   * Retrieves available CV layout templates.
+   * Retrieves available CV layout templates with static fallback.
    */
   async getTemplates(): Promise<CvTemplateDto[]> {
-    const res = await apiClient.get<ApiEnvelope<CvTemplateDto[]> | CvTemplateDto[]>('/cv-templates');
-    if (Array.isArray(res.data)) {
-      return res.data;
+    try {
+      const res = await apiClient.get<ApiEnvelope<CvTemplateDto[]> | CvTemplateDto[]>('/cv-templates');
+      if (Array.isArray(res.data)) {
+        return res.data;
+      }
+      if (res.data && 'data' in res.data && Array.isArray(res.data.data)) {
+        return res.data.data;
+      }
+      return STATIC_CV_TEMPLATES;
+    } catch {
+      return STATIC_CV_TEMPLATES;
     }
-    if (res.data && 'data' in res.data && Array.isArray(res.data.data)) {
-      return res.data.data;
-    }
-    return [];
   },
 
   /**
    * POST /api/v1/candidates/cv/structured
-   * Creates a new CV from a template or platform builder.
+   * Creates a new CV with localStorage fallback if endpoint is not implemented on backend.
    */
   async createStructuredCv(payload: CreateStructuredCvRequest): Promise<StructuredCvDetailDto> {
-    const res = await apiClient.post<ApiEnvelope<StructuredCvDetailDto> | StructuredCvDetailDto>(
-      '/candidates/cv/structured',
-      payload
-    );
-    if (res.data && 'data' in res.data && res.data.data) {
-      return res.data.data;
+    try {
+      const res = await apiClient.post<ApiEnvelope<StructuredCvDetailDto> | StructuredCvDetailDto>(
+        '/candidates/cv/structured',
+        payload
+      );
+      if (res.data && 'data' in res.data && res.data.data) {
+        return res.data.data;
+      }
+      return res.data as StructuredCvDetailDto;
+    } catch {
+      const saved = saveCandidateCv({
+        title: payload.title,
+        selectedTemplateCode: payload.cvTemplateId || 'STANDARD',
+        isPrimary: payload.isPrimary,
+        structuredContent: payload.structuredContent,
+      });
+      return {
+        cvId: saved.cvId,
+        title: saved.title,
+        cvTemplateId: saved.selectedTemplateCode,
+        isPrimary: saved.isPrimary,
+        creationMethod: 'PLATFORM_BUILDER',
+        updatedAt: saved.updatedAt,
+        structuredContent: saved.structuredContent,
+      };
     }
-    return res.data as StructuredCvDetailDto;
   },
 
   /**
    * GET /api/v1/candidates/cv/structured/{cvId}
-   * Retrieves structured CV data to populate the edit form.
+   * Retrieves structured CV data from backend or localStorage.
    */
   async getStructuredCv(cvId: string): Promise<StructuredCvDetailDto> {
-    const res = await apiClient.get<ApiEnvelope<StructuredCvDetailDto> | StructuredCvDetailDto>(
-      `/candidates/cv/structured/${encodeURIComponent(cvId)}`
-    );
-    if (res.data && 'data' in res.data && res.data.data) {
-      return res.data.data;
+    try {
+      const res = await apiClient.get<ApiEnvelope<StructuredCvDetailDto> | StructuredCvDetailDto>(
+        `/candidates/cv/structured/${encodeURIComponent(cvId)}`
+      );
+      if (res.data && 'data' in res.data && res.data.data) {
+        return res.data.data;
+      }
+      return res.data as StructuredCvDetailDto;
+    } catch {
+      const stored = getSavedCvById(cvId);
+      if (stored) {
+        return {
+          cvId: stored.cvId,
+          title: stored.title,
+          cvTemplateId: stored.selectedTemplateCode,
+          isPrimary: stored.isPrimary,
+          creationMethod: 'PLATFORM_BUILDER',
+          updatedAt: stored.updatedAt,
+          structuredContent: stored.structuredContent,
+        };
+      }
+      throw new Error('Không tìm thấy bản CV trong hệ thống hoặc bộ nhớ lưu trữ.');
     }
-    return res.data as StructuredCvDetailDto;
   },
 
   /**
    * PUT /api/v1/candidates/cv/structured/{cvId}
-   * Updates existing structured CV content.
+   * Updates existing structured CV content on backend or localStorage.
    */
   async updateStructuredCv(
     cvId: string,
     payload: UpdateStructuredCvRequest
   ): Promise<StructuredCvDetailDto> {
-    const res = await apiClient.put<ApiEnvelope<StructuredCvDetailDto> | StructuredCvDetailDto>(
-      `/candidates/cv/structured/${encodeURIComponent(cvId)}`,
-      payload
-    );
-    if (res.data && 'data' in res.data && res.data.data) {
-      return res.data.data;
+    try {
+      const res = await apiClient.put<ApiEnvelope<StructuredCvDetailDto> | StructuredCvDetailDto>(
+        `/candidates/cv/structured/${encodeURIComponent(cvId)}`,
+        payload
+      );
+      if (res.data && 'data' in res.data && res.data.data) {
+        return res.data.data;
+      }
+      return res.data as StructuredCvDetailDto;
+    } catch {
+      const saved = saveCandidateCv({
+        cvId,
+        title: payload.title,
+        selectedTemplateCode: payload.cvTemplateId || undefined,
+        structuredContent: payload.structuredContent,
+      });
+      return {
+        cvId: saved.cvId,
+        title: saved.title,
+        cvTemplateId: saved.selectedTemplateCode,
+        isPrimary: saved.isPrimary,
+        creationMethod: 'PLATFORM_BUILDER',
+        updatedAt: saved.updatedAt,
+        structuredContent: saved.structuredContent,
+      };
     }
-    return res.data as StructuredCvDetailDto;
   },
 };
 

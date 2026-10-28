@@ -363,7 +363,7 @@ export const JobHeroSearch: React.FC<JobHeroSearchProps> = ({ onSearch }) => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => navigate('/cv-builder')}
+                  onClick={() => navigate('/candidate/cv-builder')}
                   className="bg-white/15 hover:bg-white/25 border border-white/20 text-white font-bold px-4.5 py-2.5 rounded-xl text-sm transition-colors cursor-pointer"
                 >
                   Tạo CV Pro
