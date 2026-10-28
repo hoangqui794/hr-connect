@@ -8,6 +8,15 @@ import { candidateCvApi } from '@/services/api/mf02Api';
 import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
 
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
 vi.mock('@/services/api/mf02Api', async () => {
   const actual = await vi.importActual<typeof import('@/services/api/mf02Api')>('@/services/api/mf02Api');
   return {
@@ -143,7 +152,7 @@ describe('CandidateCvsPage', () => {
     expect(screen.queryByRole('button', { name: 'Sửa nội dung CV File PDF' })).not.toBeInTheDocument();
   });
 
-  it('opens CV builder modal when clicking "Tạo CV mới"', async () => {
+  it('navigates to CV builder when clicking "Tạo CV mới"', async () => {
     renderPage();
     await screen.findByText('CV cũ');
 
@@ -151,7 +160,6 @@ describe('CandidateCvsPage', () => {
     expect(createButtons.length).toBeGreaterThan(0);
     fireEvent.click(createButtons[0]);
 
-    expect(await screen.findByText('Tạo CV mới cho ứng viên')).toBeInTheDocument();
-    expect(screen.getAllByText('Dựng CV theo mẫu đẹp').length).toBeGreaterThanOrEqual(1);
+    expect(mockNavigate).toHaveBeenCalledWith('/candidate/cv-builder');
   });
 });
