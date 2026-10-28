@@ -44,7 +44,7 @@ export const CvInlineField: React.FC<CvInlineFieldProps> = ({
   }, [value, multiline]);
 
   const baseClasses =
-    'w-full transition-all duration-150 rounded px-1.5 py-0.5 border border-transparent outline-none ' +
+    'w-full transition-all duration-150 rounded px-1.5 py-0.5 border border-transparent outline-none bg-transparent ' +
     'hover:border-dashed hover:border-slate-300 hover:bg-slate-50/70 ' +
     'focus:border-solid focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100/80 ' +
     'placeholder:italic placeholder:text-slate-400 placeholder:font-normal';

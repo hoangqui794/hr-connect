@@ -16,10 +16,10 @@ export const CandidateShell: React.FC = () => {
 
   if (isCvBuilder) {
     return (
-      <div className="candidate-console flex h-screen min-h-0 flex-col bg-[#f0f2f5] text-slate-900">
+      <div className="candidate-console candidate-cv-builder-page flex h-screen min-h-0 flex-col overflow-hidden bg-[#f0f2f5] text-slate-900">
         <Navbar />
         <AdminTopProgress offsetLeft={0} />
-        <div className="min-h-0 flex-1">
+        <div className="min-h-0 flex-1 flex flex-col h-full overflow-hidden">
           <Suspense fallback={<AdminPageSkeleton />}>
             <Outlet />
           </Suspense>

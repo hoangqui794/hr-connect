@@ -385,7 +385,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
   }
 
   return (
-    <div className="h-full w-full flex flex-col overflow-hidden bg-[#eef2f7] text-slate-900 select-none">
+    <div className="h-full w-full flex-1 min-h-0 flex flex-col overflow-hidden bg-[#eef2f7] text-slate-900 select-none">
       {/* ── 1. TOPBAR ── */}
       <CvTopbar
         title={title}
@@ -401,7 +401,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
       />
 
       {/* ── 2. MAIN WORKSPACE: SIDEBAR + LIVE CANVAS ── */}
-      <div className="cv-builder-workspace flex-1 flex overflow-hidden">
+      <div className="cv-builder-workspace flex-1 min-h-0 flex overflow-hidden">
         {/* Left Toolbox Sidebar */}
         <CvSidebarTools
           templates={templates}

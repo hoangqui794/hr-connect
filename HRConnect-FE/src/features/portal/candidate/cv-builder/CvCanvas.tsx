@@ -74,7 +74,7 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
     BE_VIETNAM_PRO: "'Be Vietnam Pro', sans-serif",
     ROBOTO: "'Roboto', sans-serif",
     INTER: "'Inter', sans-serif",
-  }[fontFamily];
+  }[fontFamily] || "'Inter', sans-serif";
 
   // Density styles
   const densityStyles = {
@@ -205,7 +205,7 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
   };
 
   return (
-    <div className="flex-1 h-full bg-[#f0f2f5] overflow-auto flex flex-col relative">
+    <div className="flex-1 min-h-0 h-full bg-[#f0f2f5] overflow-auto flex flex-col relative">
       {/* Zoom Toolbar */}
       <div className="sticky top-3 left-1/2 -translate-x-1/2 z-20 mx-auto bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-md rounded-full px-3 py-1 flex items-center gap-1.5 select-none my-2">
         <Tooltip title="Thu nhỏ">
@@ -260,6 +260,7 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
             style={{
               width: '794px',
               minHeight: '1123px',
+              '--cv-font-family': fontStack,
               fontFamily: fontStack,
               '--cv-accent': accentColor,
             } as React.CSSProperties}
@@ -275,8 +276,8 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
                   placeholder="HỌ VÀ TÊN CỦA BẠN"
                   aria-label="Họ và tên"
                   readOnly={readOnly}
-                  className="text-3xl font-extrabold uppercase tracking-tight text-slate-900 placeholder:normal-case placeholder:font-bold"
-                  style={{ color: accentColor }}
+                  className={`text-3xl font-extrabold uppercase tracking-tight placeholder:normal-case placeholder:font-bold ${layout === 'modern' ? 'text-white' : 'text-slate-900'}`}
+                  style={{ color: layout === 'modern' ? '#ffffff' : accentColor }}
                 />
               </div>
 
@@ -288,14 +289,14 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
                   placeholder="Vị trí ứng tuyển (VD: Senior Frontend Engineer)"
                   aria-label="Chức danh chuyên môn"
                   readOnly={readOnly}
-                  className="text-base font-semibold text-slate-600 tracking-wide"
+                  className={`text-base font-semibold tracking-wide ${layout === 'modern' ? 'text-white/90' : 'text-slate-600'}`}
                 />
               </div>
 
               {/* Contact Bar */}
-              <div className="flex flex-wrap items-center gap-y-1.5 gap-x-4 text-xs text-slate-600">
+              <div className={`flex flex-wrap items-center gap-y-1.5 gap-x-4 text-xs ${layout === 'modern' ? 'text-white/85' : 'text-slate-600'}`}>
                 <div className="flex items-center gap-1.5 min-w-[170px]">
-                  <MailOutlined className="text-slate-400" />
+                  <MailOutlined className={layout === 'modern' ? 'text-white/80' : 'text-slate-400'} />
                   <CvInlineField
                     value={content.email || ''}
                     onChange={(val) => onChangeContent({ email: val })}
@@ -306,7 +307,7 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
                   />
                 </div>
                 <div className="flex items-center gap-1.5 min-w-[140px]">
-                  <PhoneOutlined className="text-slate-400" />
+                  <PhoneOutlined className={layout === 'modern' ? 'text-white/80' : 'text-slate-400'} />
                   <CvInlineField
                     value={content.phone || ''}
                     onChange={(val) => onChangeContent({ phone: val })}
@@ -317,7 +318,7 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
                   />
                 </div>
                 <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
-                  <HomeOutlined className="text-slate-400" />
+                  <HomeOutlined className={layout === 'modern' ? 'text-white/80' : 'text-slate-400'} />
                   <CvInlineField
                     value={content.address || ''}
                     onChange={(val) => onChangeContent({ address: val })}
@@ -477,7 +478,7 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
                     onClick={handleAddExperience}
                     className="text-xs text-slate-500 hover:text-blue-600 hover:border-blue-400 !rounded-md mt-1"
                   >
-                    + Thêm kinh nghiệm làm việc
+                    Thêm kinh nghiệm làm việc
                   </Button>
                 )}
               </section>
@@ -604,7 +605,7 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
                     onClick={handleAddEducation}
                     className="text-xs text-slate-500 hover:text-blue-600 hover:border-blue-400 !rounded-md mt-1"
                   >
-                    + Thêm học vấn & bằng cấp
+                    Thêm học vấn & bằng cấp
                   </Button>
                 )}
               </section>

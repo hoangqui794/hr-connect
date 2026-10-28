@@ -1,3 +1,26 @@
+html:has(.candidate-cv-builder-page),
+body:has(.candidate-cv-builder-page),
+#root:has(.candidate-cv-builder-page) {
+  overflow: hidden !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-height: 100vh !important;
+  overscroll-behavior: none !important;
+}
+
+.candidate-cv-builder-page {
+  overscroll-behavior: none !important;
+}
+
+.cv-builder-workspace {
+  overscroll-behavior: contain !important;
+}
+
+.cv-builder-workspace aside,
+.cv-builder-workspace > div {
+  overscroll-behavior: contain !important;
+}
+
 .cv-template-option {
   font: inherit;
 }
@@ -72,18 +95,20 @@
   padding-top: 0 !important;
 }
 
-.cv-paper,
+.cv-paper {
+  --cv-accent: #1e3a8a;
+  --cv-font-family: 'Inter', sans-serif;
+  font-family: var(--cv-font-family) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.cv-paper *,
 .cv-paper input,
 .cv-paper textarea,
 .cv-paper button,
 .cv-paper .ant-tag {
   font-family: inherit !important;
-}
-
-.cv-paper {
-  --cv-accent: #1e3a8a;
-  position: relative;
-  overflow: hidden;
 }
 
 .cv-paper__section {
@@ -110,14 +135,32 @@
 }
 
 .cv-paper--modern .cv-paper__header input,
-.cv-paper--modern .cv-paper__header textarea,
-.cv-paper--modern .cv-paper__header .anticon {
+.cv-paper--modern .cv-paper__header textarea {
+  background-color: transparent !important;
   color: #fff !important;
 }
 
 .cv-paper--modern .cv-paper__header input::placeholder,
 .cv-paper--modern .cv-paper__header textarea::placeholder {
-  color: rgb(255 255 255 / 0.72) !important;
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.cv-paper--modern .cv-paper__header input:hover,
+.cv-paper--modern .cv-paper__header textarea:hover {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+}
+
+.cv-paper--modern .cv-paper__header input:focus,
+.cv-paper--modern .cv-paper__header textarea:focus {
+  background-color: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25) !important;
+  color: #fff !important;
+}
+
+.cv-paper--modern .cv-paper__header .anticon {
+  color: rgba(255, 255, 255, 0.9) !important;
 }
 
 .cv-paper--modern .cv-paper__section > div:first-child {

@@ -92,12 +92,12 @@ export const Navbar: React.FC = () => {
 
   return (
     <header className="sticky top-0 z-[100] w-full border-b border-slate-200/80 bg-white/90 backdrop-blur-md shadow-sm transition-all">
-      <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="relative w-full flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand Logo */}
         <Link
           to="/"
           title="HR Connect — Nền tảng tuyển dụng, về trang chủ"
-          className="flex cursor-pointer select-none items-center gap-2.5 sm:gap-3 shrink-0 no-underline text-inherit"
+          className="flex cursor-pointer select-none items-center gap-2.5 sm:gap-3 shrink-0 no-underline text-inherit z-10"
         >
           <BrandMark size={36} />
           <span className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 whitespace-nowrap">
@@ -110,8 +110,8 @@ export const Navbar: React.FC = () => {
           </Tag>
         </Link>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden lg:flex items-center gap-1 xl:gap-2">
+        {/* Desktop Navigation - Centered */}
+        <nav className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-1 xl:gap-2">
           <Button
             type="text"
             icon={<CompassOutlined />}
@@ -193,7 +193,7 @@ export const Navbar: React.FC = () => {
         </nav>
 
         {/* Desktop Right Controls */}
-        <div className="hidden lg:flex items-center gap-3">
+        <div className="hidden lg:flex items-center gap-3 z-10 ml-auto">
           {isAuthenticated && <NotificationBell />}
 
           {isAuthenticated ? (
@@ -256,7 +256,7 @@ export const Navbar: React.FC = () => {
         </div>
 
         {/* Mobile / Tablet Controls (< lg) */}
-        <div className="flex lg:hidden items-center gap-2">
+        <div className="flex lg:hidden items-center gap-2 z-10">
           {isAuthenticated && <NotificationBell />}
 
           {!isAuthenticated && (

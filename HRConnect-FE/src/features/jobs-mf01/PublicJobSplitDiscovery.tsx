@@ -1167,6 +1167,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                           <CompanyLogo
                             id={job.companyId || 'company'}
                             name={job.companyName || 'Doanh nghiệp'}
+                            logoUrl={job.companyLogoUrl || job.company?.logoUrl}
                             size={44}
                             className="w-full h-full object-contain"
                           />
@@ -1264,6 +1265,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                       <CompanyLogo
                         id={job.companyId || 'company'}
                         name={job.companyName || 'Doanh nghiệp'}
+                        logoUrl={job.companyLogoUrl || job.company?.logoUrl}
                         size={64}
                         className="w-full h-full object-contain"
                       />
