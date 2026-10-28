@@ -43,6 +43,7 @@ const renderPage = () => {
 
 describe('CandidateCvsPage', () => {
   beforeEach(() => {
+    mockNavigate.mockClear();
     vi.mocked(candidateCvApi.list).mockResolvedValue([{
       cvId: 'cv-1',
       title: 'CV cũ',
@@ -146,7 +147,10 @@ describe('CandidateCvsPage', () => {
     expect(screen.getByText('CV File PDF')).toBeInTheDocument();
 
     // CV Theo Mẫu has "Sửa nội dung"
-    expect(screen.getByRole('button', { name: 'Sửa nội dung CV Theo Mẫu' })).toBeInTheDocument();
+    const editBtn = screen.getByRole('button', { name: 'Sửa nội dung CV Theo Mẫu' });
+    expect(editBtn).toBeInTheDocument();
+    fireEvent.click(editBtn);
+    expect(mockNavigate).toHaveBeenCalledWith('/candidate/cv-builder/cv-structured-1');
 
     // CV File PDF does NOT have "Sửa nội dung"
     expect(screen.queryByRole('button', { name: 'Sửa nội dung CV File PDF' })).not.toBeInTheDocument();

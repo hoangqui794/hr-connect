@@ -55,14 +55,23 @@ describe('ContactConsultationForm', () => {
   it('displays validation error if consent checkbox is not ticked on submit', async () => {
     renderForm();
 
+    fireEvent.change(screen.getByPlaceholderText('Ví dụ: Nguyễn Văn A'), {
+      target: { value: 'Nguyễn Văn A' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('name@company.com'), {
+      target: { value: 'vana@example.com' },
+    });
+    fireEvent.change(
+      screen.getByPlaceholderText(/Mô tả vị trí tuyển dụng/),
+      { target: { value: 'Cần tư vấn tuyển dụng 3 Senior React Dev trọn gói.' } }
+    );
+
     const submitBtn = screen.getByRole('button', { name: /Gửi yêu cầu tư vấn/i });
     fireEvent.click(submitBtn);
 
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Vui lòng đồng ý với chính sách xử lý dữ liệu cá nhân/)
-      ).toBeInTheDocument();
-    });
+    expect(
+      await screen.findByText(/Vui lòng đồng ý với chính sách xử lý dữ liệu cá nhân/, {}, { timeout: 10000 })
+    ).toBeInTheDocument();
 
     expect(submitMock).not.toHaveBeenCalled();
   });

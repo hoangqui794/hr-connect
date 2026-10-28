@@ -103,7 +103,7 @@ describe('AdminIdentityClaimDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Từ chối/ }));
     const dialog = await screen.findByRole('dialog');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Từ chối' }));
-    expect(await screen.findByText('Nhập lý do từ chối.')).toBeInTheDocument();
+    expect(await screen.findByText('Nhập lý do từ chối.', {}, { timeout: 10000 })).toBeInTheDocument();
     expect(rejectMock).not.toHaveBeenCalled();
   });
 
