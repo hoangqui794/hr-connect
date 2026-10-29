@@ -9,7 +9,7 @@ import {
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { ServiceType } from '@/types/job';
+import { ServiceType, SERVICE_TYPE_LABELS } from '@/types/job';
 
 const { Title, Text } = Typography;
 
@@ -243,7 +243,7 @@ export const FeaturedHotJobs: React.FC = () => {
                         }}
                       >
                         {job.serviceType === ServiceType.HEADHUNT_COD && <SafetyCertificateOutlined style={{ marginRight: 4 }} />}
-                        {job.serviceType}
+                        {SERVICE_TYPE_LABELS[job.serviceType] ?? job.serviceType}
                       </Tag>
                       <Tag
                         style={{

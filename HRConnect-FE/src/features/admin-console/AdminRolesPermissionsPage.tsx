@@ -541,7 +541,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
         <Space direction="vertical" size={2}>
           {p.isProtected && (
             <Tag color="error" icon={<LockOutlined />}>
-              Được bảo vệ (Protected)
+              Được bảo vệ
             </Tag>
           )}
           {p.isDelegable ? (
@@ -678,7 +678,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
                 key: 'roles',
                 label: (
                   <span className="flex items-center gap-2 px-1 text-[15px] font-semibold">
-                    <SafetyCertificateOutlined /> Danh sách Vai trò (Roles)
+                    <SafetyCertificateOutlined /> Danh sách Vai trò
                   </span>
                 ),
               },
@@ -686,7 +686,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
                 key: 'permissions',
                 label: (
                   <span className="flex items-center gap-2 px-1 text-[15px] font-semibold">
-                    <KeyOutlined /> Danh mục Quyền (Permissions)
+                    <KeyOutlined /> Danh mục Quyền
                   </span>
                 ),
               },
@@ -1036,7 +1036,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
                   type="info"
                   showIcon
                   icon={<LockOutlined />}
-                  message="Vai trò hệ thống cố định (Read-only)"
+                  message="Vai trò hệ thống cố định"
                   description="System Role do mã nguồn nền tảng quản lý cố định. Không cho phép sửa tên, trạng thái, xóa hoặc thay đổi danh mục quyền hạn của vai trò này."
                   className="mb-4"
                 />
@@ -1289,7 +1289,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
                   <div className="p-5 max-w-xl">
                     <div className="admin-surface p-5 border-l-4 border-solid border-red-500">
                       <Typography.Title level={4} className="!text-red-700 !mb-2">
-                        Ngừng sử dụng vai trò (Soft Delete)
+                        Ngừng sử dụng vai trò
                       </Typography.Title>
                       <Typography.Paragraph className="text-slate-600 text-sm">
                         Sau khi xóa, vai trò sẽ bị vô hiệu hóa hoàn toàn và không thể gán mới cho người dùng.

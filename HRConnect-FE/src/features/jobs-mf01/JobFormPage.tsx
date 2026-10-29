@@ -2158,7 +2158,7 @@ export const JobFormPage: React.FC = () => {
                               </span>
                               <span className="ml-2 text-xs text-slate-500">
                                 ({r.requirementType === 'MUST_HAVE' ? 'Bắt buộc' : 'Ưu tiên'}
-                                {r.category ? ` · ${r.category}` : ''})
+                                {r.category ? ` · ${REQUIREMENT_CATEGORY_OPTIONS.find((o) => o.value === r.category)?.label ?? r.category}` : ''})
                               </span>
                             </div>
                           </li>

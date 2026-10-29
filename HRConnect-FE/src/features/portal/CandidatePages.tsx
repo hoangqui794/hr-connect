@@ -1627,11 +1627,11 @@ export const CandidateApplicationDetailPage: React.FC = () => {
             className="space-y-2 block"
           >
             <Radio value="ACCEPTED" className="block">
-              <span className="font-semibold text-emerald-700">Đồng ý nhận việc (Accepted)</span>
+              <span className="font-semibold text-emerald-700">Đồng ý nhận việc</span>
               <p className="text-xs text-slate-500 m-0 ml-6">Tôi đồng ý với các điều khoản đãi ngộ và thời gian bắt đầu công việc.</p>
             </Radio>
             <Radio value="DECLINED" className="block">
-              <span className="font-semibold text-rose-700">Từ chối nhận việc (Declined)</span>
+              <span className="font-semibold text-rose-700">Từ chối nhận việc</span>
               <p className="text-xs text-slate-500 m-0 ml-6">Tôi xin phép từ chối cơ hội làm việc này.</p>
             </Radio>
           </Radio.Group>

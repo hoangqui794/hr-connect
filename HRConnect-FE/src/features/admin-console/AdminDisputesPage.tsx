@@ -41,6 +41,53 @@ const STATUS_CONFIG: Record<string, { label: string; tone: 'warning' | 'success'
   REJECTED: { label: 'Đã từ chối', tone: 'danger' },
 };
 
+const SUBMISSION_SOURCE_LABEL: Record<string, string> = {
+  AFFILIATE: 'Cộng tác viên',
+  CANDIDATE: 'Ứng viên tự nộp',
+  DIRECT: 'Ứng viên tự nộp',
+  INTERNAL_HR: 'Nhân sự nội bộ',
+};
+
+const SUBMISSION_STATUS_LABEL: Record<string, string> = {
+  PENDING: 'Chờ xác nhận',
+  PENDING_CONSENT: 'Chờ ứng viên đồng ý',
+  CONSENTED: 'Đã đồng ý',
+  ACCEPTED: 'Đã chấp nhận',
+  CONVERTED: 'Đã chuyển thành hồ sơ',
+  BLOCKED_DUPLICATE: 'Bị chặn do trùng lặp',
+  DUPLICATE: 'Trùng lặp',
+  REJECTED: 'Đã từ chối',
+  EXPIRED: 'Đã hết hạn',
+  CANCELLED: 'Đã hủy',
+
+};
+
+const CONSENT_STATUS_LABEL: Record<string, string> = {
+  PENDING: 'Chờ phản hồi',
+  ACCEPTED: 'Đã đồng ý',
+  CONSENTED: 'Đã đồng ý',
+  GRANTED: 'Đã đồng ý',
+  DECLINED: 'Từ chối',
+  REJECTED: 'Từ chối',
+  EXPIRED: 'Đã hết hạn',
+};
+
+const ATTRIBUTION_RULE_LABEL: Record<string, string> = {
+  FIRST_TOUCH: 'Ghi nhận lượt nộp hợp lệ đầu tiên',
+  FIRST_CONSENTED: 'Ghi nhận lượt đồng ý đầu tiên',
+  ADMIN_OVERRIDE: 'Quyết định phân xử của Quản trị viên',
+};
+
+const COMMISSION_STATUS_LABEL: Record<string, string> = {
+  PENDING: 'Đang trong thời gian bảo hành',
+  ON_HOLD: 'Tạm giữ xác minh',
+  EARNED: 'Đủ điều kiện nhận',
+  PAYABLE: 'Chờ chuyển tiền',
+  PAID: 'Đã chi trả',
+  VOIDED: 'Đã hủy',
+  CANCELLED: 'Đã hủy',
+};
+
 const TYPE_CONFIG: Record<string, { label: string; color: string }> = {
   DUPLICATE_SUBMISSION: { label: 'Trùng ứng viên', color: 'orange' },
   ATTRIBUTION: { label: 'Tranh chấp nguồn', color: 'blue' },
@@ -281,9 +328,9 @@ export const AdminDisputesPage: React.FC = () => {
                       <span className="text-slate-500">{fmt(s.submittedAt)}</span>
                     </div>
                     <div className="mt-1 text-slate-600 flex gap-4">
-                      <span>Nguồn: <b>{s.source}</b></span>
-                      <span>Trạng thái: <b>{s.status}</b></span>
-                      {s.consentStatus && <span>Đồng ý: <b>{s.consentStatus}</b></span>}
+                      <span>Nguồn: <b>{SUBMISSION_SOURCE_LABEL[s.source] ?? s.source}</b></span>
+                      <span>Trạng thái: <b>{SUBMISSION_STATUS_LABEL[s.status] ?? s.status}</b></span>
+                      {s.consentStatus && <span>Đồng ý: <b>{CONSENT_STATUS_LABEL[s.consentStatus] ?? s.consentStatus}</b></span>}
                     </div>
                   </div>
                 ))}
@@ -298,11 +345,11 @@ export const AdminDisputesPage: React.FC = () => {
                   Ghi nhận cho CTV: <b>{d.currentAttribution.affiliateName || 'Cộng tác viên'}</b>
                 </div>
                 <div className="text-xs text-slate-500">
-                  Quy tắc: {d.currentAttribution.attributionRule} · Thời điểm: {fmt(d.currentAttribution.establishedAt)}
+                  Quy tắc: {ATTRIBUTION_RULE_LABEL[d.currentAttribution.attributionRule] ?? d.currentAttribution.attributionRule} · Thời điểm: {fmt(d.currentAttribution.establishedAt)}
                 </div>
                 {d.currentAttribution.commissionStatuses.length > 0 && (
                   <div className="text-xs text-slate-600">
-                    Hoa hồng liên quan: {d.currentAttribution.commissionStatuses.join(', ')}
+                    Hoa hồng liên quan: {d.currentAttribution.commissionStatuses.map((st) => COMMISSION_STATUS_LABEL[st] ?? st).join(', ')}
                   </div>
                 )}
               </div>
@@ -325,13 +372,13 @@ export const AdminDisputesPage: React.FC = () => {
                   >
                     <Radio.Group className="flex flex-col gap-2">
                       <Radio value="UPHELD">
-                        <span className="font-semibold text-emerald-700">Chấp thuận khiếu nại (UPHELD)</span>
+                        <span className="font-semibold text-emerald-700">Chấp thuận khiếu nại</span>
                         <div className="text-xs text-slate-500">
-                          Chuyển quyền ghi nhận nguồn (Attribution) sang Cộng tác viên khiếu nại. Các khoản hoa hồng chưa chi trả sẽ chuyển theo.
+                          Chuyển quyền ghi nhận nguồn sang Cộng tác viên khiếu nại. Các khoản hoa hồng chưa chi trả sẽ chuyển theo.
                         </div>
                       </Radio>
                       <Radio value="REJECTED">
-                        <span className="font-semibold text-red-700">Từ chối khiếu nại (REJECTED)</span>
+                        <span className="font-semibold text-red-700">Từ chối khiếu nại</span>
                         <div className="text-xs text-slate-500">
                           Giữ nguyên quyền ghi nhận nguồn hiện tại. Đóng khiếu nại.
                         </div>
