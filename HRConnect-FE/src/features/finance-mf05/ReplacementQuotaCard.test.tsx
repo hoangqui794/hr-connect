@@ -3,7 +3,7 @@
  * @description Unit and integration tests for ReplacementQuotaCard (MF-05 Replacement Quota).
  */
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App as AntApp } from 'antd';
 import { MemoryRouter } from 'react-router-dom';
@@ -27,6 +27,14 @@ vi.mock('@/services/api/financeApi', () => ({
     getPlacements: vi.fn(),
     getReplacementSlots: vi.fn(),
     cancelReplacementSlot: vi.fn(),
+  },
+}));
+
+const drawerProps = vi.fn();
+vi.mock('./PlacementDetailDrawer', () => ({
+  PlacementDetailDrawer: (props: { open: boolean; placementId?: string; mode?: string }) => {
+    drawerProps(props);
+    return props.open ? <div data-testid="placement-drawer">{props.placementId}</div> : null;
   },
 }));
 
@@ -230,5 +238,27 @@ describe('ReplacementQuotaCard', () => {
         concurrencyToken: 'token-abc-1',
       });
     });
+  });
+  // HR feedback 29/10: the "Pipeline" button led to an unfiltered page; HR now opens the placement itself.
+  it('lets Internal HR open the replacement placement, or the original one while the slot is not filled', async () => {
+    vi.mocked(financeApi.getPlacements).mockResolvedValue({ items: mockPlacements, totalCount: 1 });
+    vi.mocked(financeApi.getReplacementSlots).mockResolvedValue([
+      { ...mockSlots[0], status: 'FILLED', filledByPlacementId: 'pl-new', replacementCandidateName: 'Ứng Viên e2e5' },
+      mockSlots[1],
+    ]);
+
+    renderComponent({ mode: 'hr' });
+
+    await screen.findAllByRole('button', { name: /Chi tiết suất/i }, { timeout: 10000 });
+    expect(screen.queryByRole('button', { name: /Pipeline/i })).toBeNull();
+    const detailIn = (text: string) =>
+      within(screen.getByText(text).closest('tr') as HTMLElement).getByRole('button', { name: /Chi tiết suất/i });
+
+    fireEvent.click(detailIn('Ứng Viên e2e5'));
+    expect((await screen.findByTestId('placement-drawer')).textContent).toBe('pl-new');
+    expect(drawerProps).toHaveBeenLastCalledWith(expect.objectContaining({ open: true, mode: 'hr' }));
+
+    fireEvent.click(detailIn('Lê Thị Bình'));
+    await waitFor(() => expect(screen.getByTestId('placement-drawer').textContent).toBe('pl-2'));
   });
 });
