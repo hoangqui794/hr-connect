@@ -246,7 +246,7 @@ export const JobReviewPage: React.FC = () => {
           j.location?.toLowerCase().includes(q)
       );
     }
-    return list.sort((a, b) => new Date(waitingSince(b)).getTime() - new Date(waitingSince(a)).getTime());
+    return list.filter((j) => j.status !== 'DRAFT').sort((a, b) => new Date(waitingSince(b)).getTime() - new Date(waitingSince(a)).getTime());
   }, [queue.data, pendingAgreementQueue.data, allJobsQueue.data, statusFilter, searchKeyword]);
 
   // Đồng bộ statusFilter khi query param thay đổi (ví dụ người dùng bấm từ NotificationBell)
