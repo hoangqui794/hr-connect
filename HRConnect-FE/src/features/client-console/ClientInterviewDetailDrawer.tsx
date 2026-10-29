@@ -633,11 +633,28 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
         okText="Lưu kết quả"
         cancelText="Hủy"
         onCancel={() => setResultModalOpen(false)}
-        onOk={() => resultForm.submit()}
+        onOk={() => {
+          if (!resultForm.getFieldValue('feedback')?.trim()) {
+            resultForm.setFields([{ name: 'feedback', errors: ['Nhập nhận xét phỏng vấn.'] }]);
+            return;
+          }
+          resultForm.submit();
+        }}
         confirmLoading={resultMutation.isPending}
         destroyOnClose
       >
-        <Form form={resultForm} layout="vertical" onFinish={(v) => resultMutation.mutate(v)}>
+        <Form
+          form={resultForm}
+          layout="vertical"
+          onFinish={(v) => {
+            const feedback = v.feedback?.trim();
+            if (!feedback) {
+              resultForm.setFields([{ name: 'feedback', errors: ['Nhập nhận xét phỏng vấn.'] }]);
+              return;
+            }
+            resultMutation.mutate({ ...v, feedback });
+          }}
+        >
           <Form.Item name="result" label="Kết quả đánh giá" rules={[{ required: true, message: 'Chọn kết quả.' }]}>
             <Select
               options={[

@@ -456,6 +456,13 @@ export const ApplicationWorkbench: React.FC<{
     if (!d || !open) return;
     const day = (x?: Dayjs) => (x ? x.format('YYYY-MM-DD') : undefined);
     const trim = (x?: string) => x?.trim() || undefined;
+    // Keep this business rule explicit as a second line of defence. Ant Design's
+    // conditional modal fields can briefly submit before their rules settle when
+    // the result is changed immediately before confirmation.
+    if (open === 'result' && !trim(v.feedback)) {
+      form.setFields([{ name: 'feedback', errors: ['Nhập nhận xét phỏng vấn.'] }]);
+      return;
+    }
     setPendingAction(open);
     try {
       switch (open) {
@@ -1061,7 +1068,13 @@ export const ApplicationWorkbench: React.FC<{
         closable={!busy}
         maskClosable={!busy}
         onCancel={() => !busy && setOpen(null)}
-        onOk={() => form.submit()}
+        onOk={() => {
+          if (open === 'result' && !form.getFieldValue('feedback')?.trim()) {
+            form.setFields([{ name: 'feedback', errors: ['Nhập nhận xét phỏng vấn.'] }]);
+            return;
+          }
+          form.submit();
+        }}
         destroyOnClose
       >
         <Form form={form} layout="vertical" requiredMark={false} onFinish={submitModal}>
