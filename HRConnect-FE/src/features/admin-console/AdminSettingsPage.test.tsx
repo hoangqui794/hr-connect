@@ -8,6 +8,7 @@ import type { BusinessSetting } from '@/types/api/finance';
 
 vi.mock('@/services/api/financeApi', () => ({
   businessSettingsApi: { list: vi.fn(), update: vi.fn() },
+  postingPackagesAdminApi: { list: vi.fn().mockResolvedValue([]), update: vi.fn() },
 }));
 
 const listMock = vi.mocked(businessSettingsApi.list);

@@ -52,18 +52,16 @@ export const PostingPackagesSection: React.FC = () => {
     onError: (error) => message.error(getApiErrorMessage(error)),
   });
 
-  const open = (p: JobPostingPackage) => {
-    setEditing(p);
-    form.setFieldsValue({
-      name: p.name,
-      description: p.description ?? '',
-      price: p.price,
-      durationDays: p.durationDays,
-      unlimited: p.maxApplications == null,
-      maxApplications: p.maxApplications ?? null,
-      isActive: p.isActive,
-    });
-  };
+  // The form mounts only while the modal is open (no forceRender), so it starts from these values.
+  const initialValues = (p: JobPostingPackage): FormValues => ({
+    name: p.name,
+    description: p.description ?? '',
+    price: p.price,
+    durationDays: p.durationDays,
+    unlimited: p.maxApplications == null,
+    maxApplications: p.maxApplications ?? null,
+    isActive: p.isActive,
+  });
 
   const submit = (values: FormValues) => {
     if (!editing) return;
@@ -111,7 +109,7 @@ export const PostingPackagesSection: React.FC = () => {
               <Stat label="Giá" value={vnd(p.price)} />
               <Stat label="Hiển thị" value={`${p.durationDays} ngày`} />
               <Stat label="Hồ sơ tối đa" value={p.maxApplications == null ? 'Không giới hạn' : `${p.maxApplications} hồ sơ`} />
-              <Button icon={<EditOutlined />} onClick={() => open(p)} aria-label={`Sửa ${p.name}`}>
+              <Button icon={<EditOutlined />} onClick={() => setEditing(p)} aria-label={`Sửa ${p.name}`}>
                 Sửa
               </Button>
             </li>
@@ -128,9 +126,9 @@ export const PostingPackagesSection: React.FC = () => {
         onOk={() => form.submit()}
         onCancel={() => setEditing(null)}
         destroyOnClose
-        forceRender
       >
-        <Form form={form} layout="vertical" onFinish={submit} requiredMark="optional" className="pt-2">
+        {editing && (
+        <Form form={form} layout="vertical" onFinish={submit} requiredMark="optional" className="pt-2" initialValues={initialValues(editing)} key={editing.packageId}>
           <Form.Item name="name" label="Tên gói" rules={[{ required: true, whitespace: true, message: 'Nhập tên gói.' }, { max: 200 }]}>
             <Input maxLength={200} />
           </Form.Item>
@@ -178,6 +176,7 @@ export const PostingPackagesSection: React.FC = () => {
           </Form.Item>
           <Alert type="info" showIcon message="Tin đã gửi duyệt và phí đăng tin đã tạo giữ nguyên con số cũ." />
         </Form>
+        )}
       </Modal>
     </Surface>
   );
