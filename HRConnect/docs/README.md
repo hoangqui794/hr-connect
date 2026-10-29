@@ -19,4 +19,8 @@
 
 - [`tasks/`](tasks/): backlog và yêu cầu triển khai còn lại.
 
+## Phản hồi kiểm thử
+
+- [`feedback/`](feedback/): phản hồi của HR/người dùng sau mỗi đợt test, kèm trạng thái xử lý. Mới nhất: [`2026-10-28-hr-test-shire-platform`](feedback/2026-10-28-hr-test-shire-platform/README.md).
+
 Tài liệu hướng dẫn giao diện và gắn API đã được đặt tại [`../../HRConnect-FE/docs/`](../../HRConnect-FE/docs/).
