@@ -255,4 +255,19 @@ describe('PlacementDetailPage & PlacementDetailView', () => {
       });
     });
   });
+  // HR feedback 28/10: each party only sees its own side of the money.
+  it.each([
+    ['client', true, false],
+    ['affiliate', false, true],
+    ['hr', true, true],
+  ] as const)('in %s mode shows service fee=%s and commission=%s', async (mode, fee, commission) => {
+    vi.mocked(placementApi.getPlacementDetail).mockResolvedValueOnce(mockPlacement as any);
+
+    renderWithProviders(<PlacementDetailView placementId="plc-1" mode={mode} />);
+
+    await waitFor(() => expect(screen.getByTestId('placement-detail-content')).toBeInTheDocument());
+    expect(screen.queryByText('Phí dịch vụ tuyển dụng (Doanh nghiệp)') !== null).toBe(fee);
+    expect(screen.queryByText('Hoa hồng Cộng tác viên / Recruiter') !== null).toBe(commission);
+    expect(screen.queryByText(/10\.800\.000/) !== null).toBe(commission);
+  });
 });
