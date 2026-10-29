@@ -30,6 +30,7 @@ import { useAuthStore, UserRole } from '@/stores/authStore';
 import { useCandidateAppliedJobs } from '@/features/portal/candidate/useCandidateAppliedJobs';
 import { SourcingDeliveriesView } from '@/features/sourcing/SourcingDeliveriesView';
 import { PaymentDemoModal } from './PaymentDemoModal';
+import { renderFormattedMultilineText } from './RichTextEditor';
 import { formatMoney, useCurrentServiceAgreement, useJobFeeInfo, useJobTemplate } from './useJobQueries';
 import {
   EMPLOYMENT_TYPE_LABEL,
@@ -150,7 +151,7 @@ const RequirementList: React.FC<{ title: string; items: JobRequirement[]; emptyT
 /** Multi-line backend text, rendered as plain paragraphs (never as HTML). */
 const LongText: React.FC<{ value: string | null; emptyText: string }> = ({ value, emptyText }) =>
   value ? (
-    <Paragraph className="whitespace-pre-line break-words leading-relaxed mb-0">{formatMultilineText(value)}</Paragraph>
+    <Paragraph className="whitespace-pre-line break-words leading-relaxed mb-0">{renderFormattedMultilineText(value)}</Paragraph>
   ) : (
     <Text type="secondary">{emptyText}</Text>
   );
