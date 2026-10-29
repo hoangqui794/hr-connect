@@ -46,7 +46,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useQueryClient } from '@tanstack/react-query';
-import { Surface } from '@/features/admin-console/ui';
+import { PageHero, Surface } from '@/features/admin-console/ui';
 import { useAuthStore } from '@/stores/authStore';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { serviceAgreementsApi } from '@/services/api/jobsApi';
@@ -405,25 +405,14 @@ export const ClientServiceAgreementsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Top Banner / Hero */}
-      <Surface className="border-0 bg-white p-6 shadow-sm rounded-2xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <Title level={4} className="!mb-0 text-slate-900 font-bold">
-                Thỏa thuận & Hợp đồng dịch vụ
-              </Title>
-              <Tag color="blue" className="rounded-full px-2.5 font-medium">
-                Doanh nghiệp
-              </Tag>
-            </div>
-            <Paragraph className="!mb-0 text-slate-500 text-sm mt-1 max-w-2xl">
-              Xem xét văn bản hợp đồng dịch vụ, ký kết và tải lên bản đã ký cho các vị trí tuyển dụng
-              Headhunt hoặc tìm kiếm hồ sơ ứng viên (CV Sourcing).
-            </Paragraph>
-          </div>
-
-          <div className="flex items-center gap-3">
+      {/* Hero (shared PageHero, same as the other Client pages) */}
+      <PageHero
+        eyebrow="HH · SS · Thỏa thuận"
+        title="Thỏa thuận dịch vụ"
+        tip
+        description="Xem, ký điện tử bằng OTP và lưu hợp đồng dịch vụ cho các tin HH · Tuyển dụng theo kết quả và SS · Tìm hồ sơ phù hợp."
+        actions={
+          <>
             <Button
               icon={<HistoryOutlined />}
               onClick={() => {
@@ -433,16 +422,12 @@ export const ClientServiceAgreementsPage: React.FC = () => {
             >
               Làm mới
             </Button>
-            <Button
-              type="primary"
-              icon={<FileTextOutlined />}
-              onClick={() => navigate('/client/jobs')}
-            >
+            <Button type="primary" icon={<FileTextOutlined />} onClick={() => navigate('/client/jobs')}>
               Quản lý tin tuyển dụng
             </Button>
-          </div>
-        </div>
-      </Surface>
+          </>
+        }
+      />
 
       {/* Main Content Area */}
       {loadingJobs ? (

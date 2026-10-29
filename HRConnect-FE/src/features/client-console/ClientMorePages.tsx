@@ -37,7 +37,8 @@ export const ClientInterviewsOffersPage: React.FC = () => {
     <>
       <HrPipelinePage
         eyebrow="Tuyển dụng"
-        description="Lịch phỏng vấn, offer đã gửi và ứng viên đã đi làm. Bấm một dòng phỏng vấn để xem chi tiết, sửa thông tin, dời lịch, ghi kết quả hoặc xem lịch sử."
+        tip
+        description="Lịch phỏng vấn, offer đã gửi và ứng viên đã đi làm. Bấm một dòng để xem chi tiết, dời lịch, ghi kết quả hoặc xem lịch sử."
         onOpenApplication={setOpen}
         onOpenInterview={(iv) => setOpenInterviewId(iv.interviewId)}
         emptyHints={{
@@ -147,7 +148,12 @@ export const ClientCompanyPage: React.FC = () => {
 
   return (
     <div>
-      <PageHero eyebrow="Doanh nghiệp" title="Hồ sơ doanh nghiệp" description="Thông tin hiển thị trên tin tuyển dụng và trong hồ sơ gửi tới ứng viên." />
+      <PageHero
+        eyebrow="Doanh nghiệp"
+        title="Hồ sơ doanh nghiệp"
+        tip
+        description="Thông tin công ty hiển thị trên tin tuyển dụng và trang công ty mà ứng viên xem."
+      />
       {company.isLoading ? (
         <Surface padded>
           <Skeleton active paragraph={{ rows: 6 }} />

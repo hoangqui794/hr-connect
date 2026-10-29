@@ -26,13 +26,13 @@ import {
   EditOutlined,
   EnvironmentOutlined,
   EyeOutlined,
-  TeamOutlined,
-  UnorderedListOutlined,
+  FileDoneOutlined,
   MoreOutlined,
   PlusOutlined,
   ReloadOutlined,
   SendOutlined,
-  FileDoneOutlined,
+  TeamOutlined,
+  UnorderedListOutlined,
 } from '@ant-design/icons';
 import type { Job, JobCloseReasonCode, JobStatus } from '@/types/api/jobs';
 import { FilterPills, PageHero, Surface } from '@/features/admin-console/ui';
@@ -388,7 +388,8 @@ export const ClientJobsListPage: React.FC = () => {
       <PageHero
         eyebrow="Tuyển dụng"
         title="Tin tuyển dụng của tôi"
-        description="Tạo tin, gửi HR Connect duyệt và quản lý trạng thái tuyển dụng."
+        tip
+        description="Tạo tin, gửi HR Connect duyệt và theo dõi trạng thái từng tin của cả 3 dịch vụ HH, SS và AP."
         actions={
           <>
             <Tooltip title="Tải lại">

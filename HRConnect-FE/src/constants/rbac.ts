@@ -230,6 +230,7 @@ export const SIDEBAR_MENU_ITEMS: Record<UserRole, SidebarMenuItem[]> = {
     { key: '/client/candidates', label: 'Hồ sơ ứng viên', icon: 'TeamOutlined' },
     { key: '/client/interviews-offers', label: 'Phỏng vấn & Offer', icon: 'CalendarOutlined' },
     { key: '/client/warranty', label: 'Bảo hành', icon: 'SafetyCertificateOutlined' },
+    { key: '/client/billing', label: 'Công nợ', icon: 'WalletOutlined' },
   ],
   [UserRole.CANDIDATE]: [
     { key: '/dashboard', label: 'Bảng điều khiển', icon: 'DashboardOutlined' },

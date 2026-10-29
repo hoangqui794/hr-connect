@@ -103,10 +103,11 @@ const EMPTY: Record<Tab, string> = {
 export const HrPipelinePage: React.FC<{
   eyebrow?: string;
   description?: string;
+  tip?: boolean;
   onOpenApplication?: (applicationId: string) => void;
   onOpenInterview?: (interview: InterviewItem) => void;
   emptyHints?: Partial<Record<Tab, string>>;
-}> = ({ eyebrow = 'Theo dõi', description, onOpenApplication, onOpenInterview, emptyHints }) => {
+}> = ({ eyebrow = 'Theo dõi', description, tip, onOpenApplication, onOpenInterview, emptyHints }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = (TABS as string[]).includes(searchParams.get('tab') ?? '') ? (searchParams.get('tab') as Tab) : 'interviews';
   const page = Number(searchParams.get('page')) || 1;
@@ -164,6 +165,7 @@ export const HrPipelinePage: React.FC<{
       <PageHero
         eyebrow={eyebrow}
         title={onOpenApplication ? 'Phỏng vấn & Offer' : 'Tiến độ tuyển dụng'}
+        tip={tip}
         description={
           description ??
           'Client là bên phỏng vấn, gửi offer và xác nhận ứng viên đi làm. Internal HR theo dõi để hỗ trợ, trang này chỉ để xem.'

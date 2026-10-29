@@ -349,7 +349,8 @@ export const ClientWarrantyPage: React.FC = () => (
     <PageHero
       eyebrow="HH · Tuyển dụng theo kết quả"
       title="Bảo hành & phí dịch vụ"
-      description="Mỗi ứng viên đi làm được bảo hành theo thời hạn đã thỏa thuận. Nếu ứng viên nghỉ trong thời hạn, hãy báo nghỉ để được tuyển thay thế."
+      tip
+      description="Ứng viên đi làm được bảo hành theo thỏa thuận dịch vụ. Nếu ứng viên nghỉ trong thời gian bảo hành, hãy báo nghỉ để nhận suất tuyển thay thế miễn phí."
     />
     <ReplacementQuotaCard mode="client" />
     <h2 className="mb-3 mt-8 text-lg font-semibold text-slate-900">Danh sách bảo hành ứng viên</h2>
@@ -365,6 +366,7 @@ export const HrWarrantyPage: React.FC = () => (
     <PageHero
       eyebrow="HH · Tuyển dụng theo kết quả"
       title="Theo dõi bảo hành"
+      tip
       description="Bảo hành tự qua khi đủ thời hạn (hoa hồng Affiliate được ghi nhận 100%). Khi Client báo nghỉ, xác minh với ứng viên và Client rồi xác nhận hoặc bác bỏ."
     />
     <ReplacementQuotaCard mode="hr" />

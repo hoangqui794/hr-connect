@@ -76,6 +76,7 @@ import {
   formatMultilineText,
   formatSalary,
 } from './jobDisplay';
+import { PageHero } from '@/features/admin-console/ui';
 import { JobTemplatePicker } from './JobTemplatePicker';
 import {
   EXPERIENCE_YEAR_OPTIONS,
@@ -1024,17 +1025,12 @@ export const JobFormPage: React.FC = () => {
       </Button>
 
       {/* Header */}
-      <header className="mb-6">
-        <div className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--console-accent-strong)]">
-          Tuyển dụng
-        </div>
-        <h1 className="m-0 text-[28px] font-bold leading-tight tracking-[-0.01em] text-slate-900">
-          {isEdit ? 'Sửa tin tuyển dụng' : 'Đăng tin tuyển dụng mới'}
-        </h1>
-        <p className="m-0 mt-1.5 max-w-2xl text-[14.5px] leading-relaxed text-slate-600">
-          Tạo tin tuyển dụng theo 4 bước tinh gọn. Bạn có thể lưu nháp bất cứ lúc nào và gửi duyệt khi đã hoàn thiện đầy đủ.
-        </p>
-      </header>
+      <PageHero
+        eyebrow="Tuyển dụng"
+        title={isEdit ? 'Sửa tin tuyển dụng' : 'Đăng tin tuyển dụng mới'}
+        tip
+        description="Tạo tin theo 4 bước. Bạn lưu nháp được bất cứ lúc nào và gửi HR Connect duyệt khi đã đủ thông tin."
+      />
 
       {/* 4-Step Navigation Bar */}
       <div className="mb-6 rounded-2xl border border-solid border-slate-200 bg-white p-4 shadow-sm">
