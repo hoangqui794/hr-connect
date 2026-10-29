@@ -15,4 +15,12 @@ describe('candidate delivery feedback', () => {
     expect(deliveryFeedback({ deliveryChannel: 'IN_APP' }, 'Đã lên lịch.'))
       .toContain('thông báo trên HR Connect');
   });
+
+  it('explains both durable channels without claiming email delivery', () => {
+    const feedback = deliveryFeedback({ deliveryChannel: 'IN_APP_AND_EMAIL' }, 'Đã lên lịch.');
+
+    expect(feedback).toContain('thông báo trên HR Connect');
+    expect(feedback).toContain('đưa email vào hàng đợi gửi');
+    expect(feedback).not.toContain('đã gửi email');
+  });
 });

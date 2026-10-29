@@ -166,4 +166,20 @@ describe('ClientInterviewDetailDrawer', () => {
       );
     });
   });
+
+  it('requires interview feedback before submitting a result', async () => {
+    vi.mocked(candidateInterviewApi.getClientInterviewDetail).mockResolvedValue(mockInterviewDetail as any);
+
+    renderComponent({
+      interviewId: 'iv-test-100',
+      onClose: vi.fn(),
+    });
+
+    await screen.findByText('Nguyễn Văn An');
+    fireEvent.click(screen.getByRole('button', { name: /ghi kết quả/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /lưu kết quả/i }));
+
+    expect(await screen.findByText('Nhập nhận xét phỏng vấn.')).toBeInTheDocument();
+    expect(clientActionsApi.recordResult).not.toHaveBeenCalled();
+  });
 });

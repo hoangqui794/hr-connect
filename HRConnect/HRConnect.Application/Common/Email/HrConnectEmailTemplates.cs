@@ -162,13 +162,25 @@ public static class HrConnectEmailTemplates
     }
 
     public static HrConnectEmail InterviewScheduled(RecruitmentCandidateEmailPayload payload) =>
-        InterviewNotice(payload, "Bạn có lịch phỏng vấn mới", "Lịch phỏng vấn mới");
+        InterviewNotice(
+            payload,
+            "Bạn có lịch phỏng vấn mới",
+            "Lịch phỏng vấn mới",
+            "Xem lịch và xác nhận tham gia");
 
     public static HrConnectEmail InterviewUpdated(RecruitmentCandidateEmailPayload payload) =>
-        InterviewNotice(payload, "Thông tin phỏng vấn đã được cập nhật", "Thông tin phỏng vấn đã thay đổi");
+        InterviewNotice(
+            payload,
+            "Thông tin phỏng vấn đã được cập nhật",
+            "Thông tin phỏng vấn đã thay đổi",
+            "Xem thông tin phỏng vấn");
 
     public static HrConnectEmail InterviewRescheduled(RecruitmentCandidateEmailPayload payload) =>
-        InterviewNotice(payload, "Lịch phỏng vấn đã được dời", "Lịch phỏng vấn đã thay đổi");
+        InterviewNotice(
+            payload,
+            "Lịch phỏng vấn đã được dời",
+            "Lịch phỏng vấn đã thay đổi",
+            "Xem lịch phỏng vấn mới");
 
     public static HrConnectEmail InterviewCancelled(RecruitmentCandidateEmailPayload payload)
     {
@@ -176,6 +188,10 @@ public static class HrConnectEmailTemplates
         var reason = string.IsNullOrWhiteSpace(payload.Reason)
             ? string.Empty
             : $"<p style=\"margin:0 0 16px\">Lý do: {E(payload.Reason.Trim())}</p>";
+        var accountInstruction = payload.HasLinkedAccount
+            ? "Đăng nhập HR Connect để xem hồ sơ và các cập nhật tiếp theo."
+            : "Bạn có thể đăng ký hoặc đăng nhập để theo dõi các cập nhật tiếp theo cho hồ sơ của mình.";
+        var actionLabel = payload.HasLinkedAccount ? "Xem hồ sơ ứng tuyển" : "Đăng ký / đăng nhập HR Connect";
         return new HrConnectEmail(
             SubjectText($"Lịch phỏng vấn vị trí {payload.JobTitle} đã bị hủy"),
             Render(
@@ -183,8 +199,8 @@ public static class HrConnectEmailTemplates
                 Greeting(payload.CandidateName) +
                 $"<p style=\"margin:0 0 16px\">{organization} đã hủy lịch phỏng vấn Vòng {payload.InterviewRound ?? 1} cho vị trí <strong>{E(payload.JobTitle)}</strong>.</p>" +
                 reason +
-                "<p style=\"margin:0 0 18px\">Bạn có thể đăng ký hoặc đăng nhập để theo dõi các cập nhật tiếp theo cho hồ sơ của mình.</p>" +
-                Button("Đăng ký / đăng nhập HR Connect", payload.PortalUrl),
+                $"<p style=\"margin:0 0 18px\">{accountInstruction}</p>" +
+                Button(actionLabel, payload.PortalUrl),
                 $"Cập nhật lịch phỏng vấn cho vị trí {payload.JobTitle}."));
     }
 
@@ -250,7 +266,8 @@ public static class HrConnectEmailTemplates
     private static HrConnectEmail InterviewNotice(
         RecruitmentCandidateEmailPayload payload,
         string heading,
-        string preview)
+        string preview,
+        string linkedAccountActionLabel)
     {
         var scheduledAt = payload.ScheduledAt is { } value
             ? ToVietnamTime(value).ToString("HH:mm 'ngày' dd/MM/yyyy")
@@ -266,6 +283,13 @@ public static class HrConnectEmailTemplates
             ? $"<li><strong>Thời lượng dự kiến:</strong> {minutes} phút</li>"
             : string.Empty;
 
+        var instruction = payload.HasLinkedAccount
+            ? "Đăng nhập HR Connect để xem lịch và phản hồi cho doanh nghiệp."
+            : "Đăng ký hoặc đăng nhập HR Connect để theo dõi hồ sơ và các cập nhật tiếp theo.";
+        var actionLabel = payload.HasLinkedAccount
+            ? linkedAccountActionLabel
+            : "Đăng ký / đăng nhập HR Connect";
+
         return new HrConnectEmail(
             SubjectText($"{preview}: {payload.JobTitle}"),
             Render(
@@ -273,8 +297,8 @@ public static class HrConnectEmailTemplates
                 Greeting(payload.CandidateName) +
                 $"<p style=\"margin:0 0 16px\">{organization} đã cập nhật lịch phỏng vấn Vòng {payload.InterviewRound ?? 1} cho vị trí <strong>{E(payload.JobTitle)}</strong>.</p>" +
                 $"<ul style=\"margin:0 0 18px;padding-left:20px\"><li><strong>Thời gian:</strong> {E(scheduledAt)} (giờ Việt Nam)</li>{duration}{format}{location}{meeting}</ul>" +
-                "<p style=\"margin:0 0 18px\">Đăng ký hoặc đăng nhập HR Connect để theo dõi hồ sơ và các cập nhật tiếp theo.</p>" +
-                Button("Đăng ký / đăng nhập HR Connect", payload.PortalUrl),
+                $"<p style=\"margin:0 0 18px\">{instruction}</p>" +
+                Button(actionLabel, payload.PortalUrl),
                 $"{preview} cho vị trí {payload.JobTitle}."));
     }
 

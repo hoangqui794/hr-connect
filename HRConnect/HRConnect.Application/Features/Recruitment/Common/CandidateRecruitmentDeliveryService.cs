@@ -71,8 +71,9 @@ public sealed class CandidateRecruitmentDeliverySettings
 }
 
 /// <summary>
-/// Persists a Candidate notification through the correct durable channel. It deliberately
-/// creates either an in-app notification or an email outbox row, never both, to avoid duplicate messages.
+/// Persists Candidate recruitment notifications through durable channels. Interview events are
+/// intentionally delivered by both in-app notification and email when a linked Candidate has a
+/// valid email address; other event families retain their existing single-channel behaviour.
 /// </summary>
 public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentDeliveryService
 {
@@ -108,18 +109,24 @@ public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentD
             return CandidateRecruitmentDeliveryOutcome.Unavailable;
         }
 
-        if (resolved.Channel == CandidateRecruitmentDeliveryChannel.InApp)
+        var deliveredInApp = false;
+        var queuedEmail = false;
+
+        if (resolved.UserId is { } userId)
         {
             await _notifications.AddAsync(CreateInterviewNotification(
-                application, interview, deliveryEvent, resolved.UserId!.Value, occurredAt), cancellationToken);
+                application, interview, deliveryEvent, userId, occurredAt), cancellationToken);
+            deliveredInApp = true;
         }
-        else
+
+        if (resolved.RecipientEmail is { } recipientEmail)
         {
-            var payload = CreateInterviewEmailPayload(application, interview, reason);
+            var payload = CreateInterviewEmailPayload(application, interview, reason, resolved.UserId.HasValue);
             await _emailOutboxes.AddAsync(new EmailOutbox
             {
                 EmailOutboxId = Guid.NewGuid(),
-                RecipientEmail = resolved.RecipientEmail!,
+                UserId = resolved.UserId,
+                RecipientEmail = recipientEmail,
                 TemplateCode = GetInterviewTemplateCode(deliveryEvent),
                 Subject = null,
                 Payload = JsonSerializer.Serialize(payload),
@@ -127,9 +134,17 @@ public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentD
                 RetryCount = 0,
                 CreatedAt = occurredAt
             }, cancellationToken);
+            queuedEmail = true;
         }
 
-        return new CandidateRecruitmentDeliveryOutcome(resolved.Channel);
+        var channel = (deliveredInApp, queuedEmail) switch
+        {
+            (true, true) => CandidateRecruitmentDeliveryChannel.InAppAndEmail,
+            (true, false) => CandidateRecruitmentDeliveryChannel.InApp,
+            (false, true) => CandidateRecruitmentDeliveryChannel.Email,
+            _ => CandidateRecruitmentDeliveryChannel.Unavailable
+        };
+        return new CandidateRecruitmentDeliveryOutcome(channel);
     }
 
     public async Task<CandidateRecruitmentDeliveryOutcome> DeliverOfferAsync(
@@ -278,19 +293,23 @@ public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentD
     private RecruitmentCandidateEmailPayload CreateInterviewEmailPayload(
         JobApplication application,
         Interview interview,
-        string? reason) =>
+        string? reason,
+        bool hasLinkedAccount) =>
         new(
             application.Candidate?.FullName ?? "bạn",
             application.Job?.Title ?? "vị trí ứng tuyển",
             application.Job?.Company?.CompanyName,
-            BuildCandidatePortalUrl(),
+            hasLinkedAccount
+                ? BuildCandidateInterviewUrl(interview.InterviewId)
+                : BuildCandidatePortalUrl(),
             interview.InterviewRound,
             interview.ScheduledAt,
             interview.DurationMinutes,
             interview.InterviewType,
             interview.Location,
             interview.MeetingLink,
-            Reason: reason);
+            Reason: reason,
+            HasLinkedAccount: hasLinkedAccount);
 
     private Notification CreateOfferNotification(
         Offer offer,
@@ -348,6 +367,9 @@ public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentD
 
     private string BuildCandidatePortalUrl() =>
         $"{_settings.PortalBaseUrl.TrimEnd('/')}/register?role=CANDIDATE&returnTo=%2Fcandidate%2Fdashboard";
+
+    private string BuildCandidateInterviewUrl(Guid interviewId) =>
+        $"{_settings.PortalBaseUrl.TrimEnd('/')}/candidate/interviews/{interviewId}";
 
     private static string GetInterviewTemplateCode(InterviewCandidateDeliveryEvent deliveryEvent) => deliveryEvent switch
     {

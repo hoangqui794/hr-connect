@@ -1,4 +1,4 @@
-export type CandidateDeliveryChannel = 'IN_APP' | 'EMAIL' | 'UNAVAILABLE' | string | null | undefined;
+export type CandidateDeliveryChannel = 'IN_APP' | 'EMAIL' | 'IN_APP_AND_EMAIL' | 'UNAVAILABLE' | string | null | undefined;
 
 export interface CandidateDeliveryActionResult {
   message?: string;
@@ -20,6 +20,8 @@ export const deliveryFeedback = (result: CandidateDeliveryActionResult | null | 
       return `${baseMessage} Ứng viên đã nhận thông báo trên HR Connect.`;
     case 'EMAIL':
       return `${baseMessage} Hệ thống đã đưa email thông báo vào hàng đợi gửi cho ứng viên.`;
+    case 'IN_APP_AND_EMAIL':
+      return `${baseMessage} Ứng viên đã nhận thông báo trên HR Connect và hệ thống đã đưa email vào hàng đợi gửi.`;
     case 'UNAVAILABLE':
       return `${baseMessage} Không tìm thấy kênh liên hệ của ứng viên.`;
     default:

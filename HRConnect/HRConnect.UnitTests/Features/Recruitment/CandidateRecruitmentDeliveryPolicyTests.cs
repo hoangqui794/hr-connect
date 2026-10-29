@@ -8,7 +8,7 @@ namespace HRConnect.UnitTests.Features.Recruitment;
 public class CandidateRecruitmentDeliveryPolicyTests
 {
     [Fact]
-    public void Resolve_WhenCandidateHasLinkedAccount_PrefersInAppNotification()
+    public void Resolve_WhenCandidateHasLinkedAccount_ReturnsInAppAndAvailableEmail()
     {
         var userId = Guid.NewGuid();
 
@@ -20,7 +20,7 @@ public class CandidateRecruitmentDeliveryPolicyTests
 
         result.Channel.Should().Be(CandidateRecruitmentDeliveryChannel.InApp);
         result.UserId.Should().Be(userId);
-        result.RecipientEmail.Should().BeNull();
+        result.RecipientEmail.Should().Be("candidate@example.com");
     }
 
     [Fact]

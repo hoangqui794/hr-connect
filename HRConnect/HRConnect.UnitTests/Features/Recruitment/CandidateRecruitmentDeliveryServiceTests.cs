@@ -24,10 +24,46 @@ public class CandidateRecruitmentDeliveryServiceTests
         }));
 
     [Fact]
-    public async Task DeliverInterviewAsync_WithLinkedAccount_CreatesOnlyInAppNotification()
+    public async Task DeliverInterviewAsync_WithLinkedAccountAndEmail_CreatesInAppAndQueuesEmail()
     {
         var userId = Guid.NewGuid();
-        var (application, interview) = CreateApplication(new Candidate { UserId = userId, FullName = "An" });
+        var (application, interview) = CreateApplication(new Candidate
+        {
+            UserId = userId,
+            FullName = "An",
+            Email = "candidate@example.com"
+        });
+        EmailOutbox? outbox = null;
+        _outboxes.Setup(x => x.AddAsync(It.IsAny<EmailOutbox>(), It.IsAny<CancellationToken>()))
+            .Callback<EmailOutbox, CancellationToken>((value, _) => outbox = value)
+            .Returns(Task.CompletedTask);
+
+        var result = await CreateService().DeliverInterviewAsync(
+            application, interview, InterviewCandidateDeliveryEvent.Scheduled, null, DateTime.UtcNow);
+
+        result.Channel.Should().Be(CandidateRecruitmentDeliveryChannel.InAppAndEmail);
+        _notifications.Verify(x => x.AddAsync(
+            It.Is<Notification>(item => item.UserId == userId && item.NotificationType == "INTERVIEW"),
+            It.IsAny<CancellationToken>()), Times.Once);
+        outbox.Should().NotBeNull();
+        outbox!.UserId.Should().Be(userId);
+        outbox.RecipientEmail.Should().Be("candidate@example.com");
+        outbox.TemplateCode.Should().Be(RecruitmentCandidateEmailTemplates.InterviewScheduled);
+        var payload = JsonSerializer.Deserialize<RecruitmentCandidateEmailPayload>(outbox.Payload)!;
+        payload.HasLinkedAccount.Should().BeTrue();
+        payload.PortalUrl.Should().Be($"https://portal.example/candidate/interviews/{interview.InterviewId}");
+    }
+
+    [Fact]
+    public async Task DeliverInterviewAsync_WithLinkedAccountButNoValidEmail_CreatesOnlyInAppNotification()
+    {
+        var userId = Guid.NewGuid();
+        var (application, interview) = CreateApplication(new Candidate
+        {
+            UserId = userId,
+            FullName = "An",
+            Email = "not-an-email"
+        });
 
         var result = await CreateService().DeliverInterviewAsync(
             application, interview, InterviewCandidateDeliveryEvent.Scheduled, null, DateTime.UtcNow);
@@ -62,6 +98,7 @@ public class CandidateRecruitmentDeliveryServiceTests
         var payload = JsonSerializer.Deserialize<RecruitmentCandidateEmailPayload>(outbox.Payload)!;
         payload.PortalUrl.Should().Be("https://portal.example/register?role=CANDIDATE&returnTo=%2Fcandidate%2Fdashboard");
         payload.Reason.Should().Be("Trùng lịch");
+        payload.HasLinkedAccount.Should().BeFalse();
     }
 
     [Fact]
