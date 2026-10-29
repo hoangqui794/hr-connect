@@ -18,10 +18,11 @@ const AVATAR_TONES = [
   { bg: '#F1F5F9', fg: '#1E293B' },
 ];
 
-const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+// Tolerate a missing name (an API row without it) instead of crashing the whole page.
+const hash = (s: string) => [...(s ?? '')].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 
 export const initialsOf = (name: string) =>
-  name
+  (name ?? '')
     .trim()
     .split(/\s+/)
     .filter(Boolean)
