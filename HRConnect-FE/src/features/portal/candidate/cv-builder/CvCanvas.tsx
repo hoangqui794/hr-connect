@@ -15,6 +15,8 @@ import {
   TrophyOutlined,
   TranslationOutlined,
   StarOutlined,
+  CodeOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import { CvInlineField } from './CvInlineField';
 import type {
@@ -23,6 +25,8 @@ import type {
   StructuredCvContent,
   StructuredCvExperience,
   StructuredCvEducation,
+  StructuredCvProject,
+  StructuredCvActivity,
 } from '@/types/api/cvBuilder';
 import type { SectionVisibility } from './CvSidebarTools';
 
@@ -34,6 +38,8 @@ export interface CvCanvasProps {
   layout: CvLayoutStyle;
   density: 'compact' | 'normal' | 'spacious';
   sectionVisibility: SectionVisibility;
+  avatarUrl?: string;
+  showAvatar?: boolean;
   readOnly?: boolean;
 }
 
@@ -60,6 +66,8 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
   layout,
   density,
   sectionVisibility,
+  avatarUrl,
+  showAvatar = false,
   readOnly = false,
 }) => {
   const [zoom, setZoom] = useState<number>(100);
@@ -127,6 +135,24 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
     onChangeContent({ experiences: list });
   };
 
+  const handleAddProject = () => {
+    const nextProject: StructuredCvProject = {
+      name: 'Tên dự án', role: 'Vai trò của bạn', startDate: '', endDate: '',
+      technologies: '', url: '',
+      description: 'Mô tả bài toán, phần việc bạn thực hiện và kết quả nổi bật...',
+    };
+    onChangeContent({ projects: [...(content.projects || []), nextProject] });
+  };
+
+  const handleUpdateProject = (index: number, field: keyof StructuredCvProject, value: string) => {
+    const list = [...(content.projects || [])];
+    list[index] = { ...list[index], [field]: value };
+    onChangeContent({ projects: list });
+  };
+
+  const handleRemoveProject = (index: number) =>
+    onChangeContent({ projects: (content.projects || []).filter((_, itemIndex) => itemIndex !== index) });
+
   // Education handlers
   const handleAddEducation = () => {
     const nextEdu: StructuredCvEducation = {
@@ -155,6 +181,23 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
     const list = (content.educations || []).filter((_, i) => i !== index);
     onChangeContent({ educations: list });
   };
+
+  const handleAddActivity = () => {
+    const nextActivity: StructuredCvActivity = {
+      name: 'Tên tổ chức / Hoạt động', role: 'Vai trò của bạn', startDate: '', endDate: '',
+      description: 'Mô tả đóng góp, trách nhiệm hoặc thành tích nổi bật...',
+    };
+    onChangeContent({ activities: [...(content.activities || []), nextActivity] });
+  };
+
+  const handleUpdateActivity = (index: number, field: keyof StructuredCvActivity, value: string) => {
+    const list = [...(content.activities || [])];
+    list[index] = { ...list[index], [field]: value };
+    onChangeContent({ activities: list });
+  };
+
+  const handleRemoveActivity = (index: number) =>
+    onChangeContent({ activities: (content.activities || []).filter((_, itemIndex) => itemIndex !== index) });
 
   // Skills handlers
   const handleAddSkill = (skill: string) => {
@@ -267,7 +310,17 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
             className={`cv-paper ${readOnly ? 'cv-paper--preview' : 'cv-paper--editor'} cv-paper--${layout} cv-density--${density} bg-white text-slate-800 shadow-xl rounded-sm ${densityStyles.padding} flex flex-col ${densityStyles.sectionGap} border border-slate-200/60 print:shadow-none print:m-0 print:border-none`}
           >
             {/* ── HEADER: PERSONAL INFORMATION ── */}
-            <header className="cv-paper__header border-0 border-b-2 border-solid pb-5" style={{ borderColor: accentColor }}>
+            <header
+              className={`cv-paper__header relative border-0 border-b-2 border-solid pb-5 ${showAvatar && avatarUrl ? 'cv-paper__header--with-avatar' : ''}`}
+              style={{ borderColor: accentColor }}
+            >
+              {showAvatar && avatarUrl && (
+                <img
+                  src={avatarUrl}
+                  alt={`Ảnh đại diện của ${content.fullName || 'ứng viên'}`}
+                  className="cv-paper__avatar"
+                />
+              )}
               {/* Full Name */}
               <div className="mb-1">
                 <CvInlineField
@@ -484,6 +537,36 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
               </section>
             )}
 
+            {sectionVisibility.projects && (
+              <section className="cv-paper__section cv-paper__section--projects space-y-3">
+                <div className="flex items-center justify-between pb-1 border-0 border-b border-solid border-slate-200">
+                  <div className="flex items-center gap-2"><CodeOutlined style={{ color: accentColor }} /><h3 className="m-0 text-xs font-bold uppercase tracking-wider" style={{ color: accentColor }}>Dự án nổi bật</h3></div>
+                  {!readOnly && <Button type="text" size="small" icon={<PlusOutlined />} onClick={handleAddProject} className="text-[11px] text-blue-600">Thêm dự án</Button>}
+                </div>
+                {(content.projects || []).length === 0 ? (
+                  !readOnly && <button type="button" onClick={handleAddProject} className="cv-empty-section">+ Thêm dự án học tập, cá nhân hoặc đã tham gia</button>
+                ) : (
+                  <div className={densityStyles.itemGap}>
+                    {(content.projects || []).map((project, idx) => (
+                      <article key={idx} className="group relative -mx-2 rounded-md p-2 hover:bg-slate-50/80">
+                        {!readOnly && <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => handleRemoveProject(idx)} className="!absolute right-1 top-1 opacity-0 group-hover:opacity-100" aria-label={`Xóa dự án ${idx + 1}`} />}
+                        <div className="grid grid-cols-[1fr_auto] gap-3 pr-7">
+                          <CvInlineField value={project.name} onChange={(value) => handleUpdateProject(idx, 'name', value)} placeholder="Tên dự án" aria-label={`Tên dự án ${idx + 1}`} readOnly={readOnly} className="text-xs font-bold text-slate-900" />
+                          <div className="flex items-center text-[11px] text-slate-500"><CvInlineField value={project.startDate || ''} onChange={(value) => handleUpdateProject(idx, 'startDate', value)} placeholder="Bắt đầu" aria-label={`Bắt đầu dự án ${idx + 1}`} readOnly={readOnly} className="w-16 text-right" /><span>–</span><CvInlineField value={project.endDate || ''} onChange={(value) => handleUpdateProject(idx, 'endDate', value)} placeholder="Kết thúc" aria-label={`Kết thúc dự án ${idx + 1}`} readOnly={readOnly} className="w-16" /></div>
+                        </div>
+                        <div className="mt-1 grid grid-cols-2 gap-2">
+                          <CvInlineField value={project.role || ''} onChange={(value) => handleUpdateProject(idx, 'role', value)} placeholder="Vai trò của bạn" aria-label={`Vai trò dự án ${idx + 1}`} readOnly={readOnly} className="text-xs font-semibold" style={{ color: accentColor }} />
+                          <CvInlineField value={project.technologies || ''} onChange={(value) => handleUpdateProject(idx, 'technologies', value)} placeholder="Công nghệ / Công cụ" aria-label={`Công nghệ dự án ${idx + 1}`} readOnly={readOnly} className="text-right text-[11px] text-slate-500" />
+                        </div>
+                        <CvInlineField multiline rows={2} value={project.description || ''} onChange={(value) => handleUpdateProject(idx, 'description', value)} placeholder="Bạn đã làm gì và kết quả đo được là gì?" aria-label={`Mô tả dự án ${idx + 1}`} readOnly={readOnly} className={`mt-1 text-xs text-slate-600 ${densityStyles.lineHeight}`} />
+                        <CvInlineField value={project.url || ''} onChange={(value) => handleUpdateProject(idx, 'url', value)} placeholder="Liên kết dự án / GitHub / sản phẩm (không bắt buộc)" aria-label={`Liên kết dự án ${idx + 1}`} readOnly={readOnly} className="mt-1 text-[11px] text-slate-500" />
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
             {/* ── SECTION: EDUCATIONS ── */}
             {sectionVisibility.educations && (
               <section className="cv-paper__section cv-paper__section--educations space-y-3">
@@ -607,6 +690,32 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
                   >
                     Thêm học vấn & bằng cấp
                   </Button>
+                )}
+              </section>
+            )}
+
+            {sectionVisibility.activities && (
+              <section className="cv-paper__section cv-paper__section--activities space-y-3">
+                <div className="flex items-center justify-between pb-1 border-0 border-b border-solid border-slate-200">
+                  <div className="flex items-center gap-2"><TeamOutlined style={{ color: accentColor }} /><h3 className="m-0 text-xs font-bold uppercase tracking-wider" style={{ color: accentColor }}>Hoạt động</h3></div>
+                  {!readOnly && <Button type="text" size="small" icon={<PlusOutlined />} onClick={handleAddActivity} className="text-[11px] text-blue-600">Thêm hoạt động</Button>}
+                </div>
+                {(content.activities || []).length === 0 ? (
+                  !readOnly && <button type="button" onClick={handleAddActivity} className="cv-empty-section">+ Thêm hoạt động cộng đồng, câu lạc bộ hoặc tình nguyện</button>
+                ) : (
+                  <div className={densityStyles.itemGap}>
+                    {(content.activities || []).map((activity, idx) => (
+                      <article key={idx} className="group relative -mx-2 rounded-md p-2 hover:bg-slate-50/80">
+                        {!readOnly && <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => handleRemoveActivity(idx)} className="!absolute right-1 top-1 opacity-0 group-hover:opacity-100" aria-label={`Xóa hoạt động ${idx + 1}`} />}
+                        <div className="grid grid-cols-[1fr_auto] gap-3 pr-7">
+                          <CvInlineField value={activity.name} onChange={(value) => handleUpdateActivity(idx, 'name', value)} placeholder="Tên hoạt động / tổ chức" aria-label={`Tên hoạt động ${idx + 1}`} readOnly={readOnly} className="text-xs font-bold text-slate-900" />
+                          <div className="flex items-center text-[11px] text-slate-500"><CvInlineField value={activity.startDate || ''} onChange={(value) => handleUpdateActivity(idx, 'startDate', value)} placeholder="Bắt đầu" aria-label={`Bắt đầu hoạt động ${idx + 1}`} readOnly={readOnly} className="w-16 text-right" /><span>–</span><CvInlineField value={activity.endDate || ''} onChange={(value) => handleUpdateActivity(idx, 'endDate', value)} placeholder="Kết thúc" aria-label={`Kết thúc hoạt động ${idx + 1}`} readOnly={readOnly} className="w-16" /></div>
+                        </div>
+                        <CvInlineField value={activity.role || ''} onChange={(value) => handleUpdateActivity(idx, 'role', value)} placeholder="Vai trò của bạn" aria-label={`Vai trò hoạt động ${idx + 1}`} readOnly={readOnly} className="mt-1 text-xs font-semibold" style={{ color: accentColor }} />
+                        <CvInlineField multiline rows={2} value={activity.description || ''} onChange={(value) => handleUpdateActivity(idx, 'description', value)} placeholder="Mô tả đóng góp hoặc thành tích nổi bật" aria-label={`Mô tả hoạt động ${idx + 1}`} readOnly={readOnly} className={`mt-1 text-xs text-slate-600 ${densityStyles.lineHeight}`} />
+                      </article>
+                    ))}
+                  </div>
                 )}
               </section>
             )}

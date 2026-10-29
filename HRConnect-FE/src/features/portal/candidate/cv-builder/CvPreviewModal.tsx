@@ -20,6 +20,8 @@ export interface CvPreviewModalProps {
   sectionVisibility: SectionVisibility;
   pdfUrl?: string | null;
   title: string;
+  avatarUrl?: string;
+  showAvatar?: boolean;
 }
 
 export const CvPreviewModal: React.FC<CvPreviewModalProps> = ({
@@ -33,6 +35,8 @@ export const CvPreviewModal: React.FC<CvPreviewModalProps> = ({
   sectionVisibility,
   pdfUrl,
   title,
+  avatarUrl,
+  showAvatar,
 }) => {
   const handlePrint = () => {
     window.print();
@@ -83,6 +87,8 @@ export const CvPreviewModal: React.FC<CvPreviewModalProps> = ({
           layout={layout}
           density={density}
           sectionVisibility={sectionVisibility}
+          avatarUrl={avatarUrl}
+          showAvatar={showAvatar}
           readOnly={true}
         />
       </div>

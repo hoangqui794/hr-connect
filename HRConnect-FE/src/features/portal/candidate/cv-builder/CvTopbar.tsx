@@ -16,7 +16,9 @@ export interface CvTopbarProps {
   onPrimaryChange: (isPrimary: boolean) => void;
   onPreview: () => void;
   onSave: () => void;
+  onSaveDraft: () => void;
   isSaving: boolean;
+  draftStatus: 'idle' | 'saving' | 'saved' | 'error';
   onBack: () => void;
   completeness: number;
   mode: 'create' | 'edit';
@@ -29,7 +31,9 @@ export const CvTopbar: React.FC<CvTopbarProps> = ({
   onPrimaryChange,
   onPreview,
   onSave,
+  onSaveDraft,
   isSaving,
+  draftStatus,
   onBack,
   completeness,
   mode,
@@ -150,6 +154,17 @@ export const CvTopbar: React.FC<CvTopbarProps> = ({
           <span className="text-xs font-bold text-blue-600">{completeness}%</span>
         </div>
 
+        <div className="hidden xl:flex min-w-[118px] items-center justify-end text-[11px] font-medium text-slate-500" aria-live="polite">
+          {draftStatus === 'saving' && 'Đang lưu nháp…'}
+          {draftStatus === 'saved' && 'Đã tự lưu nháp'}
+          {draftStatus === 'error' && <span className="text-red-600">Lưu nháp thất bại</span>}
+        </div>
+
+        <Button onClick={onSaveDraft} className="!rounded-lg font-semibold">
+          <span className="hidden lg:inline">Lưu nháp</span>
+          <span className="lg:hidden">Nháp</span>
+        </Button>
+
         {/* Preview Button */}
         <Button
           icon={<EyeOutlined />}
@@ -167,7 +182,7 @@ export const CvTopbar: React.FC<CvTopbarProps> = ({
           onClick={onSave}
           className="!rounded-lg !bg-blue-600 hover:!bg-blue-700 !font-bold !px-5 shadow-sm flex items-center gap-1.5"
         >
-          <span>Lưu CV</span>
+          <span>Xuất &amp; lưu CV</span>
         </Button>
       </div>
     </header>
