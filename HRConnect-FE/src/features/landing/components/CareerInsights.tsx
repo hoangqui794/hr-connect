@@ -45,7 +45,7 @@ const ARTICLES: ArticleItem[] = [
     category: 'Cẩm Nang OPR Hub',
     categoryColor: 'purple',
     title: 'Cẩm nang dành cho Headhunter OPR: Bí quyết Tăng Tỷ lệ Giới thiệu Ứng viên Thành công',
-    excerpt: 'Hướng dẫn sử dụng công cụ AI Sàng lọc để chấm điểm hồ sơ trước khi nộp, tận dụng luật First-Submission và quản lý bảo hành 60 ngày an toàn.',
+    excerpt: 'Hướng dẫn sử dụng công cụ AI Sàng lọc để chấm điểm hồ sơ trước khi nộp, tận dụng luật First-Submission và theo dõi thời hạn bảo hành an toàn.',
     author: 'OPR Network Management',
     readTime: '5 phút đọc',
     date: '08/09/2026',

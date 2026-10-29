@@ -26,11 +26,11 @@ const NAV = [
   { to: '/client/agreements', label: 'Thỏa thuận dịch vụ' },
   { to: '/client/candidates', label: 'Hồ sơ ứng viên' },
   { to: '/client/interviews-offers', label: 'Phỏng vấn & Offer' },
-  { to: '/client/warranty', label: 'Bảo hành', muted: true },
-  { to: '/client/billing', label: 'Công nợ', muted: true },
+  { to: '/client/warranty', label: 'Bảo hành' },
+  { to: '/client/billing', label: 'Công nợ' },
 ] as const;
 
-const linkClass = (active: boolean, muted?: boolean, compact?: boolean) => {
+const linkClass = (active: boolean, compact?: boolean) => {
   if (compact) {
     return [
       'block rounded-xl px-4 py-3 text-[15px] no-underline transition-colors duration-150',
@@ -43,9 +43,7 @@ const linkClass = (active: boolean, muted?: boolean, compact?: boolean) => {
     'flex h-16 items-center px-3.5 text-sm no-underline transition-colors duration-150',
     active
       ? 'border-0 border-b-2 border-solid border-blue-600 font-semibold text-slate-900'
-      : muted
-        ? 'border-0 border-b-2 border-solid border-transparent font-medium text-slate-400 hover:text-slate-700'
-        : 'border-0 border-b-2 border-solid border-transparent font-medium text-slate-500 hover:text-slate-900',
+      : 'border-0 border-b-2 border-solid border-transparent font-medium text-slate-500 hover:text-slate-900',
   ].join(' ');
 };
 
@@ -70,7 +68,7 @@ export const ClientShell: React.FC = () => {
       await authService.logout(); // revokes the refresh token server-side
     } finally {
       logout();
-      window.location.replace('/');
+      window.location.replace('/login');
     }
   };
 
@@ -106,7 +104,7 @@ export const ClientShell: React.FC = () => {
           {!compact && (
             <nav aria-label="Điều hướng chính" className="flex items-center gap-1 h-16">
               {NAV.map((n) => (
-                <NavLink key={n.to} to={n.to} className={linkClass(isActive(n.to), 'muted' in n && n.muted)} aria-current={isActive(n.to) ? 'page' : undefined}>
+                <NavLink key={n.to} to={n.to} className={linkClass(isActive(n.to))} aria-current={isActive(n.to) ? 'page' : undefined}>
                   {n.label}
                 </NavLink>
               ))}
@@ -175,11 +173,11 @@ export const ClientShell: React.FC = () => {
           </div>
           <nav aria-label="Điều hướng chính" className="space-y-1">
             {NAV.map((n) => (
-              <NavLink key={n.to} to={n.to} className={linkClass(isActive(n.to), 'muted' in n && n.muted, true)}>
+              <NavLink key={n.to} to={n.to} className={linkClass(isActive(n.to), true)}>
                 {n.label}
               </NavLink>
             ))}
-            <NavLink to="/client/jobs/create" className={linkClass(location.pathname === '/client/jobs/create', false, true)}>
+            <NavLink to="/client/jobs/create" className={linkClass(location.pathname === '/client/jobs/create', true)}>
               + Đăng tin tuyển dụng
             </NavLink>
           </nav>
