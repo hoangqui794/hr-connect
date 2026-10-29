@@ -4,7 +4,7 @@ import {
   DashboardOutlined, FileTextOutlined, TeamOutlined, RobotOutlined,
   DollarOutlined, UserAddOutlined, AppstoreOutlined, SearchOutlined,
   SettingOutlined, LoginOutlined, HomeOutlined, MenuFoldOutlined,
-  MenuUnfoldOutlined, CalendarOutlined, SafetyCertificateOutlined,
+  MenuUnfoldOutlined, CalendarOutlined, SafetyCertificateOutlined, WalletOutlined,
   PlusCircleOutlined, BankOutlined, ApartmentOutlined, AuditOutlined,
   SolutionOutlined,
 } from '@ant-design/icons';
@@ -31,6 +31,7 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   PlusCircleOutlined: <PlusCircleOutlined />,
   CalendarOutlined: <CalendarOutlined />,
   SafetyCertificateOutlined: <SafetyCertificateOutlined />,
+  WalletOutlined: <WalletOutlined />,
   BankOutlined: <BankOutlined />,
   ApartmentOutlined: <ApartmentOutlined />,
   AuditOutlined: <AuditOutlined />,
