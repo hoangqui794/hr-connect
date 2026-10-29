@@ -233,7 +233,8 @@ export const ClientBillingPage: React.FC = () => {
       <PageHero
         eyebrow="Tài chính"
         title="Công nợ phí dịch vụ"
-        description="Tất cả khoản phí của doanh nghiệp với HR Connect theo 3 dịch vụ. Thanh toán bằng chuyển khoản; HR Connect ghi nhận khi nhận được tiền."
+        tip
+        description="Mọi khoản phí với HR Connect của 3 dịch vụ HH, SS và AP ở cùng một nơi. Bạn thanh toán bằng chuyển khoản; trạng thái tự cập nhật khi HR Connect nhận được tiền."
         actions={
           <Button icon={<ReloadOutlined spin={fetching} />} onClick={refetch}>
             Làm mới

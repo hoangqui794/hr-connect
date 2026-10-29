@@ -5,6 +5,8 @@
  * with counts. Colour pairs used for text meet WCAG AA 4.5:1.
  */
 import React from 'react';
+import { InfoCircleOutlined } from '@ant-design/icons';
+import { Tooltip } from 'antd';
 import './admin-console.css';
 
 // Text/background pairs for initials — all ≥ 4.5:1 (dark text on light tint).
@@ -55,12 +57,29 @@ export const PageHero: React.FC<{
   title: string;
   description: string;
   actions?: React.ReactNode;
-}> = ({ eyebrow, title, description, actions }) => (
+  /** Move the description into a small (i) tooltip after the title instead of a line under it. */
+  tip?: boolean;
+}> = ({ eyebrow, title, description, actions, tip }) => (
   <header className="mb-7 flex flex-wrap items-end justify-between gap-4">
-    <div className="max-w-2xl">
-      {eyebrow && <div className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--console-accent-strong)]">{eyebrow}</div>}
-      <h1 className="m-0 text-[26px] font-bold leading-tight tracking-[-0.01em] text-slate-900">{title}</h1>
-      <p className="m-0 mt-1.5 text-[14.5px] leading-relaxed text-slate-600">{description}</p>
+    <div className="flex max-w-2xl items-start gap-4">
+      <div className="min-w-0">
+        {eyebrow && <div className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--console-accent-strong)]">{eyebrow}</div>}
+        <h1 className="m-0 flex items-center gap-2 text-[26px] font-bold leading-tight tracking-[-0.01em] text-slate-900">
+          {title}
+          {tip && (
+            <Tooltip title={description} placement="bottomLeft">
+              <button
+                type="button"
+                aria-label={`Giải thích: ${title}`}
+                className="inline-flex h-6 w-6 cursor-help items-center justify-center rounded-full border-0 bg-transparent p-0 text-[15px] text-slate-400 transition-colors hover:text-slate-700 focus-visible:text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--console-accent)]"
+              >
+                <InfoCircleOutlined />
+              </button>
+            </Tooltip>
+          )}
+        </h1>
+        {!tip && <p className="m-0 mt-1.5 text-[14.5px] leading-relaxed text-slate-600">{description}</p>}
+      </div>
     </div>
     {actions && <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div>}
   </header>
