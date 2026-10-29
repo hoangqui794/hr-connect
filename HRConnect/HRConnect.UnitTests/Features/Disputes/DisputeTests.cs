@@ -22,6 +22,7 @@ public class DisputeTests
     private readonly ApplicationDbContext _context = new(new DbContextOptionsBuilder<ApplicationDbContext>()
         .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
     private readonly Mock<IAuditLogService> _audit = new();
+    private readonly Mock<IAppNotifier> _notifier = new();
     private readonly Guid _adminUserId = Guid.NewGuid();
 
     /// <summary>Values of the ck_notification_type check constraint.</summary>
@@ -31,7 +32,7 @@ public class DisputeTests
     private DisputeHandlers Handlers() => new(
         new DisputeRepository(_context), new CandidateDuplicateRepository(_context),
         new BusinessSettingsService(new SystemSettingRepository(_context)),
-        new TestUnitOfWork(_context), _audit.Object, new NotificationRepository(_context));
+        new TestUnitOfWork(_context), _audit.Object, new NotificationRepository(_context), _notifier.Object);
 
     private sealed class TestUnitOfWork(ApplicationDbContext context) : IUnitOfWork
     {
@@ -154,6 +155,13 @@ public class DisputeTests
         var again = () => RaiseAsync(s);
 
         dispute.Status.Should().Be(DisputeStates.Open);
+        _notifier.Verify(n => n.NotifyRoleAsync(
+            "PLATFORM_ADMIN",
+            It.Is<AppNotice>(notice =>
+                notice.RelatedEntityType == "DISPUTE" &&
+                notice.RelatedEntityId == dispute.DisputeId &&
+                notice.RouteHint == "/admin/disputes"),
+            It.IsAny<CancellationToken>()), Times.Once);
         (await again.Should().ThrowAsync<ConflictException>()).Which.ErrorCode.Should().Be(DisputeErrorCodes.AlreadyOpen);
     }
 

@@ -162,10 +162,10 @@ export const ClientCompanyPage: React.FC = () => {
         <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[340px_minmax(0,1fr)]">
           <Surface padded className="self-start">
             <div className="flex flex-col items-center text-center">
-              <div className="relative rounded-[22px] bg-gradient-to-br from-blue-50 to-cyan-50 p-3 ring-1 ring-blue-100">
+              <div className="relative rounded-[22px] bg-gradient-to-br from-blue-50 to-cyan-50 p-1 ring-1 ring-blue-100">
                 <CompanyLogo companyName={c.companyName} logoUrl={c.logoUrl ?? undefined} size="xl" className="!h-24 !w-24 !rounded-2xl !shadow-sm" />
                 {uploadLogo.isPending && (
-                  <div className="absolute inset-3 flex items-center justify-center rounded-2xl bg-white/80 text-sm font-semibold text-blue-700 backdrop-blur-sm">
+                  <div className="absolute inset-1 flex items-center justify-center rounded-2xl bg-white/80 text-sm font-semibold text-blue-700 backdrop-blur-sm">
                     Đang tải…
                   </div>
                 )}

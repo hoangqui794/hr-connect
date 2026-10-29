@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { resolveApiAssetUrl } from '@/services/apiClient';
 
 /** Only use an explicit backend URL; never guess a company's brand from its name. */
 export function getCompanyLogoUrl(_companyName: string = '', explicitUrl?: string): string {
-  return explicitUrl?.trim() || '';
+  return resolveApiAssetUrl(explicitUrl) || '';
 }
 
 interface CompanyLogoProps {
@@ -40,10 +41,10 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
   };
 
   const sizeClasses = {
-    sm: 'w-9 h-9 rounded-lg p-1',
-    md: 'w-12 h-12 rounded-xl p-1.5',
-    lg: 'w-16 h-16 rounded-2xl p-2',
-    xl: 'w-20 h-20 rounded-2xl p-2.5',
+    sm: 'w-9 h-9 rounded-lg',
+    md: 'w-12 h-12 rounded-xl',
+    lg: 'w-16 h-16 rounded-2xl',
+    xl: 'w-20 h-20 rounded-2xl',
   };
 
   return (
@@ -58,7 +59,7 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
           alt={`Logo ${companyName}`}
           onError={handleError}
           loading="lazy"
-          className="h-full w-full object-contain"
+          className="h-full w-full object-cover"
         />
       ) : (
         <span className="flex h-full w-full items-center justify-center rounded-[inherit] bg-gradient-to-br from-blue-50 to-cyan-100 font-bold tracking-tight text-blue-700" aria-label={`Ký hiệu doanh nghiệp ${companyName}`}>
