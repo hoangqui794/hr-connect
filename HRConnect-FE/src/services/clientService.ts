@@ -451,7 +451,7 @@ export class ClientService {
           ...item,
           status: nextStatus,
           passedDays: result === 'PASS' ? item.probationDaysTotal : item.passedDays,
-          note: note || (result === 'PASS' ? 'Nghiệm thu thử việc thành công (PASS).' : 'Kích hoạt tìm nhân sự thay thế miễn phí.'),
+          note: note || (result === 'PASS' ? 'Nghiệm thu thử việc thành công.' : 'Kích hoạt tìm nhân sự thay thế miễn phí.'),
         };
       }
       return item;

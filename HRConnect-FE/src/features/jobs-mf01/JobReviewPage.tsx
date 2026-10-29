@@ -534,7 +534,7 @@ export const JobReviewPage: React.FC = () => {
             </div>
           </div>
           <div className="rounded-lg bg-emerald-50/70 p-2.5 border border-solid border-emerald-100 text-xs text-emerald-900">
-            Hệ thống sẽ chuyển tin sang trạng thái <strong>Đang tuyển (ACTIVE)</strong>, mở nguồn hồ sơ CV Sourcing và gửi thông báo công khai tin tới Doanh nghiệp.
+            Hệ thống sẽ chuyển tin sang trạng thái <strong>Đang tuyển</strong>, mở nguồn hồ sơ và gửi thông báo công khai tin tới Doanh nghiệp.
           </div>
         </div>
       ),
@@ -571,7 +571,7 @@ export const JobReviewPage: React.FC = () => {
             targetRole: 'INTERNAL_HR',
             type: 'success',
             title: 'Đã nhận cọc & Công khai tin',
-            message: `Đã đối soát khoản cọc của "${jobToConfirm.title}". Tin đã chính thức chuyển sang Đang tuyển (ACTIVE).`,
+            message: `Đã đối soát khoản cọc của "${jobToConfirm.title}". Tin đã chính thức chuyển sang trạng thái Đang tuyển.`,
             actionLabel: 'Xem tin tuyển dụng',
             actionRoute: `/internal/jobs/review?status=ACTIVE&highlight=${encodeURIComponent(jobToConfirm.jobId)}`,
             relatedEntityId: jobToConfirm.jobId,
@@ -630,7 +630,7 @@ export const JobReviewPage: React.FC = () => {
             </div>
             <div className="rounded-lg bg-blue-50 p-2.5 border border-solid border-blue-200 text-blue-900">
               ℹ Theo quy trình, vị trí này yêu cầu Doanh nghiệp <strong>hoàn tất đặt cọc / thanh toán gói</strong> trước khi tin được công khai.
-              Hệ thống sẽ chuyển tin sang trạng thái <strong>Chờ thanh toán (PENDING_PAYMENT)</strong> để Doanh nghiệp đặt cọc.
+              Hệ thống sẽ chuyển tin sang trạng thái <strong>Chờ thanh toán</strong> để Doanh nghiệp đặt cọc.
             </div>
           </div>
         ),
@@ -683,7 +683,7 @@ export const JobReviewPage: React.FC = () => {
             ✓ Doanh nghiệp đã ký và tải lên hợp đồng hợp lệ. Bạn đang thực hiện duyệt hoàn tất để công khai tin tuyển dụng lên nền tảng.
           </div>
           <p className="m-0">
-            Tin tuyển dụng sẽ được chuyển sang trạng thái <strong>Đang tuyển (ACTIVE)</strong> và hiển thị công khai trên hệ thống.
+            Tin tuyển dụng sẽ được chuyển sang trạng thái <strong>Đang tuyển</strong> và hiển thị công khai trên hệ thống.
           </p>
         </div>
       ),
@@ -1117,7 +1117,7 @@ export const JobReviewPage: React.FC = () => {
                       <span>Tin tuyển dụng đã hoàn tất duyệt và thanh toán, đang hoạt động công khai trên hệ thống.</span>
                     </div>
                     <Tag color="success" className="m-0 font-semibold px-2.5 py-0.5">
-                      Đang tuyển (ACTIVE)
+                      Đang tuyển
                     </Tag>
                   </div>
                 ) : job.status === 'REJECTED' ? (
@@ -1128,7 +1128,7 @@ export const JobReviewPage: React.FC = () => {
                         <span>Tin tuyển dụng này đã bị từ chối duyệt</span>
                       </div>
                       <Tag color="error" className="m-0 font-semibold px-2.5 py-0.5">
-                        Đã từ chối (REJECTED)
+                        Đã từ chối
                       </Tag>
                     </div>
                     {job.statusReason && (
@@ -1143,7 +1143,7 @@ export const JobReviewPage: React.FC = () => {
                     <Text className="text-sm text-slate-700">
                       Trạng thái hiện tại: <span className="font-semibold">{JOB_STATUS[job.status as JobStatus]?.label ?? job.status}</span>
                     </Text>
-                    <Tag className="m-0 font-semibold">{job.status}</Tag>
+                    <Tag color={JOB_STATUS[job.status as JobStatus]?.color} className="m-0 font-semibold">{JOB_STATUS[job.status as JobStatus]?.label ?? 'Chưa xác định'}</Tag>
                   </div>
                 )}
 

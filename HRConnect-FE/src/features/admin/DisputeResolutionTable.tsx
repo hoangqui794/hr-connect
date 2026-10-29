@@ -188,7 +188,7 @@ export const DisputeResolutionTable: React.FC<DisputeResolutionTableProps> = ({
 
           <div className="mt-2">
             <Tag color="success" className="rounded-md font-bold text-[10px] px-2 py-0.5 border-emerald-300 bg-emerald-50 text-emerald-800">
-              ✓ Hợp lệ (First-Submission Earliest)
+              ✓ Hợp lệ (Nộp sớm nhất)
             </Tag>
           </div>
         </div>
@@ -286,7 +286,7 @@ export const DisputeResolutionTable: React.FC<DisputeResolutionTableProps> = ({
         <div className="flex items-center gap-2 mb-1">
           <FileProtectOutlined className="text-rose-700 text-xl" />
           <h2 className="text-xl lg:text-2xl font-black text-slate-900 tracking-tight m-0">
-            Trung Tâm Xử Lý Tranh Chấp Hồ Sơ (Dispute Resolution Center)
+            Trung Tâm Xử Lý Tranh Chấp Hồ Sơ
           </h2>
         </div>
         <p className="text-xs text-slate-500 m-0">
@@ -300,7 +300,7 @@ export const DisputeResolutionTable: React.FC<DisputeResolutionTableProps> = ({
         showIcon
         message={
           <span className="font-bold text-slate-900 text-xs">
-            Nguyên tắc First-Submission Timestamp Audit (Bảo chứng nộp trước)
+            Nguyên tắc đối soát dấu thời gian nộp hồ sơ đầu tiên (Bảo chứng nộp trước)
           </span>
         }
         description="Mỗi hồ sơ nộp vào hệ thống được ghi nhận nhãn thời gian thực chuẩn UTC+7 chính xác đến từng giây. Quyền ghi nhận hoa hồng COD 100% thuộc về CTV có mốc thời gian nộp đầu tiên hợp lệ."

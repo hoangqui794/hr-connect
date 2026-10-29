@@ -37,7 +37,8 @@ const STATUS_LABEL: Record<string, { label: string; tone: Tone }> = {
   APPROVED: { label: 'Đã duyệt', tone: 'success' },
   REJECTED: { label: 'Đã từ chối', tone: 'danger' },
 };
-const TYPE_LABEL: Record<string, string> = { AFFILIATE: 'Cộng tác viên (Affiliate)', CLIENT: 'Doanh nghiệp' };
+const TYPE_LABEL: Record<string, string> = { AFFILIATE: 'Cộng tác viên', CLIENT: 'Doanh nghiệp' };
+const AFFILIATE_TYPE_LABEL: Record<string, string> = { INDIVIDUAL: 'Cá nhân', AGENCY: 'Đơn vị tuyển dụng', FREELANCER: 'Cộng tác viên tự do' };
 
 /** Submitted payloads are JSON strings; show them as label/value rows, never as raw HTML. */
 const PayloadRows: React.FC<{ raw: string | null | undefined }> = ({ raw }) => {
@@ -91,7 +92,7 @@ const ApprovalDetail: React.FC<{ item: ApprovalListItemDto }> = ({ item }) => {
           ['Địa chỉ', company.address ?? '—'],
         ] as [string, React.ReactNode][])
       : []),
-    ...(affiliate ? ([['Loại Affiliate', affiliate.affiliateType]] as [string, React.ReactNode][]) : []),
+    ...(affiliate ? ([['Loại cộng tác viên', AFFILIATE_TYPE_LABEL[affiliate.affiliateType ?? ''] ?? affiliate.affiliateType ?? '—']] as [string, React.ReactNode][]) : []),
     ['Gửi lúc', formatDateTime(data.submittedAt)],
     ...(data.reviewedAt ? ([['Đã xử lý', `${formatDateTime(data.reviewedAt)} · ${data.reviewerName ?? '—'}`]] as [string, React.ReactNode][]) : []),
     ...(data.reviewNote ? ([['Ghi chú xử lý', data.reviewNote]] as [string, React.ReactNode][]) : []),

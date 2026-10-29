@@ -18,6 +18,22 @@ const STATUS_META: Record<string, { label: string; tone: Tone }> = {
   CANCELLED: { label: 'Đã hủy', tone: 'neutral' },
 };
 
+const CANDIDATE_STATUS_LABEL: Record<string, string> = {
+  ACTIVE: 'Đang hoạt động',
+  MERGED: 'Đã hợp nhất',
+  INACTIVE: 'Ngừng hoạt động',
+  SUSPENDED: 'Tạm khóa',
+  PENDING: 'Chờ kích hoạt',
+  VERIFIED: 'Đã xác minh',
+};
+
+const EMAIL_KIND_LABEL: Record<string, string> = {
+  PRIMARY: 'Email chính',
+  SECONDARY: 'Email phụ',
+  ALIAS: 'Email phụ (liên kết)',
+  LINKED: 'Email đã liên kết',
+};
+
 const CandidateEvidence: React.FC<{ title: string; candidate: AdminIdentityClaimCandidateDetail | null }> = ({ title, candidate }) => (
   <Surface padded className="h-full">
     <h2 className="m-0 mb-4 text-base font-bold text-slate-900">{title}</h2>
@@ -30,14 +46,14 @@ const CandidateEvidence: React.FC<{ title: string; candidate: AdminIdentityClaim
           <Descriptions.Item label="Email">{candidate.email ?? '—'}</Descriptions.Item>
           <Descriptions.Item label="Điện thoại">{candidate.phone ?? '—'}</Descriptions.Item>
           <Descriptions.Item label="Tài khoản">{candidate.userId ? 'Đã có tài khoản' : 'Chưa có tài khoản'}</Descriptions.Item>
-          <Descriptions.Item label="Trạng thái">{candidate.status}</Descriptions.Item>
+          <Descriptions.Item label="Trạng thái">{CANDIDATE_STATUS_LABEL[candidate.status] ?? candidate.status}</Descriptions.Item>
           <Descriptions.Item label="Đã hợp nhất vào">{candidate.mergedIntoCandidateId ?? 'Chưa'}</Descriptions.Item>
         </Descriptions>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Statistic title="CV" value={candidate.cvCount} />
-          <Statistic title="Submission" value={candidate.submissionCount} />
-          <Statistic title="Application" value={candidate.applicationCount} />
-          <Statistic title="AI Match" value={candidate.matchCount} />
+          <Statistic title="Lượt giới thiệu" value={candidate.submissionCount} />
+          <Statistic title="Đơn ứng tuyển" value={candidate.applicationCount} />
+          <Statistic title="Điểm AI" value={candidate.matchCount} />
         </div>
       </div>
     )}
@@ -156,7 +172,7 @@ export const AdminIdentityClaimDetailPage: React.FC = () => {
           <Descriptions.Item label="Trạng thái"><StatusDot tone={status.tone}>{status.label}</StatusDot></Descriptions.Item>
           <Descriptions.Item label="Email đang dùng">{claim.requesterPrimaryEmail}</Descriptions.Item>
           <Descriptions.Item label="Email cần khôi phục">{claim.assertedEmail}</Descriptions.Item>
-          <Descriptions.Item label="Tài khoản yêu cầu">{claim.requesterUserStatus}</Descriptions.Item>
+          <Descriptions.Item label="Tài khoản yêu cầu">{CANDIDATE_STATUS_LABEL[claim.requesterUserStatus] ?? claim.requesterUserStatus}</Descriptions.Item>
           <Descriptions.Item label="Tạo lúc">{formatDateTime(claim.createdAt)}</Descriptions.Item>
           <Descriptions.Item label="Xác minh lúc">{formatDateTime(claim.verifiedAt)}</Descriptions.Item>
           <Descriptions.Item label="Hết hạn">{formatDateTime(claim.expiresAt)}</Descriptions.Item>
@@ -177,8 +193,8 @@ export const AdminIdentityClaimDetailPage: React.FC = () => {
           <Descriptions size="small" column={{ xs: 1, md: 2 }}>
             <Descriptions.Item label="Tên hiển thị">{claim.currentEmailOwner.displayName}</Descriptions.Item>
             <Descriptions.Item label="Email chính">{claim.currentEmailOwner.primaryEmail}</Descriptions.Item>
-            <Descriptions.Item label="Loại email">{claim.currentEmailOwner.kind}</Descriptions.Item>
-            <Descriptions.Item label="Trạng thái">{claim.currentEmailOwner.status}</Descriptions.Item>
+            <Descriptions.Item label="Loại email">{EMAIL_KIND_LABEL[claim.currentEmailOwner.kind] ?? claim.currentEmailOwner.kind}</Descriptions.Item>
+            <Descriptions.Item label="Trạng thái">{CANDIDATE_STATUS_LABEL[claim.currentEmailOwner.status] ?? claim.currentEmailOwner.status}</Descriptions.Item>
           </Descriptions>
         ) : (
           <Alert type="warning" showIcon message="Không tìm thấy bản ghi sở hữu email đang hoạt động." />

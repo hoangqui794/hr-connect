@@ -183,7 +183,7 @@ export const ContactConsultationForm: React.FC<ContactConsultationFormProps> = (
                 <div className="mt-1">
                   <strong>Trạng thái:</strong>{' '}
                   <span className="inline-block rounded-md bg-blue-100 px-2 py-0.5 font-bold text-blue-700">
-                    {receipt.status}
+                    {receipt.status === 'NEW' ? 'Đã tiếp nhận' : receipt.status === 'IN_PROGRESS' ? 'Đang xử lý' : receipt.status === 'CONTACTED' ? 'Đã liên hệ' : receipt.status === 'RESOLVED' ? 'Đã giải quyết' : receipt.status === 'CLOSED' ? 'Đã đóng' : receipt.status}
                   </span>
                 </div>
               </div>

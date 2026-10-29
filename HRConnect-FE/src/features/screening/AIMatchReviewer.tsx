@@ -141,7 +141,7 @@ export const AIMatchReviewer: React.FC<AIMatchReviewerProps> = ({
         color: '#e11d48',
         bg: '#fff1f2',
         border: '#fecdd3',
-        label: 'Phù hợp xuất sắc (Top Fit)',
+        label: 'Phù hợp xuất sắc',
         badge: 'RED ≥80%',
       };
     }
@@ -152,7 +152,7 @@ export const AIMatchReviewer: React.FC<AIMatchReviewerProps> = ({
         color: '#0d9488',
         bg: '#f0fdfa',
         border: '#99f6e4',
-        label: 'Phù hợp cao (Strong Fit)',
+        label: 'Phù hợp cao',
         badge: 'TEAL 70-79%',
       };
     }
@@ -163,7 +163,7 @@ export const AIMatchReviewer: React.FC<AIMatchReviewerProps> = ({
         color: '#16a34a',
         bg: '#f0fdf4',
         border: '#bbf7d0',
-        label: 'Đạt chuẩn (Moderate Fit)',
+        label: 'Đạt chuẩn',
         badge: 'GREEN 60-69%',
       };
     }
@@ -173,7 +173,7 @@ export const AIMatchReviewer: React.FC<AIMatchReviewerProps> = ({
       color: '#64748b',
       bg: '#f8fafc',
       border: '#e2e8f0',
-      label: 'Chưa phù hợp (Weak Fit)',
+      label: 'Chưa phù hợp',
       badge: 'GRAY <60%',
     };
   };
@@ -539,7 +539,7 @@ export const AIMatchReviewer: React.FC<AIMatchReviewerProps> = ({
             bodyStyle={{ padding: '20px' }}
           >
             <div className="text-xs font-extrabold uppercase tracking-wider text-slate-700 mb-3 flex items-center justify-between">
-              <span>Đối soát từ khóa kỹ năng (JD Match)</span>
+              <span>Đối soát từ khóa kỹ năng</span>
               <span className="text-emerald-600 font-bold">100% Tiêu chí bắt buộc</span>
             </div>
 
@@ -547,7 +547,7 @@ export const AIMatchReviewer: React.FC<AIMatchReviewerProps> = ({
             <div className="mb-3.5">
               <div className="text-xs font-bold text-slate-800 mb-2 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-rose-500" />
-                <span>Bắt buộc có (Must-have):</span>
+                <span>Bắt buộc có:</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {job.mustHaveSkills.map((skill) => {
@@ -579,7 +579,7 @@ export const AIMatchReviewer: React.FC<AIMatchReviewerProps> = ({
             <div>
               <div className="text-xs font-bold text-slate-800 mb-2 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-indigo-500" />
-                <span>Ưu tiên có (Should-have):</span>
+                <span>Ưu tiên có:</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {job.shouldHaveSkills.map((skill) => {

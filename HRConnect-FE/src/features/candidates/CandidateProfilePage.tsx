@@ -89,7 +89,7 @@ interface AtsTemplateItem {
 const ATS_TEMPLATES: AtsTemplateItem[] = [
   {
     id: 'tpl-tech',
-    name: 'Công nghệ hiện đại (Tech Modern ATS)',
+    name: 'Công nghệ hiện đại',
     category: 'IT & Software',
     description: 'Tối ưu hóa mật độ từ khóa kỹ năng (ReactJS, Microservices, Cloud). Bố cục 2 cột thông minh vượt qua bộ lọc tự động.',
     score: 96,
@@ -97,7 +97,7 @@ const ATS_TEMPLATES: AtsTemplateItem[] = [
   },
   {
     id: 'tpl-exec',
-    name: 'Quản lý cấp cao (Executive Leadership)',
+    name: 'Quản lý cấp cao',
     category: 'Leadership & Management',
     description: 'Nhấn mạnh thành tựu kinh doanh, quy mô đội ngũ (Team Size 20+) và chỉ số ROI. Phù hợp vị trí Tech Lead, Director, CTO.',
     score: 94,
@@ -105,7 +105,7 @@ const ATS_TEMPLATES: AtsTemplateItem[] = [
   },
   {
     id: 'tpl-creative',
-    name: 'Sáng tạo (Creative Product & Design)',
+    name: 'Sáng tạo & Thiết kế',
     category: 'UI/UX & Product',
     description: 'Trình bày nổi bật hồ sơ năng lực, liên kết Figma/Behance và các dự án thiết kế trải nghiệm người dùng tiêu biểu.',
     score: 91,
@@ -113,7 +113,7 @@ const ATS_TEMPLATES: AtsTemplateItem[] = [
   },
   {
     id: 'tpl-minimal',
-    name: 'Tối giản (Minimalist Harvard Format)',
+    name: 'Tối giản chuẩn Harvard',
     category: 'Tiêu chuẩn quốc tế',
     description: 'Định dạng 1 cột thuần đen trắng chuẩn Đại học Harvard. Tương thích 100% với mọi hệ thống ATS cổ điển và hiện đại.',
     score: 98,
@@ -1307,7 +1307,7 @@ export const CandidateProfilePage: React.FC = () => {
                             Chế độ 1
                           </Tag>
                           <div style={{ fontWeight: 800, fontSize: 16, color: '#0f172a', marginBottom: 6 }}>
-                            Tạo hồ sơ trực tuyến (Platform Builder)
+                            Tạo hồ sơ trực tuyến
                           </div>
                           <Paragraph style={{ color: '#64748b', fontSize: 13, lineHeight: 1.5 }}>
                             Điền chi tiết từng đề mục: Học vấn, Kinh nghiệm làm việc, Dự án nổi bật và Chứng chỉ. AI tự động tối ưu hóa điểm chuẩn ATS.
@@ -1353,7 +1353,7 @@ export const CandidateProfilePage: React.FC = () => {
                             Chế độ 2
                           </Tag>
                           <div style={{ fontWeight: 800, fontSize: 16, color: '#0f172a', marginBottom: 6 }}>
-                            Mẫu CV tiêu chuẩn (Template-Based)
+                            Mẫu CV tiêu chuẩn
                           </div>
                           <Paragraph style={{ color: '#64748b', fontSize: 13, lineHeight: 1.5 }}>
                             Xem trước và lựa chọn 4 mẫu chuẩn hóa quốc tế: Công nghệ hiện đại, Quản lý cấp cao, Sáng tạo, Tối giản Harvard.
@@ -1401,7 +1401,7 @@ export const CandidateProfilePage: React.FC = () => {
                             Chế độ 3
                           </Tag>
                           <div style={{ fontWeight: 800, fontSize: 16, color: '#0f172a', marginBottom: 6 }}>
-                            Tải tệp CV lên (File Upload)
+                            Tải tệp CV lên
                           </div>
                           <Paragraph style={{ color: '#64748b', fontSize: 13, lineHeight: 1.5 }}>
                             Drag &amp; Drop tệp CV sẵn có từ máy tính (hỗ trợ định dạng PDF, DOCX dung lượng tối đa 5MB).
@@ -1470,7 +1470,7 @@ export const CandidateProfilePage: React.FC = () => {
                                 color={type === 'Platform Builder' ? 'purple' : type === 'Template ATS' ? 'blue' : 'green'}
                                 style={{ borderRadius: 6, fontWeight: 700 }}
                               >
-                                {type}
+                                {type === 'Platform Builder' ? 'Soạn trực tuyến' : type === 'Template ATS' ? 'Mẫu tiêu chuẩn' : type === 'File Upload' ? 'Tải tệp lên' : type}
                               </Tag>
                             ),
                           },
@@ -1543,7 +1543,7 @@ export const CandidateProfilePage: React.FC = () => {
 
       {/* Modal 1: Platform Builder Form */}
       <Modal
-        title="Soạn thảo CV trực tuyến (Platform Builder)"
+        title="Soạn thảo CV trực tuyến"
         open={isBuilderModalOpen}
         onCancel={() => setIsBuilderModalOpen(false)}
         onOk={handleSaveOnlineCv}
@@ -1692,10 +1692,10 @@ export const CandidateProfilePage: React.FC = () => {
           >
             <Select
               options={[
-                { value: 'BEGINNER', label: 'Mới bắt đầu (Beginner)' },
-                { value: 'INTERMEDIATE', label: 'Trung cấp (Intermediate)' },
-                { value: 'ADVANCED', label: 'Thành thạo (Advanced)' },
-                { value: 'EXPERT', label: 'Chuyên gia (Expert)' },
+                { value: 'BEGINNER', label: 'Mới bắt đầu' },
+                { value: 'INTERMEDIATE', label: 'Trung cấp' },
+                { value: 'ADVANCED', label: 'Thành thạo' },
+                { value: 'EXPERT', label: 'Chuyên gia' },
               ]}
             />
           </Form.Item>

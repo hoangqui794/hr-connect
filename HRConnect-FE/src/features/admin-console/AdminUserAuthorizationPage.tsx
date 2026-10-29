@@ -62,18 +62,26 @@ interface SystemRoleMatrixItem {
   permissions: string[];
 }
 
+const USER_STATUS_LABEL: Record<string, string> = {
+  ACTIVE: 'Hoạt động',
+  PENDING: 'Chờ kích hoạt',
+  SUSPENDED: 'Tạm khóa',
+  LOCKED: 'Đã khóa',
+  INACTIVE: 'Ngừng hoạt động',
+};
+
 const DEFAULT_SYSTEM_MATRIX: SystemRoleMatrixItem[] = [
   {
     code: 'PLATFORM_ADMIN',
     name: 'Quản trị viên',
     badgeClass: 'bg-purple-50 text-purple-700 border border-purple-200/80',
     description: 'Toàn quyền kiểm soát và quản trị cấu hình nền tảng, phân quyền RBAC, người dùng và đối soát tài chính.',
-    scope: 'Toàn hệ thống (Global)',
+    scope: 'Toàn hệ thống',
     permissions: ['user.manage', 'role.manage', 'job.manage', 'finance.manage', 'system.configure'],
   },
   {
     code: 'INTERNAL_HR',
-    name: 'Nhân sự nội bộ (Internal HR)',
+    name: 'Nhân sự nội bộ',
     badgeClass: 'bg-sky-50 text-sky-700 border border-sky-200/80',
     description: 'Kiểm duyệt tin tuyển dụng, điều phối hợp đồng dịch vụ, sàng lọc ứng viên AI và đối soát nhận việc.',
     scope: 'Vận hành tuyển dụng & Hợp đồng',
@@ -472,7 +480,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
       ),
     },
     {
-      title: 'Nguồn gốc quyền (Source Roles)',
+      title: 'Nguồn gốc quyền',
       dataIndex: 'sourceRoles',
       key: 'sourceRoles',
       width: 280,
@@ -531,7 +539,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
               loading={usersListQuery.isLoading}
               options={(usersListQuery.data?.items ?? []).map((u) => ({
                 value: u.userId,
-                label: `${u.displayName ? `${u.displayName} (${u.email})` : u.email} — [${u.status}]`,
+                label: `${u.displayName ? `${u.displayName} (${u.email})` : u.email} — ${USER_STATUS_LABEL[u.status] ?? u.status}`,
               }))}
             />
           </div>
@@ -679,7 +687,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <span className="text-lg font-bold text-slate-900">{authData.email}</span>
                     <StatusDot tone={authData.status === 'ACTIVE' ? 'success' : 'danger'}>
-                      {authData.status}
+                      {USER_STATUS_LABEL[authData.status] ?? authData.status}
                     </StatusDot>
                   </div>
                   <div className="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
@@ -782,7 +790,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
                 />
                 <Select
                   allowClear
-                  placeholder="Mọi phân hệ (Resource)"
+                  placeholder="Mọi phân hệ"
                   className="w-48"
                   value={permFilterResource}
                   onChange={(val) => setPermFilterResource(val)}
@@ -839,7 +847,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
               loading={activeCustomRolesQuery.isLoading}
               options={assignableRoles.map((r) => ({
                 value: r.roleId,
-                label: `${r.name} (${r.code}) — [${r.permissionCount} quyền]`,
+                label: `${r.name} — ${r.permissionCount} quyền`,
               }))}
             />
           </Form.Item>
@@ -888,7 +896,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
             className="pt-2"
           >
             <Typography.Paragraph className="text-slate-600">
-              Bạn đang thu hồi vai trò <strong>{revokeRole.roleName} ({revokeRole.roleCode})</strong> khỏi tài khoản{' '}
+              Bạn đang thu hồi vai trò <strong>{revokeRole.roleName}</strong> khỏi tài khoản{' '}
               <strong>{authData?.email}</strong>. Các quyền hạn gắn liền với vai trò này sẽ hết hiệu lực ngay lập tức.
             </Typography.Paragraph>
 
@@ -936,7 +944,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
             className="pt-2"
           >
             <Typography.Paragraph className="text-slate-600">
-              Kích hoạt lại vai trò <strong>{reactivateRole.roleName} ({reactivateRole.roleCode})</strong> cho người dùng{' '}
+              Kích hoạt lại vai trò <strong>{reactivateRole.roleName}</strong> cho người dùng{' '}
               <strong>{authData?.email}</strong>.
             </Typography.Paragraph>
 

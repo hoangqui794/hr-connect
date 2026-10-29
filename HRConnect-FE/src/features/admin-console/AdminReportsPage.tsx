@@ -315,7 +315,7 @@ export const AdminReportsPage: React.FC = () => {
               },
               {
                 code: 'CV_APPLICATION',
-                title: 'Đăng tin tuyển dụng (Job Post)',
+                title: 'Đăng tin tuyển dụng',
                 desc: 'Phí niêm yết và đăng tin tuyển dụng',
                 data: rev?.totals?.CV_APPLICATION,
                 color: 'emerald',
@@ -326,11 +326,11 @@ export const AdminReportsPage: React.FC = () => {
                 <div className="text-xs text-slate-500 mb-3">{srv.desc}</div>
                 <div className="space-y-1.5 border-0 border-t border-solid border-slate-200/60 pt-3 text-xs">
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Phát sinh (Billed):</span>
+                    <span className="text-slate-500">Phát sinh:</span>
                     <span className="font-semibold text-slate-800">{formatMoney(srv.data?.billed ?? 0)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Thực thu (Collected):</span>
+                    <span className="text-slate-500">Thực thu:</span>
                     <span className="font-bold text-slate-900 font-mono">{formatMoney(srv.data?.collected ?? 0)}</span>
                   </div>
                 </div>
