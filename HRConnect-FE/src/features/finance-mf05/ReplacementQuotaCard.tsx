@@ -26,6 +26,7 @@ import {
   ClockCircleOutlined,
   CloseCircleOutlined,
   ExclamationCircleOutlined,
+  EyeOutlined,
   PlusOutlined,
   ReloadOutlined,
   SearchOutlined,
@@ -42,6 +43,7 @@ import {
   getReplacementCountdownInfo,
 } from './replacementUtils';
 import { date } from './financeLabels';
+import { PlacementDetailDrawer } from './PlacementDetailDrawer';
 
 export interface ReplacementSlotWithMeta extends ReplacementSlotDto {
   jobTitle?: string;
@@ -69,6 +71,8 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [cancelTarget, setCancelTarget] = useState<ReplacementSlotWithMeta | null>(null);
+  // Placement opened from a slot: the replacement once the slot is filled, otherwise the original hire.
+  const [detailPlacementId, setDetailPlacementId] = useState<string | null>(null);
   const [cancelForm] = Form.useForm<{ reason: string }>();
 
   // Query replacement slots and associated job metadata
@@ -343,9 +347,11 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
           {mode === 'hr' && (
             <Button
               size="small"
-              onClick={() => navigate(`/hr/pipeline?jobId=${slot.jobId}`)}
+              icon={<EyeOutlined />}
+              aria-label={`Chi tiết suất ${slot.replacementSlotId.slice(0, 8).toUpperCase()}`}
+              onClick={() => setDetailPlacementId(slot.filledByPlacementId ?? slot.originalPlacementId)}
             >
-              Pipeline
+              Chi tiết
             </Button>
           )}
         </div>
@@ -535,6 +541,13 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
           </div>
         )}
       </Modal>
+
+      <PlacementDetailDrawer
+        open={Boolean(detailPlacementId)}
+        placementId={detailPlacementId || undefined}
+        mode={mode}
+        onClose={() => setDetailPlacementId(null)}
+      />
     </div>
   );
 };
