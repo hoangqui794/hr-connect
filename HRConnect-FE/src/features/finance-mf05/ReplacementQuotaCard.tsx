@@ -279,7 +279,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
               </div>
             )}
             {slot.status === 'EXPIRED' && (
-              <span className="text-xs text-red-600 font-medium">Đã hết hạn 30 ngày</span>
+              <span className="text-xs text-red-600 font-medium">Đã hết hạn sau {slot.fillWindowDays} ngày</span>
             )}
           </div>
         );
@@ -375,14 +375,16 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="m-0 text-lg font-bold text-slate-900">
-                  Suất tuyển thay thế khả dụng (Replacement Quota)
+                  Suất tuyển thay thế
                 </h3>
                 {counts.open > 0 && (
                   <Badge count={`${counts.open} khả dụng`} style={{ backgroundColor: '#10B981' }} />
                 )}
               </div>
               <p className="mt-1 text-sm text-slate-600 max-w-3xl leading-relaxed">
-                Chính sách bảo hành dịch vụ <strong>HEADHUNT_COD</strong>: Khi ứng viên nghỉ việc trong thời gian bảo hành và phí dịch vụ đã được thanh toán, HR Connect cấp một suất tuyển thay thế miễn phí có hiệu lực trong vòng 30 ngày.
+                Áp dụng cho dịch vụ <strong>HH · Tuyển dụng theo kết quả</strong>. Khi ứng viên nghỉ việc trong thời gian bảo hành và
+                HR Connect xác nhận, bạn được một suất tuyển thay thế <strong>miễn phí</strong>. Suất dùng được ngay nếu phí dịch vụ đã
+                thanh toán, hoặc ở trạng thái chờ cho đến khi bạn thanh toán. Mỗi suất có hạn sử dụng, xem ở cột Thời hạn sử dụng.
               </p>
             </div>
           </div>
@@ -515,7 +517,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
                 <div>
                   Hủy suất thay thế cho ứng viên <strong>{cancelTarget.originalCandidateName || '—'}</strong> ({cancelTarget.jobTitle || 'Vị trí'}).
                   <div className="text-xs text-slate-600 mt-0.5">
-                    Lưu ý: Theo điều khoản hợp đồng HEADHUNT_COD, việc hủy suất thay thế không hoàn lại phí dịch vụ đã thu.
+                    Lưu ý: theo thỏa thuận dịch vụ HH · Tuyển dụng theo kết quả, hủy suất thay thế không hoàn lại phí dịch vụ đã thu.
                   </div>
                 </div>
               }

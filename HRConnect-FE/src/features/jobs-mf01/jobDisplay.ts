@@ -54,19 +54,35 @@ export const EMPLOYMENT_TYPE_LABEL: Record<EmploymentType, string> = {
   FREELANCE: 'Freelance',
 };
 
-export const SERVICE_TYPE_LABEL: Record<ServiceTypeCode, { label: string; summary: string }> = {
+/**
+ * Single source for the three service names (HR feedback 28/10): Vietnamese label, English name and the
+ * two-letter code HR uses in titles and filters ([HH] / [AP] / [SS]).
+ */
+export const SERVICE_TYPE_LABEL: Record<ServiceTypeCode, { label: string; name: string; short: string; summary: string }> = {
+  HEADHUNT_COD: {
+    label: 'Tuyển dụng theo kết quả',
+    name: 'Headhunt COD',
+    short: 'HH',
+    summary: 'HR Connect phụ trách tuyển dụng và doanh nghiệp trả phí khi tuyển thành công.',
+  },
   CV_APPLICATION: {
     label: 'Nhận hồ sơ ứng tuyển',
+    name: 'CV Application',
+    short: 'AP',
     summary: 'Ứng viên tự tìm việc và gửi hồ sơ trực tiếp vào tin tuyển dụng.',
   },
   CV_SOURCING: {
-    label: 'Tìm kiếm hồ sơ phù hợp',
+    label: 'Tìm hồ sơ phù hợp',
+    name: 'CV Sourcing',
+    short: 'SS',
     summary: 'HR Connect và đối tác chủ động tìm kiếm, sàng lọc hồ sơ phù hợp.',
   },
-  HEADHUNT_COD: {
-    label: 'Tuyển dụng theo kết quả',
-    summary: 'HR Connect phụ trách tuyển dụng và doanh nghiệp trả phí khi tuyển thành công.',
-  },
+};
+
+/** "HH · Tuyển dụng theo kết quả" — short code plus Vietnamese name, for compact lists and cards. */
+export const serviceTypeText = (code?: string | null) => {
+  const s = code ? SERVICE_TYPE_LABEL[code as ServiceTypeCode] : undefined;
+  return s ? `${s.short} · ${s.label}` : code ?? '—';
 };
 
 export const JOB_TEMPLATE_INDUSTRY_LABEL: Record<string, string> = {

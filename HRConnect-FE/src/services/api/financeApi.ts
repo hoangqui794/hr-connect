@@ -11,6 +11,7 @@ import type {
   PlacementListItem,
   ReplacementSlotDto,
   ServiceFee,
+  ServiceFeeKind,
   ServiceFeeStatus,
   Warranty,
   WarrantyClaimResponse,
@@ -33,7 +34,13 @@ export const businessSettingsApi = {
 
 /** MF-05 (HEADHUNT_COD): service fees, commissions, payouts, warranty claims. The API scopes lists by role. */
 export const financeApi = {
-  async serviceFees(params: { status?: ServiceFeeStatus | 'all'; page: number; pageSize: number }): Promise<FinancePage<ServiceFee>> {
+  /** kind: PLACEMENT (HEADHUNT_COD), DEPOSIT, SETTLEMENT or CREDIT (CV_SOURCING); omit for every kind. */
+  async serviceFees(params: {
+    status?: ServiceFeeStatus | 'all';
+    kind?: ServiceFeeKind;
+    page: number;
+    pageSize: number;
+  }): Promise<FinancePage<ServiceFee>> {
     return (await apiClient.get<ApiEnvelope<FinancePage<ServiceFee>>>('/service-fees', { params: clean(params) })).data.data;
   },
   async recordFeePayment(serviceFeeId: string, input: { paidAt: string; paymentReference: string }) {

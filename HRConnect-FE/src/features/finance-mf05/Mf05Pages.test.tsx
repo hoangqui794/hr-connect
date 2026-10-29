@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AdminFinancePage } from './AdminFinancePage';
-import { HrWarrantyPage } from './WarrantyPages';
+import { ClientWarrantyPage, HrWarrantyPage } from './WarrantyPages';
 import { financeApi } from '@/services/api/financeApi';
 import { placementReconciliationApi } from '@/services/api/hrApi';
 import type { Commission, ServiceFee, Warranty } from '@/types/api/finance';
@@ -148,5 +148,21 @@ describe('MF-05 HR warranty verification', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Xác nhận' }));
 
     await waitFor(() => expect(financeApi.resolveResignation).toHaveBeenCalledWith('p1', { confirmed: true, note: undefined }));
+  });
+});
+
+// HR feedback 28/10: the warranty page is Headhunt only, so its fee list must not mix in CV Sourcing deposits.
+describe('MF-05 Client warranty page', () => {
+  it('lists only Headhunt placement fees', async () => {
+    vi.mocked(financeApi.warranties).mockResolvedValue(page<Warranty>([]));
+    vi.mocked(financeApi.serviceFees).mockReset();
+    vi.mocked(financeApi.serviceFees).mockResolvedValue(page<ServiceFee>([]));
+
+    renderWith(<ClientWarrantyPage />);
+
+    await waitFor(() => expect(financeApi.serviceFees).toHaveBeenCalled());
+    for (const [params] of vi.mocked(financeApi.serviceFees).mock.calls) {
+      expect(params).toEqual(expect.objectContaining({ kind: 'PLACEMENT' }));
+    }
   });
 });

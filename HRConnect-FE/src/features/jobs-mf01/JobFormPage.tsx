@@ -246,7 +246,7 @@ interface ServiceMeta {
 const SERVICE_META: Record<ServiceTypeCode, ServiceMeta> = {
   CV_APPLICATION: {
     code: 'CV_APPLICATION',
-    tag: 'Gói đăng tin',
+    tag: 'AP · Nhận hồ sơ ứng tuyển',
     color: 'blue',
     icon: <ProfileOutlined />,
     defaultTitle: 'CV Application',
@@ -263,7 +263,7 @@ const SERVICE_META: Record<ServiceTypeCode, ServiceMeta> = {
   },
   CV_SOURCING: {
     code: 'CV_SOURCING',
-    tag: 'Tìm kiếm hồ sơ',
+    tag: 'SS · Tìm hồ sơ phù hợp',
     color: 'purple',
     icon: <FileSearchOutlined />,
     defaultTitle: 'CV Sourcing',
@@ -280,7 +280,7 @@ const SERVICE_META: Record<ServiceTypeCode, ServiceMeta> = {
   },
   HEADHUNT_COD: {
     code: 'HEADHUNT_COD',
-    tag: 'Tuyển dụng trọn gói',
+    tag: 'HH · Tuyển dụng theo kết quả',
     color: 'gold',
     icon: <AimOutlined />,
     defaultTitle: 'Headhunt COD',
