@@ -74,6 +74,7 @@ import {
   REQUIREMENT_CATEGORY_OPTIONS,
   clientActions,
   formatMultilineText,
+  formatSalary,
 } from './jobDisplay';
 import { JobTemplatePicker } from './JobTemplatePicker';
 import {
@@ -1374,16 +1375,20 @@ export const JobFormPage: React.FC = () => {
                     rules={[{ max: 255, message: 'Tối đa 255 ký tự.' }]}
                   >
                     <AutoComplete
-                      size="large"
                       allowClear
-                      placeholder="Chọn hoặc nhập thời gian làm việc cụ thể"
                       options={WORKING_TIME_OPTIONS}
                       filterOption={(inputValue, option) =>
                         String(option?.label ?? option?.value ?? '')
                           .toLowerCase()
                           .includes(inputValue.toLowerCase())
                       }
-                    />
+                    >
+                      {/* Multi-line so the Client can list days and hours on separate lines (HR feedback 28/10). */}
+                      <Input.TextArea
+                        autoSize={{ minRows: 2, maxRows: 5 }}
+                        placeholder={'Chọn mẫu có sẵn hoặc nhập, mỗi ý một dòng. Ví dụ:\nThứ 2 – Thứ 6: 8:00 – 17:30\nThứ 7: làm sáng (cách tuần)'}
+                      />
+                    </AutoComplete>
                   </Form.Item>
 
                   <Form.Item
@@ -1437,15 +1442,45 @@ export const JobFormPage: React.FC = () => {
                   </Form.Item>
                 </div>
 
-                <div className="flex items-center justify-between gap-4 rounded-xl bg-slate-50 px-4 py-3 border border-solid border-slate-100">
-                  <div className="text-sm font-semibold text-slate-900">Có thể thỏa thuận</div>
+                {/* What candidates will read on the job page, updated as the Client types. */}
+                <div className="-mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-slate-600">
+                  <span>Ứng viên sẽ thấy:</span>
+                  <span className="rounded-md bg-[color:var(--console-accent-soft)] px-2 py-0.5 font-semibold tabular-nums text-[color:var(--console-accent-strong)]">
+                    {formatSalary({
+                      salaryMin: watched.salaryMin ?? null,
+                      salaryMax: watched.salaryMax ?? null,
+                      salaryNegotiable: Boolean(watched.salaryNegotiable),
+                      currencyCode: watched.currencyCode ?? 'VND',
+                    })}
+                  </span>
+                  {watched.salaryNegotiable && (watched.salaryMin != null || watched.salaryMax != null) && (
+                    <span className="text-slate-500">· có thể thỏa thuận</span>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between gap-4 rounded-xl border border-solid border-slate-100 bg-slate-50 px-4 py-3">
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">Có thể thỏa thuận</div>
+                    <div className="text-[12.5px] text-slate-600">Bật nếu sẵn sàng trao đổi lại mức lương với ứng viên phù hợp.</div>
+                  </div>
                   <Form.Item name="salaryNegotiable" valuePropName="checked" noStyle>
                     <Switch aria-label="Có thể thỏa thuận" />
                   </Form.Item>
                 </div>
 
-                <Form.Item name="salaryNote" label="Ghi chú lương" className="mb-0" rules={[{ max: 1000, message: 'Tối đa 1000 ký tự.' }]}>
-                  <Input size="large" placeholder="Ví dụ: Lương trước thuế, thưởng hiệu suất hàng quý, lương tháng 13..." />
+                <Form.Item
+                  name="salaryNote"
+                  label="Ghi chú lương và đãi ngộ"
+                  className="mb-0"
+                  extra={<span className="text-xs text-slate-500">Mỗi ý một dòng; cách xuống dòng được giữ nguyên khi hiển thị cho ứng viên.</span>}
+                  rules={[{ max: 1000, message: 'Tối đa 1000 ký tự.' }]}
+                >
+                  <Input.TextArea
+                    autoSize={{ minRows: 3, maxRows: 8 }}
+                    showCount
+                    maxLength={1000}
+                    placeholder={'Ví dụ:\nLương gross, review 2 lần/năm\nThưởng hiệu suất theo quý\nLương tháng 13, bảo hiểm sức khỏe'}
+                  />
                 </Form.Item>
               </section>
 
