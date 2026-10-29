@@ -39,7 +39,7 @@ public static class JobPostingPackageSeeder
             var price = defPrice;
             var duration = defDays;
 
-            if (!existingMap.TryGetValue(code, out var existing))
+            if (!existingMap.ContainsKey(code))
             {
                 var newPackage = new JobPostingPackage
                 {
@@ -57,24 +57,14 @@ public static class JobPostingPackageSeeder
                 await context.JobPostingPackages.AddAsync(newPackage, cancellationToken);
                 changed = true;
             }
-            else
-            {
-                // Đồng bộ cấu hình giá/thời hạn/max hồ sơ
-                if (existing.Price != price || existing.DurationDays != duration || existing.MaxApplications != defMaxApps)
-                {
-                    existing.Price = price;
-                    existing.DurationDays = duration;
-                    existing.MaxApplications = defMaxApps;
-                    existing.UpdatedAt = now;
-                    changed = true;
-                }
-            }
+            // An existing package keeps its values: Admin edits them in Admin › Cài đặt
+            // (PUT /admin/posting-packages/{id}), so a restart must not reset them to these defaults.
         }
 
         if (changed)
         {
             await context.SaveChangesAsync(cancellationToken);
-            logger?.LogInformation("Đã khởi tạo/đồng bộ danh mục gói đăng tin JobPostingPackage thành công.");
+            logger?.LogInformation("Đã khởi tạo danh mục gói đăng tin JobPostingPackage còn thiếu.");
         }
     }
 }

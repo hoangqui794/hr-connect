@@ -17,10 +17,25 @@ import type {
   WarrantyClaimResponse,
   WarrantyStatus,
 } from '@/types/api/finance';
+import type { JobPostingPackage } from '@/types/api/jobs';
 
 
 const clean = <T extends Record<string, unknown>>(params: T) =>
   Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '' && v !== 'all'));
+
+export type PostingPackageUpdate = Pick<JobPostingPackage, 'name' | 'description' | 'price' | 'durationDays' | 'isActive'> & {
+  maxApplications: number | null;
+};
+
+/** Admin › Cài đặt: AP (CV_APPLICATION) posting packages, including inactive ones (GET/PUT /admin/posting-packages). */
+export const postingPackagesAdminApi = {
+  async list(): Promise<JobPostingPackage[]> {
+    return (await apiClient.get<ApiEnvelope<JobPostingPackage[]>>('/admin/posting-packages')).data.data;
+  },
+  async update(packageId: string, body: PostingPackageUpdate): Promise<JobPostingPackage> {
+    return (await apiClient.put<ApiEnvelope<JobPostingPackage>>(`/admin/posting-packages/${packageId}`, body)).data.data;
+  },
+};
 
 /** Admin-configurable business numbers (GET/PUT /admin/settings). */
 export const businessSettingsApi = {
