@@ -14,13 +14,20 @@ public sealed record CvExperience(string? Title, string? Company, string? StartD
 
 public sealed record CvEducation(string? School, string? Degree, string? StartDate, string? EndDate, string? Description);
 
+public sealed record CvProject(
+    string? Name, string? Role, string? StartDate, string? EndDate, string? Description,
+    string? Technologies, string? Url);
+
+public sealed record CvActivity(string? Name, string? Role, string? StartDate, string? EndDate, string? Description);
+
 /// <summary>Visual choices saved with the CV so reopening and PDF export keep the same design.</summary>
 public sealed record CvPresentation(
     string? AccentColor,
     string? Density,
     string? FontFamily,
     string? Layout,
-    IReadOnlyList<string>? VisibleSections = null);
+    IReadOnlyList<string>? VisibleSections = null,
+    bool ShowAvatar = false);
 
 /// <summary>Content the candidate fills in; the FE sends and receives it as structuredContent.</summary>
 public sealed record StructuredCvContent(
@@ -35,7 +42,9 @@ public sealed record StructuredCvContent(
     IReadOnlyList<string>? Skills,
     IReadOnlyList<string>? Languages,
     IReadOnlyList<string>? Certificates,
-    CvPresentation? Presentation = null);
+    CvPresentation? Presentation = null,
+    IReadOnlyList<CvProject>? Projects = null,
+    IReadOnlyList<CvActivity>? Activities = null);
 
 public sealed record CvTemplateDto(Guid CvTemplateId, string Code, string Name, string? Description, string? PreviewUrl, string TemplateConfig);
 
@@ -216,6 +225,20 @@ public sealed class CvBuilderHandlers :
                 S(e.StartDate, "Từ", 30), S(e.EndDate, "Đến", 30), S(e.Description, "Mô tả học vấn", MaxLong)))
             .Where(e => e.School != null || e.Degree != null)
             .ToList();
+        var projects = L(content.Projects, "Dự án")
+            .Select(p => new CvProject(
+                S(p.Name, "Tên dự án", MaxShort), S(p.Role, "Vai trò trong dự án", MaxShort),
+                S(p.StartDate, "Từ", 30), S(p.EndDate, "Đến", 30),
+                S(p.Description, "Mô tả dự án", MaxLong), S(p.Technologies, "Công nghệ", MaxShort),
+                S(p.Url, "Liên kết dự án", 500)))
+            .Where(p => p.Name != null || p.Description != null)
+            .ToList();
+        var activities = L(content.Activities, "Hoạt động")
+            .Select(a => new CvActivity(
+                S(a.Name, "Tên hoạt động", MaxShort), S(a.Role, "Vai trò trong hoạt động", MaxShort),
+                S(a.StartDate, "Từ", 30), S(a.EndDate, "Đến", 30), S(a.Description, "Mô tả hoạt động", MaxLong)))
+            .Where(a => a.Name != null || a.Description != null)
+            .ToList();
         List<string> Words(IReadOnlyList<string>? items, string label) =>
             L(items, label).Select(i => S(i, label, MaxShort)).OfType<string>().ToList();
 
@@ -248,7 +271,7 @@ public sealed class CvBuilderHandlers :
             }
 
             var supportedSections = new HashSet<string>(
-                ["summary", "experiences", "educations", "skills", "languages", "certificates"],
+                ["summary", "experiences", "projects", "educations", "activities", "skills", "languages", "certificates"],
                 StringComparer.OrdinalIgnoreCase);
             var sections = (value.VisibleSections ?? supportedSections.ToList())
                 .Select(section => section.Trim().ToLowerInvariant())
@@ -259,7 +282,7 @@ public sealed class CvBuilderHandlers :
                 throw new BadRequestException("Danh sách mục hiển thị trong CV không hợp lệ.", "CV_PRESENTATION_INVALID");
             }
 
-            return new CvPresentation(accent, density, font, layout, sections);
+            return new CvPresentation(accent, density, font, layout, sections, value.ShowAvatar);
         }
 
         var result = new StructuredCvContent(
@@ -270,12 +293,12 @@ public sealed class CvBuilderHandlers :
             S(content.Address, "Địa chỉ", MaxShort),
             S(content.Summary, "Mục tiêu nghề nghiệp", MaxLong),
             experiences, educations, Words(content.Skills, "Kỹ năng"), Words(content.Languages, "Ngoại ngữ"),
-            Words(content.Certificates, "Chứng chỉ"), Presentation(content.Presentation));
+            Words(content.Certificates, "Chứng chỉ"), Presentation(content.Presentation), projects, activities);
 
         // An empty CV cannot be scored by AI or read by a recruiter.
-        if (result.Summary == null && experiences.Count == 0 && educations.Count == 0 && result.Skills!.Count == 0)
+        if (result.Summary == null && experiences.Count == 0 && projects.Count == 0 && educations.Count == 0 && result.Skills!.Count == 0)
         {
-            throw new BadRequestException("CV cần ít nhất một trong các mục: mục tiêu, kinh nghiệm, học vấn hoặc kỹ năng.", "CV_CONTENT_EMPTY");
+            throw new BadRequestException("CV cần ít nhất một trong các mục: mục tiêu, kinh nghiệm, dự án, học vấn hoặc kỹ năng.", "CV_CONTENT_EMPTY");
         }
 
         return result;

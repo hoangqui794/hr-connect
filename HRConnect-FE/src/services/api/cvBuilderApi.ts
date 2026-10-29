@@ -52,12 +52,13 @@ export const validateStructuredCvContent = (
     Array.isArray(content.educations) &&
     content.educations.some((edu) => edu.school?.trim() || edu.degree?.trim());
   const hasSkills = Array.isArray(content.skills) && content.skills.length > 0;
+  const hasProjects = Array.isArray(content.projects) && content.projects.some((project) => project.name?.trim());
 
-  if (!hasSummary && !hasExperiences && !hasEducations && !hasSkills) {
+  if (!hasSummary && !hasExperiences && !hasEducations && !hasSkills && !hasProjects) {
     return {
       isValid: false,
       error:
-        'Bắt buộc phải có ít nhất 1 trong các mục: Mục tiêu nghề nghiệp, Kinh nghiệm làm việc, Học vấn, hoặc Kỹ năng.',
+        'Bắt buộc phải có ít nhất 1 trong các mục: Mục tiêu nghề nghiệp, Kinh nghiệm làm việc, Dự án, Học vấn hoặc Kỹ năng.',
     };
   }
 

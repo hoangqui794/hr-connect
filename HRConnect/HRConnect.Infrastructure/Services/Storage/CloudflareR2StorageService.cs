@@ -125,6 +125,49 @@ public class CloudflareR2StorageService : IFileStorageService
         }
     }
 
+    public async Task<byte[]> DownloadAsync(
+        string objectKey,
+        long maxBytes,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateConfiguration();
+        if (string.IsNullOrWhiteSpace(objectKey))
+            throw new ArgumentException("Mã khóa đối tượng (objectKey) không được để trống.", nameof(objectKey));
+        if (maxBytes <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maxBytes), "Giới hạn dung lượng phải lớn hơn 0.");
+
+        try
+        {
+            using var response = await _s3Client.GetObjectAsync(new GetObjectRequest
+            {
+                BucketName = _settings.BucketName,
+                Key = objectKey
+            }, cancellationToken);
+
+            if (response.ContentLength > maxBytes)
+                throw new InvalidDataException($"Tệp vượt quá giới hạn {maxBytes} byte.");
+
+            await using var output = new MemoryStream();
+            var buffer = new byte[81920];
+            int read;
+            long total = 0;
+            while ((read = await response.ResponseStream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken)) > 0)
+            {
+                total += read;
+                if (total > maxBytes)
+                    throw new InvalidDataException($"Tệp vượt quá giới hạn {maxBytes} byte.");
+                await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+            }
+
+            return output.ToArray();
+        }
+        catch (AmazonS3Exception ex)
+        {
+            _logger.LogWarning(ex, "Không thể tải tệp riêng tư từ R2: Key={Key}", objectKey);
+            throw new InvalidOperationException("Không thể đọc tệp từ hệ thống lưu trữ đám mây.", ex);
+        }
+    }
+
     public async Task DeleteAsync(
         string objectKey,
         CancellationToken cancellationToken = default)

@@ -19,18 +19,20 @@ public sealed class StructuredCvService : IStructuredCvService
     private readonly PdfCvValidator _validator;
     private readonly IFileStorageService _storage;
     private readonly ICandidateCvRepository _cvs;
+    private readonly IUserRepository _users;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _audit;
     private readonly ILogger<StructuredCvService> _logger;
 
     public StructuredCvService(
-        CvPdfRenderer renderer, PdfCvValidator validator, IFileStorageService storage, ICandidateCvRepository cvs,
+        CvPdfRenderer renderer, PdfCvValidator validator, IFileStorageService storage, ICandidateCvRepository cvs, IUserRepository users,
         IUnitOfWork unitOfWork, IAuditLogService audit, ILogger<StructuredCvService> logger)
     {
         _renderer = renderer;
         _validator = validator;
         _storage = storage;
         _cvs = cvs;
+        _users = users;
         _unitOfWork = unitOfWork;
         _audit = audit;
         _logger = logger;
@@ -41,7 +43,7 @@ public sealed class StructuredCvService : IStructuredCvService
         CancellationToken cancellationToken = default)
     {
         var cvId = Guid.NewGuid();
-        var (key, size) = await RenderAndUploadAsync(candidateId, cvId, 1, template, content, cancellationToken);
+        var (key, size) = await RenderAndUploadAsync(candidateId, actorUserId, cvId, 1, template, content, cancellationToken);
         var now = DateTime.UtcNow;
         try
         {
@@ -94,7 +96,7 @@ public sealed class StructuredCvService : IStructuredCvService
         // A new object key per version: applications already sent keep pointing at the PDF they were sent with.
         var version = DateTime.UtcNow.Ticks;
         var previousKey = cv.SourceFileUrl;
-        var (key, size) = await RenderAndUploadAsync(cv.CandidateId, cv.CvId, version, template, content, cancellationToken);
+        var (key, size) = await RenderAndUploadAsync(cv.CandidateId, actorUserId, cv.CvId, version, template, content, cancellationToken);
         try
         {
             cv.Title = title;
@@ -120,13 +122,38 @@ public sealed class StructuredCvService : IStructuredCvService
     }
 
     private async Task<(string Key, long Size)> RenderAndUploadAsync(
-        Guid candidateId, Guid cvId, long version, CvTemplate? template, StructuredCvContent content, CancellationToken cancellationToken)
+        Guid candidateId, Guid actorUserId, Guid cvId, long version, CvTemplate? template, StructuredCvContent content, CancellationToken cancellationToken)
     {
-        var pdf = _renderer.Render(content, template?.TemplateConfig);
+        var avatarBytes = await LoadAvatarAsync(actorUserId, content.Presentation?.ShowAvatar == true, cancellationToken);
+        var pdf = _renderer.Render(content, template?.TemplateConfig, avatarBytes);
         _validator.Validate(pdf); // same rules as an uploaded CV
         await using var stream = new MemoryStream(pdf, writable: false);
         var key = await _storage.UploadAsync(stream, $"candidates/{candidateId}/cvs/{cvId}-v{version}.pdf", "application/pdf", cancellationToken);
         return (key, pdf.LongLength);
+    }
+
+    private async Task<byte[]?> LoadAvatarAsync(Guid actorUserId, bool showAvatar, CancellationToken cancellationToken)
+    {
+        if (!showAvatar) return null;
+
+        var user = await _users.GetByIdAsync(actorUserId, cancellationToken);
+        var key = user?.AvatarObjectKey;
+        var expectedPrefix = $"avatars/{actorUserId:D}/";
+        if (string.IsNullOrWhiteSpace(key) || !key.StartsWith(expectedPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning("Bỏ qua ảnh CV vì tài khoản {UserId} không có avatar hợp lệ.", actorUserId);
+            return null;
+        }
+
+        try
+        {
+            return await _storage.DownloadAsync(key, 2 * 1024 * 1024, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Không thể đọc avatar để xuất CV cho tài khoản {UserId}; tiếp tục không có ảnh.", actorUserId);
+            return null;
+        }
     }
 
     private Task AuditAsync(CandidateCv cv, Guid actorUserId, string change, CancellationToken cancellationToken) =>
