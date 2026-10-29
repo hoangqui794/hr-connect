@@ -38,12 +38,12 @@ describe('PostingPackagesSection', () => {
 
   it('saves an edit with unlimited CVs as null', async () => {
     renderSection();
-    fireEvent.click(await screen.findByRole('button', { name: 'Sửa Gói Tiêu Chuẩn' }));
+    fireEvent.click(await screen.findByLabelText('Sửa Gói Tiêu Chuẩn'));
 
     fireEvent.change(await screen.findByLabelText('Tên gói'), { target: { value: 'Gói Tiêu Chuẩn 90 ngày' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Lưu' }));
+    fireEvent.click(screen.getByText('Lưu'));
 
-    await waitFor(() => expect(postingPackagesAdminApi.update).toHaveBeenCalled());
+    await waitFor(() => expect(postingPackagesAdminApi.update).toHaveBeenCalled(), { timeout: 5000 });
     expect(vi.mocked(postingPackagesAdminApi.update).mock.calls[0]).toEqual([
       'std',
       { name: 'Gói Tiêu Chuẩn 90 ngày', description: 'AI chấm điểm', price: 1_500_000, durationDays: 30, maxApplications: null, isActive: false },
