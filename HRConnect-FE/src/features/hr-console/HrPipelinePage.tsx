@@ -40,12 +40,13 @@ const useTabCount = (tab: Tab) =>
 const interviewColumns: ColumnsType<InterviewItem> = [
   { title: 'Ứng viên', key: 'c', render: (_, r) => <PersonCell name={r.candidateName} secondary={r.candidateEmail} /> },
   { title: 'Tin tuyển dụng', key: 'j', render: (_, r) => <JobCell title={r.jobTitle} company={r.companyName} /> },
-  { title: 'Vòng', dataIndex: 'interviewRound', width: 70 },
-  { title: 'Thời gian', dataIndex: 'scheduledAt', width: 150, render: (v) => <span className="tabular-nums">{fmt(v)}</span> },
+  { title: 'Vòng', dataIndex: 'interviewRound', width: 70, align: 'center' },
+  { title: 'Thời gian', dataIndex: 'scheduledAt', width: 150, align: 'center', render: (v) => <span className="tabular-nums">{fmt(v)}</span> },
   {
     title: 'Trạng thái',
     key: 's',
     width: 190,
+    align: 'center',
     render: (_, r) => {
       const st = pick(INTERVIEW_STATUS, r.status);
       return (
@@ -62,11 +63,12 @@ const offerColumns: ColumnsType<OfferItem> = [
   { title: 'Ứng viên', key: 'c', render: (_, r) => <PersonCell name={r.candidateName} secondary={r.candidateEmail} /> },
   { title: 'Tin tuyển dụng', key: 'j', render: (_, r) => <JobCell title={r.jobTitle} company={r.companyName} /> },
   { title: 'Lương', key: 'm', width: 150, render: (_, r) => <span className="tabular-nums">{money(r.salary, r.currencyCode)}</span> },
-  { title: 'Ngày bắt đầu', dataIndex: 'startDate', width: 120, render: (v) => <span className="tabular-nums">{fmt(v, 'DD/MM/YYYY')}</span> },
+  { title: 'Ngày bắt đầu', dataIndex: 'startDate', width: 120, align: 'center', render: (v) => <span className="tabular-nums">{fmt(v, 'DD/MM/YYYY')}</span> },
   {
     title: 'Trạng thái',
     key: 's',
     width: 170,
+    align: 'center',
     render: (_, r) => {
       const st = pick(OFFER_STATUS, r.status);
       return <StatusDot tone={st.tone}>{st.label}</StatusDot>;
@@ -78,11 +80,12 @@ const placementColumns: ColumnsType<PlacementItem> = [
   { title: 'Ứng viên', key: 'c', render: (_, r) => <PersonCell name={r.candidate.fullName} secondary={r.candidate.email} /> },
   { title: 'Tin tuyển dụng', key: 'j', render: (_, r) => <JobCell title={r.job.title} company={r.job.companyName} /> },
   { title: 'Vị trí', key: 'p', render: (_, r) => r.position ?? '—' },
-  { title: 'Ngày đi làm', dataIndex: 'actualStartDate', width: 120, render: (v) => <span className="tabular-nums">{fmt(v, 'DD/MM/YYYY')}</span> },
+  { title: 'Ngày đi làm', dataIndex: 'actualStartDate', width: 120, align: 'center', render: (v) => <span className="tabular-nums">{fmt(v, 'DD/MM/YYYY')}</span> },
   {
     title: 'Trạng thái',
     key: 's',
     width: 150,
+    align: 'center',
     render: (_, r) => {
       const st = pick(PLACEMENT_STATUS, r.status);
       return <StatusDot tone={st.tone}>{st.label}</StatusDot>;

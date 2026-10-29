@@ -629,8 +629,11 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             label: 'Địa điểm',
             value: (<span className="inline-flex items-start gap-1.5"><EnvironmentOutlined aria-hidden className="mt-1 text-slate-400" />{job.location ?? '—'}</span>),
           },
-          { label: 'Thời gian làm việc', value: job.workingTime ?? '—' },
-          ...(job.salaryNote ? [{ label: 'Ghi chú lương', value: job.salaryNote }] : []),
+          // Keep the line breaks the Client typed (HR feedback 28/10).
+          { label: 'Thời gian làm việc', value: <span className="whitespace-pre-line leading-relaxed">{job.workingTime ?? '—'}</span> },
+          ...(job.salaryNote
+            ? [{ label: 'Ghi chú lương', value: <span className="whitespace-pre-line leading-relaxed">{job.salaryNote}</span> }]
+            : []),
           { label: 'Ngày đăng', value: job.postedAt ? formatDate(job.postedAt) : 'Chưa công bố' },
           ...(!isApplicant && job.postingPackageName
             ? [{ label: 'Gói đăng tin', value: formatPostingPackage(job.postingPackageCode, job.postingPackageName) }]
