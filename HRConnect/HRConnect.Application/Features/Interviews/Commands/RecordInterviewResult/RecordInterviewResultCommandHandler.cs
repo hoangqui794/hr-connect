@@ -55,6 +55,10 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
         }
 
         var normalizedNextAction = Mf04InputPolicy.NormalizeInterviewNextAction(normalizedResult, request.NextAction);
+        var normalizedFeedback = Mf04InputPolicy.NormalizeRequiredText(
+            request.Feedback,
+            Mf04InputPolicy.InterviewFeedbackMaxLength,
+            "Nhận xét phỏng vấn");
 
         var interview = await _interviewRepository.GetByIdForUpdateAsync(request.InterviewId, cancellationToken);
         if (interview == null)
@@ -111,7 +115,7 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
         var oldStatus = interview.Status;
 
         interview.Result = normalizedResult;
-        interview.Feedback = request.Feedback;
+        interview.Feedback = normalizedFeedback;
         interview.Status = InterviewStates.Completed;
         interview.RecordedBy = request.CurrentUserId;
         interview.RecordedAt = now;
@@ -120,11 +124,7 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
         interview.ConcurrencyToken = newConcurrencyToken;
         interview.UpdatedAt = now;
 
-        var reasonText = $"Ghi nhận kết quả: {normalizedResult}.";
-        if (!string.IsNullOrWhiteSpace(request.Feedback))
-        {
-            reasonText += $" Nhận xét: {request.Feedback.Trim()}";
-        }
+        var reasonText = $"Ghi nhận kết quả: {normalizedResult}. Nhận xét: {normalizedFeedback}";
 
         interview.InterviewStatusHistories.Add(new InterviewStatusHistory
         {
@@ -195,6 +195,7 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
                 applicationId = interview.ApplicationId,
                 status = interview.Status,
                 result = interview.Result,
+                feedback = normalizedFeedback,
                 isFinalRound = request.IsFinalRound,
                 nextAction = normalizedNextAction
             }
@@ -231,7 +232,7 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
                 InterviewRound = interview.InterviewRound,
                 Status = InterviewStates.Completed,
                 Result = normalizedResult,
-                Feedback = request.Feedback,
+                Feedback = normalizedFeedback,
                 ApplicationStatus = interview.Application?.Status,
                 RecordedBy = request.CurrentUserId,
                 RecordedAt = now,

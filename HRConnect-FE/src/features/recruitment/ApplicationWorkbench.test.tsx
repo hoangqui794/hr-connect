@@ -192,11 +192,18 @@ describe('ApplicationWorkbench MF-04', () => {
     expect(screen.queryByRole('radio', { name: 'Phỏng vấn thêm vòng nữa' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Xác nhận' }));
+    expect(await screen.findByText('Nhập nhận xét phỏng vấn.')).toBeInTheDocument();
+    expect(clientActionsApi.recordResult).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Nhận xét / Đánh giá chi tiết'), {
+      target: { value: 'Không đáp ứng yêu cầu chuyên môn.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận' }));
 
     await waitFor(() => {
       expect(clientActionsApi.recordResult).toHaveBeenCalledWith('interview-1', {
         result: 'FAIL',
-        feedback: undefined,
+        feedback: 'Không đáp ứng yêu cầu chuyên môn.',
         nextAction: undefined,
         concurrencyToken: 'interview-token',
       });

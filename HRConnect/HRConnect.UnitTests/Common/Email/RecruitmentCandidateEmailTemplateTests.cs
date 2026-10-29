@@ -28,6 +28,20 @@ public class RecruitmentCandidateEmailTemplateTests
     }
 
     [Fact]
+    public void InterviewScheduled_ForLinkedAccount_UsesConfirmationCallToAction()
+    {
+        var email = HrConnectEmailTemplates.InterviewScheduled(Payload with
+        {
+            PortalUrl = "https://hrconnectvn.online/candidate/interviews/interview-1",
+            HasLinkedAccount = true
+        });
+
+        email.HtmlBody.Should().Contain(System.Net.WebUtility.HtmlEncode("Xem lịch và xác nhận tham gia"));
+        email.HtmlBody.Should().Contain("https://hrconnectvn.online/candidate/interviews/interview-1");
+        email.HtmlBody.Should().NotContain("Đăng ký / đăng nhập HR Connect");
+    }
+
+    [Fact]
     public void InterviewUpdated_ExplainsThatDetailsChanged()
     {
         var email = HrConnectEmailTemplates.InterviewUpdated(Payload);
