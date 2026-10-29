@@ -43,6 +43,7 @@ public class SubmitCandidateCommandHandlerTests
     private readonly Mock<IAdminBusinessSettings> _businessSettingsMock;
     private readonly Mock<ICandidateIdentityEvidenceProtector> _identityEvidenceProtectorMock;
     private readonly Mock<ICandidateDuplicateRepository> _candidateDuplicateRepositoryMock;
+    private readonly Mock<IAppNotifier> _notifierMock;
     private readonly SubmitCandidateCommandHandler _handler;
 
     public SubmitCandidateCommandHandlerTests()
@@ -71,6 +72,7 @@ public class SubmitCandidateCommandHandlerTests
         _businessSettingsMock = new Mock<IAdminBusinessSettings>();
         _identityEvidenceProtectorMock = new Mock<ICandidateIdentityEvidenceProtector>();
         _candidateDuplicateRepositoryMock = new Mock<ICandidateDuplicateRepository>();
+        _notifierMock = new Mock<IAppNotifier>();
 
         _emailNormalizerMock.Setup(n => n.Normalize(It.IsAny<string>()))
             .Returns<string>(s => s?.Trim().ToLowerInvariant() ?? string.Empty);
@@ -110,7 +112,8 @@ public class SubmitCandidateCommandHandlerTests
             Mock.Of<ISubmissionConsentExpiryService>(),
             _businessSettingsMock.Object,
             _identityEvidenceProtectorMock.Object,
-            _candidateDuplicateRepositoryMock.Object);
+            _candidateDuplicateRepositoryMock.Object,
+            _notifierMock.Object);
     }
 
     [Fact]
@@ -516,7 +519,9 @@ public class SubmitCandidateCommandHandlerTests
         _candidateDuplicateRepositoryMock.Setup(repository => repository.GetOrCreateStrongMatchCaseAsync(
                 It.IsAny<Guid>(), matchedCandidateId, It.IsAny<Guid>(), jobId, "2026-10",
                 It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CandidateDuplicateCase { DuplicateCaseId = duplicateCaseId });
+            .ReturnsAsync(new CandidateDuplicateCaseUpsertResult(
+                new CandidateDuplicateCase { DuplicateCaseId = duplicateCaseId },
+                true));
 
         var response = await _handler.Handle(new SubmitCandidateCommand
         {
@@ -545,6 +550,13 @@ public class SubmitCandidateCommandHandlerTests
         _candidateDuplicateRepositoryMock.Verify(repository => repository.GetOrCreateStrongMatchCaseAsync(
             It.IsAny<Guid>(), matchedCandidateId, response.Data.SubmissionId, jobId, "2026-10",
             It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+        _notifierMock.Verify(notifier => notifier.NotifyRoleAsync(
+            "PLATFORM_ADMIN",
+            It.Is<AppNotice>(notice =>
+                notice.RelatedEntityType == "CANDIDATE_DUPLICATE_CASE" &&
+                notice.RelatedEntityId == duplicateCaseId &&
+                notice.RouteHint == "/admin/candidate-identity-claims"),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

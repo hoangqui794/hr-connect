@@ -139,7 +139,7 @@ export const AdminLayout: React.FC = () => {
       await authService.logout(); // revokes the refresh token server-side
     } finally {
       logout();
-      window.location.replace('/');
+      window.location.replace('/login');
     }
   };
 

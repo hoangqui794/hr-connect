@@ -23,7 +23,7 @@ export const vi: Translations = {
     titleMain: 'Nền tảng Tuyển dụng Thông minh',
     titleHighlight: '& Mạng lưới Affiliate Headhunter',
     subtitle:
-      'Kết nối nhân sự chất lượng cao qua mạng lưới OPR Hub uy tín, tối ưu hóa thẩm định bằng AI và bảo hành thử việc 60 ngày minh bạch.',
+      'Kết nối nhân sự chất lượng cao qua mạng lưới OPR Hub uy tín, tối ưu hóa thẩm định bằng AI và bảo hành thay người minh bạch.',
     ctaPostJob: 'Đăng tin Tuyển dụng',
     ctaJoinAffiliate: 'Gia nhập Mạng lưới OPR',
     searchKeywordPlaceholder: 'Từ khóa: Frontend, Java, DevOps, ReactJS, PM...',
@@ -48,12 +48,12 @@ export const vi: Translations = {
       title: 'Tuyển dụng Trọn gói Trả sau',
       subtitle: 'Mô hình thành công - Không rủi ro tài chính',
       description:
-        'Mạng lưới Affiliate tìm nguồn ứng viên. Cam kết đếm ngược bảo hành thử việc 60 ngày. Chỉ thanh toán khi ứng viên hoàn thành thử việc thành công.',
+        'Mạng lưới Affiliate tìm nguồn ứng viên. Chỉ thanh toán khi ứng viên đi làm, kèm thời hạn bảo hành đếm ngược tự động.',
       features: [
-        'Bảo hành thử việc 60 ngày (đếm ngược tự động)',
-        'Thanh toán 100% khi ứng viên nhận việc & qua thử việc',
+        'Bảo hành thay người, đếm ngược tự động',
+        'Chỉ thanh toán khi ứng viên thực sự đi làm',
         'Mạng lưới OPR Hub định danh bảo mật nguồn ứng viên',
-        'Bảo hành 1-đổi-1 miễn phí hoặc hoàn phí minh bạch',
+        'Thay người miễn phí 1 lần nếu ứng viên nghỉ trong thời hạn bảo hành',
       ],
       cta: 'Chọn gói Headhunt COD',
     },
@@ -104,9 +104,9 @@ export const vi: Translations = {
       tag: 'Affiliate Headhunting',
     },
     f3: {
-      title: 'Bảo hành Thử việc 60 Ngày Minh bạch',
-      desc: 'Hệ thống tự động kích hoạt đồng hồ đếm ngược thời gian bảo hành cho gói Headhunt, hỗ trợ bảo hành 1-đổi-1 hoặc hoàn tiền minh bạch.',
-      tag: '60-Day Probation Warranty',
+      title: 'Bảo hành thay người minh bạch',
+      desc: 'Hệ thống tự động kích hoạt đồng hồ đếm ngược thời gian bảo hành cho gói Headhunt; ứng viên nghỉ trong thời hạn thì được thay người miễn phí.',
+      tag: 'Bảo hành thay người',
     },
     f4: {
       title: 'Sổ cái Hoa hồng & Lưu vết UNC Ngân hàng',

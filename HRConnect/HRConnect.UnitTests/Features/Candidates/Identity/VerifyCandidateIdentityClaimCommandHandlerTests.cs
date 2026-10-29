@@ -17,6 +17,7 @@ public sealed class VerifyCandidateIdentityClaimCommandHandlerTests
     private readonly Mock<IOtpService> _otp = new();
     private readonly Mock<IAuditLogService> _audit = new();
     private readonly Mock<IUnitOfWork> _unit = new();
+    private readonly Mock<IAppNotifier> _notifier = new();
 
     [Fact]
     public async Task Handle_VerifiesAliasAndCompletes_WhenNoOldCandidateExists()
@@ -54,7 +55,9 @@ public sealed class VerifyCandidateIdentityClaimCommandHandlerTests
                 claim.ClaimId,
                 It.IsAny<DateTime>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CandidateDuplicateCase { DuplicateCaseId = duplicateCaseId });
+            .ReturnsAsync(new CandidateDuplicateCaseUpsertResult(
+                new CandidateDuplicateCase { DuplicateCaseId = duplicateCaseId },
+                true));
         string? completedStatus = null;
         _claims.Setup(x => x.TryCompleteAsync(claim.ClaimId, claim.RequesterUserId, It.IsAny<Guid>(),
                 It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
@@ -69,6 +72,13 @@ public sealed class VerifyCandidateIdentityClaimCommandHandlerTests
         completedStatus.Should().Be("PENDING_ADMIN_REVIEW");
         _candidates.Verify(x => x.TrySwapIdentityCandidateAsync(
             It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _notifier.Verify(notifier => notifier.NotifyRoleAsync(
+            "PLATFORM_ADMIN",
+            It.Is<AppNotice>(notice =>
+                notice.RelatedEntityType == "CANDIDATE_DUPLICATE_CASE" &&
+                notice.RelatedEntityId == duplicateCaseId &&
+                notice.RouteHint == "/admin/candidate-identity-claims"),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -101,7 +111,7 @@ public sealed class VerifyCandidateIdentityClaimCommandHandlerTests
 
     private VerifyCandidateIdentityClaimCommandHandler CreateHandler() => new(
         _claims.Object, _candidates.Object, _identities.Object, _duplicateCases.Object,
-        _otp.Object, _audit.Object, _unit.Object);
+        _otp.Object, _audit.Object, _unit.Object, _notifier.Object);
 
     private static CandidateIdentityClaim CreateClaim() => new()
     {
