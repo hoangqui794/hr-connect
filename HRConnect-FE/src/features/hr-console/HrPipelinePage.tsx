@@ -112,7 +112,9 @@ export const HrPipelinePage: React.FC<{
   const list = useQuery({
     queryKey: ['hr-pipeline', tab, page],
     queryFn: (): Promise<PagedItems<unknown>> => pipelineApi[tab]({ page, pageSize: PAGE_SIZE }),
-    placeholderData: (prev) => prev,
+    // Keep the previous page only while paging inside the same tab: each tab has its own row shape
+    // (placements nest candidate/job), so showing another tab's rows crashes the columns.
+    placeholderData: (prev, prevQuery) => (prevQuery?.queryKey[1] === tab ? prev : undefined),
   });
 
   const go = (next: Partial<{ tab: Tab; page: number }>) => {
