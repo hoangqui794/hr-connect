@@ -251,7 +251,8 @@ export const ClientCandidatesPage: React.FC = () => {
       <PageHero
         eyebrow="Tuyển dụng"
         title="Hồ sơ ứng viên"
-        description="Mọi hồ sơ vào tin của bạn. Mở hồ sơ để xem đánh giá AI, lên lịch phỏng vấn, gửi offer và xác nhận đi làm."
+        tip
+        description="Mọi hồ sơ nộp vào tin của bạn. Mở hồ sơ để xem đánh giá AI, hẹn phỏng vấn, gửi offer và xác nhận ngày đi làm."
         actions={
           <Button icon={<ReloadOutlined />} size="large" onClick={() => (view === 'list' ? list.refetch() : boardQueries.forEach((b) => b.refetch()))}>
             Tải lại

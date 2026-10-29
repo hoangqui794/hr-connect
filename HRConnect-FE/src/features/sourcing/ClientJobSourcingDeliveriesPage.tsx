@@ -24,9 +24,10 @@ export const ClientJobSourcingDeliveriesPage: React.FC = () => {
   return (
     <div>
       <PageHero
-        eyebrow="Dịch vụ CV Sourcing"
+        eyebrow="SS · Tìm hồ sơ phù hợp"
         title={job ? `Hồ sơ nhận được · ${job.title}` : 'Hồ sơ nhận được (CV Sourcing)'}
-        description="Danh sách các hồ sơ ứng viên do HR Connect sàng lọc và bàn giao. Quý khách có 7 ngày để chấp nhận hoặc từ chối từng hồ sơ."
+        tip
+        description="Hồ sơ ứng viên HR Connect đã sàng lọc và bàn giao cho tin SS. Hãy chấp nhận hoặc từ chối từng hồ sơ trong thời hạn xem xét ghi ở mỗi hồ sơ."
         actions={
           <div className="flex items-center gap-2">
             <Button

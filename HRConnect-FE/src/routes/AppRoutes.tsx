@@ -182,6 +182,7 @@ const ClientWorkspaceInterviewsOffersPage = React.lazy(() =>
 const ClientCompanyPage = React.lazy(() =>
   import('@/features/client-console/ClientMorePages').then((m) => ({ default: m.ClientCompanyPage }))
 );
+const ClientBillingPage = React.lazy(() => import('@/features/client-console/ClientBillingPage'));
 const ClientWarrantyPlaceholder = React.lazy(() =>
   import('@/features/finance-mf05/WarrantyPages').then((m) => ({ default: m.ClientWarrantyPage }))
 );
@@ -359,6 +360,7 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/client/candidates': [UserRole.CLIENT, UserRole.ADMIN],
   '/client/interviews-offers': [UserRole.CLIENT, UserRole.ADMIN],
   '/client/warranty': [UserRole.CLIENT, UserRole.ADMIN],
+  '/client/billing': [UserRole.CLIENT, UserRole.ADMIN],
   '/client/company': [UserRole.CLIENT],
   '/affiliate/dashboard': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/hr/dashboard': [UserRole.INTERNAL_HR, UserRole.ADMIN],
@@ -508,6 +510,7 @@ export const AppRoutes = {
   ClientWorkspaceInterviewsOffersPage,
   ClientCompanyPage,
   ClientWarrantyPlaceholder,
+  ClientBillingPage,
   ClientJobSourcingDeliveriesPage,
   HrOverviewPage,
   HrScreeningPage,

@@ -27,6 +27,7 @@ const NAV = [
   { to: '/client/candidates', label: 'Hồ sơ ứng viên' },
   { to: '/client/interviews-offers', label: 'Phỏng vấn & Offer' },
   { to: '/client/warranty', label: 'Bảo hành', muted: true },
+  { to: '/client/billing', label: 'Công nợ', muted: true },
 ] as const;
 
 const linkClass = (active: boolean, muted?: boolean, compact?: boolean) => {
