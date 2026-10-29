@@ -12,6 +12,7 @@ import { businessSettingsApi } from '@/services/api/financeApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { BusinessSetting } from '@/types/api/finance';
 import { PageHero, StatusDot, Surface } from './ui';
+import { PostingPackagesSection } from './PostingPackagesSection';
 
 const formatNumber = (value: number) => value.toLocaleString('vi-VN', { maximumFractionDigits: 3 });
 
@@ -104,6 +105,10 @@ export const AdminSettingsPage: React.FC = () => {
           ))}
         </div>
       )}
+
+      <div className="mt-6">
+        <PostingPackagesSection />
+      </div>
 
       <Modal
         open={Boolean(editing)}

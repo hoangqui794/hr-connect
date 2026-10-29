@@ -413,6 +413,7 @@ app.MapCompanyDirectoryEndpoints();
 app.MapAffiliateCommissionEstimateEndpoints();
 app.MapHub<HRConnect.Presentation.Hubs.NotificationHub>(HRConnect.Presentation.Hubs.NotificationHub.Path);
 app.MapBusinessSettingEndpoints();
+app.MapPostingPackageAdminEndpoints();
 app.MapSubmissionConsentEndpoints();
 app.MapCandidateSavedJobEndpoints();
 app.MapNotificationEndpoints();

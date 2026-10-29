@@ -2,7 +2,7 @@
 
 > Bản gốc HR gửi, có ghi chú trạng thái xử lý của nhóm dưới từng mục. Ảnh nằm trong thư mục `images/`.
 
-> **Trạng thái xử lý (cập nhật 29/10/2026):** ✅ đã sửa · ⏳ cần báo người phụ trách · ❓ cần nhóm chốt · ⬜ chưa làm.
+> **Trạng thái xử lý (cập nhật 29/10/2026, tối):** ✅ đã sửa · ⏳ cần báo người phụ trách · ❓ cần nhóm chốt · ⬜ chưa làm.
 
 ## **HỒ SƠ DOANH NGHIỆP (sẽ hiện CÔNG TY trên trang chủ)**
 
@@ -17,7 +17,7 @@ Việc cần làm \=\> Việc Cần Làm
 Cập nhập tình hình việc làm   
 Chữ cái đầu tiên viết hoa 
 
-> ✅ **ĐÃ SỬA (commit `08c17a96`, ĐANG TRÊN `dev`, chờ CI xanh rồi đưa lên `main`):** Tổng quan Client viết hoa chữ cái đầu: nút "Xem Hồ Sơ Ứng Viên", tiêu đề "Việc Cần Làm", "Phễu Ứng Viên", "Phỏng Vấn Sắp Tới", "Tin Đang Tuyển".
+> ✅ **ĐÃ SỬA (commit `08c17a96`, đã lên `dev` và `main`):** Tổng quan Client viết hoa chữ cái đầu: nút "Xem Hồ Sơ Ứng Viên", tiêu đề "Việc Cần Làm", "Phễu Ứng Viên", "Phỏng Vấn Sắp Tới", "Tin Đang Tuyển".
 
 ![][image2]
 
@@ -31,7 +31,7 @@ Headhunt \- Cần 1 người \=\> Cần 1 người
 CV Application: Cần 10 người  
 CV Sourcing: Cần 20 người
 
-> ✅ **ĐÃ SỬA (commit `ce98798c`, ĐANG TRÊN `dev`, chờ CI xanh rồi đưa lên `main`):** thống nhất viết tắt **HH / AP / SS** (HH = Tuyển dụng theo kết quả, AP = Nhận hồ sơ ứng tuyển, SS = Tìm hồ sơ phù hợp). Hiện ở danh sách tin, bộ lọc và cột hồ sơ ứng viên, thẻ chọn dịch vụ khi đăng tin. Chốt dùng **AP** (2 chữ) thay cho [APP] trong ví dụ.
+> ✅ **ĐÃ SỬA (commit `ce98798c`, đã lên `dev` và `main`):** thống nhất viết tắt **HH / AP / SS** (HH = Tuyển dụng theo kết quả, AP = Nhận hồ sơ ứng tuyển, SS = Tìm hồ sơ phù hợp). Hiện ở danh sách tin, bộ lọc và cột hồ sơ ứng viên, thẻ chọn dịch vụ khi đăng tin. Chốt dùng **AP** (2 chữ) thay cho [APP] trong ví dụ.
 
 **NOTE:** 1 khách hàng có thể tạo 1 job cho 3 dịch vụ khác nhau. Chỉ cần chọn đúng dịch vụ thanh toán đúng số tiền thanh toán cho từng dịch vụ là được
 
@@ -86,12 +86,12 @@ Tuyển dụng theo kết quả \=\> HH COD
 Nhận hồ sơ ứng tuyển : CV APPLICATION  
 Tìm hồ sơ phù hợp \-\> Đăng tin tuyển \=\> CV SOURCING
 
-> ✅ **ĐÃ SỬA (commit `ce98798c`, ĐANG TRÊN `dev`, chờ CI xanh rồi đưa lên `main`):** 3 dịch vụ dùng chung một bộ tên ở mọi màn: HH · Tuyển dụng theo kết quả (Headhunt COD), AP · Nhận hồ sơ ứng tuyển (CV Application), SS · Tìm hồ sơ phù hợp (CV Sourcing).
+> ✅ **ĐÃ SỬA (commit `ce98798c`, đã lên `dev` và `main`):** 3 dịch vụ dùng chung một bộ tên ở mọi màn: HH · Tuyển dụng theo kết quả (Headhunt COD), AP · Nhận hồ sơ ứng tuyển (CV Application), SS · Tìm hồ sơ phù hợp (CV Sourcing).
 
 PHẦN TIN TUYỂN \=\> MÔ TẢ CÔNG VIỆC \=\> Ghi chú lương nên cách xuống dòng  
 Thời gian làm việc: Cách xuống dòng
 
-> ✅ **ĐÃ SỬA (commit `08c17a96`, ĐANG TRÊN `dev`, chờ CI xanh rồi đưa lên `main` + `bd78bfcc` + `425a39d6`):** ô Ghi chú lương và Thời gian làm việc nhập được nhiều dòng, xuống dòng được giữ nguyên khi hiển thị cho ứng viên; mức lương chọn theo khoảng (Thỏa thuận, Dưới 10 triệu … Trên 50 triệu, hoặc Tự nhập), có dòng xem trước "Ứng viên sẽ thấy".
+> ✅ **ĐÃ SỬA (commit `08c17a96`, đã lên `dev` và `main` + `bd78bfcc` + `425a39d6`):** ô Ghi chú lương và Thời gian làm việc nhập được nhiều dòng, xuống dòng được giữ nguyên khi hiển thị cho ứng viên; mức lương chọn theo khoảng (Thỏa thuận, Dưới 10 triệu … Trên 50 triệu, hoặc Tự nhập), có dòng xem trước "Ứng viên sẽ thấy".
 
 ![][image6]
 
@@ -116,7 +116,7 @@ Keyword shouthave (nên có/ưu tiên)
 Chưa có mục gửi email tại đây, nếu gửi ở bên ngoài từ gmail công ty thì phần XÁC NHẬN PHẢN HỒI CỦA ỨNG VIÊN sẽ phải lấy thông tin từ đâu.  
 Nếu có phần gửi email thì phần phản hồi của ứng viên mới có hiệu lực.
 
-> ⏳ **Cần báo Sơn (MF-04), chưa ai làm:** hiện ứng viên **chưa có tài khoản** đã nhận email mời phỏng vấn; ứng viên **có tài khoản** chỉ nhận thông báo trong app. Đề xuất luôn gửi email kèm nút "Xác nhận tham gia" và hiện cho Client "Đã gửi email lúc…".
+> ✅ **ĐÃ SỬA (Sơn, commit `4cd237d0`, đã lên `dev` và `main`):** ứng viên có tài khoản giờ nhận **cả thông báo trong app lẫn email** mời phỏng vấn, email có nút "Xem lịch và xác nhận tham gia"; Client thấy thông báo "đã nhận thông báo trên HR Connect và hệ thống đã đưa email vào hàng đợi gửi".
 
 ## PHẦN BẢO HÀNH:
 
@@ -127,7 +127,7 @@ Nếu theo chủ trương tất cả minh bạch để vẫn được nhưng 2 b
 
 > ✅ **ĐÃ SỬA (29/10/2026, commit `230e1b72`, đã đẩy lên `dev` và `main` – merge `5e847889`):** Client chỉ thấy phí dịch vụ, không còn thấy hoa hồng CTV (API `/warranties` không trả hoa hồng cho Client). CTV chỉ thấy hoa hồng của mình, không còn thấy mức phí dịch vụ của Client (API `/commissions` ẩn `baseAmount`). Internal HR/Admin vẫn thấy cả hai.
 
-> ✅ **ĐÃ SỬA (commit `605cf27a`, ĐANG TRÊN `dev`, chờ CI xanh rồi đưa lên `main`):** màn Chi tiết tiếp nhận việc hiện trạng thái bằng tiếng Việt (không còn IN_WARRANTY, ACTIVE, PAID) và bỏ khối "Thời gian thử việc / Tiến độ thử việc" (nhóm đã chốt 17/10 không làm thử việc).
+> ✅ **ĐÃ SỬA (commit `605cf27a`, đã lên `dev` và `main`):** màn Chi tiết tiếp nhận việc hiện trạng thái bằng tiếng Việt (không còn IN_WARRANTY, ACTIVE, PAID) và bỏ khối "Thời gian thử việc / Tiến độ thử việc" (nhóm đã chốt 17/10 không làm thử việc).
 
 Danh sách bảo hành ứng viên:
 
@@ -139,7 +139,7 @@ Thêm 1 cột HOÀN PHÍ, khi bảo hành xong mà ko kiếm được người n
 Trong mục BẢO HÀNH này chỉ lọc thông tin Client sử dụng dịch vụ HEADHUNT  
 Tổng công nợ phí dịch vụ \=\> Liệt kê tất cả phí dịch vụ khách hàng đã dùng để đánh giá dịch vụ của công ty và kh.  
 
-> ✅ **ĐÃ SỬA (commit `0c487215` + `0ebd92b9`, ĐANG TRÊN `dev`, chờ CI xanh rồi đưa lên `main`):** trang Bảo hành chỉ còn phí Headhunt (không lẫn cọc/quyết toán CV Sourcing); tiêu đề và mô tả suất thay thế dùng tên mới, bỏ con số "30 ngày" ghi cứng. ⬜ **Chưa làm:** trang "Tổng công nợ" riêng liệt kê phí của cả 3 dịch vụ.
+> ✅ **ĐÃ SỬA (commit `0c487215` + `0ebd92b9`, đã lên `dev` và `main`):** trang Bảo hành chỉ còn phí Headhunt (không lẫn cọc/quyết toán CV Sourcing); tiêu đề và mô tả suất thay thế dùng tên mới, bỏ con số "30 ngày" ghi cứng. ✅ **ĐÃ LÀM (commit `1e9a459b`, đã lên `dev` và `main`):** trang **Công nợ** riêng cho Client (`/client/billing`) liệt kê phí của cả 3 dịch vụ HH / AP / SS, có tổng cần thanh toán, quá hạn, đã thanh toán và lọc theo dịch vụ, trạng thái.
 ![][image10]
 
 ## PHỎNG VẤN & OFFER
@@ -148,13 +148,13 @@ Tổng công nợ phí dịch vụ \=\> Liệt kê tất cả phí dịch vụ k
 
 Ghi kết quả phỏng vấn: Nên bắt buộc trả lời lý do/ đánh giá
 
-> ⏳ **Cần báo Sơn (MF-04), chưa ai làm:** bắt buộc nhập nhận xét khi ghi kết quả phỏng vấn (cả form lẫn kiểm tra ở backend).
+> ✅ **ĐÃ SỬA (Sơn, commit `321f7775` + `fcd1abf1`, đã lên `dev` và `main`):** bắt buộc nhập nhận xét khi ghi kết quả phỏng vấn, kiểm tra cả ở form lẫn backend.
 
 ![][image12]
 
 CANH GIỮA DANH MỤC ỨNG VIÊN, TIN TUYỂN, VÒNG, THỜI GIAN, TRẠNG THÁI
 
-> ✅ **ĐÃ SỬA (commit `08c17a96`, ĐANG TRÊN `dev`, chờ CI xanh rồi đưa lên `main`):** bảng Phỏng vấn / Offer / Đi làm căn giữa các cột Vòng, Thời gian, Ngày, Trạng thái (dùng chung cho Client và Internal HR). ✅ Đã sửa kèm (commit `01999f3f`, đã lên `dev` và `main`): trang Tiến độ tuyển dụng không còn bị sập khi chuyển sang tab Phỏng vấn / Offer.
+> ✅ **ĐÃ SỬA (commit `08c17a96`, đã lên `dev` và `main`):** bảng Phỏng vấn / Offer / Đi làm căn giữa các cột Vòng, Thời gian, Ngày, Trạng thái (dùng chung cho Client và Internal HR). ✅ Đã sửa kèm (commit `01999f3f`, đã lên `dev` và `main`): trang Tiến độ tuyển dụng không còn bị sập khi chuyển sang tab Phỏng vấn / Offer.
 
 ![][image13]
 

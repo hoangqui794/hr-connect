@@ -105,6 +105,7 @@ public static class AuditActions
     public const string CommissionAdjusted = "COMMISSION_ADJUSTED";
     public const string PayoutRecorded = "PAYOUT_RECORDED";
     public const string BusinessSettingUpdated = "BUSINESS_SETTING_UPDATED";
+    public const string PostingPackageUpdated = "POSTING_PACKAGE_UPDATED";
     public const string CandidateCvDownloadUrlIssued = "CANDIDATE_CV_DOWNLOAD_URL_ISSUED";
     public const string CandidateAffiliateCvDownloadUrlIssued = "CANDIDATE_AFFILIATE_CV_DOWNLOAD_URL_ISSUED";
     public const string CandidateAffiliateCvAdopted = "CANDIDATE_AFFILIATE_CV_ADOPTED";
