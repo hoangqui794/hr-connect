@@ -60,6 +60,9 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
   onBack,
   showBackAction = false,
 }) => {
+  // The Client never sees the Affiliate's commission and the Affiliate never sees the Client's fee.
+  const showServiceFee = mode !== 'affiliate';
+  const showCommission = mode !== 'client';
   const {
     placement: fetchedPlacement,
     isLoading,
@@ -477,7 +480,8 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
         </Card>
       </div>
 
-      {/* Linked Financial Information (MF-05 Integration) */}
+      {/* Linked Financial Information (MF-05 Integration). Each party only sees its own side:
+          the Client its service fee, the Affiliate its commission; Internal HR sees both. */}
       {placement.financial && (
         <Card
           size="small"
@@ -485,12 +489,13 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
           title={
             <div className="flex items-center gap-2 text-slate-800 font-bold text-sm">
               <AuditOutlined className="text-emerald-600" />
-              <span>Phí dịch vụ và hoa hồng</span>
+              <span>{showServiceFee && showCommission ? 'Phí dịch vụ và hoa hồng' : showServiceFee ? 'Phí dịch vụ' : 'Hoa hồng'}</span>
             </div>
           }
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-1">
+          <div className={`grid grid-cols-1 gap-4 py-1 ${showServiceFee && showCommission ? 'sm:grid-cols-2' : ''}`}>
             {/* Service Fee */}
+            {showServiceFee && (
             <div className="bg-slate-50 p-3 rounded-lg border border-slate-200/80 space-y-1">
               <div className="text-xs text-slate-500 font-medium">Phí dịch vụ tuyển dụng (Doanh nghiệp)</div>
               <div className="text-base font-black text-slate-900">
@@ -502,8 +507,10 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
                 </Tag>
               </div>
             </div>
+            )}
 
             {/* Commission */}
+            {showCommission && (
             <div className="bg-slate-50 p-3 rounded-lg border border-slate-200/80 space-y-1">
               <div className="text-xs text-slate-500 font-medium">Hoa hồng Cộng tác viên / Recruiter</div>
               <div className="text-base font-black text-emerald-700">
@@ -515,6 +522,7 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
                 </Tag>
               </div>
             </div>
+            )}
           </div>
         </Card>
       )}
