@@ -7,6 +7,7 @@ public static class Mf04InputPolicy
     public const int InterviewTypeMaxLength = 50;
     public const int InterviewLocationMaxLength = 255;
     public const int InterviewMeetingLinkMaxLength = 2048;
+    public const int InterviewFeedbackMaxLength = 2000;
     public const int PlacementPositionMaxLength = 180;
     public const int PlacementDepartmentMaxLength = 180;
 
@@ -28,6 +29,17 @@ public static class Mf04InputPolicy
         }
 
         return normalized.Length == 0 ? null : normalized;
+    }
+
+    public static string NormalizeRequiredText(string? value, int maxLength, string fieldName)
+    {
+        var normalized = NormalizeOptionalText(value, maxLength, fieldName);
+        if (normalized == null)
+        {
+            throw new BadRequestException($"{fieldName} là bắt buộc.");
+        }
+
+        return normalized;
     }
 
     public static string NormalizeInterviewType(string? value, string defaultValue = OnlineInterviewType)

@@ -647,8 +647,20 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
               ]}
             />
           </Form.Item>
-          <Form.Item name="feedback" label="Nhận xét / Đánh giá chi tiết">
-            <Input.TextArea rows={3} placeholder="Ứng viên nắm vững kiến thức chuyên môn, giao tiếp tốt..." />
+          <Form.Item
+            name="feedback"
+            label="Nhận xét / Đánh giá chi tiết"
+            rules={[
+              { required: true, whitespace: true, message: 'Nhập nhận xét phỏng vấn.' },
+              { max: 2000, message: 'Nhận xét không được vượt quá 2.000 ký tự.' },
+            ]}
+          >
+            <Input.TextArea
+              rows={3}
+              maxLength={2000}
+              showCount
+              placeholder="Ứng viên nắm vững kiến thức chuyên môn, giao tiếp tốt..."
+            />
           </Form.Item>
         </Form>
       </Modal>

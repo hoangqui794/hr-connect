@@ -1218,7 +1218,14 @@ export const ApplicationWorkbench: React.FC<{
                   Kết quả “Không đạt” sẽ kết thúc quy trình tuyển dụng của hồ sơ này.
                 </p>
               )}
-              <Form.Item name="feedback" label="Nhận xét (không bắt buộc)">
+              <Form.Item
+                name="feedback"
+                label="Nhận xét / Đánh giá chi tiết"
+                rules={[
+                  { required: true, whitespace: true, message: 'Nhập nhận xét phỏng vấn.' },
+                  { max: 2000, message: 'Nhận xét không được vượt quá 2.000 ký tự.' },
+                ]}
+              >
                 <Input.TextArea rows={3} maxLength={2000} showCount />
               </Form.Item>
             </>

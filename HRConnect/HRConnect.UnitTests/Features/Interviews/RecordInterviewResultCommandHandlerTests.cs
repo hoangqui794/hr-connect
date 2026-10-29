@@ -84,6 +84,56 @@ public class RecordInterviewResultCommandHandlerTests
             Times.Never);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Handle_WhenFeedbackIsMissing_ShouldRejectBeforeLoadingInterview(string? feedback)
+    {
+        var command = new RecordInterviewResultCommand(
+            InterviewId: Guid.NewGuid(),
+            Result: "PASS",
+            Feedback: feedback,
+            IsFinalRound: false,
+            NextAction: null,
+            ConcurrencyToken: null,
+            CurrentUserId: Guid.NewGuid(),
+            IsClientCompanyUser: true);
+
+        var act = () => CreateHandler().Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*Nhận xét phỏng vấn là bắt buộc*");
+        _interviewRepositoryMock.Verify(
+            repository => repository.GetByIdForUpdateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        _unitOfWorkMock.Verify(
+            unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenFeedbackExceedsLimit_ShouldRejectBeforeLoadingInterview()
+    {
+        var command = new RecordInterviewResultCommand(
+            InterviewId: Guid.NewGuid(),
+            Result: "PASS",
+            Feedback: new string('a', 2001),
+            IsFinalRound: false,
+            NextAction: null,
+            ConcurrencyToken: null,
+            CurrentUserId: Guid.NewGuid(),
+            IsClientCompanyUser: true);
+
+        var act = () => CreateHandler().Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*không được vượt quá 2000 ký tự*");
+        _interviewRepositoryMock.Verify(
+            repository => repository.GetByIdForUpdateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
     [Fact]
     public async Task Handle_WhenInterviewNotFound_ShouldThrowNotFoundException()
     {
@@ -130,7 +180,7 @@ public class RecordInterviewResultCommandHandlerTests
         var command = new RecordInterviewResultCommand(
             InterviewId: interviewId,
             Result: "PASS",
-            Feedback: null,
+            Feedback: "Nhận xét hợp lệ",
             IsFinalRound: false,
             NextAction: null,
             ConcurrencyToken: null,
@@ -164,7 +214,7 @@ public class RecordInterviewResultCommandHandlerTests
         var command = new RecordInterviewResultCommand(
             InterviewId: interviewId,
             Result: "PASS",
-            Feedback: null,
+            Feedback: "Nhận xét hợp lệ",
             IsFinalRound: false,
             NextAction: null,
             ConcurrencyToken: null,
@@ -202,7 +252,7 @@ public class RecordInterviewResultCommandHandlerTests
         var command = new RecordInterviewResultCommand(
             InterviewId: interviewId,
             Result: "PASS",
-            Feedback: null,
+            Feedback: "Nhận xét hợp lệ",
             IsFinalRound: false,
             NextAction: null,
             ConcurrencyToken: sentToken,
@@ -248,7 +298,7 @@ public class RecordInterviewResultCommandHandlerTests
         var command = new RecordInterviewResultCommand(
             InterviewId: interviewId,
             Result: "PASS",
-            Feedback: null,
+            Feedback: "Nhận xét hợp lệ",
             IsFinalRound: false,
             NextAction: null,
             ConcurrencyToken: interview.ConcurrencyToken,
@@ -305,7 +355,7 @@ public class RecordInterviewResultCommandHandlerTests
         var command = new RecordInterviewResultCommand(
             InterviewId: interviewId,
             Result: "PASS",
-            Feedback: "Xuất sắc, tư duy tốt.",
+            Feedback: "  Xuất sắc, tư duy tốt.  ",
             IsFinalRound: true,
             NextAction: "MAKE_OFFER",
             ConcurrencyToken: oldToken,
