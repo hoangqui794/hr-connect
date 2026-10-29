@@ -16,7 +16,9 @@ public sealed class JobAccessPolicyTests
     [InlineData(JobStatuses.Paused, false, false, false)]
     [InlineData(JobStatuses.Draft, false, false, false)]
     [InlineData(JobStatuses.Paused, true, false, true)]
-    [InlineData(JobStatuses.Draft, false, true, true)]
+    [InlineData(JobStatuses.Draft, true, false, true)]
+    [InlineData(JobStatuses.Draft, false, true, false)]
+    [InlineData(JobStatuses.PendingReview, false, true, true)]
     public void CanViewDetail_ShouldAllowActiveJobsOrOwnerOrInternal(
         string status, bool isOwner, bool hasInternalAccess, bool expected)
     {

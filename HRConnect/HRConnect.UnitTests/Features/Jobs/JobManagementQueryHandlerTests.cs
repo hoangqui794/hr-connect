@@ -141,6 +141,16 @@ public class JobManagementQueryHandlerTests
         result.Should().ContainSingle().Which.JobId.Should().Be(pending.JobId);
     }
 
+    [Fact]
+    public async Task GetJobsForReview_ShouldExcludeDraftJobsWhenStatusIsAll()
+    {
+        var draft = Job(Guid.NewGuid(), JobStatuses.Draft);
+        var pending = Job(Guid.NewGuid(), JobStatuses.PendingReview);
+        _jobs.Setup(x => x.GetForReviewAsync("ALL", It.IsAny<CancellationToken>())).ReturnsAsync([draft, pending]);
+        var result = await new GetJobsForReviewQueryHandler(_jobs.Object).Handle(new GetJobsForReviewQuery("ALL"), default);
+        result.Should().ContainSingle().Which.JobId.Should().Be(pending.JobId);
+    }
+
     private static CompanyUser Member(Guid user, Guid company) => new() { CompanyUserId = Guid.NewGuid(), UserId = user, CompanyId = company, Status = "ACTIVE" };
     private static Job Job(Guid company, string status) => new() { JobId = Guid.NewGuid(), CompanyId = company, ServiceTypeId = Guid.NewGuid(), CreatedBy = Guid.NewGuid(), Title = "Job", Benefits = "Insurance and training", CurrencyCode = "VND", Quantity = 1, Status = status, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
 }

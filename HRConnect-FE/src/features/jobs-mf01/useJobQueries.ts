@@ -66,7 +66,7 @@ export const useJobDetail = (jobId: string | undefined) =>
   });
 
 export const useJobReviewQueue = (status?: string) =>
-  useQuery({ queryKey: jobQueryKeys.review(status), queryFn: () => jobsApi.getReviewQueue(status) });
+  useQuery({ queryKey: jobQueryKeys.review(status), queryFn: async () => (await jobsApi.getReviewQueue(status)).filter((job) => job.status !== 'DRAFT') });
 
 export const useServiceTypes = () =>
   useQuery({

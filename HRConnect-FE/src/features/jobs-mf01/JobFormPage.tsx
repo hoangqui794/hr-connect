@@ -78,6 +78,7 @@ import {
 } from './jobDisplay';
 import { PageHero } from '@/features/admin-console/ui';
 import { JobTemplatePicker } from './JobTemplatePicker';
+import { RichTextEditor, renderFormattedMultilineText } from './RichTextEditor';
 import {
   EXPERIENCE_YEAR_OPTIONS,
   HEADHUNT_FEE_OPTIONS,
@@ -339,16 +340,16 @@ const hasStep3Data = (values: Partial<JobFormValues>, code?: ServiceTypeCode): b
   if (code === 'CV_SOURCING') {
     return Boolean(
       (values.targetCandidateCount != null && values.targetCandidateCount > 0) ||
-        (values.sourcingPricePerCv != null && values.sourcingPricePerCv > 0) ||
-        Boolean(values.termsNote && values.termsNote.trim())
+      (values.sourcingPricePerCv != null && values.sourcingPricePerCv > 0) ||
+      Boolean(values.termsNote && values.termsNote.trim())
     );
   }
   if (code === 'HEADHUNT_COD') {
     return Boolean(
       (values.feeMultiplier != null && values.feeMultiplier > 0) ||
-        (values.warrantyDays != null && values.warrantyDays > 0) ||
-        (values.paymentDueDays != null && values.paymentDueDays > 0) ||
-        Boolean(values.termsNote && values.termsNote.trim())
+      (values.warrantyDays != null && values.warrantyDays > 0) ||
+      (values.paymentDueDays != null && values.paymentDueDays > 0) ||
+      Boolean(values.termsNote && values.termsNote.trim())
     );
   }
   return false;
@@ -1184,19 +1185,17 @@ export const JobFormPage: React.FC = () => {
                                 handleSelectService(st);
                               }
                             }}
-                            className={`group relative flex flex-col rounded-2xl border border-solid bg-white text-left transition-[border-color,box-shadow] duration-200 outline-none focus-visible:ring-4 focus-visible:ring-blue-200 ${
-                              isSelected
+                            className={`group relative flex flex-col rounded-2xl border border-solid bg-white text-left transition-[border-color,box-shadow] duration-200 outline-none focus-visible:ring-4 focus-visible:ring-blue-200 ${isSelected
                                 ? 'border-blue-600 shadow-[0_0_0_1px_theme(colors.blue.600),0_12px_32px_-16px_rgba(37,99,235,0.45)]'
                                 : 'border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md'
-                            } ${disabled ? 'opacity-65 cursor-not-allowed' : 'cursor-pointer'}`}
+                              } ${disabled ? 'opacity-65 cursor-not-allowed' : 'cursor-pointer'}`}
                           >
                             <div className="flex flex-1 flex-col p-5">
                               <div className="flex items-start justify-between gap-3">
                                 <div
                                   aria-hidden
-                                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-solid text-[22px] transition-colors ${
-                                    isSelected ? 'border-blue-200 text-blue-600' : 'border-slate-200 text-slate-600 group-hover:text-slate-800'
-                                  }`}
+                                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-solid text-[22px] transition-colors ${isSelected ? 'border-blue-200 text-blue-600' : 'border-slate-200 text-slate-600 group-hover:text-slate-800'
+                                    }`}
                                 >
                                   {meta.icon}
                                 </div>
@@ -1241,9 +1240,8 @@ export const JobFormPage: React.FC = () => {
                             </div>
 
                             <div
-                              className={`rounded-b-2xl border-0 border-t border-solid px-5 py-4 transition-colors ${
-                                isSelected ? 'border-blue-100 bg-blue-50/60' : 'border-slate-100 bg-slate-50/80'
-                              }`}
+                              className={`rounded-b-2xl border-0 border-t border-solid px-5 py-4 transition-colors ${isSelected ? 'border-blue-100 bg-blue-50/60' : 'border-slate-100 bg-slate-50/80'
+                                }`}
                             >
                               <div className="flex items-center gap-1.5 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-slate-500">
                                 <WalletOutlined aria-hidden />
@@ -1398,7 +1396,7 @@ export const JobFormPage: React.FC = () => {
                     rules={[{ type: 'number', min: 0, max: 50, message: 'Từ 0 đến 50 năm.' }]}
                     extra={
                       <span className="text-xs text-slate-500">
-                        Chọn mốc kinh nghiệm yêu cầu hoặc chọn &quot;Khác&quot; để tự nhập số năm tùy chỉnh (hỗ trợ số lẻ như 1.5, 2.5 năm).
+                        Chọn mốc kinh nghiệm hoặc chọn &quot;Khác&quot; để tự nhập số năm tùy chỉnh.
                       </span>
                     }
                   >
@@ -1537,8 +1535,7 @@ export const JobFormPage: React.FC = () => {
                     label="Mô tả công việc"
                     rules={[{ required: true, message: 'Vui lòng nhập mô tả công việc.' }]}
                   >
-                    <Input.TextArea
-                      rows={6}
+                    <RichTextEditor
                       showCount
                       placeholder={'• Công việc hàng ngày của vị trí\n• Dự án và đội ngũ làm việc cùng\n• Kết quả mong đợi trong 3 - 6 tháng đầu'}
                     />
@@ -1555,8 +1552,7 @@ export const JobFormPage: React.FC = () => {
                       { max: 10000, message: 'Tối đa 10000 ký tự.' },
                     ]}
                   >
-                    <Input.TextArea
-                      rows={5}
+                    <RichTextEditor
                       showCount
                       maxLength={10000}
                       placeholder={'• Chế độ bảo hiểm sức khỏe cao cấp\n• 15 ngày phép/năm, xét tăng lương định kỳ\n• Môi trường làm việc năng động, lộ trình thăng tiến rõ ràng'}
@@ -1646,12 +1642,12 @@ export const JobFormPage: React.FC = () => {
                                     hasSkills
                                       ? []
                                       : [
-                                          {
-                                            required: true,
-                                            whitespace: true,
-                                            message: 'Nhập nội dung yêu cầu hoặc xóa dòng này.',
-                                          },
-                                        ]
+                                        {
+                                          required: true,
+                                          whitespace: true,
+                                          message: 'Nhập nội dung yêu cầu hoặc xóa dòng này.',
+                                        },
+                                      ]
                                   }
                                 >
                                   <Input placeholder="Ví dụ: Tối thiểu 3 năm kinh nghiệm xây dựng RESTful API" />
@@ -1812,15 +1808,13 @@ export const JobFormPage: React.FC = () => {
                             aria-disabled={isBlocked}
                             onClick={choose}
                             onKeyDown={(e) => e.key === 'Enter' && choose()}
-                            className={`relative flex flex-col justify-between rounded-2xl border-2 border-solid p-5 text-left transition-all ${
-                              isBlocked ? 'cursor-not-allowed opacity-60 border-slate-200 bg-slate-50' : 'cursor-pointer'
-                            } ${
-                              isBlocked
+                            className={`relative flex flex-col justify-between rounded-2xl border-2 border-solid p-5 text-left transition-all ${isBlocked ? 'cursor-not-allowed opacity-60 border-slate-200 bg-slate-50' : 'cursor-pointer'
+                              } ${isBlocked
                                 ? ''
                                 : isPkgSelected
-                                ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent-soft)]/40 shadow-md ring-2 ring-[color:var(--console-accent)]/20'
-                                : 'border-slate-200 bg-white hover:border-slate-300'
-                            }`}
+                                  ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent-soft)]/40 shadow-md ring-2 ring-[color:var(--console-accent)]/20'
+                                  : 'border-slate-200 bg-white hover:border-slate-300'
+                              }`}
                           >
                             <div>
                               {pkg.tag && (
@@ -2127,7 +2121,7 @@ export const JobFormPage: React.FC = () => {
                   <div>
                     <div className="font-semibold text-slate-900 text-sm mb-1">Mô tả công việc:</div>
                     <div className="whitespace-pre-line text-sm text-slate-700 bg-slate-50/60 p-3.5 rounded-xl border border-solid border-slate-100">
-                      {formatMultilineText(watched.description)}
+                      {renderFormattedMultilineText(watched.description)}
                     </div>
                   </div>
                 )}
@@ -2136,7 +2130,7 @@ export const JobFormPage: React.FC = () => {
                   <div>
                     <div className="font-semibold text-slate-900 text-sm mb-1">Quyền lợi:</div>
                     <div className="whitespace-pre-line text-sm text-slate-700 bg-slate-50/60 p-3.5 rounded-xl border border-solid border-slate-100">
-                      {formatMultilineText(watched.benefits)}
+                      {renderFormattedMultilineText(watched.benefits)}
                     </div>
                   </div>
                 )}

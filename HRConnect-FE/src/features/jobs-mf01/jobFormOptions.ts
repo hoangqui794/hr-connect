@@ -13,7 +13,7 @@ export const JOB_EXPERIENCE_SELECT_OPTIONS = [
   { value: 2.5, label: 'Tối thiểu 2.5 năm' },
   { value: 3, label: 'Tối thiểu 3 năm' },
   { value: 5, label: 'Tối thiểu 5 năm' },
-  { value: 'custom', label: 'Khác' },
+  { value: 'custom', label: 'Tự nhập số năm' },
 ] as const;
 
 export const PRESET_EXPERIENCE_VALUES = [0, 0.5, 1, 1.5, 2, 2.5, 3, 5];
