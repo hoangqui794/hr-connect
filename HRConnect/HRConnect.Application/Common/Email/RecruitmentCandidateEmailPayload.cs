@@ -2,8 +2,8 @@ namespace HRConnect.Application.Common.Email;
 
 /// <summary>
 /// Serialized into EmailOutbox.Payload for recruitment notifications sent to a
-/// Candidate who has not linked a HR Connect account yet. Do not add offer salary,
-/// file URLs, CV content, or other sensitive documents to this payload.
+/// Candidate receiving a recruitment email. Do not add offer salary, file URLs, CV content,
+/// or other sensitive documents to this payload.
 /// </summary>
 public sealed record RecruitmentCandidateEmailPayload(
     string CandidateName,
@@ -17,7 +17,8 @@ public sealed record RecruitmentCandidateEmailPayload(
     string? Location = null,
     string? MeetingLink = null,
     DateOnly? ExpiryDate = null,
-    string? Reason = null);
+    string? Reason = null,
+    bool HasLinkedAccount = false);
 
 public static class RecruitmentCandidateEmailTemplates
 {

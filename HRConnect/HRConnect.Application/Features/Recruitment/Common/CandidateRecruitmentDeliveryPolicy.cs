@@ -5,9 +5,10 @@ using HRConnect.Domain.Entities;
 namespace HRConnect.Application.Features.Recruitment.Common;
 
 /// <summary>
-/// Chooses exactly one durable candidate-delivery channel for recruitment events.
-/// A linked Candidate account receives an in-app notification; otherwise a verified-looking
-/// email address is queued in the transactional outbox.
+/// Resolves the durable channels available for recruitment events. Most events still use the
+/// primary channel in <see cref="CandidateRecruitmentDeliveryDecision.Channel"/>. Interview
+/// delivery may additionally use <see cref="CandidateRecruitmentDeliveryDecision.RecipientEmail"/>
+/// so a linked account receives both an in-app notice and a critical schedule email.
 /// </summary>
 public static class CandidateRecruitmentDeliveryPolicy
 {
@@ -20,7 +21,7 @@ public static class CandidateRecruitmentDeliveryPolicy
             return new CandidateRecruitmentDeliveryDecision(
                 CandidateRecruitmentDeliveryChannel.InApp,
                 userId,
-                null);
+                NormalizeEmail(candidate.Email));
         }
 
         var email = NormalizeEmail(candidate?.Email);
@@ -72,6 +73,7 @@ public enum CandidateRecruitmentDeliveryChannel
 {
     InApp,
     Email,
+    InAppAndEmail,
     Unavailable
 }
 
@@ -86,6 +88,7 @@ public static class CandidateRecruitmentDeliveryChannelExtensions
     {
         CandidateRecruitmentDeliveryChannel.InApp => "IN_APP",
         CandidateRecruitmentDeliveryChannel.Email => "EMAIL",
+        CandidateRecruitmentDeliveryChannel.InAppAndEmail => "IN_APP_AND_EMAIL",
         _ => "UNAVAILABLE"
     };
 }
