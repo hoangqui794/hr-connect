@@ -22,8 +22,8 @@ public sealed class UploadCompanyLogoCommandValidator : AbstractValidator<Upload
             .WithMessage("Logo phải là ảnh JPG, PNG hoặc WebP.");
         RuleFor(x => x.FileSizeBytes)
             .GreaterThan(0).WithMessage("Tập tin logo không được rỗng.")
-            .LessThanOrEqualTo(settings.MaxAvatarFileSizeBytes)
-            .WithMessage($"Kích thước logo không được vượt quá {settings.MaxAvatarFileSizeMb}MB.");
+            .LessThanOrEqualTo(settings.MaxCompanyLogoFileSizeBytes)
+            .WithMessage($"Kích thước logo không được vượt quá {settings.MaxCompanyLogoFileSizeMb}MB.");
         RuleFor(x => x.FileStream).NotNull().Must(stream => stream != Stream.Null)
             .WithMessage("Dữ liệu logo không được rỗng.");
     }

@@ -57,6 +57,8 @@ export const ClientInterviewsOffersPage: React.FC = () => {
   );
 };
 
+// Same limit as the backend (R2Settings.MaxCompanyLogoFileSizeMb).
+const MAX_LOGO_MB = 10;
 const SIZES = ['1-10', '11-50', '50-100', '101-200', '201-500', '500+'].map((v) => ({ value: v, label: `${v} nhân viên` }));
 type CompanyForm = { companyName: string; taxCode?: string; industry?: string; companySize?: string; website?: string; address?: string; description?: string };
 
@@ -125,8 +127,8 @@ export const ClientCompanyPage: React.FC = () => {
       message.error('Logo phải là ảnh JPG, PNG hoặc WebP.');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      message.error('Logo không được vượt quá 5MB.');
+    if (file.size > MAX_LOGO_MB * 1024 * 1024) {
+      message.error(`Logo không được vượt quá ${MAX_LOGO_MB}MB.`);
       return;
     }
     uploadLogo.mutate(file);
@@ -184,7 +186,7 @@ export const ClientCompanyPage: React.FC = () => {
                   <Button danger className="min-h-11" icon={<DeleteOutlined />} loading={deleteLogo.isPending} onClick={confirmDeleteLogo} aria-label="Xóa logo doanh nghiệp" />
                 )}
               </div>
-              <p className="mb-0 mt-2 text-xs leading-5 text-slate-500">JPG, PNG hoặc WebP · tối đa 5MB. Logo sẽ xuất hiện trên tin tuyển dụng.</p>
+              <p className="mb-0 mt-2 text-xs leading-5 text-slate-500">JPG, PNG hoặc WebP · tối đa {MAX_LOGO_MB}MB. Logo sẽ xuất hiện trên tin tuyển dụng.</p>
             </div>
             <div className="mt-5">
               {(

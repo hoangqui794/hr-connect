@@ -3176,12 +3176,14 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("max_applications");
 
-                    b.Property<int?>("MaxExperienceYears")
-                        .HasColumnType("integer")
+                    b.Property<decimal?>("MaxExperienceYears")
+                        .HasPrecision(4, 1)
+                        .HasColumnType("numeric(4,1)")
                         .HasColumnName("max_experience_years");
 
-                    b.Property<int?>("MinExperienceYears")
-                        .HasColumnType("integer")
+                    b.Property<decimal?>("MinExperienceYears")
+                        .HasPrecision(4, 1)
+                        .HasColumnType("numeric(4,1)")
                         .HasColumnName("min_experience_years");
 
                     b.Property<int?>("PaymentDueDays")
@@ -3689,12 +3691,14 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(40)")
                         .HasColumnName("level");
 
-                    b.Property<int?>("MaxExperienceYears")
-                        .HasColumnType("integer")
+                    b.Property<decimal?>("MaxExperienceYears")
+                        .HasPrecision(4, 1)
+                        .HasColumnType("numeric(4,1)")
                         .HasColumnName("max_experience_years");
 
-                    b.Property<int?>("MinExperienceYears")
-                        .HasColumnType("integer")
+                    b.Property<decimal?>("MinExperienceYears")
+                        .HasPrecision(4, 1)
+                        .HasColumnType("numeric(4,1)")
                         .HasColumnName("min_experience_years");
 
                     b.Property<string>("Name")
@@ -5513,7 +5517,7 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.ToTable("storage_cleanup_job", "public", t =>
                         {
-                            t.HasCheckConstraint("ck_storage_cleanup_job_avatar_namespace", "object_key LIKE 'avatars/%'");
+                            t.HasCheckConstraint("ck_storage_cleanup_job_object_namespace", "object_key LIKE 'avatars/%' OR object_key LIKE 'company-logos/%'");
 
                             t.HasCheckConstraint("ck_storage_cleanup_job_status", "status IN ('PENDING','PROCESSING','COMPLETED','FAILED','DEAD')");
                         });
