@@ -347,7 +347,7 @@ const ClientFees: React.FC = () => {
 export const ClientWarrantyPage: React.FC = () => (
   <div>
     <PageHero
-      eyebrow="Headhunt (trả phí khi tuyển được)"
+      eyebrow="HH · Tuyển dụng theo kết quả"
       title="Bảo hành & phí dịch vụ"
       description="Mỗi ứng viên đi làm được bảo hành theo thời hạn đã thỏa thuận. Nếu ứng viên nghỉ trong thời hạn, hãy báo nghỉ để được tuyển thay thế."
     />
@@ -363,7 +363,7 @@ export const ClientWarrantyPage: React.FC = () => (
 export const HrWarrantyPage: React.FC = () => (
   <div>
     <PageHero
-      eyebrow="Headhunt"
+      eyebrow="HH · Tuyển dụng theo kết quả"
       title="Theo dõi bảo hành"
       description="Bảo hành tự qua khi đủ thời hạn (hoa hồng Affiliate được ghi nhận 100%). Khi Client báo nghỉ, xác minh với ứng viên và Client rồi xác nhận hoặc bác bỏ."
     />
