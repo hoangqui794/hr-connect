@@ -31,7 +31,7 @@ export const PlacementDetailDrawer: React.FC<PlacementDetailDrawerProps> = ({
       onClose={onClose}
       width={780}
       destroyOnClose
-      title="Chi tiết tiếp nhận việc (Placement Detail)"
+      title="Chi tiết tiếp nhận việc"
       className="placement-detail-drawer"
     >
       <div className="py-2">
