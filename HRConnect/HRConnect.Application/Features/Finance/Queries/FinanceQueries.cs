@@ -89,11 +89,14 @@ public sealed class FinanceQueryHandlers :
     {
         var (page, pageSize) = Normalize(request.Page, request.PageSize);
         var (items, total) = await _financeRepository.GetCommissionsAsync(request.AffiliateUserId, Upper(request.Status), page, pageSize, cancellationToken);
+        // An Affiliate sees its own commission but never the Client's fee: BaseAmount is the service fee
+        // (percent rules) or the Client's price per CV (CV_SOURCING), so it is only returned to platform roles.
+        var hideClientFee = request.AffiliateUserId.HasValue;
         return new PagedResult<CommissionDto>(items.Select(c => new CommissionDto(
             c.CommissionId, c.PlacementId, c.AttributionId, c.Attribution.AffiliateId, c.Attribution.Affiliate?.DisplayName ?? c.Attribution.Affiliate?.User?.DisplayName,
             c.Placement?.Application?.Job?.Title ?? c.SourcingDelivery?.Job?.Title,
             c.Placement?.Application?.Candidate?.FullName ?? c.SourcingDelivery?.Application?.Candidate?.FullName,
-            c.Amount, c.BaseAmount, c.Status, c.MilestoneType,
+            c.Amount, hideClientFee ? null : c.BaseAmount, c.Status, c.MilestoneType,
             c.Placement?.Warranty?.EndDate, c.Placement?.Warranty?.Status, c.Placement?.ServiceFee?.Status,
             c.ApprovedAt, c.CreatedAt,
             request.IncludeBankDetails && c.Attribution.Affiliate is { } affiliate
@@ -123,9 +126,11 @@ public sealed class FinanceQueryHandlers :
         }
 
         var (items, total) = await _financeRepository.GetWarrantiesAsync(companyId, Upper(request.Status), page, pageSize, cancellationToken);
+        // A Client sees its own service fee but never the Affiliate's commission.
+        var hideCommission = companyId.HasValue;
         return new PagedResult<WarrantyDto>(items.Select(w =>
         {
-            var commission = w.Placement?.Commissions.OrderByDescending(c => c.CreatedAt).FirstOrDefault();
+            var commission = hideCommission ? null : w.Placement?.Commissions.OrderByDescending(c => c.CreatedAt).FirstOrDefault();
             return new WarrantyDto(
                 w.WarrantyId, w.PlacementId, w.Placement?.Application?.Job?.Company?.CompanyName,
                 w.Placement?.Application?.Job?.Title, w.Placement?.Application?.Candidate?.FullName, w.Placement?.Position,

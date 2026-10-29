@@ -532,9 +532,57 @@ public class Mf05FinanceTests
 
         var own = await HandlersFor(_companyId).Handle(Query("CLAIMED"), default);
         own.TotalCount.Should().Be(1);
-        own.Items.Single().CommissionStatus.Should().Be(CommissionStates.OnHold);
+        own.Items.Single().ServiceFeeAmount.Should().NotBeNull();
         (await HandlersFor(_companyId).Handle(Query("PASSED"), default)).TotalCount.Should().Be(0);
         (await HandlersFor(Guid.NewGuid()).Handle(Query(null), default)).TotalCount.Should().Be(0);
+
+        // Platform roles (no company scope) still see the commission.
+        var platform = await HandlersFor(_companyId).Handle(new GetWarrantiesQuery(null, "CLAIMED", 1, 20), default);
+        platform.Items.Single().CommissionStatus.Should().Be(CommissionStates.OnHold);
+        platform.Items.Single().CommissionAmount.Should().NotBeNull();
+    }
+
+    // HR feedback 28/10: the Client only sees its service fee, never the Affiliate's commission.
+    [Fact]
+    public async Task Client_warranty_list_never_contains_the_affiliate_commission()
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        await InitializeAsync(placement, offer);
+        var companyUsers = new Mock<ICompanyUserRepository>();
+        companyUsers.Setup(r => r.GetByUserIdAsync(_actor, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { CompanyId = _companyId, UserId = _actor, Status = "ACTIVE" });
+
+        var item = (await new FinanceQueryHandlers(Repository, companyUsers.Object)
+            .Handle(new GetWarrantiesQuery(_actor, null, 1, 20), default)).Items.Single();
+
+        item.ServiceFeeAmount.Should().NotBeNull();
+        item.CommissionAmount.Should().BeNull();
+        item.CommissionStatus.Should().BeNull();
+    }
+
+    // HR feedback 28/10: the Affiliate only sees its commission, never the Client's service fee (BaseAmount).
+    [Fact]
+    public async Task Affiliate_commission_list_never_contains_the_client_fee()
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        var attribution = await _context.Attributions.SingleAsync();
+        var user = new AppUser { UserId = Guid.NewGuid(), Email = "aff@example.com", PasswordHash = "x", Status = "ACTIVE", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+        _context.Add(user);
+        _context.Add(new AffiliateProfile
+        {
+            AffiliateId = attribution.AffiliateId, UserId = user.UserId, AffiliateType = "INDIVIDUAL", Status = "ACTIVE",
+            CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+        });
+        await _context.SaveChangesAsync();
+        await InitializeAsync(placement, offer);
+        var handlers = new FinanceQueryHandlers(Repository, Mock.Of<ICompanyUserRepository>());
+
+        var own = (await handlers.Handle(new GetCommissionsQuery(user.UserId, null, 1, 20), default)).Items.Single();
+        var platform = (await handlers.Handle(new GetCommissionsQuery(null, null, 1, 20), default)).Items.Single();
+
+        own.Amount.Should().BeGreaterThan(0);
+        own.BaseAmount.Should().BeNull();
+        platform.BaseAmount.Should().NotBeNull();
     }
 
     [Fact]

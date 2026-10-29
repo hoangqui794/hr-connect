@@ -83,7 +83,7 @@ public static class FinanceEndpoints
             }))
             .WithName("GetWarranties")
             .WithSummary("Danh sách bảo hành HEADHUNT_COD")
-            .WithDescription("Internal HR / Admin xem tất cả (báo nghỉ CLAIMED lên đầu); Client (placement.confirm) chỉ xem của doanh nghiệp mình. Trạng thái: ACTIVE, CLAIMED, PASSED, VOIDED.");
+            .WithDescription("Internal HR / Admin xem tất cả (báo nghỉ CLAIMED lên đầu); Client (placement.confirm) chỉ xem của doanh nghiệp mình và không nhận commissionStatus/commissionAmount (hoa hồng Affiliate). Trạng thái: ACTIVE, CLAIMED, PASSED, VOIDED.");
 
         group.MapGet("/service-fees", (
                 ClaimsPrincipal user, [FromServices] ISender sender, [FromQuery] string? status, CancellationToken ct,
@@ -124,7 +124,7 @@ public static class FinanceEndpoints
             }))
             .WithName("GetCommissions")
             .WithSummary("Danh sách hoa hồng Affiliate")
-            .WithDescription("Admin/Internal HR xem tất cả; Affiliate (commission.view_own) chỉ xem hoa hồng của mình. Trạng thái: PENDING, EARNED, PAYABLE, PAID, ON_HOLD, CANCELLED.");
+            .WithDescription("Admin/Internal HR xem tất cả; Affiliate (commission.view_own) chỉ xem hoa hồng của mình, baseAmount (phí dịch vụ hoặc giá mỗi CV của Client) luôn null. Trạng thái: PENDING, EARNED, PAYABLE, PAID, ON_HOLD, CANCELLED.");
 
         group.MapPost("/admin/commissions/{commissionId:guid}/approve", (
                 Guid commissionId, ClaimsPrincipal user, [FromServices] ISender sender, CancellationToken ct) =>
