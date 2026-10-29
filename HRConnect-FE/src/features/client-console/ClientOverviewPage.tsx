@@ -140,14 +140,14 @@ export const ClientOverviewPage: React.FC = () => {
                 className="!rounded-lg !px-5 border-slate-200 hover:!border-slate-300 text-slate-700"
                 onClick={() => navigate('/client/candidates')}
               >
-                Xem ứng viên
+                Xem Hồ Sơ Ứng Viên
               </Button>
             </div>
           </div>
         </section>
 
         <Surface className="p-6">
-          <h2 className="m-0 text-base font-bold text-slate-900">Việc cần làm</h2>
+          <h2 className="m-0 text-base font-bold text-slate-900">Việc Cần Làm</h2>
           {jobs.isLoading || stagesLoading ? (
             <Skeleton active paragraph={{ rows: 4 }} className="mt-4" />
           ) : todos.length === 0 ? (
@@ -191,7 +191,7 @@ export const ClientOverviewPage: React.FC = () => {
         <Surface className="p-6">
           <div className="mb-5 flex items-center justify-between">
             <div>
-              <h2 className="m-0 text-base font-bold text-slate-900">Phễu ứng viên</h2>
+              <h2 className="m-0 text-base font-bold text-slate-900">Phễu Ứng Viên</h2>
               <p className="m-0 mt-0.5 text-[13px] text-slate-600">Số hồ sơ đang ở từng giai đoạn, trên mọi tin của bạn.</p>
             </div>
             <Button type="link" className="!px-0" onClick={() => navigate('/client/candidates')}>
@@ -234,7 +234,7 @@ export const ClientOverviewPage: React.FC = () => {
 
         <Surface className="p-6">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="m-0 text-base font-bold text-slate-900">Phỏng vấn sắp tới</h2>
+            <h2 className="m-0 text-base font-bold text-slate-900">Phỏng Vấn Sắp Tới</h2>
             <Button type="link" className="!px-0" onClick={() => navigate('/client/interviews-offers')}>
               Lịch <ArrowRightOutlined />
             </Button>
@@ -272,7 +272,7 @@ export const ClientOverviewPage: React.FC = () => {
       <section aria-labelledby="active-jobs-title">
         <div className="mb-3 flex items-center justify-between">
           <h2 id="active-jobs-title" className="m-0 text-base font-bold text-slate-900">
-            Tin đang tuyển
+            Tin Đang Tuyển
           </h2>
           <Button type="link" className="!px-0" onClick={() => navigate('/client/jobs')}>
             Tất cả tin <ArrowRightOutlined />

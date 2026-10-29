@@ -74,6 +74,7 @@ import {
   REQUIREMENT_CATEGORY_OPTIONS,
   clientActions,
   formatMultilineText,
+  formatSalary,
 } from './jobDisplay';
 import { JobTemplatePicker } from './JobTemplatePicker';
 import {
@@ -84,7 +85,10 @@ import {
   LOCATION_OPTIONS,
   PAYMENT_DUE_DAY_OPTIONS,
   WARRANTY_DAY_OPTIONS,
+  SALARY_RANGE_CUSTOM,
+  SALARY_RANGE_PRESETS,
   WORKING_TIME_OPTIONS,
+  salaryRangeOf,
 } from './jobFormOptions';
 
 interface ExperienceSelectInputProps {
@@ -588,6 +592,8 @@ export const JobFormPage: React.FC = () => {
   const [form] = Form.useForm<JobFormValues>();
 
   const [currentStep, setCurrentStep] = useState<number>(0);
+  // Salary range picked in the select; undefined means "derive it from the saved values".
+  const [salaryRangePick, setSalaryRangePick] = useState<string | undefined>();
   const [errorSummary, setErrorSummary] = useState<string[]>([]);
   const [stepErrors, setStepErrors] = useState<Record<number, boolean>>({});
   const [saving, setSaving] = useState<'draft' | 'submit' | null>(null);
@@ -1374,16 +1380,20 @@ export const JobFormPage: React.FC = () => {
                     rules={[{ max: 255, message: 'Tối đa 255 ký tự.' }]}
                   >
                     <AutoComplete
-                      size="large"
                       allowClear
-                      placeholder="Chọn hoặc nhập thời gian làm việc cụ thể"
                       options={WORKING_TIME_OPTIONS}
                       filterOption={(inputValue, option) =>
                         String(option?.label ?? option?.value ?? '')
                           .toLowerCase()
                           .includes(inputValue.toLowerCase())
                       }
-                    />
+                    >
+                      {/* Multi-line so the Client can list days and hours on separate lines (HR feedback 28/10). */}
+                      <Input.TextArea
+                        autoSize={{ minRows: 2, maxRows: 5 }}
+                        placeholder={'Chọn mẫu có sẵn hoặc nhập, mỗi ý một dòng. Ví dụ:\nThứ 2 – Thứ 6: 8:00 – 17:30\nThứ 7: làm sáng (cách tuần)'}
+                      />
+                    </AutoComplete>
                   </Form.Item>
 
                   <Form.Item
@@ -1410,42 +1420,109 @@ export const JobFormPage: React.FC = () => {
                   <h2 className="m-0 text-[17px] font-semibold text-slate-900">Mức lương và đãi ngộ</h2>
                 </header>
 
-                <div className="grid gap-x-4 md:grid-cols-[1fr_1fr_120px]">
-                  <Form.Item name="salaryMin" label="Từ" rules={[{ type: 'number', min: 0, message: 'Không âm.' }]}>
-                    <InputNumber<number> size="large" {...moneyInputProps} placeholder="15.000.000" />
-                  </Form.Item>
-                  <Form.Item
-                    name="salaryMax"
-                    label="Đến"
-                    dependencies={['salaryMin']}
-                    rules={[
-                      { type: 'number', min: 0, message: 'Không âm.' },
-                      ({ getFieldValue }) => ({
-                        validator: (_, v) => {
-                          const min = getFieldValue('salaryMin');
-                          return v == null || min == null || v >= min
-                            ? Promise.resolve()
-                            : Promise.reject(new Error('Phải ≥ mức "Từ".'));
-                        },
-                      }),
-                    ]}
-                  >
-                    <InputNumber<number> size="large" {...moneyInputProps} placeholder="30.000.000" />
-                  </Form.Item>
-                  <Form.Item name="currencyCode" label="Tiền tệ" rules={[{ required: true, message: 'Chọn tiền tệ.' }]}>
-                    <Select size="large" options={['VND', 'USD'].map((c) => ({ value: c, label: c }))} />
-                  </Form.Item>
+                {(() => {
+                  const isUsd = (watched.currencyCode ?? 'VND') !== 'VND';
+                  const salaryRange = isUsd ? SALARY_RANGE_CUSTOM : salaryRangePick ?? salaryRangeOf(watched);
+                  const custom = salaryRange === SALARY_RANGE_CUSTOM;
+                  const pickRange = (value: string) => {
+                    setSalaryRangePick(value);
+                    const preset = SALARY_RANGE_PRESETS.find((p) => p.value === value);
+                    if (!preset) return;
+                    form.setFieldsValue({
+                      salaryMin: preset.min ?? undefined,
+                      salaryMax: preset.max ?? undefined,
+                      ...(value === 'NEGOTIABLE' ? { salaryNegotiable: true } : {}),
+                    });
+                  };
+                  return (
+                    <>
+                      <div className="grid gap-x-4 md:grid-cols-[1fr_120px]">
+                        <Form.Item label="Mức lương (gross/tháng)" required={false}>
+                          <Select
+                            size="large"
+                            aria-label="Mức lương"
+                            placeholder="Chọn khoảng lương"
+                            value={salaryRange}
+                            disabled={!editable}
+                            onChange={pickRange}
+                            options={[
+                              ...(isUsd ? [] : SALARY_RANGE_PRESETS.map((p) => ({ value: p.value, label: p.label }))),
+                              { value: SALARY_RANGE_CUSTOM, label: 'Tự nhập…' },
+                            ]}
+                          />
+                        </Form.Item>
+                        <Form.Item name="currencyCode" label="Tiền tệ" rules={[{ required: true, message: 'Chọn tiền tệ.' }]}>
+                          <Select size="large" options={['VND', 'USD'].map((c) => ({ value: c, label: c }))} />
+                        </Form.Item>
+                      </div>
+
+                      {/* From/To stay mounted so preset values are saved; they are shown only for "Tự nhập". */}
+                      <div className={custom ? 'grid gap-x-4 md:grid-cols-2' : 'hidden'}>
+                        <Form.Item name="salaryMin" label="Từ" rules={[{ type: 'number', min: 0, message: 'Không âm.' }]}>
+                          <InputNumber<number> size="large" {...moneyInputProps} placeholder="15.000.000" />
+                        </Form.Item>
+                        <Form.Item
+                          name="salaryMax"
+                          label="Đến"
+                          dependencies={['salaryMin']}
+                          rules={[
+                            { type: 'number', min: 0, message: 'Không âm.' },
+                            ({ getFieldValue }) => ({
+                              validator: (_, v) => {
+                                const min = getFieldValue('salaryMin');
+                                return v == null || min == null || v >= min
+                                  ? Promise.resolve()
+                                  : Promise.reject(new Error('Phải ≥ mức "Từ".'));
+                              },
+                            }),
+                          ]}
+                        >
+                          <InputNumber<number> size="large" {...moneyInputProps} placeholder="30.000.000" />
+                        </Form.Item>
+                      </div>
+                    </>
+                  );
+                })()}
+
+                {/* What candidates will read on the job page, updated as the Client types. */}
+                <div className="-mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-slate-600">
+                  <span>Ứng viên sẽ thấy:</span>
+                  <span className="rounded-md bg-[color:var(--console-accent-soft)] px-2 py-0.5 font-semibold tabular-nums text-[color:var(--console-accent-strong)]">
+                    {formatSalary({
+                      salaryMin: watched.salaryMin ?? null,
+                      salaryMax: watched.salaryMax ?? null,
+                      salaryNegotiable: Boolean(watched.salaryNegotiable),
+                      currencyCode: watched.currencyCode ?? 'VND',
+                    })}
+                  </span>
+                  {watched.salaryNegotiable && (watched.salaryMin != null || watched.salaryMax != null) && (
+                    <span className="text-slate-500">· có thể thỏa thuận</span>
+                  )}
                 </div>
 
-                <div className="flex items-center justify-between gap-4 rounded-xl bg-slate-50 px-4 py-3 border border-solid border-slate-100">
-                  <div className="text-sm font-semibold text-slate-900">Có thể thỏa thuận</div>
+                <div className="flex items-center justify-between gap-4 rounded-xl border border-solid border-slate-100 bg-slate-50 px-4 py-3">
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">Có thể thỏa thuận</div>
+                    <div className="text-[12.5px] text-slate-600">Bật nếu sẵn sàng trao đổi lại mức lương với ứng viên phù hợp.</div>
+                  </div>
                   <Form.Item name="salaryNegotiable" valuePropName="checked" noStyle>
                     <Switch aria-label="Có thể thỏa thuận" />
                   </Form.Item>
                 </div>
 
-                <Form.Item name="salaryNote" label="Ghi chú lương" className="mb-0" rules={[{ max: 1000, message: 'Tối đa 1000 ký tự.' }]}>
-                  <Input size="large" placeholder="Ví dụ: Lương trước thuế, thưởng hiệu suất hàng quý, lương tháng 13..." />
+                <Form.Item
+                  name="salaryNote"
+                  label="Ghi chú lương và đãi ngộ"
+                  className="mb-0"
+                  extra={<span className="text-xs text-slate-500">Mỗi ý một dòng; cách xuống dòng được giữ nguyên khi hiển thị cho ứng viên.</span>}
+                  rules={[{ max: 1000, message: 'Tối đa 1000 ký tự.' }]}
+                >
+                  <Input.TextArea
+                    autoSize={{ minRows: 3, maxRows: 8 }}
+                    showCount
+                    maxLength={1000}
+                    placeholder={'Ví dụ:\nLương gross, review 2 lần/năm\nThưởng hiệu suất theo quý\nLương tháng 13, bảo hiểm sức khỏe'}
+                  />
                 </Form.Item>
               </section>
 

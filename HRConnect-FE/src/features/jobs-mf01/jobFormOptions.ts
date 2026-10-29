@@ -55,3 +55,39 @@ export const HEADHUNT_FEE_OPTIONS = [
   { value: 2.5, label: '2,5 tháng lương' },
   { value: 3, label: '3 tháng lương' },
 ];
+
+/** Salary ranges offered in the job form (VND, gross per month); "CUSTOM" opens the from/to inputs. */
+export interface SalaryRangePreset {
+  value: string;
+  label: string;
+  min: number | null;
+  max: number | null;
+}
+
+const MILLION = 1_000_000;
+
+export const SALARY_RANGE_PRESETS: SalaryRangePreset[] = [
+  { value: 'NEGOTIABLE', label: 'Thỏa thuận', min: null, max: null },
+  { value: 'UNDER_10', label: 'Dưới 10 triệu', min: null, max: 10 * MILLION },
+  { value: '10_15', label: '10 – 15 triệu', min: 10 * MILLION, max: 15 * MILLION },
+  { value: '15_20', label: '15 – 20 triệu', min: 15 * MILLION, max: 20 * MILLION },
+  { value: '20_30', label: '20 – 30 triệu', min: 20 * MILLION, max: 30 * MILLION },
+  { value: '30_50', label: '30 – 50 triệu', min: 30 * MILLION, max: 50 * MILLION },
+  { value: 'OVER_50', label: 'Trên 50 triệu', min: 50 * MILLION, max: null },
+];
+
+export const SALARY_RANGE_CUSTOM = 'CUSTOM';
+
+/** Which preset the current values match; CUSTOM when values are set but match none, undefined when empty. */
+export const salaryRangeOf = (v: {
+  salaryMin?: number | null;
+  salaryMax?: number | null;
+  salaryNegotiable?: boolean;
+  currencyCode?: string | null;
+}): string | undefined => {
+  const min = v.salaryMin ?? null;
+  const max = v.salaryMax ?? null;
+  if (min == null && max == null) return v.salaryNegotiable ? 'NEGOTIABLE' : undefined;
+  if ((v.currencyCode ?? 'VND') !== 'VND') return SALARY_RANGE_CUSTOM;
+  return SALARY_RANGE_PRESETS.find((p) => p.value !== 'NEGOTIABLE' && p.min === min && p.max === max)?.value ?? SALARY_RANGE_CUSTOM;
+};
