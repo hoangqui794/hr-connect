@@ -52,7 +52,7 @@ export const ServiceBanner: React.FC = () => {
               </span>
               <Tag color="blue" style={{ fontWeight: 600, borderRadius: 4 }}>
                 <SafetyCertificateOutlined style={{ marginRight: 4 }} />
-                HEADHUNT_COD (Bảo hành 60 ngày)
+                HEADHUNT_COD (Có bảo hành thay người)
               </Tag>
               <Tag color="cyan" style={{ fontWeight: 600, borderRadius: 4 }}>
                 <ThunderboltOutlined style={{ marginRight: 4 }} />
@@ -64,7 +64,7 @@ export const ServiceBanner: React.FC = () => {
               </Tag>
             </div>
             <span style={{ color: '#94a3b8', fontSize: 13 }}>
-              Cam kết trả sau khi thử việc thành công, bảo hành 1-đổi-1 miễn phí hoặc hoàn phí minh bạch.
+              Chỉ trả phí khi ứng viên đi làm; ứng viên nghỉ trong thời hạn bảo hành thì được thay người miễn phí.
             </span>
           </div>
         </div>

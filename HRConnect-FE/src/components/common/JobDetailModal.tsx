@@ -412,10 +412,6 @@ export const JobDetailModal: React.FC<JobDetailModalProps> = ({
                         <span className="font-semibold text-slate-700 block">Trụ sở chính:</span>
                         {job.location}
                       </div>
-                      <div>
-                        <span className="font-semibold text-slate-700 block">Thời gian thử việc:</span>
-                        60 ngày (Bảo hành qua HR Connect COD)
-                      </div>
                     </div>
 
                     <p className="text-xs text-slate-600 pt-2 border-t border-slate-100">

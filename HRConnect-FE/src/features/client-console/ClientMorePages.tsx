@@ -4,7 +4,6 @@
  *  - ClientInterviewsOffersPage: interviews, offers and placements (MF-04); a row opens the
  *    ApplicationWorkbench, where the Client reschedules, records results, sends offers, etc.
  *  - ClientCompanyPage: company profile (GET/PUT /companies/profile/me).
- *  - ClientWarrantyPlaceholder: MF-05 warranty has no backend endpoint yet.
  */
 import React, { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -14,7 +13,6 @@ import { CameraOutlined, DeleteOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { companyProfileApi } from '@/services/api/hrApi';
 import { getApiErrorMessage } from '@/services/apiClient';
-import { NoApiYet } from '@/features/admin-console/adminTheme';
 import { PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
 import { CompanyLogo } from '@/components/common/CompanyLogo';
 import { HrPipelinePage } from '@/features/hr-console/HrPipelinePage';
@@ -243,9 +241,3 @@ export const ClientCompanyPage: React.FC = () => {
   );
 };
 
-export const ClientWarrantyPlaceholder: React.FC = () => (
-  <div>
-    <PageHero eyebrow="Sau tuyển dụng" title="Bảo hành 60 ngày" description="Theo dõi các mốc 15, 30, 60 ngày sau khi ứng viên đi làm và báo khi ứng viên nghỉ việc." />
-    <NoApiYet feature="Bảo hành" detail="Ứng viên đã đi làm xem ở “Phỏng vấn & Offer” → Đi làm." />
-  </div>
-);

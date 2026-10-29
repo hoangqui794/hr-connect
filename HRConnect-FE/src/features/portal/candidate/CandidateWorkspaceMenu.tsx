@@ -56,7 +56,7 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({
       await authService.logout();
     } finally {
       logout();
-      window.location.replace('/');
+      window.location.replace('/login');
     }
   };
 

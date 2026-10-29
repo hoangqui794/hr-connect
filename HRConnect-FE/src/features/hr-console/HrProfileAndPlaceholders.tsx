@@ -12,7 +12,6 @@ import { hrProfileApi } from '@/services/api/hrApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { AvatarUpload } from '@/components/common/AvatarUpload';
 import { ChangePasswordModal } from '@/components/common/ChangePasswordModal';
-import { NoApiYet } from '@/features/admin-console/adminTheme';
 import { Initials, PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
 
 type ProfileForm = { displayName: string; phone?: string; department?: string; jobTitle?: string };
@@ -139,9 +138,3 @@ export const HrProfilePage: React.FC = () => {
   );
 };
 
-export const HrWarrantyPlaceholder: React.FC = () => (
-  <div>
-    <PageHero eyebrow="Bảo hành" title="Bảo hành & thử việc" description="Theo dõi các mốc 15, 30, 60 ngày và xác minh khi ứng viên nghỉ việc trong thời hạn bảo hành." />
-    <NoApiYet feature="Bảo hành & thử việc" detail="Tính năng đang được hoàn thiện." />
-  </div>
-);

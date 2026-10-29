@@ -56,7 +56,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ siderWidth }) => {
   const handleLogout = useCallback(() => {
     logout();
     void message.success('Đã đăng xuất thành công!');
-    window.location.replace('/');
+    window.location.replace('/login');
   }, [logout]);
 
   const userMenuItems: MenuProps['items'] = [
