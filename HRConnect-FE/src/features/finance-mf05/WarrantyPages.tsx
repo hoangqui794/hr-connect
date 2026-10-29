@@ -285,7 +285,8 @@ const ClientFees: React.FC = () => {
   const [page, setPage] = useState(1);
   const fees = useQuery({
     queryKey: ['mf05-client-fees', page],
-    queryFn: () => financeApi.serviceFees({ page, pageSize: PAGE_SIZE }),
+    // The warranty page is Headhunt only (HR feedback 28/10): CV Sourcing deposits and settlements stay out.
+    queryFn: () => financeApi.serviceFees({ kind: 'PLACEMENT', page, pageSize: PAGE_SIZE }),
     placeholderData: (previous) => previous,
   });
   const columns: ColumnsType<ServiceFee> = [
