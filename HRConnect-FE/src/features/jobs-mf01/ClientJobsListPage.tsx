@@ -26,13 +26,13 @@ import {
   EditOutlined,
   EnvironmentOutlined,
   EyeOutlined,
-  FileDoneOutlined,
+  TeamOutlined,
+  UnorderedListOutlined,
   MoreOutlined,
   PlusOutlined,
   ReloadOutlined,
   SendOutlined,
-  TeamOutlined,
-  UnorderedListOutlined,
+  FileDoneOutlined,
 } from '@ant-design/icons';
 import type { Job, JobCloseReasonCode, JobStatus } from '@/types/api/jobs';
 import { FilterPills, PageHero, Surface } from '@/features/admin-console/ui';
@@ -48,7 +48,6 @@ import {
   CLOSE_REASONS,
   JOB_STATUS,
   SERVICE_TYPE_LABEL,
-  serviceTypeText,
   clientActions,
   formatDate,
   formatSalary,
@@ -222,79 +221,79 @@ export const ClientJobsListPage: React.FC = () => {
       .catch(notifyError);
 
   const renderActions = (job: Job) => {
-        const can = clientActions(job.status);
-        // CV_SOURCING pays a deposit recorded by Platform Admin, not the posting fee.
-        // N1: only once HR approved the content (PENDING_PAYMENT), never while still waiting for review.
-        const needsPayment = !isAwaitingSourcingDeposit(job) && job.status === 'PENDING_PAYMENT';
-        const busy =
-          (mutations.submit.isPending && mutations.submit.variables?.jobId === job.jobId) ||
-          (mutations.resume.isPending && mutations.resume.variables?.jobId === job.jobId);
-        const more = [
-          { key: 'view', icon: <EyeOutlined />, label: 'Xem chi tiết' },
-          ...(job.serviceTypeCode === 'HEADHUNT_COD' || job.serviceTypeCode === 'CV_SOURCING'
-            ? [{ key: 'agreement', icon: <FileDoneOutlined />, label: 'Thỏa thuận dịch vụ' }]
-            : []),
-          ...(job.serviceTypeCode === 'CV_SOURCING' ? [{ key: 'sourcing', icon: <TeamOutlined />, label: 'Kho CV tìm kiếm' }] : []),
-          ...(can.canPause ? [{ key: 'pause', label: 'Tạm dừng tuyển' }] : []),
-          ...(can.canResume ? [{ key: 'resume', label: 'Mở lại tuyển' }] : []),
-          ...(can.canClose ? [{ key: 'close', label: 'Đóng tin', danger: true }] : []),
-        ];
-        return (
-          <div className="flex items-center justify-end gap-1">
-            {job.serviceTypeCode === 'CV_SOURCING' && job.status !== 'PENDING_AGREEMENT' && (
-              <Button
-                size="small"
-                className="!text-teal-700 !border-teal-300 hover:!border-teal-500 bg-teal-50/50 font-medium whitespace-nowrap"
-                icon={<TeamOutlined />}
-                onClick={() => navigate(`/client/jobs/${job.jobId}/sourcing`)}
-              >
-                Kho CV
-              </Button>
-            )}
-            {needsPayment && (
-              <Button
-                size="small"
-                type="primary"
-                className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium"
-                icon={<CreditCardOutlined />}
-                onClick={() => setPaymentModalJob({ jobId: job.jobId, title: job.title })}
-              >
-                Thanh toán
-              </Button>
-            )}
-            {can.canSubmit && !needsPayment && (
-              <Button size="small" type="primary" icon={<SendOutlined />} loading={busy} onClick={() => confirmSubmit(job)}>
-                Gửi duyệt
-              </Button>
-            )}
-            {can.canEdit && (
-              <Tooltip title="Sửa tin">
-                <Button
-                  size="small"
-                  icon={<EditOutlined />}
-                  aria-label={`Sửa tin ${job.title}`}
-                  onClick={() => navigate(`/client/jobs/${job.jobId}/edit`)}
-                />
-              </Tooltip>
-            )}
-            <Dropdown
-              trigger={['click']}
-              menu={{
-                items: more,
-                onClick: ({ key }) => {
-                  if (key === 'view') setDetailJobId(job.jobId);
-                  if (key === 'agreement') navigate(`/client/agreements?jobId=${job.jobId}`);
-                  if (key === 'sourcing') navigate(`/client/jobs/${job.jobId}/sourcing`);
-                  if (key === 'resume') resume(job);
-                  if (key === 'pause' || key === 'close') setPending({ kind: key, job });
-                },
-              }}
-            >
-              <Button size="small" icon={<MoreOutlined />} aria-label={`Thao tác khác cho ${job.title}`} loading={busy && !can.canSubmit} />
-            </Dropdown>
-          </div>
-        );
-      };
+    const can = clientActions(job.status);
+    // CV_SOURCING pays a deposit recorded by Platform Admin, not the posting fee.
+    // N1: only once HR approved the content (PENDING_PAYMENT), never while still waiting for review.
+    const needsPayment = !isAwaitingSourcingDeposit(job) && job.status === 'PENDING_PAYMENT';
+    const busy =
+      (mutations.submit.isPending && mutations.submit.variables?.jobId === job.jobId) ||
+      (mutations.resume.isPending && mutations.resume.variables?.jobId === job.jobId);
+    const more = [
+      { key: 'view', icon: <EyeOutlined />, label: 'Xem chi tiết' },
+      ...(job.serviceTypeCode === 'HEADHUNT_COD' || job.serviceTypeCode === 'CV_SOURCING'
+        ? [{ key: 'agreement', icon: <FileDoneOutlined />, label: 'Thỏa thuận dịch vụ' }]
+        : []),
+      ...(job.serviceTypeCode === 'CV_SOURCING' ? [{ key: 'sourcing', icon: <TeamOutlined />, label: 'Kho CV tìm kiếm' }] : []),
+      ...(can.canPause ? [{ key: 'pause', label: 'Tạm dừng tuyển' }] : []),
+      ...(can.canResume ? [{ key: 'resume', label: 'Mở lại tuyển' }] : []),
+      ...(can.canClose ? [{ key: 'close', label: 'Đóng tin', danger: true }] : []),
+    ];
+    return (
+      <div className="flex items-center justify-end gap-1">
+        {job.serviceTypeCode === 'CV_SOURCING' && job.status !== 'PENDING_AGREEMENT' && (
+          <Button
+            size="small"
+            className="!text-teal-700 !border-teal-300 hover:!border-teal-500 bg-teal-50/50 font-medium whitespace-nowrap"
+            icon={<TeamOutlined />}
+            onClick={() => navigate(`/client/jobs/${job.jobId}/sourcing`)}
+          >
+            Kho CV
+          </Button>
+        )}
+        {needsPayment && (
+          <Button
+            size="small"
+            type="primary"
+            className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium"
+            icon={<CreditCardOutlined />}
+            onClick={() => setPaymentModalJob({ jobId: job.jobId, title: job.title })}
+          >
+            Thanh toán
+          </Button>
+        )}
+        {can.canSubmit && !needsPayment && (
+          <Button size="small" type="primary" icon={<SendOutlined />} loading={busy} onClick={() => confirmSubmit(job)}>
+            Gửi duyệt
+          </Button>
+        )}
+        {can.canEdit && (
+          <Tooltip title="Sửa tin">
+            <Button
+              size="small"
+              icon={<EditOutlined />}
+              aria-label={`Sửa tin ${job.title}`}
+              onClick={() => navigate(`/client/jobs/${job.jobId}/edit`)}
+            />
+          </Tooltip>
+        )}
+        <Dropdown
+          trigger={['click']}
+          menu={{
+            items: more,
+            onClick: ({ key }) => {
+              if (key === 'view') setDetailJobId(job.jobId);
+              if (key === 'agreement') navigate(`/client/agreements?jobId=${job.jobId}`);
+              if (key === 'sourcing') navigate(`/client/jobs/${job.jobId}/sourcing`);
+              if (key === 'resume') resume(job);
+              if (key === 'pause' || key === 'close') setPending({ kind: key, job });
+            },
+          }}
+        >
+          <Button size="small" icon={<MoreOutlined />} aria-label={`Thao tác khác cho ${job.title}`} loading={busy && !can.canSubmit} />
+        </Dropdown>
+      </div>
+    );
+  };
 
   const columns: ColumnsType<Job> = [
     {
@@ -317,7 +316,7 @@ export const ClientJobsListPage: React.FC = () => {
             )}
           </div>
           <div className="text-xs text-slate-500 mt-0.5">
-            {serviceTypeText(job.serviceTypeCode)} · {job.location ?? 'Chưa có địa điểm'}
+            {job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode].label : '—'} · {job.location ?? 'Chưa có địa điểm'}
           </div>
           {job.status === 'REJECTED' && job.statusReason && (
             <div className="text-xs text-red-700 mt-1 line-clamp-2">Lý do từ chối: {job.statusReason}</div>
@@ -388,8 +387,7 @@ export const ClientJobsListPage: React.FC = () => {
       <PageHero
         eyebrow="Tuyển dụng"
         title="Tin tuyển dụng của tôi"
-        tip
-        description="Tạo tin, gửi HR Connect duyệt và theo dõi trạng thái từng tin của cả 3 dịch vụ HH, SS và AP."
+        description="Tạo tin, gửi HR Connect duyệt và quản lý trạng thái tuyển dụng."
         actions={
           <>
             <Tooltip title="Tải lại">
@@ -412,7 +410,7 @@ export const ClientJobsListPage: React.FC = () => {
           description="Các tin đã hết thời hạn hiển thị sẽ tự động đóng. Bạn có thể tạo tin mới và chọn gói tiêu chuẩn để tiếp tục tuyển dụng."
           action={
             <Button size="small" type="primary" onClick={() => navigate('/client/jobs/create')}>
-              Đăng tin mới (Standard)
+              Đăng tin mới
             </Button>
           }
         />
@@ -445,9 +443,8 @@ export const ClientJobsListPage: React.FC = () => {
                       aria-checked={view === v}
                       aria-label={label}
                       onClick={() => setView(v)}
-                      className={`flex h-8 w-9 cursor-pointer items-center justify-center rounded-full border-0 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
-                        view === v ? 'bg-white text-[color:var(--console-accent-strong)] shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-800'
-                      }`}
+                      className={`flex h-8 w-9 cursor-pointer items-center justify-center rounded-full border-0 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${view === v ? 'bg-white text-[color:var(--console-accent-strong)] shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-800'
+                        }`}
                     >
                       {icon}
                     </button>
@@ -484,11 +481,10 @@ export const ClientJobsListPage: React.FC = () => {
                   <article
                     id={`job-card-${job.jobId}`}
                     key={job.jobId}
-                    className={`client-soft-card relative flex flex-col gap-3 rounded-[18px] p-5 transition-all duration-500 ${
-                      isHighlighted
-                        ? 'bg-gradient-to-b from-blue-50/95 via-sky-50/50 to-white ring-4 ring-blue-500/80 border-2 border-solid border-blue-500 shadow-xl shadow-blue-500/25 scale-[1.02]'
-                        : 'bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]'
-                    }`}
+                    className={`client-soft-card relative flex flex-col gap-3 rounded-[18px] p-5 transition-all duration-500 ${isHighlighted
+                      ? 'bg-gradient-to-b from-blue-50/95 via-sky-50/50 to-white ring-4 ring-blue-500/80 border-2 border-solid border-blue-500 shadow-xl shadow-blue-500/25 scale-[1.02]'
+                      : 'bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]'
+                      }`}
                   >
                     {isHighlighted && (
                       <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm">
@@ -516,9 +512,8 @@ export const ClientJobsListPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setDetailJobId(job.jobId)}
-                      className={`cursor-pointer rounded border-0 bg-transparent p-0 text-left text-[16px] leading-snug hover:text-[color:var(--console-accent-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
-                        isHighlighted ? 'font-bold text-blue-900' : 'font-semibold text-slate-900'
-                      }`}
+                      className={`cursor-pointer rounded border-0 bg-transparent p-0 text-left text-[16px] leading-snug hover:text-[color:var(--console-accent-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${isHighlighted ? 'font-bold text-blue-900' : 'font-semibold text-slate-900'
+                        }`}
                     >
                       {job.title || 'Vị trí chưa đặt tên'}
                     </button>
@@ -527,12 +522,12 @@ export const ClientJobsListPage: React.FC = () => {
                       <div className="flex items-center gap-1.5">
                         <EnvironmentOutlined aria-hidden /> {job.location ?? 'Chưa có địa điểm'}
                       </div>
-                      <div>{serviceTypeText(job.serviceTypeCode)}</div>
+                      <div>{job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode].label : '—'}</div>
                     </div>
                     {job.status === 'PENDING_AGREEMENT' && (
                       job.hasSignedAgreement ? (
                         <div className="flex items-center justify-between rounded-xl bg-teal-50 border border-solid border-teal-200 px-3 py-2 text-xs text-teal-900">
-                          <span className="font-medium">📄 Đã nộp hợp đồng ký · Đang chờ HR kiểm tra & duyệt tin</span>
+                          <span className="font-medium">📄 Đã nộp hợp đồng · Đang chờ kiểm tra & duyệt tin</span>
                           <Button
                             type="primary"
                             size="small"
@@ -565,31 +560,21 @@ export const ClientJobsListPage: React.FC = () => {
                           <span className="text-[11px] text-amber-700">Mở tin khi nhận cọc</span>
                         </div>
                         <div className="flex items-center gap-2 pt-1 border-0 border-t border-solid border-amber-200/60">
-                          {job.hasSubmittedDeposit ? (
-                            <Button
-                              disabled
-                              size="small"
-                              className="!bg-slate-100 !text-slate-400 !border-slate-200 cursor-not-allowed !text-xs !h-6 font-medium"
-                            >
-                              Đã nộp cọc · Chờ duyệt
-                            </Button>
-                          ) : (
-                            <Button
-                              type="primary"
-                              size="small"
-                              className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] !text-xs !h-6 font-medium"
-                              onClick={() =>
-                                setPaymentModalJob({
-                                  jobId: job.jobId,
-                                  title: job.title,
-                                  isDeposit: true,
-                                  depositAmount: sourcingDepositAmount(job) ?? 200000,
-                                })
-                              }
-                            >
-                              Đặt cọc
-                            </Button>
-                          )}
+                          <Button
+                            type="primary"
+                            size="small"
+                            className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] !text-xs !h-6 font-medium"
+                            onClick={() =>
+                              setPaymentModalJob({
+                                jobId: job.jobId,
+                                title: job.title,
+                                isDeposit: true,
+                                depositAmount: sourcingDepositAmount(job) ?? 200000,
+                              })
+                            }
+                          >
+                            Đặt cọc
+                          </Button>
                           <Button
                             size="small"
                             className="!text-xs !h-6 border-amber-300 text-amber-900 hover:text-amber-700"

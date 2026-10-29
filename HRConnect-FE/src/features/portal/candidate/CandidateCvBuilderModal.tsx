@@ -651,7 +651,7 @@ export const CandidateCvBuilderModal: React.FC<CandidateCvBuilderModalProps> = (
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-slate-700 mb-1">
-                          Chức danh chuyên môn (Headline)
+                          Chức danh chuyên môn
                         </label>
                         <Input
                           placeholder="VD: Senior Frontend Developer"
@@ -1080,10 +1080,10 @@ export const CandidateCvBuilderModal: React.FC<CandidateCvBuilderModalProps> = (
                   <div className="w-full flex items-center justify-between pb-2.5 mb-2 border-0 border-b border-solid border-slate-200/80 text-xs">
                     <span className="font-semibold text-slate-700 flex items-center gap-1.5">
                       <EyeOutlined className="text-blue-600" />
-                      Live Preview (Khổ A4)
+                      Xem trước trực tiếp (Khổ A4)
                     </span>
                     <span className="text-[11px] text-slate-400 font-mono">
-                      Mẫu: {preset === 'ats' ? 'ATS Standard' : preset === 'classic' ? 'Classic' : '1-Page Compact'}
+                      Mẫu: {preset === 'ats' ? 'Chuẩn ATS' : preset === 'classic' ? 'Cổ điển' : 'Gọn một trang'}
                     </span>
                   </div>
 

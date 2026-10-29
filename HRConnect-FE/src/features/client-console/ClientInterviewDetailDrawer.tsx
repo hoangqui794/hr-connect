@@ -658,9 +658,9 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
           <Form.Item name="result" label="Kết quả đánh giá" rules={[{ required: true, message: 'Chọn kết quả.' }]}>
             <Select
               options={[
-                { value: 'PASS', label: 'Đạt (PASS) - Sẵn sàng gửi Offer hoặc vào vòng tiếp theo' },
-                { value: 'FAIL', label: 'Không đạt (FAIL)' },
-                { value: 'BACKUP', label: 'Dự phòng (BACKUP)' },
+                { value: 'PASS', label: 'Đạt — Sẵn sàng gửi thư mời nhận việc hoặc vào vòng tiếp theo' },
+                { value: 'FAIL', label: 'Không đạt' },
+                { value: 'BACKUP', label: 'Dự phòng' },
               ]}
             />
           </Form.Item>
