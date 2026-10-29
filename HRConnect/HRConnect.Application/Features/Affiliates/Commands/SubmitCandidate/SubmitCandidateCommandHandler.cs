@@ -43,6 +43,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
     private readonly IAdminBusinessSettings _businessSettings;
     private readonly ICandidateIdentityEvidenceProtector _identityEvidenceProtector;
     private readonly ICandidateDuplicateRepository _candidateDuplicateRepository;
+    private readonly IAppNotifier? _notifier;
 
     public SubmitCandidateCommandHandler(
         IAffiliateProfileRepository affiliateProfileRepository,
@@ -68,7 +69,8 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         ISubmissionConsentExpiryService expiryService,
         IAdminBusinessSettings businessSettings,
         ICandidateIdentityEvidenceProtector identityEvidenceProtector,
-        ICandidateDuplicateRepository candidateDuplicateRepository)
+        ICandidateDuplicateRepository candidateDuplicateRepository,
+        IAppNotifier? notifier = null)
     {
         _affiliateProfileRepository = affiliateProfileRepository;
         _candidateRepository = candidateRepository;
@@ -94,6 +96,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         _businessSettings = businessSettings;
         _identityEvidenceProtector = identityEvidenceProtector;
         _candidateDuplicateRepository = candidateDuplicateRepository;
+        _notifier = notifier;
     }
 
     public async Task<SubmitCandidateResponse> Handle(SubmitCandidateCommand request, CancellationToken cancellationToken)
@@ -537,7 +540,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                 // Flush the Candidate/CV/Submission/Snapshot inside the current transaction so the
                 // repository can use PostgreSQL ON CONFLICT for an idempotent case upsert.
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
-                var duplicateCase = await _candidateDuplicateRepository.GetOrCreateStrongMatchCaseAsync(
+                var duplicateCaseResult = await _candidateDuplicateRepository.GetOrCreateStrongMatchCaseAsync(
                     candidate.CandidateId,
                     duplicateMatch.CandidateId,
                     submission.SubmissionId,
@@ -545,7 +548,20 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                     identityEvidence.KeyVersion!,
                     now,
                     cancellationToken);
-                duplicateCaseId = duplicateCase.DuplicateCaseId;
+                duplicateCaseId = duplicateCaseResult.DuplicateCase.DuplicateCaseId;
+                if (duplicateCaseResult.Created && _notifier != null)
+                {
+                    await _notifier.NotifyRoleAsync(
+                        "PLATFORM_ADMIN",
+                        new AppNotice(
+                            "SYSTEM",
+                            "Phát hiện hồ sơ Candidate nghi trùng",
+                            $"Hệ thống phát hiện hồ sơ nghi trùng khi Affiliate giới thiệu ứng viên vào vị trí {job.Title}.",
+                            "CANDIDATE_DUPLICATE_CASE",
+                            duplicateCaseResult.DuplicateCase.DuplicateCaseId,
+                            "/admin/candidate-identity-claims"),
+                        cancellationToken);
+                }
             }
 
             consent = new SubmissionConsent

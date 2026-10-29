@@ -262,7 +262,7 @@ public sealed class CandidateDuplicateRepository : ICandidateDuplicateRepository
                 .ThenInclude(commission => commission.Payouts)
             .ToListAsync(cancellationToken);
 
-    public async Task<CandidateDuplicateCase> GetOrCreateStrongMatchCaseAsync(
+    public async Task<CandidateDuplicateCaseUpsertResult> GetOrCreateStrongMatchCaseAsync(
         Guid candidateId,
         Guid matchedCandidateId,
         Guid submissionId,
@@ -277,7 +277,7 @@ public sealed class CandidateDuplicateRepository : ICandidateDuplicateRepository
         var caseId = Guid.NewGuid();
         var riskLevel = jobId.HasValue ? "HIGH" : "REVIEW";
 
-        await _context.Database.ExecuteSqlInterpolatedAsync($$"""
+        var created = await _context.Database.ExecuteSqlInterpolatedAsync($$"""
             INSERT INTO public.candidate_duplicate_case
                 (duplicate_case_id, candidate_a_id, candidate_b_id, submission_id, job_id,
                  risk_level, status, concurrency_token, idempotency_key, created_at, updated_at)
@@ -311,10 +311,10 @@ public sealed class CandidateDuplicateRepository : ICandidateDuplicateRepository
             ON CONFLICT DO NOTHING
             """, cancellationToken);
 
-        return duplicateCase;
+        return new CandidateDuplicateCaseUpsertResult(duplicateCase, created == 1);
     }
 
-    public async Task<CandidateDuplicateCase> GetOrCreateVerifiedIdentityClaimCaseAsync(
+    public async Task<CandidateDuplicateCaseUpsertResult> GetOrCreateVerifiedIdentityClaimCaseAsync(
         Guid candidateId,
         Guid matchedCandidateId,
         Guid claimId,
@@ -325,7 +325,7 @@ public sealed class CandidateDuplicateRepository : ICandidateDuplicateRepository
         var idempotencyKey = $"verified-email-claim-v1:{claimId:N}";
         var caseId = Guid.NewGuid();
 
-        await _context.Database.ExecuteSqlInterpolatedAsync($$"""
+        var created = await _context.Database.ExecuteSqlInterpolatedAsync($$"""
             INSERT INTO public.candidate_duplicate_case
                 (duplicate_case_id, candidate_a_id, candidate_b_id, submission_id, job_id,
                  risk_level, status, concurrency_token, idempotency_key, created_at, updated_at)
@@ -358,7 +358,7 @@ public sealed class CandidateDuplicateRepository : ICandidateDuplicateRepository
             ON CONFLICT DO NOTHING
             """, cancellationToken);
 
-        return duplicateCase;
+        return new CandidateDuplicateCaseUpsertResult(duplicateCase, created == 1);
     }
 
     private static (Guid CandidateAId, Guid CandidateBId) Order(Guid left, Guid right)
