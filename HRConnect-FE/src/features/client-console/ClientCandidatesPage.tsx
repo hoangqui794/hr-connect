@@ -53,10 +53,10 @@ const statusParam = (key: GroupKey) => {
 const SERVICES = [
   { value: 'all', label: 'Tất cả dịch vụ' },
   { value: 'CV_APPLICATION', label: SERVICE_TYPE.CV_APPLICATION },
-  { value: 'HEADHUNT_COD', label: 'Headhunt' },
+  { value: 'HEADHUNT_COD', label: SERVICE_TYPE.HEADHUNT_COD },
   { value: 'CV_SOURCING', label: SERVICE_TYPE.CV_SOURCING },
 ];
-const SERVICE_SHORT: Record<string, string> = { CV_APPLICATION: 'Đăng tin', HEADHUNT_COD: 'Headhunt', CV_SOURCING: 'Sourcing' };
+const SERVICE_SHORT: Record<string, string> = { CV_APPLICATION: 'AP', HEADHUNT_COD: 'HH', CV_SOURCING: 'SS' };
 
 /** Board columns: the active hiring stages, left to right. Closed ones stay in the list view. */
 const BOARD: { code: string; label: string; dot: string }[] = [

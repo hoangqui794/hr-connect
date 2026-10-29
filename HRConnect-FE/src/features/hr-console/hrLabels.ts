@@ -5,6 +5,7 @@
  * Unknown codes fall back to the code itself.
  */
 import type { Tone } from '@/features/admin-console/ui';
+import { SERVICE_TYPE_LABEL } from '@/features/jobs-mf01/jobDisplay';
 
 export const APPLICATION_STATUS: Record<string, { label: string; tone: Tone }> = {
   SUBMITTED: { label: 'Mới nộp', tone: 'warning' },
@@ -67,11 +68,10 @@ export const REJECTION_REASONS: { value: string; label: string }[] = [
 export const reasonLabel = (code?: string | null) =>
   code ? REJECTION_REASONS.find((r) => r.value === code)?.label ?? code : null;
 
-export const SERVICE_TYPE: Record<string, string> = {
-  HEADHUNT_COD: 'Headhunt (trả phí khi tuyển được)',
-  CV_SOURCING: 'Tìm nguồn CV',
-  CV_APPLICATION: 'Đăng tin nhận CV',
-};
+/** Service names come from the single source in jobDisplay (HR feedback 28/10). */
+export const SERVICE_TYPE: Record<string, string> = Object.fromEntries(
+  Object.entries(SERVICE_TYPE_LABEL).map(([code, s]) => [code, `${s.short} · ${s.label}`])
+);
 
 export const INTERVIEW_STATUS: Record<string, { label: string; tone: Tone }> = {
   SCHEDULED: { label: 'Đã lên lịch', tone: 'info' },

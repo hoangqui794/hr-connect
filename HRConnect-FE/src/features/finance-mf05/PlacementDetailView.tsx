@@ -1,7 +1,7 @@
 /**
  * @file PlacementDetailView.tsx
  * @description Core component for viewing Placement Detail with complete state handling,
- * countdown/progress bars for probation and warranty, candidate & job metrics,
+ * warranty countdown and progress bar (probation is out of scope), candidate & job metrics,
  * financial links, and resignation action workflows.
  */
 
@@ -41,7 +41,11 @@ import {
 import dayjs from 'dayjs';
 import { usePlacementDetail } from '@/hooks/usePlacementDetail';
 import type { PlacementDetailDto } from '@/types/api/placement';
-import { money, date } from './financeLabels';
+import { COMMISSION_STATUS, SERVICE_FEE_STATUS, WARRANTY_STATUS, date, labelOf, money } from './financeLabels';
+import type { CommissionStatus, ServiceFeeStatus, WarrantyStatus } from '@/types/api/finance';
+
+/** Ant Design tag colour for a finance label tone. */
+const TAG_COLOR: Record<string, string> = { success: 'green', info: 'blue', warning: 'orange', danger: 'red', neutral: 'default' };
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -221,7 +225,6 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
     return { percent, daysTotal, daysPassed, daysLeft, isExpired };
   };
 
-  const probationProgress = calculateProgress(placement.probation?.startDate, placement.probation?.endDate);
   const warrantyProgress = calculateProgress(placement.warranty?.startDate, placement.warranty?.endDate);
 
   const canClientReportResignation =
@@ -241,7 +244,7 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
             {getStatusBadge(placement.status)}
             {placement.warranty && (
               <Tag color="blue" className="font-medium">
-                Bảo hành: {placement.warranty.status}
+                Bảo hành: {labelOf(WARRANTY_STATUS, placement.warranty.status as WarrantyStatus).label}
               </Tag>
             )}
             {placement.position && (
@@ -286,7 +289,7 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
       </div>
 
       {/* Key Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Onboard Salary */}
         <Card size="small" className="rounded-xl border border-slate-200 shadow-sm">
           <div className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mb-1">
@@ -311,21 +314,6 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
           <div className="text-[11px] text-slate-400 mt-0.5">Xác nhận bởi Doanh nghiệp</div>
         </Card>
 
-        {/* Probation Period */}
-        <Card size="small" className="rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mb-1">
-            <ClockCircleOutlined className="text-cyan-600" />
-            <span>Thời gian thử việc</span>
-          </div>
-          <div className="text-base font-bold text-slate-800">
-            {placement.probation
-              ? `${date(placement.probation.startDate)} → ${date(placement.probation.endDate)}`
-              : '60 ngày (Mặc định)'}
-          </div>
-          <div className="text-[11px] text-slate-500 mt-0.5">
-            Kết quả: <strong>{placement.probation?.result || 'Đang theo dõi'}</strong>
-          </div>
-        </Card>
 
         {/* Warranty Window */}
         <Card size="small" className="rounded-xl border border-slate-200 shadow-sm">
@@ -342,35 +330,8 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
         </Card>
       </div>
 
-      {/* Probation & Warranty Progress Bars */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Probation Progress Card */}
-        <Card
-          size="small"
-          className="rounded-xl border border-slate-200 shadow-sm"
-          title={
-            <div className="flex items-center gap-2 text-slate-800 font-bold text-sm">
-              <ClockCircleOutlined className="text-cyan-600" />
-              <span>Tiến độ thử việc (Probation)</span>
-            </div>
-          }
-        >
-          <div className="py-2 space-y-3">
-            <div className="flex items-center justify-between text-xs text-slate-600">
-              <span>Đã qua: <strong>{probationProgress.daysPassed} ngày</strong></span>
-              <span>Tổng thời gian: <strong>{probationProgress.daysTotal} ngày</strong></span>
-            </div>
-            <Progress
-              percent={probationProgress.percent}
-              status={probationProgress.isExpired ? 'success' : 'active'}
-              strokeColor="#0284c7"
-            />
-            <div className="text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200/60">
-              {placement.probation?.notes || 'Ứng viên đang trong giai đoạn thử việc và hòa nhập môi trường doanh nghiệp.'}
-            </div>
-          </div>
-        </Card>
-
+      {/* Warranty Progress (probation is out of scope, team decision 17/10) */}
+      <div className="grid grid-cols-1 gap-4">
         {/* Warranty Progress Card */}
         <Card
           size="small"
@@ -378,7 +339,7 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
           title={
             <div className="flex items-center gap-2 text-slate-800 font-bold text-sm">
               <SafetyCertificateOutlined className="text-amber-600" />
-              <span>Tiến độ bảo hành (Warranty Period)</span>
+              <span>Tiến độ bảo hành</span>
             </div>
           }
         >
@@ -398,7 +359,7 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
               }
             />
             <div className="text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200/60 flex items-center justify-between">
-              <span>Trạng thái: <strong>{placement.warranty?.status || 'ACTIVE'}</strong></span>
+              <span>Trạng thái: <strong>{labelOf(WARRANTY_STATUS, (placement.warranty?.status ?? 'ACTIVE') as WarrantyStatus).label}</strong></span>
               {placement.warranty?.resultNote && (
                 <span className="text-slate-600 italic">Ghi chú: {placement.warranty.resultNote}</span>
               )}
@@ -502,9 +463,13 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
                 {placement.financial.serviceFeeAmount != null ? money(placement.financial.serviceFeeAmount) : '—'}
               </div>
               <div>
-                <Tag color={placement.financial.serviceFeeStatus === 'PAID' ? 'green' : 'orange'}>
-                  {placement.financial.serviceFeeStatus || 'Chưa thanh toán'}
-                </Tag>
+                {placement.financial.serviceFeeStatus ? (
+                  <Tag color={TAG_COLOR[labelOf(SERVICE_FEE_STATUS, placement.financial.serviceFeeStatus as ServiceFeeStatus).tone]}>
+                    {labelOf(SERVICE_FEE_STATUS, placement.financial.serviceFeeStatus as ServiceFeeStatus).label}
+                  </Tag>
+                ) : (
+                  <Tag color="orange">Chưa phát sinh phí</Tag>
+                )}
               </div>
             </div>
             )}
@@ -517,8 +482,16 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
                 {placement.financial.commissionAmount != null ? money(placement.financial.commissionAmount) : '—'}
               </div>
               <div>
-                <Tag color={placement.financial.commissionStatus === 'APPROVED' ? 'green' : 'blue'}>
-                  {placement.financial.commissionStatus || 'Chưa tính'}
+                <Tag
+                  color={
+                    placement.financial.commissionStatus
+                      ? TAG_COLOR[labelOf(COMMISSION_STATUS, placement.financial.commissionStatus as CommissionStatus).tone]
+                      : 'default'
+                  }
+                >
+                  {placement.financial.commissionStatus
+                    ? labelOf(COMMISSION_STATUS, placement.financial.commissionStatus as CommissionStatus).label
+                    : 'Chưa tính'}
                 </Tag>
               </div>
             </div>

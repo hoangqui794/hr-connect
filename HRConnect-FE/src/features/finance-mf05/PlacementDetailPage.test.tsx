@@ -88,7 +88,7 @@ const mockPlacement = {
     serviceFeeAmount: 36000000,
     serviceFeeStatus: 'PAID',
     commissionAmount: 10800000,
-    commissionStatus: 'APPROVED',
+    commissionStatus: 'IN_WARRANTY',
   },
   allowedActions: ['VIEW_PLACEMENT', 'VIEW_PROBATION', 'VIEW_WARRANTY'],
   createdAt: '2026-10-15T09:00:00Z',
@@ -142,7 +142,7 @@ describe('PlacementDetailPage & PlacementDetailView', () => {
     expect(screen.getByText(/Không tìm thấy thông tin tiếp nhận việc/i)).toBeInTheDocument();
   });
 
-  it('renders full placement details (candidate, job, company, salary, probation, warranty, progress bars)', async () => {
+  it('renders full placement details (candidate, job, company, salary, warranty, progress bar)', async () => {
     vi.mocked(placementApi.getPlacementDetail).mockResolvedValueOnce(mockPlacement as any);
 
     renderWithProviders(<PlacementDetailPage />, '/client/placements/plc-1');
@@ -158,9 +158,15 @@ describe('PlacementDetailPage & PlacementDetailView', () => {
     expect(screen.getByText('tuan.hoang@example.com')).toBeInTheDocument();
     expect(screen.getByText('0912345678')).toBeInTheDocument();
 
-    // Progress sections
-    expect(screen.getByText(/Tiến độ thử việc/i)).toBeInTheDocument();
+    // Progress: warranty only, probation is out of scope (team decision 17/10)
+    expect(screen.queryByText(/thử việc/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Tiến độ bảo hành/i)).toBeInTheDocument();
+
+    // HR feedback 29/10: status codes are shown as Vietnamese labels, never raw codes
+    expect(screen.getByText('Bảo hành: Đang bảo hành')).toBeInTheDocument();
+    expect(screen.getByText('Đã thanh toán')).toBeInTheDocument();
+    expect(screen.getByText('Đang trong thời gian bảo hành')).toBeInTheDocument();
+    expect(screen.queryByText(/IN_WARRANTY|^ACTIVE$|^PAID$/)).not.toBeInTheDocument();
 
     // Financial link
     expect(screen.getByText(/Phí dịch vụ và hoa hồng/i)).toBeInTheDocument();
