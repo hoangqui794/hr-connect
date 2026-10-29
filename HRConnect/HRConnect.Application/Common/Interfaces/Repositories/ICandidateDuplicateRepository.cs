@@ -3,6 +3,10 @@ using HRConnect.Domain.Entities;
 
 namespace HRConnect.Application.Common.Interfaces.Repositories;
 
+public sealed record CandidateDuplicateCaseUpsertResult(
+    CandidateDuplicateCase DuplicateCase,
+    bool Created);
+
 public interface ICandidateDuplicateRepository
 {
     Task<CandidateDuplicateMatch?> FindStrongCvNameMatchAsync(
@@ -78,7 +82,7 @@ public interface ICandidateDuplicateRepository
         Guid candidateBId,
         CancellationToken cancellationToken = default);
 
-    Task<CandidateDuplicateCase> GetOrCreateStrongMatchCaseAsync(
+    Task<CandidateDuplicateCaseUpsertResult> GetOrCreateStrongMatchCaseAsync(
         Guid candidateId,
         Guid matchedCandidateId,
         Guid submissionId,
@@ -87,7 +91,7 @@ public interface ICandidateDuplicateRepository
         DateTime now,
         CancellationToken cancellationToken = default);
 
-    Task<CandidateDuplicateCase> GetOrCreateVerifiedIdentityClaimCaseAsync(
+    Task<CandidateDuplicateCaseUpsertResult> GetOrCreateVerifiedIdentityClaimCaseAsync(
         Guid candidateId,
         Guid matchedCandidateId,
         Guid claimId,

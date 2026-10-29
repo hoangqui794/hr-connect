@@ -23,7 +23,7 @@ export const en: Translations = {
     titleMain: 'AI-Powered Enterprise Recruitment',
     titleHighlight: '& Affiliate Headhunting Platform',
     subtitle:
-      'Connecting top-tier talent through verified affiliate headhunters, AI-driven screening, and guaranteed 60-day probation warranty.',
+      'Connecting top-tier talent through verified affiliate headhunters, AI-driven screening, and a transparent replacement warranty.',
     ctaPostJob: 'Post a Job',
     ctaJoinAffiliate: 'Join Affiliate Network',
     searchKeywordPlaceholder: 'Keyword: Frontend, Java, DevOps, ReactJS, PM...',
@@ -48,12 +48,12 @@ export const en: Translations = {
       title: 'Full-Cycle Headhunt (Cash On Delivery)',
       subtitle: 'Success-based model with zero upfront financial risk',
       description:
-        'Affiliate headhunter network sourcing verified candidates. 60-day automated probation warranty countdown. Only pay upon successful probation completion.',
+        'Affiliate headhunter network sourcing verified candidates. Pay only when the candidate starts work, with an automated warranty countdown.',
       features: [
-        '60-day probation warranty (automated countdown timer)',
-        'Pay 100% only when candidate successfully passes probation',
+        'Replacement warranty with an automated countdown',
+        'Pay only when the candidate actually starts work',
         'Verified OPR Hub network ensuring candidate exclusivity',
-        'Free 1-to-1 replacement or transparent refund policy',
+        'One free replacement if the candidate leaves within the warranty',
       ],
       cta: 'Choose Headhunt COD',
     },
@@ -104,9 +104,9 @@ export const en: Translations = {
       tag: 'Affiliate Headhunting',
     },
     f3: {
-      title: '60-Day Probation Warranty',
-      desc: 'Automated warranty countdown for the Headhunt package with 1-to-1 replacement or transparent refund guarantees.',
-      tag: '60-Day Probation Warranty',
+      title: 'Transparent Replacement Warranty',
+      desc: 'Automated warranty countdown for the Headhunt package with a free replacement if the candidate leaves early.',
+      tag: 'Replacement Warranty',
     },
     f4: {
       title: 'Commission Ledger & Bank Audit Trail',

@@ -12,7 +12,7 @@ export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
 
 export const SERVICE_TYPE_DESCRIPTIONS: Record<ServiceType, string> = {
   [ServiceType.HEADHUNT_COD]:
-    'Quy trình tuyển dụng toàn diện qua mạng lưới Headhunter. Bảo hành 60 ngày thử việc, chỉ trả phí khi tuyển dụng thành công.',
+    'Quy trình tuyển dụng toàn diện qua mạng lưới Headhunter. Chỉ trả phí khi ứng viên đi làm, kèm thời hạn bảo hành thay người.',
   [ServiceType.CV_SOURCING]:
     'Nhận danh sách hồ sơ ứng viên đã qua sàng lọc AI. Doanh nghiệp tự chủ động liên hệ phỏng vấn và tiếp nhận.',
   [ServiceType.CV_APPLICATION]:

@@ -79,11 +79,13 @@ public sealed class DisputeHandlers :
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _audit;
     private readonly INotificationRepository _notifications;
+    private readonly IAppNotifier? _notifier;
 
     public DisputeHandlers(
         IDisputeRepository disputes, ICandidateDuplicateRepository duplicateCases,
         IAdminBusinessSettings settings, IUnitOfWork unitOfWork,
-        IAuditLogService audit, INotificationRepository notifications)
+        IAuditLogService audit, INotificationRepository notifications,
+        IAppNotifier? notifier = null)
     {
         _disputes = disputes;
         _duplicateCases = duplicateCases;
@@ -91,6 +93,7 @@ public sealed class DisputeHandlers :
         _unitOfWork = unitOfWork;
         _audit = audit;
         _notifications = notifications;
+        _notifier = notifier;
     }
 
     public async Task<MyDisputeDto> Handle(CreateDisputeCommand request, CancellationToken cancellationToken)
@@ -182,6 +185,20 @@ public sealed class DisputeHandlers :
             ActorUserId = request.UserId,
             NewValues = new { dispute.DisputeType, dispute.SubmissionId, dispute.AttributionId, dispute.CommissionId, dispute.Status }
         }, cancellationToken);
+
+        if (_notifier != null)
+        {
+            await _notifier.NotifyRoleAsync(
+                "PLATFORM_ADMIN",
+                new AppNotice(
+                    "SYSTEM",
+                    "Có khiếu nại Affiliate mới",
+                    $"Affiliate vừa gửi khiếu nại cho vị trí {submission.Job.Title}. Vui lòng kiểm tra và xử lý.",
+                    "DISPUTE",
+                    dispute.DisputeId,
+                    "/admin/disputes"),
+                cancellationToken);
+        }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return ToMine(dispute, submission);

@@ -19,6 +19,7 @@ public sealed class VerifyCandidateIdentityClaimCommandHandler
     private readonly IOtpService _otp;
     private readonly IAuditLogService _audit;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAppNotifier? _notifier;
 
     public VerifyCandidateIdentityClaimCommandHandler(
         ICandidateIdentityClaimRepository claims,
@@ -27,7 +28,8 @@ public sealed class VerifyCandidateIdentityClaimCommandHandler
         ICandidateDuplicateRepository duplicateCases,
         IOtpService otp,
         IAuditLogService audit,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IAppNotifier? notifier = null)
     {
         _claims = claims;
         _candidates = candidates;
@@ -36,6 +38,7 @@ public sealed class VerifyCandidateIdentityClaimCommandHandler
         _otp = otp;
         _audit = audit;
         _unitOfWork = unitOfWork;
+        _notifier = notifier;
     }
 
     public async Task<VerifyCandidateIdentityClaimResponse> Handle(
@@ -123,13 +126,26 @@ public sealed class VerifyCandidateIdentityClaimCommandHandler
                     reviewReason = "CANDIDATE_SWAP_REQUIRES_ADMIN_REVIEW";
                     if (target != null && target.Status == "ACTIVE" && !target.MergedIntoCandidateId.HasValue)
                     {
-                        var duplicateCase = await _duplicateCases.GetOrCreateVerifiedIdentityClaimCaseAsync(
+                        var duplicateCaseResult = await _duplicateCases.GetOrCreateVerifiedIdentityClaimCaseAsync(
                             claim.RequesterCandidateId,
                             target.CandidateId,
                             claim.ClaimId,
                             now,
                             cancellationToken);
-                        duplicateCaseId = duplicateCase.DuplicateCaseId;
+                        duplicateCaseId = duplicateCaseResult.DuplicateCase.DuplicateCaseId;
+                        if (duplicateCaseResult.Created && _notifier != null)
+                        {
+                            await _notifier.NotifyRoleAsync(
+                                "PLATFORM_ADMIN",
+                                new AppNotice(
+                                    "SYSTEM",
+                                    "Có hồ sơ danh tính nghi trùng cần xử lý",
+                                    "Candidate vừa xác minh email nhưng dữ liệu có dấu hiệu thuộc hai hồ sơ khác nhau.",
+                                    "CANDIDATE_DUPLICATE_CASE",
+                                    duplicateCaseResult.DuplicateCase.DuplicateCaseId,
+                                    "/admin/candidate-identity-claims"),
+                                cancellationToken);
+                        }
                     }
                 }
                 else if (!await _candidates.TrySwapIdentityCandidateAsync(

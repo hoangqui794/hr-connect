@@ -37,7 +37,7 @@ export const Navbar: React.FC = () => {
     logout();
     void message.success('Đã đăng xuất thành công!');
     setMobileMenuOpen(false);
-    navigate('/');
+    navigate('/login');
   };
 
   const navigateAndClose = (path: string) => {
