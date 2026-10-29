@@ -10,7 +10,7 @@ namespace HRConnect.Infrastructure.Persistence.Seed;
 /// </summary>
 public static class CvTemplateSeeder
 {
-    private const string Sections = "\"sections\":[\"summary\",\"experiences\",\"educations\",\"skills\",\"languages\",\"certificates\"]";
+    private const string Sections = "\"sections\":[\"summary\",\"experiences\",\"projects\",\"educations\",\"activities\",\"skills\",\"languages\",\"certificates\"]";
 
     public static readonly (string Code, string Name, string Description, string Config)[] Templates =
     [

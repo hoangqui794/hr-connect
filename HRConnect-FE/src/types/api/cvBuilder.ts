@@ -19,7 +19,17 @@ export interface CvPresentationConfig {
   density: 'normal' | 'compact' | 'spacious';
   fontFamily: CvFontFamily;
   layout: CvLayoutStyle;
-  visibleSections: Array<'summary' | 'experiences' | 'educations' | 'skills' | 'languages' | 'certificates'>;
+  showAvatar: boolean;
+  visibleSections: Array<
+    | 'summary'
+    | 'experiences'
+    | 'projects'
+    | 'educations'
+    | 'activities'
+    | 'skills'
+    | 'languages'
+    | 'certificates'
+  >;
 }
 
 export interface CvTemplateConfig {
@@ -54,6 +64,24 @@ export interface StructuredCvEducation {
   description?: string;
 }
 
+export interface StructuredCvProject {
+  name: string;
+  role?: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+  technologies?: string;
+  url?: string;
+}
+
+export interface StructuredCvActivity {
+  name: string;
+  role?: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+}
+
 export interface StructuredCvContent {
   fullName: string;
   headline?: string;
@@ -62,7 +90,9 @@ export interface StructuredCvContent {
   address?: string;
   summary?: string;
   experiences: StructuredCvExperience[];
+  projects?: StructuredCvProject[];
   educations: StructuredCvEducation[];
+  activities?: StructuredCvActivity[];
   skills: string[];
   languages: string[];
   certificates: string[];

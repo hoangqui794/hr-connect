@@ -1,17 +1,18 @@
-import React from 'react';
-import { Switch, Tooltip, Collapse, Spin, Select } from 'antd';
+import React, { useMemo, useState } from 'react';
+import { Avatar, Switch, Tooltip, Collapse, Spin, Select, Button } from 'antd';
 import {
   BgColorsOutlined,
   FontSizeOutlined,
   AppstoreOutlined,
-  CheckCircleOutlined,
   LayoutOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import type {
   CvFontFamily,
   CvLayoutStyle,
   CvTemplateDto,
 } from '@/types/api/cvBuilder';
+import { CvTemplateModal, templateLayoutFromCode } from './CvTemplateModal';
 
 export interface ColorPreset {
   name: string;
@@ -40,21 +41,12 @@ export const DENSITY_PRESETS = [
   { label: 'Thoáng đãng', value: 'spacious' },
 ];
 
-const templateLayoutFromCode = (template: CvTemplateDto): CvLayoutStyle => {
-  if (template.templateConfig?.layout) return template.templateConfig.layout;
-  const code = template.code.toUpperCase();
-  if (code.includes('MODERN')) return 'modern';
-  if (code.includes('COMPACT')) return 'compact';
-  if (code.includes('EXECUTIVE')) return 'executive';
-  if (code.includes('ELEGANT')) return 'elegant';
-  if (code.includes('MINIMAL')) return 'minimal';
-  return 'classic';
-};
-
 export interface SectionVisibility {
   summary: boolean;
   experiences: boolean;
+  projects: boolean;
   educations: boolean;
+  activities: boolean;
   skills: boolean;
   languages: boolean;
   certificates: boolean;
@@ -72,6 +64,9 @@ export interface CvSidebarToolsProps {
   layout: CvLayoutStyle;
   density: 'compact' | 'normal' | 'spacious';
   onDensityChange: (density: 'compact' | 'normal' | 'spacious') => void;
+  avatarUrl?: string;
+  showAvatar: boolean;
+  onShowAvatarChange: (show: boolean) => void;
   sectionVisibility: SectionVisibility;
   onToggleSection: (key: keyof SectionVisibility, visible: boolean) => void;
 }
@@ -88,14 +83,24 @@ export const CvSidebarTools: React.FC<CvSidebarToolsProps> = ({
   layout,
   density,
   onDensityChange,
+  avatarUrl,
+  showAvatar,
+  onShowAvatarChange,
   sectionVisibility,
   onToggleSection,
 }) => {
+  const [templateDrawerOpen, setTemplateDrawerOpen] = useState(false);
+  const currentTemplate = useMemo(
+    () => templates.find((template) => template.cvTemplateId === selectedTemplateId),
+    [selectedTemplateId, templates]
+  );
   const visibleSectionCount = Object.values(sectionVisibility).filter(Boolean).length;
   const sectionsList: Array<{ key: keyof SectionVisibility; label: string; countHint?: string }> = [
     { key: 'summary', label: 'Tóm tắt / Mục tiêu nghề nghiệp' },
     { key: 'experiences', label: 'Kinh nghiệm làm việc' },
+    { key: 'projects', label: 'Dự án nổi bật' },
     { key: 'educations', label: 'Học vấn & Bằng cấp' },
+    { key: 'activities', label: 'Hoạt động' },
     { key: 'skills', label: 'Kỹ năng chuyên môn' },
     { key: 'languages', label: 'Ngoại ngữ' },
     { key: 'certificates', label: 'Chứng chỉ & Giải thưởng' },
@@ -129,66 +134,56 @@ export const CvSidebarTools: React.FC<CvSidebarToolsProps> = ({
               <Spin size="small" />
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-2.5">
-              <button
-                type="button"
-                onClick={() => onSelectTemplate(null)}
-                className={`cv-template-option p-2.5 rounded-xl border cursor-pointer transition-all text-left flex flex-col justify-between min-h-[116px] ${
-                  selectedTemplateId === null
-                    ? 'border-blue-600 bg-blue-50 shadow-xs ring-1 ring-blue-100'
-                    : 'border-slate-200 hover:border-blue-300 bg-white'
-                }`}
-              >
-                <span className="cv-template-mini cv-template-mini--ats" aria-hidden="true">
-                  <i /><i /><i /><i />
-                </span>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800">Chuẩn ATS</span>
-                  {selectedTemplateId === null && <CheckCircleOutlined className="text-blue-600 text-xs" />}
-                </div>
-                <span className="text-[10px] leading-4 text-slate-500">Một cột, dễ đọc và tối ưu máy quét tuyển dụng</span>
-              </button>
-
-              {templates.map((tpl) => {
-                const isSelected = selectedTemplateId === tpl.cvTemplateId;
-                return (
-                  <button
-                    type="button"
-                    key={tpl.cvTemplateId}
-                    onClick={() => {
-                      onSelectTemplate(tpl.cvTemplateId);
-                      if (tpl.templateConfig?.accentColor) {
-                        onAccentColorChange(tpl.templateConfig.accentColor);
-                      }
-                      if (tpl.templateConfig?.density && (tpl.templateConfig.density === 'compact' || tpl.templateConfig.density === 'normal' || tpl.templateConfig.density === 'spacious')) {
-                        onDensityChange(tpl.templateConfig.density as any);
-                      }
-                    }}
-                    className={`cv-template-option p-2.5 rounded-xl border cursor-pointer transition-all text-left flex flex-col justify-between min-h-[116px] relative overflow-hidden ${
-                      isSelected
-                        ? 'border-blue-600 bg-blue-50 shadow-xs ring-1 ring-blue-100'
-                        : 'border-slate-200 hover:border-blue-300 bg-white'
-                    }`}
-                  >
-                    <span
-                      className={`cv-template-mini cv-template-mini--${templateLayoutFromCode(tpl)}`}
-                      style={{ '--cv-mini-accent': tpl.templateConfig?.accentColor || '#2563eb' } as React.CSSProperties}
-                      aria-hidden="true"
-                    >
-                      <i /><i /><i /><i />
-                    </span>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-800 truncate">{tpl.name}</span>
-                      {isSelected && <CheckCircleOutlined className="text-blue-600 text-xs shrink-0" />}
-                    </div>
-                    <span className="text-[10px] leading-4 text-slate-500 line-clamp-2">
-                      {tpl.description || (tpl.templateConfig?.density === 'compact' ? 'Gọn trong một trang' : 'Bố cục chuyên nghiệp')}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            <button type="button" className="cv-current-template" onClick={() => setTemplateDrawerOpen(true)}>
+              <span
+                className={`cv-template-mini cv-template-mini--${currentTemplate ? templateLayoutFromCode(currentTemplate) : 'ats'}`}
+                style={{ '--cv-mini-accent': currentTemplate?.templateConfig?.accentColor || accentColor } as React.CSSProperties}
+                aria-hidden="true"
+              ><i /><i /><i /><i /></span>
+              <span className="min-w-0 flex-1 text-left">
+                <strong className="block truncate text-xs text-slate-900">{currentTemplate?.name || 'Chuẩn ATS'}</strong>
+                <span className="mt-0.5 block text-[10px] leading-4 text-slate-500">Nhấn để xem toàn bộ thư viện mẫu</span>
+              </span>
+              <Button size="small" type="link" className="!px-0">Đổi mẫu</Button>
+            </button>
           )}
+          <CvTemplateModal
+            open={templateDrawerOpen}
+            onClose={() => setTemplateDrawerOpen(false)}
+            templates={templates}
+            selectedTemplateId={selectedTemplateId}
+            onSelectTemplate={onSelectTemplate}
+          />
+        </div>
+
+        <div className="space-y-2.5 pt-3 border-0 border-t border-solid border-slate-100">
+          <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-3">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <Avatar
+                size={38}
+                src={avatarUrl}
+                icon={<UserOutlined />}
+                alt="Ảnh đại diện sẽ hiển thị trên CV"
+                className="shrink-0 border border-solid border-slate-200 bg-white text-slate-500"
+              />
+              <div className="min-w-0">
+                <strong className="block text-xs text-slate-800">Ảnh đại diện</strong>
+                <span className="mt-0.5 block text-[10px] leading-4 text-slate-500">
+                  {avatarUrl ? 'Tùy chọn, phù hợp CV sáng tạo.' : 'Cập nhật ảnh hồ sơ để sử dụng.'}
+                </span>
+              </div>
+            </div>
+            <Switch
+              size="small"
+              checked={showAvatar && Boolean(avatarUrl)}
+              disabled={!avatarUrl}
+              onChange={onShowAvatarChange}
+              aria-label="Hiển thị ảnh đại diện trong CV"
+            />
+          </div>
+          <p className="m-0 text-[10px] leading-4 text-slate-500">
+            Mẫu ATS mặc định không dùng ảnh để ưu tiên khả năng đọc tự động.
+          </p>
         </div>
 
         {/* ── 2. BẢNG MÀU CHỦ ĐẠO (Accent Color) ── */}
