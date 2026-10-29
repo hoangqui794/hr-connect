@@ -48,6 +48,7 @@ import {
   CLOSE_REASONS,
   JOB_STATUS,
   SERVICE_TYPE_LABEL,
+  serviceTypeText,
   clientActions,
   formatDate,
   formatSalary,
@@ -316,7 +317,7 @@ export const ClientJobsListPage: React.FC = () => {
             )}
           </div>
           <div className="text-xs text-slate-500 mt-0.5">
-            {job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode].label : '—'} · {job.location ?? 'Chưa có địa điểm'}
+            {serviceTypeText(job.serviceTypeCode)} · {job.location ?? 'Chưa có địa điểm'}
           </div>
           {job.status === 'REJECTED' && job.statusReason && (
             <div className="text-xs text-red-700 mt-1 line-clamp-2">Lý do từ chối: {job.statusReason}</div>
@@ -525,7 +526,7 @@ export const ClientJobsListPage: React.FC = () => {
                       <div className="flex items-center gap-1.5">
                         <EnvironmentOutlined aria-hidden /> {job.location ?? 'Chưa có địa điểm'}
                       </div>
-                      <div>{job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode].label : '—'}</div>
+                      <div>{serviceTypeText(job.serviceTypeCode)}</div>
                     </div>
                     {job.status === 'PENDING_AGREEMENT' && (
                       job.hasSignedAgreement ? (

@@ -5,9 +5,9 @@ export enum ServiceType {
 }
 
 export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
-  [ServiceType.HEADHUNT_COD]: 'Tuyển dụng trọn gói (COD)',
-  [ServiceType.CV_SOURCING]: 'Cung cấp hồ sơ (CV Sourcing)',
-  [ServiceType.CV_APPLICATION]: 'Ứng tuyển mở (CV Application)',
+  [ServiceType.HEADHUNT_COD]: 'Tuyển dụng theo kết quả (HH)',
+  [ServiceType.CV_SOURCING]: 'Tìm hồ sơ phù hợp (SS)',
+  [ServiceType.CV_APPLICATION]: 'Nhận hồ sơ ứng tuyển (AP)',
 };
 
 export const SERVICE_TYPE_DESCRIPTIONS: Record<ServiceType, string> = {

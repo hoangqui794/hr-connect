@@ -11,6 +11,7 @@ import { CheckCircleFilled, EditOutlined, FilePdfOutlined, InfoCircleOutlined, R
 import type { CommercialTermsInput, ApproveJobInput, Job, ServiceAgreementDto } from '@/types/api/jobs';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useCommercialTermsDefaults } from './useJobQueries';
+import { SERVICE_TYPE_LABEL } from './jobDisplay';
 
 type TermKey = keyof CommercialTermsInput;
 
@@ -229,7 +230,7 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-slate-900">
-                  1. Chốt điều khoản thương mại ({isSourcing ? 'Dịch vụ Tìm kiếm hồ sơ' : 'Dịch vụ Tuyển dụng Headhunt'})
+                  1. Chốt điều khoản thương mại ({isSourcing ? `SS · ${SERVICE_TYPE_LABEL.CV_SOURCING.label}` : `HH · ${SERVICE_TYPE_LABEL.HEADHUNT_COD.label}`})
                 </span>
                 <span className="text-xs text-slate-500">
                   Đối chiếu đề xuất của DN & điều chỉnh trước khi tạo hợp đồng

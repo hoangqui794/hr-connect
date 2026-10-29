@@ -61,6 +61,7 @@ import {
   JOB_STATUS,
   SERVICE_AGREEMENT_STATUS,
   SERVICE_TYPE_LABEL,
+  serviceTypeText,
   isAwaitingSourcingDeposit,
   sourcingDepositAmount,
 } from '@/features/jobs-mf01/jobDisplay';
@@ -458,7 +459,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                 </Text>
                 <p className="text-sm text-slate-500 max-w-md mx-auto">
                   Các vị trí tuyển dụng theo dịch vụ <strong>Tuyển dụng theo kết quả (Headhunt)</strong>{' '}
-                  hoặc <strong>Tìm kiếm hồ sơ (CV Sourcing)</strong> sẽ xuất hiện tại đây sau khi được
+                  hoặc <strong>Tìm hồ sơ phù hợp (CV Sourcing)</strong> sẽ xuất hiện tại đây sau khi được
                   HR Connect lập dự thảo thỏa thuận thương mại.
                 </p>
               </div>
@@ -582,11 +583,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
 
                         <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
                           <span className="font-medium text-slate-600">
-                            {job.serviceTypeCode === 'HEADHUNT_COD'
-                              ? 'Tuyển dụng kết quả'
-                              : job.serviceTypeCode === 'CV_SOURCING'
-                                ? 'Tìm kiếm hồ sơ'
-                                : job.serviceTypeCode ?? ''}
+                            {serviceTypeText(job.serviceTypeCode)}
                           </span>
                           <span className="text-[11px] text-slate-400">
                             {dayjs(job.updatedAt).format('DD/MM/YYYY')}
@@ -661,7 +658,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                       <div className="flex items-center gap-2.5">
                         <Text strong className="text-lg text-slate-900">
                           Thỏa thuận dịch vụ{' '}
-                          {activeJob?.serviceTypeCode === 'HEADHUNT_COD' ? 'Tuyển dụng' : 'Tìm kiếm hồ sơ'}
+                          {activeJob?.serviceTypeCode ? SERVICE_TYPE_LABEL[activeJob.serviceTypeCode]?.label : ''}
                         </Text>
                         {(() => {
                           const meta =
