@@ -20,7 +20,9 @@ public static class JobAccessPolicy
     /// </summary>
     public static bool CanViewDetail(Job job, bool isOwner, bool hasInternalAccess)
     {
-        if (isOwner || hasInternalAccess) return true;
+        if (isOwner) return true;
+        if (string.Equals(job.Status, JobStatuses.Draft, StringComparison.OrdinalIgnoreCase)) return false;
+        if (hasInternalAccess) return true;
         return string.Equals(job.Status, JobStatuses.Active, StringComparison.OrdinalIgnoreCase);
     }
 

@@ -102,6 +102,7 @@ public class JobRepository : IJobRepository
             .Include(job => job.JobStatusHistories)
             .Include(job => job.CurrentServiceAgreement)
             .Include(job => job.ServiceAgreements)
+            .Where(job => job.Status != JobStatuses.Draft)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(status) && !status.Equals("ALL", StringComparison.OrdinalIgnoreCase))
