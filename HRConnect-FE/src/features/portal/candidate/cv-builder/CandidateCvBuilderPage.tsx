@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { message, Modal, Spin, Result, Button } from 'antd';
+import { message, Modal, Spin, Result, Button, Alert } from 'antd';
 import { FilePdfOutlined, CheckCircleFilled, FolderOpenOutlined } from '@ant-design/icons';
 import { CvTopbar } from './CvTopbar';
 import { CvSidebarTools, type SectionVisibility } from './CvSidebarTools';
@@ -18,9 +18,16 @@ import type {
   StructuredCvContent,
   StructuredCvDetailDto,
 } from '@/types/api/cvBuilder';
-import { useAuthStore } from '@/stores/authStore';
+import { getAvatarImageUrl, useAuthStore } from '@/stores/authStore';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { candidateCvApi } from '@/services/api/mf02/candidateCvApi';
+import {
+  cvBuilderDraftKey,
+  readCvBuilderDraft,
+  removeCvBuilderDraft,
+  writeCvBuilderDraft,
+  type CvBuilderDraft,
+} from './services/cvBuilderDraftStorage';
 import './cv-builder.css';
 
 const DEFAULT_PRESENTATION: CvPresentationConfig = {
@@ -28,7 +35,8 @@ const DEFAULT_PRESENTATION: CvPresentationConfig = {
   density: 'normal',
   fontFamily: 'BE_VIETNAM_PRO',
   layout: 'ats',
-  visibleSections: ['summary', 'experiences', 'educations', 'skills', 'languages', 'certificates'],
+  showAvatar: false,
+  visibleSections: ['summary', 'experiences', 'projects', 'educations', 'activities', 'skills', 'languages', 'certificates'],
 };
 
 const inferTemplateLayout = (code?: string): CvLayoutStyle => {
@@ -47,6 +55,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((s) => s.user);
+  const avatarUrl = getAvatarImageUrl(currentUser?.avatar);
 
   const mode: 'create' | 'edit' = cvId ? 'edit' : 'create';
 
@@ -60,10 +69,13 @@ export const CandidateCvBuilderPage: React.FC = () => {
   const [fontFamily, setFontFamily] = useState<CvFontFamily>(DEFAULT_PRESENTATION.fontFamily);
   const [layout, setLayout] = useState<CvLayoutStyle>(DEFAULT_PRESENTATION.layout);
   const [density, setDensity] = useState<'compact' | 'normal' | 'spacious'>('normal');
+  const [showAvatar, setShowAvatar] = useState<boolean>(DEFAULT_PRESENTATION.showAvatar);
   const [sectionVisibility, setSectionVisibility] = useState<SectionVisibility>({
     summary: true,
     experiences: true,
+    projects: true,
     educations: true,
+    activities: true,
     skills: true,
     languages: true,
     certificates: true,
@@ -78,7 +90,9 @@ export const CandidateCvBuilderPage: React.FC = () => {
     address: '',
     summary: '',
     experiences: [],
+    projects: [],
     educations: [],
+    activities: [],
     skills: [],
     languages: [],
     certificates: [],
@@ -87,6 +101,14 @@ export const CandidateCvBuilderPage: React.FC = () => {
   const [previewOpen, setPreviewOpen] = useState<boolean>(false);
   const [saveSuccessData, setSaveSuccessData] = useState<StructuredCvDetailDto | null>(null);
   const initialTemplateAppliedRef = useRef(false);
+  const initializedDataRef = useRef(false);
+  const [draftReady, setDraftReady] = useState(false);
+  const [availableDraft, setAvailableDraft] = useState<CvBuilderDraft | null>(null);
+  const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const draftKey = useMemo(
+    () => cvBuilderDraftKey(currentUser?.id || 'anonymous', cvId),
+    [currentUser?.id, cvId]
+  );
 
   // 1. Fetch available templates
   const { data: templates = [], isLoading: isLoadingTemplates } = useQuery({
@@ -109,6 +131,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
 
   // Initialize or populate data
   useEffect(() => {
+    if (initializedDataRef.current) return;
     if (mode === 'edit' && existingCv) {
       setTitle(existingCv.title || '');
       setIsPrimary(existingCv.isPrimary || false);
@@ -121,11 +144,14 @@ export const CandidateCvBuilderPage: React.FC = () => {
         setDensity(presentation.density || DEFAULT_PRESENTATION.density);
         setFontFamily(presentation.fontFamily || DEFAULT_PRESENTATION.fontFamily);
         setLayout(presentation.layout || DEFAULT_PRESENTATION.layout);
+        setShowAvatar(Boolean(presentation.showAvatar));
         const visibleSections = new Set(presentation.visibleSections || DEFAULT_PRESENTATION.visibleSections);
         setSectionVisibility({
           summary: visibleSections.has('summary'),
           experiences: visibleSections.has('experiences'),
+          projects: visibleSections.has('projects') || !('projects' in loadedContent),
           educations: visibleSections.has('educations'),
+          activities: visibleSections.has('activities') || !('activities' in loadedContent),
           skills: visibleSections.has('skills'),
           languages: visibleSections.has('languages'),
           certificates: visibleSections.has('certificates'),
@@ -139,57 +165,33 @@ export const CandidateCvBuilderPage: React.FC = () => {
         address: loadedContent.address || '',
         summary: loadedContent.summary || '',
         experiences: loadedContent.experiences || [],
+        projects: loadedContent.projects || [],
         educations: loadedContent.educations || [],
+        activities: loadedContent.activities || [],
         skills: loadedContent.skills || [],
         languages: loadedContent.languages || [],
         certificates: loadedContent.certificates || [],
       });
-    } else if (mode === 'create') {
+      initializedDataRef.current = true;
+      setAvailableDraft(readCvBuilderDraft(draftKey));
+      setDraftReady(true);
+    } else if (mode === 'create' && currentUser) {
       const defaultName = currentUser?.name || (currentUser as any)?.fullName || '';
       setTitle(defaultName ? `CV - ${defaultName}` : 'CV Ứng tuyển');
       setIsPrimary(false);
       setContent((prev) => ({
         ...prev,
-        fullName: defaultName || 'Họ và tên của bạn',
+        fullName: defaultName,
         email: currentUser?.email || '',
         phone: currentUser?.phone || '',
-        headline: 'Chuyên viên Phát triển Phần mềm',
-        address: 'Hà Nội, Việt Nam',
-        summary:
-          'Kỹ sư phần mềm với kinh nghiệm xây dựng các ứng dụng web hiệu năng cao, đam mê giải quyết bài toán phức tạp và tối ưu trải nghiệm người dùng.',
-        experiences: [
-          {
-            title: 'Senior Frontend Developer',
-            company: 'Công ty Công nghệ ABC',
-            startDate: '03/2022',
-            endDate: 'Hiện tại',
-            description:
-              'Phát triển hệ thống web quy mô lớn phục vụ hàng triệu người dùng. Tối ưu Core Web Vitals và thiết kế kiến trúc Component linh hoạt.',
-          },
-          {
-            title: 'Frontend Developer',
-            company: 'Tập đoàn Giải pháp XYZ',
-            startDate: '06/2020',
-            endDate: '02/2022',
-            description:
-              'Xây dựng các giao diện người dùng tương tác cao với React và TypeScript. Tích hợp các RESTful APIs và CI/CD pipelines.',
-          },
-        ],
-        educations: [
-          {
-            school: 'Đại học Bách Khoa Hà Nội',
-            degree: 'Cử nhân Công nghệ Thông tin',
-            startDate: '2016',
-            endDate: '2020',
-            description: 'Tốt nghiệp loại Giỏi. Tham gia nghiên cứu phát triển hệ thống phân tán.',
-          },
-        ],
-        skills: ['React', 'TypeScript', 'Node.js', 'Next.js', 'PostgreSQL', 'Docker', 'Git'],
-        languages: ['Tiếng Việt (Bản ngữ)', 'Tiếng Anh (Giao tiếp tốt)'],
-        certificates: ['AWS Certified Solutions Architect', 'IELTS 7.0'],
+        headline: '', address: '', summary: '', experiences: [], projects: [], educations: [], activities: [],
+        skills: [], languages: [], certificates: [],
       }));
+      initializedDataRef.current = true;
+      setAvailableDraft(readCvBuilderDraft(draftKey));
+      setDraftReady(true);
     }
-  }, [mode, existingCv, currentUser]);
+  }, [mode, existingCv, currentUser, draftKey]);
 
   const applyTemplatePresentation = useCallback((templateId: string | null) => {
     const selectedTemplate = templateId
@@ -216,10 +218,14 @@ export const CandidateCvBuilderPage: React.FC = () => {
         return section;
       })
     );
+    configuredSections.add('projects');
+    configuredSections.add('activities');
     setSectionVisibility({
       summary: configuredSections.has('summary'),
       experiences: configuredSections.has('experiences'),
+      projects: configuredSections.has('projects'),
       educations: configuredSections.has('educations'),
+      activities: configuredSections.has('activities'),
       skills: configuredSections.has('skills'),
       languages: configuredSections.has('languages'),
       certificates: configuredSections.has('certificates'),
@@ -248,6 +254,67 @@ export const CandidateCvBuilderPage: React.FC = () => {
     setSectionVisibility((prev) => ({ ...prev, [key]: visible }));
   };
 
+  const currentDraftPayload = useCallback(() => ({
+    title,
+    isPrimary,
+    selectedTemplateId,
+    accentColor,
+    fontFamily,
+    layout,
+    density,
+    showAvatar,
+    sectionVisibility,
+    content,
+  }), [title, isPrimary, selectedTemplateId, accentColor, fontFamily, layout, density, showAvatar, sectionVisibility, content]);
+
+  const saveDraftNow = useCallback(() => {
+    try {
+      setDraftStatus('saving');
+      writeCvBuilderDraft(draftKey, currentDraftPayload());
+      setDraftStatus('saved');
+    } catch {
+      setDraftStatus('error');
+      message.error('Không thể lưu bản nháp trên trình duyệt này.');
+    }
+  }, [currentDraftPayload, draftKey]);
+
+  useEffect(() => {
+    if (!draftReady || availableDraft) return;
+    setDraftStatus('saving');
+    const timer = window.setTimeout(() => {
+      try {
+        writeCvBuilderDraft(draftKey, currentDraftPayload());
+        setDraftStatus('saved');
+      } catch {
+        setDraftStatus('error');
+      }
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [availableDraft, currentDraftPayload, draftKey, draftReady]);
+
+  const restoreDraft = () => {
+    if (!availableDraft) return;
+    setTitle(availableDraft.title);
+    setIsPrimary(availableDraft.isPrimary);
+    setSelectedTemplateId(availableDraft.selectedTemplateId);
+    setAccentColor(availableDraft.accentColor);
+    setFontFamily(availableDraft.fontFamily);
+    setLayout(availableDraft.layout);
+    setDensity(availableDraft.density);
+    setShowAvatar(Boolean(availableDraft.showAvatar));
+    setSectionVisibility(availableDraft.sectionVisibility);
+    setContent(availableDraft.content);
+    setAvailableDraft(null);
+    setDraftStatus('saved');
+    message.success('Đã khôi phục bản nháp gần nhất.');
+  };
+
+  const discardDraft = () => {
+    removeCvBuilderDraft(draftKey);
+    setAvailableDraft(null);
+    setDraftStatus('idle');
+  };
+
   // Completeness score
   const calculateCompleteness = () => {
     let score = 0;
@@ -255,6 +322,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
     if (content.headline?.trim() || content.email?.trim() || content.phone?.trim()) score += 15;
     if (content.summary?.trim()) score += 15;
     if (content.experiences?.some((exp) => exp.title?.trim() && exp.company?.trim())) score += 25;
+    if (content.projects?.some((project) => project.name?.trim())) score += 10;
     if (content.educations?.some((edu) => edu.school?.trim() && edu.degree?.trim())) score += 15;
     if (content.skills && content.skills.length > 0) score += 10;
     return Math.min(100, score);
@@ -272,6 +340,12 @@ export const CandidateCvBuilderPage: React.FC = () => {
       const cleanedEducations = (content.educations || []).filter(
         (e) => e.school?.trim() || e.degree?.trim() || e.description?.trim()
       );
+      const cleanedProjects = (content.projects || []).filter(
+        (project) => project.name?.trim() || project.description?.trim()
+      );
+      const cleanedActivities = (content.activities || []).filter(
+        (activity) => activity.name?.trim() || activity.description?.trim()
+      );
 
       const structuredContent: StructuredCvContent = {
         fullName: content.fullName.trim(),
@@ -281,7 +355,9 @@ export const CandidateCvBuilderPage: React.FC = () => {
         address: content.address?.trim() || undefined,
         summary: content.summary?.trim() || undefined,
         experiences: cleanedExperiences,
+        projects: cleanedProjects,
         educations: cleanedEducations,
+        activities: cleanedActivities,
         skills: content.skills || [],
         languages: content.languages || [],
         certificates: content.certificates || [],
@@ -290,6 +366,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
           density,
           fontFamily,
           layout,
+          showAvatar: showAvatar && Boolean(avatarUrl),
           visibleSections: Object.entries(sectionVisibility)
             .filter(([, visible]) => visible)
             .map(([section]) => section) as CvPresentationConfig['visibleSections'],
@@ -327,6 +404,8 @@ export const CandidateCvBuilderPage: React.FC = () => {
         void queryClient.invalidateQueries({ queryKey: ['candidate-cv-structured', cvId] });
       }
       setSaveSuccessData(result);
+      removeCvBuilderDraft(draftKey);
+      setDraftStatus('idle');
       message.success(
         mode === 'edit'
           ? 'Đã cập nhật nội dung CV thành công! File PDF đang được tự động đồng bộ.'
@@ -343,7 +422,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
 
       if (combined.includes('CV_CONTENT_EMPTY')) {
         message.error(
-          'Nội dung CV chưa đủ thông tin. Vui lòng nhập ít nhất 1 trong các mục: Mục tiêu nghề nghiệp, Kinh nghiệm làm việc, Học vấn hoặc Kỹ năng.'
+          'Nội dung CV chưa đủ thông tin. Vui lòng nhập ít nhất 1 trong các mục: Mục tiêu nghề nghiệp, Kinh nghiệm, Dự án, Học vấn hoặc Kỹ năng.'
         );
       } else if (combined.includes('CV_NOT_STRUCTURED')) {
         message.error('CV này là file tải lên thông thường, không thể chỉnh sửa theo dạng có cấu trúc.');
@@ -385,7 +464,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
   }
 
   return (
-    <div className="h-full w-full flex-1 min-h-0 flex flex-col overflow-hidden bg-[#eef2f7] text-slate-900 select-none">
+    <div className="candidate-cv-builder-page h-full w-full flex-1 min-h-0 flex flex-col overflow-hidden bg-[#eef2f7] text-slate-900 select-none">
       {/* ── 1. TOPBAR ── */}
       <CvTopbar
         title={title}
@@ -394,11 +473,24 @@ export const CandidateCvBuilderPage: React.FC = () => {
         onPrimaryChange={setIsPrimary}
         onPreview={() => setPreviewOpen(true)}
         onSave={() => saveMutation.mutate()}
+        onSaveDraft={saveDraftNow}
         isSaving={saveMutation.isPending}
+        draftStatus={draftStatus}
         onBack={handleBack}
         completeness={completeness}
         mode={mode}
       />
+
+      {availableDraft && (
+        <Alert
+          type="info"
+          showIcon
+          className="!rounded-none !border-x-0 !border-t-0"
+          message="Có bản nháp chưa xuất bản"
+          description={`Được lưu lúc ${new Date(availableDraft.savedAt).toLocaleString('vi-VN')}. Bạn có thể khôi phục để tiếp tục đúng chỗ đang làm.`}
+          action={<div className="flex gap-2"><Button size="small" onClick={discardDraft}>Bỏ bản nháp</Button><Button size="small" type="primary" onClick={restoreDraft}>Khôi phục</Button></div>}
+        />
+      )}
 
       {/* ── 2. MAIN WORKSPACE: SIDEBAR + LIVE CANVAS ── */}
       <div className="cv-builder-workspace flex-1 min-h-0 flex overflow-hidden">
@@ -415,6 +507,9 @@ export const CandidateCvBuilderPage: React.FC = () => {
           layout={layout}
           density={density}
           onDensityChange={setDensity}
+          avatarUrl={avatarUrl}
+          showAvatar={showAvatar}
+          onShowAvatarChange={setShowAvatar}
           sectionVisibility={sectionVisibility}
           onToggleSection={handleToggleSection}
         />
@@ -428,6 +523,8 @@ export const CandidateCvBuilderPage: React.FC = () => {
           layout={layout}
           density={density}
           sectionVisibility={sectionVisibility}
+          avatarUrl={avatarUrl}
+          showAvatar={showAvatar}
         />
       </div>
 
@@ -441,6 +538,8 @@ export const CandidateCvBuilderPage: React.FC = () => {
         layout={layout}
         density={density}
         sectionVisibility={sectionVisibility}
+        avatarUrl={avatarUrl}
+        showAvatar={showAvatar}
         pdfUrl={saveSuccessData?.pdfUrl || existingCv?.pdfUrl}
         title={title}
       />

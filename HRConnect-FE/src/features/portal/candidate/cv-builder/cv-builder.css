@@ -30,6 +30,79 @@ body:has(.candidate-cv-builder-page),
   outline-offset: 2px;
 }
 
+.cv-current-template {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.cv-current-template:hover { border-color: #60a5fa; box-shadow: 0 8px 20px rgb(15 23 42 / 0.08); }
+.cv-current-template:focus-visible { outline: 3px solid rgb(37 99 235 / 0.22); outline-offset: 2px; }
+.cv-current-template .cv-template-mini { width: 82px; flex: 0 0 82px; }
+
+.cv-template-gallery-card {
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid #dbe3ef;
+  border-radius: 1rem;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.cv-template-gallery-card:hover { transform: translateY(-2px); border-color: #60a5fa; box-shadow: 0 14px 30px rgb(15 23 42 / 0.1); }
+.cv-template-gallery-card:focus-visible { outline: 3px solid rgb(37 99 235 / 0.25); outline-offset: 2px; }
+.cv-template-gallery-card.is-selected { border-color: #2563eb; box-shadow: 0 0 0 2px rgb(37 99 235 / 0.12); }
+.cv-template-gallery-card__copy { padding: 0.9rem 1rem 1rem; }
+.cv-template-gallery-card__copy p { min-height: 2.5rem; margin: 0.55rem 0 0; color: #64748b; font-size: 0.7rem; line-height: 1.25rem; }
+
+.cv-template-sheet {
+  --cv-template-accent: #2563eb;
+  height: 190px;
+  margin: 0.8rem 0.8rem 0;
+  padding: 1rem;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.65rem;
+  background: #f8fafc;
+}
+
+.cv-template-sheet__header { display: grid; gap: 5px; padding-bottom: 10px; border-bottom: 2px solid var(--cv-template-accent); }
+.cv-template-sheet__header i { width: 55%; height: 12px; border-radius: 2px; background: var(--cv-template-accent); }
+.cv-template-sheet__header b { width: 38%; height: 5px; border-radius: 99px; background: #64748b; }
+.cv-template-sheet__header span { width: 72%; height: 4px; border-radius: 99px; background: #cbd5e1; }
+.cv-template-sheet__body { display: grid; grid-template-columns: 0.38fr 0.62fr; gap: 10px; padding-top: 10px; }
+.cv-template-sheet__body aside, .cv-template-sheet__body main { display: flex; flex-direction: column; gap: 7px; }
+.cv-template-sheet__body strong { width: 70%; height: 5px; border-radius: 99px; background: var(--cv-template-accent); }
+.cv-template-sheet__body i { height: 4px; border-radius: 99px; background: #d7dee8; }
+.cv-template-sheet--ats .cv-template-sheet__body,
+.cv-template-sheet--classic .cv-template-sheet__body,
+.cv-template-sheet--executive .cv-template-sheet__body,
+.cv-template-sheet--elegant .cv-template-sheet__body,
+.cv-template-sheet--minimal .cv-template-sheet__body { grid-template-columns: 1fr; }
+.cv-template-sheet--ats aside, .cv-template-sheet--classic aside, .cv-template-sheet--executive aside, .cv-template-sheet--elegant aside, .cv-template-sheet--minimal aside { display: none; }
+.cv-template-sheet--modern { padding: 0; }
+.cv-template-sheet--modern .cv-template-sheet__header { padding: 1rem; border: 0; background: var(--cv-template-accent); }
+.cv-template-sheet--modern .cv-template-sheet__header i { background: #fff; }
+.cv-template-sheet--modern .cv-template-sheet__header b, .cv-template-sheet--modern .cv-template-sheet__header span { background: rgb(255 255 255 / 0.7); }
+.cv-template-sheet--modern .cv-template-sheet__body { padding: 0.8rem; }
+.cv-template-sheet--compact { padding: 0.65rem; }
+.cv-template-sheet--compact .cv-template-sheet__body { gap: 6px; }
+.cv-template-sheet--executive .cv-template-sheet__header { place-items: center; border-width: 1px; }
+.cv-template-sheet--elegant .cv-template-sheet__header { place-items: center; border-bottom-style: double; }
+.cv-template-sheet--minimal .cv-template-sheet__header { border-color: #cbd5e1; }
+.cv-template-sheet--minimal .cv-template-sheet__header i, .cv-template-sheet--minimal .cv-template-sheet__body strong { background: #0f172a; }
+
 .cv-template-mini {
   --cv-mini-accent: #2563eb;
   display: grid;
@@ -97,7 +170,7 @@ body:has(.candidate-cv-builder-page),
 
 .cv-paper {
   --cv-accent: #1e3a8a;
-  --cv-font-family: 'Inter', sans-serif;
+  --cv-font-family: 'Be Vietnam Pro', 'Segoe UI', sans-serif;
   font-family: var(--cv-font-family) !important;
   position: relative;
   overflow: hidden;
@@ -111,9 +184,62 @@ body:has(.candidate-cv-builder-page),
   font-family: inherit !important;
 }
 
+.cv-paper__header--with-avatar {
+  min-height: 108px;
+  padding-right: 116px;
+}
+
+.cv-paper__avatar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 92px;
+  height: 92px;
+  border: 3px solid color-mix(in srgb, var(--cv-accent) 28%, white);
+  border-radius: 18px;
+  object-fit: cover;
+  object-position: center;
+  background: white;
+  box-shadow: 0 10px 24px rgb(15 23 42 / 12%);
+}
+
+.cv-paper--modern .cv-paper__avatar {
+  top: 2.5rem;
+  right: 3rem;
+  border-color: rgb(255 255 255 / 75%);
+}
+
+.cv-paper--classic .cv-paper__header--with-avatar,
+.cv-paper--executive .cv-paper__header--with-avatar,
+.cv-paper--elegant .cv-paper__header--with-avatar {
+  padding-top: 112px;
+  padding-right: 0;
+}
+
+.cv-paper--classic .cv-paper__avatar,
+.cv-paper--executive .cv-paper__avatar,
+.cv-paper--elegant .cv-paper__avatar {
+  right: 50%;
+  transform: translateX(50%);
+}
+
 .cv-paper__section {
   break-inside: avoid;
 }
+
+.cv-empty-section {
+  width: 100%;
+  padding: 0.85rem;
+  border: 1px dashed #cbd5e1;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+  color: #64748b;
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.cv-empty-section:hover { border-color: #60a5fa; background: #eff6ff; color: #1d4ed8; }
+.cv-empty-section:focus-visible { outline: 3px solid rgb(37 99 235 / 0.22); outline-offset: 2px; }
 
 .cv-paper--classic .cv-paper__header,
 .cv-paper--elegant .cv-paper__header,
@@ -170,9 +296,31 @@ body:has(.candidate-cv-builder-page),
   border-radius: 0.4rem;
 }
 
+.cv-paper--modern {
+  display: grid !important;
+  grid-template-columns: minmax(0, 0.36fr) minmax(0, 0.64fr);
+  grid-auto-flow: row dense;
+  align-content: start;
+}
+.cv-paper--modern .cv-paper__header,
+.cv-paper--modern .cv-paper__section--summary { grid-column: 1 / -1; }
+.cv-paper--modern .cv-paper__section--skills,
+.cv-paper--modern .cv-paper__section--activities,
+.cv-paper--modern > div:last-child { grid-column: 1; }
+.cv-paper--modern .cv-paper__section--experiences,
+.cv-paper--modern .cv-paper__section--projects,
+.cv-paper--modern .cv-paper__section--educations { grid-column: 2; }
+
 .cv-paper--compact {
   letter-spacing: -0.01em;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-flow: row dense;
+  align-content: start;
 }
+.cv-paper--compact .cv-paper__header,
+.cv-paper--compact .cv-paper__section--summary,
+.cv-paper--compact .cv-paper__section--experiences { grid-column: 1 / -1; }
 
 .cv-paper--compact .cv-paper__header {
   padding-bottom: 0.75rem;
@@ -182,17 +330,10 @@ body:has(.candidate-cv-builder-page),
   padding-bottom: 0.15rem;
 }
 
-.cv-paper--executive::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto;
-  height: 9px;
-  background: var(--cv-accent);
-}
-
 .cv-paper--executive .cv-paper__header {
-  padding-top: 0.75rem;
-  border-bottom-width: 1px;
+  padding: 0.75rem 0.25rem 1rem;
+  border-bottom: 2px solid color-mix(in srgb, var(--cv-accent) 45%, white);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cv-accent) 6%, white), transparent);
 }
 
 .cv-paper--executive .cv-paper__section h3 {
@@ -227,6 +368,18 @@ body:has(.candidate-cv-builder-page),
 .cv-paper--minimal .cv-paper__section h3,
 .cv-paper--minimal .cv-paper__section .anticon {
   color: #0f172a !important;
+}
+
+/* Keep the identity block clear of the optional portrait in every template. */
+.cv-paper--modern .cv-paper__header--with-avatar {
+  padding-right: 10rem;
+}
+
+.cv-paper--classic .cv-paper__header--with-avatar,
+.cv-paper--executive .cv-paper__header--with-avatar,
+.cv-paper--elegant .cv-paper__header--with-avatar {
+  padding-top: 7rem;
+  padding-right: 0;
 }
 
 @media (max-width: 1023px) {

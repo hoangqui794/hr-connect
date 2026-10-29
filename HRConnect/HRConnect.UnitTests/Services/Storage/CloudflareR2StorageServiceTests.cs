@@ -157,6 +157,32 @@ public class CloudflareR2StorageServiceTests
     }
 
     [Fact]
+    public async Task DownloadAsync_WhenObjectFitsLimit_ReturnsExactBytes()
+    {
+        var payload = new byte[] { 1, 3, 5, 7, 9 };
+        _s3Mock.Setup(client => client.GetObjectAsync(
+                It.IsAny<GetObjectRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GetObjectResponse { ResponseStream = new MemoryStream(payload) });
+
+        var result = await _service.DownloadAsync("avatars/user/photo.png", maxBytes: 32);
+
+        result.Should().Equal(payload);
+    }
+
+    [Fact]
+    public async Task DownloadAsync_WhenStreamExceedsLimit_RejectsObject()
+    {
+        var payload = Enumerable.Range(0, 64).Select(value => (byte)value).ToArray();
+        _s3Mock.Setup(client => client.GetObjectAsync(
+                It.IsAny<GetObjectRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GetObjectResponse { ResponseStream = new MemoryStream(payload) });
+
+        Func<Task> act = () => _service.DownloadAsync("avatars/user/photo.png", maxBytes: 16);
+
+        await act.Should().ThrowAsync<InvalidDataException>();
+    }
+
+    [Fact]
     public async Task DeleteAsync_WhenEmptyKey_DoesNotCallS3()
     {
         // Act

@@ -26,10 +26,11 @@ public sealed class CvPdfRenderer
         float Scale,
         string Layout,
         SKTypeface Typeface,
-        IReadOnlySet<string> VisibleSections);
+        IReadOnlySet<string> VisibleSections,
+        bool ShowAvatar);
 
     private static readonly string[] AllSections =
-        ["summary", "experiences", "educations", "skills", "languages", "certificates"];
+        ["summary", "experiences", "projects", "educations", "activities", "skills", "languages", "certificates"];
 
     private static SKTypeface LoadTypeface(string fileName)
     {
@@ -52,7 +53,7 @@ public sealed class CvPdfRenderer
         {
             var writer = new PageWriter(document, new CvTheme(
                 SKColor.Parse(DefaultAccent), 1f, "ats", Roboto.Value,
-                new HashSet<string>(AllSections, StringComparer.OrdinalIgnoreCase)));
+                new HashSet<string>(AllSections, StringComparer.OrdinalIgnoreCase), false));
             writer.Title(title);
             writer.Body(note, muted: true);
             writer.Rule();
@@ -66,7 +67,7 @@ public sealed class CvPdfRenderer
         return output.ToArray();
     }
 
-    public byte[] Render(StructuredCvContent cv, string? templateConfig)
+    public byte[] Render(StructuredCvContent cv, string? templateConfig, byte[]? avatarBytes = null)
     {
         var theme = ReadConfig(templateConfig, cv.Presentation);
         using var output = new MemoryStream();
@@ -80,6 +81,7 @@ public sealed class CvPdfRenderer
         {
             var writer = new PageWriter(document, theme);
             writer.HeaderRule();
+            if (theme.ShowAvatar && avatarBytes is { Length: > 0 }) writer.Avatar(avatarBytes);
             writer.Title(cv.FullName);
             if (cv.Headline != null) writer.Subtitle(cv.Headline);
             var contact = string.Join("  |  ", new[] { cv.Email, cv.Phone, cv.Address }.Where(v => !string.IsNullOrWhiteSpace(v)));
@@ -105,6 +107,21 @@ public sealed class CvPdfRenderer
                 }
             }
 
+            if (theme.VisibleSections.Contains("projects") && cv.Projects is { Count: > 0 })
+            {
+                writer.Section("Dự án nổi bật");
+                foreach (var project in cv.Projects)
+                {
+                    writer.ItemTitle(string.Join(" - ", new[] { project.Name, project.Role }.Where(v => v != null)));
+                    var period = Period(project.StartDate, project.EndDate);
+                    if (period != null) writer.Body(period, muted: true);
+                    if (project.Technologies != null) writer.Body($"Công nghệ: {project.Technologies}", muted: true);
+                    if (project.Description != null) writer.Body(project.Description);
+                    if (project.Url != null) writer.Body(project.Url, muted: true);
+                    writer.Gap();
+                }
+            }
+
             if (theme.VisibleSections.Contains("educations") && cv.Educations is { Count: > 0 })
             {
                 writer.Section("Học vấn");
@@ -114,6 +131,19 @@ public sealed class CvPdfRenderer
                     var period = Period(e.StartDate, e.EndDate);
                     if (period != null) writer.Body(period, muted: true);
                     if (e.Description != null) writer.Body(e.Description);
+                    writer.Gap();
+                }
+            }
+
+            if (theme.VisibleSections.Contains("activities") && cv.Activities is { Count: > 0 })
+            {
+                writer.Section("Hoạt động");
+                foreach (var activity in cv.Activities)
+                {
+                    writer.ItemTitle(string.Join(" - ", new[] { activity.Name, activity.Role }.Where(v => v != null)));
+                    var period = Period(activity.StartDate, activity.EndDate);
+                    if (period != null) writer.Body(period, muted: true);
+                    if (activity.Description != null) writer.Body(activity.Description);
                     writer.Gap();
                 }
             }
@@ -186,7 +216,7 @@ public sealed class CvPdfRenderer
             "ROBOTO" => Roboto.Value,
             _ => BeVietnamPro.Value,
         };
-        return new CvTheme(accent, scale, layout, typeface, visibleSections);
+        return new CvTheme(accent, scale, layout, typeface, visibleSections, presentation?.ShowAvatar == true);
     }
 
     private static HashSet<string> NormalizeSections(IEnumerable<string?> sections)
@@ -235,6 +265,42 @@ public sealed class CvPdfRenderer
             if (_theme.Layout is not ("modern" or "executive")) return;
             Line(_theme.Accent, _theme.Layout == "modern" ? 5f : 2.5f);
             Space(6);
+        }
+
+        public void Avatar(byte[] bytes)
+        {
+            using var bitmap = SKBitmap.Decode(bytes);
+            if (bitmap == null || bitmap.Width <= 0 || bitmap.Height <= 0) return;
+
+            const float size = 70f;
+            EnsureRoom(size + 10);
+            var x = Centered ? (PageWidth - size) / 2 : Margin;
+            var destination = SKRect.Create(x, _y, size, size);
+            var sourceSize = Math.Min(bitmap.Width, bitmap.Height);
+            var source = SKRect.Create(
+                (bitmap.Width - sourceSize) / 2f,
+                (bitmap.Height - sourceSize) / 2f,
+                sourceSize,
+                sourceSize);
+
+            using var image = SKImage.FromBitmap(bitmap);
+            using var path = new SKPath();
+            using var paint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High };
+            path.AddCircle(destination.MidX, destination.MidY, size / 2);
+            _canvas!.Save();
+            _canvas.ClipPath(path, antialias: true);
+            _canvas.DrawImage(image, source, destination, paint);
+            _canvas.Restore();
+
+            using var border = new SKPaint
+            {
+                Color = _theme.Accent,
+                IsAntialias = true,
+                Style = SKPaintStyle.Stroke,
+                StrokeWidth = 2f
+            };
+            _canvas.DrawCircle(destination.MidX, destination.MidY, size / 2, border);
+            _y += size + 10;
         }
 
         public void Title(string text) => Write(text, 22, _theme.Accent, bold: true, spacingAfter: 4, centered: Centered);

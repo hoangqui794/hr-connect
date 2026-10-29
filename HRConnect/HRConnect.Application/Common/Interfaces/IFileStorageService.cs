@@ -25,6 +25,14 @@ public interface IFileStorageService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Downloads a private object into memory with a strict size limit.
+    /// </summary>
+    Task<byte[]> DownloadAsync(
+        string objectKey,
+        long maxBytes,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Deletes an object by its key.
     /// </summary>
     Task DeleteAsync(

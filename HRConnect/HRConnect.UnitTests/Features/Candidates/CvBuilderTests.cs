@@ -6,6 +6,7 @@ using HRConnect.Infrastructure.Services.CvBuilder;
 using HRConnect.Infrastructure.Services.Storage;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using SkiaSharp;
 using UglyToad.PdfPig;
 using Xunit;
 
@@ -67,6 +68,31 @@ public class CvBuilderTests
     }
 
     [Fact]
+    public void Render_WithOptInAvatar_ShouldProduceValidPdf()
+    {
+        using var bitmap = new SKBitmap(120, 90);
+        using (var canvas = new SKCanvas(bitmap))
+        {
+            canvas.Clear(SKColors.CornflowerBlue);
+        }
+        using var image = SKImage.FromBitmap(bitmap);
+        using var encoded = image.Encode(SKEncodedImageFormat.Png, 90);
+        var content = Sample() with
+        {
+            Presentation = new CvPresentation(
+                "#1D4ED8", "normal", "BE_VIETNAM_PRO", "classic", ["summary", "skills"], ShowAvatar: true)
+        };
+
+        var validated = CvBuilderHandlers.Validate(content);
+        var pdf = new CvPdfRenderer().Render(validated, null, encoded.ToArray());
+
+        validated.Presentation!.ShowAvatar.Should().BeTrue();
+        new PdfCvValidator(Options.Create(new R2Settings { MaxCvPdfPages = 30 }), NullLogger<PdfCvValidator>.Instance)
+            .Validate(pdf);
+        pdf.Should().StartWith(new byte[] { 0x25, 0x50, 0x44, 0x46 });
+    }
+
+    [Fact]
     public void Validate_InvalidPresentation_ShouldBeRejected()
     {
         var content = Sample() with
@@ -98,5 +124,24 @@ public class CvBuilderTests
 
         result.Skills.Should().Equal("C#", "SQL");
         result.Experiences.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Validate_ProjectOnlyCv_ShouldBeAcceptedAndRendered()
+    {
+        var content = new StructuredCvContent(
+            "Nguyễn Văn A", "Backend Developer", "a@example.com", null, null, null,
+            [], [], [], [], [],
+            new CvPresentation("#1D4ED8", "normal", "INTER", "modern", ["projects", "activities"]),
+            [new CvProject("HR Connect", "Backend Developer", "2026", "Hiện tại", "Xây dựng API tuyển dụng.", ".NET, PostgreSQL", "https://example.com")],
+            [new CvActivity("Câu lạc bộ CNTT", "Thành viên", "2025", "2026", "Tổ chức workshop.")]);
+
+        var validated = CvBuilderHandlers.Validate(content);
+        var pdf = new CvPdfRenderer().Render(validated, null);
+        using var document = PdfDocument.Open(pdf);
+        var text = string.Join(" ", document.GetPages().Select(page => page.Text));
+
+        validated.Projects.Should().ContainSingle();
+        text.Should().Contain("DỰ ÁN NỔI BẬT").And.Contain("HR Connect").And.Contain("HOẠT ĐỘNG");
     }
 }
