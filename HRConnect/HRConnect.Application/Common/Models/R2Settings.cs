@@ -28,11 +28,17 @@ public class R2Settings
 
     public long MaxAvatarFileSizeBytes => (long)MaxAvatarFileSizeMb * 1024 * 1024;
 
-    public int MaxAvatarWidth { get; set; } = 4096;
+    /// <summary>Company logos may be straight from a camera or design tool, so they get a larger limit than avatars.</summary>
+    public int MaxCompanyLogoFileSizeMb { get; set; } = 10;
 
-    public int MaxAvatarHeight { get; set; } = 4096;
+    public long MaxCompanyLogoFileSizeBytes => (long)MaxCompanyLogoFileSizeMb * 1024 * 1024;
 
-    public long MaxAvatarPixels { get; set; } = 16_000_000;
+    // Large enough for a 24 MP phone photo (6000 x 4000); the output is resized to AvatarOutputSize.
+    public int MaxAvatarWidth { get; set; } = 8192;
+
+    public int MaxAvatarHeight { get; set; } = 8192;
+
+    public long MaxAvatarPixels { get; set; } = 25_000_000;
 
     public int AvatarOutputSize { get; set; } = 1024;
 

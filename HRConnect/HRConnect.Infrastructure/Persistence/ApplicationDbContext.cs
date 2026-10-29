@@ -508,7 +508,8 @@ public partial class ApplicationDbContext : DbContext
             entity.HasKey(e => e.StorageCleanupJobId).HasName("storage_cleanup_job_pkey");
             entity.ToTable("storage_cleanup_job", "public", table =>
             {
-                table.HasCheckConstraint("ck_storage_cleanup_job_avatar_namespace", "object_key LIKE 'avatars/%'");
+                // Cleanup jobs delete replaced user avatars and replaced company logos.
+                table.HasCheckConstraint("ck_storage_cleanup_job_object_namespace", "object_key LIKE 'avatars/%' OR object_key LIKE 'company-logos/%'");
                 table.HasCheckConstraint("ck_storage_cleanup_job_status", "status IN ('PENDING','PROCESSING','COMPLETED','FAILED','DEAD')");
             });
             entity.HasIndex(e => new { e.Status, e.NextAttemptAt }, "idx_storage_cleanup_job_due");

@@ -213,6 +213,8 @@ public static class DependencyInjection
 
         if (int.TryParse(configuration["MAX_AVATAR_FILE_SIZE_MB"], out var maxAvatarMb) && maxAvatarMb > 0)
             r2Settings.MaxAvatarFileSizeMb = maxAvatarMb;
+        if (int.TryParse(configuration["MAX_COMPANY_LOGO_FILE_SIZE_MB"], out var maxLogoMb) && maxLogoMb > 0)
+            r2Settings.MaxCompanyLogoFileSizeMb = maxLogoMb;
         if (int.TryParse(configuration["MAX_AVATAR_WIDTH"], out var maxAvatarWidth) && maxAvatarWidth > 0)
             r2Settings.MaxAvatarWidth = maxAvatarWidth;
         if (int.TryParse(configuration["MAX_AVATAR_HEIGHT"], out var maxAvatarHeight) && maxAvatarHeight > 0)
