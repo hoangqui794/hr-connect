@@ -3934,7 +3934,7 @@ namespace HRConnect.Infrastructure.Migrations
                         {
                             t.HasComment("In-app notification store. JOB_FIT notifications may reference a Job through related_entity_type/related_entity_id.");
 
-                            t.HasCheckConstraint("ck_notification_type", "notification_type IN ('ACCOUNT','COMPANY','JOB','SUBMISSION','SUBMISSION_CONSENT_RESULT','JOB_FIT','APPLICATION_STATUS','INTERVIEW','OFFER','AFFILIATE','COMMISSION','PAYOUT','SYSTEM')");
+                            t.HasCheckConstraint("ck_notification_type", "notification_type IN ('ACCOUNT','COMPANY','JOB','SUBMISSION','SUBMISSION_CONSENT_RESULT','JOB_FIT','APPLICATION_STATUS','INTERVIEW','OFFER','AFFILIATE','COMMISSION','PAYOUT','SYSTEM','SERVICE_FEE','WARRANTY','SOURCING')");
                         });
                 });
 
