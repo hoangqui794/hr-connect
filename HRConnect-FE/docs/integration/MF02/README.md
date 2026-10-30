@@ -20,6 +20,7 @@ Tài liệu trong thư mục này chỉ mô tả các trang và luồng thuộc 
 | [11-CANDIDATE-APPLICATION-STATUS.md](./11-CANDIDATE-APPLICATION-STATUS.md) | Trạng thái Application công khai cho Candidate |
 | [12-SUBMISSION-CONSENT-FLOW.md](./12-SUBMISSION-CONSENT-FLOW.md) | Luồng giao diện consent đầy đủ cho Candidate có và chưa có tài khoản |
 | [13-CANDIDATE-DUPLICATE-CASES.md](./13-CANDIDATE-DUPLICATE-CASES.md) | Candidate/Admin xử lý hồ sơ nghi trùng và khiếu nại quyền giới thiệu |
+| [14-FRONTEND-USER-GUIDE.md](./14-FRONTEND-USER-GUIDE.md) | Hướng dẫn sử dụng toàn bộ luồng MF02 trên FE cho Candidate, Affiliate và Admin |
 
 ## Luồng chính
 
