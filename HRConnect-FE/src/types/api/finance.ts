@@ -30,6 +30,23 @@ export type ServiceFeeKind = 'PLACEMENT' | 'DEPOSIT' | 'SETTLEMENT' | 'CREDIT';
 export type CommissionStatus = 'PENDING' | 'IN_WARRANTY' | 'ON_HOLD' | 'EARNED' | 'PAYABLE' | 'PAID' | 'CANCELLED';
 export type PayoutStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
+/** What a Client pays online: a service fee (HH / SS) by its id, or a CV_APPLICATION posting fee by its job id. */
+export type OnlinePaymentTargetType = 'SERVICE_FEE' | 'POSTING_FEE';
+
+export type OnlinePaymentStatus = 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED' | 'NEEDS_REVIEW';
+
+export interface OnlinePaymentResult {
+  onlinePaymentId: string;
+  targetType: OnlinePaymentTargetType;
+  targetId: string;
+  amount: number;
+  currencyCode: string;
+  status: OnlinePaymentStatus;
+  providerTransactionNo: string | null;
+  responseCode: string | null;
+  paidAt: string | null;
+}
+
 export interface ServiceFee {
   serviceFeeId: string;
   /** Null for CV_SOURCING fees. */
@@ -47,6 +64,9 @@ export interface ServiceFee {
   dueDate: string;
   status: ServiceFeeStatus;
   reconciliationStatus?: 'PENDING' | 'CONFIRMED' | 'FLAGGED' | null;
+  /** CV_SOURCING job terms, so a deposit / settlement can be explained as CVs × price per CV. */
+  sourcingTarget?: number | null;
+  sourcingPricePerCv?: number | null;
   paidAt?: string | null;
   paymentReference?: string | null;
   createdAt: string;

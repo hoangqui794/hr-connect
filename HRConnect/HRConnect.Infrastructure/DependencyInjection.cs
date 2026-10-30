@@ -120,6 +120,7 @@ public static class DependencyInjection
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IEmailOutboxRepository, EmailOutboxRepository>();
         services.AddScoped<IStorageCleanupJobRepository, StorageCleanupJobRepository>();
+        services.AddScoped<IOnlinePaymentRepository, OnlinePaymentRepository>();
         services.AddScoped<IServiceTypeRepository, ServiceTypeRepository>();
         services.AddScoped<ICommissionMilestoneRepository, CommissionMilestoneRepository>();
         services.AddScoped<ICommissionRuleRepository, CommissionRuleRepository>();
@@ -189,6 +190,18 @@ public static class DependencyInjection
         services.AddHostedService<HRConnect.Infrastructure.Services.Finance.AffiliateCommissionHoldWorker>();
         services.AddHostedService<HRConnect.Infrastructure.Services.Recruitment.SourcingAutoAcceptWorker>();
         services.AddHostedService<HRConnect.Infrastructure.Services.Affiliates.AffiliatePerformanceWorker>();
+
+        // VNPay online payment for Client fees (off until the merchant code and secret are set).
+        var vnPaySettings = new HRConnect.Infrastructure.Services.Payments.VnPaySettings();
+        configuration.GetSection(HRConnect.Infrastructure.Services.Payments.VnPaySettings.SectionName).Bind(vnPaySettings);
+        vnPaySettings.TmnCode = configuration["VNPAY_TMN_CODE"] ?? vnPaySettings.TmnCode;
+        vnPaySettings.HashSecret = configuration["VNPAY_HASH_SECRET"] ?? vnPaySettings.HashSecret;
+        vnPaySettings.PaymentUrl = configuration["VNPAY_PAYMENT_URL"] ?? vnPaySettings.PaymentUrl;
+        vnPaySettings.ReturnUrl = configuration["VNPAY_RETURN_URL"] ?? vnPaySettings.ReturnUrl;
+        if (int.TryParse(configuration["VNPAY_EXPIRE_MINUTES"], out var vnPayExpire) && vnPayExpire is >= 5 and <= 60)
+            vnPaySettings.ExpireMinutes = vnPayExpire;
+        services.AddSingleton(Microsoft.Extensions.Options.Options.Create(vnPaySettings));
+        services.AddSingleton<IVnPayGateway, HRConnect.Infrastructure.Services.Payments.VnPayGateway>();
 
         // 5. Cloudflare R2 Object Storage & CV Storage
         var r2Settings = new R2Settings();

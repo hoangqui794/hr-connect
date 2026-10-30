@@ -303,6 +303,7 @@ export const router = createBrowserRouter([
       // MF-05 warranty has no backend API yet: explicit empty state, no mock numbers.
       { path: 'warranty', element: <AppRoutes.ClientWarrantyPlaceholder /> },
       { path: 'billing', element: <AppRoutes.ClientBillingPage /> },
+      { path: 'billing/vnpay-return', element: <AppRoutes.ClientVnPayReturnPage /> },
       { path: 'placements/:placementId', element: <AppRoutes.PlacementDetailPage /> },
     ],
   },

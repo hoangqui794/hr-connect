@@ -14,7 +14,7 @@ public sealed record ServiceFeeDto(
     Guid ServiceFeeId, Guid? PlacementId, Guid CompanyId, string? CompanyName, string? JobTitle, string? CandidateName,
     decimal BaseSalary, decimal FeeMultiplier, decimal Amount, string CurrencyCode, DateOnly DueDate, string Status,
     DateTime? PaidAt, string? PaymentReference, DateTime CreatedAt, string Kind = "PLACEMENT", Guid? JobId = null,
-    string? ReconciliationStatus = null);
+    string? ReconciliationStatus = null, int? SourcingTarget = null, decimal? SourcingPricePerCv = null);
 
 /// <summary>PlacementId is set for HEADHUNT_COD; SourcingDeliveryId for CV_SOURCING (one per accepted CV).</summary>
 public sealed record CommissionDto(
@@ -82,7 +82,9 @@ public sealed class FinanceQueryHandlers :
             fee.BaseSalary, fee.FeeMultiplier, fee.Amount, fee.CurrencyCode, fee.DueDate, fee.Status,
             fee.PaidAt, fee.PaymentReference, fee.CreatedAt, fee.Kind,
             fee.JobId ?? fee.Placement?.Application?.JobId,
-            fee.Placement?.Reconciliation?.Status)).ToList(), total, page, pageSize);
+            fee.Placement?.Reconciliation?.Status,
+            // CV_SOURCING: lets the Client see how a deposit or settlement was worked out (CVs × price per CV).
+            fee.Job?.SourcingTarget, fee.Job?.SourcingPricePerCv)).ToList(), total, page, pageSize);
     }
 
     public async Task<PagedResult<CommissionDto>> Handle(GetCommissionsQuery request, CancellationToken cancellationToken)

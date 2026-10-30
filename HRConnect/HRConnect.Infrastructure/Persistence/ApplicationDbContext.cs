@@ -134,6 +134,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<StorageCleanupJob> StorageCleanupJobs { get; set; }
 
+    public virtual DbSet<OnlinePayment> OnlinePayments { get; set; }
+
     public virtual DbSet<Skill> Skills { get; set; }
 
     public virtual DbSet<Submission> Submissions { get; set; }
@@ -532,6 +534,36 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("storage_cleanup_job_user_id_fkey");
+        });
+
+        modelBuilder.Entity<OnlinePayment>(entity =>
+        {
+            entity.HasKey(e => e.OnlinePaymentId).HasName("online_payment_pkey");
+            entity.ToTable("online_payment", "public", table =>
+            {
+                table.HasCheckConstraint("ck_online_payment_status", "status IN ('PENDING','PROCESSING','SUCCEEDED','FAILED','NEEDS_REVIEW')");
+                table.HasCheckConstraint("ck_online_payment_target_type", "target_type IN ('SERVICE_FEE','POSTING_FEE')");
+                table.HasCheckConstraint("ck_online_payment_amount", "amount > 0");
+            });
+            entity.HasIndex(e => e.TxnRef, "uq_online_payment_txn_ref").IsUnique();
+            entity.HasIndex(e => new { e.TargetType, e.TargetId }, "idx_online_payment_target");
+            entity.Property(e => e.OnlinePaymentId).HasColumnName("online_payment_id");
+            entity.Property(e => e.Provider).HasMaxLength(20).HasColumnName("provider");
+            entity.Property(e => e.TargetType).HasMaxLength(20).HasColumnName("target_type");
+            entity.Property(e => e.TargetId).HasColumnName("target_id");
+            entity.Property(e => e.CompanyId).HasColumnName("company_id");
+            entity.Property(e => e.Amount).HasPrecision(18, 2).HasColumnName("amount");
+            entity.Property(e => e.CurrencyCode).HasMaxLength(3).HasDefaultValue("VND").HasColumnName("currency_code");
+            entity.Property(e => e.TxnRef).HasMaxLength(100).HasColumnName("txn_ref");
+            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("PENDING").HasColumnName("status");
+            entity.Property(e => e.ProviderTransactionNo).HasMaxLength(100).HasColumnName("provider_transaction_no");
+            entity.Property(e => e.BankCode).HasMaxLength(50).HasColumnName("bank_code");
+            entity.Property(e => e.ResponseCode).HasMaxLength(10).HasColumnName("response_code");
+            entity.Property(e => e.LastError).HasMaxLength(2000).HasColumnName("last_error");
+            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");
+            entity.Property(e => e.PaidAt).HasColumnName("paid_at");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()").HasColumnName("updated_at");
         });
 
         modelBuilder.Entity<HRConnect.Domain.Entities.Application>(entity =>

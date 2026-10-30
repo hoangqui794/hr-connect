@@ -7,6 +7,8 @@ import type {
   Commission,
   CommissionStatus,
   FinancePage,
+  OnlinePaymentResult,
+  OnlinePaymentTargetType,
   Payout,
   PlacementListItem,
   ReplacementSlotDto,
@@ -48,6 +50,20 @@ export const businessSettingsApi = {
 };
 
 /** MF-05 (HEADHUNT_COD): service fees, commissions, payouts, warranty claims. The API scopes lists by role. */
+/** Client pays a fee through VNPay (sandbox until production credentials are set on the backend). */
+export const vnPayApi = {
+  async enabled(): Promise<boolean> {
+    return (await apiClient.get<ApiEnvelope<{ enabled: boolean }>>('/payments/vnpay/status')).data.data.enabled;
+  },
+  async createPayment(targetType: OnlinePaymentTargetType, targetId: string): Promise<{ onlinePaymentId: string; paymentUrl: string }> {
+    return (await apiClient.post<ApiEnvelope<{ onlinePaymentId: string; paymentUrl: string }>>('/payments/vnpay', { targetType, targetId })).data.data;
+  },
+  /** Forwards VNPay's signed return query; the backend confirms the payment if the IPN has not yet. */
+  async confirmReturn(search: string): Promise<OnlinePaymentResult> {
+    return (await apiClient.get<ApiEnvelope<OnlinePaymentResult>>(`/payments/vnpay/return${search}`)).data.data;
+  },
+};
+
 export const financeApi = {
   /** kind: PLACEMENT (HEADHUNT_COD), DEPOSIT, SETTLEMENT or CREDIT (CV_SOURCING); omit for every kind. */
   async serviceFees(params: {
