@@ -31,7 +31,8 @@ public sealed class BusinessSettingsService : IAdminBusinessSettings
 
 public sealed record BusinessSettingDto(
     string Key, string Group, string Label, string Description, string Type, decimal Value, decimal DefaultValue,
-    decimal Min, decimal Max, string Unit, string Source, bool IsOverridden, Guid? UpdatedBy, DateTime? UpdatedAt);
+    decimal Min, decimal Max, string Unit, string Source, bool IsOverridden, Guid? UpdatedBy, DateTime? UpdatedAt,
+    string? UpdatedByName = null);
 
 public sealed record GetBusinessSettingsQuery : IRequest<IReadOnlyList<BusinessSettingDto>>;
 
@@ -44,18 +45,33 @@ public sealed class BusinessSettingHandlers :
     private readonly ISystemSettingRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _auditLogService;
+    private readonly IUserRepository? _users;
 
-    public BusinessSettingHandlers(ISystemSettingRepository repository, IUnitOfWork unitOfWork, IAuditLogService auditLogService)
+    public BusinessSettingHandlers(
+        ISystemSettingRepository repository, IUnitOfWork unitOfWork, IAuditLogService auditLogService, IUserRepository? users = null)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _auditLogService = auditLogService;
+        _users = users;
     }
 
     public async Task<IReadOnlyList<BusinessSettingDto>> Handle(GetBusinessSettingsQuery request, CancellationToken cancellationToken)
     {
         var rows = (await _repository.GetAllAsync(cancellationToken)).ToDictionary(r => r.SettingKey);
-        return BusinessSettingKeys.All.Select(d => ToDto(d, rows.GetValueOrDefault(d.Key))).ToList();
+        // Admin › Cài đặt shows who last changed each number, not just a user id.
+        var names = new Dictionary<Guid, string>();
+        if (_users != null)
+        {
+            foreach (var userId in rows.Values.Select(r => r.UpdatedBy).OfType<Guid>().Distinct())
+            {
+                var user = await _users.GetByIdAsync(userId, cancellationToken);
+                if (user != null) names[userId] = user.Email;
+            }
+        }
+        return BusinessSettingKeys.All
+            .Select(d => ToDto(d, rows.GetValueOrDefault(d.Key), names))
+            .ToList();
     }
 
     public async Task<BusinessSettingDto> Handle(UpdateBusinessSettingCommand request, CancellationToken cancellationToken)
@@ -131,12 +147,13 @@ public sealed class BusinessSettingHandlers :
         return ToDto(definition, row);
     }
 
-    private static BusinessSettingDto ToDto(BusinessSettingDefinition d, SystemSetting? row)
+    private static BusinessSettingDto ToDto(BusinessSettingDefinition d, SystemSetting? row, IReadOnlyDictionary<Guid, string>? names = null)
     {
         var overridden = row != null && BusinessSettingKeys.TryParse(d, row.Value, out _);
         var value = overridden && BusinessSettingKeys.TryParse(d, row!.Value, out var parsed) ? parsed : d.DefaultValue;
         return new BusinessSettingDto(
             d.Key, d.Group, d.Label, d.Description, d.Type.ToString().ToUpperInvariant(), value, d.DefaultValue,
-            d.Min, d.Max, d.Unit, d.Source, overridden, row?.UpdatedBy, row?.UpdatedAt);
+            d.Min, d.Max, d.Unit, d.Source, overridden, row?.UpdatedBy, row?.UpdatedAt,
+            row?.UpdatedBy is Guid by && names != null && names.TryGetValue(by, out var name) ? name : null);
     }
 }

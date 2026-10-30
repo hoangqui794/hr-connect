@@ -22,6 +22,8 @@ export interface BusinessSetting {
   isOverridden: boolean;
   updatedBy?: string | null;
   updatedAt?: string | null;
+  /** Email of the admin who last changed it. */
+  updatedByName?: string | null;
 }
 
 export type ServiceFeeStatus = 'PENDING' | 'DUE' | 'PAID' | 'OVERDUE' | 'CANCELLED';
@@ -119,6 +121,9 @@ export interface Payout {
   status: PayoutStatus;
   attemptNo: number;
   createdAt: string;
+  affiliateName?: string | null;
+  candidateName?: string | null;
+  jobTitle?: string | null;
 }
 
 export type WarrantyStatus = 'ACTIVE' | 'CLAIMED' | 'PASSED' | 'VOIDED';
