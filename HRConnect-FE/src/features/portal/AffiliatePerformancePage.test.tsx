@@ -16,7 +16,7 @@ vi.mock('@/services/api/mf02/affiliateApi', () => ({
 const mockPerformance = {
   affiliateId: 'aff-01',
   displayName: 'Hoàng Minh',
-  affiliateType: 'INDIVIDUAL',
+  affiliateType: 'STANDARD',
   status: 'ACTIVE',
   periodStart: '2026-10-01',
   periodEnd: '2026-10-31',

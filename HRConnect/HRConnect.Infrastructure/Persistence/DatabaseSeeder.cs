@@ -23,7 +23,7 @@ public static class DatabaseSeeder
         var defaultRoles = new (string Code, string Name, string Description)[]
         {
             ("CANDIDATE", "Candidate", "Ứng viên tìm việc"),
-            ("AFFILIATE_RECRUITER", "Affiliate", "Đối tác tuyển dụng / Cộng tác viên"),
+            ("AFFILIATE", "Affiliate", "Cộng tác viên giới thiệu ứng viên"),
             ("CLIENT_COMPANY_USER", "Client Company User", "Người đại diện doanh nghiệp tuyển dụng"),
             ("INTERNAL_HR", "Internal HR", "Nhân sự nội bộ HRConnect"),
             ("PLATFORM_ADMIN", "Platform Admin", "Quản trị viên toàn hệ thống")
@@ -86,7 +86,7 @@ public static class DatabaseSeeder
     {
         var requiredRoles = new[]
         {
-            "CANDIDATE", "AFFILIATE_RECRUITER", "CLIENT_COMPANY_USER", "INTERNAL_HR", "PLATFORM_ADMIN"
+            "CANDIDATE", "AFFILIATE", "CLIENT_COMPANY_USER", "INTERNAL_HR", "PLATFORM_ADMIN"
         };
         var availableRoles = await context.Roles
             .Where(x => requiredRoles.Contains(x.Code) && x.IsSystem && x.IsActive)
@@ -153,7 +153,7 @@ public static class DatabaseSeeder
         ('interview.view_own', 'interview', 'view_own', 'View own interview schedule'),
         ('offer.view_own', 'offer', 'view_own', 'View own offers'),
         ('offer.respond', 'offer', 'respond', 'Accept or decline own offer'),
-        ('affiliate.apply', 'affiliate_application', 'create', 'Apply to become an affiliate recruiter'),
+        ('affiliate.apply', 'affiliate_application', 'create', 'Apply to become an affiliate'),
         ('affiliate.profile.view_own', 'affiliate_profile', 'view_own', 'View own affiliate profile'),
         ('affiliate.profile.update_own', 'affiliate_profile', 'update_own', 'Update own affiliate profile'),
         ('submission.create', 'submission', 'create', 'Submit a candidate and CV for a job'),
@@ -245,7 +245,7 @@ public static class DatabaseSeeder
         'attribution.view_own', 'dispute.create', 'dispute.view_own',
         'commission.view_own', 'payout.view_own', 'affiliate.performance.view_own'
     )
-    WHERE r.code = 'AFFILIATE_RECRUITER'
+    WHERE r.code = 'AFFILIATE'
     ON CONFLICT (role_id, permission_id) DO NOTHING;
 
     INSERT INTO public.role_permission (role_id, permission_id)

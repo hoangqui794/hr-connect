@@ -57,7 +57,7 @@ public sealed class JobAccessPolicyTests
 
     [Theory]
     [InlineData(JobStatuses.Active, JobAccessPolicy.AffiliateRole, true)]
-    [InlineData(JobStatuses.Active, "affiliate_recruiter", true)]
+    [InlineData(JobStatuses.Active, "affiliate", true)]
     [InlineData(JobStatuses.Active, "HEADHUNTER", false)]
     [InlineData(JobStatuses.Paused, JobAccessPolicy.AffiliateRole, false)]
     [InlineData(JobStatuses.Active, JobAccessPolicy.CandidateRole, false)]

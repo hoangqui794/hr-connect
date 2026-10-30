@@ -608,7 +608,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                     UserId = candidate.UserId.Value,
                     NotificationType = "SUBMISSION",
                     Title = "Yêu cầu xác nhận hồ sơ ứng tuyển",
-                    Message = $"Một cộng tác viên tuyển dụng (Affiliate) đã giới thiệu bạn vào vị trí {job.Title}. Vui lòng kiểm tra và xác nhận.",
+                    Message = $"Một Cộng tác viên (Affiliate) đã giới thiệu bạn vào vị trí {job.Title}. Vui lòng kiểm tra và xác nhận.",
                     RelatedEntityType = "SUBMISSION",
                     RelatedEntityId = submission.SubmissionId,
                     Metadata = JsonSerializer.Serialize(new { job.JobId, consent.ConsentId, expiresAt }),

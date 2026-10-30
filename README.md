@@ -5,7 +5,7 @@
 
 **AI-Powered Recruitment & Affiliate Headhunting Platform**
 
-HR Connect là nền tảng tuyển dụng hiện đại dành cho Agency, kết nối Doanh nghiệp đối tác (Client Company), Ứng viên (Candidate) và Mạng lưới Cộng tác viên tuyển dụng (Affiliate Recruiter / OPR Hub). Hệ thống hỗ trợ đánh giá và khớp nối CV tự động bằng AI, truy vết nguồn giới thiệu (Attribution tracking), và tự động hóa chính sách hoa hồng (Commission & Payout).
+HR Connect là nền tảng tuyển dụng hiện đại dành cho Agency, kết nối Doanh nghiệp đối tác (Client Company), Ứng viên (Candidate) và Mạng lưới Cộng tác viên (Affiliate / OPR Hub). Hệ thống hỗ trợ đánh giá và khớp nối CV tự động bằng AI, truy vết nguồn giới thiệu (Attribution tracking), và tự động hóa chính sách hoa hồng (Commission & Payout).
 
 > **Dự án Capstone — SEP490, Đại học FPT**  
 > **Trạng thái:** Đang phát triển (In Active Development)  
@@ -70,7 +70,7 @@ Hệ thống quản lý 5 nhóm vai trò (`Role`) chuẩn hóa:
 | `PLATFORM_ADMIN` | **Quản trị viên nền tảng** | Toàn quyền kiểm soát tài khoản, phê duyệt hồ sơ Doanh nghiệp/Affiliate, cấu hình hệ thống và giám sát giao dịch. |
 | `INTERNAL_HR` | **Chuyên viên tuyển dụng Agency** | Tiền sàng lọc hồ sơ `HEADHUNT_COD` và `CV_SOURCING` bằng dữ liệu AI; không điều phối Interview, Offer hoặc Placement. |
 | `CLIENT_COMPANY_USER` | **Khách hàng Doanh nghiệp** | Sàng lọc `CV_APPLICATION`; từ `SHORTLISTED` trở đi thực hiện phỏng vấn, Offer và xác nhận đi làm cho mọi Service Type. |
-| `AFFILIATE_RECRUITER` | **Cộng tác viên tuyển dụng** | Giới thiệu ứng viên, theo dõi trạng thái tuyển dụng tổng quát của referral do mình giới thiệu và nhận hoa hồng theo điều kiện áp dụng. Không xem lịch phỏng vấn, feedback, offer hoặc dữ liệu nội bộ. |
+| `AFFILIATE` | **Cộng tác viên** | Giới thiệu ứng viên, theo dõi trạng thái tuyển dụng tổng quát của lượt giới thiệu và nhận hoa hồng theo điều kiện áp dụng. Không xem lịch phỏng vấn, phản hồi, thư mời nhận việc hoặc dữ liệu nội bộ. |
 | `CANDIDATE` | **Ứng viên** | Quản lý hồ sơ cá nhân, CV, tìm kiếm và nộp đơn ứng tuyển các Job công khai, theo dõi tiến độ ứng tuyển. |
 
 ---
@@ -186,7 +186,7 @@ await DatabaseSeeder.SeedAsync(dbContext);
    - Tự động tạo bảng lịch sử `__EFMigrationsHistory` nằm trong schema `public`.
    - Tự động áp dụng toàn bộ các bản Migration để sinh ra hơn **40+ bảng** với đầy đủ khóa chính UUID, khóa ngoại, quan hệ ràng buộc và index.
 2. **`await DatabaseSeeder.SeedAsync(dbContext)`**:
-   - **Seed Roles**: Tự động kiểm tra và nạp **5 vai trò hệ thống** (`CANDIDATE`, `AFFILIATE_RECRUITER`, `CLIENT_COMPANY_USER`, `INTERNAL_HR`, `PLATFORM_ADMIN`).
+   - **Seed Roles**: Tự động kiểm tra và nạp **5 vai trò hệ thống** (`CANDIDATE`, `AFFILIATE`, `CLIENT_COMPANY_USER`, `INTERNAL_HR`, `PLATFORM_ADMIN`).
    - **Seed Permissions**: Tự động kiểm tra và nạp **72+ quyền hạn** chia theo 11 phân hệ chức năng từ file chuẩn `HRConnect/Permission.md`.
    - **Seed Role-Permissions**: Tự động gán toàn bộ ma trận quyền hạn cho từng vai trò tương ứng.
    - Cơ chế hoạt động là **Idempotent (an toàn)**: Nếu bảng đã có dữ liệu rồi, seeder sẽ tự động bỏ qua, không gây lỗi trùng lặp.
@@ -296,7 +296,7 @@ public static IServiceCollection AddInfrastructureServices(this IServiceCollecti
    - Đăng ký `IUnitOfWork -> UnitOfWork` để quản lý giao dịch dữ liệu tập trung.
    - *(Bắt buộc dùng `Scoped` để mỗi HTTP Request có một phiên làm việc riêng biệt cùng chia sẻ chung một instance `ApplicationDbContext`).*
 6. **Đăng ký Dịch vụ Nghiệp vụ Quản trị (`Scoped` Lifetime)**:
-   - `IAdminApprovalService -> AdminApprovalService`: Điều phối nghiệp vụ phê duyệt/từ chối đơn đăng ký của Affiliate Recruiter và Client Company, cấp quyền hoạt động và gửi email thông báo.
+   - `IAdminApprovalService -> AdminApprovalService`: Điều phối nghiệp vụ phê duyệt/từ chối đơn đăng ký của Affiliate và Client Company, cấp quyền hoạt động và gửi email thông báo.
 
 > [!TIP]
 > **HƯỚNG DẪN CHO DEV & AI:**  
@@ -429,7 +429,7 @@ Hệ thống đã triển khai hoàn chỉnh module xác thực tài khoản đa
 | Phương thức | Đường dẫn Endpoint | Mô tả | Yêu cầu xác thực |
 |:---:|---|---|:---:|
 | `POST` | `/api/auth/register/candidate` | Đăng ký tài khoản Ứng viên (tự động link với CV nếu email đã có sẵn) | Public |
-| `POST` | `/api/auth/register/affiliate` | Đăng ký tài khoản Cộng tác viên Affiliate Recruiter | Public |
+| `POST` | `/api/auth/register/affiliate` | Đăng ký tài khoản Cộng tác viên (Affiliate) | Public |
 | `POST` | `/api/auth/register/client` | Đăng ký tài khoản Khách hàng Doanh nghiệp kèm thông tin công ty | Public |
 | `POST` | `/api/auth/verify-otp` | Xác thực mã OTP 6 số gửi qua email để hoàn tất bước xác minh | Public |
 | `POST` | `/api/auth/login` | Đăng nhập bằng Email/Password, cấp JWT Token + Refresh Token + Permissions | Public |
@@ -440,7 +440,7 @@ Hệ thống đã triển khai hoàn chỉnh module xác thực tài khoản đa
 1. **Đối với Candidate**:
    - `POST /register/candidate` ➔ Hệ thống tạo User trạng thái `PENDING`, gửi OTP 6 số qua email.
    - `POST /verify-otp` ➔ Xác thực thành công: Gán Role `CANDIDATE`, trạng thái chuyển sang `ACTIVE`, người dùng có thể đăng nhập ngay.
-2. **Đối với Affiliate Recruiter & Client Company User**:
+2. **Đối với Affiliate & Client Company User**:
    - `POST /register/affiliate` hoặc `/register/client` ➔ Tạo User và Đơn đăng ký (`PENDING`).
    - `POST /verify-otp` ➔ Xác thực OTP thành công: Email đã được xác minh (`email_verified = true`), đơn chuyển sang `UNDER_REVIEW`, gửi email thông báo Chờ Admin phê duyệt. Lúc này **chưa cấp quyền Role hoạt động**.
    - **Cơ chế chặn đăng nhập an toàn**: Khi gọi `POST /login`, hệ thống kiểm tra nếu tài khoản đang ở trạng thái `PENDING` hoặc đơn bị `REJECTED` ➔ Lập tức chặn bằng mã **HTTP 403 Forbidden** kèm thông báo rõ ràng: *"Tài khoản của bạn đang chờ Quản trị viên xét duyệt"* hoặc *"Đơn đăng ký của bạn đã bị từ chối"*. Chỉ khi Platform Admin phê duyệt đơn (`AdminApprovalService.ApproveAffiliateAsync`), tài khoản mới được chuyển sang `ACTIVE` và cấp Role hoạt động.

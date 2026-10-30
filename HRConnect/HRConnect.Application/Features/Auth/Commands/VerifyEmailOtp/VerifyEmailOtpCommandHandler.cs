@@ -167,7 +167,7 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
         {
             // QUY TẮC QUAN TRỌNG:
             // 1. Giữ user.Status = "PENDING"
-            // 2. KHÔNG gán vai trò AFFILIATE_RECRUITER
+            // 2. KHÔNG gán vai trò AFFILIATE
             // 3. affiliate_application.status = "UNDER_REVIEW"
             user.Status = "PENDING";
             affiliateApp.Status = "UNDER_REVIEW";

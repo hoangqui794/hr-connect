@@ -484,11 +484,11 @@ public static class CandidateTestJobSeeder
         CancellationToken cancellationToken)
     {
         var candidateRole = await context.Roles.FirstOrDefaultAsync(r => r.Code == "CANDIDATE", cancellationToken);
-        var affiliateRole = await context.Roles.FirstOrDefaultAsync(r => r.Code == "AFFILIATE_RECRUITER", cancellationToken);
+        var affiliateRole = await context.Roles.FirstOrDefaultAsync(r => r.Code == "AFFILIATE", cancellationToken);
 
         if (candidateRole == null || affiliateRole == null)
         {
-            logger?.LogWarning("Roles CANDIDATE hoặc AFFILIATE_RECRUITER chưa được nạp trong cơ sở dữ liệu.");
+            logger?.LogWarning("Roles CANDIDATE hoặc AFFILIATE chưa được nạp trong cơ sở dữ liệu.");
             return;
         }
 
@@ -508,7 +508,7 @@ public static class CandidateTestJobSeeder
             }
         }
 
-        // 2. Kiểm tra HEADHUNT_COD -> AFFILIATE_RECRUITER
+        // 2. Kiểm tra HEADHUNT_COD -> AFFILIATE
         if (serviceTypes.TryGetValue("HEADHUNT_COD", out var headhuntSt))
         {
             var mapping = await context.ServiceTypeAllowedRoles
@@ -516,15 +516,15 @@ public static class CandidateTestJobSeeder
 
             if (mapping == null || !mapping.CanView || !mapping.CanSubmit)
             {
-                logger?.LogWarning("ServiceTypeAllowedRole cho HEADHUNT_COD và Role AFFILIATE_RECRUITER chưa đủ quyền can_view=true, can_submit=true.");
+                logger?.LogWarning("ServiceTypeAllowedRole cho HEADHUNT_COD và Role AFFILIATE chưa đủ quyền can_view=true, can_submit=true.");
             }
             else
             {
-                logger?.LogInformation("Đã xác thực quyền HEADHUNT_COD: AFFILIATE_RECRUITER can_view=true, can_submit=true.");
+                logger?.LogInformation("Đã xác thực quyền HEADHUNT_COD: AFFILIATE can_view=true, can_submit=true.");
             }
         }
 
-        // 3. Kiểm tra CV_SOURCING -> CANDIDATE và AFFILIATE_RECRUITER
+        // 3. Kiểm tra CV_SOURCING -> CANDIDATE và AFFILIATE
         if (serviceTypes.TryGetValue("CV_SOURCING", out var sourcingSt))
         {
             var candMapping = await context.ServiceTypeAllowedRoles
@@ -543,11 +543,11 @@ public static class CandidateTestJobSeeder
 
             if (affMapping == null || !affMapping.CanView || !affMapping.CanSubmit)
             {
-                logger?.LogWarning("ServiceTypeAllowedRole cho CV_SOURCING và Role AFFILIATE_RECRUITER chưa đủ quyền can_view=true, can_submit=true.");
+                logger?.LogWarning("ServiceTypeAllowedRole cho CV_SOURCING và Role AFFILIATE chưa đủ quyền can_view=true, can_submit=true.");
             }
             else
             {
-                logger?.LogInformation("Đã xác thực quyền CV_SOURCING: AFFILIATE_RECRUITER can_view=true, can_submit=true.");
+                logger?.LogInformation("Đã xác thực quyền CV_SOURCING: AFFILIATE can_view=true, can_submit=true.");
             }
         }
     }

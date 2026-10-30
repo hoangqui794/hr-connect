@@ -118,10 +118,10 @@ VALUES
     ('affiliate.apply',
      'affiliate_application',
      'create',
-     'Apply to become an affiliate recruiter'),
+     'Apply to become an affiliate'),
 
     -- ========================================================
-    -- AFFILIATE RECRUITER
+    -- AFFILIATE
     -- ========================================================
     ('affiliate.profile.view_own',
      'affiliate_profile',
@@ -509,7 +509,7 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 
 -- ============================================================
--- 3. AFFILIATE RECRUITER ROLE PERMISSIONS
+-- 3. AFFILIATE ROLE PERMISSIONS
 -- ============================================================
 
 INSERT INTO public.role_permission (role_id, permission_id)
@@ -539,7 +539,7 @@ JOIN public.permission p
 
         'affiliate.performance.view_own'
     )
-WHERE r.code = 'AFFILIATE_RECRUITER'
+WHERE r.code = 'AFFILIATE'
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 

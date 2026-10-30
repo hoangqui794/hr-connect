@@ -154,7 +154,7 @@ public static class HrConnectEmailTemplates
             Render(
                 title,
                 Greeting(candidateName) +
-                $"<p style=\"margin:0 0 16px\">Một cộng tác viên tuyển dụng (Affiliate) đã giới thiệu hồ sơ của bạn cho vị trí <strong>{E(jobTitle)}</strong> tại <strong>{E(companyName)}</strong>.</p>" +
+                $"<p style=\"margin:0 0 16px\">Một Cộng tác viên (Affiliate) đã giới thiệu hồ sơ của bạn cho vị trí <strong>{E(jobTitle)}</strong> tại <strong>{E(companyName)}</strong>.</p>" +
                 $"<p style=\"margin:0 0 22px\">{instruction} CV không được đính kèm trong email để bảo vệ thông tin cá nhân của bạn.</p>" +
                 Button("Xem và xác nhận hồ sơ", confirmationUrl) +
                 $"<p style=\"margin:20px 0 0;font-size:13px;color:#64748b\">Yêu cầu hết hạn lúc <strong>{localExpiry:HH:mm 'ngày' dd/MM/yyyy}</strong> (giờ Việt Nam). Nếu bạn không biết yêu cầu này, hãy chọn Từ chối.</p>",

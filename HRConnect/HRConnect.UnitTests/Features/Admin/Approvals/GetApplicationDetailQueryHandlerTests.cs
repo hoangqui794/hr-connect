@@ -37,7 +37,7 @@ public class GetApplicationDetailQueryHandlerTests
             AffiliateApplicationId = appId,
             UserId = user.UserId,
             User = user,
-            AffiliateType = "RECRUITER",
+            AffiliateType = "STANDARD",
             Status = "UNDER_REVIEW",
             SubmittedData = "{}",
             SubmittedAt = DateTime.UtcNow

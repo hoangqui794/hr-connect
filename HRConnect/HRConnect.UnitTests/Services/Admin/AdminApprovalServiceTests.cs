@@ -48,12 +48,12 @@ public class AdminApprovalServiceTests
         };
         var role = new Role
         {
-            RoleId = Guid.NewGuid(), Code = "AFFILIATE_RECRUITER", Name = "Affiliate Recruiter", IsActive = true
+            RoleId = Guid.NewGuid(), Code = "AFFILIATE", Name = "Affiliate", IsActive = true
         };
         var application = new AffiliateApplication
         {
             AffiliateApplicationId = Guid.NewGuid(), UserId = user.UserId,
-            AffiliateType = "RECRUITER", Status = "UNDER_REVIEW", SubmittedData = "{}"
+            AffiliateType = "STANDARD", Status = "UNDER_REVIEW", SubmittedData = "{}"
         };
         await context.AddRangeAsync(user, role, application);
         await context.SaveChangesAsync();
@@ -79,22 +79,22 @@ public class AdminApprovalServiceTests
             UserId = Guid.NewGuid(),
             Email = "affiliate@example.com",
             PasswordHash = "hash",
-            DisplayName = "Affiliate Recruiter",
+            DisplayName = "Affiliate",
             Status = "PENDING",
             EmailVerifiedAt = DateTime.UtcNow
         };
         var role = new Role
         {
             RoleId = Guid.NewGuid(),
-            Code = "AFFILIATE_RECRUITER",
-            Name = "Affiliate Recruiter",
+            Code = "AFFILIATE",
+            Name = "Affiliate",
             IsActive = true
         };
         var application = new AffiliateApplication
         {
             AffiliateApplicationId = Guid.NewGuid(),
             UserId = user.UserId,
-            AffiliateType = "RECRUITER",
+            AffiliateType = "STANDARD",
             Status = "UNDER_REVIEW",
             SubmittedData = "{}"
         };
@@ -150,7 +150,7 @@ public class AdminApprovalServiceTests
         {
             AffiliateApplicationId = Guid.NewGuid(),
             UserId = user.UserId,
-            AffiliateType = "RECRUITER",
+            AffiliateType = "STANDARD",
             Status = "UNDER_REVIEW",
             SubmittedData = "{}"
         };
@@ -304,12 +304,12 @@ public class AdminApprovalServiceTests
         };
         var role = new Role
         {
-            RoleId = Guid.NewGuid(), Code = "AFFILIATE_RECRUITER", Name = "Affiliate Recruiter", IsActive = true
+            RoleId = Guid.NewGuid(), Code = "AFFILIATE", Name = "Affiliate", IsActive = true
         };
         var application = new AffiliateApplication
         {
             AffiliateApplicationId = Guid.NewGuid(), UserId = user.UserId,
-            AffiliateType = "RECRUITER", Status = "UNDER_REVIEW", SubmittedData = "{}"
+            AffiliateType = "STANDARD", Status = "UNDER_REVIEW", SubmittedData = "{}"
         };
         await _context.AddRangeAsync(user, role, application);
         await _context.SaveChangesAsync();
@@ -393,7 +393,7 @@ public class AdminApprovalServiceTests
         {
             AffiliateApplicationId = Guid.NewGuid(),
             UserId = user.UserId,
-            AffiliateType = "RECRUITER",
+            AffiliateType = "STANDARD",
             Status = "APPROVED",
             SubmittedData = "{}"
         };
@@ -459,7 +459,7 @@ public class AdminApprovalServiceTests
         {
             AffiliateApplicationId = Guid.NewGuid(),
             UserId = user.UserId,
-            AffiliateType = "RECRUITER",
+            AffiliateType = "STANDARD",
             Status = "PENDING",
             SubmittedData = "{}"
         };
@@ -528,15 +528,15 @@ public class AdminApprovalServiceTests
         {
             AffiliateApplicationId = Guid.NewGuid(),
             UserId = user.UserId,
-            AffiliateType = "RECRUITER",
+            AffiliateType = "STANDARD",
             Status = "UNDER_REVIEW",
             SubmittedData = "{}"
         };
         var role = new Role
         {
             RoleId = Guid.NewGuid(),
-            Code = "AFFILIATE_RECRUITER",
-            Name = "Affiliate Recruiter",
+            Code = "AFFILIATE",
+            Name = "Affiliate",
             IsActive = false
         };
         await _context.AddRangeAsync(user, application, role);
@@ -603,7 +603,7 @@ public class AdminApprovalServiceTests
         };
         var role = new Role
         {
-            RoleId = Guid.NewGuid(), Code = "AFFILIATE_RECRUITER", Name = "Affiliate Recruiter", IsActive = true
+            RoleId = Guid.NewGuid(), Code = "AFFILIATE", Name = "Affiliate", IsActive = true
         };
         var assignment = new UserRole
         {
@@ -614,7 +614,7 @@ public class AdminApprovalServiceTests
         var application = new AffiliateApplication
         {
             AffiliateApplicationId = Guid.NewGuid(), UserId = user.UserId,
-            AffiliateType = "RECRUITER", Status = "UNDER_REVIEW", SubmittedData = "{}"
+            AffiliateType = "STANDARD", Status = "UNDER_REVIEW", SubmittedData = "{}"
         };
         await _context.AddRangeAsync(user, role, assignment, application);
         await _context.SaveChangesAsync();

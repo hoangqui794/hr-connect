@@ -53,7 +53,7 @@ describe('AffiliateSubmissionDetailPage', () => {
         name: 'Affiliate One',
         email: 'affiliate@example.com',
         role: UserRole.AFFILIATE,
-        roles: ['AFFILIATE_RECRUITER'],
+        roles: ['AFFILIATE'],
         permissions: ['submission.view_own', 'submission.consent.resend_own'],
       },
     });

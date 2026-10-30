@@ -236,11 +236,11 @@ public class CandidateTestJobSeederTests
         await DatabaseSeeder.SeedAsync(context, seedDemoAccounts: true);
 
         var candidateRole = await context.Roles.FirstOrDefaultAsync(r => r.Code == "CANDIDATE");
-        var affiliateRole = await context.Roles.FirstOrDefaultAsync(r => r.Code == "AFFILIATE_RECRUITER");
+        var affiliateRole = await context.Roles.FirstOrDefaultAsync(r => r.Code == "AFFILIATE");
         candidateRole.Should().NotBeNull();
         affiliateRole.Should().NotBeNull();
 
-        // 1. CV_APPLICATION: CANDIDATE can_view=true, can_submit=true; AFFILIATE_RECRUITER can_view=false, can_submit=false
+        // 1. CV_APPLICATION: CANDIDATE can_view=true, can_submit=true; AFFILIATE can_view=false, can_submit=false
         var cvAppSt = await context.ServiceTypes.FirstOrDefaultAsync(st => st.Code == "CV_APPLICATION");
         cvAppSt.Should().NotBeNull();
 
@@ -256,7 +256,7 @@ public class CandidateTestJobSeederTests
         cvAppAff!.CanView.Should().BeFalse();
         cvAppAff.CanSubmit.Should().BeFalse();
 
-        // 2. HEADHUNT_COD: AFFILIATE_RECRUITER can_view=true, can_submit=true; CANDIDATE can_view=false, can_submit=false
+        // 2. HEADHUNT_COD: AFFILIATE can_view=true, can_submit=true; CANDIDATE can_view=false, can_submit=false
         var headhuntSt = await context.ServiceTypes.FirstOrDefaultAsync(st => st.Code == "HEADHUNT_COD");
         headhuntSt.Should().NotBeNull();
 
@@ -272,7 +272,7 @@ public class CandidateTestJobSeederTests
         headhuntCand!.CanView.Should().BeFalse();
         headhuntCand.CanSubmit.Should().BeFalse();
 
-        // 3. CV_SOURCING: Candidate is excluded; Affiliate Recruiter can view and submit.
+        // 3. CV_SOURCING: Candidate is excluded; Affiliate can view and submit.
         var sourcingSt = await context.ServiceTypes.FirstOrDefaultAsync(st => st.Code == "CV_SOURCING");
         sourcingSt.Should().NotBeNull();
 

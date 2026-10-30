@@ -13,7 +13,7 @@ HR Connect có 5 Main Flow:
 
 **Nguyên tắc attribution:** Affiliate được ghi nhận là nguồn của ứng viên cho một job khi lượt giới thiệu của họ là lượt đầu tiên được ứng viên đồng ý. Thời điểm do máy chủ ghi và dùng để giải quyết tranh chấp.
 
-**Tên gọi:** tài liệu dùng **Affiliate** (không dùng "Affiliate Recruiter").
+**Tên gọi:** tài liệu và mã nguồn thống nhất dùng vai trò **Affiliate** (`AFFILIATE`).
 
 **Phân vai chung:** Client Company là bên sở hữu quyết định tuyển dụng (phỏng vấn, offer, nhận việc). Internal HR thuộc đơn vị vận hành nền tảng: duyệt job, sàng lọc với dịch vụ do nền tảng tìm người, và kiểm soát các mốc phát sinh phí. Platform Admin quản trị hệ thống và phần tài chính.
 
@@ -491,7 +491,7 @@ Mọi điều chỉnh số tiền phải lưu số cũ, số mới, lý do và n
 | Thu hẹp quyền của Internal HR ở MF-04 (không lên lịch, không ghi kết quả, không tạo offer) | MF-04 — đã có code |
 | Bước Internal HR đối soát placement và kiểm tra lý do không nhận việc | MF-04 — **đã có code UC-41**: `PENDING → CONFIRMED/FLAGGED`; phí bị giữ đến khi xác nhận; Admin giải quyết ngoại lệ |
 | Ghi kết quả thử việc | MF-05 — **ngoài phạm vi** (chốt 2026-10-17) |
-| Đổi mã vai trò `AFFILIATE_RECRUITER` thành `AFFILIATE` | Toàn hệ thống — **chưa làm** |
+| Chuẩn hóa mã vai trò Affiliate thành `AFFILIATE` | Toàn hệ thống — **đã có code và migration** |
 | Form liên hệ, tạo CV theo mẫu / dựng trên nền tảng, gợi ý việc phù hợp, thông báo realtime | SF-05 → SF-08 — đã có code backend; FE chưa có màn |
 | Bảng ngành, danh bạ công ty, Top Companies, lọc job theo kinh nghiệm | SF-09 — đã có code backend; FE chưa có màn. Lọc job theo lĩnh vực/chuyên môn: theo plan job taxonomy |
 

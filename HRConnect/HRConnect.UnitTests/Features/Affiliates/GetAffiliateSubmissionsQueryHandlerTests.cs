@@ -54,7 +54,7 @@ public class GetAffiliateSubmissionsQueryHandlerTests
         {
             AffiliateId = affiliateId,
             UserId = userId,
-            AffiliateType = "INDIVIDUAL",
+            AffiliateType = "STANDARD",
             DisplayName = "Affiliate One"
         };
 

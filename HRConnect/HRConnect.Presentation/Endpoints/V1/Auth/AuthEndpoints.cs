@@ -130,7 +130,7 @@ public static class AuthEndpoints
         .RequireRateLimiting("auth-registration")
         .WithName("RegisterAffiliate")
         .WithSummary("Đăng ký tài khoản Đối tác tuyển dụng (Affiliate)")
-        .WithDescription("Đăng ký tài khoản đối tác tuyển dụng mới, gửi OTP một lần và giữ trạng thái PENDING chờ xác thực email. Nếu email đang chờ xác thực, trả 409 với code EMAIL_PENDING_VERIFICATION; chỉ API resend mới gửi mã mới. Chưa cấp quyền AFFILIATE_RECRUITER.")
+        .WithDescription("Đăng ký tài khoản đối tác tuyển dụng mới, gửi OTP một lần và giữ trạng thái PENDING chờ xác thực email. Nếu email đang chờ xác thực, trả 409 với code EMAIL_PENDING_VERIFICATION; chỉ API resend mới gửi mã mới. Chưa cấp quyền AFFILIATE.")
         .Produces<RegisterAffiliateResponse>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status409Conflict)

@@ -453,7 +453,7 @@ public static class DemoAccountSeeder
     }
 
     /// <summary>
-    /// 4. Đảm bảo Affiliate tồn tại ở trạng thái APPROVED kèm AffiliateApplication, AffiliateProfile và UserRole AFFILIATE_RECRUITER
+    /// 4. Đảm bảo Affiliate tồn tại ở trạng thái APPROVED kèm AffiliateApplication, AffiliateProfile và UserRole AFFILIATE
     /// </summary>
     private static async Task<AppUser> EnsureAffiliateAsync(
         ApplicationDbContext context,
@@ -505,7 +505,7 @@ public static class DemoAccountSeeder
             {
                 AffiliateApplicationId = Guid.NewGuid(),
                 UserId = user.UserId,
-                AffiliateType = "RECRUITER",
+                AffiliateType = "STANDARD",
                 DisplayName = displayName,
                 Phone = rawPhone,
                 SubmittedData = "{}",
@@ -539,7 +539,7 @@ public static class DemoAccountSeeder
             {
                 AffiliateId = Guid.NewGuid(),
                 UserId = user.UserId,
-                AffiliateType = "RECRUITER",
+                AffiliateType = "STANDARD",
                 DisplayName = displayName,
                 Phone = rawPhone,
                 Status = "ACTIVE",
@@ -561,8 +561,8 @@ public static class DemoAccountSeeder
             await context.SaveChangesAsync(cancellationToken);
         }
 
-        // Đảm bảo gán vai trò AFFILIATE_RECRUITER
-        await EnsureUserRoleAsync(context, user.UserId, "AFFILIATE_RECRUITER", "AFFILIATE_APPROVAL", adminUserId, now, logger, cancellationToken);
+        // Đảm bảo gán vai trò AFFILIATE
+        await EnsureUserRoleAsync(context, user.UserId, "AFFILIATE", "AFFILIATE_APPROVAL", adminUserId, now, logger, cancellationToken);
 
         return user;
     }

@@ -39,7 +39,7 @@ public class JobCommissionEstimateTests
         _finance.Setup(f => f.GetActiveCommissionRuleAsync(job.ServiceTypeId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new CommissionRule { RateType = "PERCENT", RateValue = 20m });
 
-        var result = await Handler().Handle(new GetJobCommissionEstimateQuery(job.JobId, ["AFFILIATE_RECRUITER"]), default);
+        var result = await Handler().Handle(new GetJobCommissionEstimateQuery(job.JobId, ["AFFILIATE"]), default);
 
         result.HasCommission.Should().BeTrue();
         result.EstimatedMin.Should().Be(6_000_000m);   // 20% × 1.5 × 20M
@@ -53,7 +53,7 @@ public class JobCommissionEstimateTests
         var job = SetupJob("CV_SOURCING", j => j.SourcingPricePerCv = 600_000m);
         _settings.Setup(s => s.GetDecimalAsync(BusinessSettingKeys.CvSourcingAffiliateSharePercent, It.IsAny<CancellationToken>())).ReturnsAsync(30m);
 
-        var result = await Handler().Handle(new GetJobCommissionEstimateQuery(job.JobId, ["AFFILIATE_RECRUITER"]), default);
+        var result = await Handler().Handle(new GetJobCommissionEstimateQuery(job.JobId, ["AFFILIATE"]), default);
 
         result.AmountPerCv.Should().Be(180_000m);
     }
@@ -63,7 +63,7 @@ public class JobCommissionEstimateTests
     {
         var job = SetupJob("HEADHUNT_COD", canView: false);
 
-        var act = () => Handler().Handle(new GetJobCommissionEstimateQuery(job.JobId, ["AFFILIATE_RECRUITER"]), default);
+        var act = () => Handler().Handle(new GetJobCommissionEstimateQuery(job.JobId, ["AFFILIATE"]), default);
 
         await act.Should().ThrowAsync<NotFoundException>();
     }

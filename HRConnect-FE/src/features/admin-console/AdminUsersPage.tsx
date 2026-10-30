@@ -20,7 +20,7 @@ const PAGE_SIZE = 20;
 
 export const ROLE_LABEL: Record<RoleCode, string> = {
   CANDIDATE: 'Ứng viên',
-  AFFILIATE_RECRUITER: 'Cộng tác viên',
+  AFFILIATE: 'Cộng tác viên',
   CLIENT_COMPANY_USER: 'Doanh nghiệp',
   INTERNAL_HR: 'Internal HR',
   PLATFORM_ADMIN: 'Quản trị viên',
@@ -37,7 +37,7 @@ const STATUS: Record<string, { label: string; tone: Tone }> = {
 const ROLE_BADGE_STYLES: Partial<Record<RoleCode, string>> = {
   PLATFORM_ADMIN: 'bg-purple-50 text-purple-700 border border-purple-200/80',
   CLIENT_COMPANY_USER: 'bg-blue-50 text-blue-700 border border-blue-200/80',
-  AFFILIATE_RECRUITER: 'bg-amber-50 text-amber-700 border border-amber-200/80',
+  AFFILIATE: 'bg-amber-50 text-amber-700 border border-amber-200/80',
   CANDIDATE: 'bg-slate-100 text-slate-700 border border-slate-200/80',
   INTERNAL_HR: 'bg-sky-50 text-sky-700 border border-sky-200/80',
 };

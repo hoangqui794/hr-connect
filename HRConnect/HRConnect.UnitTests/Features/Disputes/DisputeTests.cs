@@ -55,7 +55,7 @@ public class DisputeTests
     {
         var now = DateTime.UtcNow;
         var user = new AppUser { UserId = Guid.NewGuid(), Email = $"{Guid.NewGuid():N}@example.com", PasswordHash = "x", Status = "ACTIVE", DisplayName = name, CreatedAt = now, UpdatedAt = now };
-        var affiliate = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = user.UserId, User = user, DisplayName = name, AffiliateType = "INDIVIDUAL", Status = "ACTIVE", CreatedAt = now, UpdatedAt = now };
+        var affiliate = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = user.UserId, User = user, DisplayName = name, AffiliateType = "STANDARD", Status = "ACTIVE", CreatedAt = now, UpdatedAt = now };
         _context.AddRange(user, affiliate);
         return affiliate;
     }

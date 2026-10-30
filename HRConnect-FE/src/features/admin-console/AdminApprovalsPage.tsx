@@ -38,7 +38,11 @@ const STATUS_LABEL: Record<string, { label: string; tone: Tone }> = {
   REJECTED: { label: 'Đã từ chối', tone: 'danger' },
 };
 const TYPE_LABEL: Record<string, string> = { AFFILIATE: 'Cộng tác viên', CLIENT: 'Doanh nghiệp' };
-const AFFILIATE_TYPE_LABEL: Record<string, string> = { INDIVIDUAL: 'Cá nhân', AGENCY: 'Đơn vị tuyển dụng', FREELANCER: 'Cộng tác viên tự do' };
+const AFFILIATE_TYPE_LABEL: Record<string, string> = {
+  STANDARD: 'Tiêu chuẩn',
+  AGENCY: 'Đơn vị',
+  FREELANCER: 'Cộng tác viên tự do',
+};
 
 /** Submitted payloads are JSON strings; show them as label/value rows, never as raw HTML. */
 const PayloadRows: React.FC<{ raw: string | null | undefined }> = ({ raw }) => {

@@ -103,7 +103,7 @@ public class RefreshTokenCommandHandlerTests
             CreatedAt = DateTime.UtcNow.AddDays(-4)
         };
 
-        var user = CreateActiveUser(userId, "AFFILIATE_RECRUITER", "REFER_CANDIDATE");
+        var user = CreateActiveUser(userId, "AFFILIATE", "REFER_CANDIDATE");
 
         _otpServiceMock.Setup(x => x.HashOtp(rawOldToken)).Returns(tokenHash);
         _otpServiceMock.Setup(x => x.HashOtp("new_random_refresh_token")).Returns("hashed_new_token");
@@ -131,7 +131,7 @@ public class RefreshTokenCommandHandlerTests
         response.Data!.AccessToken.Should().Be(newAccessToken);
         response.Data.RefreshToken.Should().Be("new_random_refresh_token");
         response.Data.User.UserId.Should().Be(userId);
-        response.Data.User.Roles.Should().Contain("AFFILIATE_RECRUITER");
+        response.Data.User.Roles.Should().Contain("AFFILIATE");
         response.Data.User.Permissions.Should().Contain("REFER_CANDIDATE");
 
         // Verify old token was revoked & marked ROTATED
