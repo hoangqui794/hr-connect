@@ -19,6 +19,7 @@ import { formatMoney, jobQueryKeys, usePostingFee, usePostingPackages } from './
 import { formatPostingPackage } from './jobDisplay';
 import { jobsApi } from '../../services/api/jobsApi';
 import { useAlertStore } from '../../stores/alertStore';
+import { PLATFORM_BANK_ACCOUNT as BANK, depositTransferNote, transferNote } from '@/features/finance-mf05/platformBankAccount';
 
 const { Text } = Typography;
 
@@ -35,8 +36,7 @@ interface PaymentDemoModalProps {
   onClose: () => void;
 }
 
-export const transferNote = (jobId: string) => `HRC ${jobId.slice(0, 8).toUpperCase()}`;
-export const depositTransferNote = (jobId: string) => `COC ${jobId.slice(0, 8).toUpperCase()}`;
+export { transferNote, depositTransferNote };
 
 export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
   open,
@@ -65,7 +65,7 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
   const amountToPay = isDepositMode ? finalDepositAmount : (fee.data?.amount ?? 1500000);
 
   // Tạo URL VietQR chuẩn
-  const qrUrl = `https://img.vietqr.io/image/MB-0988776655-compact2.png?amount=${amountToPay}&addInfo=${encodeURIComponent(note)}&accountName=CONG%20TY%20CP%20HR%20CONNECT`;
+  const qrUrl = `https://img.vietqr.io/image/${BANK.vietQrBankCode}-${BANK.accountNumber}-compact2.png?amount=${amountToPay}&addInfo=${encodeURIComponent(note)}&accountName=${encodeURIComponent(BANK.accountHolder)}`;
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -219,26 +219,26 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
           <div className="rounded-xl bg-white p-3.5 border border-solid border-slate-200 space-y-2 text-xs">
             <div className="flex justify-between items-center py-0.5">
               <span className="text-slate-500">Ngân hàng:</span>
-              <span className="font-semibold text-slate-800">MB Bank (TMCP Quân Đội)</span>
+              <span className="font-semibold text-slate-800">{BANK.bankName}</span>
             </div>
 
             <div className="flex justify-between items-center py-0.5">
               <span className="text-slate-500">Số tài khoản:</span>
               <div className="flex items-center gap-1.5">
-                <span className="font-bold text-slate-900 font-mono text-sm tracking-wide">0988776655</span>
+                <span className="font-bold text-slate-900 font-mono text-sm tracking-wide">{BANK.accountNumber}</span>
                 <Button
                   type="text"
                   size="small"
                   icon={<CopyOutlined />}
                   className="h-6 px-1.5 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
-                  onClick={() => copyToClipboard('0988776655', 'Số tài khoản')}
+                  onClick={() => copyToClipboard(BANK.accountNumber, 'Số tài khoản')}
                 />
               </div>
             </div>
 
             <div className="flex justify-between items-center py-0.5">
               <span className="text-slate-500">Chủ tài khoản:</span>
-              <span className="font-semibold text-slate-800">CONG TY CO PHAN HR CONNECT</span>
+              <span className="font-semibold text-slate-800">{BANK.accountHolder}</span>
             </div>
 
             {/* Ô nội dung chuyển khoản highlight nổi bật */}

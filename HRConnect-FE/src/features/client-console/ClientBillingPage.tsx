@@ -4,7 +4,8 @@
  * three services, so the warranty page can stay Headhunt only.
  * - HH (HEADHUNT_COD) placement fees and SS (CV_SOURCING) deposits, settlements and credits: GET /service-fees.
  * - AP (CV_APPLICATION) paid posting packages: GET /jobs/{id}/posting-fee for each paid-package job.
- * Payments are recorded by Platform Admin, so the page is read-only.
+ * "Thanh toán" pays one fee through VNPay (the fee turns paid by itself on VNPay's confirmation) or shows the bank
+ * transfer details, which Platform Admin still records by hand.
  */
 import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -14,11 +15,13 @@ import { ReloadOutlined } from '@ant-design/icons';
 import { financeApi } from '@/services/api/financeApi';
 import { jobsApi } from '@/services/api/jobsApi';
 import { getApiErrorMessage } from '@/services/apiClient';
-import type { ServiceFeeKind, ServiceFeeStatus } from '@/types/api/finance';
+import type { OnlinePaymentTargetType, ServiceFee, ServiceFeeKind, ServiceFeeStatus } from '@/types/api/finance';
 import type { ServiceTypeCode } from '@/types/api/jobs';
 import { FilterPills, PageHero, StatusDot, Surface, type Tone } from '@/features/admin-console/ui';
 import { SERVICE_FEE_KIND, SERVICE_FEE_STATUS, date, labelOf, money } from '@/features/finance-mf05/financeLabels';
+import { depositTransferNote, serviceFeeTransferNote, transferNote } from '@/features/finance-mf05/platformBankAccount';
 import { SERVICE_TYPE_LABEL } from '@/features/jobs-mf01/jobDisplay';
+import { BillingPaymentModal } from './BillingPaymentModal';
 
 const PAGE_SIZE = 10;
 
@@ -39,7 +42,56 @@ export interface BillingRow {
   bucket: Bucket;
   paidAt: string | null;
   paymentReference: string | null;
+  /** What to write on the bank transfer; shown by "Cách thanh toán". */
+  transferNote: string | null;
+  /** Unpaid and not held for reconciliation, so the Client can transfer now. */
+  payable: boolean;
+  /** What VNPay is asked to pay (service fee id, or job id for a posting fee). */
+  payTarget: { type: OnlinePaymentTargetType; id: string };
+  /** How the amount was worked out, shown in the payment dialog. */
+  breakdown: BreakdownLine[];
 }
+
+export interface BreakdownLine {
+  label: string;
+  value: string;
+}
+
+const percent = (ratio: number) => `${Number((ratio * 100).toFixed(2))}%`;
+
+/** HH: salary × multiplier. SS deposit: CVs × price = package, × deposit rate. SS settlement: counted CVs × price − deposit. */
+export const feeBreakdown = (f: ServiceFee): BreakdownLine[] => {
+  const kind: ServiceFeeKind = f.kind ?? 'PLACEMENT';
+  const cur = f.currencyCode;
+  const price = f.sourcingPricePerCv ?? null;
+  if (kind === 'PLACEMENT') {
+    return [
+      { label: 'Lương gross tháng', value: money(f.baseSalary, cur) },
+      { label: 'Hệ số phí', value: `× ${f.feeMultiplier}` },
+    ];
+  }
+  if (kind === 'DEPOSIT') {
+    return [
+      ...(f.sourcingTarget && price
+        ? [
+            { label: 'Số CV đặt mua', value: `${f.sourcingTarget} CV` },
+            { label: 'Đơn giá mỗi CV', value: money(price, cur) },
+          ]
+        : []),
+      { label: 'Tổng giá trị gói', value: money(f.baseSalary, cur) },
+      { label: 'Tỷ lệ đặt cọc', value: percent(f.feeMultiplier) },
+    ];
+  }
+  // SETTLEMENT / CREDIT: total of the CVs counted, minus the deposit already paid.
+  return [
+    ...(price ? [{ label: 'Số CV được tính', value: `${Math.round(f.baseSalary / price)} CV × ${money(price, cur)}` }] : []),
+    { label: 'Tổng giá trị CV được tính', value: money(f.baseSalary, cur) },
+    {
+      label: 'Đã đặt cọc',
+      value: `− ${money(kind === 'CREDIT' ? f.baseSalary + f.amount : f.baseSalary - f.amount, cur)}`,
+    },
+  ];
+};
 
 const SERVICE_OF_KIND: Record<ServiceFeeKind, ServiceTypeCode> = {
   PLACEMENT: 'HEADHUNT_COD',
@@ -79,6 +131,7 @@ const useBillingRows = () => {
       const kind: ServiceFeeKind = f.kind ?? 'PLACEMENT';
       const status = labelOf(SERVICE_FEE_STATUS, f.status);
       const reconciling = f.reconciliationStatus === 'PENDING' || f.reconciliationStatus === 'FLAGGED';
+      const bucket: Bucket = kind === 'CREDIT' ? 'OTHER' : bucketOf(f.status);
       return {
         key: `fee-${f.serviceFeeId}`,
         service: SERVICE_OF_KIND[kind],
@@ -90,13 +143,18 @@ const useBillingRows = () => {
         dueDate: reconciling ? null : f.dueDate,
         statusLabel: reconciling ? 'Đang đối soát' : status.label,
         tone: reconciling ? 'info' : status.tone,
-        bucket: kind === 'CREDIT' ? 'OTHER' : bucketOf(f.status),
+        bucket,
         paidAt: f.paidAt ?? null,
         paymentReference: f.paymentReference ?? null,
+        transferNote: kind === 'DEPOSIT' && f.jobId ? depositTransferNote(f.jobId) : serviceFeeTransferNote(f.serviceFeeId),
+        payable: !reconciling && (bucket === 'UNPAID' || bucket === 'OVERDUE'),
+        payTarget: { type: 'SERVICE_FEE', id: f.serviceFeeId },
+        breakdown: feeBreakdown(f),
       };
     });
     const postingRows: BillingRow[] = (postingFees.data ?? []).map(({ job, fee }) => {
       const st = POSTING_STATUS[fee!.status];
+      const bucket = bucketOf(fee!.status);
       return {
         key: `posting-${fee!.postingFeeId}`,
         service: 'CV_APPLICATION',
@@ -108,9 +166,13 @@ const useBillingRows = () => {
         dueDate: null,
         statusLabel: st.label,
         tone: st.tone,
-        bucket: bucketOf(fee!.status),
+        bucket,
         paidAt: fee!.paidAt,
         paymentReference: fee!.paymentReference,
+        transferNote: transferNote(job.jobId),
+        payable: bucket === 'UNPAID',
+        payTarget: { type: 'POSTING_FEE', id: job.jobId },
+        breakdown: [{ label: 'Gói đăng tin', value: fee!.packageName ?? '—' }],
       };
     });
     return [...serviceRows, ...postingRows].sort((a, b) => {
@@ -155,6 +217,7 @@ export const ClientBillingPage: React.FC = () => {
   const [service, setService] = useState<ServiceFilter>('all');
   const [status, setStatus] = useState<StatusFilter>('all');
   const [page, setPage] = useState(1);
+  const [paying, setPaying] = useState<BillingRow | null>(null);
 
   const byService = service === 'all' ? rows : rows.filter((r) => r.service === service);
   const visible = status === 'all' ? byService : byService.filter((r) => r.bucket === status || (status === 'UNPAID' && r.bucket === 'OVERDUE'));
@@ -221,6 +284,11 @@ export const ClientBillingPage: React.FC = () => {
               {r.paymentReference ? ` · ${r.paymentReference}` : ''}
             </div>
           )}
+          {r.payable && (
+            <Button type="link" size="small" className="!h-auto !px-0 !pt-1 text-[13px] font-medium" onClick={() => setPaying(r)} aria-label={`Thanh toán: ${r.item} · ${r.jobTitle}`}>
+              Thanh toán
+            </Button>
+          )}
         </div>
       ),
     },
@@ -234,7 +302,7 @@ export const ClientBillingPage: React.FC = () => {
         eyebrow="Tài chính"
         title="Công nợ phí dịch vụ"
         tip
-        description="Mọi khoản phí với HR Connect của 3 dịch vụ HH, SS và AP ở cùng một nơi. Bạn thanh toán bằng chuyển khoản; trạng thái tự cập nhật khi HR Connect nhận được tiền."
+        description="Mọi khoản phí với HR Connect của 3 dịch vụ HH, SS và AP ở cùng một nơi. Thanh toán qua VNPay thì khoản phí chuyển Đã thanh toán ngay; chuyển khoản thì trạng thái cập nhật khi HR Connect nhận được tiền."
         actions={
           <Button icon={<ReloadOutlined spin={fetching} />} onClick={refetch}>
             Làm mới
@@ -302,6 +370,8 @@ export const ClientBillingPage: React.FC = () => {
           />
         )}
       </Surface>
+
+      <BillingPaymentModal row={paying} onClose={() => setPaying(null)} />
     </div>
   );
 };
