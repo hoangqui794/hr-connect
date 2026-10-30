@@ -23,7 +23,7 @@ public sealed class GetAffiliateCandidateLibraryDetailQueryHandler
         CancellationToken cancellationToken)
     {
         if (await _affiliateProfiles.GetByUserIdAsync(request.UserId, cancellationToken) == null)
-            throw new ForbiddenException("Không tìm thấy hồ sơ Affiliate Recruiter của bạn.");
+            throw new ForbiddenException("Không tìm thấy hồ sơ Affiliate của bạn.");
 
         var candidate = await _submissions.GetAffiliateCandidateLibraryDetailAsync(
             request.UserId, request.CandidateId, cancellationToken);

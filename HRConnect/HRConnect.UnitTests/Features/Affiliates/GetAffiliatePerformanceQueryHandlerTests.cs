@@ -46,7 +46,7 @@ public class GetAffiliatePerformanceQueryHandlerTests
         {
             AffiliateId = affiliateId,
             UserId = userId,
-            AffiliateType = "RECRUITER",
+            AffiliateType = "STANDARD",
             DisplayName = "Đối Tác Tuyển Dụng Hàng Đầu",
             Status = "ACTIVE"
         };
@@ -92,7 +92,7 @@ public class GetAffiliatePerformanceQueryHandlerTests
         result.Data.Should().NotBeNull();
         result.Data!.AffiliateId.Should().Be(affiliateId);
         result.Data.DisplayName.Should().Be("Đối Tác Tuyển Dụng Hàng Đầu");
-        result.Data.AffiliateType.Should().Be("RECRUITER");
+        result.Data.AffiliateType.Should().Be("STANDARD");
         result.Data.Status.Should().Be("ACTIVE");
         result.Data.TotalSubmissions.Should().Be(25);
         result.Data.TotalShortlisted.Should().Be(15);
@@ -117,7 +117,7 @@ public class GetAffiliatePerformanceQueryHandlerTests
         {
             AffiliateId = affiliateId,
             UserId = userId,
-            AffiliateType = "INDIVIDUAL",
+            AffiliateType = "STANDARD",
             DisplayName = "Nguyen Van Affiliate",
             Status = "ACTIVE"
         };

@@ -8,7 +8,7 @@ Route FE đề xuất: `/affiliate/jobs/:jobId/submit-candidate`.
 
 ## Actor và quyền
 
-- Role: `AFFILIATE_RECRUITER` còn hoạt động và đã xác minh.
+- Role: `AFFILIATE` còn hoạt động và đã xác minh.
 - Permission: `submission.create`.
 - Job phải cho Affiliate xem và submit theo Service Type.
 

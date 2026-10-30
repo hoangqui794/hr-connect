@@ -570,7 +570,7 @@ public class Mf05FinanceTests
         _context.Add(user);
         _context.Add(new AffiliateProfile
         {
-            AffiliateId = attribution.AffiliateId, UserId = user.UserId, AffiliateType = "INDIVIDUAL", Status = "ACTIVE",
+            AffiliateId = attribution.AffiliateId, UserId = user.UserId, AffiliateType = "STANDARD", Status = "ACTIVE",
             CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
         });
         await _context.SaveChangesAsync();
@@ -594,7 +594,7 @@ public class Mf05FinanceTests
         _context.Add(user);
         _context.Add(new AffiliateProfile
         {
-            AffiliateId = attribution.AffiliateId, UserId = user.UserId, AffiliateType = "INDIVIDUAL", Status = "ACTIVE", BankName = "Vietcombank", BankAccountNumber = "0123456789",
+            AffiliateId = attribution.AffiliateId, UserId = user.UserId, AffiliateType = "STANDARD", Status = "ACTIVE", BankName = "Vietcombank", BankAccountNumber = "0123456789",
             BankAccountHolder = "NGUYEN VAN HUNG", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
         });
         await _context.SaveChangesAsync();

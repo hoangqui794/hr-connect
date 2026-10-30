@@ -101,12 +101,12 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
 
     public async Task<SubmitCandidateResponse> Handle(SubmitCandidateCommand request, CancellationToken cancellationToken)
     {
-        // 1. Xác thực hồ sơ Affiliate Recruiter
+        // 1. Xác thực hồ sơ Affiliate
         var affiliate = await _affiliateProfileRepository.GetByUserIdAsync(request.UserId, cancellationToken);
         if (affiliate == null)
         {
             _logger.LogWarning("Không tìm thấy hồ sơ Affiliate cho UserId: {UserId}", request.UserId);
-            throw new ForbiddenException("Không tìm thấy hồ sơ Affiliate Recruiter của bạn.");
+            throw new ForbiddenException("Không tìm thấy hồ sơ Affiliate của bạn.");
         }
 
         if (!string.Equals(affiliate.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) &&
@@ -114,7 +114,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
         {
             _logger.LogWarning("Hồ sơ Affiliate {AffiliateId} ở trạng thái {Status}, không được nộp ứng viên.",
                 affiliate.AffiliateId, affiliate.Status);
-            throw new ForbiddenException("Hồ sơ Affiliate Recruiter chưa được kích hoạt hoặc phê duyệt.");
+            throw new ForbiddenException("Hồ sơ Affiliate chưa được kích hoạt hoặc phê duyệt.");
         }
 
         // 2. Kiểm tra tồn tại và trạng thái Job
@@ -608,7 +608,7 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                     UserId = candidate.UserId.Value,
                     NotificationType = "SUBMISSION",
                     Title = "Yêu cầu xác nhận hồ sơ ứng tuyển",
-                    Message = $"Một Affiliate Recruiter đã giới thiệu bạn vào vị trí {job.Title}. Vui lòng kiểm tra và xác nhận.",
+                    Message = $"Một Cộng tác viên (Affiliate) đã giới thiệu bạn vào vị trí {job.Title}. Vui lòng kiểm tra và xác nhận.",
                     RelatedEntityType = "SUBMISSION",
                     RelatedEntityId = submission.SubmissionId,
                     Metadata = JsonSerializer.Serialize(new { job.JobId, consent.ConsentId, expiresAt }),

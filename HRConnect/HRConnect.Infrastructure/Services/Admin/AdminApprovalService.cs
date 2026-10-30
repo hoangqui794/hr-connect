@@ -60,11 +60,11 @@ public class AdminApprovalService : IAdminApprovalService
 
         var affiliateRole = await _context.Roles
             .FirstOrDefaultAsync(
-                role => role.Code == "AFFILIATE_RECRUITER" && role.IsActive,
+                role => role.Code == "AFFILIATE" && role.IsActive,
                 cancellationToken);
         if (affiliateRole == null)
         {
-            throw new ConflictException("Role AFFILIATE_RECRUITER đang thiếu hoặc đã bị tắt; chưa thể phê duyệt hồ sơ.");
+            throw new ConflictException("Role AFFILIATE đang thiếu hoặc đã bị tắt; chưa thể phê duyệt hồ sơ.");
         }
 
         var now = DateTime.UtcNow;
@@ -105,7 +105,7 @@ public class AdminApprovalService : IAdminApprovalService
                 _context.AffiliateProfiles.Update(profile);
             }
 
-            // 3. Gán Role AFFILIATE_RECRUITER
+            // 3. Gán Role AFFILIATE
             var existingUserRole = await _context.UserRoles
                 .FirstOrDefaultAsync(ur => ur.UserId == application.UserId && ur.RoleId == affiliateRole.RoleId, cancellationToken);
 

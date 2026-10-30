@@ -12,7 +12,7 @@ namespace HRConnect.Application.Features.Jobs.Common;
 public static class JobAccessPolicy
 {
     public const string CandidateRole = "CANDIDATE";
-    public const string AffiliateRole = "AFFILIATE_RECRUITER";
+    public const string AffiliateRole = "AFFILIATE";
 
     /// <summary>
     /// Status part of viewing a job. Owners and internal users see every status; everyone else

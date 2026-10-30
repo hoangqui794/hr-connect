@@ -161,13 +161,13 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
         _userEmailIdentityRepository.Update(primaryEmailIdentity);
 
         // 9. Nhận diện loại tài khoản để áp dụng nghiệp vụ tương ứng:
-        // Case A: Người dùng đăng ký Affiliate Recruiter
+        // Case A: Người dùng đăng ký Affiliate
         var affiliateApp = await _affiliateApplicationRepository.GetByUserIdAsync(user.UserId, cancellationToken);
         if (affiliateApp != null)
         {
             // QUY TẮC QUAN TRỌNG:
             // 1. Giữ user.Status = "PENDING"
-            // 2. KHÔNG gán vai trò AFFILIATE_RECRUITER
+            // 2. KHÔNG gán vai trò AFFILIATE
             // 3. affiliate_application.status = "UNDER_REVIEW"
             user.Status = "PENDING";
             affiliateApp.Status = "UNDER_REVIEW";

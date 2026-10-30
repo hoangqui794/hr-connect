@@ -88,7 +88,7 @@ public class ApprovalRepositoryTests
     {
         AffiliateApplicationId = Guid.NewGuid(),
         UserId = userId,
-        AffiliateType = "RECRUITER",
+        AffiliateType = "STANDARD",
         Status = status,
         SubmittedData = "{}",
         SubmittedAt = DateTime.UtcNow

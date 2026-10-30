@@ -247,7 +247,7 @@ Với từng file: kiểm tra trong `app/router.tsx` còn được route không.
   "data": {
     "affiliateId": "uuid",
     "displayName": "Đối Tác A",
-    "affiliateType": "INDIVIDUAL",
+    "affiliateType": "STANDARD",
     "periodStart": "2026-10-01",
     "periodEnd": "2026-10-31",
     "totalSubmissions": 10,

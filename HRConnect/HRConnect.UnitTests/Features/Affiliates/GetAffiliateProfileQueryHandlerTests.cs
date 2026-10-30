@@ -34,7 +34,7 @@ public class GetAffiliateProfileQueryHandlerTests
         {
             AffiliateId = Guid.NewGuid(),
             UserId = userId,
-            AffiliateType = "RECRUITER",
+            AffiliateType = "STANDARD",
             DisplayName = "Cong Ty TNHH Tuyen Dung ABC",
             TaxInformation = "0123456789",
             ContactPerson = "Nguyen Van A",
@@ -71,7 +71,7 @@ public class GetAffiliateProfileQueryHandlerTests
         result.Data.Email.Should().Be("affiliate@example.com");
         result.Data.AvatarUrl.Should().Be("https://example.com/avatar.png");
         result.Data.DisplayName.Should().Be("Cong Ty TNHH Tuyen Dung ABC");
-        result.Data.AffiliateType.Should().Be("RECRUITER");
+        result.Data.AffiliateType.Should().Be("STANDARD");
         result.Data.TaxInformation.Should().Be("0123456789");
         result.Data.ContactPerson.Should().Be("Nguyen Van A");
         result.Data.Phone.Should().Be("0987654321");

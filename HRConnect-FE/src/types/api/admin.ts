@@ -21,7 +21,7 @@ export interface ApiEnvelope<T> {
 // ── Users (/admin/users) ──────────────────────────────────────────────────────
 /** Filter values accepted by GetAdminUsersQueryHandler. */
 export type AdminUserStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'LOCKED' | 'REJECTED';
-export type RoleCode = 'CANDIDATE' | 'AFFILIATE_RECRUITER' | 'CLIENT_COMPANY_USER' | 'INTERNAL_HR' | 'PLATFORM_ADMIN';
+export type RoleCode = 'CANDIDATE' | 'AFFILIATE' | 'CLIENT_COMPANY_USER' | 'INTERNAL_HR' | 'PLATFORM_ADMIN';
 
 export interface AdminUserListItem {
   userId: string;

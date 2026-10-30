@@ -74,7 +74,7 @@ public class AffiliatePerformanceTests
         var periodEnd = new DateOnly(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month));
 
         var user = new AppUser { UserId = Guid.NewGuid(), Email = "aff1@test.com", DisplayName = "Affiliate One", PasswordHash = "hash", Status = "ACTIVE" };
-        var affiliate = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = user.UserId, AffiliateType = "INDIVIDUAL", Status = "ACTIVE", CreatedAt = now, UpdatedAt = now };
+        var affiliate = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = user.UserId, AffiliateType = "STANDARD", Status = "ACTIVE", CreatedAt = now, UpdatedAt = now };
         await _context.AppUsers.AddAsync(user);
         await _context.AffiliateProfiles.AddAsync(affiliate);
 
@@ -167,7 +167,7 @@ public class AffiliatePerformanceTests
         var periodEnd = new DateOnly(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month));
 
         var user = new AppUser { UserId = Guid.NewGuid(), Email = "aff_dynamic@test.com", DisplayName = "Affiliate Dynamic", PasswordHash = "hash", Status = "ACTIVE" };
-        var affiliate = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = user.UserId, AffiliateType = "INDIVIDUAL", Status = "ACTIVE", CreatedAt = now, UpdatedAt = now };
+        var affiliate = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = user.UserId, AffiliateType = "STANDARD", Status = "ACTIVE", CreatedAt = now, UpdatedAt = now };
         await _context.AppUsers.AddAsync(user);
         await _context.AffiliateProfiles.AddAsync(affiliate);
 
@@ -217,7 +217,7 @@ public class AffiliatePerformanceTests
         var periodEnd = new DateOnly(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month));
 
         var user = new AppUser { UserId = Guid.NewGuid(), Email = "aff_dup@test.com", DisplayName = "Affiliate Dup", PasswordHash = "hash", Status = "ACTIVE" };
-        var affiliate = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = user.UserId, AffiliateType = "INDIVIDUAL", Status = "ACTIVE", CreatedAt = now, UpdatedAt = now };
+        var affiliate = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = user.UserId, AffiliateType = "STANDARD", Status = "ACTIVE", CreatedAt = now, UpdatedAt = now };
         await _context.AppUsers.AddAsync(user);
         await _context.AffiliateProfiles.AddAsync(affiliate);
 
@@ -255,7 +255,7 @@ public class AffiliatePerformanceTests
         var periodEnd = new DateOnly(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month));
 
         var user = new AppUser { UserId = Guid.NewGuid(), Email = "aff_min@test.com", DisplayName = "Affiliate Min", PasswordHash = "hash", Status = "ACTIVE" };
-        var affiliate = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = user.UserId, AffiliateType = "INDIVIDUAL", Status = "ACTIVE", CreatedAt = now, UpdatedAt = now };
+        var affiliate = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = user.UserId, AffiliateType = "STANDARD", Status = "ACTIVE", CreatedAt = now, UpdatedAt = now };
         await _context.AppUsers.AddAsync(user);
         await _context.AffiliateProfiles.AddAsync(affiliate);
 
@@ -284,7 +284,7 @@ public class AffiliatePerformanceTests
         var periodEnd = new DateOnly(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month));
 
         var user = new AppUser { UserId = Guid.NewGuid(), Email = "aff_worker@test.com", DisplayName = "Affiliate Worker", PasswordHash = "hash", Status = "ACTIVE" };
-        var affiliate = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = user.UserId, AffiliateType = "INDIVIDUAL", Status = "ACTIVE", CreatedAt = now, UpdatedAt = now };
+        var affiliate = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = user.UserId, AffiliateType = "STANDARD", Status = "ACTIVE", CreatedAt = now, UpdatedAt = now };
         await _context.AppUsers.AddAsync(user);
         await _context.AffiliateProfiles.AddAsync(affiliate);
         await _context.SaveChangesAsync();
@@ -312,10 +312,10 @@ public class AffiliatePerformanceTests
         var periodEnd = new DateOnly(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month));
 
         var userA = new AppUser { UserId = Guid.NewGuid(), Email = "a@test.com", DisplayName = "Affiliate A", PasswordHash = "hash", Status = "ACTIVE" };
-        var affA = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = userA.UserId, AffiliateType = "INDIVIDUAL", Status = "ACTIVE", CreatedAt = now, UpdatedAt = now };
+        var affA = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = userA.UserId, AffiliateType = "STANDARD", Status = "ACTIVE", CreatedAt = now, UpdatedAt = now };
 
         var userB = new AppUser { UserId = Guid.NewGuid(), Email = "b@test.com", DisplayName = "Affiliate B", PasswordHash = "hash", Status = "ACTIVE" };
-        var affB = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = userB.UserId, AffiliateType = "INDIVIDUAL", Status = "ACTIVE", CreatedAt = now, UpdatedAt = now };
+        var affB = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = userB.UserId, AffiliateType = "STANDARD", Status = "ACTIVE", CreatedAt = now, UpdatedAt = now };
 
         await _context.AppUsers.AddRangeAsync(userA, userB);
         await _context.AffiliateProfiles.AddRangeAsync(affA, affB);

@@ -21,7 +21,7 @@ public sealed class GetAffiliateReferralProgressQueryHandler : IRequestHandler<G
     public async Task<AffiliateReferralProgressResponse> Handle(GetAffiliateReferralProgressQuery request, CancellationToken cancellationToken)
     {
         if (await _affiliateProfileRepository.GetByUserIdAsync(request.UserId, cancellationToken) == null)
-            throw new ForbiddenException("Không tìm thấy hồ sơ Affiliate Recruiter của bạn.");
+            throw new ForbiddenException("Không tìm thấy hồ sơ Affiliate của bạn.");
 
         var page = request.Page < 1 ? 1 : request.Page;
         var pageSize = request.PageSize switch { < 1 => 20, > 100 => 100, _ => request.PageSize };

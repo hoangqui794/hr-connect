@@ -135,7 +135,7 @@ public class SubmitCandidateCommandHandlerTests
         // Act & Assert
         var act = async () => await _handler.Handle(command, CancellationToken.None);
         await act.Should().ThrowAsync<ForbiddenException>()
-            .WithMessage("Không tìm thấy hồ sơ Affiliate Recruiter của bạn.");
+            .WithMessage("Không tìm thấy hồ sơ Affiliate của bạn.");
     }
 
     [Fact]
@@ -158,7 +158,7 @@ public class SubmitCandidateCommandHandlerTests
         // Act & Assert
         var act = async () => await _handler.Handle(command, CancellationToken.None);
         await act.Should().ThrowAsync<ForbiddenException>()
-            .WithMessage("Hồ sơ Affiliate Recruiter chưa được kích hoạt hoặc phê duyệt.");
+            .WithMessage("Hồ sơ Affiliate chưa được kích hoạt hoặc phê duyệt.");
     }
 
     [Fact]
@@ -240,7 +240,7 @@ public class SubmitCandidateCommandHandlerTests
             JobId = jobId,
             FullName = "Nguyen Van A",
             Email = "candidate@example.com",
-            RoleCodes = new[] { "AFFILIATE_RECRUITER" }
+            RoleCodes = new[] { "AFFILIATE" }
         };
 
         // Act & Assert
@@ -308,7 +308,7 @@ public class SubmitCandidateCommandHandlerTests
             FullName = "Nguyen Van A",
             Email = "a@example.com",
             Phone = "0912345678",
-            RoleCodes = new[] { "AFFILIATE_RECRUITER" }
+            RoleCodes = new[] { "AFFILIATE" }
         };
 
         // Act & Assert
@@ -447,7 +447,7 @@ public class SubmitCandidateCommandHandlerTests
             FileStream = stream,
             FileName = "cv.pdf",
             FileSizeBytes = 3,
-            RoleCodes = new[] { "AFFILIATE_RECRUITER" }
+            RoleCodes = new[] { "AFFILIATE" }
         };
 
         // Act
@@ -600,7 +600,7 @@ public class SubmitCandidateCommandHandlerTests
             Email = "exist@example.com",
             FileStream = stream,
             FileName = "cv.pdf",
-            RoleCodes = new[] { "AFFILIATE_RECRUITER" }
+            RoleCodes = new[] { "AFFILIATE" }
         };
 
         // Act
@@ -931,7 +931,7 @@ public class SubmitCandidateCommandHandlerTests
             FileStream = new MemoryStream(new byte[] { 1, 2, 3 }),
             FileName = "cv.pdf",
             FileSizeBytes = 3,
-            RoleCodes = ["AFFILIATE_RECRUITER"]
+            RoleCodes = ["AFFILIATE"]
         }, CancellationToken.None);
 
         await action.Should().ThrowAsync<InvalidOperationException>();
@@ -983,7 +983,7 @@ public class SubmitCandidateCommandHandlerTests
             Phone = "0912345678",
             FileStream = stream,
             FileName = "cv.pdf",
-            RoleCodes = new[] { "AFFILIATE_RECRUITER" }
+            RoleCodes = new[] { "AFFILIATE" }
         };
 
         // Act
@@ -1043,7 +1043,7 @@ public class SubmitCandidateCommandHandlerTests
             FileStream = new MemoryStream(new byte[] { 1, 2, 3 }),
             FileName = "duplicate.pdf",
             FileSizeBytes = 3,
-            RoleCodes = new[] { "AFFILIATE_RECRUITER" }
+            RoleCodes = new[] { "AFFILIATE" }
         };
 
         // Act & Assert
@@ -1250,7 +1250,7 @@ public class SubmitCandidateCommandHandlerTests
             FullName = "New Candidate",
             Email = "new@example.com",
             CvId = Guid.NewGuid(),
-            RoleCodes = ["AFFILIATE_RECRUITER"]
+            RoleCodes = ["AFFILIATE"]
         }, CancellationToken.None);
 
         await action.Should().ThrowAsync<BadRequestException>()
@@ -1317,7 +1317,7 @@ public class SubmitCandidateCommandHandlerTests
             FullName = "Valid Candidate",
             Email = "valid@example.com",
             CvId = cvId,
-            RoleCodes = new[] { "AFFILIATE_RECRUITER" }
+            RoleCodes = new[] { "AFFILIATE" }
         };
 
         // Act
@@ -1498,7 +1498,7 @@ public class SubmitCandidateCommandHandlerTests
             FileStream = stream,
             FileName = "cv.pdf",
             FileSizeBytes = 3,
-            RoleCodes = new[] { "AFFILIATE_RECRUITER" }
+            RoleCodes = new[] { "AFFILIATE" }
         };
 
         // Act
@@ -1560,7 +1560,7 @@ public class SubmitCandidateCommandHandlerTests
             FullName = "Candidate",
             Email = "c@example.com",
             CvId = cvId,
-            RoleCodes = new[] { "AFFILIATE_RECRUITER" }
+            RoleCodes = new[] { "AFFILIATE" }
         };
 
         // Act
@@ -1634,7 +1634,7 @@ public class SubmitCandidateCommandHandlerTests
             FullName = "Contested Candidate",
             Email = "contested@example.com",
             CvId = cvId,
-            RoleCodes = new[] { "AFFILIATE_RECRUITER" }
+            RoleCodes = new[] { "AFFILIATE" }
         };
 
         // Act
@@ -1691,7 +1691,7 @@ public class SubmitCandidateCommandHandlerTests
             FullName = "Candidate",
             Email = "c@example.com",
             CvId = cvId,
-            RoleCodes = new[] { "AFFILIATE_RECRUITER" }
+            RoleCodes = new[] { "AFFILIATE" }
         };
 
         // Act
@@ -1733,7 +1733,7 @@ public class SubmitCandidateCommandHandlerTests
             Email = "c@example.com",
             FileStream = stream,
             FileName = "cv.pdf",
-            RoleCodes = new[] { "AFFILIATE_RECRUITER" }
+            RoleCodes = new[] { "AFFILIATE" }
         };
 
         // Act
@@ -1771,7 +1771,7 @@ public class SubmitCandidateCommandHandlerTests
             JobId = jobId,
             FullName = "Candidate",
             Email = "c@example.com",
-            RoleCodes = new[] { "AFFILIATE_RECRUITER" }
+            RoleCodes = new[] { "AFFILIATE" }
         };
 
         // Act
@@ -1797,7 +1797,7 @@ public class SubmitCandidateCommandHandlerTests
         _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(job);
 
-        var multiRoles = new[] { "CANDIDATE", "AFFILIATE_RECRUITER", "INTERNAL_HR" };
+        var multiRoles = new[] { "CANDIDATE", "AFFILIATE", "INTERNAL_HR" };
 
         _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(
                 serviceTypeId,
@@ -1876,7 +1876,7 @@ public class SubmitCandidateCommandHandlerTests
             FullName = "CV Owner",
             Email = "owner@example.com",
             CvId = cvId,
-            RoleCodes = ["AFFILIATE_RECRUITER"]
+            RoleCodes = ["AFFILIATE"]
         };
 
         var action = () => _handler.Handle(command, CancellationToken.None);

@@ -364,7 +364,7 @@ public static class AdminApprovalEndpoints
             }
         })
         .WithName("ApproveAffiliate")
-        .WithSummary("Phê duyệt đơn đăng ký Affiliate Recruiter")
+        .WithSummary("Phê duyệt đơn đăng ký Affiliate")
         .Produces<ApproveAffiliateResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
@@ -428,7 +428,7 @@ public static class AdminApprovalEndpoints
             }
         })
         .WithName("RejectAffiliate")
-        .WithSummary("Từ chối đơn đăng ký Affiliate Recruiter")
+        .WithSummary("Từ chối đơn đăng ký Affiliate")
         .Produces<RejectAffiliateResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)

@@ -30,7 +30,7 @@ public class DemoAccountSeederTests
         {
             ("PLATFORM_ADMIN", "Platform Admin"),
             ("CANDIDATE", "Candidate"),
-            ("AFFILIATE_RECRUITER", "Affiliate Recruiter"),
+            ("AFFILIATE", "Affiliate"),
             ("CLIENT_COMPANY_USER", "Client Company User"),
             ("INTERNAL_HR", "Internal HR")
         };
@@ -175,8 +175,8 @@ public class DemoAccountSeederTests
         cand2UserRole!.AssignmentSource.Should().Be("REGISTRATION");
         cand2UserRole.Status.Should().Be("ACTIVE");
 
-        // Assert - 4. Affiliate Recruiter 1 (affiliate@gmail.com) & Affiliate Recruiter 2 (affiliate2@gmail.com)
-        var affiliateRole = await context.Roles.FirstAsync(r => r.Code == "AFFILIATE_RECRUITER");
+        // Assert - 4. Affiliate 1 (affiliate@gmail.com) & Affiliate 2 (affiliate2@gmail.com)
+        var affiliateRole = await context.Roles.FirstAsync(r => r.Code == "AFFILIATE");
 
         var aff1User = await context.AppUsers.FirstOrDefaultAsync(u => u.Email == DemoAccountSeeder.AffiliateEmail);
         aff1User.Should().NotBeNull();
@@ -513,8 +513,8 @@ public class DemoAccountSeederTests
             (DemoAccountSeeder.InternalHr2Email, "INTERNAL_HR"),
             (DemoAccountSeeder.CandidateEmail, "CANDIDATE"),
             (DemoAccountSeeder.Candidate2Email, "CANDIDATE"),
-            (DemoAccountSeeder.AffiliateEmail, "AFFILIATE_RECRUITER"),
-            (DemoAccountSeeder.Affiliate2Email, "AFFILIATE_RECRUITER"),
+            (DemoAccountSeeder.AffiliateEmail, "AFFILIATE"),
+            (DemoAccountSeeder.Affiliate2Email, "AFFILIATE"),
             (DemoAccountSeeder.ClientEmail, "CLIENT_COMPANY_USER"),
             (DemoAccountSeeder.Client2Email, "CLIENT_COMPANY_USER"),
             (DemoAccountSeeder.Client3Email, "CLIENT_COMPANY_USER"),

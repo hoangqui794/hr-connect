@@ -8,14 +8,14 @@ public static class ServiceTypeAllowedRoleSeeder
 {
     public static readonly (string ServiceTypeCode, string RoleCode, bool CanView, bool CanSubmit)[] ExpectedMappings =
     [
-        ("HEADHUNT_COD", "AFFILIATE_RECRUITER", true, true),
+        ("HEADHUNT_COD", "AFFILIATE", true, true),
         ("HEADHUNT_COD", "CANDIDATE", false, false),
         ("HEADHUNT_COD", "INTERNAL_HR", true, false),
         ("CV_APPLICATION", "CANDIDATE", true, true),
-        ("CV_APPLICATION", "AFFILIATE_RECRUITER", false, false),
+        ("CV_APPLICATION", "AFFILIATE", false, false),
         ("CV_APPLICATION", "INTERNAL_HR", true, false),
         ("CV_SOURCING", "CANDIDATE", false, false),
-        ("CV_SOURCING", "AFFILIATE_RECRUITER", true, true),
+        ("CV_SOURCING", "AFFILIATE", true, true),
         ("CV_SOURCING", "INTERNAL_HR", true, false)
     ];
 

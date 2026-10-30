@@ -32,7 +32,7 @@ public class GetServiceTypeAllowedRolesQueryHandlerTests
                     CanSubmit = true,
                     CreatedAt = DateTime.UtcNow.AddDays(-1),
                     UpdatedAt = DateTime.UtcNow,
-                    Role = new Role { RoleId = roleId, Code = "AFFILIATE_RECRUITER", Name = "Affiliate Recruiter", IsActive = true }
+                    Role = new Role { RoleId = roleId, Code = "AFFILIATE", Name = "Affiliate", IsActive = true }
                 }
             });
 
@@ -41,7 +41,7 @@ public class GetServiceTypeAllowedRolesQueryHandlerTests
         result.Success.Should().BeTrue();
         result.Data.ServiceTypeCode.Should().Be("HEADHUNT_COD");
         result.Data.Roles.Should().ContainSingle();
-        result.Data.Roles[0].RoleCode.Should().Be("AFFILIATE_RECRUITER");
+        result.Data.Roles[0].RoleCode.Should().Be("AFFILIATE");
         result.Data.Roles[0].CanView.Should().BeTrue();
         result.Data.Roles[0].CanSubmit.Should().BeTrue();
     }

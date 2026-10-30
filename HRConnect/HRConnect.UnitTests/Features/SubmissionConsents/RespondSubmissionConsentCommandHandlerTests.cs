@@ -539,8 +539,8 @@ public sealed class RespondSubmissionConsentCommandHandlerTests
         var role = new Role
         {
             RoleId = Guid.NewGuid(),
-            Code = "AFFILIATE_RECRUITER",
-            Name = "Affiliate Recruiter",
+            Code = "AFFILIATE",
+            Name = "Affiliate",
             IsActive = roleIsActive
         };
         var user = new AppUser

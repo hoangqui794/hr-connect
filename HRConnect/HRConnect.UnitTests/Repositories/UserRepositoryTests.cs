@@ -17,7 +17,7 @@ public sealed class UserRepositoryTests
                 .Options);
         var userId = Guid.NewGuid();
         var candidateRole = CreateRole("CANDIDATE", true);
-        var revokedRole = CreateRole("AFFILIATE_RECRUITER", true);
+        var revokedRole = CreateRole("AFFILIATE", true);
         context.AppUsers.Add(new AppUser
         {
             UserId = userId,

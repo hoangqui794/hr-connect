@@ -82,7 +82,7 @@ public class JobManagementQueryHandlerTests
             .ReturnsAsync(([visibleJob], 1));
 
         var result = await new GetPublicJobsQueryHandler(_jobs.Object).Handle(
-            new GetPublicJobsQuery(["CANDIDATE", "AFFILIATE_RECRUITER"], false, "dotnet", null, null), default);
+            new GetPublicJobsQuery(["CANDIDATE", "AFFILIATE"], false, "dotnet", null, null), default);
 
         result.Items.Should().ContainSingle();
         result.TotalCount.Should().Be(1);
@@ -111,7 +111,7 @@ public class JobManagementQueryHandlerTests
 
     [Theory]
     [InlineData("CANDIDATE", true)]
-    [InlineData("AFFILIATE_RECRUITER", true)]
+    [InlineData("AFFILIATE", true)]
     [InlineData("CANDIDATE", false)]
     [InlineData("HEADHUNTER", false)]
     public async Task GetDetail_ShouldFollowRoleCanViewPermission(string role, bool canView)

@@ -169,7 +169,7 @@ public class GetCurrentUserQueryHandlerTests
         var userId = Guid.NewGuid();
         var user = CreateUser(userId, "dual@example.com", "Dual Role User");
         user.UserRoleUsers.Add(CreateUserRole(userId, "CANDIDATE", permissionCodes: new List<string> { "job.apply" }));
-        user.UserRoleUsers.Add(CreateUserRole(userId, "AFFILIATE_RECRUITER", permissionCodes: new List<string> { "candidate.submit", "commission.view" }));
+        user.UserRoleUsers.Add(CreateUserRole(userId, "AFFILIATE", permissionCodes: new List<string> { "candidate.submit", "commission.view" }));
 
         _userRepositoryMock.Setup(r => r.GetByIdWithRolesAndPermissionsAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
@@ -178,14 +178,14 @@ public class GetCurrentUserQueryHandlerTests
         var result = await _handler.Handle(new GetCurrentUserQuery(userId), CancellationToken.None);
 
         // Assert
-        result.Data!.Roles.Should().BeEquivalentTo(new[] { "CANDIDATE", "AFFILIATE_RECRUITER" });
+        result.Data!.Roles.Should().BeEquivalentTo(new[] { "CANDIDATE", "AFFILIATE" });
         result.Data.Permissions.Should().BeEquivalentTo(new[] { "job.apply", "candidate.submit", "commission.view" });
     }
 
     [Fact]
     public async Task Handle_ShouldNotReturnAffiliateRole_ForPendingAffiliateBeforeApproval()
     {
-        // Arrange: Pending affiliate has no ACTIVE user_role with AFFILIATE_RECRUITER
+        // Arrange: Pending affiliate has no ACTIVE user_role with AFFILIATE
         var userId = Guid.NewGuid();
         var user = CreateUser(userId, "pending_affiliate@example.com", "Pending Affiliate", status: "PENDING", emailVerifiedAt: DateTime.UtcNow);
 
@@ -207,7 +207,7 @@ public class GetCurrentUserQueryHandlerTests
         // Arrange: Approved affiliate has ACTIVE user_role
         var userId = Guid.NewGuid();
         var user = CreateUser(userId, "approved_affiliate@example.com", "Approved Affiliate");
-        user.UserRoleUsers.Add(CreateUserRole(userId, "AFFILIATE_RECRUITER", permissionCodes: new List<string> { "affiliate.dashboard.view", "submission.create" }));
+        user.UserRoleUsers.Add(CreateUserRole(userId, "AFFILIATE", permissionCodes: new List<string> { "affiliate.dashboard.view", "submission.create" }));
 
         _userRepositoryMock.Setup(r => r.GetByIdWithRolesAndPermissionsAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
@@ -216,7 +216,7 @@ public class GetCurrentUserQueryHandlerTests
         var result = await _handler.Handle(new GetCurrentUserQuery(userId), CancellationToken.None);
 
         // Assert
-        result.Data!.Roles.Should().ContainSingle().Which.Should().Be("AFFILIATE_RECRUITER");
+        result.Data!.Roles.Should().ContainSingle().Which.Should().Be("AFFILIATE");
         result.Data.Permissions.Should().BeEquivalentTo(new[] { "affiliate.dashboard.view", "submission.create" });
     }
 

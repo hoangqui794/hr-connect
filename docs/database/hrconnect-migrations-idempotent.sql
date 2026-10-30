@@ -4528,7 +4528,7 @@ BEGIN
         ('interview.view_own', 'interview', 'view_own', 'View own interview schedule'),
         ('offer.view_own', 'offer', 'view_own', 'View own offers'),
         ('offer.respond', 'offer', 'respond', 'Accept or decline own offer'),
-        ('affiliate.apply', 'affiliate_application', 'create', 'Apply to become an affiliate recruiter'),
+        ('affiliate.apply', 'affiliate_application', 'create', 'Apply to become an affiliate'),
         ('affiliate.profile.view_own', 'affiliate_profile', 'view_own', 'View own affiliate profile'),
         ('affiliate.profile.update_own', 'affiliate_profile', 'update_own', 'Update own affiliate profile'),
         ('submission.create', 'submission', 'create', 'Submit a candidate and CV for a job'),
@@ -4620,7 +4620,7 @@ BEGIN
         'attribution.view_own', 'dispute.create', 'dispute.view_own',
         'commission.view_own', 'payout.view_own', 'affiliate.performance.view_own'
     )
-    WHERE r.code = 'AFFILIATE_RECRUITER'
+    WHERE r.code = 'AFFILIATE'
     ON CONFLICT (role_id, permission_id) DO NOTHING;
 
     INSERT INTO public.role_permission (role_id, permission_id)
@@ -5834,6 +5834,337 @@ BEGIN
     IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261022132101_AddServiceAgreement') THEN
     INSERT INTO public."__EFMigrationsHistory" ("MigrationId", "ProductVersion")
     VALUES ('20261022132101_AddServiceAgreement', '8.0.11');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261023065045_AddPlacementReconciliation') THEN
+    CREATE TABLE public.placement_reconciliation (
+        reconciliation_id uuid NOT NULL DEFAULT (gen_random_uuid()),
+        application_id uuid NOT NULL,
+        placement_id uuid,
+        claimed_outcome character varying(30) NOT NULL,
+        status character varying(30) NOT NULL,
+        contact_channel character varying(30),
+        note character varying(1000),
+        resolution_note character varying(1000),
+        reviewed_by uuid,
+        reviewed_at timestamp with time zone,
+        concurrency_token uuid NOT NULL DEFAULT (gen_random_uuid()),
+        created_at timestamp with time zone NOT NULL DEFAULT (now()),
+        updated_at timestamp with time zone NOT NULL DEFAULT (now()),
+        CONSTRAINT placement_reconciliation_pkey PRIMARY KEY (reconciliation_id),
+        CONSTRAINT ck_placement_reconciliation_channel CHECK (contact_channel IS NULL OR contact_channel IN ('CANDIDATE','AFFILIATE','BOTH')),
+        CONSTRAINT ck_placement_reconciliation_flag_note CHECK (status <> 'FLAGGED' OR length(trim(note)) > 0),
+        CONSTRAINT ck_placement_reconciliation_outcome CHECK (claimed_outcome IN ('STARTED','NOT_STARTED')),
+        CONSTRAINT ck_placement_reconciliation_placement CHECK ((claimed_outcome = 'STARTED' AND placement_id IS NOT NULL) OR (claimed_outcome = 'NOT_STARTED' AND placement_id IS NULL)),
+        CONSTRAINT ck_placement_reconciliation_review CHECK ((status = 'PENDING' AND reviewed_by IS NULL AND reviewed_at IS NULL) OR (status <> 'PENDING' AND reviewed_at IS NOT NULL)),
+        CONSTRAINT ck_placement_reconciliation_status CHECK (status IN ('PENDING','CONFIRMED','FLAGGED')),
+        CONSTRAINT fk_placement_reconciliation_application FOREIGN KEY (application_id) REFERENCES public.application (application_id) ON DELETE RESTRICT,
+        CONSTRAINT fk_placement_reconciliation_placement FOREIGN KEY (placement_id) REFERENCES public.placement (placement_id) ON DELETE RESTRICT,
+        CONSTRAINT fk_placement_reconciliation_reviewer FOREIGN KEY (reviewed_by) REFERENCES public.app_user (user_id) ON DELETE RESTRICT
+    );
+    COMMENT ON TABLE public.placement_reconciliation IS 'UC-41 operational verification of HEADHUNT_COD start-work outcomes before placement finance proceeds.';
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261023065045_AddPlacementReconciliation') THEN
+    CREATE INDEX idx_placement_reconciliation_status_created ON public.placement_reconciliation (status, created_at);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261023065045_AddPlacementReconciliation') THEN
+    CREATE INDEX "IX_placement_reconciliation_reviewed_by" ON public.placement_reconciliation (reviewed_by);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261023065045_AddPlacementReconciliation') THEN
+    CREATE UNIQUE INDEX placement_reconciliation_application_id_key ON public.placement_reconciliation (application_id);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261023065045_AddPlacementReconciliation') THEN
+    CREATE UNIQUE INDEX placement_reconciliation_placement_id_key ON public.placement_reconciliation (placement_id);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261023065045_AddPlacementReconciliation') THEN
+    INSERT INTO public.placement_reconciliation
+        (reconciliation_id, application_id, placement_id, claimed_outcome, status,
+         note, reviewed_at, concurrency_token, created_at, updated_at)
+    SELECT gen_random_uuid(), a.application_id, p.placement_id, 'STARTED', 'CONFIRMED',
+           'LEGACY_BACKFILL', now(), gen_random_uuid(), now(), now()
+    FROM public.placement p
+    JOIN public.application a ON a.application_id = p.application_id
+    JOIN public.job j ON j.job_id = a.job_id
+    JOIN public.service_type st ON st.service_type_id = j.service_type_id
+    WHERE st.code = 'HEADHUNT_COD'
+    ON CONFLICT (application_id) DO NOTHING;
+
+    INSERT INTO public.placement_reconciliation
+        (reconciliation_id, application_id, placement_id, claimed_outcome, status,
+         note, reviewed_at, concurrency_token, created_at, updated_at)
+    SELECT gen_random_uuid(), a.application_id, NULL, 'NOT_STARTED', 'CONFIRMED',
+           'LEGACY_BACKFILL', now(), gen_random_uuid(), now(), now()
+    FROM public.application a
+    JOIN public.job j ON j.job_id = a.job_id
+    JOIN public.service_type st ON st.service_type_id = j.service_type_id
+    WHERE st.code = 'HEADHUNT_COD' AND a.status = 'NOT_STARTED'
+    ON CONFLICT (application_id) DO NOTHING;
+
+    INSERT INTO public.permission
+        (code, resource, action, description, is_active, is_delegable, created_at, updated_at)
+    VALUES
+        ('placement.reconcile', 'placement', 'reconcile',
+         'Verify HEADHUNT_COD start-work outcomes before placement finance proceeds',
+         true, false, now(), now())
+    ON CONFLICT (code) DO UPDATE
+    SET resource = EXCLUDED.resource,
+        action = EXCLUDED.action,
+        description = EXCLUDED.description,
+        is_active = true,
+        is_delegable = false,
+        updated_at = now();
+
+    INSERT INTO public.role_permission
+        (role_id, permission_id, granted_at, grant_source)
+    SELECT r.role_id, p.permission_id, now(), 'SYSTEM_MIGRATION'
+    FROM public.role r
+    JOIN public.permission p ON p.code = 'placement.reconcile'
+    WHERE r.code = 'INTERNAL_HR'
+    ON CONFLICT (role_id, permission_id) DO NOTHING;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261023065045_AddPlacementReconciliation') THEN
+    INSERT INTO public."__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261023065045_AddPlacementReconciliation', '8.0.11');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261024055420_AddPlacementReconciliationResolutionAction') THEN
+    ALTER TABLE public.placement_reconciliation ADD resolution_action character varying(50);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261024055420_AddPlacementReconciliationResolutionAction') THEN
+    ALTER TABLE public.placement_reconciliation ADD CONSTRAINT ck_placement_reconciliation_resolution_action CHECK (resolution_action IS NULL OR resolution_action IN ('CONFIRM_REPORTED_OUTCOME','REOPEN_FOR_CLIENT_CONFIRMATION'));
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261024055420_AddPlacementReconciliationResolutionAction') THEN
+    INSERT INTO public."__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261024055420_AddPlacementReconciliationResolutionAction', '8.0.11');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261025103956_AddCompanyLogoStorage') THEN
+    ALTER TABLE public.company ADD logo_object_key character varying(1024);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261025103956_AddCompanyLogoStorage') THEN
+    ALTER TABLE public.company ADD logo_updated_at timestamp with time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261025103956_AddCompanyLogoStorage') THEN
+    ALTER TABLE public.company ADD logo_url character varying(2048);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261025103956_AddCompanyLogoStorage') THEN
+    INSERT INTO public."__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261025103956_AddCompanyLogoStorage', '8.0.11');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261026140213_AddHybridCandidateJobMatching') THEN
+    ALTER TABLE public.candidate_job_match ADD dismissed_at timestamp with time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261026140213_AddHybridCandidateJobMatching') THEN
+    ALTER TABLE public.candidate_job_match ADD input_fingerprint character varying(64);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261026140213_AddHybridCandidateJobMatching') THEN
+    ALTER TABLE public.candidate_job_match ADD last_attempt_at timestamp with time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261026140213_AddHybridCandidateJobMatching') THEN
+    ALTER TABLE public.candidate_job_match ADD next_retry_at timestamp with time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261026140213_AddHybridCandidateJobMatching') THEN
+    ALTER TABLE public.candidate_job_match ADD retry_count integer NOT NULL DEFAULT 1;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261026140213_AddHybridCandidateJobMatching') THEN
+    ALTER TABLE public.candidate_job_match ADD scoring_version character varying(30);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261026140213_AddHybridCandidateJobMatching') THEN
+    CREATE INDEX idx_candidate_job_match_feed ON public.candidate_job_match (candidate_id, status, generated_at DESC);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261026140213_AddHybridCandidateJobMatching') THEN
+    CREATE UNIQUE INDEX ux_candidate_job_match_input ON public.candidate_job_match (candidate_id, job_id, input_fingerprint) WHERE input_fingerprint IS NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261026140213_AddHybridCandidateJobMatching') THEN
+    INSERT INTO public."__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261026140213_AddHybridCandidateJobMatching', '8.0.11');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261030061124_StandardizeAffiliateRole') THEN
+    UPDATE public.role
+    SET code = 'AFFILIATE',
+        name = 'Affiliate',
+        description = 'Cộng tác viên giới thiệu ứng viên',
+        updated_at = now()
+    WHERE code = 'AFFILIATE_RECRUITER';
+
+    UPDATE public.affiliate_application
+    SET affiliate_type = 'STANDARD'
+    WHERE affiliate_type IN ('RECRUITER', 'INDIVIDUAL');
+
+    UPDATE public.affiliate_profile
+    SET affiliate_type = 'STANDARD',
+        updated_at = now()
+    WHERE affiliate_type IN ('RECRUITER', 'INDIVIDUAL');
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261030061124_StandardizeAffiliateRole') THEN
+    COMMENT ON TABLE public.affiliate_application IS 'Existing Candidate can apply to become Affiliate without creating a second app_user. Approval should add/re-activate AFFILIATE role in the same transaction.';
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261030061124_StandardizeAffiliateRole') THEN
+    ALTER TABLE public.job_template ALTER COLUMN min_experience_years TYPE numeric(4,1);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261030061124_StandardizeAffiliateRole') THEN
+    ALTER TABLE public.job_template ALTER COLUMN max_experience_years TYPE numeric(4,1);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261030061124_StandardizeAffiliateRole') THEN
+    ALTER TABLE public.job ALTER COLUMN min_experience_years TYPE numeric(4,1);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261030061124_StandardizeAffiliateRole') THEN
+    ALTER TABLE public.job ALTER COLUMN max_experience_years TYPE numeric(4,1);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261030061124_StandardizeAffiliateRole') THEN
+    ALTER TABLE public.affiliate_profile ALTER COLUMN affiliate_type SET DEFAULT ('STANDARD'::character varying);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261030061124_StandardizeAffiliateRole') THEN
+    ALTER TABLE public.affiliate_application ALTER COLUMN affiliate_type SET DEFAULT ('STANDARD'::character varying);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM public."__EFMigrationsHistory" WHERE "MigrationId" = '20261030061124_StandardizeAffiliateRole') THEN
+    INSERT INTO public."__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261030061124_StandardizeAffiliateRole', '8.0.11');
     END IF;
 END $EF$;
 COMMIT;
