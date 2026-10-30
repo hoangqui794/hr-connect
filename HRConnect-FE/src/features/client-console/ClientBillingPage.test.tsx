@@ -116,10 +116,11 @@ describe('ClientBillingPage', () => {
     await screen.findByText('Backend .NET');
 
     fireEvent.click(screen.getByRole('button', { name: 'Thanh toán: Phí Headhunt · Backend .NET' }));
-    fireEvent.click(await screen.findByRole('button', { name: /Thanh toán qua VNPay/ }));
+    // The VNPay button waits for the "is VNPay on" query; CI runners are slow, so allow more than the 1s default.
+    fireEvent.click(await screen.findByRole('button', { name: /Thanh toán qua VNPay/ }, { timeout: 5000 }));
 
-    await waitFor(() => expect(assign).toHaveBeenCalledWith('https://sandbox.vnpayment.vn/pay?x=1'));
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('https://sandbox.vnpayment.vn/pay?x=1'), { timeout: 5000 });
     expect(vnPayApi.createPayment).toHaveBeenCalledWith('SERVICE_FEE', 'hh');
     vi.unstubAllGlobals();
-  });
+  }, 15000);
 });
