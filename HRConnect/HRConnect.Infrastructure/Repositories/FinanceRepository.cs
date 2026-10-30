@@ -301,7 +301,9 @@ public class FinanceRepository : IFinanceRepository
             .Include(fee => fee.Placement!).ThenInclude(p => p.Application).ThenInclude(a => a.Job)
             .Include(fee => fee.Placement!).ThenInclude(p => p.Application).ThenInclude(a => a.Candidate)
             .Include(fee => fee.Placement!).ThenInclude(p => p.Reconciliation)
-            .OrderByDescending(fee => fee.CreatedAt)
+            // Newest activity first: a fee paid today sorts above one raised last week.
+            .OrderByDescending(fee => fee.PaidAt ?? fee.CreatedAt)
+            .ThenByDescending(fee => fee.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);
@@ -378,7 +380,15 @@ public class FinanceRepository : IFinanceRepository
 
         var total = await query.CountAsync(cancellationToken);
         var items = await query
-            .OrderByDescending(p => p.CreatedAt)
+            .Include(p => p.Commission).ThenInclude(c => c.Attribution).ThenInclude(a => a.Affiliate).ThenInclude(a => a!.User)
+            .Include(p => p.Commission).ThenInclude(c => c.Placement!).ThenInclude(pl => pl.Application).ThenInclude(a => a.Candidate)
+            .Include(p => p.Commission).ThenInclude(c => c.Placement!).ThenInclude(pl => pl.Application).ThenInclude(a => a.Job)
+            .Include(p => p.Commission).ThenInclude(c => c.SourcingDelivery!).ThenInclude(d => d.Job)
+            .Include(p => p.Commission).ThenInclude(c => c.SourcingDelivery!).ThenInclude(d => d.Application).ThenInclude(a => a.Candidate)
+            .AsSplitQuery()
+            // Newest transfer first, by the date the money actually left.
+            .OrderByDescending(p => p.PayoutDate ?? p.CreatedAt)
+            .ThenByDescending(p => p.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);

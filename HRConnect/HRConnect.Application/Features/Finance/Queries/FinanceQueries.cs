@@ -33,7 +33,8 @@ public sealed record WarrantyDto(
 
 public sealed record PayoutDto(
     Guid PayoutId, Guid CommissionId, decimal Amount, DateTime? PayoutDate, string? Method, string? TransactionReference,
-    string Status, int AttemptNo, DateTime CreatedAt);
+    string Status, int AttemptNo, DateTime CreatedAt,
+    string? AffiliateName = null, string? CandidateName = null, string? JobTitle = null);
 
 /// <summary>Viewer scope is resolved by the endpoint: Client sees one company; Admin sees all.</summary>
 public sealed record GetServiceFeesQuery(Guid? CompanyUserId, string? Status, int Page, int PageSize, Guid? JobId = null, string? Kind = null)
@@ -113,7 +114,11 @@ public sealed class FinanceQueryHandlers :
         var (items, total) = await _financeRepository.GetPayoutsAsync(request.AffiliateUserId, page, pageSize, cancellationToken);
         return new PagedResult<PayoutDto>(items.Select(p => new PayoutDto(
             p.PayoutId, p.CommissionId, p.Amount, p.PayoutDate, p.Method, p.TransactionReference,
-            p.Status, p.AttemptNo, p.CreatedAt)).ToList(), total, page, pageSize);
+            p.Status, p.AttemptNo, p.CreatedAt,
+            // Who was paid for what, so the payout history reads without opening each commission.
+            p.Commission?.Attribution?.Affiliate?.DisplayName ?? p.Commission?.Attribution?.Affiliate?.User?.DisplayName,
+            p.Commission?.Placement?.Application?.Candidate?.FullName ?? p.Commission?.SourcingDelivery?.Application?.Candidate?.FullName,
+            p.Commission?.Placement?.Application?.Job?.Title ?? p.Commission?.SourcingDelivery?.Job?.Title)).ToList(), total, page, pageSize);
     }
 
     public async Task<PagedResult<WarrantyDto>> Handle(GetWarrantiesQuery request, CancellationToken cancellationToken)

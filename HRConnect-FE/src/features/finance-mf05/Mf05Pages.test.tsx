@@ -79,13 +79,43 @@ describe('MF-05 admin finance', () => {
     expect((approve as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it('links Platform Admin to placement reconciliation exceptions', async () => {
+  it('links Platform Admin to placement reconciliation exceptions when there are some', async () => {
     vi.mocked(financeApi.commissions).mockResolvedValue(page([]));
+    vi.mocked(placementReconciliationApi.list).mockResolvedValue({ items: [], totalCount: 2, page: 1, pageSize: 1 });
 
     renderWith(<AdminFinancePage />);
 
     expect(await screen.findByText('Đối soát cần xử lý')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Mở danh sách đối soát' })).toBeInTheDocument();
+  });
+
+  it('hides the reconciliation banner when nothing needs fixing', async () => {
+    vi.mocked(financeApi.commissions).mockResolvedValue(page([]));
+
+    renderWith(<AdminFinancePage />);
+
+    await screen.findByText('Hoa hồng chờ duyệt');
+    expect(screen.queryByText('Đối soát cần xử lý')).toBeNull();
+  });
+
+  it('shows when and how each fee was paid, and opens overdue fees from the to-do tiles', async () => {
+    vi.mocked(financeApi.commissions).mockResolvedValue(page([]));
+    const paid: ServiceFee = {
+      serviceFeeId: 'fee-paid', placementId: null, kind: 'DEPOSIT', companyId: 'company-1', companyName: 'ABC',
+      jobTitle: 'Kế toán', candidateName: null, baseSalary: 2_400_000, feeMultiplier: 0.5, amount: 1_200_000,
+      currencyCode: 'VND', dueDate: '2026-11-09', status: 'PAID', paidAt: '2026-10-30T11:00:00Z',
+      paymentReference: 'VNPAY-99137506', createdAt: '2026-10-20',
+    };
+    vi.mocked(financeApi.serviceFees).mockResolvedValue(page([paid]));
+
+    renderWith(<AdminFinancePage />);
+    fireEvent.click(await screen.findByRole('button', { name: /Phí quá hạn/ }));
+
+    expect(await screen.findByText('VNPAY-99137506')).toBeInTheDocument();
+    expect(screen.getByText('VNPay')).toBeInTheDocument();
+    expect(screen.getByText(new Date('2026-10-30T11:00:00Z').toLocaleDateString('vi-VN'))).toBeInTheDocument();
+    await waitFor(() =>
+      expect(financeApi.serviceFees).toHaveBeenCalledWith({ status: 'OVERDUE', page: 1, pageSize: 20 }));
   });
 
   it('does not let Admin record a placement fee before reconciliation finishes', async () => {
@@ -99,9 +129,9 @@ describe('MF-05 admin finance', () => {
     vi.mocked(financeApi.serviceFees).mockResolvedValue(page([fee]));
 
     renderWith(<AdminFinancePage />);
-    fireEvent.click(screen.getByRole('radio', { name: 'Công nợ phí' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Công nợ phí' }));
 
-    const blocked = await screen.findByRole('button', { name: 'Chờ đối soát' });
+    const blocked = await screen.findByRole('button', { name: 'Chờ đối soát' }, { timeout: 10000 });
     expect((blocked as HTMLButtonElement).disabled).toBe(true);
   });
 });
