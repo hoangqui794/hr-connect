@@ -123,7 +123,7 @@ export interface DuplicateSubmission {
   resolution?: string;
 }
 
-// ─── SPEC DTOs (Spec Mục 4 & 5 - Affiliate Recruiter & OPR Hub) ────────────────
+// ─── SPEC DTOs (Spec Mục 4 & 5 - Affiliate & OPR Hub) ────────────────
 
 export type SubmissionStatus =
   | 'SUBMITTED'       // Đã nộp / Chờ HR duyệt

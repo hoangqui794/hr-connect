@@ -27,8 +27,8 @@ public sealed class AffiliateProfileRepositoryTests
         context.Roles.Add(new Role
         {
             RoleId = roleId,
-            Code = "AFFILIATE_RECRUITER",
-            Name = "Affiliate Recruiter",
+            Code = "AFFILIATE",
+            Name = "Affiliate",
             IsActive = true
         });
         context.UserRoles.Add(new UserRole
@@ -43,7 +43,7 @@ public sealed class AffiliateProfileRepositoryTests
         {
             AffiliateId = Guid.NewGuid(),
             UserId = userId,
-            AffiliateType = "RECRUITER",
+            AffiliateType = "STANDARD",
             Status = "ACTIVE"
         });
         await context.SaveChangesAsync();
@@ -56,7 +56,7 @@ public sealed class AffiliateProfileRepositoryTests
         profile!.User.Status.Should().Be("ACTIVE");
         profile.User.UserRoleUsers.Should().ContainSingle(userRole =>
             userRole.Status == "ACTIVE" &&
-            userRole.Role.Code == "AFFILIATE_RECRUITER" &&
+            userRole.Role.Code == "AFFILIATE" &&
             userRole.Role.IsActive);
     }
 }

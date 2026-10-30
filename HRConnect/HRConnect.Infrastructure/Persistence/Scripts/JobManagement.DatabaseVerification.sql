@@ -92,7 +92,7 @@ FROM public.service_type_allowed_role mapping
 JOIN public.service_type st ON st.service_type_id = mapping.service_type_id
 JOIN public.role r ON r.role_id = mapping.role_id
 WHERE st.code IN ('HEADHUNT_COD', 'CV_APPLICATION', 'CV_SOURCING')
-  AND r.code IN ('CANDIDATE', 'AFFILIATE_RECRUITER')
+  AND r.code IN ('CANDIDATE', 'AFFILIATE')
 ORDER BY st.code, r.code;
 
 -- 7. Kiểm tra dữ liệu Job chỉ còn ba visibility hợp lệ sau migration.

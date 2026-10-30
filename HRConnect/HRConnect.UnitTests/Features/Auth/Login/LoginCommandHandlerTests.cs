@@ -403,7 +403,7 @@ public class LoginCommandHandlerTests
     public async Task Handle_ShouldSuccessfullyLogin_WhenAffiliateIsApproved()
     {
         var command = new LoginCommand("approved_affiliate@example.com", "Password@123");
-        var role = new Role { RoleId = Guid.NewGuid(), Code = "AFFILIATE_RECRUITER", Name = "Affiliate Recruiter", IsActive = true };
+        var role = new Role { RoleId = Guid.NewGuid(), Code = "AFFILIATE", Name = "Affiliate", IsActive = true };
         var user = new AppUser
         {
             UserId = Guid.NewGuid(),
@@ -444,7 +444,7 @@ public class LoginCommandHandlerTests
         response.Should().NotBeNull();
         response.Success.Should().BeTrue();
         response.Data!.AccessToken.Should().Be("affiliate_jwt_token");
-        response.Data.User.Roles.Should().ContainSingle().Which.Should().Be("AFFILIATE_RECRUITER");
+        response.Data.User.Roles.Should().ContainSingle().Which.Should().Be("AFFILIATE");
     }
 
     [Fact]

@@ -201,7 +201,7 @@ public partial class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.AffiliateApplicationId).HasName("affiliate_application_pkey");
 
-            entity.ToTable("affiliate_application", "public", tb => tb.HasComment("Existing Candidate can apply to become Affiliate without creating a second app_user. Approval should add/re-activate AFFILIATE_RECRUITER role in the same transaction."));
+            entity.ToTable("affiliate_application", "public", tb => tb.HasComment("Existing Candidate can apply to become Affiliate without creating a second app_user. Approval should add/re-activate AFFILIATE role in the same transaction."));
 
             entity.HasIndex(e => e.UserId, "uq_affiliate_application_open")
                 .IsUnique()
@@ -213,7 +213,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.Address).HasColumnName("address");
             entity.Property(e => e.AffiliateType)
                 .HasMaxLength(50)
-                .HasDefaultValueSql("'RECRUITER'::character varying")
+                .HasDefaultValueSql("'STANDARD'::character varying")
                 .HasColumnName("affiliate_type");
             entity.Property(e => e.ContactPerson)
                 .HasMaxLength(180)
@@ -334,7 +334,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("bank_branch");
             entity.Property(e => e.AffiliateType)
                 .HasMaxLength(50)
-                .HasDefaultValueSql("'RECRUITER'::character varying")
+                .HasDefaultValueSql("'STANDARD'::character varying")
                 .HasColumnName("affiliate_type");
             entity.Property(e => e.ContactPerson)
                 .HasMaxLength(180)

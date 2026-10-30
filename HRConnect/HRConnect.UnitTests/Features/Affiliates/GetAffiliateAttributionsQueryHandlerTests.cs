@@ -41,7 +41,7 @@ public class GetAffiliateAttributionsQueryHandlerTests
         // Act & Assert
         var act = () => _handler.Handle(query, CancellationToken.None);
         await act.Should().ThrowAsync<ForbiddenException>()
-            .WithMessage("*hồ sơ Affiliate Recruiter*");
+            .WithMessage("*hồ sơ Affiliate*");
     }
 
     [Fact]
@@ -54,8 +54,8 @@ public class GetAffiliateAttributionsQueryHandlerTests
         {
             AffiliateId = affiliateId,
             UserId = userId,
-            AffiliateType = "INDIVIDUAL",
-            DisplayName = "Affiliate Recruiter A"
+            AffiliateType = "STANDARD",
+            DisplayName = "Affiliate A"
         };
 
         var candidateId = Guid.NewGuid();
@@ -133,7 +133,7 @@ public class GetAffiliateAttributionsQueryHandlerTests
         {
             AffiliateId = affiliateId,
             UserId = userId,
-            AffiliateType = "INDIVIDUAL"
+            AffiliateType = "STANDARD"
         };
 
         var jobId = Guid.NewGuid();

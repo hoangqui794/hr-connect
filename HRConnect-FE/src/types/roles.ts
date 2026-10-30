@@ -30,7 +30,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   [UserRole.GUEST]: 'Khách vãng lai',
   [UserRole.CLIENT]: 'Doanh nghiệp tuyển dụng',
   [UserRole.CANDIDATE]: 'Ứng viên',
-  [UserRole.AFFILIATE]: 'Cộng tác viên tuyển dụng (Headhunter)',
+  [UserRole.AFFILIATE]: 'Cộng tác viên',
   [UserRole.INTERNAL_HR]: 'Chuyên viên nhân sự nội bộ (HR)',
   [UserRole.ADMIN]: 'Quản trị viên hệ thống',
 };
@@ -101,7 +101,7 @@ export const mapApiRoleToUserRole = (roles?: string[] | null): UserRole => {
   const normalized = roles.map((r) => r.toUpperCase());
   if (normalized.some((r) => r.includes('ADMIN'))) return UserRole.ADMIN;
   if (normalized.some((r) => r.includes('CLIENT') || r.includes('EMPLOYER'))) return UserRole.CLIENT;
-  if (normalized.some((r) => r.includes('AFFILIATE') || r.includes('HEADHUNTER') || r.includes('RECRUITER'))) return UserRole.AFFILIATE;
+  if (normalized.some((r) => r === 'AFFILIATE')) return UserRole.AFFILIATE;
   if (normalized.some((r) => r.includes('INTERNAL_HR') || r.includes('HR_OPS') || r.includes('HR'))) return UserRole.INTERNAL_HR;
   if (normalized.some((r) => r.includes('CANDIDATE') || r.includes('TALENT'))) return UserRole.CANDIDATE;
   return UserRole.CANDIDATE;
@@ -116,7 +116,7 @@ export const mapApiRolesToUserRoles = (roles?: string[] | null): UserRole[] => {
     const normalized = rawRole.toUpperCase();
     if (normalized.includes('ADMIN')) result.add(UserRole.ADMIN);
     else if (normalized.includes('CLIENT') || normalized.includes('EMPLOYER')) result.add(UserRole.CLIENT);
-    else if (normalized.includes('AFFILIATE') || normalized.includes('HEADHUNTER') || normalized.includes('RECRUITER')) result.add(UserRole.AFFILIATE);
+    else if (normalized === 'AFFILIATE') result.add(UserRole.AFFILIATE);
     else if (normalized.includes('INTERNAL_HR') || normalized.includes('HR_OPS') || normalized === 'HR') result.add(UserRole.INTERNAL_HR);
     else if (normalized.includes('CANDIDATE') || normalized.includes('TALENT')) result.add(UserRole.CANDIDATE);
   });

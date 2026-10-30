@@ -36,7 +36,7 @@ public sealed class GetAffiliateCandidateCvDownloadUrlQueryHandler
         CancellationToken cancellationToken)
     {
         if (await _affiliateProfiles.GetByUserIdAsync(request.UserId, cancellationToken) == null)
-            throw new ForbiddenException("Không tìm thấy hồ sơ Affiliate Recruiter của bạn.");
+            throw new ForbiddenException("Không tìm thấy hồ sơ Affiliate của bạn.");
 
         var cv = await _submissions.GetAffiliateCandidateCvAccessAsync(
             request.UserId, request.CandidateId, request.CvId, cancellationToken);

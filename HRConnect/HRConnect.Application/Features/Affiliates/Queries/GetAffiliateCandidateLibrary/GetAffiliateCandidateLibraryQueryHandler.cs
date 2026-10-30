@@ -26,7 +26,7 @@ public sealed class GetAffiliateCandidateLibraryQueryHandler
         CancellationToken cancellationToken)
     {
         if (await _affiliateProfiles.GetByUserIdAsync(request.UserId, cancellationToken) == null)
-            throw new ForbiddenException("Không tìm thấy hồ sơ Affiliate Recruiter của bạn.");
+            throw new ForbiddenException("Không tìm thấy hồ sơ Affiliate của bạn.");
 
         var search = string.IsNullOrWhiteSpace(request.Search) ? null : request.Search.Trim();
         if (search?.Length > 100)

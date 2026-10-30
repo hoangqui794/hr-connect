@@ -4,7 +4,7 @@
  * Implements 3 distinct registration flows conforming to Swagger OpenAPI:
  *   - Candidate: POST /api/v1/auth/register/candidate
  *   - Client Company: POST /api/v1/auth/register/client
- *   - Affiliate Recruiter: POST /api/v1/auth/register/affiliate
+ *   - Affiliate: POST /api/v1/auth/register/affiliate
  *
  * Compact role selector, real-time password strength meter, password matching,
  * defensive error handling, and redirection to OTP verification.

@@ -18,7 +18,7 @@ describe('auth store claims', () => {
         displayName: 'Candidate One',
         status: 'ACTIVE',
         emailVerified: true,
-        roles: ['CANDIDATE', 'AFFILIATE_RECRUITER'],
+        roles: ['CANDIDATE', 'AFFILIATE'],
         permissions: ['submission.create', 'submission.view_own'],
       },
       'access-token',
@@ -27,7 +27,7 @@ describe('auth store claims', () => {
 
     const state = useAuthStore.getState();
     expect(state.user).toMatchObject({
-      roles: ['CANDIDATE', 'AFFILIATE_RECRUITER'],
+      roles: ['CANDIDATE', 'AFFILIATE'],
       permissions: ['submission.create', 'submission.view_own'],
       status: 'ACTIVE',
       emailVerified: true,

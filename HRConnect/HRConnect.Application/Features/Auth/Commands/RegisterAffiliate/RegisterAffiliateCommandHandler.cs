@@ -102,7 +102,7 @@ public class RegisterAffiliateCommandHandler : IRequestHandler<RegisterAffiliate
             var now = DateTime.UtcNow;
 
             // 4. Tạo mới AppUser (status = PENDING, email_verified_at = null)
-            // QUY TẮC: KHÔNG gán vai trò AFFILIATE_RECRUITER tại thời điểm đăng ký
+            // QUY TẮC: KHÔNG gán vai trò AFFILIATE tại thời điểm đăng ký
             var newUser = new AppUser
             {
                 UserId = Guid.NewGuid(),
@@ -138,7 +138,7 @@ public class RegisterAffiliateCommandHandler : IRequestHandler<RegisterAffiliate
             {
                 AffiliateApplicationId = Guid.NewGuid(),
                 UserId = newUser.UserId,
-                AffiliateType = "RECRUITER",
+                AffiliateType = "STANDARD",
                 DisplayName = request.FullName.Trim(),
                 Phone = request.Phone?.Trim(),
                 SubmittedData = "{}",

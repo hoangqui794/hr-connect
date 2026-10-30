@@ -36,7 +36,7 @@ describe('ProtectedRoute', () => {
         name: 'Multi Role',
         email: 'multi@example.com',
         role: UserRole.AFFILIATE,
-        roles: ['AFFILIATE_RECRUITER', 'CANDIDATE'],
+        roles: ['AFFILIATE', 'CANDIDATE'],
         permissions: ['application.create'],
       },
     });

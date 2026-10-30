@@ -219,7 +219,7 @@ public class RegisterAffiliateCommandHandlerTests
         capturedApp.Should().NotBeNull();
         capturedApp!.UserId.Should().Be(capturedUser.UserId);
         capturedApp.Status.Should().Be("PENDING");
-        capturedApp.AffiliateType.Should().Be("RECRUITER");
+        capturedApp.AffiliateType.Should().Be("STANDARD");
 
         capturedToken.Should().NotBeNull();
         capturedToken!.TokenType.Should().Be("EMAIL_OTP");

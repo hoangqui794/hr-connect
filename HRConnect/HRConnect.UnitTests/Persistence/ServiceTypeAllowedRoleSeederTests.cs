@@ -46,13 +46,13 @@ public class ServiceTypeAllowedRoleSeederTests
             .Include(x => x.ServiceType).Include(x => x.Role).ToListAsync();
         mappings.Should().HaveCount(9);
         mappings.Should().ContainSingle(x => x.ServiceType.Code == "HEADHUNT_COD" &&
-            x.Role.Code == "AFFILIATE_RECRUITER" && x.CanView && x.CanSubmit);
+            x.Role.Code == "AFFILIATE" && x.CanView && x.CanSubmit);
         mappings.Should().ContainSingle(x => x.ServiceType.Code == "HEADHUNT_COD" &&
             x.Role.Code == "CANDIDATE" && !x.CanView && !x.CanSubmit);
         mappings.Should().ContainSingle(x => x.ServiceType.Code == "CV_SOURCING" &&
             x.Role.Code == "CANDIDATE" && !x.CanView && !x.CanSubmit);
         mappings.Should().ContainSingle(x => x.ServiceType.Code == "CV_SOURCING" &&
-            x.Role.Code == "AFFILIATE_RECRUITER" && x.CanView && x.CanSubmit);
+            x.Role.Code == "AFFILIATE" && x.CanView && x.CanSubmit);
         mappings.Should().ContainSingle(x => x.ServiceType.Code == "CV_SOURCING" &&
             x.Role.Code == "INTERNAL_HR" && x.CanView && !x.CanSubmit);
         mappings.Should().ContainSingle(x => x.ServiceType.Code == "HEADHUNT_COD" &&

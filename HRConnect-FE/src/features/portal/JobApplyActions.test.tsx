@@ -65,7 +65,7 @@ describe('JobApplyActions', () => {
         name: 'Candidate Affiliate',
         email: 'candidate@example.com',
         role: UserRole.AFFILIATE,
-        roles: ['AFFILIATE_RECRUITER', 'CANDIDATE'],
+        roles: ['AFFILIATE', 'CANDIDATE'],
         permissions: ['application.create'],
       },
     });

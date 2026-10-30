@@ -98,7 +98,7 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("affiliate_type")
-                        .HasDefaultValueSql("'RECRUITER'::character varying");
+                        .HasDefaultValueSql("'STANDARD'::character varying");
 
                     b.Property<string>("ContactPerson")
                         .HasMaxLength(180)
@@ -169,7 +169,7 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.ToTable("affiliate_application", "public", t =>
                         {
-                            t.HasComment("Existing Candidate can apply to become Affiliate without creating a second app_user. Approval should add/re-activate AFFILIATE_RECRUITER role in the same transaction.");
+                            t.HasComment("Existing Candidate can apply to become Affiliate without creating a second app_user. Approval should add/re-activate AFFILIATE role in the same transaction.");
                         });
                 });
 
@@ -282,7 +282,7 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("affiliate_type")
-                        .HasDefaultValueSql("'RECRUITER'::character varying");
+                        .HasDefaultValueSql("'STANDARD'::character varying");
 
                     b.Property<string>("BankAccountHolder")
                         .HasMaxLength(180)
@@ -3176,12 +3176,14 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("max_applications");
 
-                    b.Property<int?>("MaxExperienceYears")
-                        .HasColumnType("integer")
+                    b.Property<decimal?>("MaxExperienceYears")
+                        .HasPrecision(4, 1)
+                        .HasColumnType("numeric(4,1)")
                         .HasColumnName("max_experience_years");
 
-                    b.Property<int?>("MinExperienceYears")
-                        .HasColumnType("integer")
+                    b.Property<decimal?>("MinExperienceYears")
+                        .HasPrecision(4, 1)
+                        .HasColumnType("numeric(4,1)")
                         .HasColumnName("min_experience_years");
 
                     b.Property<int?>("PaymentDueDays")
@@ -3689,12 +3691,14 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("character varying(40)")
                         .HasColumnName("level");
 
-                    b.Property<int?>("MaxExperienceYears")
-                        .HasColumnType("integer")
+                    b.Property<decimal?>("MaxExperienceYears")
+                        .HasPrecision(4, 1)
+                        .HasColumnType("numeric(4,1)")
                         .HasColumnName("max_experience_years");
 
-                    b.Property<int?>("MinExperienceYears")
-                        .HasColumnType("integer")
+                    b.Property<decimal?>("MinExperienceYears")
+                        .HasPrecision(4, 1)
+                        .HasColumnType("numeric(4,1)")
                         .HasColumnName("min_experience_years");
 
                     b.Property<string>("Name")

@@ -139,7 +139,7 @@ CREATE TABLE public.admin_profile (
 CREATE TABLE public.affiliate_application (
     affiliate_application_id uuid NOT NULL DEFAULT (gen_random_uuid()),
     user_id uuid NOT NULL,
-    affiliate_type character varying(50) NOT NULL DEFAULT ('RECRUITER'::character varying),
+    affiliate_type character varying(50) NOT NULL DEFAULT ('STANDARD'::character varying),
     display_name character varying(180),
     tax_information character varying(255),
     contact_person character varying(180),
@@ -155,12 +155,12 @@ CREATE TABLE public.affiliate_application (
     CONSTRAINT affiliate_application_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES public.app_user (user_id) ON DELETE SET NULL,
     CONSTRAINT affiliate_application_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.app_user (user_id) ON DELETE RESTRICT
 );
-COMMENT ON TABLE public.affiliate_application IS 'Existing Candidate can apply to become Affiliate without creating a second app_user. Approval should add/re-activate AFFILIATE_RECRUITER role in the same transaction.';
+COMMENT ON TABLE public.affiliate_application IS 'Existing Candidate can apply to become Affiliate without creating a second app_user. Approval should add/re-activate AFFILIATE role in the same transaction.';
 
 CREATE TABLE public.affiliate_profile (
     affiliate_id uuid NOT NULL DEFAULT (gen_random_uuid()),
     user_id uuid NOT NULL,
-    affiliate_type character varying(50) NOT NULL DEFAULT ('RECRUITER'::character varying),
+    affiliate_type character varying(50) NOT NULL DEFAULT ('STANDARD'::character varying),
     display_name character varying(180),
     tax_information character varying(255),
     contact_person character varying(180),
@@ -2353,7 +2353,7 @@ ALTER TABLE public.app_user ADD authorization_concurrency_token uuid NOT NULL DE
 INSERT INTO public.role (role_id, code, name, description, is_system, is_active, created_at, updated_at, concurrency_token)
 VALUES
     (gen_random_uuid(), 'CANDIDATE', 'Candidate', 'Ứng viên tìm việc', true, true, now(), now(), gen_random_uuid()),
-    (gen_random_uuid(), 'AFFILIATE_RECRUITER', 'Affiliate Recruiter', 'Đối tác tuyển dụng / Cộng tác viên', true, true, now(), now(), gen_random_uuid()),
+    (gen_random_uuid(), 'AFFILIATE', 'Affiliate', 'Cộng tác viên giới thiệu ứng viên', true, true, now(), now(), gen_random_uuid()),
     (gen_random_uuid(), 'CLIENT_COMPANY_USER', 'Client Company User', 'Người đại diện doanh nghiệp tuyển dụng', true, true, now(), now(), gen_random_uuid()),
     (gen_random_uuid(), 'INTERNAL_HR', 'Internal HR', 'Nhân sự nội bộ HRConnect', true, true, now(), now(), gen_random_uuid()),
     (gen_random_uuid(), 'PLATFORM_ADMIN', 'Platform Admin', 'Quản trị viên toàn hệ thống', true, true, now(), now(), gen_random_uuid())
@@ -2384,7 +2384,7 @@ VALUES
     ('interview.view_own', 'interview', 'view_own', 'View own interview schedule'),
     ('offer.view_own', 'offer', 'view_own', 'View own offers'),
     ('offer.respond', 'offer', 'respond', 'Accept or decline own offer'),
-    ('affiliate.apply', 'affiliate_application', 'create', 'Apply to become an affiliate recruiter'),
+    ('affiliate.apply', 'affiliate_application', 'create', 'Apply to become an affiliate'),
     ('affiliate.profile.view_own', 'affiliate_profile', 'view_own', 'View own affiliate profile'),
     ('affiliate.profile.update_own', 'affiliate_profile', 'update_own', 'Update own affiliate profile'),
     ('submission.create', 'submission', 'create', 'Submit a candidate and CV for a job'),
@@ -2476,7 +2476,7 @@ JOIN public.permission p ON p.code IN (
     'attribution.view_own', 'dispute.create', 'dispute.view_own',
     'commission.view_own', 'payout.view_own', 'affiliate.performance.view_own'
 )
-WHERE r.code = 'AFFILIATE_RECRUITER'
+WHERE r.code = 'AFFILIATE'
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO public.role_permission (role_id, permission_id)

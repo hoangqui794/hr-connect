@@ -20,7 +20,7 @@ public sealed class LoginRequestExamplesOperationFilter : IOperationFilter
             ["platformAdmin"] = ("Platform Admin", "admin@gmail.com"),
             ["internalHr"] = ("Internal HR", "internalhr@gmail.com"),
             ["clientCompany"] = ("Client Company", "client@gmail.com"),
-            ["affiliateRecruiter"] = ("Affiliate Recruiter", "affiliate@gmail.com"),
+            ["affiliateRecruiter"] = ("Affiliate", "affiliate@gmail.com"),
             ["candidate"] = ("Candidate", "candidate@gmail.com")
         };
 

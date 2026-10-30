@@ -14,8 +14,8 @@ namespace HRConnect.Infrastructure.Persistence.Seed;
 /// <summary>
 /// Nạp các công việc mẫu (Job) thực tế đại diện cho toàn bộ 3 loại hình dịch vụ tuyển dụng:
 /// 1. CV_APPLICATION: Ứng viên tự ứng tuyển (Candidate Self-Apply).
-/// 2. HEADHUNT_COD: Affiliate Recruiter giới thiệu ứng viên nhận hoa hồng COD.
-/// 3. CV_SOURCING: Affiliate Recruiter nộp hồ sơ ứng viên (Candidate không tự nộp CV_SOURCING).
+/// 2. HEADHUNT_COD: Affiliate giới thiệu ứng viên nhận hoa hồng COD.
+/// 3. CV_SOURCING: Affiliate nộp hồ sơ ứng viên (Candidate không tự nộp CV_SOURCING).
 /// Hoàn toàn idempotent: kiểm tra sự tồn tại theo Title + ServiceType trước khi nạp.
 /// </summary>
 public static class CandidateTestJobSeeder
@@ -86,7 +86,7 @@ public static class CandidateTestJobSeeder
         ),
 
         // ----------------------------------------------------------------------
-        // JOB 2: HEADHUNT_COD (Affiliate Recruiter Candidate Submission)
+        // JOB 2: HEADHUNT_COD (Affiliate Candidate Submission)
         // ----------------------------------------------------------------------
         new SeedJobDef(
             Title: Job2Title,
@@ -118,7 +118,7 @@ public static class CandidateTestJobSeeder
         ),
 
         // ----------------------------------------------------------------------
-        // JOB 3: CV_SOURCING (Affiliate Recruiter submission)
+        // JOB 3: CV_SOURCING (Affiliate submission)
         // ----------------------------------------------------------------------
         new SeedJobDef(
             Title: Job3Title,
@@ -161,7 +161,7 @@ public static class CandidateTestJobSeeder
         CreateAdditionalJob("[SEED] Product Operations Specialist", "CV_APPLICATION", "Coordinate product operations, reporting, and cross-team delivery.", "Da Nang", 15000000m, 25000000m, 2, "Business Analysis", "BUSINESS ANALYSIS", "Analysis", "Agile", "AGILE", "Delivery"),
         CreateAdditionalJob("[SEED] DevOps Engineer", "CV_APPLICATION", "Improve cloud infrastructure, delivery automation, and production observability.", "Remote - Vietnam", 26000000m, 45000000m, 2, "Docker", "DOCKER", "DevOps", "Kubernetes", "KUBERNETES", "DevOps"),
 
-        // Additional HEADHUNT_COD jobs (Affiliate Recruiter submission)
+        // Additional HEADHUNT_COD jobs (Affiliate submission)
         CreateAdditionalJob("[SEED] Engineering Manager - Headhunt", "HEADHUNT_COD", "Lead a cross-functional engineering team and own reliable product delivery.", "Ho Chi Minh City", 50000000m, 75000000m, 1, "Engineering Management", "ENGINEERING MANAGEMENT", "Leadership", "Agile", "AGILE", "Delivery"),
         CreateAdditionalJob("[SEED] Cloud Solutions Architect - Headhunt", "HEADHUNT_COD", "Design secure and scalable cloud platforms for enterprise workloads.", "Ha Noi", 55000000m, 85000000m, 1, "AWS", "AWS", "Cloud", "Kubernetes", "KUBERNETES", "DevOps"),
         CreateAdditionalJob("[SEED] Senior Java Engineer - Headhunt", "HEADHUNT_COD", "Design high-throughput Java services for a growing technology platform.", "Ho Chi Minh City", 35000000m, 55000000m, 2, "Java", "JAVA", "Programming Language", "Spring Boot", "SPRING BOOT", "Web Framework"),
@@ -172,7 +172,7 @@ public static class CandidateTestJobSeeder
         CreateAdditionalJob("[SEED] Fintech Solution Architect - Headhunt", "HEADHUNT_COD", "Design secure financial platforms and resilient service integrations.", "Ho Chi Minh City", 55000000m, 90000000m, 1, "Cloud Security", "CLOUD SECURITY", "Security", "REST API", "REST API", "Architecture"),
         CreateAdditionalJob("[SEED] Mobile Engineering Lead - Headhunt", "HEADHUNT_COD", "Lead cross-platform mobile delivery and mentor a growing engineering team.", "Da Nang", 42000000m, 68000000m, 1, "Flutter", "FLUTTER", "Mobile Framework", "Engineering Management", "ENGINEERING MANAGEMENT", "Leadership"),
 
-        // Additional CV_SOURCING jobs (Affiliate Recruiter submission)
+        // Additional CV_SOURCING jobs (Affiliate submission)
         CreateAdditionalJob("[SEED] Product Designer - CV Sourcing", "CV_SOURCING", "Design accessible candidate and recruiter experiences from research to delivery.", "Ho Chi Minh City", 22000000m, 35000000m, 2, "Figma", "FIGMA", "Design", "User Research", "USER RESEARCH", "Product Design"),
         CreateAdditionalJob("[SEED] Business Analyst - CV Sourcing", "CV_SOURCING", "Translate recruitment operations into clear product requirements and workflows.", "Ha Noi", 20000000m, 32000000m, 2, "Business Analysis", "BUSINESS ANALYSIS", "Analysis", "BPMN", "BPMN", "Process Modeling"),
         CreateAdditionalJob("[SEED] Node.js Backend Developer - CV Sourcing", "CV_SOURCING", "Develop secure Node.js APIs and event-driven integrations.", "Da Nang", 22000000m, 36000000m, 2, "Node.js", "NODE.JS", "Backend Framework", "TypeScript", "TYPESCRIPT", "Programming Language"),
@@ -484,11 +484,11 @@ public static class CandidateTestJobSeeder
         CancellationToken cancellationToken)
     {
         var candidateRole = await context.Roles.FirstOrDefaultAsync(r => r.Code == "CANDIDATE", cancellationToken);
-        var affiliateRole = await context.Roles.FirstOrDefaultAsync(r => r.Code == "AFFILIATE_RECRUITER", cancellationToken);
+        var affiliateRole = await context.Roles.FirstOrDefaultAsync(r => r.Code == "AFFILIATE", cancellationToken);
 
         if (candidateRole == null || affiliateRole == null)
         {
-            logger?.LogWarning("Roles CANDIDATE hoặc AFFILIATE_RECRUITER chưa được nạp trong cơ sở dữ liệu.");
+            logger?.LogWarning("Roles CANDIDATE hoặc AFFILIATE chưa được nạp trong cơ sở dữ liệu.");
             return;
         }
 
@@ -508,7 +508,7 @@ public static class CandidateTestJobSeeder
             }
         }
 
-        // 2. Kiểm tra HEADHUNT_COD -> AFFILIATE_RECRUITER
+        // 2. Kiểm tra HEADHUNT_COD -> AFFILIATE
         if (serviceTypes.TryGetValue("HEADHUNT_COD", out var headhuntSt))
         {
             var mapping = await context.ServiceTypeAllowedRoles
@@ -516,15 +516,15 @@ public static class CandidateTestJobSeeder
 
             if (mapping == null || !mapping.CanView || !mapping.CanSubmit)
             {
-                logger?.LogWarning("ServiceTypeAllowedRole cho HEADHUNT_COD và Role AFFILIATE_RECRUITER chưa đủ quyền can_view=true, can_submit=true.");
+                logger?.LogWarning("ServiceTypeAllowedRole cho HEADHUNT_COD và Role AFFILIATE chưa đủ quyền can_view=true, can_submit=true.");
             }
             else
             {
-                logger?.LogInformation("Đã xác thực quyền HEADHUNT_COD: AFFILIATE_RECRUITER can_view=true, can_submit=true.");
+                logger?.LogInformation("Đã xác thực quyền HEADHUNT_COD: AFFILIATE can_view=true, can_submit=true.");
             }
         }
 
-        // 3. Kiểm tra CV_SOURCING -> CANDIDATE và AFFILIATE_RECRUITER
+        // 3. Kiểm tra CV_SOURCING -> CANDIDATE và AFFILIATE
         if (serviceTypes.TryGetValue("CV_SOURCING", out var sourcingSt))
         {
             var candMapping = await context.ServiceTypeAllowedRoles
@@ -543,11 +543,11 @@ public static class CandidateTestJobSeeder
 
             if (affMapping == null || !affMapping.CanView || !affMapping.CanSubmit)
             {
-                logger?.LogWarning("ServiceTypeAllowedRole cho CV_SOURCING và Role AFFILIATE_RECRUITER chưa đủ quyền can_view=true, can_submit=true.");
+                logger?.LogWarning("ServiceTypeAllowedRole cho CV_SOURCING và Role AFFILIATE chưa đủ quyền can_view=true, can_submit=true.");
             }
             else
             {
-                logger?.LogInformation("Đã xác thực quyền CV_SOURCING: AFFILIATE_RECRUITER can_view=true, can_submit=true.");
+                logger?.LogInformation("Đã xác thực quyền CV_SOURCING: AFFILIATE can_view=true, can_submit=true.");
             }
         }
     }

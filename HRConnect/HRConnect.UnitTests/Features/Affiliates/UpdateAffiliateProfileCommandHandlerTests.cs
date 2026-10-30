@@ -48,7 +48,7 @@ public class UpdateAffiliateProfileCommandHandlerTests
         {
             AffiliateId = Guid.NewGuid(),
             UserId = userId,
-            AffiliateType = "RECRUITER",
+            AffiliateType = "STANDARD",
             DisplayName = "Old Name",
             ContactPerson = "Old Contact",
             Phone = "0901234567",

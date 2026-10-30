@@ -41,7 +41,7 @@ public class ReplaceServiceTypeAllowedRolesCommandHandlerTests
         _roles.Setup(repository => repository.GetByIdsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Role>
             {
-                new() { RoleId = affiliateRoleId, Code = "AFFILIATE_RECRUITER" },
+                new() { RoleId = affiliateRoleId, Code = "AFFILIATE" },
                 new() { RoleId = candidateRoleId, Code = "CANDIDATE" }
             });
 

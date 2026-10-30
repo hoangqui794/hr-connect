@@ -267,7 +267,7 @@ public class ApplyJobCommandHandlerTests
 
         var action = () => _handler.Handle(new ApplyJobCommand
         {
-            JobId = job.JobId, UserId = userId, RoleCodes = ["AFFILIATE_RECRUITER"]
+            JobId = job.JobId, UserId = userId, RoleCodes = ["AFFILIATE"]
         }, default);
 
         var exception = await action.Should().ThrowAsync<ForbiddenException>();

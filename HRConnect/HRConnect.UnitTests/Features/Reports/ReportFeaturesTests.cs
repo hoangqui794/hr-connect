@@ -252,8 +252,8 @@ public class ReportFeaturesTests
         var user2 = new AppUser { UserId = Guid.NewGuid(), Email = "aff2@test.com", DisplayName = "Affiliate Two", PasswordHash = "x", Status = "ACTIVE" };
         await _context.AppUsers.AddRangeAsync(user1, user2);
 
-        var profile1 = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = user1.UserId, DisplayName = "Affiliate One", Status = "ACTIVE", AffiliateType = "INDIVIDUAL" };
-        var profile2 = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = user2.UserId, DisplayName = "Affiliate Two", Status = "ACTIVE", AffiliateType = "INDIVIDUAL" };
+        var profile1 = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = user1.UserId, DisplayName = "Affiliate One", Status = "ACTIVE", AffiliateType = "STANDARD" };
+        var profile2 = new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = user2.UserId, DisplayName = "Affiliate Two", Status = "ACTIVE", AffiliateType = "STANDARD" };
         await _context.AffiliateProfiles.AddRangeAsync(profile1, profile2);
 
         // User1 có 1/1 = 100% nhưng < min_submissions (5)

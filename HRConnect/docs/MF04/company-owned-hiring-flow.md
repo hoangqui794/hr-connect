@@ -10,7 +10,7 @@ operations role, not a member of the Company's hiring team.
 | --- | --- |
 | `CLIENT_COMPANY_USER` | Screen a Company-owned `CV_APPLICATION` application, schedule and record interviews, manage offers, and confirm actual start work. |
 | `CANDIDATE` | Withdraw an owned application and accept or decline an owned offer. |
-| `AFFILIATE_RECRUITER` | Submit a candidate and view the separate, safe referral-progress projection only. |
+| `AFFILIATE` | Submit a candidate and view the separate, safe referral-progress projection only. |
 | `INTERNAL_HR` | Screen `HEADHUNT_COD` and `CV_SOURCING` applications (MF-03); read recruitment records; reconcile a Client-reported `STARTED`/`NOT_STARTED` outcome for `HEADHUNT_COD`; correct a wrongly entered actual start date. |
 | System worker | Send notifications and expire unresponded offers. |
 

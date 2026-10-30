@@ -341,7 +341,7 @@ public class VerifyEmailOtpCommandHandlerTests
         {
             AffiliateApplicationId = Guid.NewGuid(),
             UserId = affiliateUser.UserId,
-            AffiliateType = "RECRUITER",
+            AffiliateType = "STANDARD",
             Status = "PENDING"
         };
 

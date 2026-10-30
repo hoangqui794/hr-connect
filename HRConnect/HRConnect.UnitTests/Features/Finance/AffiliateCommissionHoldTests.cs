@@ -29,7 +29,7 @@ public class AffiliateCommissionHoldTests
         var user = new AppUser { UserId = Guid.NewGuid(), Email = $"{Guid.NewGuid():N}@example.com", PasswordHash = "x", Status = userStatus, CreatedAt = now, UpdatedAt = now };
         var affiliate = new AffiliateProfile
         {
-            AffiliateId = Guid.NewGuid(), UserId = user.UserId, User = user, AffiliateType = "INDIVIDUAL", Status = "ACTIVE", CreatedAt = now, UpdatedAt = now,
+            AffiliateId = Guid.NewGuid(), UserId = user.UserId, User = user, AffiliateType = "STANDARD", Status = "ACTIVE", CreatedAt = now, UpdatedAt = now,
         };
         var attribution = new Attribution
         {

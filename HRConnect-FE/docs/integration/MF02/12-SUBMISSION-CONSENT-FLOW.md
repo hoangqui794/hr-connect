@@ -337,7 +337,7 @@ Không suy luận trạng thái MF03 từ Submission. Chỉ hiển thị MF03 đ
 
 - Đồng ý: hiển thị “Hồ sơ đã được tiếp nhận và đang chờ AI đánh giá.”
 - Từ chối: hiển thị “Bạn đã từ chối yêu cầu sử dụng hồ sơ.”
-- Hết hạn: hiển thị “Liên kết đã hết hạn. Vui lòng liên hệ Affiliate Recruiter.”
+- Hết hạn: hiển thị “Liên kết đã hết hạn. Vui lòng liên hệ Affiliate.”
 - Đã xử lý: hiển thị trạng thái hiện tại, không cho gửi quyết định khác.
 
 ## 10. Xử lý HTTP status

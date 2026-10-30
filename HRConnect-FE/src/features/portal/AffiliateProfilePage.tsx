@@ -185,7 +185,11 @@ export const AffiliateProfilePage: React.FC = () => {
                     <Tag color={p?.status === 'ACTIVE' ? 'success' : 'warning'}>
                       {{ ACTIVE: 'Đang hoạt động', PENDING: 'Chờ duyệt', REJECTED: 'Chưa được chấp thuận', SUSPENDED: 'Tạm ngưng' }[p?.status ?? 'PENDING'] ?? 'Đang cập nhật'}
                     </Tag>
-                    {p?.affiliateType && <Tag color="blue">{p.affiliateType === 'INDIVIDUAL' ? 'Cộng tác viên cá nhân' : 'Đối tác tuyển dụng'}</Tag>}
+                    {p?.affiliateType && (
+                      <Tag color="blue">
+                        {p.affiliateType === 'STANDARD' ? 'Cộng tác viên tiêu chuẩn' : p.affiliateType}
+                      </Tag>
+                    )}
                   </div>
                   <div className="mt-4 pt-4 border-0 border-t border-solid border-slate-100 w-full text-xs text-slate-400 space-y-1">
                     <div>Ngày tham gia: {dayjs(p?.createdAt).format('DD/MM/YYYY')}</div>

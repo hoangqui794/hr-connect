@@ -27,7 +27,7 @@ public class GetAffiliateSubmissionDetailQueryHandler : IRequestHandler<GetAffil
         var affiliate = await _affiliateProfileRepository.GetByUserIdAsync(request.UserId, cancellationToken);
         if (affiliate == null)
         {
-            throw new ForbiddenException("Không tìm thấy hồ sơ Affiliate Recruiter của bạn.");
+            throw new ForbiddenException("Không tìm thấy hồ sơ Affiliate của bạn.");
         }
 
         // 2. Fetch submission with details

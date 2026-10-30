@@ -109,7 +109,7 @@ public class PermissionSeederTests
     {
         sql.Should().Contain("('attribution.view_own'");
 
-        var roleEnd = sql.IndexOf("WHERE r.code = 'AFFILIATE_RECRUITER'", StringComparison.Ordinal);
+        var roleEnd = sql.IndexOf("WHERE r.code = 'AFFILIATE'", StringComparison.Ordinal);
         roleEnd.Should().BeGreaterThan(0);
         var roleStart = sql.LastIndexOf("JOIN public.permission p", roleEnd, StringComparison.Ordinal);
         roleStart.Should().BeGreaterThanOrEqualTo(0);

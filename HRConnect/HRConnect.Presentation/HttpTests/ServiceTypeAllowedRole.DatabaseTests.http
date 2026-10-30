@@ -19,7 +19,7 @@ Content-Type: application/json
 {
   "roles": [
     {
-      "roleId": "REPLACE_WITH_AFFILIATE_RECRUITER_ROLE_ID",
+      "roleId": "REPLACE_WITH_AFFILIATE_ROLE_ID",
       "canView": true,
       "canSubmit": true
     },
