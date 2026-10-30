@@ -22,7 +22,7 @@ const PROCESS_STEPS = [
   {
     number: '02',
     title: 'Tiếp nhận hồ sơ có kiểm soát',
-    description: 'Ứng viên tự ứng tuyển hoặc Affiliate Recruiter giới thiệu sau khi được ủy quyền Consent rõ ràng.',
+    description: 'Ứng viên tự ứng tuyển hoặc Affiliate giới thiệu sau khi được ủy quyền Consent rõ ràng.',
   },
   {
     number: '03',

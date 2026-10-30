@@ -94,7 +94,7 @@ public static class DemoAccountSeeder
         };
 
     /// <summary>
-    /// Nạp các tài khoản demo/phát triển cho toàn bộ các vai trò trong hệ thống (Platform Admin, Internal HR, Candidate, Affiliate Recruiter, Client Company User),
+    /// Nạp các tài khoản demo/phát triển cho toàn bộ các vai trò trong hệ thống (Platform Admin, Internal HR, Candidate, Affiliate, Client Company User),
     /// đồng thời tạo nhiều tài khoản Client/Company nhằm hỗ trợ kiểm thử đa người dùng và đa doanh nghiệp.
     /// Hoàn toàn idempotent và không bao giờ ghi đè mật khẩu của tài khoản đã tồn tại.
     /// </summary>
@@ -137,7 +137,7 @@ public static class DemoAccountSeeder
                 context, passwordHasher, emailNormalizer, phoneNormalizer,
                 Candidate2Email, "Demo Candidate 2", Candidate2Phone, now, logger, cancellationToken);
 
-            // 4. Khởi tạo Affiliate Recruiter (Cộng tác viên: affiliate@gmail.com và affiliate2@gmail.com)
+            // 4. Khởi tạo Affiliate (Cộng tác viên: affiliate@gmail.com và affiliate2@gmail.com)
             await EnsureAffiliateAsync(
                 context, passwordHasher, emailNormalizer, phoneNormalizer,
                 adminUser.UserId, AffiliateEmail, "Demo Affiliate", AffiliatePhone, now, logger, cancellationToken);
@@ -453,7 +453,7 @@ public static class DemoAccountSeeder
     }
 
     /// <summary>
-    /// 4. Đảm bảo Affiliate Recruiter tồn tại ở trạng thái APPROVED kèm AffiliateApplication, AffiliateProfile và UserRole AFFILIATE_RECRUITER
+    /// 4. Đảm bảo Affiliate tồn tại ở trạng thái APPROVED kèm AffiliateApplication, AffiliateProfile và UserRole AFFILIATE_RECRUITER
     /// </summary>
     private static async Task<AppUser> EnsureAffiliateAsync(
         ApplicationDbContext context,

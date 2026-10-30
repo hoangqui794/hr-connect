@@ -110,7 +110,7 @@ export const CandidateHeader: React.FC = () => {
                 : { color: '#475569', border: '1px solid transparent' }),
             }}
           >
-            Mạng lưới Recruiter
+            Mạng lưới Affiliate
           </Button>
         </div>
       </div>

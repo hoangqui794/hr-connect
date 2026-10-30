@@ -23,7 +23,7 @@ public static class DatabaseSeeder
         var defaultRoles = new (string Code, string Name, string Description)[]
         {
             ("CANDIDATE", "Candidate", "Ứng viên tìm việc"),
-            ("AFFILIATE_RECRUITER", "Affiliate Recruiter", "Đối tác tuyển dụng / Cộng tác viên"),
+            ("AFFILIATE_RECRUITER", "Affiliate", "Đối tác tuyển dụng / Cộng tác viên"),
             ("CLIENT_COMPANY_USER", "Client Company User", "Người đại diện doanh nghiệp tuyển dụng"),
             ("INTERNAL_HR", "Internal HR", "Nhân sự nội bộ HRConnect"),
             ("PLATFORM_ADMIN", "Platform Admin", "Quản trị viên toàn hệ thống")

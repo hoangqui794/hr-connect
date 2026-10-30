@@ -135,7 +135,7 @@ public class SubmitCandidateCommandHandlerTests
         // Act & Assert
         var act = async () => await _handler.Handle(command, CancellationToken.None);
         await act.Should().ThrowAsync<ForbiddenException>()
-            .WithMessage("Không tìm thấy hồ sơ Affiliate Recruiter của bạn.");
+            .WithMessage("Không tìm thấy hồ sơ Affiliate của bạn.");
     }
 
     [Fact]
@@ -158,7 +158,7 @@ public class SubmitCandidateCommandHandlerTests
         // Act & Assert
         var act = async () => await _handler.Handle(command, CancellationToken.None);
         await act.Should().ThrowAsync<ForbiddenException>()
-            .WithMessage("Hồ sơ Affiliate Recruiter chưa được kích hoạt hoặc phê duyệt.");
+            .WithMessage("Hồ sơ Affiliate chưa được kích hoạt hoặc phê duyệt.");
     }
 
     [Fact]

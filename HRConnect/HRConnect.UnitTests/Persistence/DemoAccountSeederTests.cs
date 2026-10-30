@@ -30,7 +30,7 @@ public class DemoAccountSeederTests
         {
             ("PLATFORM_ADMIN", "Platform Admin"),
             ("CANDIDATE", "Candidate"),
-            ("AFFILIATE_RECRUITER", "Affiliate Recruiter"),
+            ("AFFILIATE_RECRUITER", "Affiliate"),
             ("CLIENT_COMPANY_USER", "Client Company User"),
             ("INTERNAL_HR", "Internal HR")
         };

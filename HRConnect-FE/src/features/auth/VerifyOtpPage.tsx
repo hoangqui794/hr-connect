@@ -250,7 +250,7 @@ export const VerifyOtpPage: React.FC = () => {
           <p className="mx-auto mb-5 mt-3 max-w-md text-sm leading-6 text-slate-600">
             {roleParam === 'CLIENT'
               ? 'Ban quản trị đang kiểm tra thông tin doanh nghiệp. Bạn sẽ nhận email ngay khi tài khoản được kích hoạt.'
-              : 'Ban quản trị đang xem xét hồ sơ Affiliate Recruiter. Bạn sẽ nhận email ngay khi tài khoản được kích hoạt.'}
+              : 'Ban quản trị đang xem xét hồ sơ Affiliate. Bạn sẽ nhận email ngay khi tài khoản được kích hoạt.'}
           </p>
           <div className="mb-6 rounded-xl border border-amber-200 bg-white p-4 text-left text-sm">
             <div className="flex flex-wrap justify-between gap-2 border-b border-slate-100 pb-3">

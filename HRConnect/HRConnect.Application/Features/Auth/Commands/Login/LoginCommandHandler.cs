@@ -95,7 +95,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
         user.FailedLoginAttempts = 0;
         user.LockoutEndAt = null;
 
-        // 4. Kiểm tra các ràng buộc đặc thù cho Affiliate Recruiter và Client Company User
+        // 4. Kiểm tra các ràng buộc đặc thù cho Affiliate và Client Company User
         if (user.AffiliateApplicationUser != null)
         {
             if (user.EmailVerifiedAt == null)

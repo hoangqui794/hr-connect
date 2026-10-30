@@ -330,7 +330,7 @@ export class AuthService {
 
   /**
    * POST /api/v1/auth/register/affiliate
-   * Registers an Affiliate Recruiter (Headhunter) account.
+   * Registers an Affiliate (Headhunter) account.
    */
   public async registerAffiliate(
     payload: RegisterAffiliateCommand

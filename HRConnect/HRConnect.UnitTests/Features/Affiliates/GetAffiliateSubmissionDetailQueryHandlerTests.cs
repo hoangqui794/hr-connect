@@ -43,7 +43,7 @@ public class GetAffiliateSubmissionDetailQueryHandlerTests
         // Act & Assert
         var act = () => _handler.Handle(query, CancellationToken.None);
         await act.Should().ThrowAsync<ForbiddenException>()
-            .WithMessage("*hồ sơ Affiliate Recruiter*");
+            .WithMessage("*hồ sơ Affiliate*");
     }
 
     [Fact]

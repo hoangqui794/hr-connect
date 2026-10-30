@@ -477,7 +477,7 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
             {/* Commission */}
             {showCommission && (
             <div className="bg-slate-50 p-3 rounded-lg border border-slate-200/80 space-y-1">
-              <div className="text-xs text-slate-500 font-medium">Hoa hồng Cộng tác viên / Recruiter</div>
+              <div className="text-xs text-slate-500 font-medium">Hoa hồng Affiliate</div>
               <div className="text-base font-black text-emerald-700">
                 {placement.financial.commissionAmount != null ? money(placement.financial.commissionAmount) : '—'}
               </div>

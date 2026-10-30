@@ -263,7 +263,7 @@ let MOCK_DB_WARRANTY: ProbationWarrantyDTO[] = [
     status: 'IN_PROBATION',
     warrantyEndDate: '2026-04-02',
     avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150',
-    headhunterName: 'Nguyễn Thu Trang (Affiliate Recruiter)',
+    headhunterName: 'Nguyễn Thu Trang (Affiliate)',
     note: 'Đang chuẩn bị họp đánh giá kết thúc thử việc vòng 1.',
   },
   {

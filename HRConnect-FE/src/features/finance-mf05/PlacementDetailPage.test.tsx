@@ -273,7 +273,7 @@ describe('PlacementDetailPage & PlacementDetailView', () => {
 
     await waitFor(() => expect(screen.getByTestId('placement-detail-content')).toBeInTheDocument());
     expect(screen.queryByText('Phí dịch vụ tuyển dụng (Doanh nghiệp)') !== null).toBe(fee);
-    expect(screen.queryByText('Hoa hồng Cộng tác viên / Recruiter') !== null).toBe(commission);
+    expect(screen.queryByText('Hoa hồng Affiliate') !== null).toBe(commission);
     expect(screen.queryByText(/10\.800\.000/) !== null).toBe(commission);
   });
 });

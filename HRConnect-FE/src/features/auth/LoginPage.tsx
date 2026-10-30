@@ -72,7 +72,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     role: UserRole.AFFILIATE,
     title: 'Cộng tác viên tuyển dụng',
-    roleTag: 'Affiliate Recruiter',
+    roleTag: 'Affiliate',
     email: 'affiliate@gmail.com',
     workspaceName: 'OPR Referral Portal',
     targetRoute: '/affiliate/dashboard',

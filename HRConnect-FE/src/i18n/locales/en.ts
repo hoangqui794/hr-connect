@@ -11,7 +11,7 @@ export const en: Translations = {
   nav: {
     jobs: 'Jobs',
     forEmployers: 'For Employers',
-    forAffiliates: 'For Affiliate Recruiters (OPR Hub)',
+    forAffiliates: 'For Affiliates (OPR Hub)',
     pricing: 'Services & Pricing',
     signIn: 'Sign In',
     register: 'Register',
@@ -125,7 +125,7 @@ export const en: Translations = {
     subtitle:
       'Join over 500+ leading enterprises and top OPR Hub headhunters transforming modern recruitment today.',
     btnPost: 'Post Your Job Now',
-    btnJoin: 'Join as Affiliate Recruiter',
+    btnJoin: 'Join as Affiliate',
   },
   footer: {
     copyright: '© 2026 HR Connect. AI-Powered Enterprise Recruitment & Affiliate Headhunting Platform.',
