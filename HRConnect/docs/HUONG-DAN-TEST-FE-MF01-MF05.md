@@ -25,6 +25,8 @@ Quy ước khi test:
 - Cột Kết quả ghi Đạt, Lỗi hoặc Bỏ qua (kèm lý do).
 - Tài khoản Affiliate đăng nhập từ trước 30/10/2026 cần đăng xuất và đăng nhập lại, vì mã vai trò đã đổi thành AFFILIATE.
 
+Thanh toán VNPay (sandbox, chỉ để test): trên trang VNPay chọn Thẻ nội địa → NCB, số thẻ 9704198526191432198, tên NGUYEN VAN A, ngày phát hành 07/15, OTP 123456. Nút VNPay chỉ hiện khi backend đã có VNPAY_TMN_CODE, VNPAY_HASH_SECRET và VNPAY_RETURN_URL.
+
 ## MF-01 Đăng tin và duyệt tin
 
 Tin đi từ Nháp → Chờ duyệt → Đang tuyển (hoặc Bị từ chối). Tin AP chỉ công bố sau khi gói đăng tin được thanh toán; tin SS có cọc chỉ công bố sau khi Admin ghi nhận cọc. Điều kiện: công ty của Client đã được Admin xác minh.
@@ -146,6 +148,21 @@ Tin HH: xác nhận đi làm tạo phí dịch vụ (hệ số × lương gross 
 | 05-15 | Admin | /admin/affiliates | Khóa affiliate2 | Hoa hồng chưa hưởng chuyển Tạm giữ; hoa hồng đã hưởng vẫn chi được. Nhớ mở khóa sau khi test | |
 | 05-16 | Affiliate | /affiliate/performance | Xem đánh giá hiệu suất sau các ca trên | Chỉ số thay đổi theo kết quả giới thiệu | |
 | 05-17 | Admin | /admin/reports | Xem báo cáo doanh thu | Có đủ 3 dịch vụ HH, AP, SS; số khớp với các khoản đã ghi nhận | |
+
+### Thanh toán trên trang Công nợ (bổ sung 30/10/2026)
+
+Client thanh toán từng khoản qua VNPay, khoản phí tự chuyển Đã thanh toán, không cần Admin ghi nhận. Chuyển khoản vẫn còn làm cách dự phòng.
+
+| Mã | Vai trò | Màn hình | Bước test | Kết quả mong đợi | Kết quả |
+| --- | --- | --- | --- | --- | --- |
+| 05-18 | Client | /client/billing | Bấm Thanh toán ở khoản Cọc CV Sourcing, xem phần cách tính | Hiện Số CV đặt mua × Đơn giá mỗi CV = Tổng giá trị gói, Tỷ lệ đặt cọc, rồi Số tiền cần thanh toán khớp | |
+| 05-19 | Client | /client/billing | Bấm Thanh toán ở khoản Phí Headhunt | Hiện Lương gross tháng và Hệ số phí; số tiền = lương × hệ số | |
+| 05-20 | Client | /client/billing → VNPay → /client/billing/vnpay-return | Thanh toán qua VNPay khoản Cọc CV Sourcing bằng thẻ NCB test | Trang kết quả báo Thanh toán thành công kèm mã giao dịch; khoản phí Đã thanh toán · VNPAY-…; tin SS chuyển Đang tuyển | |
+| 05-21 | Client | /client/billing → VNPay | Thanh toán qua VNPay phí gói đăng tin AP | Khoản phí Đã thanh toán; tin AP được công bố | |
+| 05-22 | Client | Trang VNPay | Bấm Hủy giao dịch trên trang VNPay | Trang kết quả báo Bạn đã hủy thanh toán; khoản phí vẫn Chờ thanh toán, bấm Thanh toán lại được | |
+| 05-23 | Client | /client/billing | Mở Thanh toán, xem mục Hoặc chuyển khoản, bấm sao chép số tài khoản và nội dung chuyển khoản | Có ngân hàng, số tài khoản, chủ tài khoản, nội dung; sao chép báo thành công; không có nút tự xác nhận đã trả | |
+| 05-24 | Admin | /admin/finance › Công nợ phí | Ghi nhận đã thu một phí dịch vụ HH hoặc cọc SS (trước 30/10 lỗi 500) | Lưu thành công, Client nhận thông báo, /client/billing đổi Đã thanh toán | |
+| 05-25 | Client, Internal HR | /client/warranty, /hr/screening | Báo ứng viên nghỉ trong bảo hành; HR giao CV Sourcing (cả hai từng lỗi 500) | Thao tác thành công và người nhận có thông báo | |
 
 ## Kiểm tra chung
 
