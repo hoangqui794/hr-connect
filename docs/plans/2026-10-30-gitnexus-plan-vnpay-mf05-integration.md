@@ -62,7 +62,7 @@
 ### 6.2 Provider abstraction và cấu hình
 
 - [inferred] Thêm cổng provider trong Application và implementation VNPAY trong Infrastructure. Provider chỉ chịu trách nhiệm build URL, canonical sort/encode, HMACSHA512, verify callback và QueryDR; business handlers không phụ thuộc trực tiếp VNPAY.
-- [inferred] Cấu hình gồm `Enabled`, `Environment`, `PaymentUrl`, `ApiUrl`, `TmnCode`, `HashSecret`, `ReturnUrl`, expiry, timeout và frontend-result allowlist. Secret chỉ đọc ở backend từ env; startup fail-fast khi `Enabled=true` mà cấu hình thiếu/URL không HTTPS ngoài Development.
+- [inferred] Cấu hình gồm `Enabled`, `Environment`, `PaymentUrl`, `ApiUrl`, `TmnCode`, `HashSecret`, `ReturnUrl`, expiry, timeout và frontend-result allowlist. Production frontend origin đã chốt là `https://www.hrconnectvn.online`; Return URL phía BE phải redirect về `https://www.hrconnectvn.online/client/billing/payment-result`. Secret chỉ đọc ở backend từ env; startup fail-fast khi `Enabled=true` mà cấu hình thiếu/URL không HTTPS ngoài Development.
 - [inferred] Sandbox/Production chuyển bằng env. FE không nhận `HashSecret` và không tự tạo chữ ký. Log phải redact `vnp_SecureHash` và secret.
 
 ### 6.3 API và orchestration
@@ -627,7 +627,7 @@ implementation_context:
   assumptions:
     - "Verify the VNPAY Sandbox merchant provides TmnCode/HashSecret and allows the chosen public HTTPS IPN/Return URLs before E2E testing."
     - "Verify VNPAY's current minimum amount and exact IPN RspCode mapping against the merchant package/docs during implementation."
-    - "Verify production frontend/backend domains before setting the redirect allowlist and forwarded client IP handling."
+    - "Frontend production origin đã chốt là https://www.hrconnectvn.online; verify backend production origin trước khi cấu hình IPN và forwarded client IP handling."
     - "Verify whether offline bank transfer fallback remains a business requirement; if yes, keep it Admin-only with reason/evidence/audit."
   open_questions:
     - "Should QueryDR run automatically on a schedule, or only via Admin action for the first release? Recommended: worker for stale PROCESSING plus Admin retry."
@@ -646,6 +646,7 @@ implementation_context:
 
 ### Assumptions to verify before implementation
 
+- [verified] Frontend production origin là `https://www.hrconnectvn.online`; canonical URL và VNPAY frontend result allowlist phải dùng origin này, không dùng domain Vercel hoặc bản thiếu `www`.
 - [assumed] Nhóm đã nhận `TmnCode` và `HashSecret` Sandbox, đồng thời có backend HTTPS public để VNPAY gọi IPN. Kiểm tra bằng merchant portal và một callback smoke test trước khi viết E2E assertions.
 - [assumed] Gói merchant hiện dùng chuẩn PAY 2.1.0/HMACSHA512 và response mapping giống tài liệu Sandbox. Xác minh lại trên bộ thông tin VNPAY gửi riêng cho merchant; bộ đó ưu tiên hơn sample công khai.
 - [assumed] Thanh toán online chỉ thu VND. Nếu xuất hiện currency khác, create-order trả lỗi rõ ràng thay vì tự quy đổi.

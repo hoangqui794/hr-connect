@@ -67,7 +67,7 @@ public sealed class CandidateRecruitmentDeliverySettings
     public const string SectionName = "CandidateRecruitmentDelivery";
 
     /// <summary>Public web application origin used by email call-to-action links.</summary>
-    public string PortalBaseUrl { get; set; } = "https://hrconnectvn.online";
+    public string PortalBaseUrl { get; set; } = "https://www.hrconnectvn.online";
 }
 
 /// <summary>

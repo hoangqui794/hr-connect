@@ -286,7 +286,7 @@ Contract đề xuất:
     "logoUrl": null,
     "industry": "Công nghệ thông tin",
     "companySize": "51-200",
-    "website": "https://hrconnectvn.online",
+    "website": "https://www.hrconnectvn.online",
     "address": "Thành phố Hồ Chí Minh",
     "description": "Mô tả doanh nghiệp",
     "isVerified": true
