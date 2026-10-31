@@ -2,7 +2,7 @@
 
 > **Phạm vi:** Candidate/CV Submission, xác nhận của ứng viên, kho CV, kho ứng viên, quyền ghi nhận và đối chiếu danh tính.  
 > **Đối tượng:** Cộng tác viên tuyển dụng, Ứng viên và Quản trị viên.  
-> **Phiên bản tài liệu:** 1.0 — cập nhật theo giao diện FE hiện tại ngày 30/10/2026.
+> **Phiên bản tài liệu:** 1.1 — cập nhật theo giao diện FE hiện tại ngày 31/10/2026.
 
 ## 1. Mục đích tài liệu
 
@@ -13,6 +13,27 @@ Tài liệu này hướng dẫn người dùng thao tác trên giao diện HR Co
 - Quản trị viên đối chiếu yêu cầu liên kết danh tính và tra cứu nhật ký hệ thống.
 
 Các thao tác được mô tả theo đúng màn hình đang có trên FE. Tên trạng thái kỹ thuật chỉ xuất hiện trong bảng đối chiếu ở cuối tài liệu để hỗ trợ kiểm thử.
+
+### 1.1. MF02 làm gì trong hệ thống?
+
+**MF02 — Tiếp nhận và giới thiệu hồ sơ ứng viên** là luồng kết nối Ứng viên, Cộng tác viên tuyển dụng và nhu cầu tuyển dụng đã được doanh nghiệp mở trên HR Connect. Mục đích chính của MF02 là đưa một hồ sơ ứng viên vào đúng công việc theo cách **có sự đồng ý của ứng viên, chống nộp trùng và xác định rõ quyền giới thiệu của Cộng tác viên** trước khi hồ sơ chuyển sang bước sàng lọc.
+
+MF02 giải quyết bốn vấn đề nghiệp vụ chính:
+
+1. **Tiếp nhận hồ sơ từ hai nguồn:** Ứng viên có thể tự ứng tuyển; Cộng tác viên có thể giới thiệu ứng viên mới hoặc chọn ứng viên đã được phép lưu trong kho.
+2. **Bảo vệ quyền quyết định của Ứng viên:** Hồ sơ do Cộng tác viên gửi chỉ trở thành đơn ứng tuyển sau khi Ứng viên xem thông tin công việc, CV được sử dụng và chủ động đồng ý.
+3. **Kiểm soát trùng và danh tính:** Hệ thống đối chiếu email, số điện thoại và các hồ sơ liên quan để hạn chế một người bị tạo thành nhiều Candidate hoặc bị nộp nhiều lần vào cùng một công việc.
+4. **Ghi nhận nguồn giới thiệu minh bạch:** Khi yêu cầu hợp lệ được Ứng viên xác nhận, hệ thống ghi nhận Cộng tác viên gắn với lượt giới thiệu để làm căn cứ theo dõi tiến trình, xử lý khiếu nại và tính quyền lợi ở MF05.
+
+| Thành phần | Nội dung trong MF02 |
+|---|---|
+| Đầu vào | Tin tuyển dụng đang nhận hồ sơ, thông tin Ứng viên, CV và sự đồng ý của Ứng viên |
+| Xử lý chính | Tự ứng tuyển hoặc giới thiệu, gửi yêu cầu xác nhận, đối chiếu trùng, phản hồi đồng ý/từ chối và ghi nhận nguồn giới thiệu |
+| Đầu ra thành công | Một đơn ứng tuyển hợp lệ gắn đúng Candidate, đúng công việc, đúng CV và đúng nguồn giới thiệu |
+| Đầu ra không thành công | Yêu cầu bị từ chối, hết hạn, trùng hoặc không đủ điều kiện; không tạo đơn ứng tuyển sai |
+| Luồng tiếp theo | Hồ sơ hợp lệ được chuyển sang MF03 để sàng lọc/chấm điểm và tiếp tục quy trình tuyển dụng |
+
+> **Cách trình bày ngắn trước hội đồng:** MF02 bảo đảm hồ sơ được đưa vào quy trình tuyển dụng từ đúng nguồn, có sự đồng ý của ứng viên, hạn chế trùng lặp và ghi nhận minh bạch quyền giới thiệu của Cộng tác viên trước khi chuyển sang sàng lọc.
 
 ## 2. Tổng quan luồng sử dụng
 
