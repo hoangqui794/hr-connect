@@ -69,6 +69,7 @@ import {
   AffiliateSectionHeading,
   AffiliateStatCard,
 } from './affiliate/AffiliateUi';
+import { isValidVietnamPhoneNumber, VIETNAM_PHONE_VALIDATION_MESSAGE } from '@/constants/phoneValidation';
 
 dayjs.extend(relativeTimePlugin);
 dayjs.locale('vi');
@@ -459,7 +460,19 @@ export const AffiliateSubmitPage: React.FC = () => {
                     >
                       <Input size="large" />
                     </Form.Item>
-                    <Form.Item name="phone" label="Số điện thoại của ứng viên" rules={[{ pattern: /^[0-9+() \-.]{8,20}$/, message: 'Số điện thoại không hợp lệ.' }]}>
+                    <Form.Item
+                      name="phone"
+                      label="Số điện thoại của ứng viên"
+                      extra="Dùng số di động Việt Nam 10 chữ số, ví dụ 0777569597."
+                      rules={[
+                        {
+                          validator: (_, value) =>
+                            !value || isValidVietnamPhoneNumber(value)
+                              ? Promise.resolve()
+                              : Promise.reject(new Error(VIETNAM_PHONE_VALIDATION_MESSAGE)),
+                        },
+                      ]}
+                    >
                       <Input size="large" />
                     </Form.Item>
                   </div>
@@ -535,8 +548,10 @@ export const AffiliateSubmitPage: React.FC = () => {
             </Surface>
 
             <Surface className="p-6">
-              <h2 className="m-0 mb-1 text-base font-semibold text-slate-900">3. Thông tin bổ sung</h2>
-              <p className="mb-4 mt-0 text-[13px] text-slate-600">Không bắt buộc. Nêu ngắn gọn điểm mạnh giúp doanh nghiệp hiểu ứng viên nhanh hơn.</p>
+              <h2 className="m-0 mb-1 text-base font-semibold text-slate-900">
+                3. Thông tin bổ sung <span className="font-normal text-slate-500">(không bắt buộc)</span>
+              </h2>
+              <p className="mb-4 mt-0 text-[13px] text-slate-600">Nêu ngắn gọn điểm mạnh giúp doanh nghiệp hiểu ứng viên nhanh hơn.</p>
               <Form.Item name="note" className="mb-0" rules={[{ max: 2000, message: 'Tối đa 2000 ký tự.' }]}>
                 <Input.TextArea rows={3} showCount maxLength={2000} placeholder="Ví dụ: 3 năm kinh nghiệm Java, có thể nhận việc sau 30 ngày, mong muốn làm việc tại Hà Nội…" />
               </Form.Item>

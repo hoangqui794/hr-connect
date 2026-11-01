@@ -1,4 +1,5 @@
 using FluentValidation;
+using HRConnect.Application.Common.Validation;
 
 namespace HRConnect.Application.Features.Affiliates.Commands.SubmitCandidate;
 
@@ -42,7 +43,8 @@ public class SubmitCandidateCommandValidator : AbstractValidator<SubmitCandidate
         When(x => !string.IsNullOrWhiteSpace(x.Phone), () =>
         {
             RuleFor(x => x.Phone!)
-                .Matches(@"^[0-9+() \-\.]{8,20}$").WithMessage("Số điện thoại không đúng định dạng.");
+                .Must(VietnamPhoneNumber.IsValid)
+                .WithMessage("Số điện thoại không đúng định dạng số điện thoại Việt Nam hợp lệ.");
         });
     }
 
