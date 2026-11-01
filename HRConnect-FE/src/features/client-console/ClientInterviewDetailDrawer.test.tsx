@@ -182,4 +182,34 @@ describe('ClientInterviewDetailDrawer', () => {
     expect(await screen.findByText('Nhập nhận xét phỏng vấn.')).toBeInTheDocument();
     expect(clientActionsApi.recordResult).not.toHaveBeenCalled();
   });
+  it('submits PASS result with MAKE_OFFER nextAction and isFinalRound true', async () => {
+    vi.mocked(candidateInterviewApi.getClientInterviewDetail).mockResolvedValue(mockInterviewDetail as any);
+    vi.mocked(clientActionsApi.recordResult).mockResolvedValueOnce({ message: 'Thành công' } as any);
+
+    renderComponent({
+      interviewId: 'iv-test-100',
+      onClose: vi.fn(),
+    });
+
+    await screen.findByText('Nguyễn Văn An');
+    fireEvent.click(screen.getByRole('button', { name: /ghi kết quả/i }));
+
+    const feedbackInput = await screen.findByPlaceholderText(/ứng viên nắm vững kiến thức/i);
+    fireEvent.change(feedbackInput, { target: { value: 'Ứng viên đạt yêu cầu rất tốt.' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /lưu kết quả/i }));
+
+    await waitFor(() => {
+      expect(clientActionsApi.recordResult).toHaveBeenCalledWith(
+        'iv-test-100',
+        expect.objectContaining({
+          result: 'PASS',
+          feedback: 'Ứng viên đạt yêu cầu rất tốt.',
+          isFinalRound: true,
+          nextAction: 'MAKE_OFFER',
+          concurrencyToken: 'token-abc',
+        })
+      );
+    });
+  });
 });
