@@ -15,7 +15,7 @@ public class AccountLifecycleEmailOutboxWorkerTests
             "Nguyễn An",
             "QA Engineer",
             "HR Connect",
-            "https://hrconnectvn.online/register?role=CANDIDATE",
+            "https://www.hrconnectvn.online/register?role=CANDIDATE",
             InterviewRound: 1,
             ScheduledAt: new DateTime(2026, 10, 21, 2, 0, 0, DateTimeKind.Utc));
         var outbox = new EmailOutbox

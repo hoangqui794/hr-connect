@@ -9,7 +9,7 @@ public class RecruitmentCandidateEmailTemplateTests
         CandidateName: "Nguyễn <An>",
         JobTitle: "Backend Developer",
         CompanyName: "Công ty <ABC>",
-        PortalUrl: "https://hrconnectvn.online/register?role=CANDIDATE",
+        PortalUrl: "https://www.hrconnectvn.online/register?role=CANDIDATE",
         InterviewRound: 2,
         ScheduledAt: new DateTime(2026, 10, 21, 2, 30, 0, DateTimeKind.Utc),
         DurationMinutes: 60,
@@ -32,12 +32,12 @@ public class RecruitmentCandidateEmailTemplateTests
     {
         var email = HrConnectEmailTemplates.InterviewScheduled(Payload with
         {
-            PortalUrl = "https://hrconnectvn.online/candidate/interviews/interview-1",
+            PortalUrl = "https://www.hrconnectvn.online/candidate/interviews/interview-1",
             HasLinkedAccount = true
         });
 
         email.HtmlBody.Should().Contain(System.Net.WebUtility.HtmlEncode("Xem lịch và xác nhận tham gia"));
-        email.HtmlBody.Should().Contain("https://hrconnectvn.online/candidate/interviews/interview-1");
+        email.HtmlBody.Should().Contain("https://www.hrconnectvn.online/candidate/interviews/interview-1");
         email.HtmlBody.Should().NotContain("Đăng ký / đăng nhập HR Connect");
     }
 

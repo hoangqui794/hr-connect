@@ -37,6 +37,8 @@ public sealed class VnPayGateway(IOptions<VnPaySettings> options) : IVnPayGatewa
         && !string.IsNullOrWhiteSpace(_settings.HashSecret)
         && !string.IsNullOrWhiteSpace(_settings.ReturnUrl);
 
+    public TimeSpan PaymentLifetime => TimeSpan.FromMinutes(Math.Clamp(_settings.ExpireMinutes, 1, 24 * 60));
+
     public string CreatePaymentUrl(VnPayPaymentRequest request)
     {
         if (!IsEnabled)
@@ -59,7 +61,7 @@ public sealed class VnPayGateway(IOptions<VnPaySettings> options) : IVnPayGatewa
             ["vnp_ReturnUrl"] = _settings.ReturnUrl!,
             ["vnp_IpAddr"] = request.ClientIp,
             ["vnp_CreateDate"] = created.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture),
-            ["vnp_ExpireDate"] = created.AddMinutes(_settings.ExpireMinutes).ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture),
+            ["vnp_ExpireDate"] = created.Add(PaymentLifetime).ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture),
         };
 
         var query = BuildQuery(parameters);
