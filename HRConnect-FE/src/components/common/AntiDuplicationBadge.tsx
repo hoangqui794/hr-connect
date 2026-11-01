@@ -45,7 +45,7 @@ export const AntiDuplicationBadge: React.FC<AntiDuplicationBadgeProps> = ({
             {affiliateName ? ` Thuộc quyền CTV: ${affiliateName}.` : ''}
           </div>
           <div className="text-slate-500 text-[11px] mt-1 border-t border-slate-200 pt-1">
-            Chống tranh chấp hoa hồng & bảo vệ quyền lợi Headhunter 100%.
+            Chống tranh chấp hoa hồng & bảo vệ quyền lợi Affiliate 100%.
           </div>
         </div>
       }

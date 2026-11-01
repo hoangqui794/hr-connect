@@ -108,10 +108,11 @@ public sealed class UploadSignedServiceAgreementCommandHandler : IRequestHandler
         agreement.ConcurrencyToken = Guid.NewGuid();
 
         // Gửi thông báo cho Internal HR
+        var hrRecipientId = agreement.CreatedByUserId != Guid.Empty ? agreement.CreatedByUserId : job.CreatedBy;
         await _notifications.AddAsync(new Notification
         {
             NotificationId = Guid.NewGuid(),
-            UserId = job.CreatedBy,
+            UserId = hrRecipientId,
             NotificationType = "JOB",
             Title = "Doanh nghiệp đã tải lên hợp đồng đã ký",
             Message = $"Doanh nghiệp {agreement.CompanyNameSnapshot} đã tải lên văn bản hợp đồng đã ký cho tin \"{job.Title}\". Vui lòng xem xét và công khai tin tuyển dụng.",
@@ -121,7 +122,9 @@ public sealed class UploadSignedServiceAgreementCommandHandler : IRequestHandler
             {
                 jobId = job.JobId,
                 agreementId = agreement.ServiceAgreementId,
-                actionRoute = $"/internal/jobs/review?jobId={job.JobId}"
+                status = "PENDING_AGREEMENT",
+                routeHint = $"/hr/jobs?status=PENDING_AGREEMENT&highlight={job.JobId}",
+                actionRoute = $"/hr/jobs?status=PENDING_AGREEMENT&highlight={job.JobId}"
             }),
             IsRead = false,
             CreatedAt = DateTime.UtcNow

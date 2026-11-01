@@ -82,8 +82,8 @@ const ROLE_OPTIONS: RoleOption[] = [
   },
   {
     role: UserRole.AFFILIATE,
-    title: 'Cộng tác viên (Headhunter)',
-    shortTitle: 'Headhunter',
+    title: 'Cộng tác viên (Affiliate)',
+    shortTitle: 'Affiliate',
     hint: 'Giới thiệu ứng viên',
     badge: 'Partner',
     subtitle: 'Giới thiệu ứng viên & nhận hoa hồng minh bạch',
@@ -274,7 +274,7 @@ export const RegisterPage: React.FC = () => {
         },
         {
           icon: <TeamOutlined />,
-          title: 'Cộng tác viên Headhunter',
+          title: 'Cộng tác viên (Affiliate)',
           desc: 'Gửi nguồn giới thiệu, nhận thưởng minh bạch',
         },
       ]}

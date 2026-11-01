@@ -148,6 +148,7 @@ export interface Job {
   location: string | null;
   workingTime: string | null;
   employmentType: EmploymentType | null;
+  workMode?: string | null;
   salaryMin: number | null;
   salaryMax: number | null;
   salaryNegotiable: boolean;
@@ -264,6 +265,7 @@ export interface JobUpsertInput {
   location?: string | null;
   workingTime?: string | null;
   employmentType?: EmploymentType | null;
+  workMode?: string | null;
   salaryMin?: number | null;
   salaryMax?: number | null;
   salaryNegotiable: boolean;
@@ -354,6 +356,7 @@ export interface JobTemplate {
   description: string;
   benefits: string | null;
   employmentType: EmploymentType | null;
+  workMode?: string | null;
   minExperienceYears: number | null;
   maxExperienceYears: number | null;
   requirements: JobTemplateRequirement[];

@@ -181,7 +181,7 @@ public sealed class SubmitJobCommandHandler : IRequestHandler<SubmitJobCommand, 
         if (_users == null || _notifications == null) return;
         var hrIds = await _users.GetActiveUserIdsByRoleAsync("INTERNAL_HR", ct);
         var now = DateTime.UtcNow;
-        var metadata = System.Text.Json.JsonSerializer.Serialize(new { jobId = job.JobId, status = JobStatuses.PendingReview, routeHint = "/hr/jobs" });
+        var metadata = System.Text.Json.JsonSerializer.Serialize(new { jobId = job.JobId, status = JobStatuses.PendingReview, routeHint = $"/hr/jobs?status={JobStatuses.PendingReview}&highlight={job.JobId}" });
         foreach (var hrId in hrIds)
         {
             await _notifications.AddAsync(new Notification

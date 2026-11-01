@@ -90,6 +90,9 @@ import {
   SALARY_RANGE_CUSTOM,
   SALARY_RANGE_PRESETS,
   WORKING_TIME_OPTIONS,
+  WORK_MODE_OPTIONS,
+  WORK_MODE_LABEL,
+  type WorkMode,
   salaryRangeOf,
 } from './jobFormOptions';
 
@@ -159,6 +162,185 @@ const ExperienceSelectInput: React.FC<ExperienceSelectInputProps> = ({ value, on
 
 // ─── Interfaces & Constants ──────────────────────────────────────────────────
 
+interface JobLocationsInputProps {
+  value?: string;
+  onChange?: (val: string) => void;
+  disabled?: boolean;
+  onMultipleChange?: (hasMultiple: boolean) => void;
+}
+
+const parseLocationParts = (val?: string): string[] => {
+  if (!val || !val.trim()) return [''];
+  const parts = val.split(/;\s*|\n+/).map((s) => s.trim()).filter(Boolean);
+  return parts.length > 0 ? parts : [''];
+};
+
+const JobLocationsInput: React.FC<JobLocationsInputProps> = ({
+  value,
+  onChange,
+  disabled,
+  onMultipleChange,
+}) => {
+  const [locations, setLocations] = useState<string[]>(() => parseLocationParts(value));
+
+  // Sync when value changes externally (e.g. template applied or initial load)
+  useEffect(() => {
+    const parsed = parseLocationParts(value);
+    const currentJoined = locations.map((s) => s.trim()).filter(Boolean).join('; ');
+    const newJoined = parsed.map((s) => s.trim()).filter(Boolean).join('; ');
+    if (currentJoined !== newJoined) {
+      setLocations(parsed);
+      onMultipleChange?.(parsed.length > 1);
+    }
+  }, [value, onMultipleChange]);
+
+  const emit = (nextList: string[]) => {
+    setLocations(nextList);
+    onMultipleChange?.(nextList.length > 1);
+    const joined = nextList.map((s) => s.trim()).filter(Boolean).join('; ');
+    onChange?.(joined);
+  };
+
+  const handleItemChange = (val: string, index: number) => {
+    const next = [...locations];
+    next[index] = val;
+    emit(next);
+  };
+
+  const handleAdd = () => {
+    if (locations.length >= 5) return;
+    const next = [...locations, ''];
+    emit(next);
+  };
+
+  const handleRemove = (index: number) => {
+    if (locations.length <= 1) {
+      emit(['']);
+      return;
+    }
+    const next = locations.filter((_, i) => i !== index);
+    emit(next);
+  };
+
+  const totalLength = locations.map((s) => s.trim()).filter(Boolean).join('; ').length;
+  const isOverLimit = totalLength > 255;
+  const isMultiple = locations.length > 1;
+
+  if (!isMultiple) {
+    return (
+      <div className="space-y-2">
+        <AutoComplete
+          size="large"
+          allowClear
+          placeholder="Chọn tỉnh/thành hoặc nhập địa chỉ cụ thể"
+          options={LOCATION_OPTIONS}
+          value={locations[0] || ''}
+          disabled={disabled}
+          onChange={(val) => handleItemChange(val, 0)}
+          filterOption={(inputValue, option) =>
+            String(option?.label ?? option?.value ?? '')
+              .toLowerCase()
+              .includes(inputValue.toLowerCase())
+          }
+          className="w-full"
+        >
+          <Input size="large" suffix={<EnvironmentOutlined className="text-slate-400" />} />
+        </AutoComplete>
+        <div className="flex items-center justify-between">
+          <Button
+            type="dashed"
+            size="small"
+            icon={<PlusOutlined />}
+            onClick={handleAdd}
+            disabled={disabled}
+            className="text-xs text-blue-600 border-dashed border-blue-300 hover:text-blue-700 hover:border-blue-500 font-medium h-7"
+          >
+            Thêm địa điểm làm việc khác
+          </Button>
+          {locations[0]?.trim() && (
+            <span className={`text-[11.5px] ${locations[0].length > 255 ? 'text-rose-500 font-semibold' : 'text-slate-400'}`}>
+              {locations[0].length}/255 ký tự
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 rounded-xl border border-solid border-slate-200 bg-slate-50/70 p-3.5 sm:p-4">
+      <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/80">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+            Danh sách địa điểm làm việc ({locations.length}/5)
+          </span>
+        </div>
+        <span className={`text-xs ${isOverLimit ? 'text-rose-600 font-semibold' : 'text-slate-500'}`}>
+          Tổng độ dài: {totalLength}/255 ký tự
+        </span>
+      </div>
+
+      <div className="space-y-2.5">
+        {locations.map((loc, idx) => (
+          <div key={idx} className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
+            <span className="text-xs font-semibold text-slate-600 min-w-[95px] shrink-0">
+              {idx === 0 ? 'Địa điểm 1 (Chính):' : `Địa điểm ${idx + 1}:`}
+            </span>
+            <div className="flex-1 flex items-center gap-2">
+              <AutoComplete
+                size="large"
+                allowClear
+                placeholder={
+                  idx === 0
+                    ? 'Ví dụ: TP. Hồ Chí Minh: 54B đường 18, P. Hiệp Bình...'
+                    : `Địa điểm ${idx + 1} (VD: Hà Nội: 123 Cầu Giấy...)`
+                }
+                options={LOCATION_OPTIONS}
+                value={loc}
+                disabled={disabled}
+                onChange={(val) => handleItemChange(val, idx)}
+                filterOption={(inputValue, option) =>
+                  String(option?.label ?? option?.value ?? '')
+                    .toLowerCase()
+                    .includes(inputValue.toLowerCase())
+                }
+                className="w-full"
+              >
+                <Input size="large" suffix={<EnvironmentOutlined className="text-slate-400" />} />
+              </AutoComplete>
+              <Button
+                type="text"
+                danger
+                icon={<DeleteOutlined />}
+                onClick={() => handleRemove(idx)}
+                disabled={disabled}
+                title="Xóa địa điểm này"
+                className="shrink-0 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100">
+        <Button
+          type="dashed"
+          size="small"
+          icon={<PlusOutlined />}
+          onClick={handleAdd}
+          disabled={disabled || locations.length >= 5}
+          className="text-xs text-blue-600 border-dashed border-blue-300 hover:text-blue-700 hover:border-blue-500 font-medium h-7"
+        >
+          Thêm địa điểm làm việc ({locations.length}/5)
+        </Button>
+        <span className="text-xs text-slate-400">
+          Các địa điểm sẽ được phân tách tự động khi hiển thị cho ứng viên.
+        </span>
+      </div>
+    </div>
+  );
+};
+
 interface RequirementRow {
   requirementType: JobRequirementType;
   content: string;
@@ -173,6 +355,7 @@ interface JobFormValues {
   title: string;
   quantity: number;
   employmentType?: EmploymentType;
+  workMode?: WorkMode;
   location?: string;
   workingTime?: string;
   deadline?: string;
@@ -211,6 +394,8 @@ interface JobFormValues {
 
 const EMPTY_VALUES: Partial<JobFormValues> = {
   quantity: 1,
+  employmentType: 'FULL_TIME',
+  workMode: 'ONSITE',
   currencyCode: 'VND',
   salaryNegotiable: false,
   postingPackage: 'STANDARD',
@@ -355,6 +540,17 @@ const hasStep3Data = (values: Partial<JobFormValues>, code?: ServiceTypeCode): b
   return false;
 };
 
+const detectWorkMode = (job: Job): WorkMode => {
+  if ((job as any).workMode) {
+    const wm = String((job as any).workMode).toUpperCase();
+    if (wm === 'REMOTE' || wm === 'HYBRID' || wm === 'ONSITE') return wm as WorkMode;
+  }
+  const text = `${job.location || ''} ${job.workingTime || ''} ${job.employmentType || ''}`.toLowerCase();
+  if (text.includes('remote') || text.includes('từ xa') || text.includes('tu xa')) return 'REMOTE';
+  if (text.includes('hybrid') || text.includes('kết hợp') || text.includes('ket hop')) return 'HYBRID';
+  return 'ONSITE';
+};
+
 const toFormValues = (job: Job): JobFormValues => {
   const proposed = job.proposedTerms as ProposedTerms | undefined;
 
@@ -369,6 +565,7 @@ const toFormValues = (job: Job): JobFormValues => {
     serviceTypeId: job.serviceTypeId,
     title: job.title || '',
     employmentType: job.employmentType ?? undefined,
+    workMode: detectWorkMode(job),
     location: job.location ?? undefined,
     workingTime: job.workingTime ?? undefined,
     deadline: job.applicationDeadline ? dayjs(job.applicationDeadline).format('YYYY-MM-DD') : undefined,
@@ -452,6 +649,7 @@ const toInput = (v: JobFormValues, selectedCode?: ServiceTypeCode, postingPackag
     serviceTypeId: v.serviceTypeId,
     title: v.title ? v.title.trim() : 'Tin tuyển dụng',
     employmentType: v.employmentType ?? null,
+    workMode: v.workMode ?? null,
     location: trimOrNull(v.location),
     workingTime: trimOrNull(v.workingTime),
     quantity: v.quantity ?? 1,
@@ -522,7 +720,10 @@ const submitBlockers = (
     missing.push({ field: ['quantity'], message: 'Nhập số lượng cần tuyển (tối thiểu 1).', step: 1 });
   }
   if (!v.employmentType) {
-    missing.push({ field: ['employmentType'], message: 'Chọn hình thức làm việc.', step: 1 });
+    missing.push({ field: ['employmentType'], message: 'Chọn loại hình làm việc.', step: 1 });
+  }
+  if (!v.workMode) {
+    missing.push({ field: ['workMode'], message: 'Chọn hình thức làm việc.', step: 1 });
   }
   if (!trimOrNull(v.location)) {
     missing.push({ field: ['location'], message: 'Nhập địa điểm làm việc.', step: 1 });
@@ -637,12 +838,16 @@ export const JobFormPage: React.FC = () => {
         workingTime: sourceJob.workingTime ?? undefined,
         quantity: sourceJob.quantity,
       });
+      if (sourceJob.location && (sourceJob.location.includes(';') || sourceJob.location.includes('\n'))) {
+        setHasMultipleLocations(true);
+      }
     }
   };
 
   // Dedicated Component State for selected service to ensure robustness across steps
   const [selectedServiceId, setSelectedServiceId] = useState<string>('');
   const [selectedServiceCode, setSelectedServiceCode] = useState<ServiceTypeCode | undefined>();
+  const [hasMultipleLocations, setHasMultipleLocations] = useState<boolean>(false);
 
   const serviceTypes = useServiceTypes();
   const existing = useJobDetail(jobId);
@@ -709,6 +914,9 @@ export const JobFormPage: React.FC = () => {
     if (existing.data) {
       const job = existing.data;
       form.setFieldsValue(toFormValues(job));
+      if (job.location && (job.location.includes(';') || job.location.includes('\n'))) {
+        setHasMultipleLocations(true);
+      }
 
       if (job.serviceTypeId) {
         setSelectedServiceId(job.serviceTypeId);
@@ -731,7 +939,8 @@ export const JobFormPage: React.FC = () => {
     const base = [
       { label: 'Chọn loại dịch vụ', done: hasService, step: 0, field: 'form-service-section' },
       { label: 'Tên vị trí', done: Boolean(watched.title?.trim()), step: 1, field: 'form-title-item' },
-      { label: 'Hình thức làm việc', done: Boolean(watched.employmentType), step: 1, field: 'form-employment-item' },
+      { label: 'Loại hình làm việc', done: Boolean(watched.employmentType), step: 1, field: 'form-employment-item' },
+      { label: 'Hình thức làm việc', done: Boolean(watched.workMode), step: 1, field: 'form-work-mode-item' },
       { label: 'Địa điểm', done: Boolean(watched.location?.trim()), step: 1, field: 'form-location-item' },
       { label: 'Mô tả công việc', done: Boolean(watched.description?.trim()), step: 1, field: 'form-desc-item' },
       { label: 'Quyền lợi', done: Boolean(watched.benefits?.trim()), step: 1, field: 'form-benefits-item' },
@@ -1321,15 +1530,32 @@ export const JobFormPage: React.FC = () => {
                   <div id="form-employment-item">
                     <Form.Item
                       name="employmentType"
-                      label="Hình thức"
+                      label="Loại hình làm việc"
+                      rules={[{ required: true, message: 'Chọn loại hình làm việc.' }]}
+                    >
+                      <Select
+                        size="large"
+                        placeholder="Chọn loại hình làm việc"
+                        options={(Object.keys(EMPLOYMENT_TYPE_LABEL) as EmploymentType[]).map((k) => ({
+                          value: k,
+                          label: EMPLOYMENT_TYPE_LABEL[k],
+                        }))}
+                      />
+                    </Form.Item>
+                  </div>
+
+                  <div id="form-work-mode-item">
+                    <Form.Item
+                      name="workMode"
+                      label="Hình thức làm việc"
                       rules={[{ required: true, message: 'Chọn hình thức làm việc.' }]}
                     >
                       <Select
                         size="large"
                         placeholder="Chọn hình thức làm việc"
-                        options={(Object.keys(EMPLOYMENT_TYPE_LABEL) as EmploymentType[]).map((k) => ({
-                          value: k,
-                          label: EMPLOYMENT_TYPE_LABEL[k],
+                        options={WORK_MODE_OPTIONS.map((opt) => ({
+                          value: opt.value,
+                          label: opt.label,
                         }))}
                       />
                     </Form.Item>
@@ -1341,53 +1567,6 @@ export const JobFormPage: React.FC = () => {
                     rules={[{ required: true, type: 'number', min: 1, max: 1000, message: 'Từ 1 đến 1000 người.' }]}
                   >
                     <InputNumber size="large" min={1} max={1000} className="w-full" addonAfter="người" />
-                  </Form.Item>
-
-                  <div id="form-location-item">
-                    <Form.Item
-                      name="location"
-                      label="Địa điểm"
-                      rules={[
-                        { required: true, message: 'Vui lòng nhập địa điểm làm việc.' },
-                        { max: 255, message: 'Tối đa 255 ký tự.' },
-                      ]}
-                    >
-                      <AutoComplete
-                        size="large"
-                        allowClear
-                        placeholder="Chọn tỉnh/thành hoặc nhập địa chỉ cụ thể"
-                        options={LOCATION_OPTIONS}
-                        filterOption={(inputValue, option) =>
-                          String(option?.label ?? option?.value ?? '')
-                            .toLowerCase()
-                            .includes(inputValue.toLowerCase())
-                        }
-                      >
-                        <Input size="large" suffix={<EnvironmentOutlined className="text-slate-400" />} />
-                      </AutoComplete>
-                    </Form.Item>
-                  </div>
-
-                  <Form.Item
-                    name="workingTime"
-                    label="Thời gian làm việc"
-                    rules={[{ max: 255, message: 'Tối đa 255 ký tự.' }]}
-                  >
-                    <AutoComplete
-                      allowClear
-                      options={WORKING_TIME_OPTIONS}
-                      filterOption={(inputValue, option) =>
-                        String(option?.label ?? option?.value ?? '')
-                          .toLowerCase()
-                          .includes(inputValue.toLowerCase())
-                      }
-                    >
-                      {/* Multi-line so the Client can list days and hours on separate lines (HR feedback 28/10). */}
-                      <Input.TextArea
-                        autoSize={{ minRows: 2, maxRows: 5 }}
-                        placeholder={'Chọn mẫu có sẵn hoặc nhập, mỗi ý một dòng. Ví dụ:\nThứ 2 – Thứ 6: 8:00 – 17:30\nThứ 7: làm sáng (cách tuần)'}
-                      />
-                    </AutoComplete>
                   </Form.Item>
 
                   <Form.Item
@@ -1402,6 +1581,67 @@ export const JobFormPage: React.FC = () => {
                   >
                     <ExperienceSelectInput />
                   </Form.Item>
+
+                  <div id="form-location-item" className="md:col-span-2">
+                    <Form.Item
+                      name="location"
+                      label={
+                        <span className="inline-flex items-center gap-1.5">
+                          <span>Địa điểm làm việc</span>
+                          {hasMultipleLocations && (
+                            <Tag color="blue" className="m-0 text-[11px] font-normal">
+                              Nhiều địa điểm
+                            </Tag>
+                          )}
+                        </span>
+                      }
+                      rules={[
+                        { required: true, message: 'Vui lòng nhập địa điểm làm việc.' },
+                        {
+                          validator: (_, value) => {
+                            if (!value || !value.trim()) {
+                              return Promise.reject(new Error('Vui lòng nhập ít nhất một địa điểm làm việc.'));
+                            }
+                            if (value.length > 255) {
+                              return Promise.reject(
+                                new Error(`Tổng độ dài các địa điểm là ${value.length}/255 ký tự (vượt quá 255 ký tự).`)
+                              );
+                            }
+                            return Promise.resolve();
+                          },
+                        },
+                      ]}
+                    >
+                      <JobLocationsInput
+                        disabled={!editable}
+                        onMultipleChange={setHasMultipleLocations}
+                      />
+                    </Form.Item>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <Form.Item
+                      name="workingTime"
+                      label="Thời gian làm việc"
+                      rules={[{ max: 255, message: 'Tối đa 255 ký tự.' }]}
+                    >
+                      <AutoComplete
+                        allowClear
+                        options={WORKING_TIME_OPTIONS}
+                        filterOption={(inputValue, option) =>
+                          String(option?.label ?? option?.value ?? '')
+                            .toLowerCase()
+                            .includes(inputValue.toLowerCase())
+                        }
+                      >
+                        {/* Multi-line so the Client can list days and hours on separate lines (HR feedback 28/10). */}
+                        <Input.TextArea
+                          autoSize={{ minRows: 2, maxRows: 5 }}
+                          placeholder={'Chọn mẫu có sẵn hoặc nhập, mỗi ý một dòng. Ví dụ:\nThứ 2 – Thứ 6: 8:00 – 17:30\nThứ 7: làm sáng (cách tuần)'}
+                        />
+                      </AutoComplete>
+                    </Form.Item>
+                  </div>
                 </div>
               </section>
 
@@ -1431,7 +1671,7 @@ export const JobFormPage: React.FC = () => {
                   return (
                     <>
                       <div className="grid gap-x-4 md:grid-cols-[1fr_120px]">
-                        <Form.Item label="Mức lương (gross/tháng)" required={false}>
+                        <Form.Item label="Mức lương" required={false}>
                           <Select
                             size="large"
                             aria-label="Mức lương"
@@ -2091,6 +2331,11 @@ export const JobFormPage: React.FC = () => {
                         {EMPLOYMENT_TYPE_LABEL[watched.employmentType]}
                       </Tag>
                     )}
+                    {watched.workMode && (
+                      <Tag color="cyan" className="m-0 text-xs">
+                        {WORK_MODE_LABEL[watched.workMode]}
+                      </Tag>
+                    )}
                   </div>
 
                   <h3 className="m-0 text-[20px] font-bold text-slate-900">
@@ -2106,9 +2351,26 @@ export const JobFormPage: React.FC = () => {
                       <TeamOutlined className="text-slate-400" />
                       <span>Số lượng tuyển: <b>{watched.quantity ?? 1} người</b></span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <EnvironmentOutlined className="text-slate-400" />
-                      <span>Địa điểm: {watched.location?.trim() || 'Chưa cập nhật'}</span>
+                    <div className="flex items-start gap-2">
+                      <EnvironmentOutlined className="text-slate-400 mt-0.5 shrink-0" />
+                      <div className="flex-1">
+                        <span>Địa điểm: </span>
+                        {watched.location?.trim() ? (
+                          watched.location.includes('; ') ? (
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                              {watched.location.split('; ').map((loc, i) => (
+                                <Tag key={i} className="m-0 text-xs text-slate-700 bg-slate-100 border-slate-200">
+                                  {loc}
+                                </Tag>
+                              ))}
+                            </div>
+                          ) : (
+                            <b>{watched.location.trim()}</b>
+                          )
+                        ) : (
+                          <span className="text-slate-400">Chưa cập nhật</span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-slate-400 font-bold">📅</span>
@@ -2380,13 +2642,30 @@ export const JobFormPage: React.FC = () => {
                     <WalletOutlined className="text-slate-400" aria-hidden />
                     <span className="font-medium text-[color:var(--console-accent-strong)]">{salaryText(watched)}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <EnvironmentOutlined className="text-slate-400" aria-hidden />
-                    {watched.location?.trim() || 'Địa điểm làm việc'}
+                  <div className="flex items-start gap-2">
+                    <EnvironmentOutlined className="text-slate-400 mt-0.5 shrink-0" aria-hidden />
+                    <div className="flex-1">
+                      {watched.location?.trim() ? (
+                        watched.location.includes('; ') ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {watched.location.split('; ').map((loc, i) => (
+                              <Tag key={i} className="m-0 text-xs bg-slate-100 border-slate-200 text-slate-700">
+                                {loc}
+                              </Tag>
+                            ))}
+                          </div>
+                        ) : (
+                          <span>{watched.location.trim()}</span>
+                        )
+                      ) : (
+                        <span>Địa điểm làm việc</span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <TeamOutlined className="text-slate-400" aria-hidden />
-                    {watched.employmentType ? EMPLOYMENT_TYPE_LABEL[watched.employmentType] : 'Hình thức'} ·{' '}
+                    {watched.employmentType ? EMPLOYMENT_TYPE_LABEL[watched.employmentType] : 'Loại hình'} ·{' '}
+                    {watched.workMode ? WORK_MODE_LABEL[watched.workMode] : 'Hình thức'} ·{' '}
                     {watched.quantity ?? 1} người
                   </div>
                 </div>

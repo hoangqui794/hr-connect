@@ -3,7 +3,8 @@
  * - Client › Bảo hành: own placements, service fees, and "Báo nghỉ việc" while the warranty is active.
  * - Internal HR › Theo dõi bảo hành: every warranty, reported resignations first, confirm or reject.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App, Button, DatePicker, Form, Input, Modal, Radio, Space, Table, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -27,6 +28,7 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
   const [page, setPage] = useState(1);
   const [target, setTarget] = useState<Warranty | null>(null);
   const [detailPlacementId, setDetailPlacementId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [form] = Form.useForm();
 
   const list = useQuery({
@@ -34,6 +36,28 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
     queryFn: () => financeApi.warranties({ status, page, pageSize: PAGE_SIZE }),
     placeholderData: (previous) => previous,
   });
+
+  const highlightParam = searchParams.get('highlight');
+  useEffect(() => {
+    if (!highlightParam || list.isLoading || !list.data) return;
+    const q = highlightParam.toLowerCase();
+    const match = list.data.items.find(
+      (w) => w.warrantyId.toLowerCase() === q || w.placementId.toLowerCase() === q
+    );
+    if (match) {
+      if (mode === 'hr' && match.status === 'CLAIMED') {
+        form.setFieldsValue({ decision: 'confirm', note: '' });
+        setTarget(match);
+      } else {
+        setDetailPlacementId(match.placementId);
+      }
+      const next = new URLSearchParams(searchParams);
+      next.delete('highlight');
+      setSearchParams(next, { replace: true });
+    } else if (status !== 'all') {
+      setStatus('all');
+    }
+  }, [highlightParam, list.isLoading, list.data, mode, status, form, searchParams, setSearchParams]);
 
   const submit = useMutation({
     mutationFn: async () => {

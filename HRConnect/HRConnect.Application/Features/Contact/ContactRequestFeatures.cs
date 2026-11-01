@@ -77,10 +77,12 @@ public sealed class ContactRequestHandlers :
     private readonly IEmailService _email;
     private readonly ContactSettings _contactSettings;
     private readonly ILogger<ContactRequestHandlers> _logger;
+    private readonly IAppNotifier? _notifier;
 
     public ContactRequestHandlers(
         IContactRequestRepository requests, IAdminBusinessSettings settings, IUnitOfWork unitOfWork, IAuditLogService audit,
-        IEmailService email, IOptions<ContactSettings> contactSettings, ILogger<ContactRequestHandlers> logger)
+        IEmailService email, IOptions<ContactSettings> contactSettings, ILogger<ContactRequestHandlers> logger,
+        IAppNotifier? notifier = null)
     {
         _requests = requests;
         _settings = settings;
@@ -89,6 +91,7 @@ public sealed class ContactRequestHandlers :
         _email = email;
         _contactSettings = contactSettings.Value;
         _logger = logger;
+        _notifier = notifier;
     }
 
     public async Task<ContactRequestReceipt> Handle(SubmitContactRequestCommand request, CancellationToken cancellationToken)
@@ -140,6 +143,30 @@ public sealed class ContactRequestHandlers :
             UpdatedAt = now,
         };
         await _requests.AddAsync(contact, cancellationToken);
+        if (_notifier != null)
+        {
+            var companyLabel = !string.IsNullOrWhiteSpace(contact.CompanyName) ? $" ({contact.CompanyName})" : string.Empty;
+            await _notifier.NotifyRoleAsync(
+                "INTERNAL_HR",
+                new AppNotice(
+                    "SYSTEM",
+                    "Có yêu cầu tư vấn mới",
+                    $"Khách hàng {contact.FullName}{companyLabel} vừa gửi yêu cầu tư vấn dịch vụ {contact.ServiceInterest}.",
+                    "CONTACT_REQUEST",
+                    contact.ContactRequestId,
+                    $"/hr/contact-requests?highlight={contact.ContactRequestId}"),
+                cancellationToken);
+            await _notifier.NotifyRoleAsync(
+                "PLATFORM_ADMIN",
+                new AppNotice(
+                    "SYSTEM",
+                    "Có yêu cầu tư vấn mới",
+                    $"Khách hàng {contact.FullName}{companyLabel} vừa gửi yêu cầu tư vấn dịch vụ {contact.ServiceInterest}.",
+                    "CONTACT_REQUEST",
+                    contact.ContactRequestId,
+                    $"/admin/contact-requests?highlight={contact.ContactRequestId}"),
+                cancellationToken);
+        }
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         await NotifyOperationsAsync(contact, cancellationToken);

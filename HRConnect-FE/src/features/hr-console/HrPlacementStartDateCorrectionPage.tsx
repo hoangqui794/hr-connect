@@ -4,7 +4,8 @@
  * actual start date. This is intentionally a narrow operational page: it does
  * not review commissions, service fees, warranty cases or payouts (MF-05).
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App as AntApp, Button, DatePicker, Drawer, Form, Input, Skeleton, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -54,9 +55,19 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [correctionOpen, setCorrectionOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [form] = Form.useForm<{ actualStartDate: Dayjs; reason: string }>();
   const queryClient = useQueryClient();
   const { message } = AntApp.useApp();
+
+  const highlightParam = searchParams.get('highlight');
+  useEffect(() => {
+    if (!highlightParam) return;
+    setSelectedId(highlightParam);
+    const next = new URLSearchParams(searchParams);
+    next.delete('highlight');
+    setSearchParams(next, { replace: true });
+  }, [highlightParam, searchParams, setSearchParams]);
 
   const placements = useQuery({
     queryKey: ['mf04-placement-correction', page],

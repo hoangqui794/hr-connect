@@ -95,3 +95,5 @@ stitch_hrconnect_job_portal*/
 HRConnect-FE/stitch_hrconnect_job_portal*/
 docker-compose*.yml
 **/docker-compose*.yml
+
+.agents/

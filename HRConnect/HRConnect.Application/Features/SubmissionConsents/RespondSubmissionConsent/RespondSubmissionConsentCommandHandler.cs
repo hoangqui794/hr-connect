@@ -29,6 +29,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
     private readonly ICandidateCompanyTransactionLock _candidateCompanyLock;
     private readonly IAdminBusinessSettings _businessSettings;
     private readonly ICandidateDuplicateRepository _candidateDuplicateRepository;
+    private readonly IAppNotifier? _notifier;
 
     public RespondSubmissionConsentCommandHandler(
         ISubmissionConsentRepository consentRepository,
@@ -45,7 +46,8 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         ILogger<RespondSubmissionConsentCommandHandler> logger,
         ICandidateCompanyTransactionLock candidateCompanyLock,
         IAdminBusinessSettings businessSettings,
-        ICandidateDuplicateRepository candidateDuplicateRepository)
+        ICandidateDuplicateRepository candidateDuplicateRepository,
+        IAppNotifier? notifier = null)
     {
         _consentRepository = consentRepository;
         _submissionRepository = submissionRepository;
@@ -62,6 +64,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         _candidateCompanyLock = candidateCompanyLock;
         _businessSettings = businessSettings;
         _candidateDuplicateRepository = candidateDuplicateRepository;
+        _notifier = notifier;
     }
 
     public async Task<RespondSubmissionConsentResponse> Handle(RespondSubmissionConsentCommand request, CancellationToken cancellationToken)
@@ -330,6 +333,21 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
             }
 
             await AddAffiliateResultNotificationAsync(consent, "CONFIRMED", now, cancellationToken);
+
+            if (_notifier != null)
+            {
+                var candidateName = consent.Submission.Candidate?.FullName ?? "Ứng viên";
+                await _notifier.NotifyRoleAsync(
+                    "INTERNAL_HR",
+                    new AppNotice(
+                        "APPLICATION_STATUS",
+                        "Có hồ sơ ứng viên mới cần sàng lọc",
+                        $"{candidateName} đã xác nhận hồ sơ giới thiệu cho vị trí \"{consent.Submission.Job.Title}\". Vui lòng kiểm tra và sàng lọc.",
+                        "APPLICATION",
+                        application.ApplicationId,
+                        $"/hr/screening?status=SUBMITTED&open={application.ApplicationId}"),
+                    cancellationToken);
+            }
 
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
             transactionCompleted = true;
