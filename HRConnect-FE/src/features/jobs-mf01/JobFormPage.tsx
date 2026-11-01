@@ -186,17 +186,19 @@ const JobLocationsInput: React.FC<JobLocationsInputProps> = ({
   // Sync when value changes externally (e.g. template applied or initial load)
   useEffect(() => {
     const parsed = parseLocationParts(value);
-    const currentJoined = locations.map((s) => s.trim()).filter(Boolean).join('; ');
-    const newJoined = parsed.map((s) => s.trim()).filter(Boolean).join('; ');
-    if (currentJoined !== newJoined) {
-      setLocations(parsed);
-      onMultipleChange?.(parsed.length > 1);
-    }
-  }, [value, onMultipleChange]);
+    setLocations((prev) => {
+      const currentJoined = prev.map((s) => s.trim()).filter(Boolean).join('; ');
+      const newJoined = parsed.map((s) => s.trim()).filter(Boolean).join('; ');
+      return currentJoined !== newJoined ? parsed : prev;
+    });
+  }, [value]);
+
+  useEffect(() => {
+    onMultipleChange?.(locations.length > 1);
+  }, [locations.length, onMultipleChange]);
 
   const emit = (nextList: string[]) => {
     setLocations(nextList);
-    onMultipleChange?.(nextList.length > 1);
     const joined = nextList.map((s) => s.trim()).filter(Boolean).join('; ');
     onChange?.(joined);
   };
