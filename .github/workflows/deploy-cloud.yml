@@ -1,0 +1,174 @@
+name: CD — Cloud Server
+
+on:
+  workflow_run:
+    workflows:
+      - CI — Quality Gates
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloud-production
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE_NAME: ${{ github.repository_owner }}/hrconnect-backend
+  AI_IMAGE_NAME: ${{ github.repository_owner }}/hrconnect-ai-v2
+
+jobs:
+  build-images:
+    name: Build & publish ${{ matrix.label }}
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Backend
+            context: HRConnect
+            dockerfile: HRConnect/Dockerfile
+            image: hrconnect-backend
+            cache_scope: cloud-backend
+          - label: AI v2
+            context: ai-service-v2
+            dockerfile: ai-service-v2/Dockerfile
+            image: hrconnect-ai-v2
+            cache_scope: cloud-ai-v2
+    env:
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+    steps:
+      - name: Checkout the approved commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Sign in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish immutable image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:sha-${{ env.DEPLOY_SHA }}
+          cache-from: type=gha,scope=${{ matrix.cache_scope }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.cache_scope }}
+          provenance: mode=max
+          sbom: true
+
+  deploy:
+    name: Deploy exact commit & verify
+    needs: build-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+      deployments: write
+    environment:
+      name: production
+      url: https://api.hrconnectvn.online
+    env:
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      PROD_SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+      PROD_SSH_PORT: ${{ secrets.PROD_SSH_PORT }}
+      PROD_SSH_USER: ${{ secrets.PROD_SSH_USER }}
+      PROD_SSH_PRIVATE_KEY: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+      PROD_SSH_KNOWN_HOSTS: ${{ secrets.PROD_SSH_KNOWN_HOSTS }}
+
+    steps:
+      - name: Checkout the approved commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          persist-credentials: false
+
+      - name: Validate production SSH configuration
+        run: |
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo '::error::Invalid deployment SHA.'; exit 1; }
+          [[ -n "$PROD_SSH_HOST" ]] || { echo '::error::Missing PROD_SSH_HOST.'; exit 1; }
+          [[ "$PROD_SSH_PORT" =~ ^[0-9]{1,5}$ ]] || { echo '::error::Missing or invalid PROD_SSH_PORT.'; exit 1; }
+          [[ -n "$PROD_SSH_USER" ]] || { echo '::error::Missing PROD_SSH_USER.'; exit 1; }
+          [[ -n "$PROD_SSH_PRIVATE_KEY" ]] || { echo '::error::Missing PROD_SSH_PRIVATE_KEY.'; exit 1; }
+          [[ -n "$PROD_SSH_KNOWN_HOSTS" ]] || { echo '::error::Missing PROD_SSH_KNOWN_HOSTS.'; exit 1; }
+
+      - name: Configure trusted SSH connection
+        run: |
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$PROD_SSH_PRIVATE_KEY" | tr -d '\r' > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$PROD_SSH_KNOWN_HOSTS" | tr -d '\r' > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+      - name: Refresh temporary GHCR credentials on the server
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | ssh \
+            -i "$HOME/.ssh/id_ed25519" \
+            -p "$PROD_SSH_PORT" \
+            "$PROD_SSH_USER@$PROD_SSH_HOST" \
+            "docker login ghcr.io --username '${{ github.actor }}' --password-stdin"
+
+      - name: Upload immutable release manifest
+        run: |
+          remote_release="/opt/hrconnect/deploy/releases/$DEPLOY_SHA"
+          ssh -i "$HOME/.ssh/id_ed25519" -p "$PROD_SSH_PORT" \
+            "$PROD_SSH_USER@$PROD_SSH_HOST" \
+            "mkdir -p '$remote_release'"
+          scp -i "$HOME/.ssh/id_ed25519" -P "$PROD_SSH_PORT" \
+            deploy/compose.prod.yml \
+            deploy/scripts/deploy-production.sh \
+            "$PROD_SSH_USER@$PROD_SSH_HOST:$remote_release/"
+
+      - name: Deploy and rollback automatically on failure
+        run: |
+          backend_image="$REGISTRY/$BACKEND_IMAGE_NAME:sha-$DEPLOY_SHA"
+          ai_image="$REGISTRY/$AI_IMAGE_NAME:sha-$DEPLOY_SHA"
+          remote_script="/opt/hrconnect/deploy/releases/$DEPLOY_SHA/deploy-production.sh"
+          ssh -i "$HOME/.ssh/id_ed25519" -p "$PROD_SSH_PORT" \
+            "$PROD_SSH_USER@$PROD_SSH_HOST" \
+            "chmod 700 '$remote_script' && DEPLOY_SHA='$DEPLOY_SHA' BACKEND_IMAGE='$backend_image' AI_IMAGE='$ai_image' '$remote_script'"
+
+      - name: Verify public production endpoints
+        run: |
+          curl --fail --silent --show-error --retry 5 --retry-delay 5 https://api.hrconnectvn.online/health/live > /dev/null
+          curl --fail --silent --show-error --retry 5 --retry-delay 5 https://api.hrconnectvn.online/health/ready > /dev/null
+          curl --fail --silent --show-error --retry 5 --retry-delay 5 https://ai.hrconnectvn.online/health > /dev/null
+
+      - name: Publish deployment summary
+        if: always()
+        run: |
+          {
+            echo '## Cloud production deployment'
+            echo
+            echo '| Field | Value |'
+            echo '| --- | --- |'
+            echo "| Commit | \`$DEPLOY_SHA\` |"
+            echo "| Backend image | \`$REGISTRY/$BACKEND_IMAGE_NAME:sha-$DEPLOY_SHA\` |"
+            echo "| AI image | \`$REGISTRY/$AI_IMAGE_NAME:sha-$DEPLOY_SHA\` |"
+            echo '| Backend | https://api.hrconnectvn.online |'
+            echo '| AI v2 | https://ai.hrconnectvn.online |'
+          } >> "$GITHUB_STEP_SUMMARY"

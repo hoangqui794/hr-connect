@@ -1,95 +1,184 @@
-# CI/CD và triển khai Backend trên Render
+# CI/CD triển khai HR Connect trên Cloud Server
 
-## Phạm vi
+## 1. Phạm vi
 
-Pipeline có hai workflow độc lập:
+Pipeline production gồm hai workflow độc lập:
 
 | Workflow | File | Nhiệm vụ |
 |---|---|---|
-| CI — Quality Gates | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) | Kiểm tra Backend, Frontend, AI service và Docker image của Backend. |
-| CD — Backend on Render | [`.github/workflows/deploy-render.yml`](../../.github/workflows/deploy-render.yml) | Triển khai duy nhất Backend .NET lên Render sau khi CI của `main` đạt. |
+| CI — Quality Gates | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) | Kiểm tra Backend, Frontend, AI v2, Dockerfile và script triển khai. |
+| CD — Cloud Server | [`.github/workflows/deploy-cloud.yml`](../../.github/workflows/deploy-cloud.yml) | Build image Backend và AI v2 trên GitHub, đẩy lên GHCR rồi triển khai đúng commit lên Cloud Server. |
 
-Frontend và AI service **không được deploy lên Render bởi pipeline này**. Chúng chỉ tham gia quality gate để một thay đổi gây lỗi tích hợp không đi vào production.
+Frontend vẫn được Vercel triển khai riêng. Render không còn nằm trong kiến trúc triển khai của dự án.
 
-## Luồng triển khai production
+## 2. Luồng production
 
 ```text
-push main
-   │
-   ▼
-CI — Quality Gates
-   ├─ Backend: restore → build → test + coverage
-   ├─ Frontend: npm ci → lint → test → production build
-   ├─ AI v2: compile → pytest
-   └─ Backend Dockerfile: production image build
-   │
-   ├─ bất kỳ bước nào lỗi ──> dừng, không deploy
-   │
-   ▼
-CD — Backend on Render
-   ├─ yêu cầu Render build đúng commit SHA của main
-   ├─ theo dõi trạng thái deploy thật mỗi 20 giây
-   ├─ xác minh commit được đánh dấu live chính là commit đã duyệt
-   └─ gọi /health/ready đến khi Backend healthy
+Dev push feature/*, fix/* hoặc dev
+              │
+              ▼
+       CI — Quality Gates
+       (không deploy production)
+
+Merge commit đã duyệt vào main
+              │
+              ▼
+       CI — Quality Gates
+              │
+      lỗi ─────┴───── đạt
+      dừng             │
+                       ▼
+              CD — Cloud Server
+              ├─ build Backend image trên GitHub
+              ├─ build AI v2 image trên GitHub
+              ├─ push GHCR tag sha-<40 ký tự>
+              ├─ SSH bằng deploy key
+              ├─ server pull image, không build source
+              ├─ khởi động đúng commit
+              ├─ kiểm tra Backend live + ready và AI health
+              └─ lỗi thì tự rollback release trước
 ```
 
-GitHub Environment `production` ghi nhận lịch sử deploy và hiển thị đường dẫn tới Backend. `concurrency: render-production` ngăn hai lần triển khai production chạy đồng thời.
+`concurrency: cloud-production` bảo đảm chỉ một lượt production được triển khai tại một thời điểm. Image dùng tag commit SHA bất biến, không dùng `latest` để quyết định bản chạy.
 
-## Cấu hình GitHub bắt buộc
+## 3. Dữ liệu production trên server
 
-Vào **Repository → Settings → Secrets and variables → Actions**.
+Các file secrets không được đưa lên GitHub:
 
-### Repository secrets
+```text
+/opt/hrconnect/deploy/
+├── env/
+│   ├── backend.env       # chmod 600
+│   └── ai-v2.env         # chmod 600
+├── releases/
+│   ├── bootstrap/        # bản Docker hiện hữu, được ghi nhận lần đầu
+│   └── <commit-sha>/     # compose + release.env + deploy script
+├── current -> releases/<commit-sha>
+└── previous -> releases/<commit-sha>
+```
 
-| Tên | Bắt buộc | Giá trị |
-|---|:---:|---|
-| `RENDER_API_KEY` | Có | API key tạo trong Render Account Settings. |
-| `RENDER_SERVICE_ID` | Có | ID của **Backend service**, bắt đầu bằng `srv-`. Không dùng ID của AI service. |
+Workflow chỉ tải manifest triển khai và image. Nó không đọc, ghi hoặc đưa nội dung hai file `.env` vào log.
 
-Workflow sẽ báo lỗi rõ ràng nếu thiếu secret; không âm thầm bỏ qua deploy.
+## 4. Chuẩn bị tài khoản triển khai
 
-### Repository variables
+Máy chủ hiện có thể dùng tài khoản `hradmin`, với điều kiện tài khoản đó:
 
-| Tên | Bắt buộc | Giá trị đề nghị |
-|---|:---:|---|
-| `RENDER_SERVICE_URL` | Không | `https://hr-connect-0ykm.onrender.com` |
-| `RENDER_HEALTHCHECK_URL` | Không | `https://hr-connect-0ykm.onrender.com/health/ready` |
+1. Đăng nhập được bằng SSH key, không dùng mật khẩu.
+2. Có quyền chạy Docker (`docker version` không cần `sudo`).
+3. Có quyền ghi dưới `/opt/hrconnect/deploy`.
 
-Nếu không khai báo variables, workflow dùng hai địa chỉ trên làm mặc định.
+Nên tạo một SSH key riêng chỉ dành cho GitHub Actions, không dùng private key cá nhân. Public key được thêm vào `/home/hradmin/.ssh/authorized_keys`; private key được lưu trong GitHub Secret.
 
-## Cấu hình Render
+Tạo trước thư mục và bảo vệ env:
 
-Backend service phải liên kết đúng repository và có thể checkout commit của nhánh `main`. Nên tắt Auto-Deploy dạng `On Commit` để tránh Render tự tạo một deploy đồng thời với GitHub Actions. GitHub Actions sẽ là nơi duy nhất ra lệnh deploy production sau khi quality gate đạt.
+```bash
+sudo mkdir -p /opt/hrconnect/deploy/env /opt/hrconnect/deploy/releases
+sudo chown -R hradmin:hradmin /opt/hrconnect/deploy
+chmod 700 /opt/hrconnect/deploy /opt/hrconnect/deploy/env
+chmod 600 /opt/hrconnect/deploy/env/backend.env /opt/hrconnect/deploy/env/ai-v2.env
+```
 
-Không đưa API key, service ID hoặc biến môi trường production vào source code hay log workflow.
+## 5. GitHub Secrets bắt buộc
 
-## Cấu hình bảo vệ trên GitHub
+Vào **Repository → Settings → Secrets and variables → Actions**:
 
-Thiết lập branch protection/ruleset cho `dev` và `main`:
-
-1. Bắt buộc Pull Request trước khi merge.
-2. Bắt buộc job **CI / Required gate** thành công.
-3. Bắt buộc nhánh cập nhật với branch đích trước khi merge.
-4. Chặn force-push và xóa `main`.
-5. Với GitHub Environment `production`, giới hạn deployment branch là `main`; có thể thêm required reviewer nếu nhóm muốn duyệt thủ công trước production.
-
-## Cách theo dõi deploy
-
-1. Mở tab **Actions** trên GitHub.
-2. Chọn workflow **CD — Backend on Render**.
-3. Job hiển thị từng trạng thái Render: `created`, `queued`, `build_in_progress`, `update_in_progress`, `live`.
-4. Phần **Job summary** ghi commit, deploy ID, trạng thái cuối, URL Backend và đường dẫn Render dashboard.
-5. Chỉ khi đúng commit ở trạng thái `live` và `/health/ready` trả thành công, GitHub mới đánh dấu deployment xanh.
-
-Có thể chạy lại thủ công từ nhánh `main` bằng **Run workflow**. Tùy chọn `clear_cache` chỉ dùng khi cache build Render gặp sự cố; mặc định giữ cache để deploy nhanh hơn.
-
-## Xử lý lỗi thường gặp
-
-| Biểu hiện | Kiểm tra |
+| Secret | Giá trị |
 |---|---|
-| `Missing required GitHub secret RENDER_API_KEY` | Tạo hoặc cập nhật secret `RENDER_API_KEY`. |
-| `RENDER_SERVICE_ID must ... begin with srv-` | Secret đang thiếu hoặc không phải ID Backend service. |
-| Render build một commit khác | Kiểm tra service Render có liên kết đúng repository và commit còn tồn tại trên `main`. |
-| Trạng thái `build_failed` | Mở link Render dashboard trong Job summary để xem build log. |
-| Render báo `live` nhưng workflow đỏ | Kiểm tra `/health/ready`, database và biến môi trường của Backend. |
-| Workflow CD không chạy | Kiểm tra workflow CI của push `main` có kết luận `success` và job `CI / Required gate` đã đạt. |
+| `PROD_SSH_HOST` | IP hoặc hostname Cloud Server. |
+| `PROD_SSH_PORT` | Cổng SSH production. |
+| `PROD_SSH_USER` | Tài khoản deploy, hiện tại là `hradmin`. |
+| `PROD_SSH_PRIVATE_KEY` | Private key riêng của GitHub Actions, không có passphrase tương tác. |
+| `PROD_SSH_KNOWN_HOSTS` | Dòng host key đã xác minh của Cloud Server. |
+
+Lấy `known_hosts` từ máy quản trị và đối chiếu fingerprint với server trước khi lưu:
+
+```powershell
+ssh-keyscan -p 24700 162.4.176.117
+```
+
+Không dùng `StrictHostKeyChecking=no`. Workflow phải dừng nếu host key không khớp.
+
+## 6. GHCR
+
+Workflow sử dụng `GITHUB_TOKEN` ngắn hạn để:
+
+- push hai image từ GitHub runner;
+- đăng nhập GHCR tạm thời trên server trước khi pull.
+
+Các package GHCR có thể để private. Workflow cần quyền `packages: write` ở job build và `packages: read` ở job deploy; không cần PAT dài hạn trên server.
+
+Image production:
+
+```text
+ghcr.io/hoangqui794/hrconnect-backend:sha-<commit>
+ghcr.io/hoangqui794/hrconnect-ai-v2:sha-<commit>
+```
+
+## 7. Lần chạy đầu tiên
+
+1. Merge workflow vào `main` sau khi CI đạt.
+2. Cấu hình đủ năm GitHub Secrets.
+3. Mở **Actions → CD — Cloud Server → Run workflow** trên nhánh `main`.
+4. Script tự ghi nhận hai container đang chạy dưới tag `*:local` thành release `bootstrap` trước khi thay thế chúng.
+5. Chỉ khi ba endpoint health đạt thì symlink `current` mới chuyển sang release mới.
+
+Endpoint được kiểm tra:
+
+- `http://127.0.0.1:8080/health/live`
+- `http://127.0.0.1:8080/health/ready`
+- `http://127.0.0.1:8001/health`
+- `https://api.hrconnectvn.online/health/live`
+- `https://api.hrconnectvn.online/health/ready`
+- `https://ai.hrconnectvn.online/health`
+
+Sau lần chạy thủ công thành công, mọi push vào `main` có CI đạt sẽ tự triển khai.
+
+## 8. Rollback
+
+Script [`deploy/scripts/deploy-production.sh`](../../deploy/scripts/deploy-production.sh) rollback khi:
+
+- không pull được image;
+- Docker Compose không khởi động được service;
+- Backend live/ready hoặc AI health không đạt trong thời gian chờ.
+
+Nếu bản mới lỗi sau khi container đã được thay, script chạy lại release ở symlink `current`, xác minh health rồi mới kết thúc với trạng thái thất bại. GitHub Actions vẫn hiển thị màu đỏ để nhóm điều tra dù production đã được phục hồi.
+
+Rollback thủ công về bản gần nhất:
+
+```bash
+cd /opt/hrconnect/deploy/previous
+docker compose --project-name hrconnect --env-file release.env -f compose.prod.yml up -d --remove-orphans
+```
+
+## 9. Theo dõi và xử lý lỗi
+
+| Biểu hiện | Cách kiểm tra |
+|---|---|
+| CI lỗi | Sửa test/build trước; CD sẽ không chạy. |
+| Thiếu SSH secret | Job `Validate production SSH configuration` ghi đúng tên secret còn thiếu. |
+| `Host key verification failed` | Cập nhật `PROD_SSH_KNOWN_HOSTS` sau khi xác minh fingerprint thật. |
+| GHCR trả `denied` | Kiểm tra quyền Packages của Actions và package thuộc đúng repository owner. |
+| Pull image lỗi | Kiểm tra dung lượng ổ đĩa, mạng và trạng thái GHCR. |
+| Backend live đạt nhưng ready lỗi | Kiểm tra PostgreSQL và biến môi trường Backend. |
+| AI health lỗi | Xem `docker logs hrconnect-ai-v2` và biến môi trường AI v2. |
+| Workflow rollback | Xem log health, sau đó kiểm tra `deploy/current` và `deploy/previous`. |
+
+Các lệnh quan sát an toàn:
+
+```bash
+docker compose --project-name hrconnect \
+  --env-file /opt/hrconnect/deploy/current/release.env \
+  -f /opt/hrconnect/deploy/current/compose.prod.yml ps
+docker stats --no-stream
+df -h /
+```
+
+## 10. Bảo vệ production
+
+- Bắt buộc Pull Request và job **CI / Required gate** trước khi merge `main`.
+- Chặn force-push và xóa `main`.
+- GitHub Environment `production` chỉ cho phép nhánh `main` deploy.
+- Không commit `.env`, SSH private key hoặc token.
+- Không chạy `git pull` và không build source trên production.
+- Không tự động xóa image đang được `current` hoặc `previous` sử dụng.
+- Chỉ nâng cấp hệ điều hành/Docker trong cửa sổ bảo trì riêng.
