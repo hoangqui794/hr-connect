@@ -86,7 +86,15 @@ public sealed class ApproveIdentityClaimCommandHandler(
             {
                 var target = await candidates.GetByIdAsync(
                     claim.TargetCandidateId.Value, cancellationToken);
-                if (target == null || target.UserId.HasValue ||
+                var alreadySafelyMerged = target != null &&
+                    target.MergedIntoCandidateId == requesterCandidate.CandidateId &&
+                    !string.Equals(target.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase);
+
+                if (alreadySafelyMerged)
+                {
+                    canonicalCandidateId = requesterCandidate.CandidateId;
+                }
+                else if (target == null || target.UserId.HasValue ||
                     !string.Equals(target.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
                     target.MergedIntoCandidateId.HasValue ||
                     !string.Equals(target.NormalizedEmail, claim.NormalizedEmail, StringComparison.Ordinal))
@@ -95,14 +103,14 @@ public sealed class ApproveIdentityClaimCommandHandler(
                         "Hồ sơ cũ đã thay đổi hoặc không còn đủ điều kiện để liên kết tự động.");
                 }
 
-                if (await candidates.HasIdentityBusinessDataAsync(
+                else if (await candidates.HasIdentityBusinessDataAsync(
                         claim.RequesterCandidateId, cancellationToken))
                 {
                     throw ManualMergeRequired(
                         "Cả hai hồ sơ Candidate đều đã có dữ liệu nghiệp vụ. Hệ thống không tự động gộp để tránh mất hoặc trùng dữ liệu.");
                 }
 
-                if (!await candidates.TrySwapIdentityCandidateAsync(
+                else if (!await candidates.TrySwapIdentityCandidateAsync(
                         claim.RequesterCandidateId,
                         target.CandidateId,
                         claim.RequesterUserId,
@@ -114,7 +122,10 @@ public sealed class ApproveIdentityClaimCommandHandler(
                         "IDENTITY_CLAIM_CONCURRENT_CANDIDATE_CHANGE");
                 }
 
-                canonicalCandidateId = target.CandidateId;
+                else
+                {
+                    canonicalCandidateId = target.CandidateId;
+                }
             }
 
             var now = DateTime.UtcNow;
