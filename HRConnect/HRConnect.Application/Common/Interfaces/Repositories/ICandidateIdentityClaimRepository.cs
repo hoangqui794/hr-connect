@@ -25,12 +25,25 @@ public sealed record AdminIdentityClaimCandidateRecord(
     string FullName,
     string? Email,
     string? Phone,
+    string? NormalizedPhone,
     string Status,
     Guid? MergedIntoCandidateId,
     int CvCount,
     int SubmissionCount,
     int ApplicationCount,
-    int MatchCount);
+    int MatchCount,
+    int SkillCount,
+    string? HighestEducation,
+    decimal? YearsOfExperience,
+    string? CurrentJobTitle,
+    string? Summary,
+    DateOnly? DateOfBirth,
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+    string? PrimaryCvTitle,
+    string? PrimaryCvFileName,
+    string? PrimaryCvContentSha256,
+    string? PrimaryCvTextFingerprint);
 
 public sealed record AdminIdentityClaimEmailOwnerRecord(
     Guid EmailIdentityId,
@@ -61,6 +74,8 @@ public sealed record AdminIdentityClaimDetailRecord(
     DateTime CreatedAt,
     DateTime UpdatedAt,
     Guid ConcurrencyToken,
+    bool HasExactCvMatch,
+    bool HasTextFingerprintMatch,
     AdminIdentityClaimCandidateRecord RequesterCandidate,
     AdminIdentityClaimCandidateRecord? TargetCandidate,
     AdminIdentityClaimEmailOwnerRecord? CurrentEmailOwner);

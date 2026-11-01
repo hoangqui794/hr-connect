@@ -122,18 +122,49 @@ public sealed class CandidateIdentityClaimRepository(ApplicationDbContext contex
                 claim.CreatedAt,
                 claim.UpdatedAt,
                 claim.ConcurrencyToken,
+                claim.TargetCandidate != null && claim.RequesterCandidate.CandidateCvs.Any(left =>
+                    left.ContentSha256 != null && claim.TargetCandidate.CandidateCvs.Any(right =>
+                        right.ContentSha256 == left.ContentSha256)),
+                claim.TargetCandidate != null && claim.RequesterCandidate.CandidateCvs.Any(left =>
+                    left.TextFingerprint != null && claim.TargetCandidate.CandidateCvs.Any(right =>
+                        right.TextFingerprint == left.TextFingerprint)),
                 new AdminIdentityClaimCandidateRecord(
                     claim.RequesterCandidate.CandidateId,
                     claim.RequesterCandidate.UserId,
                     claim.RequesterCandidate.FullName,
                     claim.RequesterCandidate.Email,
                     claim.RequesterCandidate.Phone,
+                    claim.RequesterCandidate.NormalizedPhone,
                     claim.RequesterCandidate.Status,
                     claim.RequesterCandidate.MergedIntoCandidateId,
                     claim.RequesterCandidate.CandidateCvs.Count,
                     claim.RequesterCandidate.Submissions.Count,
                     claim.RequesterCandidate.Applications.Count,
-                    claim.RequesterCandidate.CandidateJobMatches.Count),
+                    claim.RequesterCandidate.CandidateJobMatches.Count,
+                    claim.RequesterCandidate.CandidateSkills.Count,
+                    claim.RequesterCandidate.HighestEducation,
+                    claim.RequesterCandidate.YearsOfExperience,
+                    claim.RequesterCandidate.CurrentJobTitle,
+                    claim.RequesterCandidate.Summary,
+                    claim.RequesterCandidate.DateOfBirth,
+                    claim.RequesterCandidate.CreatedAt,
+                    claim.RequesterCandidate.UpdatedAt,
+                    claim.RequesterCandidate.CandidateCvs
+                        .OrderByDescending(cv => cv.IsPrimary)
+                        .ThenByDescending(cv => cv.UpdatedAt)
+                        .Select(cv => cv.Title).FirstOrDefault(),
+                    claim.RequesterCandidate.CandidateCvs
+                        .OrderByDescending(cv => cv.IsPrimary)
+                        .ThenByDescending(cv => cv.UpdatedAt)
+                        .Select(cv => cv.FileName).FirstOrDefault(),
+                    claim.RequesterCandidate.CandidateCvs
+                        .OrderByDescending(cv => cv.IsPrimary)
+                        .ThenByDescending(cv => cv.UpdatedAt)
+                        .Select(cv => cv.ContentSha256).FirstOrDefault(),
+                    claim.RequesterCandidate.CandidateCvs
+                        .OrderByDescending(cv => cv.IsPrimary)
+                        .ThenByDescending(cv => cv.UpdatedAt)
+                        .Select(cv => cv.TextFingerprint).FirstOrDefault()),
                 claim.TargetCandidate == null
                     ? null
                     : new AdminIdentityClaimCandidateRecord(
@@ -142,12 +173,37 @@ public sealed class CandidateIdentityClaimRepository(ApplicationDbContext contex
                         claim.TargetCandidate.FullName,
                         claim.TargetCandidate.Email,
                         claim.TargetCandidate.Phone,
+                        claim.TargetCandidate.NormalizedPhone,
                         claim.TargetCandidate.Status,
                         claim.TargetCandidate.MergedIntoCandidateId,
                         claim.TargetCandidate.CandidateCvs.Count,
                         claim.TargetCandidate.Submissions.Count,
                         claim.TargetCandidate.Applications.Count,
-                        claim.TargetCandidate.CandidateJobMatches.Count),
+                        claim.TargetCandidate.CandidateJobMatches.Count,
+                        claim.TargetCandidate.CandidateSkills.Count,
+                        claim.TargetCandidate.HighestEducation,
+                        claim.TargetCandidate.YearsOfExperience,
+                        claim.TargetCandidate.CurrentJobTitle,
+                        claim.TargetCandidate.Summary,
+                        claim.TargetCandidate.DateOfBirth,
+                        claim.TargetCandidate.CreatedAt,
+                        claim.TargetCandidate.UpdatedAt,
+                        claim.TargetCandidate.CandidateCvs
+                            .OrderByDescending(cv => cv.IsPrimary)
+                            .ThenByDescending(cv => cv.UpdatedAt)
+                            .Select(cv => cv.Title).FirstOrDefault(),
+                        claim.TargetCandidate.CandidateCvs
+                            .OrderByDescending(cv => cv.IsPrimary)
+                            .ThenByDescending(cv => cv.UpdatedAt)
+                            .Select(cv => cv.FileName).FirstOrDefault(),
+                        claim.TargetCandidate.CandidateCvs
+                            .OrderByDescending(cv => cv.IsPrimary)
+                            .ThenByDescending(cv => cv.UpdatedAt)
+                            .Select(cv => cv.ContentSha256).FirstOrDefault(),
+                        claim.TargetCandidate.CandidateCvs
+                            .OrderByDescending(cv => cv.IsPrimary)
+                            .ThenByDescending(cv => cv.UpdatedAt)
+                            .Select(cv => cv.TextFingerprint).FirstOrDefault()),
                 null))
             .SingleOrDefaultAsync(cancellationToken);
 

@@ -84,6 +84,32 @@ public sealed class ApproveIdentityClaimCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_DuplicateCaseAlreadyMergedIntoRequester_CompletesClaimWithoutSecondCandidateMutation()
+    {
+        var claim = CreateClaim();
+        var target = CreateTarget(claim);
+        target.Status = "MERGED";
+        target.MergedIntoCandidateId = claim.RequesterCandidateId;
+        SetupCommon(claim, target);
+        _claims.Setup(x => x.TryAdminResolveAsync(
+                claim.ClaimId, claim.ConcurrencyToken, It.IsAny<Guid>(), _adminUserId,
+                "COMPLETED", It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await CreateHandler().Handle(new ApproveIdentityClaimCommand(
+            claim.ClaimId, _adminUserId, claim.ConcurrencyToken, "Đã hợp nhất an toàn."),
+            CancellationToken.None);
+
+        result.Status.Should().Be("COMPLETED");
+        result.CanonicalCandidateId.Should().Be(claim.RequesterCandidateId);
+        _candidates.Verify(x => x.HasIdentityBusinessDataAsync(
+            It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _candidates.Verify(x => x.TrySwapIdentityCandidateAsync(
+            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Handle_EmailOwnedByAnotherUser_RejectsWithoutCandidateMutation()
     {
         var claim = CreateClaim();
