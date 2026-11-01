@@ -19,6 +19,7 @@ import {
   InputNumber,
   Select,
   DatePicker,
+  Radio,
   App as AntApp,
 } from 'antd';
 import {
@@ -69,6 +70,7 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
   const [resultForm] = Form.useForm();
   const [cancelForm] = Form.useForm();
   const selectedInterviewType = Form.useWatch('interviewType', editForm);
+  const watchedResult = Form.useWatch('result', resultForm);
 
   // Fetch interview detail
   const {
@@ -149,8 +151,8 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
       return clientActionsApi.recordResult(interviewId, {
         result: values.result,
         feedback: values.feedback?.trim() || undefined,
-        isFinalRound: values.isFinalRound ?? false,
-        nextAction: values.nextAction || undefined,
+        isFinalRound: values.isFinalRound ?? (values.result === 'PASS' && (values.nextAction === 'MAKE_OFFER' || !values.nextAction)),
+        nextAction: values.result === 'PASS' ? (values.nextAction || 'MAKE_OFFER') : undefined,
         concurrencyToken: interview.concurrencyToken || '',
       });
     },
@@ -655,7 +657,7 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
             resultMutation.mutate({ ...v, feedback });
           }}
         >
-          <Form.Item name="result" label="Kết quả đánh giá" rules={[{ required: true, message: 'Chọn kết quả.' }]}>
+          <Form.Item name="result" label="Kết quả đánh giá" initialValue="PASS" rules={[{ required: true, message: 'Chọn kết quả.' }]}>
             <Select
               options={[
                 { value: 'PASS', label: 'Đạt — Sẵn sàng gửi thư mời nhận việc hoặc vào vòng tiếp theo' },
@@ -664,6 +666,14 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
               ]}
             />
           </Form.Item>
+          {watchedResult === 'PASS' && (
+            <Form.Item name="nextAction" label="Bước tiếp theo" initialValue="MAKE_OFFER">
+              <Radio.Group>
+                <Radio value="MAKE_OFFER">Chuyển sang tạo offer (Vòng cuối)</Radio>
+                <Radio value="">Phỏng vấn thêm vòng nữa</Radio>
+              </Radio.Group>
+            </Form.Item>
+          )}
           <Form.Item
             name="feedback"
             label="Nhận xét / Đánh giá chi tiết"
