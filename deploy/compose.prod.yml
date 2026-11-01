@@ -7,8 +7,12 @@ services:
       - ${AI_ENV_FILE:-/opt/hrconnect/deploy/env/ai-v2.env}
     ports:
       - "127.0.0.1:8001:8001"
-    mem_limit: 2000m
-    cpus: 1.25
+    environment:
+      - MALLOC_ARENA_MAX=2
+      - OMP_NUM_THREADS=2
+      - TORCH_NUM_THREADS=2
+    mem_limit: 1200m
+    cpus: 1.0
     healthcheck:
       test:
         - CMD
@@ -35,10 +39,12 @@ services:
     restart: unless-stopped
     env_file:
       - ${BACKEND_ENV_FILE:-/opt/hrconnect/deploy/env/backend.env}
+    environment:
+      - DOTNET_GCHeapHardLimitPercent=50
     ports:
       - "127.0.0.1:8080:8080"
-    mem_limit: 1200m
-    cpus: 1.25
+    mem_limit: 800m
+    cpus: 1.0
     depends_on:
       ai-v2:
         condition: service_healthy

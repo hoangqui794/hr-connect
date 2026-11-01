@@ -5,6 +5,9 @@ ARG EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    MALLOC_ARENA_MAX=2 \
+    OMP_NUM_THREADS=2 \
+    TORCH_NUM_THREADS=2 \
     HF_HOME=/home/appuser/.cache/huggingface \
     EMBEDDING_MODEL=${EMBEDDING_MODEL} \
     PORT=8001

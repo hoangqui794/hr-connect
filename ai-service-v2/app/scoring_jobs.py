@@ -327,6 +327,9 @@ class ScoringJobQueue:
             except Exception:
                 logger.exception("v2 scoring worker %s failed request=%s", worker_id, job.request_id)
                 await self._orchestrator.callback_failed(job, "AI_SCORING_FAILED", "AI scoring failed")
+            finally:
+                import gc
+                gc.collect()
             self._known.discard(job.request_id)
             self._pending.pop(job.request_id, None)
             self._save()
