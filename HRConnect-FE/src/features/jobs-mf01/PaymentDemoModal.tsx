@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button, Modal, Tag, Typography, message, Segmented } from 'antd';
+import { Button, Modal, Tag, message, Segmented } from 'antd';
 import {
   CheckCircleOutlined,
   CopyOutlined,
@@ -14,14 +14,15 @@ import {
   FileProtectOutlined,
   QrcodeOutlined,
   BankOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { formatMoney, jobQueryKeys, usePostingFee, usePostingPackages } from './useJobQueries';
 import { formatPostingPackage } from './jobDisplay';
 import { jobsApi } from '../../services/api/jobsApi';
 import { useAlertStore } from '../../stores/alertStore';
 import { PLATFORM_BANK_ACCOUNT as BANK, depositTransferNote, transferNote } from '@/features/finance-mf05/platformBankAccount';
-
-const { Text } = Typography;
+import { vnPayApi } from '@/services/api/financeApi';
+import { getApiErrorMessage } from '@/services/apiClient';
 
 interface PaymentDemoModalProps {
   open?: boolean;
@@ -75,6 +76,12 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
   const handleConfirmPayment = async () => {
     setPaying(true);
     try {
+      if (!isDepositMode) {
+        const { paymentUrl } = await vnPayApi.createPayment('POSTING_FEE', jobId);
+        window.location.assign(paymentUrl);
+        return;
+      }
+
       if (isDepositMode) {
         try {
           await jobsApi.notifyDeposit(jobId, note);
@@ -91,18 +98,14 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
         } catch {
           // ignore
         }
-      } else {
-        await jobsApi.payPostingFee(jobId, note);
       }
 
-      // 1. Thông báo cho Client
+      // Luồng đặt cọc hiện vẫn được đối soát riêng; phí đăng tin do callback VNPay xử lý ở BE.
       useAlertStore.getState().addAlert({
         targetRole: 'CLIENT',
         type: 'success',
-        title: isDepositMode ? 'Đã nộp cọc tìm kiếm hồ sơ' : 'Thanh toán phí đăng tin thành công',
-        message: isDepositMode
-          ? `Khoản đặt cọc cho tin "${jobTitle}" đã được gửi xác nhận. Đang chờ HR Connect đối soát và kích hoạt tin.`
-          : `Gói đăng tin cho "${jobTitle}" đã kích hoạt. Tin đang được công khai tuyển dụng.`,
+        title: 'Đã nộp cọc tìm kiếm hồ sơ',
+        message: `Khoản đặt cọc cho tin "${jobTitle}" đã được gửi xác nhận. Đang chờ HR Connect đối soát và kích hoạt tin.`,
         actionLabel: 'Xem tin',
         actionRoute: `/client/jobs?highlight=${encodeURIComponent(jobId)}`,
         relatedEntityId: jobId,
@@ -112,10 +115,8 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
       useAlertStore.getState().addAlert({
         targetRole: 'INTERNAL_HR',
         type: 'success',
-        title: isDepositMode ? 'Doanh nghiệp đã nộp cọc' : 'Doanh nghiệp đã thanh toán phí đăng tin',
-        message: isDepositMode
-          ? `Doanh nghiệp đã nộp cọc mở nguồn tìm kiếm hồ sơ cho tin "${jobTitle}". Vui lòng xác nhận để công khai tin.`
-          : `Tin tuyển dụng "${jobTitle}" đã hoàn tất thanh toán phí gói đăng tin và chuyển sang Đang tuyển.`,
+        title: 'Doanh nghiệp đã nộp cọc',
+        message: `Doanh nghiệp đã nộp cọc mở nguồn tìm kiếm hồ sơ cho tin "${jobTitle}". Vui lòng xác nhận để công khai tin.`,
         actionLabel: 'Xem tin',
         actionRoute: `/hr/jobs?status=PENDING_PAYMENT&highlight=${encodeURIComponent(jobId)}`,
         relatedEntityId: jobId,
@@ -131,18 +132,13 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
         queryClient.invalidateQueries({ queryKey: ['serviceAgreements', jobId] }),
       ]);
 
-      message.success(
-        isDepositMode
-          ? 'Đã xác nhận nộp cọc! Hệ thống đã ghi nhận khoản đặt cọc.'
-          : 'Thanh toán thành công! Tin tuyển dụng đã được kích hoạt công khai.'
-      );
+      message.success('Đã xác nhận nộp cọc! Hệ thống đã ghi nhận khoản đặt cọc.');
 
       if (onPaymentSuccess) onPaymentSuccess();
       if (onSuccess) onSuccess();
       onClose();
     } catch (err: any) {
-      const errMsg = err?.response?.data?.message || err?.message || 'Có lỗi xảy ra khi xử lý thanh toán.';
-      message.error(errMsg);
+      message.error(getApiErrorMessage(err) || 'Có lỗi xảy ra khi xử lý thanh toán.');
     } finally {
       setPaying(false);
     }
@@ -153,7 +149,7 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
       open={isOpen}
       onCancel={onClose}
       footer={null}
-      destroyOnClose
+      destroyOnHidden
       centered
       width={460}
       title={
@@ -166,7 +162,7 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
               {isDepositMode ? 'Đặt cọc dịch vụ tìm hồ sơ' : 'Thanh toán phí gói đăng tin'}
             </div>
             <div className="text-[12px] text-slate-500 font-normal">
-              Chuyển khoản để kích hoạt tin tuyển dụng
+              {isDepositMode ? 'Chuyển khoản để kích hoạt dịch vụ' : 'Thanh toán an toàn và được xác nhận tự động'}
             </div>
           </div>
         </div>
@@ -174,7 +170,7 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
     >
       <div className="py-2 space-y-3.5">
         {/* Khối tóm tắt thông tin gói & số tiền */}
-        <div className="rounded-xl bg-gradient-to-br from-indigo-50/70 via-slate-50 to-blue-50/40 p-3.5 border border-solid border-indigo-100/80">
+        <div className="rounded-xl border border-solid border-blue-100 bg-slate-50 p-3.5">
           <div className="flex justify-between items-start gap-2 mb-1.5">
             <div className="font-semibold text-slate-900 text-sm leading-snug break-words">
               {jobTitle}
@@ -201,20 +197,22 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
           )}
         </div>
 
-        {/* Tab chuyển đổi giữa Thông tin chuyển khoản và Mã QR */}
-        <div className="flex justify-center">
-          <Segmented
-            options={[
-              { label: 'Thông tin chuyển khoản', value: 'info', icon: <BankOutlined /> },
-              { label: 'Quét mã VietQR', value: 'qr', icon: <QrcodeOutlined /> },
-            ]}
-            value={activeTab}
-            onChange={(val) => setActiveTab(val as 'info' | 'qr')}
-            className="bg-slate-100 p-1 font-medium text-xs"
-          />
-        </div>
+        {isDepositMode ? (
+          <>
+            {/* Tiền cọc vẫn dùng quy trình đối soát riêng cho đến khi có serviceFeeId. */}
+            <div className="flex justify-center">
+              <Segmented
+                options={[
+                  { label: 'Thông tin chuyển khoản', value: 'info', icon: <BankOutlined /> },
+                  { label: 'Quét mã VietQR', value: 'qr', icon: <QrcodeOutlined /> },
+                ]}
+                value={activeTab}
+                onChange={(val) => setActiveTab(val as 'info' | 'qr')}
+                className="bg-slate-100 p-1 font-medium text-xs"
+              />
+            </div>
 
-        {activeTab === 'info' ? (
+            {activeTab === 'info' ? (
           /* Card thông tin ngân hàng */
           <div className="rounded-xl bg-white p-3.5 border border-solid border-slate-200 space-y-2 text-xs">
             <div className="flex justify-between items-center py-0.5">
@@ -260,7 +258,7 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
               </div>
             </div>
           </div>
-        ) : (
+            ) : (
           /* Khối quét mã VietQR tự động */
           <div className="rounded-xl bg-white p-3 border border-solid border-slate-200 flex flex-col items-center justify-center text-center">
             <div className="p-2 bg-white rounded-lg border border-solid border-slate-200 shadow-xs mb-1.5">
@@ -273,6 +271,27 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
             </div>
             <div className="text-[12px] text-slate-600">
               Mở ứng dụng ngân hàng bất kỳ để quét mã thanh toán tự động
+            </div>
+          </div>
+            )}
+          </>
+        ) : (
+          <div className="rounded-xl border border-solid border-blue-200 bg-blue-50/60 p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-blue-600 shadow-sm">
+                <SafetyCertificateOutlined className="text-lg" />
+              </div>
+              <div className="min-w-0">
+                <div className="font-semibold text-slate-900">Thanh toán trực tuyến qua VNPay</div>
+                <p className="m-0 mt-1 text-[13px] leading-5 text-slate-600">
+                  Bạn sẽ được chuyển sang cổng VNPay để thanh toán bằng ứng dụng ngân hàng, thẻ ATM hoặc thẻ quốc tế.
+                  Tin tuyển dụng tự động được kích hoạt sau khi VNPay xác nhận thành công.
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs text-slate-600">
+              <CheckCircleOutlined className="text-emerald-600" />
+              Không cần gửi ảnh giao dịch hoặc xác nhận thanh toán thủ công.
             </div>
           </div>
         )}
@@ -301,13 +320,13 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
             </Button>
             <Button
               type="primary"
-              size="middle"
-              icon={<CheckCircleOutlined />}
+              size={isDepositMode ? 'middle' : 'large'}
+              icon={isDepositMode ? <CheckCircleOutlined /> : <CreditCardOutlined />}
               loading={paying}
               className="!bg-blue-600 hover:!bg-blue-700 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-semibold"
               onClick={handleConfirmPayment}
             >
-              {isDepositMode ? 'Xác nhận nộp cọc' : 'Xác nhận đã thanh toán'}
+              {isDepositMode ? 'Xác nhận nộp cọc' : 'Thanh toán qua VNPay'}
             </Button>
           </div>
         </div>

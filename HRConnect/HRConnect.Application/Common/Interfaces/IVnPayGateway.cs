@@ -23,6 +23,9 @@ public interface IVnPayGateway
     /// <summary>False when the merchant code or the hash secret is not configured; the Client then sees no VNPay button.</summary>
     bool IsEnabled { get; }
 
+    /// <summary>How long a generated payment URL remains valid.</summary>
+    TimeSpan PaymentLifetime { get; }
+
     string CreatePaymentUrl(VnPayPaymentRequest request);
 
     VnPayCallback ReadCallback(IReadOnlyDictionary<string, string> query);

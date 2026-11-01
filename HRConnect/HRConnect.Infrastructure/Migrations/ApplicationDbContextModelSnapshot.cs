@@ -4212,6 +4212,10 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.HasIndex(new[] { "TargetType", "TargetId" }, "idx_online_payment_target");
 
+                    b.HasIndex(new[] { "TargetType", "TargetId" }, "uq_online_payment_active_target")
+                        .IsUnique()
+                        .HasFilter("status IN ('PENDING','PROCESSING')");
+
                     b.HasIndex(new[] { "TxnRef" }, "uq_online_payment_txn_ref")
                         .IsUnique();
 

@@ -91,19 +91,26 @@ public sealed class VnPayPaymentTests
         public readonly Mock<IJobRepository> Jobs = new();
         public readonly Mock<IUnitOfWork> Uow = new();
         public readonly Mock<ISender> Sender = new();
+        public readonly Mock<IAppNotifier> Notifier = new();
         public bool Claimed;
 
         public Harness(OnlinePayment? existing = null)
         {
             Payments.Setup(p => p.GetByTxnRefAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((string txn, CancellationToken _) => existing?.TxnRef == txn ? existing : null);
+            Payments.Setup(p => p.GetActiveByTargetAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((OnlinePayment?)null);
+            Payments.Setup(p => p.TryAddPendingAsync(It.IsAny<OnlinePayment>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
             // Only the first callback claims the payment.
-            Payments.Setup(p => p.TryClaimAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            Payments.Setup(p => p.TryClaimAsync(
+                    It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(() => !Claimed && (Claimed = true));
         }
 
         public VnPayPaymentCommandHandlers Handlers(bool configured = true) => new(
-            Gateway(configured), Payments.Object, CompanyUsers.Object, Finance.Object, Jobs.Object, Uow.Object, Sender.Object);
+            Gateway(configured), Payments.Object, CompanyUsers.Object, Finance.Object, Jobs.Object,
+            Uow.Object, Sender.Object, Notifier.Object);
     }
 
     private static OnlinePayment Pending(decimal amount = 42_000_000) => new()
@@ -124,6 +131,25 @@ public sealed class VnPayPaymentTests
     {
         var payment = Pending();
         var h = new Harness(payment);
+        var jobId = Guid.NewGuid();
+        h.Finance.Setup(f => f.GetServiceFeeForUpdateAsync(payment.TargetId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ServiceFee
+            {
+                ServiceFeeId = payment.TargetId,
+                JobId = jobId,
+                CompanyId = payment.CompanyId,
+                Amount = payment.Amount,
+                CurrencyCode = "VND",
+                Status = ServiceFeeStates.Due,
+            });
+        h.Jobs.Setup(j => j.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Job
+            {
+                JobId = jobId,
+                Title = "Backend Developer",
+                CompanyId = payment.CompanyId,
+                Company = new Company { CompanyId = payment.CompanyId, CompanyName = "Công ty Sao Việt" },
+            });
 
         var first = await h.Handlers().Handle(new ConfirmVnPayPaymentCommand(SignedCallback("txn001", 42_000_000)), default);
         var second = await h.Handlers().Handle(new ConfirmVnPayPaymentCommand(SignedCallback("txn001", 42_000_000)), default);
@@ -133,6 +159,15 @@ public sealed class VnPayPaymentTests
         second.RspCode.Should().Be("02");
         h.Sender.Verify(s => s.Send(
             It.Is<RecordServiceFeePaymentCommand>(c => c.ServiceFeeId == payment.TargetId && c.PaymentReference == "VNPAY-14123456" && c.CurrentUserId == payment.CreatedBy),
+            It.IsAny<CancellationToken>()), Times.Once);
+        h.Notifier.Verify(n => n.NotifyRoleAsync(
+            "PLATFORM_ADMIN",
+            It.Is<AppNotice>(notice => notice.Title == "Client đã thanh toán qua VNPay"
+                && notice.Message.Contains("Công ty Sao Việt")
+                && notice.Message.Contains("Backend Developer")
+                && notice.Message.Contains("42,000,000")
+                && notice.Message.Contains("VNPAY-14123456")
+                && notice.RouteHint == "/admin/payouts"),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -172,6 +207,10 @@ public sealed class VnPayPaymentTests
 
         payment.Status.Should().Be(OnlinePaymentStates.NeedsReview);
         payment.LastError.Should().Contain("PENDING");
+        h.Notifier.Verify(n => n.NotifyRoleAsync(
+            "PLATFORM_ADMIN",
+            It.Is<AppNotice>(notice => notice.Title == "Giao dịch VNPay cần kiểm tra"),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -183,6 +222,21 @@ public sealed class VnPayPaymentTests
             .ThrowsAsync(new InvalidOperationException("database down"));
 
         var act = () => h.Handlers().Handle(new ConfirmVnPayPaymentCommand(SignedCallback("txn001", 42_000_000)), default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        h.Payments.Verify(p => p.ReleaseClaimAsync(payment.OnlinePaymentId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Final_persistence_failure_releases_the_claim_for_a_later_IPN_retry()
+    {
+        var payment = Pending();
+        var h = new Harness(payment);
+        h.Uow.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("database down after fee completion"));
+
+        var act = () => h.Handlers().Handle(
+            new ConfirmVnPayPaymentCommand(SignedCallback("txn001", 42_000_000)), default);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         h.Payments.Verify(p => p.ReleaseClaimAsync(payment.OnlinePaymentId, It.IsAny<CancellationToken>()), Times.Once);
@@ -238,6 +292,60 @@ public sealed class VnPayPaymentTests
         var link = await h.Handlers().Handle(new CreateVnPayPaymentCommand(OnlinePaymentTargets.ServiceFee, feeId, userId, "127.0.0.1"), default);
 
         link.PaymentUrl.Should().Contain("vnp_Amount=4200000000");
-        h.Payments.Verify(p => p.AddAsync(It.Is<OnlinePayment>(o => o.TargetId == feeId && o.Amount == 42_000_000 && o.Status == OnlinePaymentStates.Pending), It.IsAny<CancellationToken>()), Times.Once);
+        h.Payments.Verify(p => p.TryAddPendingAsync(
+            It.Is<OnlinePayment>(o => o.TargetId == feeId && o.Amount == 42_000_000 && o.Status == OnlinePaymentStates.Pending),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Repeated_click_reuses_the_unexpired_payment_instead_of_creating_another_order()
+    {
+        var h = new Harness();
+        var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var feeId = Guid.NewGuid();
+        var existing = Pending(1_000_000);
+        existing.TargetId = feeId;
+        existing.CompanyId = companyId;
+        existing.CreatedAt = DateTime.UtcNow.AddMinutes(-2);
+        h.CompanyUsers.Setup(c => c.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+        h.Finance.Setup(f => f.GetServiceFeeForUpdateAsync(feeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ServiceFee { ServiceFeeId = feeId, CompanyId = companyId, Amount = 1_000_000, CurrencyCode = "VND", Status = ServiceFeeStates.Due });
+        h.Payments.Setup(p => p.GetActiveByTargetAsync(OnlinePaymentTargets.ServiceFee, feeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+
+        var link = await h.Handlers().Handle(
+            new CreateVnPayPaymentCommand(OnlinePaymentTargets.ServiceFee, feeId, userId, "127.0.0.1"), default);
+
+        link.OnlinePaymentId.Should().Be(existing.OnlinePaymentId);
+        link.PaymentUrl.Should().Contain($"vnp_TxnRef={existing.TxnRef}");
+        h.Payments.Verify(p => p.TryAddPendingAsync(It.IsAny<OnlinePayment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Expired_pending_payment_is_closed_before_a_new_order_is_created()
+    {
+        var h = new Harness();
+        var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var feeId = Guid.NewGuid();
+        var expired = Pending(1_000_000);
+        expired.TargetId = feeId;
+        expired.CompanyId = companyId;
+        expired.CreatedAt = DateTime.UtcNow.AddHours(-1);
+        h.CompanyUsers.Setup(c => c.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+        h.Finance.Setup(f => f.GetServiceFeeForUpdateAsync(feeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ServiceFee { ServiceFeeId = feeId, CompanyId = companyId, Amount = 1_000_000, CurrencyCode = "VND", Status = ServiceFeeStates.Due });
+        h.Payments.Setup(p => p.GetActiveByTargetAsync(OnlinePaymentTargets.ServiceFee, feeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expired);
+
+        await h.Handlers().Handle(
+            new CreateVnPayPaymentCommand(OnlinePaymentTargets.ServiceFee, feeId, userId, "127.0.0.1"), default);
+
+        expired.Status.Should().Be(OnlinePaymentStates.Failed);
+        expired.LastError.Should().Contain("hết hạn");
+        h.Payments.Verify(p => p.TryAddPendingAsync(It.IsAny<OnlinePayment>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 }

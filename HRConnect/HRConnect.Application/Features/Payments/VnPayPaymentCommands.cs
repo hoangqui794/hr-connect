@@ -39,10 +39,13 @@ public sealed class VnPayPaymentCommandHandlers(
     IFinanceRepository finance,
     IJobRepository jobs,
     IUnitOfWork unitOfWork,
-    ISender sender) :
+    ISender sender,
+    IAppNotifier notifier) :
     IRequestHandler<CreateVnPayPaymentCommand, VnPayPaymentLinkResponse>,
     IRequestHandler<ConfirmVnPayPaymentCommand, VnPayConfirmResult>
 {
+    private static readonly TimeSpan ProcessingClaimTimeout = TimeSpan.FromMinutes(5);
+
     public async Task<VnPayPaymentLinkResponse> Handle(CreateVnPayPaymentCommand request, CancellationToken cancellationToken)
     {
         if (!gateway.IsEnabled)
@@ -60,6 +63,37 @@ public sealed class VnPayPaymentCommandHandlers(
         }
 
         var now = DateTime.UtcNow;
+        var active = await payments.GetActiveByTargetAsync(request.TargetType, request.TargetId, cancellationToken);
+        if (active is { Status: OnlinePaymentStates.Processing })
+        {
+            throw new ConflictException(
+                "Khoản thanh toán đang được VNPay xác nhận. Vui lòng chờ trong ít phút.",
+                "VNPAY_PROCESSING");
+        }
+
+        if (active is { Status: OnlinePaymentStates.Pending })
+        {
+            var expiresAt = active.CreatedAt.Add(gateway.PaymentLifetime);
+            if (expiresAt > now)
+            {
+                if (active.Amount != amount || active.CurrencyCode != currency)
+                {
+                    throw new ConflictException(
+                        "Giá trị khoản phí đã thay đổi trong khi phiên thanh toán cũ còn hiệu lực. Vui lòng thử lại sau khi phiên cũ hết hạn.",
+                        "VNPAY_AMOUNT_CHANGED");
+                }
+
+                return new VnPayPaymentLinkResponse(
+                    active.OnlinePaymentId,
+                    CreatePaymentUrl(active, orderInfo, request.ClientIp));
+            }
+
+            active.Status = OnlinePaymentStates.Failed;
+            active.LastError = "Phiên thanh toán đã hết hạn trước khi VNPay xác nhận.";
+            active.UpdatedAt = now;
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
         var payment = new OnlinePayment
         {
             OnlinePaymentId = Guid.NewGuid(),
@@ -75,12 +109,26 @@ public sealed class VnPayPaymentCommandHandlers(
             UpdatedAt = now,
         };
         payment.TxnRef = payment.OnlinePaymentId.ToString("N");
-        await payments.AddAsync(payment, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (!await payments.TryAddPendingAsync(payment, cancellationToken))
+        {
+            var winner = await payments.GetActiveByTargetAsync(request.TargetType, request.TargetId, cancellationToken);
+            if (winner is { Status: OnlinePaymentStates.Pending }
+                && winner.Amount == amount && winner.CurrencyCode == currency
+                && winner.CreatedAt.Add(gateway.PaymentLifetime) > now)
+            {
+                return new VnPayPaymentLinkResponse(
+                    winner.OnlinePaymentId,
+                    CreatePaymentUrl(winner, orderInfo, request.ClientIp));
+            }
 
-        var url = gateway.CreatePaymentUrl(new VnPayPaymentRequest(
-            payment.TxnRef, (long)amount, $"{orderInfo} {payment.TxnRef[..8].ToUpperInvariant()}", request.ClientIp, now));
-        return new VnPayPaymentLinkResponse(payment.OnlinePaymentId, url);
+            throw new ConflictException(
+                "Một phiên thanh toán khác đang được xử lý cho khoản phí này.",
+                "VNPAY_PAYMENT_EXISTS");
+        }
+
+        return new VnPayPaymentLinkResponse(
+            payment.OnlinePaymentId,
+            CreatePaymentUrl(payment, orderInfo, request.ClientIp));
     }
 
     public async Task<VnPayConfirmResult> Handle(ConfirmVnPayPaymentCommand request, CancellationToken cancellationToken)
@@ -103,7 +151,8 @@ public sealed class VnPayPaymentCommandHandlers(
         }
 
         var now = DateTime.UtcNow;
-        if (!await payments.TryClaimAsync(payment.OnlinePaymentId, now, cancellationToken))
+        if (!await payments.TryClaimAsync(
+                payment.OnlinePaymentId, now, now.Subtract(ProcessingClaimTimeout), cancellationToken))
         {
             return new VnPayConfirmResult("02", "Order already confirmed", ToDto(payment));
         }
@@ -125,42 +174,59 @@ public sealed class VnPayPaymentCommandHandlers(
         var paidAt = callback.PaidAtUtc is { } at && at <= now ? at : now;
         var reference = $"VNPAY-{callback.TransactionNo ?? payment.TxnRef}";
         payment.PaidAt = paidAt;
+        var noticeContext = await ResolveNoticeContextAsync(payment, cancellationToken);
         try
         {
-            // The same commands Platform Admin uses, so the job opens, slots open and everyone is notified the same way.
-            if (payment.TargetType == OnlinePaymentTargets.ServiceFee)
+            try
             {
-                await sender.Send(new RecordServiceFeePaymentCommand(payment.TargetId, paidAt, reference, payment.CreatedBy), cancellationToken);
-            }
-            else
-            {
-                await sender.Send(new RecordJobPostingFeePaymentCommand
+                // A previous attempt may have committed the fee before failing to save the online-payment state.
+                if (!await WasAppliedWithReferenceAsync(payment, reference, cancellationToken))
                 {
-                    JobId = payment.TargetId,
-                    PaymentReference = reference,
-                    PaidAt = paidAt,
-                    UserId = payment.CreatedBy,
-                }, cancellationToken);
+                    // The same commands Platform Admin uses, so the job opens, slots open and everyone is notified the same way.
+                    if (payment.TargetType == OnlinePaymentTargets.ServiceFee)
+                    {
+                        await sender.Send(new RecordServiceFeePaymentCommand(payment.TargetId, paidAt, reference, payment.CreatedBy), cancellationToken);
+                    }
+                    else
+                    {
+                        await sender.Send(new RecordJobPostingFeePaymentCommand
+                        {
+                            JobId = payment.TargetId,
+                            PaymentReference = reference,
+                            PaidAt = paidAt,
+                            UserId = payment.CreatedBy,
+                        }, cancellationToken);
+                    }
+                }
+
+                payment.Status = OnlinePaymentStates.Succeeded;
+            }
+            catch (Exception ex) when (ex is ConflictException or BadRequestException or NotFoundException)
+            {
+                // A retry after a late persistence failure is successful when the exact VNPay reference already paid the fee.
+                if (await WasAppliedWithReferenceAsync(payment, reference, cancellationToken))
+                {
+                    payment.Status = OnlinePaymentStates.Succeeded;
+                }
+                else
+                {
+                    // The money arrived but the fee could not take it (for example Admin recorded a transfer meanwhile).
+                    payment.Status = OnlinePaymentStates.NeedsReview;
+                    payment.LastError = ex.Message.Length > 2000 ? ex.Message[..2000] : ex.Message;
+                }
             }
 
-            payment.Status = OnlinePaymentStates.Succeeded;
-        }
-        catch (Exception ex) when (ex is ConflictException or BadRequestException or NotFoundException)
-        {
-            // The money arrived but the fee could not take it (for example Admin recorded a transfer meanwhile).
-            payment.Status = OnlinePaymentStates.NeedsReview;
-            payment.LastError = ex.Message.Length > 2000 ? ex.Message[..2000] : ex.Message;
+            await NotifyPlatformAdminsAsync(payment, noticeContext, reference, cancellationToken);
+            payment.UpdatedAt = DateTime.UtcNow;
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            return new VnPayConfirmResult("00", "Confirm Success", ToDto(payment));
         }
         catch
         {
-            // Unexpected failure (database, network): leave it PENDING so VNPay's IPN retry applies it later.
+            // Unexpected failure (database, network): leave it PENDING so VNPay's IPN retry can apply it later.
             await payments.ReleaseClaimAsync(payment.OnlinePaymentId, CancellationToken.None);
             throw;
         }
-
-        payment.UpdatedAt = DateTime.UtcNow;
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        return new VnPayConfirmResult("00", "Confirm Success", ToDto(payment));
     }
 
     private async Task<(decimal Amount, string Currency, string OrderInfo)> ResolvePayableAsync(
@@ -201,6 +267,76 @@ public sealed class VnPayPaymentCommandHandlers(
 
         throw new BadRequestException("Loại khoản thanh toán không hợp lệ.");
     }
+
+    private string CreatePaymentUrl(OnlinePayment payment, string orderInfo, string clientIp)
+    {
+        var shortReference = payment.TxnRef[..Math.Min(8, payment.TxnRef.Length)].ToUpperInvariant();
+        return gateway.CreatePaymentUrl(new VnPayPaymentRequest(
+            payment.TxnRef,
+            (long)payment.Amount,
+            $"{orderInfo} {shortReference}",
+            clientIp,
+            payment.CreatedAt));
+    }
+
+    private async Task<bool> WasAppliedWithReferenceAsync(
+        OnlinePayment payment, string reference, CancellationToken cancellationToken)
+    {
+        if (payment.TargetType == OnlinePaymentTargets.ServiceFee)
+        {
+            var fee = await finance.GetServiceFeeForUpdateAsync(payment.TargetId, cancellationToken);
+            return fee?.Status == ServiceFeeStates.Paid
+                && string.Equals(fee.PaymentReference, reference, StringComparison.Ordinal);
+        }
+
+        var postingFee = await jobs.GetPostingFeeByJobIdAsync(payment.TargetId, cancellationToken);
+        return postingFee?.Status == JobPostingFeeStatuses.Paid
+            && string.Equals(postingFee.PaymentReference, reference, StringComparison.Ordinal);
+    }
+
+    private async Task<PaymentNoticeContext> ResolveNoticeContextAsync(
+        OnlinePayment payment, CancellationToken cancellationToken)
+    {
+        Guid? jobId = payment.TargetType == OnlinePaymentTargets.PostingFee ? payment.TargetId : null;
+        if (payment.TargetType == OnlinePaymentTargets.ServiceFee)
+        {
+            var fee = await finance.GetServiceFeeForUpdateAsync(payment.TargetId, cancellationToken);
+            jobId = fee?.JobId;
+            if (jobId is null && fee?.PlacementId is Guid placementId)
+            {
+                jobId = (await finance.GetPlacementForFinanceAsync(placementId, cancellationToken))?.Application.JobId;
+            }
+        }
+
+        var job = jobId is Guid id ? await jobs.GetByIdAsync(id, cancellationToken) : null;
+        return new PaymentNoticeContext(
+            job?.Company?.CompanyName ?? $"Doanh nghiệp {payment.CompanyId}",
+            job?.Title ?? "khoản phí dịch vụ",
+            job?.JobId);
+    }
+
+    private Task NotifyPlatformAdminsAsync(
+        OnlinePayment payment, PaymentNoticeContext context, string reference,
+        CancellationToken cancellationToken)
+    {
+        var succeeded = payment.Status == OnlinePaymentStates.Succeeded;
+        var title = succeeded
+            ? "Client đã thanh toán qua VNPay"
+            : "Giao dịch VNPay cần kiểm tra";
+        var message = succeeded
+            ? $"{context.CompanyName} đã thanh toán {payment.Amount:N0} {payment.CurrencyCode} cho tin \"{context.JobTitle}\". Mã giao dịch: {reference}."
+            : $"VNPay đã báo nhận {payment.Amount:N0} {payment.CurrencyCode} từ {context.CompanyName} cho tin \"{context.JobTitle}\", nhưng công nợ chưa thể tự cập nhật. Mã giao dịch: {reference}.";
+
+        return notifier.NotifyRoleAsync("PLATFORM_ADMIN", new AppNotice(
+            payment.TargetType == OnlinePaymentTargets.PostingFee ? "JOB" : "SERVICE_FEE",
+            title,
+            message,
+            "ONLINE_PAYMENT",
+            payment.OnlinePaymentId,
+            "/admin/payouts"), cancellationToken);
+    }
+
+    private sealed record PaymentNoticeContext(string CompanyName, string JobTitle, Guid? JobId);
 
     private static OnlinePaymentResultDto ToDto(OnlinePayment p) =>
         new(p.OnlinePaymentId, p.TargetType, p.TargetId, p.Amount, p.CurrencyCode, p.Status, p.ProviderTransactionNo, p.ResponseCode, p.PaidAt);

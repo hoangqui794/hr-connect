@@ -547,6 +547,9 @@ public partial class ApplicationDbContext : DbContext
             });
             entity.HasIndex(e => e.TxnRef, "uq_online_payment_txn_ref").IsUnique();
             entity.HasIndex(e => new { e.TargetType, e.TargetId }, "idx_online_payment_target");
+            entity.HasIndex(e => new { e.TargetType, e.TargetId }, "uq_online_payment_active_target")
+                .IsUnique()
+                .HasFilter("status IN ('PENDING','PROCESSING')");
             entity.Property(e => e.OnlinePaymentId).HasColumnName("online_payment_id");
             entity.Property(e => e.Provider).HasMaxLength(20).HasColumnName("provider");
             entity.Property(e => e.TargetType).HasMaxLength(20).HasColumnName("target_type");
