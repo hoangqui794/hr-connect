@@ -1,7 +1,7 @@
 # HR Connect
 
 [![CI — Quality Gates](https://github.com/hoangqui794/hr-connect/actions/workflows/ci.yml/badge.svg)](https://github.com/hoangqui794/hr-connect/actions/workflows/ci.yml)
-[![CD — Backend on Render](https://github.com/hoangqui794/hr-connect/actions/workflows/deploy-render.yml/badge.svg?branch=main)](https://github.com/hoangqui794/hr-connect/actions/workflows/deploy-render.yml)
+[![CD — Cloud Server](https://github.com/hoangqui794/hr-connect/actions/workflows/deploy-cloud.yml/badge.svg?branch=main)](https://github.com/hoangqui794/hr-connect/actions/workflows/deploy-cloud.yml)
 
 **AI-Powered Recruitment & Affiliate Headhunting Platform**
 
@@ -257,11 +257,10 @@ Quy định cổng mạng (Port) khi chạy ở môi trường phát triển c�
 - **Stage 3 (`publish`)**: Build và publish duy nhất project `HRConnect.Presentation` sang thư mục `/app/publish`.
 - **Stage 4 (`final`)**: Copy file biên dịch từ stage publish, chuyển quyền sang tài khoản an toàn không có đặc quyền root (`USER $APP_UID`) để ngăn ngừa tấn công leo thang đặc quyền container.
 
-### 5.5. File `.github/workflows/ci-cd.yml`
-Pipeline tự động hóa kiểm thử và đóng gói triển khai (GitHub Actions):
-- **Triggers**: Kích hoạt khi có `push` hoặc `pull_request` vào 2 nhánh chính `main` và `dev`.
-- **Job `build-and-test` (CI)**: Tự động chạy `dotnet restore`, `dotnet build -c Release`, và chạy toàn bộ 126+ unit tests bằng `dotnet test`. Nếu có bất kỳ test nào fail, pipeline lập tức chặn không cho merge.
-- **Job `deploy` (CD)**: Khi code được merge thành công vào nhánh `main`, hệ thống tự động build Docker image bằng `docker/setup-buildx-action` và đẩy (push) trực tiếp lên **GitHub Container Registry (GHCR)** dưới tên tag `latest` và mã commit SHA.
+### 5.5. GitHub Actions CI/CD
+Pipeline được tách thành hai workflow:
+- **CI — Quality Gates** (`.github/workflows/ci.yml`): kiểm tra Backend, Frontend, AI v2 và Dockerfile trên các nhánh làm việc. Bất kỳ quality gate nào lỗi đều chặn triển khai.
+- **CD — Cloud Server** (`.github/workflows/deploy-cloud.yml`): chỉ chạy cho commit `main` đã qua CI, build Backend và AI v2 trên GitHub, đẩy image bất biến theo commit SHA lên GHCR, sau đó triển khai lên Cloud Server. Hệ thống kiểm tra health và tự quay lại bản trước nếu bản mới không hoạt động.
 
 ### 5.6. File `HRConnect.Infrastructure/DependencyInjection.cs` (Cấu Hình Hạ Tầng & Dịch Vụ)
 Đây là **file cấu hình trung tâm của toàn bộ tầng Hạ tầng (Infrastructure Layer)**. Để đảm bảo tính đóng gói của Clean Architecture, `Program.cs` chỉ cần gọi duy nhất:
@@ -460,11 +459,11 @@ Nhóm tuân thủ quy tắc quản lý mã nguồn nghiêm ngặt:
                                                 (BE + FE + AI + Docker image)
                                                                      │
                                                                      ▼
-                                                      CD — Backend on Render
-                                              (exact commit + live status + health)
+                                                        CD — Cloud Server
+                                         (GHCR images + health check + rollback)
 ```
 
-Render chỉ triển khai **Backend .NET**. Frontend và AI service tham gia quality gate để phát hiện lỗi tích hợp nhưng không được workflow này deploy. Xem cấu hình, secret và cách theo dõi tại [`docs/deployment/CI-CD.md`](docs/deployment/CI-CD.md).
+Cloud Server triển khai **Backend .NET và AI service v2**. Frontend tiếp tục được Vercel triển khai riêng nhưng vẫn phải qua quality gate chung. Xem cấu hình, secrets và quy trình rollback tại [`docs/deployment/CI-CD.md`](docs/deployment/CI-CD.md).
 
 ### Quy tắc làm việc trên Git:
 1. **Tuyệt đối không commit trực tiếp vào `main` hoặc `dev`**.

@@ -36,8 +36,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Validate Render deployment workflow
-        run: bash .github/scripts/deploy-render.test.sh
+      - name: Validate cloud deployment workflow
+        run: bash .github/scripts/deploy-cloud.test.sh
 
   backend:
     name: Backend / Build & test

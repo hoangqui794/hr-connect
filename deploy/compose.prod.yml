@@ -1,0 +1,60 @@
+services:
+  ai-v2:
+    image: ${AI_IMAGE:?AI_IMAGE is required}
+    container_name: hrconnect-ai-v2
+    restart: unless-stopped
+    env_file:
+      - ${AI_ENV_FILE:-/opt/hrconnect/deploy/env/ai-v2.env}
+    ports:
+      - "127.0.0.1:8001:8001"
+    mem_limit: 2000m
+    cpus: 1.25
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=5)
+      interval: 20s
+      timeout: 8s
+      retries: 5
+      start_period: 45s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    networks:
+      - internal
+
+  backend:
+    image: ${BACKEND_IMAGE:?BACKEND_IMAGE is required}
+    container_name: hrconnect-backend
+    restart: unless-stopped
+    env_file:
+      - ${BACKEND_ENV_FILE:-/opt/hrconnect/deploy/env/backend.env}
+    ports:
+      - "127.0.0.1:8080:8080"
+    mem_limit: 1200m
+    cpus: 1.25
+    depends_on:
+      ai-v2:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    networks:
+      - internal
+
+networks:
+  internal:
+    name: hrconnect-internal
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+          gateway: 172.30.0.1
