@@ -69,6 +69,37 @@ public class SubmitCandidateCommandValidatorTests
         _validator.Validate(command).IsValid.Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData("0122010010")]
+    [InlineData("01227569597")]
+    [InlineData("0223456789")]
+    public void Validate_WhenPhoneIsNotACurrentVietnameseMobileNumber_IsInvalid(string phone)
+    {
+        var command = ValidCommand();
+        command.CvId = Guid.NewGuid();
+        command.Phone = phone;
+
+        var result = _validator.Validate(command);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(error => error.PropertyName == nameof(SubmitCandidateCommand.Phone));
+    }
+
+    [Theory]
+    [InlineData("0777569597")]
+    [InlineData("0522345678")]
+    [InlineData("0552345678")]
+    [InlineData("+84912345678")]
+    [InlineData("0912 345 678")]
+    public void Validate_WhenPhoneIsACurrentVietnameseMobileNumber_IsValid(string phone)
+    {
+        var command = ValidCommand();
+        command.CvId = Guid.NewGuid();
+        command.Phone = phone;
+
+        _validator.Validate(command).IsValid.Should().BeTrue();
+    }
+
     private static SubmitCandidateCommand ValidCommand() => new()
     {
         JobId = Guid.NewGuid(),

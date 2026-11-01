@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using FluentValidation;
+using HRConnect.Application.Common.Validation;
 
 namespace HRConnect.Application.Features.Auth.Commands.RegisterCandidate;
 
@@ -7,10 +8,6 @@ public class RegisterCandidateCommandValidator : AbstractValidator<RegisterCandi
 {
     private static readonly Regex PasswordRegex = new(
         @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&^#()_+\-=\[\]{}|;:,.<>])[A-Za-z\d@$!%*?&^#()_+\-=\[\]{}|;:,.<>]{8,}$",
-        RegexOptions.Compiled);
-
-    private static readonly Regex PhoneRegex = new(
-        @"^(?:\+84|0)(?:3[2-9]|5[6|8|9]|7[0|6-9]|8[1-9]|9[0-9])[0-9]{7}$",
         RegexOptions.Compiled);
 
     public RegisterCandidateCommandValidator()
@@ -32,7 +29,7 @@ public class RegisterCandidateCommandValidator : AbstractValidator<RegisterCandi
         When(x => !string.IsNullOrWhiteSpace(x.Phone), () =>
         {
             RuleFor(x => x.Phone!)
-                .Must(phone => PhoneRegex.IsMatch(phone.Trim().Replace(" ", "").Replace("-", "")))
+                .Must(VietnamPhoneNumber.IsValid)
                 .WithMessage("Số điện thoại không đúng định dạng số điện thoại Việt Nam hợp lệ.");
         });
     }
