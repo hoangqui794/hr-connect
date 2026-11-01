@@ -99,7 +99,13 @@ public sealed class RespondToServiceAgreementCommandHandler : IRequestHandler<Re
                 NotificationType = "JOB",
                 RelatedEntityType = "SERVICE_AGREEMENT",
                 RelatedEntityId = agreement.ServiceAgreementId,
-                Metadata = System.Text.Json.JsonSerializer.Serialize(new { agreementId = agreement.ServiceAgreementId, status = agreement.Status }),
+                Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    agreementId = agreement.ServiceAgreementId,
+                    jobId = job.JobId,
+                    status = agreement.Status,
+                    routeHint = $"/hr/jobs?status=PENDING_AGREEMENT&highlight={job.JobId}"
+                }),
                 CreatedAt = now
             }, ct);
 
@@ -150,7 +156,13 @@ public sealed class RespondToServiceAgreementCommandHandler : IRequestHandler<Re
                 NotificationType = "JOB",
                 RelatedEntityType = "SERVICE_AGREEMENT",
                 RelatedEntityId = agreement.ServiceAgreementId,
-                Metadata = System.Text.Json.JsonSerializer.Serialize(new { agreementId = agreement.ServiceAgreementId, status = agreement.Status }),
+                Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    agreementId = agreement.ServiceAgreementId,
+                    jobId = job.JobId,
+                    status = agreement.Status,
+                    routeHint = $"/hr/jobs?status=CHANGE_REQUESTED&highlight={job.JobId}"
+                }),
                 CreatedAt = now
             }, ct);
 

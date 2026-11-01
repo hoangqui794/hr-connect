@@ -262,7 +262,13 @@ public sealed class SignServiceAgreementCommandHandler : IRequestHandler<SignSer
             NotificationType = "JOB",
             RelatedEntityType = "SERVICE_AGREEMENT",
             RelatedEntityId = agreement.ServiceAgreementId,
-            Metadata = System.Text.Json.JsonSerializer.Serialize(new { agreementId = agreement.ServiceAgreementId, jobId = job.JobId }),
+            Metadata = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                agreementId = agreement.ServiceAgreementId,
+                jobId = job.JobId,
+                jobStatus = job.Status,
+                routeHint = $"/hr/jobs?status={job.Status}&highlight={job.JobId}"
+            }),
             CreatedAt = now
         }, ct);
 

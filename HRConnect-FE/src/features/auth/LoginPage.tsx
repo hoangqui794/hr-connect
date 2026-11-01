@@ -9,24 +9,18 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, message, Alert, Modal, Dropdown } from 'antd';
+import { Form, Input, Button, message, Alert, Modal } from 'antd';
 import {
   LockOutlined,
   MailOutlined,
   ArrowRightOutlined,
-  ThunderboltOutlined,
   CheckCircleFilled,
-  BankOutlined,
   SafetyCertificateOutlined,
-  CrownOutlined,
-  UserOutlined,
   KeyOutlined,
   ReloadOutlined,
-  SettingOutlined,
   ApartmentOutlined,
   TeamOutlined,
   SolutionOutlined,
-  DownOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuthStore, type UserProfile, getInitials } from '@/stores/authStore';
@@ -36,84 +30,6 @@ import { authService, type LoginResponse, type CurrentUserResponse } from '@/ser
 import { getApiErrorMessage } from '@/services/apiClient';
 import { AuthPageShell, AUTH_INPUT_CLASS, AUTH_LABEL_CLASS, AUTH_LINK_CLASS, AUTH_PRIMARY_BUTTON_CLASS } from './AuthPageShell';
 import { getSafeCandidateReturnPath } from './authReturnPath';
-
-interface DemoAccount {
-  role: UserRole;
-  title: string;
-  roleTag: string;
-  email: string;
-  workspaceName: string;
-  targetRoute: string;
-  icon: React.ReactNode;
-  accentColor: string;
-  badgeBg: string;
-}
-
-/**
- * Demo accounts seeded by HRConnect.Infrastructure/Persistence/Seed/DemoAccountSeeder.cs.
- * They all share the seeder's InitialDemoPassword; keep both files in sync.
- * The quick-login panel only renders in development or when VITE_SHOW_DEMO_ACCOUNTS=true.
- */
-const DEMO_PASSWORD = '111111Aa@';
-const SHOW_DEMO_ACCOUNTS = import.meta.env.DEV || import.meta.env.VITE_SHOW_DEMO_ACCOUNTS === 'true';
-
-const DEMO_ACCOUNTS: DemoAccount[] = [
-  {
-    role: UserRole.CLIENT,
-    title: 'Doanh nghiệp tuyển dụng',
-    roleTag: 'Client / Employer',
-    email: 'client@gmail.com',
-    workspaceName: 'HR Hiring Hub',
-    targetRoute: '/client/dashboard',
-    icon: <BankOutlined />,
-    accentColor: '#0284c7', // sky-600
-    badgeBg: 'rgba(2, 132, 199, 0.12)',
-  },
-  {
-    role: UserRole.AFFILIATE,
-    title: 'Cộng tác viên',
-    roleTag: 'Affiliate',
-    email: 'affiliate@gmail.com',
-    workspaceName: 'OPR Referral Portal',
-    targetRoute: '/affiliate/dashboard',
-    icon: <CrownOutlined />,
-    accentColor: '#f59e0b', // amber-500
-    badgeBg: 'rgba(245, 158, 11, 0.12)',
-  },
-  {
-    role: UserRole.INTERNAL_HR,
-    title: 'Chuyên viên Nhân sự (HR)',
-    roleTag: 'HR Operations',
-    email: 'internalhr@gmail.com',
-    workspaceName: 'HR Backoffice',
-    targetRoute: '/hr/dashboard',
-    icon: <SafetyCertificateOutlined />,
-    accentColor: '#10b981', // emerald-500
-    badgeBg: 'rgba(16, 185, 129, 0.12)',
-  },
-  {
-    role: UserRole.CANDIDATE,
-    title: 'Ứng viên tìm việc',
-    roleTag: 'Talent & Candidate',
-    email: 'candidate@gmail.com',
-    workspaceName: 'Talent Profile',
-    targetRoute: '/',
-    icon: <UserOutlined />,
-    accentColor: '#a78bfa', // purple-400
-    badgeBg: 'rgba(167, 139, 250, 0.12)',
-  },
-  {
-    role: UserRole.ADMIN,
-    title: 'Quản trị viên nền tảng',
-    roleTag: 'Platform Admin',
-    email: 'admin@gmail.com',
-    workspaceName: 'Admin Console',
-    targetRoute: '/admin/dashboard',
-    icon: <SettingOutlined />,
-    accentColor: '#047857', // emerald-700, the Admin console primary
-    badgeBg: 'rgba(4, 120, 87, 0.12)',
-  },
-];
 
 const WORKSPACE_PREFIX: Partial<Record<UserRole, string>> = {
   [UserRole.ADMIN]: '/admin',
@@ -269,16 +185,6 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  // Quick-fill credentials for testing directly with real API
-  const handleQuickFill = (demo: DemoAccount) => {
-    setErrorMessage(null);
-    form.setFieldsValue({
-      email: demo.email,
-      password: DEMO_PASSWORD,
-    });
-    form.submit();
-  };
-
   // ─── FORGOT & RESET PASSWORD HANDLERS (Swagger OpenAPI) ───
   const handleRequestForgotOtp = async (values: { email: string }) => {
     setForgotSubmitting(true);
@@ -347,7 +253,7 @@ export const LoginPage: React.FC = () => {
         title="Đăng nhập HR Connect"
         description="Tiếp tục quản lý cơ hội nghề nghiệp, ứng viên và quy trình tuyển dụng của bạn."
         sideTitle="Kết nối tuyển dụng thông minh"
-        sideDescription="Hệ sinh thái kết nối Doanh nghiệp, Headhunter và Ứng viên."
+        sideDescription="Hệ sinh thái kết nối Doanh nghiệp, Đối tác Affiliate và Ứng viên."
         testimonial={{
           quote: 'HR Connect giúp chúng tôi chuẩn hóa toàn bộ pipeline tuyển dụng và rút ngắn hơn 60% thời gian từ lúc lọc CV đến vòng phỏng vấn cuối cùng.',
           author: 'Trần Minh Hoàng',
@@ -363,7 +269,7 @@ export const LoginPage: React.FC = () => {
           },
           {
             icon: <TeamOutlined />,
-            title: 'Mạng lưới Headhunter',
+            title: 'Mạng lưới Affiliate',
             desc: 'Giới thiệu nhân tài, hoa hồng minh bạch',
           },
           {
@@ -479,44 +385,6 @@ export const LoginPage: React.FC = () => {
           </Link>
         </div>
 
-        {SHOW_DEMO_ACCOUNTS && (
-          <div className="mt-5 flex justify-center">
-            <Dropdown
-              menu={{
-                items: DEMO_ACCOUNTS.map((demo) => ({
-                  key: demo.role,
-                  label: (
-                    <div className="flex items-center gap-2.5 py-1 px-1">
-                      <span
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs"
-                        style={{ background: demo.badgeBg, color: demo.accentColor }}
-                      >
-                        {demo.icon}
-                      </span>
-                      <div className="min-w-0">
-                        <strong className="block text-xs text-slate-800">{demo.title}</strong>
-                        <span className="block text-[11px] text-slate-500">{demo.email}</span>
-                      </div>
-                    </div>
-                  ),
-                  onClick: () => handleQuickFill(demo),
-                })),
-              }}
-              trigger={['click']}
-              placement="top"
-            >
-              <button
-                type="button"
-                disabled={submitting}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:border-blue-300 hover:bg-blue-50/50 hover:text-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <ThunderboltOutlined className="text-amber-500 text-xs" />
-                <span>Tài khoản kiểm thử</span>
-                <DownOutlined className="text-[10px] text-slate-400" />
-              </button>
-            </Dropdown>
-          </div>
-        )}
       </AuthPageShell>
 
       {/* ─── FORGOT & RESET PASSWORD MODAL ─── */}

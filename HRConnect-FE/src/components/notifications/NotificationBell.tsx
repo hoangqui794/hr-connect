@@ -13,12 +13,14 @@ import {
   CheckCircleFilled,
   CheckOutlined,
   CloseCircleFilled,
+  CustomerServiceOutlined,
   DollarCircleOutlined,
   ExclamationCircleFilled,
   FileTextOutlined,
   InfoCircleFilled,
   ReloadOutlined,
   RightOutlined,
+  SafetyCertificateOutlined,
   SolutionOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
@@ -56,14 +58,17 @@ const renderNotificationIcon = (type?: string, entityType?: string | null) => {
   if (normEntity === 'JOB_FIT' || normType === 'JOB_FIT') {
     return <ThunderboltOutlined style={{ color: '#d97706', fontSize: 18 }} />;
   }
-  if (normEntity === 'JOB' || normType === 'JOB') {
+  if (normEntity === 'JOB' || normType === 'JOB' || normEntity === 'SERVICE_AGREEMENT') {
     return <FileTextOutlined style={{ color: '#2563eb', fontSize: 18 }} />;
   }
   if (
     normEntity === 'APPLICATION' ||
     normEntity === 'APPLICATION_STATUS' ||
     normEntity === 'CANDIDATE_APPLICATION' ||
-    normType === 'APPLICATION'
+    normEntity === 'SOURCING' ||
+    normEntity === 'SOURCING_DELIVERY' ||
+    normType === 'APPLICATION' ||
+    normType === 'SOURCING'
   ) {
     return <SolutionOutlined style={{ color: '#059669', fontSize: 18 }} />;
   }
@@ -77,10 +82,23 @@ const renderNotificationIcon = (type?: string, entityType?: string | null) => {
     return <CheckCircleFilled style={{ color: '#16a34a', fontSize: 18 }} />;
   }
   if (
+    normEntity === 'WARRANTY' ||
+    normType === 'WARRANTY' ||
+    normEntity === 'PLACEMENT' ||
+    normEntity === 'PLACEMENT_RECONCILIATION'
+  ) {
+    return <SafetyCertificateOutlined style={{ color: '#0d9488', fontSize: 18 }} />;
+  }
+  if (normEntity === 'CONTACT_REQUEST') {
+    return <CustomerServiceOutlined style={{ color: '#6366f1', fontSize: 18 }} />;
+  }
+  if (
     normEntity === 'COMMISSION' ||
     normEntity === 'PAYOUT' ||
+    normEntity === 'SERVICE_FEE' ||
     normType === 'COMMISSION' ||
-    normType === 'PAYOUT'
+    normType === 'PAYOUT' ||
+    normType === 'SERVICE_FEE'
   ) {
     return <DollarCircleOutlined style={{ color: '#ea580c', fontSize: 18 }} />;
   }
@@ -144,7 +162,8 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
   });
 
   const items = pageData?.items ?? [];
-  const totalCount = pageData?.totalCount ?? items.length;
+  const cachedAllPage = queryClient.getQueryData<{ totalCount?: number }>(['notifications', 'list', 'all']);
+  const allTotalCount = filter === 'all' ? (pageData?.totalCount ?? items.length) : (cachedAllPage?.totalCount ?? null);
 
   // 3. Mutation: Đánh dấu 1 thông báo là đã đọc
   const markAsReadMutation = useMutation({
@@ -228,7 +247,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
           value={filter}
           onChange={(val) => setFilter(val as 'all' | 'unread')}
           options={[
-            { label: `Tất cả (${filter === 'all' ? totalCount : totalCount})`, value: 'all' },
+            { label: allTotalCount != null ? `Tất cả (${allTotalCount})` : 'Tất cả', value: 'all' },
             { label: `Chưa đọc (${unreadCount})`, value: 'unread' },
           ]}
         />

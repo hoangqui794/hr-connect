@@ -58,6 +58,7 @@ import { getApiErrorMessage } from '@/services/apiClient';
 import { AvatarUpload } from '@/components/common/AvatarUpload';
 import { JobHuntingModeWidget } from '@/features/portal/candidate/JobHuntingModeWidget';
 import { ProfileStrengthMeter } from '@/features/portal/candidate/ProfileStrengthMeter';
+import { SALARY_RANGE_PRESETS } from '@/features/jobs-mf01/jobFormOptions';
 import type { UploadProps } from 'antd';
 
 export interface CandidateCV {
@@ -150,6 +151,9 @@ export const CandidateProfilePage: React.FC = () => {
   const [skillsList, setSkillsList] = useState<string[]>([]);
   const [newSkillInput, setNewSkillInput] = useState('');
   const [showSkillInput, setShowSkillInput] = useState(false);
+
+  // Local state for salary range preset
+  const [salaryPreset, setSalaryPreset] = useState<string>('CUSTOM');
 
   // Local state for immediate Visibility Switch responsiveness
   const [isPublicState, setIsPublicState] = useState<boolean | null>(null);
@@ -258,8 +262,29 @@ export const CandidateProfilePage: React.FC = () => {
           return nextSkills;
         });
       }
+
+      // Sync salary preset
+      const min = profile.expectedSalaryMin ?? null;
+      const max = profile.expectedSalaryMax ?? null;
+      if (min == null && max == null) {
+        setSalaryPreset('NEGOTIABLE');
+      } else {
+        const found = SALARY_RANGE_PRESETS.find((p) => p.value !== 'NEGOTIABLE' && p.min === min && p.max === max);
+        setSalaryPreset(found ? found.value : 'CUSTOM');
+      }
     }
   }, [profile, formInitialValues, form]);
+
+  const handleSalaryPresetChange = (value: string) => {
+    setSalaryPreset(value);
+    const preset = SALARY_RANGE_PRESETS.find((p) => p.value === value);
+    if (!preset) return;
+    form.setFieldsValue({
+      expectedSalaryMin: preset.min ?? undefined,
+      expectedSalaryMax: preset.max ?? undefined,
+    });
+    form.validateFields(['expectedSalaryMin', 'expectedSalaryMax']);
+  };
 
   // Dedicated Skills Management (from backend /skills & /candidates/profile/me/skills)
   const [catalogSkills, setCatalogSkills] = useState<Array<{ skillId: string; skillName: string; category?: string | null }>>([]);
@@ -899,32 +924,61 @@ export const CandidateProfilePage: React.FC = () => {
                         </Col>
 
                         {/* Salary Range */}
-                        <Col xs={24} md={8}>
+                        <Col xs={24} md={12}>
+                          <Form.Item label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Chọn nhanh khoảng lương mong muốn</span>}>
+                            <Select
+                              size="large"
+                              value={salaryPreset}
+                              onChange={handleSalaryPresetChange}
+                              style={{ borderRadius: 12 }}
+                              options={[
+                                ...SALARY_RANGE_PRESETS.map((p) => ({ value: p.value, label: p.label })),
+                                { value: 'CUSTOM', label: 'Tự nhập mức lương...' },
+                              ]}
+                            />
+                          </Form.Item>
+                        </Col>
+
+                        <Col xs={24} md={12}>
+                          <Form.Item
+                            name="expectedSalaryCurrency"
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Loại tiền tệ</span>}
+                          >
+                            <Select size="large" style={{ borderRadius: 12 }}>
+                              <Option value="VND">VND (Việt Nam Đồng)</Option>
+                              <Option value="USD">USD (Đô la Mỹ)</Option>
+                            </Select>
+                          </Form.Item>
+                        </Col>
+
+                        <Col xs={24} md={12}>
                           <Form.Item
                             name="expectedSalaryMin"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Lương tối thiểu</span>}
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Lương tối thiểu (Tùy chọn)</span>}
+                            dependencies={['expectedSalaryMax']}
                           >
                             <InputNumber
                               size="large"
                               min={0}
                               formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                              parser={(value) => (value ? Number(value.replace(/\$\s?|(,*)/g, '')) : 0) as any}
+                              parser={(value) => (value && String(value).trim() ? Number(String(value).replace(/\$\s?|(,*)/g, '')) : (undefined as any))}
                               style={{ width: '100%', borderRadius: 12 }}
-                              placeholder="VD: 25,000,000"
+                              placeholder="VD: 15,000,000 (để trống nếu thỏa thuận)"
+                              onChange={() => setSalaryPreset('CUSTOM')}
                             />
                           </Form.Item>
                         </Col>
 
-                        <Col xs={24} md={8}>
+                        <Col xs={24} md={12}>
                           <Form.Item
                             name="expectedSalaryMax"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Lương tối đa</span>}
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Lương tối đa (Tùy chọn)</span>}
                             dependencies={['expectedSalaryMin']}
                             rules={[
                               ({ getFieldValue }) => ({
                                 validator(_, value) {
                                   const min = getFieldValue('expectedSalaryMin');
-                                  if (min != null && value != null && value < min) {
+                                  if (value != null && value !== '' && min != null && min !== '' && Number(value) < Number(min)) {
                                     return Promise.reject(new Error('Mức lương tối đa phải lớn hơn hoặc bằng mức lương tối thiểu'));
                                   }
                                   return Promise.resolve();
@@ -936,22 +990,11 @@ export const CandidateProfilePage: React.FC = () => {
                               size="large"
                               min={0}
                               formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                              parser={(value) => (value ? Number(value.replace(/\$\s?|(,*)/g, '')) : 0) as any}
+                              parser={(value) => (value && String(value).trim() ? Number(String(value).replace(/\$\s?|(,*)/g, '')) : (undefined as any))}
                               style={{ width: '100%', borderRadius: 12 }}
-                              placeholder="VD: 45,000,000"
+                              placeholder="VD: 25,000,000 (không bắt buộc)"
+                              onChange={() => setSalaryPreset('CUSTOM')}
                             />
-                          </Form.Item>
-                        </Col>
-
-                        <Col xs={24} md={8}>
-                          <Form.Item
-                            name="expectedSalaryCurrency"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Loại tiền tệ</span>}
-                          >
-                            <Select size="large" style={{ borderRadius: 12 }}>
-                              <Option value="VND">VND (Việt Nam Đồng)</Option>
-                              <Option value="USD">USD (Đô la Mỹ)</Option>
-                            </Select>
                           </Form.Item>
                         </Col>
 
@@ -964,6 +1007,7 @@ export const CandidateProfilePage: React.FC = () => {
                             <Select
                               mode="tags"
                               size="large"
+                              maxTagCount="responsive"
                               placeholder="Chọn hoặc nhập địa điểm (ví dụ: Hà Nội, TP.HCM, làm việc từ xa)"
                               style={{ borderRadius: 12 }}
                             >
@@ -981,17 +1025,22 @@ export const CandidateProfilePage: React.FC = () => {
                         <Col xs={24} md={12}>
                           <Form.Item
                             name="preferredWorkModes"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Chế độ làm việc mong muốn</span>}
+                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Chế độ làm việc mong muốn (Tùy chọn)</span>}
+                            tooltip="Có thể chọn từ danh sách hoặc tự nhập thêm (VD: Có thể làm online, Overtime, Làm ca...) rồi nhấn Enter"
                           >
                             <Select
-                              mode="multiple"
+                              mode="tags"
                               size="large"
-                              placeholder="Chọn hình thức làm việc"
+                              maxTagCount="responsive"
+                              placeholder="Chọn hoặc nhập chế độ làm việc (VD: Online, Overtime...)"
                               style={{ borderRadius: 12 }}
                             >
-                              <Option value="ONSITE">Tại văn phòng</Option>
-                              <Option value="HYBRID">Kết hợp văn phòng và từ xa</Option>
-                              <Option value="REMOTE">Làm việc từ xa</Option>
+                              <Option value="ONSITE">Tại văn phòng (On-site)</Option>
+                              <Option value="HYBRID">Kết hợp văn phòng và từ xa (Hybrid)</Option>
+                              <Option value="REMOTE">Làm việc từ xa / Online (Remote)</Option>
+                              <Option value="Có thể làm ngoài giờ (OT)">Có thể làm ngoài giờ (Overtime / OT)</Option>
+                              <Option value="Giờ giấc linh hoạt">Giờ giấc linh hoạt (Flexible)</Option>
+                              <Option value="Làm việc theo ca">Làm việc theo ca (Shift work)</Option>
                             </Select>
                           </Form.Item>
                         </Col>

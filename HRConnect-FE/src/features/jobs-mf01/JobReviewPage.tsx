@@ -3,7 +3,7 @@
  * @description MF-01 · Internal HR — review queue & job management (GET /internal/jobs/review)
  * with status filters (PENDING_REVIEW, ACTIVE, REJECTED, ALL), search, approve, and reject.
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -116,7 +116,7 @@ const QueueItem: React.FC<{ job: Job; selected: boolean; onSelect: () => void }>
     : (JOB_STATUS[job.status as JobStatus] ?? { label: job.status, color: 'default' });
 
   return (
-    <li>
+    <li id={`job-queue-item-${job.jobId}`}>
       <button
         type="button"
         onClick={onSelect}
@@ -168,16 +168,22 @@ export const JobReviewPage: React.FC = () => {
   const { message, modal } = AntApp.useApp();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Đọc trạng thái từ query param nếu có
-  const initialStatus = (searchParams.get('status') as StatusFilter) || 'PENDING_REVIEW';
+  // Trạng thái lọc lấy trực tiếp từ query param làm Single Source of Truth
+  const rawStatus = searchParams.get('status') as StatusFilter | null;
+  const statusFilter: StatusFilter =
+    rawStatus && STATUS_TABS.some((t) => t.value === rawStatus)
+      ? rawStatus
+      : 'PENDING_REVIEW';
   const highlightParam = searchParams.get('highlight') || searchParams.get('jobId');
 
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialStatus);
   const [searchKeyword, setSearchKeyword] = useState<string>('');
   const [selectedId, setSelectedId] = useState<string>();
   const [rejectOpen, setRejectOpen] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
   const [queueCollapsed, setQueueCollapsed] = useState(false);
+
+  // Lưu trữ mã highlight đã xử lý để tránh khóa cứng lựa chọn
+  const lastHandledHighlightRef = useRef<string | null>(null);
 
   // Hook lấy danh sách theo trạng thái filter
   const queryClient = useQueryClient();
@@ -249,39 +255,79 @@ export const JobReviewPage: React.FC = () => {
     return list.filter((j) => j.status !== 'DRAFT').sort((a, b) => new Date(waitingSince(b)).getTime() - new Date(waitingSince(a)).getTime());
   }, [queue.data, pendingAgreementQueue.data, allJobsQueue.data, statusFilter, searchKeyword]);
 
-  // Đồng bộ statusFilter khi query param thay đổi (ví dụ người dùng bấm từ NotificationBell)
+  // Tự động chọn item khi danh sách tải xong hoặc khi có highlightParam từ thông báo
   useEffect(() => {
-    const statusFromUrl = searchParams.get('status') as StatusFilter | null;
-    if (statusFromUrl && STATUS_TABS.some((t) => t.value === statusFromUrl) && statusFromUrl !== statusFilter) {
-      setStatusFilter(statusFromUrl);
-    }
-  }, [searchParams, statusFilter]);
-
-  // Tự động chọn item hợp lệ khi danh sách tải xong hoặc khi có highlightParam
-  useEffect(() => {
-    if (jobs.length === 0) {
-      setSelectedId(undefined);
-      return;
-    }
-
     if (highlightParam) {
       const q = highlightParam.toLowerCase();
       const target = jobs.find(
         (j) =>
-          j.jobId === highlightParam ||
+          j.jobId.toLowerCase() === q ||
           j.title?.toLowerCase().includes(q) ||
           j.companyName?.toLowerCase().includes(q)
       );
       if (target) {
         setSelectedId(target.jobId);
-        return;
+        lastHandledHighlightRef.current = highlightParam;
+
+        const next = new URLSearchParams(searchParams);
+        next.delete('highlight');
+        next.delete('jobId');
+        setSearchParams(next, { replace: true });
+
+        const timer = setTimeout(() => {
+          const el = document.getElementById(`job-queue-item-${target.jobId}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 150);
+        return () => clearTimeout(timer);
+      }
+
+      // Nếu tin đã chuyển sang trạng thái khác sau khi thông báo được tạo, tự động chuyển sang đúng tab của tin đó
+      if (!queue.isLoading && !allJobsQueue.isLoading && allJobsQueue.data) {
+        const targetInAll = allJobsQueue.data.find(
+          (j) =>
+            j.jobId.toLowerCase() === q ||
+            j.title?.toLowerCase().includes(q) ||
+            j.companyName?.toLowerCase().includes(q)
+        );
+        if (targetInAll) {
+          const changeRequestedMap = (() => {
+            try {
+              return JSON.parse(localStorage.getItem('hrconnect_change_requested_jobs') || '{}');
+            } catch {
+              return {};
+            }
+          })();
+          const isChangeReq =
+            targetInAll.agreementStatus === 'CHANGE_REQUESTED' ||
+            Boolean(changeRequestedMap[targetInAll.jobId]);
+          const actualTab: StatusFilter = isChangeReq
+            ? 'CHANGE_REQUESTED'
+            : STATUS_TABS.some((t) => t.value === targetInAll.status)
+              ? (targetInAll.status as StatusFilter)
+              : 'ALL';
+
+          if (actualTab !== statusFilter) {
+            setSearchParams({ status: actualTab, highlight: targetInAll.jobId }, { replace: true });
+            return;
+          }
+        }
       }
     }
 
-    if (!selectedId || !jobs.some((j) => j.jobId === selectedId)) {
-      setSelectedId(jobs[0].jobId);
+    if (jobs.length === 0) {
+      setSelectedId(undefined);
+      return;
     }
-  }, [jobs, selectedId, highlightParam]);
+
+    setSelectedId((current) => {
+      if (current && jobs.some((j) => j.jobId === current)) {
+        return current;
+      }
+      return jobs[0].jobId;
+    });
+  }, [jobs, highlightParam, queue.isLoading, allJobsQueue.isLoading, allJobsQueue.data, statusFilter, searchParams, setSearchParams]);
 
   const job = detail.data;
   const busy = approve.isPending || reject.isPending;
@@ -382,7 +428,7 @@ export const JobReviewPage: React.FC = () => {
           title: isHeadhunt ? 'Đã gửi hợp đồng dịch vụ tuyển dụng' : 'Đã gửi hợp đồng tìm kiếm hồ sơ',
           message: `Đã gửi hợp đồng có sẵn chữ ký cho "${job.title}" của ${job.companyName}. Đang chờ Doanh nghiệp xem và ký.`,
           actionLabel: 'Xem chi tiết',
-          actionRoute: `/internal/jobs/review?status=PENDING_AGREEMENT&highlight=${encodeURIComponent(job.jobId)}`,
+          actionRoute: `/hr/jobs?status=PENDING_AGREEMENT&highlight=${encodeURIComponent(job.jobId)}`,
           relatedEntityId: job.jobId,
         });
         useAlertStore.getState().addAlert({
@@ -462,7 +508,7 @@ export const JobReviewPage: React.FC = () => {
                 title: 'Đã duyệt nội dung & tạo đơn thanh toán',
                 message: `Tin "${job.title}" của ${job.companyName} đã duyệt thành công. Đang chờ Doanh nghiệp thanh toán ${feeText}.`,
                 actionLabel: 'Xem tin',
-                actionRoute: `/internal/jobs/review?status=PENDING_PAYMENT&highlight=${encodeURIComponent(job.jobId)}`,
+                actionRoute: `/hr/jobs?status=PENDING_PAYMENT&highlight=${encodeURIComponent(job.jobId)}`,
                 relatedEntityId: job.jobId,
               });
 
@@ -498,7 +544,7 @@ export const JobReviewPage: React.FC = () => {
                 title: 'Tin tuyển dụng đã được duyệt',
                 message: `Tin tuyển dụng "${job.title}" đã được bộ phận kiểm duyệt phê duyệt và công bố.`,
                 actionLabel: 'Xem tin tuyển dụng',
-                actionRoute: `/internal/jobs/review?status=ACTIVE&highlight=${encodeURIComponent(job.jobId)}`,
+                actionRoute: `/hr/jobs?status=ACTIVE&highlight=${encodeURIComponent(job.jobId)}`,
                 relatedEntityId: job.jobId,
               });
 
@@ -573,7 +619,7 @@ export const JobReviewPage: React.FC = () => {
             title: 'Đã nhận cọc & Công khai tin',
             message: `Đã đối soát khoản cọc của "${jobToConfirm.title}". Tin đã chính thức chuyển sang trạng thái Đang tuyển.`,
             actionLabel: 'Xem tin tuyển dụng',
-            actionRoute: `/internal/jobs/review?status=ACTIVE&highlight=${encodeURIComponent(jobToConfirm.jobId)}`,
+            actionRoute: `/hr/jobs?status=ACTIVE&highlight=${encodeURIComponent(jobToConfirm.jobId)}`,
             relatedEntityId: jobToConfirm.jobId,
           });
           useAlertStore.getState().addAlert({
@@ -651,7 +697,7 @@ export const JobReviewPage: React.FC = () => {
                 title: 'Đã duyệt hợp đồng · Chờ đặt cọc',
                 message: `Hợp đồng cho "${job.title}" đã duyệt. Đang chờ Doanh nghiệp hoàn tất đặt cọc/thanh toán.`,
                 actionLabel: 'Xem tin tuyển dụng',
-                actionRoute: `/internal/jobs/review?status=PENDING_PAYMENT&highlight=${encodeURIComponent(job.jobId)}`,
+                actionRoute: `/hr/jobs?status=PENDING_PAYMENT&highlight=${encodeURIComponent(job.jobId)}`,
                 relatedEntityId: job.jobId,
               });
               useAlertStore.getState().addAlert({
@@ -704,7 +750,7 @@ export const JobReviewPage: React.FC = () => {
               title: 'Tin tuyển dụng đã được công bố',
               message: `Hợp đồng dịch vụ cho "${job.title}" đã được duyệt và tin đang hoạt động công khai.`,
               actionLabel: 'Xem tin tuyển dụng',
-              actionRoute: `/internal/jobs/review?status=ACTIVE&highlight=${encodeURIComponent(job.jobId)}`,
+              actionRoute: `/hr/jobs?status=ACTIVE&highlight=${encodeURIComponent(job.jobId)}`,
               relatedEntityId: job.jobId,
             });
             useAlertStore.getState().addAlert({
@@ -722,12 +768,25 @@ export const JobReviewPage: React.FC = () => {
   };
 
   const handleStatusChange = (val: StatusFilter) => {
-    setStatusFilter(val);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set('status', val);
+      next.delete('highlight');
+      next.delete('jobId');
       return next;
-    });
+    }, { replace: true });
+  };
+
+  const handleSelectJob = (jobId: string) => {
+    setSelectedId(jobId);
+    if (highlightParam) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('highlight');
+        next.delete('jobId');
+        return next;
+      }, { replace: true });
+    }
   };
 
   return (
@@ -825,7 +884,7 @@ export const JobReviewPage: React.FC = () => {
                   key={j.jobId}
                   job={j}
                   selected={j.jobId === selectedId}
-                  onSelect={() => setSelectedId(j.jobId)}
+                  onSelect={() => handleSelectJob(j.jobId)}
                 />
               ))}
             </ul>
@@ -1205,7 +1264,7 @@ export const JobReviewPage: React.FC = () => {
                 title: 'Đã từ chối duyệt tin tuyển dụng',
                 message: `Đã từ chối tin "${job.title}" của ${job.companyName}. Lý do: ${reasonText || 'Không đạt chuẩn'}.`,
                 actionLabel: 'Xem tin',
-                actionRoute: `/internal/jobs/review?status=REJECTED&highlight=${encodeURIComponent(job.jobId)}`,
+                actionRoute: `/hr/jobs?status=REJECTED&highlight=${encodeURIComponent(job.jobId)}`,
                 relatedEntityId: job.jobId,
               });
 

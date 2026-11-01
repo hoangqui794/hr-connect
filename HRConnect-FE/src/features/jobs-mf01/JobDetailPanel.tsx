@@ -31,6 +31,7 @@ import { useCandidateAppliedJobs } from '@/features/portal/candidate/useCandidat
 import { SourcingDeliveriesView } from '@/features/sourcing/SourcingDeliveriesView';
 import { PaymentDemoModal } from './PaymentDemoModal';
 import { renderFormattedMultilineText } from './RichTextEditor';
+import { WORK_MODE_LABEL, type WorkMode } from './jobFormOptions';
 import { formatMoney, useCurrentServiceAgreement, useJobFeeInfo, useJobTemplate } from './useJobQueries';
 import {
   EMPLOYMENT_TYPE_LABEL,
@@ -621,14 +622,38 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         {[
           { label: 'Mức lương', value: <span className="tabular-nums">{formatSalary(job)}</span> },
           { label: 'Kinh nghiệm', value: formatExperience(job.minExperienceYears, job.maxExperienceYears) },
-          { label: 'Hình thức', value: job.employmentType ? EMPLOYMENT_TYPE_LABEL[job.employmentType] : '—' },
+          { label: 'Loại hình làm việc', value: job.employmentType ? EMPLOYMENT_TYPE_LABEL[job.employmentType] : '—' },
+          ...(job.workMode || (job as any).workMode
+            ? [{
+                label: 'Hình thức làm việc',
+                value: WORK_MODE_LABEL[(job.workMode || (job as any).workMode) as WorkMode] ?? job.workMode,
+              }]
+            : []),
           {
             label: job.serviceTypeCode === 'CV_SOURCING' ? 'Số hồ sơ cần nhận' : 'Số lượng cần tuyển',
             value: (<span className="inline-flex items-center gap-1.5 whitespace-nowrap"><TeamOutlined aria-hidden className="text-slate-400" />{formatHeadcount(job)}</span>),
           },
           {
             label: 'Địa điểm',
-            value: (<span className="inline-flex items-start gap-1.5"><EnvironmentOutlined aria-hidden className="mt-1 text-slate-400" />{job.location ?? '—'}</span>),
+            value: job.location ? (
+              job.location.includes('; ') || job.location.includes('\n') ? (
+                <div className="space-y-1">
+                  {job.location.split(/;\s*|\n+/).filter(Boolean).map((loc, idx) => (
+                    <div key={idx} className="inline-flex items-start gap-1.5 leading-snug">
+                      <EnvironmentOutlined aria-hidden className="mt-1 text-slate-400 shrink-0 text-xs" />
+                      <span>{loc}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <span className="inline-flex items-start gap-1.5">
+                  <EnvironmentOutlined aria-hidden className="mt-1 text-slate-400 shrink-0" />
+                  {job.location}
+                </span>
+              )
+            ) : (
+              '—'
+            ),
           },
           // Keep the line breaks the Client typed (HR feedback 28/10).
           { label: 'Thời gian làm việc', value: <span className="whitespace-pre-line leading-relaxed">{job.workingTime ?? '—'}</span> },

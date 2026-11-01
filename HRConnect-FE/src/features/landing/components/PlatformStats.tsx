@@ -4,7 +4,7 @@ import { Row, Col } from 'antd';
 export const PlatformStats: React.FC = () => {
   const stats = [
     { value: '500+', label: 'Doanh nghiệp đối tác' },
-    { value: '1.200+', label: 'Headhunter OPR' },
+    { value: '1.200+', label: 'Affiliate OPR' },
     { value: '85%', label: 'Tỷ lệ khớp AI' },
     { value: '60 Ngày', label: 'Cam kết bảo hành' },
   ];

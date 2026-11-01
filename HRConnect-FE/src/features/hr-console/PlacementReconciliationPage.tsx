@@ -8,7 +8,7 @@ import { Alert, App as AntApp, Button, Descriptions, Drawer, Form, Input, Modal,
 import type { ColumnsType } from 'antd/es/table';
 import { CheckCircleOutlined, ExclamationCircleOutlined, EyeOutlined, FormOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { placementReconciliationApi } from '@/services/api/hrApi';
 import type {
@@ -48,6 +48,7 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
   const [form] = Form.useForm<ActionValues>();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { message } = AntApp.useApp();
 
   useEffect(() => setPage(1), [status]);
@@ -56,6 +57,25 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
     queryFn: () => placementReconciliationApi.list({ status: status === 'ALL' ? undefined : status, page, pageSize: PAGE_SIZE }, admin),
     placeholderData: (previous) => previous,
   });
+
+  const highlightParam = searchParams.get('highlight');
+  useEffect(() => {
+    if (!highlightParam || list.isLoading || !list.data) return;
+    const q = highlightParam.toLowerCase();
+    const match = list.data.items.find(
+      (item) =>
+        item.applicationId.toLowerCase() === q ||
+        item.reconciliationId.toLowerCase() === q
+    );
+    if (match) {
+      setSelected(match);
+      const next = new URLSearchParams(searchParams);
+      next.delete('highlight');
+      setSearchParams(next, { replace: true });
+    } else if (status !== 'ALL') {
+      setStatus('ALL');
+    }
+  }, [highlightParam, list.isLoading, list.data, status, searchParams, setSearchParams]);
 
   const finish = async (text: string) => {
     message.success(text);

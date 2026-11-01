@@ -44,21 +44,41 @@ public sealed record NotificationDto(
         return entityType.Trim().ToUpperInvariant() switch
         {
             "JOB" => entityId.HasValue ? $"/jobs/{entityId.Value}" : "/jobs",
-            "SERVICE_AGREEMENT" => TryReadString(metadata, "status") == "CHANGE_REQUESTED"
-                ? (TryReadGuid(metadata, "jobId") is { } changeJobId
-                    ? $"/hr/jobs?status=CHANGE_REQUESTED&highlight={changeJobId}"
-                    : "/hr/jobs?status=CHANGE_REQUESTED")
-                : (TryReadGuid(metadata, "jobId") is { } agreementJobId
-                    ? $"/hr/jobs?status=PENDING_AGREEMENT&highlight={agreementJobId}"
-                    : "/hr/jobs?status=PENDING_AGREEMENT"),
+            "SERVICE_AGREEMENT" => ResolveServiceAgreementRoute(metadata),
             "APPLICATION" or "APPLICATION_STATUS" or "CANDIDATE_APPLICATION" => "/candidate/applications",
             "SUBMISSION" or "SUBMISSION_CONSENT_RESULT" => "/affiliate/submissions",
             "INTERVIEW" => ResolveInterviewRoute(entityId, metadata),
             "OFFER" => ResolveOfferRoute(metadata),
             "COMMISSION" or "PAYOUT" => "/affiliate/commissions",
+            "WARRANTY" => entityId.HasValue ? $"/hr/warranty-tracking?highlight={entityId.Value}" : "/hr/warranty-tracking",
+            "SOURCING" or "SOURCING_DELIVERY" => TryReadGuid(metadata, "applicationId") is { } sourcingAppId
+                ? $"/hr/screening?status=SHORTLISTED&open={sourcingAppId}"
+                : "/hr/screening?status=SHORTLISTED",
+            "PLACEMENT_RECONCILIATION" => (TryReadGuid(metadata, "applicationId") ?? entityId) is { } recTarget
+                ? $"/hr/placement-reconciliations?highlight={recTarget}"
+                : "/hr/placement-reconciliations",
+            "CONTACT_REQUEST" => entityId.HasValue ? $"/hr/contact-requests?highlight={entityId.Value}" : "/hr/contact-requests",
+            "PLACEMENT" => entityId.HasValue ? $"/hr/placement-review?highlight={entityId.Value}" : "/hr/placement-review",
             "ACCOUNT" or "COMPANY" => "/profile",
             _ => null
         };
+    }
+
+    private static string ResolveServiceAgreementRoute(string? metadata)
+    {
+        var jobId = TryReadGuid(metadata, "jobId");
+        var jobStatus = TryReadString(metadata, "jobStatus");
+        var status = TryReadString(metadata, "status");
+
+        var targetTab = !string.IsNullOrWhiteSpace(jobStatus)
+            ? jobStatus
+            : status == "CHANGE_REQUESTED"
+                ? "CHANGE_REQUESTED"
+                : "PENDING_AGREEMENT";
+
+        return jobId.HasValue
+            ? $"/hr/jobs?status={targetTab}&highlight={jobId.Value}"
+            : $"/hr/jobs?status={targetTab}";
     }
 
     private static string ResolveInterviewRoute(Guid? interviewId, string? metadata)

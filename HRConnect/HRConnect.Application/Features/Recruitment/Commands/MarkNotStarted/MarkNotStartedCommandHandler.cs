@@ -24,6 +24,7 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
     private readonly IAuditLogService _auditLogService;
     private readonly IPlacementReconciliationRepository _reconciliationRepository;
     private readonly ICandidateRecruitmentDeliveryService? _candidateDeliveryService;
+    private readonly IAppNotifier? _notifier;
 
     public MarkNotStartedCommandHandler(
         IApplicationRepository applicationRepository,
@@ -33,7 +34,8 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
         ILogger<MarkNotStartedCommandHandler> logger,
         IAuditLogService auditLogService,
         IPlacementReconciliationRepository reconciliationRepository,
-        ICandidateRecruitmentDeliveryService? candidateDeliveryService = null)
+        ICandidateRecruitmentDeliveryService? candidateDeliveryService = null,
+        IAppNotifier? notifier = null)
     {
         _applicationRepository = applicationRepository;
         _placementRepository = placementRepository;
@@ -43,6 +45,7 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
         _auditLogService = auditLogService;
         _reconciliationRepository = reconciliationRepository;
         _candidateDeliveryService = candidateDeliveryService;
+        _notifier = notifier;
     }
 
     public async Task<MarkNotStartedResponse> Handle(MarkNotStartedCommand request, CancellationToken cancellationToken)
@@ -164,6 +167,22 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
                 reconciliation.ReviewedAt = null;
                 reconciliation.UpdatedAt = now;
                 reconciliation.ConcurrencyToken = Guid.NewGuid();
+            }
+
+            if (_notifier != null)
+            {
+                var candidateName = application.Candidate?.FullName ?? "ứng viên";
+                var jobTitle = application.Job?.Title ?? "vị trí tuyển dụng";
+                await _notifier.NotifyRoleAsync(
+                    "INTERNAL_HR",
+                    new AppNotice(
+                        "SYSTEM",
+                        "Cần đối soát báo cáo không nhận việc",
+                        $"Doanh nghiệp báo {candidateName} không đi làm tại vị trí \"{jobTitle}\". Vui lòng đối soát xác minh.",
+                        "PLACEMENT_RECONCILIATION",
+                        application.ApplicationId,
+                        $"/hr/placement-reconciliations?highlight={application.ApplicationId}"),
+                    cancellationToken);
             }
         }
         await _auditLogService.AddAsync(new AuditEntry

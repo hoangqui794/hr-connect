@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Alert, App as AntApp, Button, Descriptions, Form, Input, Modal, Skeleton, Statistic } from 'antd';
-import { ArrowLeftOutlined, CheckOutlined, CloseOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Alert, App as AntApp, Button, Descriptions, Form, Input, Modal, Skeleton, Statistic, Tag } from 'antd';
+import { ArrowLeftOutlined, CheckOutlined, CloseOutlined, MergeCellsOutlined, ReloadOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { adminIdentityClaimApi } from '@/services/api/mf02/adminIdentityClaimApi';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
@@ -34,9 +34,12 @@ const EMAIL_KIND_LABEL: Record<string, string> = {
   LINKED: 'Email đã liên kết',
 };
 
-const CandidateEvidence: React.FC<{ title: string; candidate: AdminIdentityClaimCandidateDetail | null }> = ({ title, candidate }) => (
+const CandidateEvidence: React.FC<{ title: string; candidate: AdminIdentityClaimCandidateDetail | null; recommended?: boolean }> = ({ title, candidate, recommended }) => (
   <Surface padded className="h-full">
-    <h2 className="m-0 mb-4 text-base font-bold text-slate-900">{title}</h2>
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+      <h2 className="m-0 text-base font-bold text-slate-900">{title}</h2>
+      {recommended && <Tag color="green" icon={<SafetyCertificateOutlined />}>Hồ sơ chính được đề xuất</Tag>}
+    </div>
     {!candidate ? (
       <Alert type="info" showIcon message="Không tìm thấy hồ sơ Candidate cũ theo email này." />
     ) : (
@@ -47,13 +50,21 @@ const CandidateEvidence: React.FC<{ title: string; candidate: AdminIdentityClaim
           <Descriptions.Item label="Điện thoại">{candidate.phone ?? '—'}</Descriptions.Item>
           <Descriptions.Item label="Tài khoản">{candidate.userId ? 'Đã có tài khoản' : 'Chưa có tài khoản'}</Descriptions.Item>
           <Descriptions.Item label="Trạng thái">{CANDIDATE_STATUS_LABEL[candidate.status] ?? candidate.status}</Descriptions.Item>
+          <Descriptions.Item label="Chức danh">{candidate.currentJobTitle ?? 'Chưa cập nhật'}</Descriptions.Item>
+          <Descriptions.Item label="Kinh nghiệm">{candidate.yearsOfExperience == null ? 'Chưa cập nhật' : `${candidate.yearsOfExperience} năm`}</Descriptions.Item>
+          <Descriptions.Item label="Học vấn">{candidate.highestEducation ?? 'Chưa cập nhật'}</Descriptions.Item>
+          <Descriptions.Item label="Ngày sinh">{candidate.dateOfBirth ?? 'Chưa cập nhật'}</Descriptions.Item>
+          <Descriptions.Item label="CV chính">{candidate.primaryCvTitle ?? candidate.primaryCvFileName ?? 'Chưa có'}</Descriptions.Item>
+          <Descriptions.Item label="Tạo hồ sơ">{formatDateTime(candidate.createdAt)}</Descriptions.Item>
           <Descriptions.Item label="Đã hợp nhất vào">{candidate.mergedIntoCandidateId ?? 'Chưa'}</Descriptions.Item>
         </Descriptions>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {candidate.summary && <p className="m-0 rounded-xl bg-slate-50 p-3 text-sm leading-6 text-slate-600">{candidate.summary}</p>}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           <Statistic title="CV" value={candidate.cvCount} />
           <Statistic title="Lượt giới thiệu" value={candidate.submissionCount} />
           <Statistic title="Đơn ứng tuyển" value={candidate.applicationCount} />
-          <Statistic title="Điểm AI" value={candidate.matchCount} />
+          <Statistic title="Kỹ năng" value={candidate.skillCount} />
+          <Statistic title="Lượt chấm AI" value={candidate.matchCount} />
         </div>
       </div>
     )}
@@ -66,13 +77,27 @@ export const AdminIdentityClaimDetailPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { message } = AntApp.useApp();
   const canReview = useAuthStore((state) => state.hasPermission('candidate.identity.review'));
-  const [decision, setDecision] = useState<'approve' | 'reject' | null>(null);
+  const canMerge = useAuthStore((state) => state.hasPermission('candidate_duplicate.resolve'));
+  const [decision, setDecision] = useState<'approve' | 'reject' | 'merge' | null>(null);
   const [form] = Form.useForm<{ text?: string }>();
 
   const detail = useQuery({
     queryKey: ['admin-candidate-identity-claim', claimId],
     queryFn: () => adminIdentityClaimApi.get(claimId),
     enabled: canReview && Boolean(claimId),
+  });
+
+  const manualMergeRequired = Boolean(
+    detail.data?.targetCandidate &&
+    !detail.data.targetCandidate.mergedIntoCandidateId &&
+    detail.data.requesterCandidate.hasBusinessData &&
+    detail.data.targetCandidate.hasBusinessData
+  );
+  const mergePreview = useQuery({
+    queryKey: ['admin-candidate-identity-merge-preview', detail.data?.duplicateCaseId],
+    queryFn: () => adminIdentityClaimApi.previewMerge(detail.data!.duplicateCaseId!),
+    enabled: Boolean(manualMergeRequired && canMerge && detail.data?.duplicateCaseId),
+    retry: false,
   });
 
   useEffect(() => {
@@ -83,9 +108,17 @@ export const AdminIdentityClaimDetailPage: React.FC = () => {
   }, [detail.error, detail.isError, message, navigate]);
 
   const decide = useMutation({
-    mutationFn: ({ kind, text }: { kind: 'approve' | 'reject'; text?: string }) => {
+    mutationFn: async ({ kind, text }: { kind: 'approve' | 'reject' | 'merge'; text?: string }) => {
       const current = detail.data;
       if (!current) throw new Error('Chưa tải được dữ liệu yêu cầu.');
+      if (kind === 'merge') {
+        if (!current.duplicateCaseId || !mergePreview.data) {
+          throw new Error('Chưa tải được bản xem trước hợp nhất an toàn.');
+        }
+        const reason = text?.trim() || 'Đã đối chiếu bằng chứng và xác nhận hai hồ sơ thuộc cùng một Candidate.';
+        await adminIdentityClaimApi.mergeDuplicateCase(current.duplicateCaseId, mergePreview.data, reason);
+        return adminIdentityClaimApi.approve(claimId, current.concurrencyToken, reason);
+      }
       return kind === 'approve'
         ? adminIdentityClaimApi.approve(claimId, current.concurrencyToken, text?.trim())
         : adminIdentityClaimApi.reject(claimId, current.concurrencyToken, text?.trim() ?? '');
@@ -125,9 +158,7 @@ export const AdminIdentityClaimDetailPage: React.FC = () => {
   const claim = detail.data;
   const status = STATUS_META[claim.status] ?? { label: claim.status, tone: 'neutral' as Tone };
   const isPending = claim.status === 'PENDING_ADMIN_REVIEW';
-  const manualMergeRequired = Boolean(
-    claim.targetCandidate && claim.requesterCandidate.hasBusinessData && claim.targetCandidate.hasBusinessData
-  );
+  const recommendedId = mergePreview.data?.recommendedCanonicalCandidateId;
 
   return (
     <div>
@@ -150,6 +181,17 @@ export const AdminIdentityClaimDetailPage: React.FC = () => {
                 >
                   Phê duyệt
                 </Button>
+                {manualMergeRequired && (
+                  <Button
+                    type="primary"
+                    icon={<MergeCellsOutlined />}
+                    disabled={!canMerge || !claim.duplicateCaseId || !mergePreview.data?.canMerge || decide.isPending}
+                    loading={mergePreview.isFetching}
+                    onClick={() => setDecision('merge')}
+                  >
+                    Hợp nhất an toàn
+                  </Button>
+                )}
               </>
             )}
           </>
@@ -162,10 +204,61 @@ export const AdminIdentityClaimDetailPage: React.FC = () => {
             type="warning"
             showIcon
             message="Không thể tự động hợp nhất hai hồ sơ đã có dữ liệu nghiệp vụ"
-            description="Cả hồ sơ hiện tại và hồ sơ cũ đều đã có CV, Submission, Application hoặc kết quả AI. Hãy đối chiếu và xử lý hợp nhất thủ công trước; nút phê duyệt tự động đã được khóa để tránh mất hoặc gán sai lịch sử."
+            description={canMerge
+              ? 'Hãy kiểm tra các bằng chứng bên dưới. Hệ thống sẽ xem trước xung đột, giữ hồ sơ có tài khoản làm hồ sơ chính và chỉ cho hợp nhất khi không có khoản chi trả đã hoàn tất.'
+              : 'Bạn có quyền đối chiếu nhưng chưa có quyền hợp nhất hồ sơ. Cần người có quyền xử lý hồ sơ trùng thực hiện bước này.'}
+          />
+        )}
+        {manualMergeRequired && !claim.duplicateCaseId && (
+          <Alert
+            className="mt-3"
+            type="error"
+            showIcon
+            message="Thiếu hồ sơ đối chiếu an toàn"
+            description="Không tìm thấy hồ sơ nghi trùng được tạo khi xác minh email. Hãy tải lại; nếu vẫn còn lỗi, không hợp nhất thủ công trong cơ sở dữ liệu."
           />
         )}
       </div>
+
+      {claim.targetCandidate && (
+        <Surface padded className="mb-5">
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="m-0 text-base font-bold text-slate-900">Bằng chứng xác định cùng một người</h2>
+              <p className="mb-0 mt-1 text-sm text-slate-500">Email đã xác minh là bằng chứng chính; điện thoại, ngày sinh và dấu vân tay CV chỉ là tín hiệu hỗ trợ.</p>
+            </div>
+            <Tag color={claim.evidence.conflictingSignalCount > 0 ? 'red' : 'green'}>
+              {claim.evidence.supportingSignalCount} tín hiệu phù hợp · {claim.evidence.conflictingSignalCount} xung đột
+            </Tag>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+            {[
+              ['Quyền sở hữu email', claim.evidence.emailOwnershipVerified],
+              ['Họ và tên', claim.evidence.sameFullName],
+              ['Số điện thoại', claim.evidence.samePhone],
+              ['Ngày sinh', claim.evidence.sameDateOfBirth],
+              ['Tệp CV giống hệt', claim.evidence.exactCvMatch],
+              ['Nội dung CV tương đồng', claim.evidence.similarCvText],
+            ].map(([label, matched]) => (
+              <div key={String(label)} className={`rounded-xl border p-3 ${matched ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}>
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
+                <div className={`mt-1 font-bold ${matched ? 'text-emerald-700' : 'text-slate-500'}`}>{matched ? 'Trùng khớp' : 'Cần đối chiếu'}</div>
+              </div>
+            ))}
+          </div>
+          {mergePreview.data && (
+            <Alert
+              className="mt-4"
+              type={mergePreview.data.canMerge ? 'success' : 'error'}
+              showIcon
+              message={mergePreview.data.canMerge ? 'Có thể hợp nhất an toàn' : 'Chưa thể hợp nhất'}
+              description={mergePreview.data.canMerge
+                ? `${mergePreview.data.collisions.length} công việc có dữ liệu chồng lặp sẽ được xử lý theo lượt Candidate xác nhận hợp lệ sớm nhất.`
+                : `Có ${mergePreview.data.financeBlockers.length} khoản chi trả đã hoàn tất. Cần xử lý tài chính trước.`}
+            />
+          )}
+        </Surface>
+      )}
 
       <Surface padded className="mb-5">
         <Descriptions size="small" column={{ xs: 1, md: 2 }}>
@@ -183,8 +276,8 @@ export const AdminIdentityClaimDetailPage: React.FC = () => {
       </Surface>
 
       <div className="mb-5 grid gap-5 xl:grid-cols-2">
-        <CandidateEvidence title="Hồ sơ Candidate hiện tại" candidate={claim.requesterCandidate} />
-        <CandidateEvidence title="Hồ sơ Candidate cũ theo email" candidate={claim.targetCandidate} />
+        <CandidateEvidence title="Hồ sơ Candidate hiện tại" candidate={claim.requesterCandidate} recommended={recommendedId === claim.requesterCandidate.candidateId} />
+        <CandidateEvidence title="Hồ sơ Candidate cũ theo email" candidate={claim.targetCandidate} recommended={recommendedId === claim.targetCandidate?.candidateId} />
       </div>
 
       <Surface padded>
@@ -203,8 +296,8 @@ export const AdminIdentityClaimDetailPage: React.FC = () => {
 
       <Modal
         open={decision !== null}
-        title={decision === 'approve' ? 'Phê duyệt liên kết danh tính?' : 'Từ chối yêu cầu liên kết?'}
-        okText={decision === 'approve' ? 'Phê duyệt' : 'Từ chối'}
+        title={decision === 'approve' ? 'Phê duyệt liên kết danh tính?' : decision === 'merge' ? 'Xác nhận hợp nhất hai hồ sơ?' : 'Từ chối yêu cầu liên kết?'}
+        okText={decision === 'approve' ? 'Phê duyệt' : decision === 'merge' ? 'Hợp nhất an toàn' : 'Từ chối'}
         cancelText="Hủy"
         okButtonProps={{ danger: decision === 'reject', loading: decide.isPending }}
         onCancel={() => { setDecision(null); form.resetFields(); }}
@@ -219,13 +312,18 @@ export const AdminIdentityClaimDetailPage: React.FC = () => {
         >
           <Form.Item
             name="text"
-            label={decision === 'approve' ? 'Ghi chú đối chiếu (không bắt buộc)' : 'Lý do từ chối'}
+            label={decision === 'approve' ? 'Ghi chú đối chiếu (không bắt buộc)' : decision === 'merge' ? 'Kết luận đối chiếu' : 'Lý do từ chối'}
             rules={decision === 'reject'
               ? [
                   { required: true, whitespace: true, message: 'Nhập lý do từ chối.' },
                   { max: 1000, message: 'Tối đa 1000 ký tự.' },
                 ]
-              : [{ max: 1000, message: 'Tối đa 1000 ký tự.' }]}
+              : decision === 'merge'
+                ? [
+                    { required: true, whitespace: true, message: 'Nhập kết luận đối chiếu trước khi hợp nhất.' },
+                    { max: 1000, message: 'Tối đa 1000 ký tự.' },
+                  ]
+                : [{ max: 1000, message: 'Tối đa 1000 ký tự.' }]}
           >
             <Input.TextArea rows={5} maxLength={1000} showCount />
           </Form.Item>

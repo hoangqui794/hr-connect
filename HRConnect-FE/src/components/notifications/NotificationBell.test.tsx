@@ -5,7 +5,9 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { notificationApi } from '@/services/api/notificationApi';
 import { useAuthStore } from '@/stores/authStore';
+import { UserRole } from '@/types/roles';
 import { NotificationBell } from './NotificationBell';
+import { getNotificationRoute } from './notificationRoutes';
 
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
@@ -250,5 +252,93 @@ describe('NotificationBell component', () => {
       expect(markReadSpy).toHaveBeenCalledWith('notif-fit-1');
     });
     expect(mockNavigate).toHaveBeenCalledWith('/jobs/job-python-123');
+  });
+
+  describe('getNotificationRoute for INTERNAL_HR', () => {
+    it('routes signed service agreement to the actual job status tab instead of PENDING_AGREEMENT', () => {
+      const route = getNotificationRoute(
+        {
+          notificationId: 'n-signed',
+          notificationType: 'JOB',
+          title: 'Thỏa thuận dịch vụ đã được ký',
+          message: "Đại diện doanh nghiệp 'Tech Corp' đã ký điện tử thành công thỏa thuận dịch vụ cho tin tuyển dụng 'Senior React'.",
+          relatedEntityType: 'SERVICE_AGREEMENT',
+          relatedEntityId: 'agr-1',
+          metadata: JSON.stringify({ agreementId: 'agr-1', jobId: 'job-99', jobStatus: 'ACTIVE' }),
+          isRead: false,
+          createdAt: new Date().toISOString(),
+        },
+        UserRole.INTERNAL_HR
+      );
+
+      expect(route).toBe('/hr/jobs?status=ACTIVE&highlight=job-99');
+    });
+
+    it('routes warranty, placement reconciliation, contact request, and sourcing rejection notifications accurately', () => {
+      expect(
+        getNotificationRoute(
+          {
+            notificationId: 'n-warranty',
+            notificationType: 'WARRANTY',
+            title: 'Doanh nghiệp báo ứng viên nghỉ việc',
+            message: 'Ứng viên nghỉ việc trong thời gian bảo hành',
+            relatedEntityType: 'WARRANTY',
+            relatedEntityId: 'war-123',
+            isRead: false,
+            createdAt: new Date().toISOString(),
+          },
+          UserRole.INTERNAL_HR
+        )
+      ).toBe('/hr/warranty-tracking?highlight=war-123');
+
+      expect(
+        getNotificationRoute(
+          {
+            notificationId: 'n-rec',
+            notificationType: 'SYSTEM',
+            title: 'Cần đối soát xác nhận nhận việc',
+            message: 'Doanh nghiệp đã xác nhận ứng viên nhận việc',
+            relatedEntityType: 'PLACEMENT_RECONCILIATION',
+            relatedEntityId: 'app-456',
+            isRead: false,
+            createdAt: new Date().toISOString(),
+          },
+          UserRole.INTERNAL_HR
+        )
+      ).toBe('/hr/placement-reconciliations?highlight=app-456');
+
+      expect(
+        getNotificationRoute(
+          {
+            notificationId: 'n-contact',
+            notificationType: 'SYSTEM',
+            title: 'Có yêu cầu tư vấn mới',
+            message: 'Khách hàng vừa gửi yêu cầu tư vấn',
+            relatedEntityType: 'CONTACT_REQUEST',
+            relatedEntityId: 'req-789',
+            isRead: false,
+            createdAt: new Date().toISOString(),
+          },
+          UserRole.INTERNAL_HR
+        )
+      ).toBe('/hr/contact-requests?highlight=req-789');
+
+      expect(
+        getNotificationRoute(
+          {
+            notificationId: 'n-sourcing',
+            notificationType: 'SOURCING',
+            title: 'Client từ chối một CV đã giao',
+            message: 'CV bị từ chối',
+            relatedEntityType: 'SOURCING_DELIVERY',
+            relatedEntityId: 'del-1',
+            routeHint: '/hr/screening?status=SHORTLISTED&open=app-777',
+            isRead: false,
+            createdAt: new Date().toISOString(),
+          },
+          UserRole.INTERNAL_HR
+        )
+      ).toBe('/hr/screening?status=SHORTLISTED&open=app-777');
+    });
   });
 });

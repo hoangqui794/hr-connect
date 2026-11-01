@@ -710,7 +710,7 @@ export const AIMatchReviewer: React.FC<AIMatchReviewerProps> = ({
             type="warning"
             showIcon
             message="Yêu cầu kiểm toán bắt buộc"
-            description="Mọi quyết định từ chối ứng viên đều được gắn mã kiểm toán bất biến và gửi thông báo phản hồi lý do cụ thể đến CTV/Headhunter giới thiệu."
+            description="Mọi quyết định từ chối ứng viên đều được gắn mã kiểm toán bất biến và gửi thông báo phản hồi lý do cụ thể đến CTV/Affiliate giới thiệu."
             className="mb-4 rounded-lg"
           />
 

@@ -76,14 +76,107 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
 
   // Extract highlight param (jobId, company name in quotes, or job title in quotes)
   const metaJobId = meta?.jobId || meta?.job_id;
-  const quoteMatch = item.message?.match(/['"]([^'"]+)['"]/);
+  const quoteMatch = item.message?.match(/['"“”]([^'"“”]+)['"“”]/);
   const targetHighlight =
     metaJobId ||
     (entityType === 'JOB' && item.relatedEntityId ? item.relatedEntityId : undefined) ||
     (quoteMatch ? quoteMatch[1] : undefined);
 
   if (isInternalHr) {
-    // A. Yêu cầu điều chỉnh thỏa thuận dịch vụ
+    // 1. Yêu cầu tư vấn / Liên hệ (SF-05)
+    if (
+      entityType === 'CONTACT_REQUEST' ||
+      titleLower.includes('yêu cầu tư vấn') ||
+      titleLower.includes('yêu cầu liên hệ')
+    ) {
+      const contactId = meta?.contactRequestId || meta?.entityId || item.relatedEntityId;
+      const basePath = normRole === 'ADMIN' ? '/admin/contact-requests' : '/hr/contact-requests';
+      return contactId ? `${basePath}?highlight=${encodeURIComponent(contactId)}` : basePath;
+    }
+
+    // 2. Đối soát nhận việc (MF-04 UC-41)
+    if (
+      entityType === 'PLACEMENT_RECONCILIATION' ||
+      titleLower.includes('đối soát') ||
+      titleLower.includes('kết quả nhận việc')
+    ) {
+      const targetId =
+        meta?.applicationId ||
+        meta?.ApplicationId ||
+        meta?.reconciliationId ||
+        meta?.ReconciliationId ||
+        meta?.entityId ||
+        item.relatedEntityId;
+      const basePath = normRole === 'ADMIN' ? '/admin/placement-reconciliations' : '/hr/placement-reconciliations';
+      return targetId ? `${basePath}?highlight=${encodeURIComponent(targetId)}` : basePath;
+    }
+
+    // 3. Theo dõi bảo hành & Báo nghỉ việc (MF-05)
+    if (
+      entityType === 'WARRANTY' ||
+      titleLower.includes('bảo hành') ||
+      titleLower.includes('nghỉ việc')
+    ) {
+      const warrantyId = meta?.warrantyId || meta?.entityId || item.relatedEntityId;
+      return warrantyId
+        ? `/hr/warranty-tracking?highlight=${encodeURIComponent(warrantyId)}`
+        : '/hr/warranty-tracking';
+    }
+
+    // 4. Sửa ngày đi làm / Placement (MF-04)
+    if (entityType === 'PLACEMENT' || titleLower.includes('ngày đi làm')) {
+      const placementId = meta?.placementId || meta?.entityId || item.relatedEntityId;
+      return placementId
+        ? `/hr/placement-review?highlight=${encodeURIComponent(placementId)}`
+        : '/hr/placement-review';
+    }
+
+    // 5. CV Sourcing bị từ chối hoặc bàn giao (MF-03 / MF-05)
+    if (
+      entityType === 'SOURCING_DELIVERY' ||
+      entityType === 'SOURCING' ||
+      titleLower.includes('cv đã giao')
+    ) {
+      if (route && route.startsWith('/hr/screening') && route.includes('?')) {
+        return route;
+      }
+      const appId = meta?.applicationId || meta?.ApplicationId;
+      return appId
+        ? `/hr/screening?status=SHORTLISTED&open=${encodeURIComponent(appId)}`
+        : '/hr/screening?status=SHORTLISTED';
+    }
+
+    // 6. Sàng lọc hồ sơ ứng tuyển (MF-03)
+    if (
+      entityType === 'APPLICATION' ||
+      entityType === 'APPLICATION_STATUS' ||
+      entityType === 'CANDIDATE_APPLICATION' ||
+      entityType === 'SUBMISSION' ||
+      titleLower.includes('sàng lọc')
+    ) {
+      if (route && route.startsWith('/hr/screening') && route.includes('?')) {
+        return route;
+      }
+      const appId =
+        meta?.applicationId ||
+        meta?.ApplicationId ||
+        meta?.entityId ||
+        (entityType !== 'SUBMISSION' ? item.relatedEntityId : undefined);
+      const statusTab = meta?.status || 'SUBMITTED';
+      return appId
+        ? `/hr/screening?status=${encodeURIComponent(statusTab)}&open=${encodeURIComponent(appId)}`
+        : '/hr/screening';
+    }
+
+    // 7. Pipeline / Phỏng vấn / Offer (MF-04)
+    if (entityType === 'INTERVIEW' || titleLower.includes('phỏng vấn')) {
+      return '/hr/pipeline?tab=interviews';
+    }
+    if (entityType === 'OFFER' || titleLower.includes('offer')) {
+      return '/hr/pipeline?tab=offers';
+    }
+
+    // 8A. Yêu cầu điều chỉnh thỏa thuận dịch vụ
     if (
       titleLower.includes('điều chỉnh') ||
       messageLower.includes('yêu cầu điều chỉnh') ||
@@ -93,7 +186,15 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       return `/hr/jobs?status=CHANGE_REQUESTED${sep}`;
     }
 
-    // B. Thỏa thuận dịch vụ / hợp đồng (chấp thuận, đã ký)
+    // 8B. Thỏa thuận dịch vụ đã được ký điện tử (tin đã chuyển sang ACTIVE hoặc PENDING_PAYMENT)
+    if (titleLower.includes('đã được ký')) {
+      const signedJobStatus =
+        meta?.jobStatus || (meta?.status && meta.status !== 'SIGNED' ? meta.status : 'ALL');
+      const sep = targetHighlight ? `&highlight=${encodeURIComponent(targetHighlight)}` : '';
+      return `/hr/jobs?status=${encodeURIComponent(signedJobStatus)}${sep}`;
+    }
+
+    // 8C. Thỏa thuận dịch vụ / hợp đồng đang chờ (Client đồng ý dự thảo hoặc tải lên file ký)
     if (
       titleLower.includes('thỏa thuận') ||
       titleLower.includes('hợp đồng') ||
@@ -103,51 +204,50 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       return `/hr/jobs?status=PENDING_AGREEMENT${sep}`;
     }
 
-    // C. Doanh nghiệp nộp cọc / chờ cọc
+    // 8D. Doanh nghiệp nộp cọc / chờ cọc
     if (
       titleLower.includes('nộp cọc') ||
       titleLower.includes('đặt cọc') ||
-      messageLower.includes('nộp cọc')
+      titleLower.includes('nộp tiền cọc') ||
+      messageLower.includes('nộp cọc') ||
+      messageLower.includes('nộp tiền cọc') ||
+      meta?.status === 'PENDING_PAYMENT'
     ) {
       const sep = targetHighlight ? `&highlight=${encodeURIComponent(targetHighlight)}` : '';
       return `/hr/jobs?status=PENDING_PAYMENT${sep}`;
     }
 
-    // D. Đã thanh toán phí đăng tin / Đang tuyển
+    // 8E. Đã thanh toán phí đăng tin / Đang tuyển
     if (
       titleLower.includes('thanh toán phí') ||
       titleLower.includes('công bố') ||
-      titleLower.includes('kích hoạt')
+      titleLower.includes('kích hoạt') ||
+      meta?.status === 'ACTIVE'
     ) {
       const sep = targetHighlight ? `&highlight=${encodeURIComponent(targetHighlight)}` : '';
       return `/hr/jobs?status=ACTIVE${sep}`;
     }
 
-    // E. Tin mới chờ duyệt
+    // 8F. Tin mới chờ duyệt
     if (
       titleLower.includes('chờ duyệt') ||
       titleLower.includes('cần duyệt') ||
-      titleLower.includes('tạo tin')
+      titleLower.includes('tạo tin') ||
+      meta?.status === 'PENDING_REVIEW'
     ) {
       const sep = targetHighlight ? `&highlight=${encodeURIComponent(targetHighlight)}` : '';
       return `/hr/jobs?status=PENDING_REVIEW${sep}`;
     }
 
-    // F. Chung cho JOB
+    // 8G. Chung cho JOB
     if (entityType === 'JOB') {
-      const sep = targetHighlight ? `?highlight=${encodeURIComponent(targetHighlight)}` : '';
-      return `/hr/jobs${sep}`;
-    }
-
-    // G. Pipeline / Phỏng vấn / Offer
-    if (entityType === 'INTERVIEW' || titleLower.includes('phỏng vấn')) {
-      return '/hr/pipeline?tab=interviews';
-    }
-    if (entityType === 'OFFER' || titleLower.includes('offer')) {
-      return '/hr/pipeline?tab=offers';
-    }
-    if (entityType === 'APPLICATION' || entityType === 'SUBMISSION') {
-      return '/hr/screening';
+      if (route && route.startsWith('/hr/jobs') && route.includes('?')) {
+        return route;
+      }
+      const statusParam = meta?.status ? `status=${encodeURIComponent(meta.status)}` : '';
+      const highlightParam = targetHighlight ? `highlight=${encodeURIComponent(targetHighlight)}` : '';
+      const query = [statusParam, highlightParam].filter(Boolean).join('&');
+      return query ? `/hr/jobs?${query}` : '/hr/jobs';
     }
   }
 

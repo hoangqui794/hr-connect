@@ -1,6 +1,6 @@
 # Hướng dẫn test FE MF-01 → MF-05
 
-Cập nhật: 30/10/2026
+Cập nhật: 01/11/2026 (Cập nhật kết quả kiểm thử tự động Playwright)
 
 Tài liệu này liệt kê các ca test giao diện cho 5 luồng chính của HR Connect, theo 3 dịch vụ: Tuyển dụng theo kết quả (HH), Nhận hồ sơ ứng tuyển (AP) và Tìm hồ sơ phù hợp (SS). Chạy theo thứ tự MF-01 → MF-05 vì luồng sau dùng dữ liệu của luồng trước; mỗi ca ghi kết quả ở cột cuối (Đạt / Lỗi / Bỏ qua).
 
@@ -33,23 +33,23 @@ Tin đi từ Nháp → Chờ duyệt → Đang tuyển (hoặc Bị từ chối)
 
 | Mã | Vai trò | Màn hình | Bước test | Kết quả mong đợi | Kết quả |
 | --- | --- | --- | --- | --- | --- |
-| 01-01 | Client | /client/jobs/create | Tạo tin AP: bước 2 tìm và chọn mẫu JD → điền đủ 4 bước → chọn gói đăng tin → Gửi duyệt | Tin ở trạng thái Chờ duyệt trong /client/jobs. Mẫu JD không tự điền lương, địa điểm | |
-| 01-02 | Client | /client/jobs/create | Bỏ trống trường bắt buộc hoặc không có yêu cầu Bắt buộc (MUST_HAVE) → bấm Tiếp | Báo lỗi ngay dưới trường, không qua bước. Điền lại thì lỗi tự mất | |
-| 01-03 | Client | /client/jobs/create | Nhập lương tối thiểu lớn hơn lương tối đa; số năm kinh nghiệm âm | Báo lỗi, không gửi được | |
-| 01-04 | Client | /client/jobs | Lưu nháp → mở lại → sửa → gửi duyệt | Dữ liệu nháp còn đủ, gửi duyệt được | |
+| 01-01 | Client | /client/jobs/create | Tạo tin AP: bước 2 tìm và chọn mẫu JD → điền đủ 4 bước → chọn gói đăng tin → Gửi duyệt | Tin ở trạng thái Chờ duyệt trong /client/jobs. Mẫu JD không tự điền lương, địa điểm | Đạt |
+| 01-02 | Client | /client/jobs/create | Bỏ trống trường bắt buộc hoặc không có yêu cầu Bắt buộc (MUST_HAVE) → bấm Tiếp | Báo lỗi ngay dưới trường, không qua bước. Điền lại thì lỗi tự mất | Đạt |
+| 01-03 | Client | /client/jobs/create | Nhập lương tối thiểu lớn hơn lương tối đa; số năm kinh nghiệm âm | Báo lỗi, không gửi được | Đạt |
+| 01-04 | Client | /client/jobs | Lưu nháp → mở lại → sửa → gửi duyệt | Dữ liệu nháp còn đủ, gửi duyệt được | Đạt |
 | 01-05 | Internal HR | /hr/jobs | Mở tin Chờ duyệt → Từ chối, bỏ trống lý do → rồi chọn mã lý do | Thiếu lý do bị chặn. Có lý do: tin Bị từ chối, Client thấy lý do và có thông báo | |
 | 01-06 | Client | /client/jobs/:id/edit | Sửa tin bị từ chối → gửi lại | Tin quay về Chờ duyệt; lịch sử trạng thái ghi đủ người, lý do, thời điểm | |
 | 01-07 | Internal HR | /hr/jobs | Duyệt tin AP | Tin chuyển Chờ thanh toán. Client chỉ thấy Hướng dẫn thanh toán, không có nút tự xác nhận đã trả. HR không có nút ghi nhận tiền | |
 | 01-08 | Admin | /admin/finance (Phí đăng tin) | Ghi nhận thanh toán, bỏ trống mã tham chiếu → rồi nhập mã | Trống mã bị chặn. Có mã: tin Đang tuyển, hiện ở trang việc làm công khai, bộ đếm cập nhật | |
 | 01-09 | Client | /client/jobs/create | Gói miễn phí: đã có 1 tin miễn phí đang mở → gửi duyệt tin miễn phí thứ 2 | Bị chặn, thông báo nêu giới hạn số tin miễn phí và chu kỳ | |
-| 01-10 | Admin | /admin/settings › AP · Gói đăng tin | Sửa tên, giá, số ngày, số hồ sơ tối đa (hoặc Không giới hạn) của gói Tiêu chuẩn → Lưu | Lưu thành công. Client tạo tin mới thấy số mới; tin đã gửi duyệt giữ số cũ. Gói miễn phí không sửa được giá | |
+| 01-10 | Admin | /admin/settings › AP · Gói đăng tin | Sửa tên, giá, số ngày, số hồ sơ tối đa (hoặc Không giới hạn) của gói Tiêu chuẩn → Lưu | Lưu thành công. Client tạo tin mới thấy số mới; tin đã gửi duyệt giữ số cũ. Gói miễn phí không sửa được giá | Đạt |
 | 01-11 | Admin | /admin/settings › AP · Gói đăng tin | Tắt công tắc Đang bán của một gói | Client không còn chọn được gói đó khi tạo tin mới | |
 | 01-12 | Client → Internal HR | /client/jobs/create → /hr/jobs | Tạo tin HH kèm đề xuất hệ số phí và số ngày bảo hành → HR chốt điều khoản → duyệt | Ô điều khoản của HR điền sẵn đúng đề xuất. Duyệt xong tin Đang tuyển, Affiliate thấy tin | |
 | 01-13 | Client | /client/agreements | Mở hợp đồng dịch vụ của tin HH hoặc SS → gửi mã OTP về email → nhập sai mã → nhập đúng mã | Mã sai bị báo lỗi. Mã đúng: hợp đồng Đã ký, xem lại được nội dung | |
 | 01-14 | Client → Internal HR → Admin | /client/jobs/create → /hr/jobs → /admin/finance | Tạo tin SS cần tuyển 2 người, mua 3 CV → HR duyệt → Admin ghi nhận cọc | Sau duyệt: thẻ tin hiện Chờ đặt cọc và 3 CV. Sau ghi nhận cọc: tin Đang tuyển | |
 | 01-15 | Client | /client/jobs | Tạm dừng → mở lại → đóng tin (đóng bắt buộc lý do) | Trạng thái đổi đúng; tin tạm dừng không nhận hồ sơ; đóng thiếu lý do bị chặn | |
-| 01-16 | Khách, Candidate, Affiliate | Trang chủ, /candidate/jobs, /affiliate/jobs | Xem danh sách việc làm của từng vai trò; mở thẳng URL tin không được xem | Khách và Candidate chỉ thấy tin AP; Affiliate chỉ thấy tin HH và SS. URL không được xem bị chặn | |
-| 01-17 | Internal HR | /hr/job-templates | Tạo, sửa, ẩn một mẫu JD (mẫu phải có ít nhất 1 yêu cầu Bắt buộc) | Client không còn tìm thấy mẫu đã ẩn; tin tạo từ mẫu trước đó không đổi | |
+| 01-16 | Khách, Candidate, Affiliate | Trang chủ, /candidate/jobs, /affiliate/jobs | Xem danh sách việc làm của từng vai trò; mở thẳng URL tin không được xem | Khách và Candidate chỉ thấy tin AP; Affiliate chỉ thấy tin HH và SS. URL không được xem bị chặn | Đạt |
+| 01-17 | Internal HR | /hr/job-templates | Tạo, sửa, ẩn một mẫu JD (mẫu phải có ít nhất 1 yêu cầu Bắt buộc) | Client không còn tìm thấy mẫu đã ẩn; tin tạo từ mẫu trước đó không đổi | Đạt |
 | 01-18 | Client | /client/company | Đổi logo công ty bằng ảnh 8–10 MB, rồi thử file trên 10 MB | Ảnh ≤ 10 MB lưu được và hiển thị ở tin; trên 10 MB báo lỗi ngay | |
 
 ## MF-02 Nộp hồ sơ và giới thiệu ứng viên
@@ -63,8 +63,8 @@ Hai đường vào: ứng viên tự nộp tin AP, hoặc Affiliate giới thi�
 | 02-03 | Candidate | /candidate/cv-builder | Tạo CV theo mẫu → xem PDF → ứng tuyển bằng CV đó | PDF hiển thị đúng nội dung; nộp được | |
 | 02-04 | Candidate | /candidate/cv-builder/:cvId | Sửa CV đã dùng để nộp | CV có bản mới; hồ sơ đã nộp vẫn giữ file cũ | |
 | 02-05 | Candidate | /candidate/jobs/:jobId | Ứng tuyển lại cùng tin; ứng tuyển tin đang tạm dừng | Cả hai bị chặn với thông báo rõ | |
-| 02-06 | Candidate | /candidate/jobs | Tìm tin HH hoặc SS | Không thấy; không có nút ứng tuyển cho các dịch vụ này | |
-| 02-07 | Affiliate | /affiliate/jobs/:jobId | Mở chi tiết tin HH và tin SS | Vẫn nằm trong giao diện Affiliate; có hoa hồng ước tính | |
+| 02-06 | Candidate | /candidate/jobs | Tìm tin HH hoặc SS | Không thấy; không có nút ứng tuyển cho các dịch vụ này | Đạt |
+| 02-07 | Affiliate | /affiliate/jobs/:jobId | Mở chi tiết tin HH và tin SS | Vẫn nằm trong giao diện Affiliate; có hoa hồng ước tính | Đạt |
 | 02-08 | Affiliate → Candidate | /affiliate/submit-candidate → /candidate/submission-consents/:id | Giới thiệu candidate2 vào tin HH → candidate2 đăng nhập, Đồng ý | Lượt giới thiệu được ghi nhận; Affiliate nhận thông báo; hồ sơ hiện ở /affiliate/submissions | |
 | 02-09 | Affiliate → Khách | /affiliate/submit-candidate → link trong email | Giới thiệu một email thật chưa có tài khoản → mở link trong email → Đồng ý | Email tới, nội dung nói cộng tác viên (Affiliate) giới thiệu; trang xác nhận công khai mở được; đồng ý xong tạo hồ sơ | |
 | 02-10 | Khách | Link email đã dùng | Mở lại link xác nhận đã bấm | Báo đã xử lý, không tạo hồ sơ lần hai | |
@@ -155,12 +155,12 @@ Client thanh toán từng khoản qua VNPay, khoản phí tự chuyển Đã tha
 
 | Mã | Vai trò | Màn hình | Bước test | Kết quả mong đợi | Kết quả |
 | --- | --- | --- | --- | --- | --- |
-| 05-18 | Client | /client/billing | Bấm Thanh toán ở khoản Cọc CV Sourcing, xem phần cách tính | Hiện Số CV đặt mua × Đơn giá mỗi CV = Tổng giá trị gói, Tỷ lệ đặt cọc, rồi Số tiền cần thanh toán khớp | |
+| 05-18 | Client | /client/billing | Bấm Thanh toán ở khoản Cọc CV Sourcing, xem phần cách tính | Hiện Số CV đặt mua × Đơn giá mỗi CV = Tổng giá trị gói, Tỷ lệ đặt cọc, rồi Số tiền cần thanh toán khớp | Đạt |
 | 05-19 | Client | /client/billing | Bấm Thanh toán ở khoản Phí Headhunt | Hiện Lương gross tháng và Hệ số phí; số tiền = lương × hệ số | |
 | 05-20 | Client | /client/billing → VNPay → /client/billing/vnpay-return | Thanh toán qua VNPay khoản Cọc CV Sourcing bằng thẻ NCB test | Trang kết quả báo Thanh toán thành công kèm mã giao dịch; khoản phí Đã thanh toán · VNPAY-…; tin SS chuyển Đang tuyển | |
 | 05-21 | Client | /client/billing → VNPay | Thanh toán qua VNPay phí gói đăng tin AP | Khoản phí Đã thanh toán; tin AP được công bố | |
 | 05-22 | Client | Trang VNPay | Bấm Hủy giao dịch trên trang VNPay | Trang kết quả báo Bạn đã hủy thanh toán; khoản phí vẫn Chờ thanh toán, bấm Thanh toán lại được | |
-| 05-23 | Client | /client/billing | Mở Thanh toán, xem mục Hoặc chuyển khoản, bấm sao chép số tài khoản và nội dung chuyển khoản | Có ngân hàng, số tài khoản, chủ tài khoản, nội dung; sao chép báo thành công; không có nút tự xác nhận đã trả | |
+| 05-23 | Client | /client/billing | Mở Thanh toán, xem mục Hoặc chuyển khoản, bấm sao chép số tài khoản và nội dung chuyển khoản | Có ngân hàng, số tài khoản, chủ tài khoản, nội dung; sao chép báo thành công; không có nút tự xác nhận đã trả | Đạt |
 | 05-24 | Admin | /admin/finance › Công nợ phí | Ghi nhận đã thu một phí dịch vụ HH hoặc cọc SS (trước 30/10 lỗi 500) | Lưu thành công, Client nhận thông báo, /client/billing đổi Đã thanh toán | |
 | 05-25 | Client, Internal HR | /client/warranty, /hr/screening | Báo ứng viên nghỉ trong bảo hành; HR giao CV Sourcing (cả hai từng lỗi 500) | Thao tác thành công và người nhận có thông báo | |
 
@@ -170,14 +170,14 @@ Các ca này chạy xen kẽ trong lúc test 5 luồng trên.
 
 | Mã | Vai trò | Màn hình | Bước test | Kết quả mong đợi | Kết quả |
 | --- | --- | --- | --- | --- | --- |
-| CH-01 | Mọi vai trò | Menu tài khoản | Đăng xuất | Về thẳng trang /login; bấm Back không vào lại được trang cần đăng nhập | |
-| CH-02 | Client, Affiliate, Candidate | Gõ URL trực tiếp | Client mở /hr/jobs và /admin/settings; Affiliate mở /client/jobs; Candidate mở hồ sơ của người khác | Tất cả bị chặn hoặc chuyển về trang của đúng vai trò | |
+| CH-01 | Mọi vai trò | Menu tài khoản | Đăng xuất | Về thẳng trang /login; bấm Back không vào lại được trang cần đăng nhập | Lỗi (Bấm Back vẫn tải lại cache trang cũ) |
+| CH-02 | Client, Affiliate, Candidate | Gõ URL trực tiếp | Client mở /hr/jobs và /admin/settings; Affiliate mở /client/jobs; Candidate mở hồ sơ của người khác | Tất cả bị chặn hoặc chuyển về trang của đúng vai trò | Đạt |
 | CH-03 | Mọi vai trò | Chuông thông báo | Sau mỗi bước chính, kiểm tra chuông của người nhận → bấm thông báo | Số trên chuông tăng không cần tải lại; bấm vào đi đúng trang | |
-| CH-04 | Mọi vai trò | Tiêu đề các trang Client và HR | Rê chuột vào biểu tượng (i) cạnh tiêu đề | Hiện chú thích của trang | |
-| CH-05 | Mọi vai trò | Toàn trang | Tìm chữ Recruiter trên các màn hình, email và thông báo | Không còn chữ Recruiter; người giới thiệu luôn gọi là Affiliate / Cộng tác viên | |
+| CH-04 | Mọi vai trò | Tiêu đề các trang Client và HR | Rê chuột vào biểu tượng (i) cạnh tiêu đề | Hiện chú thích của trang | Đạt |
+| CH-05 | Mọi vai trò | Toàn trang | Tìm chữ Recruiter trên các màn hình, email và thông báo | Không còn chữ Recruiter; người giới thiệu luôn gọi là Affiliate / Cộng tác viên | Đạt |
 | CH-06 | Admin | /admin/settings | Đổi một cài đặt (ví dụ số tin miễn phí mở cùng lúc) → test lại 01-09 → trả giá trị cũ | Có hiệu lực ngay, không cần deploy | |
-| CH-07 | Admin | /admin/audit-trail | Lọc nhật ký theo các thao tác đã làm | Có bản ghi cho duyệt tin, ghi nhận tiền, sửa gói, khiếu nại, đổi hoa hồng | |
-| CH-08 | Mọi vai trò | Trang chủ, tìm việc, drawer hồ sơ, /client/billing | Thu cửa sổ về 375px và 800px | Không tràn ngang, chữ đọc được, nút bấm được | |
+| CH-07 | Admin | /admin/audit-trail | Lọc nhật ký theo các thao tác đã làm | Có bản ghi cho duyệt tin, ghi nhận tiền, sửa gói, khiếu nại, đổi hoa hồng | Đạt |
+| CH-08 | Mọi vai trò | Trang chủ, tìm việc, drawer hồ sơ, /client/billing | Thu cửa sổ về 375px và 800px | Không tràn ngang, chữ đọc được, nút bấm được | Đạt |
 | CH-09 | Mọi vai trò | Bản deploy | Mở một tab cũ đã mở trước lần deploy mới → chuyển sang trang khác | Trang tự tải lại một lần, không hiện lỗi tải module | |
 
 ## Ca không test được trên giao diện
