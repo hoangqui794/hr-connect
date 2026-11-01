@@ -41,6 +41,7 @@ import { authService } from '@/services/authService';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { AuthPageShell, AUTH_INPUT_CLASS, AUTH_LABEL_CLASS, AUTH_LINK_CLASS, AUTH_PRIMARY_BUTTON_CLASS } from './AuthPageShell';
 import { appendCandidateReturnPath, getSafeCandidateReturnPath } from './authReturnPath';
+import { isValidVietnamPhoneNumber, VIETNAM_PHONE_VALIDATION_MESSAGE } from '@/constants/phoneValidation';
 
 type RegisterableRole = UserRole.CANDIDATE | UserRole.CLIENT | UserRole.AFFILIATE;
 
@@ -377,10 +378,15 @@ export const RegisterPage: React.FC = () => {
               label={<span className={COMPACT_LABEL_CLASS}>Số điện thoại</span>}
               rules={[
                 { required: true, message: 'Vui lòng nhập số điện thoại.' },
-                { pattern: /(84|0[3|5|7|8|9])+([0-9]{8})\b/, message: 'Số điện thoại Việt Nam chưa hợp lệ.' },
+                {
+                  validator: (_, value) =>
+                    !value || isValidVietnamPhoneNumber(value)
+                      ? Promise.resolve()
+                      : Promise.reject(new Error(VIETNAM_PHONE_VALIDATION_MESSAGE)),
+                },
               ]}
             >
-              <Input autoComplete="tel" prefix={<PhoneOutlined className="mr-1 text-slate-400" />} placeholder="0912 345 678" maxLength={11} className={COMPACT_INPUT_CLASS} disabled={submitting} />
+              <Input autoComplete="tel" prefix={<PhoneOutlined className="mr-1 text-slate-400" />} placeholder="0912 345 678" maxLength={20} className={COMPACT_INPUT_CLASS} disabled={submitting} />
             </Form.Item>
           </Col>
         </Row>
