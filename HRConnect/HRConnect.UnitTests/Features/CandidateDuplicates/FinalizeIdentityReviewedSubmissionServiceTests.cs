@@ -56,6 +56,10 @@ public sealed class FinalizeIdentityReviewedSubmissionServiceTests
         _audit.Verify(x => x.AddAsync(It.Is<AuditEntry>(entry =>
             entry.Action == AuditActions.SubmissionIdentityReviewFinalized &&
             entry.EntityId == submission.SubmissionId), It.IsAny<CancellationToken>()), Times.Once);
+        _notifications.Verify(x => x.AddAsync(It.Is<Notification>(notification =>
+            notification.NotificationType == "ACCOUNT" &&
+            notification.RelatedEntityType == "SUBMISSION"),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
