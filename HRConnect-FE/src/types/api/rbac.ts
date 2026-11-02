@@ -95,19 +95,17 @@ export interface RbacReplaceRolePermissionsInput {
 // ── User Authorization (/admin/authorization/users) ──────────────────────────
 
 export interface RbacUserRoleAssignment {
-  assignmentId?: string;
   roleId: string;
   roleCode: string;
   roleName: string;
+  description: string | null;
   isSystem: boolean;
   status: 'ACTIVE' | 'REVOKED' | string;
   assignedAt: string;
   assignedBy?: string | null;
-  assignedByEmail?: string | null;
+  assignmentSource: string;
   revokedAt?: string | null;
   revokedBy?: string | null;
-  revokedByEmail?: string | null;
-  assignReason?: string | null;
   revokeReason?: string | null;
 }
 

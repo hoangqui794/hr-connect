@@ -67,13 +67,13 @@ public sealed record ReplaceRolePermissionsRequest(
     IReadOnlyCollection<Guid> PermissionIds, Guid ConcurrencyToken, string Reason);
 
 public sealed record UserRoleAssignmentDto(
-    Guid RoleId, string Code, string Name, bool IsSystem, string Status,
+    Guid RoleId, string RoleCode, string RoleName, string? Description, bool IsSystem, string Status,
     DateTime AssignedAt, Guid? AssignedBy, string AssignmentSource,
     DateTime? RevokedAt, Guid? RevokedBy, string? RevokeReason);
 
 public sealed record EffectivePermissionDto(
     Guid PermissionId, string Code, string Resource, string Action,
-    IReadOnlyList<string> SourceRoles);
+    string? Description, IReadOnlyList<string> SourceRoles);
 
 public sealed record UserAuthorizationDto(
     Guid UserId, string Email, string Status, Guid AuthorizationConcurrencyToken,

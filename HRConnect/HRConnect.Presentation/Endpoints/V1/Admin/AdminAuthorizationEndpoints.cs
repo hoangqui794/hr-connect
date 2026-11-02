@@ -17,7 +17,7 @@ public static class AdminAuthorizationEndpoints
     {
         var group = app.MapGroup("/api/v1/admin/authorization")
             .WithTags("Admin Authorization")
-            .RequireAuthorization(policy => policy.RequireRole("PLATFORM_ADMIN"));
+            .RequireAuthorization();
 
         group.MapGet("/permissions", async (
             [FromQuery] string? search, [FromQuery] string? resource, [FromQuery] string? action,
