@@ -53,7 +53,8 @@ public enum OfferCandidateDeliveryEvent
 
 public enum ApplicationCandidateDeliveryEvent
 {
-    NotStartedReported
+    NotStartedReported,
+    StartedConfirmed
 }
 
 public sealed record CandidateRecruitmentDeliveryOutcome(CandidateRecruitmentDeliveryChannel Channel)
@@ -72,8 +73,8 @@ public sealed class CandidateRecruitmentDeliverySettings
 
 /// <summary>
 /// Persists Candidate recruitment notifications through durable channels. Interview events are
-/// intentionally delivered by both in-app notification and email when a linked Candidate has a
-/// valid email address; other event families retain their existing single-channel behaviour.
+/// delivered by both in-app notification and email when a linked Candidate has a valid email
+/// address. Candidates without an account continue to receive the safe email fallback only.
 /// </summary>
 public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentDeliveryService
 {
@@ -162,18 +163,23 @@ public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentD
             return CandidateRecruitmentDeliveryOutcome.Unavailable;
         }
 
-        if (resolved.Channel == CandidateRecruitmentDeliveryChannel.InApp)
+        var deliveredInApp = false;
+        var queuedEmail = false;
+        if (resolved.UserId is { } userId)
         {
             await _notifications.AddAsync(CreateOfferNotification(
-                offer, deliveryEvent, resolved.UserId!.Value, occurredAt), cancellationToken);
+                offer, deliveryEvent, userId, occurredAt), cancellationToken);
+            deliveredInApp = true;
         }
-        else
+
+        if (resolved.RecipientEmail is { } recipientEmail)
         {
-            var payload = CreateOfferEmailPayload(offer, reason);
+            var payload = CreateOfferEmailPayload(offer, reason, resolved.UserId.HasValue);
             await _emailOutboxes.AddAsync(new EmailOutbox
             {
                 EmailOutboxId = Guid.NewGuid(),
-                RecipientEmail = resolved.RecipientEmail!,
+                UserId = resolved.UserId,
+                RecipientEmail = recipientEmail,
                 TemplateCode = GetOfferTemplateCode(deliveryEvent),
                 Subject = null,
                 Payload = JsonSerializer.Serialize(payload),
@@ -181,9 +187,10 @@ public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentD
                 RetryCount = 0,
                 CreatedAt = occurredAt
             }, cancellationToken);
+            queuedEmail = true;
         }
 
-        return new CandidateRecruitmentDeliveryOutcome(resolved.Channel);
+        return new CandidateRecruitmentDeliveryOutcome(ResolveOutcomeChannel(deliveredInApp, queuedEmail));
     }
 
     public async Task<CandidateRecruitmentDeliveryOutcome> DeliverApplicationOutcomeAsync(
@@ -200,15 +207,20 @@ public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentD
             return CandidateRecruitmentDeliveryOutcome.Unavailable;
         }
 
-        if (resolved.Channel == CandidateRecruitmentDeliveryChannel.InApp)
+        var deliveredInApp = false;
+        var queuedEmail = false;
+        if (resolved.UserId is { } userId)
         {
+            var started = deliveryEvent == ApplicationCandidateDeliveryEvent.StartedConfirmed;
             await _notifications.AddAsync(new Notification
             {
                 NotificationId = Guid.NewGuid(),
-                UserId = resolved.UserId!.Value,
+                UserId = userId,
                 NotificationType = "APPLICATION",
-                Title = "Cập nhật kết quả nhận việc",
-                Message = "Doanh nghiệp đã cập nhật rằng bạn chưa bắt đầu làm việc. HR Connect sẽ đối soát kết quả này.",
+                Title = started ? "Đã xác nhận bắt đầu làm việc" : "Cập nhật kết quả nhận việc",
+                Message = started
+                    ? "Doanh nghiệp đã xác nhận bạn bắt đầu làm việc. Chúc bạn thành công ở vị trí mới!"
+                    : "Doanh nghiệp đã cập nhật rằng bạn chưa bắt đầu làm việc. HR Connect sẽ đối soát kết quả này.",
                 RelatedEntityType = "APPLICATION",
                 RelatedEntityId = application.ApplicationId,
                 Metadata = JsonSerializer.Serialize(new
@@ -220,28 +232,36 @@ public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentD
                 IsRead = false,
                 CreatedAt = occurredAt
             }, cancellationToken);
+            deliveredInApp = true;
         }
-        else
+
+        if (resolved.RecipientEmail is { } recipientEmail)
         {
             var payload = new RecruitmentCandidateEmailPayload(
                 application.Candidate?.FullName ?? "bạn",
                 application.Job?.Title ?? "vị trí ứng tuyển",
                 application.Job?.Company?.CompanyName,
-                BuildCandidatePortalUrl());
+                resolved.UserId.HasValue
+                    ? BuildCandidateApplicationUrl(application.ApplicationId)
+                    : BuildCandidatePortalUrl());
             await _emailOutboxes.AddAsync(new EmailOutbox
             {
                 EmailOutboxId = Guid.NewGuid(),
-                RecipientEmail = resolved.RecipientEmail!,
-                TemplateCode = RecruitmentCandidateEmailTemplates.ApplicationNotStartedReported,
+                UserId = resolved.UserId,
+                RecipientEmail = recipientEmail,
+                TemplateCode = deliveryEvent == ApplicationCandidateDeliveryEvent.StartedConfirmed
+                    ? RecruitmentCandidateEmailTemplates.ApplicationStartedConfirmed
+                    : RecruitmentCandidateEmailTemplates.ApplicationNotStartedReported,
                 Subject = null,
                 Payload = JsonSerializer.Serialize(payload),
                 Status = "PENDING",
                 RetryCount = 0,
                 CreatedAt = occurredAt
             }, cancellationToken);
+            queuedEmail = true;
         }
 
-        return new CandidateRecruitmentDeliveryOutcome(resolved.Channel);
+        return new CandidateRecruitmentDeliveryOutcome(ResolveOutcomeChannel(deliveredInApp, queuedEmail));
     }
 
     private Notification CreateInterviewNotification(
@@ -356,20 +376,35 @@ public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentD
         };
     }
 
-    private RecruitmentCandidateEmailPayload CreateOfferEmailPayload(Offer offer, string? reason) =>
+    private RecruitmentCandidateEmailPayload CreateOfferEmailPayload(Offer offer, string? reason, bool hasLinkedAccount) =>
         new(
             offer.Application?.Candidate?.FullName ?? "bạn",
             offer.Application?.Job?.Title ?? "vị trí ứng tuyển",
             offer.Application?.Job?.Company?.CompanyName,
-            BuildCandidatePortalUrl(),
+            hasLinkedAccount
+                ? BuildCandidateApplicationUrl(offer.ApplicationId)
+                : BuildCandidatePortalUrl(),
             ExpiryDate: offer.ExpiryDate,
-            Reason: reason);
+            Reason: reason,
+            HasLinkedAccount: hasLinkedAccount);
 
     private string BuildCandidatePortalUrl() =>
         $"{_settings.PortalBaseUrl.TrimEnd('/')}/register?role=CANDIDATE&returnTo=%2Fcandidate%2Fdashboard";
 
     private string BuildCandidateInterviewUrl(Guid interviewId) =>
         $"{_settings.PortalBaseUrl.TrimEnd('/')}/candidate/interviews/{interviewId}";
+
+    private string BuildCandidateApplicationUrl(Guid applicationId) =>
+        $"{_settings.PortalBaseUrl.TrimEnd('/')}/candidate/applications/{applicationId}";
+
+    private static CandidateRecruitmentDeliveryChannel ResolveOutcomeChannel(bool deliveredInApp, bool queuedEmail) =>
+        (deliveredInApp, queuedEmail) switch
+        {
+            (true, true) => CandidateRecruitmentDeliveryChannel.InAppAndEmail,
+            (true, false) => CandidateRecruitmentDeliveryChannel.InApp,
+            (false, true) => CandidateRecruitmentDeliveryChannel.Email,
+            _ => CandidateRecruitmentDeliveryChannel.Unavailable
+        };
 
     private static string GetInterviewTemplateCode(InterviewCandidateDeliveryEvent deliveryEvent) => deliveryEvent switch
     {

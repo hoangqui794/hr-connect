@@ -243,6 +243,17 @@ export const JobApplyActions: React.FC<{ job: Job; autoOpen?: boolean }> = ({ jo
       );
     }
 
+    if (job.isAcceptingApplications === false) {
+      return (
+        <div>
+          <Button type="primary" size="large" icon={<SendOutlined />} disabled>
+            Đã hết hạn nhận hồ sơ
+          </Button>
+          <p className="m-0 mt-1 text-xs text-slate-500">Bạn vẫn có thể xem thông tin vị trí nhưng không thể nộp đơn mới.</p>
+        </div>
+      );
+    }
+
     const allowed = hasPermission('application.create');
     return (
       <>

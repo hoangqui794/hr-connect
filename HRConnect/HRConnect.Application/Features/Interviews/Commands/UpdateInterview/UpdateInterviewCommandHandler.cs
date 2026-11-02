@@ -100,7 +100,7 @@ public class UpdateInterviewCommandHandler : IRequestHandler<UpdateInterviewComm
         }
 
         var effectiveInterviewType = interviewType
-            ?? Mf04InputPolicy.NormalizeInterviewType(interview.InterviewType);
+            ?? Mf04InputPolicy.NormalizeStoredInterviewType(interview.InterviewType);
         var effectiveLocation = request.Location == null ? interview.Location : location;
         var effectiveMeetingLink = request.MeetingLink == null ? interview.MeetingLink : meetingLink;
         effectiveMeetingLink = Mf04InputPolicy.NormalizeMeetingLink(effectiveMeetingLink);

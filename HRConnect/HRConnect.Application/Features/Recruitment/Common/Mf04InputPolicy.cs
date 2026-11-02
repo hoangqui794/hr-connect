@@ -56,10 +56,25 @@ public static class Mf04InputPolicy
         {
             OnlineInterviewType or "TRỰC TUYẾN" or "TRUC TUYEN" => OnlineInterviewType,
             OfflineInterviewType or "ONSITE" or "TRỰC TIẾP" or "TRUC TIEP" => OfflineInterviewType,
-            PhoneInterviewType or "PHONE_SCREEN" or "ĐIỆN THOẠI" or "DIEN THOAI" => PhoneInterviewType,
             _ => throw new BadRequestException(
-                "Hình thức phỏng vấn không hợp lệ. Chỉ chấp nhận ONLINE, OFFLINE hoặc PHONE.")
+                "Hình thức phỏng vấn không hợp lệ. Chỉ chấp nhận ONLINE hoặc OFFLINE.")
         };
+    }
+
+    /// <summary>
+    /// Normalizes values already persisted before PHONE was retired. This method is only for
+    /// reading an existing interview during reschedule/update; new input must use NormalizeInterviewType.
+    /// </summary>
+    public static string NormalizeStoredInterviewType(string? value)
+    {
+        var normalized = NormalizeOptionalText(value, InterviewTypeMaxLength, "Hình thức phỏng vấn")
+            ?.ToUpperInvariant();
+        if (normalized is PhoneInterviewType or "PHONE_SCREEN" or "ĐIỆN THOẠI" or "DIEN THOAI")
+        {
+            return PhoneInterviewType;
+        }
+
+        return NormalizeInterviewType(normalized);
     }
 
     public static string? NormalizeMeetingLink(string? value)

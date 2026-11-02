@@ -30,6 +30,7 @@ public static class RecruitmentCandidateEmailTemplates
     public const string OfferWithdrawn = "CANDIDATE_OFFER_WITHDRAWN";
     public const string OfferExpired = "CANDIDATE_OFFER_EXPIRED";
     public const string ApplicationNotStartedReported = "CANDIDATE_NOT_STARTED_REPORTED";
+    public const string ApplicationStartedConfirmed = "CANDIDATE_STARTED_CONFIRMED";
 
     public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.Ordinal)
     {
@@ -40,6 +41,7 @@ public static class RecruitmentCandidateEmailTemplates
         OfferSent,
         OfferWithdrawn,
         OfferExpired,
-        ApplicationNotStartedReported
+        ApplicationNotStartedReported,
+        ApplicationStartedConfirmed
     };
 }
