@@ -57,13 +57,13 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { to: '/admin/placement-reconciliations', label: 'Đối soát nhận việc', icon: <SafetyCertificateOutlined /> },
       { to: '/admin/users', label: 'Người dùng', icon: <TeamOutlined /> },
       { to: '/admin/contact-requests', label: 'Yêu cầu tư vấn', icon: <CustomerServiceOutlined /> },
-      { to: '/admin/user-authorization', label: 'Phân quyền người dùng', icon: <UserSwitchOutlined /> },
+      { to: '/admin/user-authorization', label: 'Quyền truy cập người dùng', icon: <UserSwitchOutlined /> },
     ],
   },
   {
     group: 'Cấu hình',
     items: [
-      { to: '/admin/roles-permissions', label: 'Vai trò & Quyền', icon: <KeyOutlined /> },
+      { to: '/admin/roles-permissions', label: 'Vai trò & quyền truy cập', icon: <KeyOutlined /> },
       { to: '/admin/service-types', label: 'Loại dịch vụ', icon: <AppstoreOutlined /> },
       { to: '/admin/commission-rules', label: 'Quy tắc hoa hồng', icon: <DollarOutlined /> },
       { to: '/admin/settings', label: 'Cài đặt hệ thống', icon: <SettingOutlined /> },

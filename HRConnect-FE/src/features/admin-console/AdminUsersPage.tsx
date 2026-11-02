@@ -325,7 +325,7 @@ export const AdminUsersPage: React.FC = () => {
                   icon={<KeyOutlined />}
                   onClick={() => navigate(`/admin/user-authorization?userId=${user.userId}`)}
                 >
-                  Phân quyền người dùng (RBAC)
+                  Quyền truy cập người dùng
                 </Button>
               </div>
             )}

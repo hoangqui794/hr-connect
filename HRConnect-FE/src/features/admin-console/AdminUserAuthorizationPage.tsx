@@ -47,20 +47,12 @@ import { getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
 import type {
   RbacEffectivePermission,
+  RbacRole,
   RbacUserAuthorization,
   RbacUserRoleAssignment,
 } from '@/types/api/rbac';
 import { adminTokens, formatDateTime } from './adminTheme';
 import { Initials, PageHero, PersonCell, StatusDot, Surface } from './ui';
-
-interface SystemRoleMatrixItem {
-  code: string;
-  name: string;
-  badgeClass: string;
-  description: string;
-  scope: string;
-  permissions: string[];
-}
 
 const USER_STATUS_LABEL: Record<string, string> = {
   ACTIVE: 'Hoạt động',
@@ -69,49 +61,6 @@ const USER_STATUS_LABEL: Record<string, string> = {
   LOCKED: 'Đã khóa',
   INACTIVE: 'Ngừng hoạt động',
 };
-
-const DEFAULT_SYSTEM_MATRIX: SystemRoleMatrixItem[] = [
-  {
-    code: 'PLATFORM_ADMIN',
-    name: 'Quản trị viên',
-    badgeClass: 'bg-purple-50 text-purple-700 border border-purple-200/80',
-    description: 'Toàn quyền kiểm soát và quản trị cấu hình nền tảng, phân quyền RBAC, người dùng và đối soát tài chính.',
-    scope: 'Toàn hệ thống',
-    permissions: ['user.manage', 'role.manage', 'job.manage', 'finance.manage', 'system.configure'],
-  },
-  {
-    code: 'INTERNAL_HR',
-    name: 'Nhân sự nội bộ',
-    badgeClass: 'bg-sky-50 text-sky-700 border border-sky-200/80',
-    description: 'Kiểm duyệt tin tuyển dụng, điều phối hợp đồng dịch vụ, sàng lọc ứng viên AI và đối soát nhận việc.',
-    scope: 'Vận hành tuyển dụng & Hợp đồng',
-    permissions: ['job.review', 'agreement.manage', 'screening.review', 'placement.reconcile'],
-  },
-  {
-    code: 'CLIENT_COMPANY_USER',
-    name: 'Doanh nghiệp tuyển dụng',
-    badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200/80',
-    description: 'Đăng tin tuyển dụng, quản lý quy trình phỏng vấn, ký kết thỏa thuận dịch vụ & kích hoạt bảo hành.',
-    scope: 'Không gian Doanh nghiệp',
-    permissions: ['job.create', 'candidate.view', 'interview.schedule', 'warranty.claim'],
-  },
-  {
-    code: 'AFFILIATE',
-    name: 'Cộng tác viên / Affiliate',
-    badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200/80',
-    description: 'Tìm kiếm nguồn ứng viên, nộp hồ sơ vào tin tuyển dụng mở, theo dõi hoa hồng và yêu cầu quyết toán.',
-    scope: 'Mạng lưới tuyển dụng',
-    permissions: ['candidate.submit', 'commission.view', 'payout.request', 'dispute.create'],
-  },
-  {
-    code: 'CANDIDATE',
-    name: 'Ứng viên',
-    badgeClass: 'bg-slate-100 text-slate-700 border border-slate-200/80',
-    description: 'Ứng tuyển việc làm, khởi tạo CV trực tuyến, nhận gợi ý việc làm phù hợp từ AI và quản lý hồ sơ cá nhân.',
-    scope: 'Cá nhân ứng viên',
-    permissions: ['job.apply', 'cv.manage', 'profile.update'],
-  },
-];
 
 export const AdminUserAuthorizationPage: React.FC = () => {
   const { message } = AntApp.useApp();
@@ -159,6 +108,12 @@ export const AdminUserAuthorizationPage: React.FC = () => {
     queryKey: ['admin-rbac-available-custom-roles'],
     queryFn: () => rbacApi.getRoles({ isSystem: false, isActive: true, pageSize: 100 }),
     enabled: Boolean(selectedUserId),
+  });
+
+  const systemRolesQuery = useQuery({
+    queryKey: ['admin-rbac-system-roles'],
+    queryFn: () => rbacApi.getRoles({ isSystem: true, pageSize: 100 }),
+    enabled: !selectedUserId,
   });
 
   const authData: RbacUserAuthorization | undefined = authQuery.data;
@@ -325,11 +280,9 @@ export const AdminUserAuthorizationPage: React.FC = () => {
               {r.roleCode}
             </code>
           </div>
-          {r.assignReason && (
-            <div className="text-xs text-slate-500 mt-0.5">
-              Lý do gán: <span className="italic">{r.assignReason}</span>
-            </div>
-          )}
+          <div className="text-xs text-slate-500 mt-0.5">
+            Nguồn gán: <span className="font-medium">{r.assignmentSource}</span>
+          </div>
           {r.revokeReason && (
             <div className="text-xs text-red-500 mt-0.5">
               Lý do thu hồi: <span className="italic">{r.revokeReason}</span>
@@ -346,11 +299,11 @@ export const AdminUserAuthorizationPage: React.FC = () => {
       render: (isSystem: boolean) =>
         isSystem ? (
           <Tag color="blue" icon={<LockOutlined />}>
-            System Role
+            Vai trò hệ thống
           </Tag>
         ) : (
           <Tag color="green" icon={<SafetyCertificateOutlined />}>
-            Custom Role
+            Vai trò tùy chỉnh
           </Tag>
         ),
     },
@@ -376,12 +329,12 @@ export const AdminUserAuthorizationPage: React.FC = () => {
         <div className="text-xs text-slate-600 space-y-0.5">
           <div>
             Gán: {formatDateTime(r.assignedAt)}
-            {r.assignedByEmail && <span className="text-slate-400"> ({r.assignedByEmail})</span>}
+            {r.assignedBy && <span className="text-slate-400"> · {r.assignedBy.slice(0, 8)}…</span>}
           </div>
           {r.revokedAt && (
             <div className="text-red-600">
               Thu hồi: {formatDateTime(r.revokedAt)}
-              {r.revokedByEmail && <span className="text-red-400"> ({r.revokedByEmail})</span>}
+              {r.revokedBy && <span className="text-red-400"> · {r.revokedBy.slice(0, 8)}…</span>}
             </div>
           )}
         </div>
@@ -396,7 +349,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
       render: (_, r) => {
         if (r.isSystem) {
           return (
-            <Tooltip title="System Role do quy trình hệ thống quản lý, không thể thu hồi tại đây.">
+            <Tooltip title="Vai trò hệ thống do quy trình nghiệp vụ quản lý, không thể thu hồi tại đây.">
               <Tag color="default">Cố định</Tag>
             </Tooltip>
           );
@@ -501,8 +454,8 @@ export const AdminUserAuthorizationPage: React.FC = () => {
     <div>
       <PageHero
         eyebrow="Quản trị truy cập"
-        title="Phân quyền người dùng"
-        description="Tra cứu quyền hiệu lực, gán Custom Role và thu hồi vai trò bổ sung cho từng người dùng trên nền tảng."
+        title="Quyền truy cập người dùng"
+        description="Kiểm tra quyền hiệu lực, gán hoặc thu hồi vai trò truy cập tùy chỉnh cho từng người dùng."
         actions={
           selectedUserId && (
             <Button
@@ -562,9 +515,9 @@ export const AdminUserAuthorizationPage: React.FC = () => {
                 <div className="text-xs font-semibold uppercase tracking-wider text-blue-700">
                   Chưa chọn người dùng
                 </div>
-                <div className="font-bold text-slate-900 text-sm">Tra cứu Ma trận Vai trò & Quyền hạn Hệ thống</div>
+                <div className="font-bold text-slate-900 text-sm">Tra cứu vai trò hệ thống</div>
                 <div className="text-xs text-slate-500">
-                  Chọn một người dùng từ thanh tìm kiếm ở trên để cấu hình phân quyền chi tiết. Dưới đây là ma trận đặc quyền và phạm vi trách nhiệm mặc định của hệ thống để tra cứu nhanh.
+                  Chọn một người dùng để xem quyền thực tế và gán vai trò truy cập tùy chỉnh. Vai trò hệ thống bên dưới chỉ đọc và được cấp qua đúng quy trình nghiệp vụ.
                 </div>
               </div>
             </div>
@@ -574,16 +527,17 @@ export const AdminUserAuthorizationPage: React.FC = () => {
             <div className="flex items-center justify-between border-0 border-b border-solid border-slate-100 px-5 py-4">
               <div className="flex items-center gap-2">
                 <SafetyCertificateOutlined className="text-base text-blue-600" />
-                <span className="text-base font-bold text-slate-900">Ma trận vai trò mặc định (System Roles)</span>
-                <Badge count={DEFAULT_SYSTEM_MATRIX.length} style={{ backgroundColor: '#2563EB' }} />
+                <span className="text-base font-bold text-slate-900">Vai trò hệ thống</span>
+                <Badge count={systemRolesQuery.data?.total ?? 0} style={{ backgroundColor: '#2563EB' }} />
               </div>
-              <span className="text-xs text-slate-500">Quy tắc RBAC chuẩn hóa</span>
+              <span className="text-xs text-slate-500">Dữ liệu trực tiếp từ hệ thống</span>
             </div>
 
-            <Table<SystemRoleMatrixItem>
+            <Table<RbacRole>
               className="admin-soft-table w-full table-auto"
-              rowKey="code"
-              dataSource={DEFAULT_SYSTEM_MATRIX}
+              rowKey="roleId"
+              loading={systemRolesQuery.isLoading}
+              dataSource={systemRolesQuery.data?.items ?? []}
               pagination={false}
               columns={[
                 {
@@ -601,47 +555,30 @@ export const AdminUserAuthorizationPage: React.FC = () => {
                   ),
                 },
                 {
-                  title: 'Vai trò hiển thị',
+                  title: 'Tên vai trò',
                   key: 'name',
                   width: 220,
                   render: (_, r) => (
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${r.badgeClass}`}
-                    >
+                    <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
                       {r.name}
                     </span>
                   ),
                 },
                 {
-                  title: 'Mô tả & Phạm vi quyền hạn',
+                  title: 'Mô tả',
                   key: 'desc',
                   render: (_, r) => (
-                    <div>
-                      <div className="text-xs text-slate-700 leading-relaxed">{r.description}</div>
-                      <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-                        <span>Phạm vi:</span>
-                        <strong className="text-slate-600">{r.scope}</strong>
-                      </div>
+                    <div className="text-xs text-slate-700 leading-relaxed">
+                      {r.description || 'Vai trò nghiệp vụ cố định của hệ thống.'}
                     </div>
                   ),
                 },
                 {
-                  title: 'Quyền hạn cơ sở',
-                  dataIndex: 'permissions',
-                  key: 'perms',
-                  width: 280,
-                  render: (perms: string[]) => (
-                    <div className="flex flex-wrap gap-1">
-                      {perms.map((p) => (
-                        <span
-                          key={p}
-                          className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-mono text-slate-600 border border-slate-200/80"
-                        >
-                          {p}
-                        </span>
-                      ))}
-                    </div>
-                  ),
+                  title: 'Số quyền hiệu lực',
+                  dataIndex: 'permissionCount',
+                  key: 'permissionCount',
+                  width: 160,
+                  render: (count: number) => <strong>{count}</strong>,
                 },
                 {
                   title: 'Phân loại',
@@ -650,7 +587,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
                   align: 'right',
                   render: () => (
                     <Tag color="blue" icon={<LockOutlined />} className="m-0 font-medium text-xs">
-                      System Role
+                      Vai trò hệ thống
                     </Tag>
                   ),
                 },
@@ -711,7 +648,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
                   setAssignModalOpen(true);
                 }}
               >
-                Gán Custom Role mới
+                Gán vai trò truy cập
               </Button>
             </div>
 
@@ -820,7 +757,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
         title={
           <div className="flex items-center gap-2 text-base font-bold text-slate-900">
             <PlusOutlined className="text-emerald-600" />
-            Gán Custom Role cho người dùng
+            Gán vai trò truy cập cho người dùng
           </div>
         }
         okText="Gán vai trò"
@@ -839,7 +776,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
         >
           <Form.Item
             name="roleId"
-            label="Chọn vai trò tùy chỉnh (Custom Role)"
+            label="Chọn vai trò truy cập tùy chỉnh"
             rules={[{ required: true, message: 'Vui lòng chọn vai trò.' }]}
           >
             <Select
@@ -876,7 +813,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
         title={
           <div className="flex items-center gap-2 text-base font-bold text-red-700">
             <StopOutlined />
-            Thu hồi Custom Role
+            Thu hồi vai trò truy cập
           </div>
         }
         okText="Xác nhận thu hồi"
@@ -925,7 +862,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
         title={
           <div className="flex items-center gap-2 text-base font-bold text-slate-900">
             <CheckCircleOutlined className="text-emerald-600" />
-            Kích hoạt lại Custom Role
+            Kích hoạt lại vai trò truy cập
           </div>
         }
         okText="Kích hoạt lại"
