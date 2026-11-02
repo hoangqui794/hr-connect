@@ -173,8 +173,8 @@ public sealed class ApproveIdentityClaimCommandHandler(
                 EntityType = "CANDIDATE_IDENTITY_CLAIM",
                 EntityId = claim.ClaimId,
                 ActorUserId = request.AdminUserId,
-                ActorType = "ADMIN",
-                Source = "API",
+                ActorType = AuditActorTypes.User,
+                Source = AuditSources.Api,
                 ServiceName = "HRConnect.Presentation",
                 OldValues = new
                 {
@@ -199,8 +199,8 @@ public sealed class ApproveIdentityClaimCommandHandler(
                     EntityType = "CANDIDATE",
                     EntityId = canonicalCandidateId,
                     ActorUserId = request.AdminUserId,
-                    ActorType = "ADMIN",
-                    Source = "API",
+                    ActorType = AuditActorTypes.User,
+                    Source = AuditSources.Api,
                     ServiceName = "HRConnect.Presentation",
                     OldValues = new { candidateId = claim.RequesterCandidateId },
                     NewValues = new { candidateId = canonicalCandidateId, claimId = claim.ClaimId }
