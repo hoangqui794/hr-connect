@@ -288,16 +288,16 @@ public class DemoAccountSeederTests
         await DemoAccountSeeder.SeedAsync(context);
 
         // Assert - exact counts for all entities (12 accounts total)
-        (await context.AppUsers.CountAsync()).Should().Be(12);
-        (await context.AdminProfiles.CountAsync()).Should().Be(1);
-        (await context.InternalHrProfiles.CountAsync()).Should().Be(2);
-        (await context.Candidates.CountAsync()).Should().Be(2);
-        (await context.AffiliateApplications.CountAsync()).Should().Be(2);
-        (await context.AffiliateProfiles.CountAsync()).Should().Be(2);
-        (await context.Companies.CountAsync()).Should().Be(5);
-        (await context.CompanyUsers.CountAsync()).Should().Be(5);
-        (await context.CompanyVerificationRequests.CountAsync()).Should().Be(5);
-        (await context.UserRoles.CountAsync()).Should().Be(12);
+        (await context.AppUsers.CountAsync()).Should().Be(17);
+        (await context.AdminProfiles.CountAsync()).Should().Be(2);
+        (await context.InternalHrProfiles.CountAsync()).Should().Be(3);
+        (await context.Candidates.CountAsync()).Should().Be(3);
+        (await context.AffiliateApplications.CountAsync()).Should().Be(3);
+        (await context.AffiliateProfiles.CountAsync()).Should().Be(3);
+        (await context.Companies.CountAsync()).Should().Be(6);
+        (await context.CompanyUsers.CountAsync()).Should().Be(6);
+        (await context.CompanyVerificationRequests.CountAsync()).Should().Be(6);
+        (await context.UserRoles.CountAsync()).Should().Be(17);
     }
 
     [Fact]
@@ -372,7 +372,7 @@ public class DemoAccountSeederTests
             .Where(identity => identity.Kind == "PRIMARY" && identity.Status != "REVOKED")
             .ToListAsync();
 
-        activePrimaryIdentities.Should().HaveCount(12);
+        activePrimaryIdentities.Should().HaveCount(17);
         activePrimaryIdentities.Should().OnlyContain(identity => identity.Status == "VERIFIED");
         activePrimaryIdentities.Select(identity => identity.UserId).Should().OnlyHaveUniqueItems();
 
@@ -423,13 +423,13 @@ public class DemoAccountSeederTests
 
         // Assert
         (await context.Roles.CountAsync()).Should().Be(5);
-        (await context.AppUsers.CountAsync()).Should().Be(12);
-        (await context.AdminProfiles.CountAsync()).Should().Be(1);
-        (await context.InternalHrProfiles.CountAsync()).Should().Be(2);
-        (await context.Candidates.CountAsync()).Should().Be(2);
-        (await context.AffiliateProfiles.CountAsync()).Should().Be(2);
-        (await context.Companies.CountAsync()).Should().Be(5);
-        (await context.CompanyUsers.CountAsync()).Should().Be(5);
+        (await context.AppUsers.CountAsync()).Should().Be(17);
+        (await context.AdminProfiles.CountAsync()).Should().Be(2);
+        (await context.InternalHrProfiles.CountAsync()).Should().Be(3);
+        (await context.Candidates.CountAsync()).Should().Be(3);
+        (await context.AffiliateProfiles.CountAsync()).Should().Be(3);
+        (await context.Companies.CountAsync()).Should().Be(6);
+        (await context.CompanyUsers.CountAsync()).Should().Be(6);
     }
 
     [Fact]
@@ -519,7 +519,12 @@ public class DemoAccountSeederTests
             (DemoAccountSeeder.Client2Email, "CLIENT_COMPANY_USER"),
             (DemoAccountSeeder.Client3Email, "CLIENT_COMPANY_USER"),
             (DemoAccountSeeder.Client4Email, "CLIENT_COMPANY_USER"),
-            (DemoAccountSeeder.Client5Email, "CLIENT_COMPANY_USER")
+            (DemoAccountSeeder.Client5Email, "CLIENT_COMPANY_USER"),
+            (DemoAccountSeeder.TesterAdminEmail, "PLATFORM_ADMIN"),
+            (DemoAccountSeeder.TesterInternalHrEmail, "INTERNAL_HR"),
+            (DemoAccountSeeder.TesterCandidateEmail, "CANDIDATE"),
+            (DemoAccountSeeder.TesterAffiliateEmail, "AFFILIATE"),
+            (DemoAccountSeeder.TesterClientEmail, "CLIENT_COMPANY_USER")
         };
 
         foreach (var (email, expectedRole) in testAccounts)
@@ -567,37 +572,43 @@ public class DemoAccountSeederTests
                 DemoAccountSeeder.Client2Email,
                 DemoAccountSeeder.Client3Email,
                 DemoAccountSeeder.Client4Email,
-                DemoAccountSeeder.Client5Email
+                DemoAccountSeeder.Client5Email,
+                DemoAccountSeeder.TesterAdminEmail,
+                DemoAccountSeeder.TesterInternalHrEmail,
+                DemoAccountSeeder.TesterCandidateEmail,
+                DemoAccountSeeder.TesterAffiliateEmail,
+                DemoAccountSeeder.TesterClientEmail
             };
 
             var seededUsers = await context.AppUsers
                 .Where(u => allDemoEmails.Contains(u.Email))
                 .ToListAsync();
 
-            seededUsers.Should().HaveCount(12);
+            seededUsers.Should().HaveCount(17);
             seededUsers.Should().OnlyContain(u => u.Status == "ACTIVE");
 
             // Check Profiles
-            (await context.AdminProfiles.CountAsync(ap => ap.EmployeeCode == "ADM001")).Should().Be(1);
-            (await context.InternalHrProfiles.CountAsync(p => p.EmployeeCode == "HR001" || p.EmployeeCode == "HR002")).Should().Be(2);
-            (await context.Candidates.CountAsync(c => c.Email == DemoAccountSeeder.CandidateEmail || c.Email == DemoAccountSeeder.Candidate2Email)).Should().Be(2);
-            (await context.AffiliateProfiles.CountAsync(ap => ap.DisplayName == "Demo Affiliate" || ap.DisplayName == "Demo Affiliate 2")).Should().Be(2);
+            (await context.AdminProfiles.CountAsync(ap => ap.EmployeeCode == "ADM001" || ap.EmployeeCode == "ADM002")).Should().Be(2);
+            (await context.InternalHrProfiles.CountAsync(p => p.EmployeeCode == "HR001" || p.EmployeeCode == "HR002" || p.EmployeeCode == "HR003")).Should().Be(3);
+            (await context.Candidates.CountAsync(c => c.Email == DemoAccountSeeder.CandidateEmail || c.Email == DemoAccountSeeder.Candidate2Email || c.Email == DemoAccountSeeder.TesterCandidateEmail)).Should().Be(3);
+            (await context.AffiliateProfiles.CountAsync(ap => ap.DisplayName == "Demo Affiliate" || ap.DisplayName == "Demo Affiliate 2" || ap.DisplayName == "Tester Affiliate")).Should().Be(3);
             var demoCompanyTaxCodes = new[]
             {
                 DemoAccountSeeder.DemoCompanyTaxCode,
                 DemoAccountSeeder.DemoCompany2TaxCode,
                 DemoAccountSeeder.DemoCompany3TaxCode,
                 DemoAccountSeeder.DemoCompany4TaxCode,
-                DemoAccountSeeder.DemoCompany5TaxCode
+                DemoAccountSeeder.DemoCompany5TaxCode,
+                DemoAccountSeeder.TesterCompanyTaxCode
             };
-            (await context.Companies.CountAsync(c => c.TaxCode != null && demoCompanyTaxCodes.Contains(c.TaxCode))).Should().Be(5);
+            (await context.Companies.CountAsync(c => c.TaxCode != null && demoCompanyTaxCodes.Contains(c.TaxCode))).Should().Be(6);
 
             // Act - Idempotency check on real PostgreSQL
             await DemoAccountSeeder.SeedAsync(context);
 
             var countAfter = await context.AppUsers
                 .CountAsync(u => allDemoEmails.Contains(u.Email));
-            countAfter.Should().Be(12);
+            countAfter.Should().Be(17);
         }
         catch (Exception ex) when (ex is Npgsql.NpgsqlException || ex is System.Net.Sockets.SocketException || ex is InvalidOperationException)
         {

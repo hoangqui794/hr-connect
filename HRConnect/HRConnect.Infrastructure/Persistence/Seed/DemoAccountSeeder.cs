@@ -29,6 +29,13 @@ public static class DemoAccountSeeder
     public const string Client4Email = "client4@gmail.com";
     public const string Client5Email = "client5@gmail.com";
 
+    // Tester accounts for external QA / reviewers
+    public const string TesterAdminEmail = "tester.admin@gmail.com";
+    public const string TesterInternalHrEmail = "tester.hr@gmail.com";
+    public const string TesterCandidateEmail = "tester.candidate@gmail.com";
+    public const string TesterAffiliateEmail = "tester.affiliate@gmail.com";
+    public const string TesterClientEmail = "tester.client@gmail.com";
+
     // Demo account phones
     public const string CandidatePhone = "0900000001";
     public const string AffiliatePhone = "0900000002";
@@ -42,6 +49,11 @@ public static class DemoAccountSeeder
     public const string Client3Phone = "0900000023";
     public const string Client4Phone = "0900000033";
     public const string Client5Phone = "0900000043";
+
+    public const string TesterCandidatePhone = "0900000051";
+    public const string TesterAffiliatePhone = "0900000052";
+    public const string TesterClientPhone = "0900000053";
+    public const string TesterInternalHrPhone = "0900000054";
 
     public const string DemoCompanyName = "HR Connect Demo Company";
     public const string DemoCompanyTaxCode = "DEMO-TAX-001";
@@ -57,6 +69,9 @@ public static class DemoAccountSeeder
 
     public const string DemoCompany5Name = "Lotus Commerce";
     public const string DemoCompany5TaxCode = "DEMO-TAX-005";
+
+    public const string TesterCompanyName = "Tester Tech Solutions";
+    public const string TesterCompanyTaxCode = "TESTER-TAX-001";
 
     private static readonly IReadOnlyDictionary<string, DemoCompanyProfile> DemoCompanyProfiles =
         new Dictionary<string, DemoCompanyProfile>(StringComparer.Ordinal)
@@ -91,6 +106,12 @@ public static class DemoAccountSeeder
                 "https://www.hrconnectvn.online",
                 "Quận 7, Thành phố Hồ Chí Minh",
                 "Lotus Commerce vận hành hệ sinh thái thương mại điện tử kết nối thương hiệu Việt với người tiêu dùng trên nhiều kênh. Công ty đầu tư vào công nghệ bán lẻ, logistics và dữ liệu để tạo trải nghiệm mua sắm thuận tiện, nhất quán."),
+            [TesterCompanyTaxCode] = new(
+                "Công nghệ phần mềm và kiểm thử",
+                "51-100 nhân sự",
+                "https://www.hrconnectvn.online",
+                "Khu Công nghệ phần mềm, Thành phố Thủ Đức, Thành phố Hồ Chí Minh",
+                "Tester Tech Solutions là doanh nghiệp công nghệ chuyên về phát triển và kiểm thử phần mềm, dùng cho mục đích kiểm thử trên nền tảng HR Connect."),
         };
 
     /// <summary>
@@ -115,7 +136,8 @@ public static class DemoAccountSeeder
             var now = DateTime.UtcNow;
 
             // 1. Khởi tạo Platform Admin (Cần có trước để đóng vai trò reviewer/assignedBy cho các tài khoản khác)
-            var adminUser = await EnsurePlatformAdminAsync(context, passwordHasher, emailNormalizer, now, logger, cancellationToken);
+            var adminUser = await EnsurePlatformAdminAsync(context, passwordHasher, emailNormalizer, AdminEmail, "Platform Admin", "ADM001", now, logger, cancellationToken);
+            await EnsurePlatformAdminAsync(context, passwordHasher, emailNormalizer, TesterAdminEmail, "Tester Platform Admin", "ADM002", now, logger, cancellationToken);
 
             // 2. Khởi tạo Internal HR (Nhân sự nội bộ: internalhr@gmail.com và internalhr2@gmail.com)
             await EnsureInternalHrAsync(
@@ -128,6 +150,11 @@ public static class DemoAccountSeeder
                 adminUser.UserId, InternalHr2Email, "Demo Internal HR 2", InternalHr2Phone,
                 "HR002", "Internal Recruiter", "Recruitment", now, logger, cancellationToken);
 
+            await EnsureInternalHrAsync(
+                context, passwordHasher, emailNormalizer, phoneNormalizer,
+                adminUser.UserId, TesterInternalHrEmail, "Tester Internal HR", TesterInternalHrPhone,
+                "HR003", "Internal Recruiter", "Recruitment", now, logger, cancellationToken);
+
             // 3. Khởi tạo Candidate (Ứng viên: candidate@gmail.com và candidate2@gmail.com)
             await EnsureCandidateAsync(
                 context, passwordHasher, emailNormalizer, phoneNormalizer,
@@ -137,6 +164,10 @@ public static class DemoAccountSeeder
                 context, passwordHasher, emailNormalizer, phoneNormalizer,
                 Candidate2Email, "Demo Candidate 2", Candidate2Phone, now, logger, cancellationToken);
 
+            await EnsureCandidateAsync(
+                context, passwordHasher, emailNormalizer, phoneNormalizer,
+                TesterCandidateEmail, "Tester Candidate", TesterCandidatePhone, now, logger, cancellationToken);
+
             // 4. Khởi tạo Affiliate (Cộng tác viên: affiliate@gmail.com và affiliate2@gmail.com)
             await EnsureAffiliateAsync(
                 context, passwordHasher, emailNormalizer, phoneNormalizer,
@@ -145,6 +176,10 @@ public static class DemoAccountSeeder
             await EnsureAffiliateAsync(
                 context, passwordHasher, emailNormalizer, phoneNormalizer,
                 adminUser.UserId, Affiliate2Email, "Demo Affiliate 2", Affiliate2Phone, now, logger, cancellationToken);
+
+            await EnsureAffiliateAsync(
+                context, passwordHasher, emailNormalizer, phoneNormalizer,
+                adminUser.UserId, TesterAffiliateEmail, "Tester Affiliate", TesterAffiliatePhone, now, logger, cancellationToken);
 
             // 5. Khởi tạo Client Company Users (client@gmail.com - Company 1, client2@gmail.com - Company 2)
             // Do EF Core cấu hình quan hệ 1-1 giữa Company và CompanyUser (WithOne), việc tạo Company 2 cho client2
@@ -174,6 +209,11 @@ public static class DemoAccountSeeder
                 adminUser.UserId, Client5Email, "Demo Client Lotus Commerce", Client5Phone,
                 DemoCompany5Name, DemoCompany5TaxCode, now, logger, cancellationToken);
 
+            await EnsureClientWithCompanyAsync(
+                context, passwordHasher, emailNormalizer, phoneNormalizer,
+                adminUser.UserId, TesterClientEmail, "Tester Client", TesterClientPhone,
+                TesterCompanyName, TesterCompanyTaxCode, now, logger, cancellationToken);
+
             // Demo accounts may be created after the candidate identity migration has already
             // backfilled existing users. Keep the login email and user_email_identity invariant
             // intact on every seed run, including databases that already contain demo accounts.
@@ -190,7 +230,12 @@ public static class DemoAccountSeeder
                 Client2Email,
                 Client3Email,
                 Client4Email,
-                Client5Email
+                Client5Email,
+                TesterAdminEmail,
+                TesterInternalHrEmail,
+                TesterCandidateEmail,
+                TesterAffiliateEmail,
+                TesterClientEmail
             };
 
             var demoUsers = await context.AppUsers
@@ -219,17 +264,20 @@ public static class DemoAccountSeeder
     }
 
     /// <summary>
-    /// 1. Đảm bảo Platform Admin (admin@gmail.com) tồn tại kèm AdminProfile và UserRole PLATFORM_ADMIN
+    /// 1. Đảm bảo Platform Admin tồn tại kèm AdminProfile và UserRole PLATFORM_ADMIN
     /// </summary>
     private static async Task<AppUser> EnsurePlatformAdminAsync(
         ApplicationDbContext context,
         IPasswordHasher passwordHasher,
         IEmailNormalizer emailNormalizer,
+        string email,
+        string displayName,
+        string employeeCode,
         DateTime now,
         ILogger? logger,
         CancellationToken cancellationToken)
     {
-        var normalizedEmail = emailNormalizer.Normalize(AdminEmail);
+        var normalizedEmail = emailNormalizer.Normalize(email);
 
         var user = await context.AppUsers
             .FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
@@ -241,7 +289,7 @@ public static class DemoAccountSeeder
                 UserId = Guid.NewGuid(),
                 Email = normalizedEmail,
                 PasswordHash = passwordHasher.Hash(InitialDemoPassword),
-                DisplayName = "Platform Admin",
+                DisplayName = displayName,
                 Status = "ACTIVE",
                 EmailVerifiedAt = now,
                 CreatedAt = now,
@@ -250,12 +298,12 @@ public static class DemoAccountSeeder
 
             await context.AppUsers.AddAsync(user, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
-            logger?.LogInformation("Created demo Platform Admin account: {Email}", AdminEmail);
+            logger?.LogInformation("Created demo Platform Admin account: {Email}", email);
         }
 
         // Đảm bảo AdminProfile tồn tại
         var adminProfile = await context.AdminProfiles
-            .FirstOrDefaultAsync(ap => ap.UserId == user.UserId || ap.EmployeeCode == "ADM001", cancellationToken);
+            .FirstOrDefaultAsync(ap => ap.UserId == user.UserId || ap.EmployeeCode == employeeCode, cancellationToken);
 
         if (adminProfile == null)
         {
@@ -263,7 +311,7 @@ public static class DemoAccountSeeder
             {
                 AdminProfileId = Guid.NewGuid(),
                 UserId = user.UserId,
-                EmployeeCode = "ADM001",
+                EmployeeCode = employeeCode,
                 JobTitle = "Platform Administrator",
                 Status = "ACTIVE",
                 CreatedAt = now,
@@ -272,7 +320,7 @@ public static class DemoAccountSeeder
 
             await context.AdminProfiles.AddAsync(adminProfile, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
-            logger?.LogInformation("Created AdminProfile for {Email} with EmployeeCode ADM001", AdminEmail);
+            logger?.LogInformation("Created AdminProfile for {Email} with EmployeeCode {Code}", email, employeeCode);
         }
         else if (adminProfile.UserId != user.UserId)
         {
