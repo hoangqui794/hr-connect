@@ -28,6 +28,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
     private readonly IPlacementFinanceService _placementFinanceService;
     private readonly IFinanceRepository _financeRepository;
     private readonly IPlacementReconciliationRepository _reconciliationRepository;
+    private readonly ICandidateRecruitmentDeliveryService? _candidateDeliveryService;
 
     public ConfirmStartWorkCommandHandler(
         IApplicationRepository applicationRepository,
@@ -39,7 +40,8 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
         IAuditLogService auditLogService,
         IPlacementFinanceService placementFinanceService,
         IFinanceRepository financeRepository,
-        IPlacementReconciliationRepository reconciliationRepository)
+        IPlacementReconciliationRepository reconciliationRepository,
+        ICandidateRecruitmentDeliveryService? candidateDeliveryService = null)
     {
         _applicationRepository = applicationRepository;
         _offerRepository = offerRepository;
@@ -51,6 +53,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
         _placementFinanceService = placementFinanceService;
         _financeRepository = financeRepository;
         _reconciliationRepository = reconciliationRepository;
+        _candidateDeliveryService = candidateDeliveryService;
     }
 
     public async Task<ConfirmStartWorkResponse> Handle(ConfirmStartWorkCommand request, CancellationToken cancellationToken)
@@ -344,6 +347,16 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
                 OldValues = new { status = oldStatus },
                 NewValues = new { status = application.Status, sourceAction = AuditActions.PlacementConfirmed }
             }, cancellationToken);
+
+            if (_candidateDeliveryService != null)
+            {
+                await _candidateDeliveryService.DeliverApplicationOutcomeAsync(
+                    application,
+                    ApplicationCandidateDeliveryEvent.StartedConfirmed,
+                    null,
+                    now,
+                    cancellationToken: cancellationToken);
+            }
 
             if (replacementTransactionActive)
             {
