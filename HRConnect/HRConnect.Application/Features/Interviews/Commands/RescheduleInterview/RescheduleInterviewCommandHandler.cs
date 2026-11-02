@@ -106,7 +106,7 @@ public class RescheduleInterviewCommandHandler : IRequestHandler<RescheduleInter
             throw new ForbiddenException("Bạn không có quyền dời lịch phỏng vấn.");
         }
 
-        var interviewType = Mf04InputPolicy.NormalizeInterviewType(interview.InterviewType);
+        var interviewType = Mf04InputPolicy.NormalizeStoredInterviewType(interview.InterviewType);
         var effectiveLocation = request.Location == null ? interview.Location : location;
         var effectiveMeetingLink = request.MeetingLink == null ? interview.MeetingLink : meetingLink;
         effectiveMeetingLink = Mf04InputPolicy.NormalizeMeetingLink(effectiveMeetingLink);

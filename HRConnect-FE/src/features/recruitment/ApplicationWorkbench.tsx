@@ -115,7 +115,6 @@ const DANGER_MODALS: ModalKind[] = ['reject', 'cancel', 'noshow', 'rejectBackup'
 const INTERVIEW_TYPES = [
   { value: 'OFFLINE', label: 'Trực tiếp' },
   { value: 'ONLINE', label: 'Trực tuyến' },
-  { value: 'PHONE', label: 'Điện thoại' },
 ];
 const notPast = (d: Dayjs) => d.isBefore(dayjs().startOf('day'));
 const SALARY_BASIS_OPTIONS = [
@@ -1260,8 +1259,13 @@ export const ApplicationWorkbench: React.FC<{
                   label="Loại lương"
                   extra={
                     isHeadhuntCod
-                      ? 'Tin Headhunt bắt buộc dùng Gross để hệ thống đối soát phí thống nhất.'
-                      : 'Gross: trước thuế và khấu trừ. Net: số tiền thực nhận theo thỏa thuận.'
+                      ? 'Headhunt chỉ sử dụng lương Gross để tính phí.'
+                      : (
+                        <span className="block leading-5">
+                          <span className="block"><b>Gross</b> — Lương trước thuế và các khoản khấu trừ.</span>
+                          <span className="block"><b>Net</b> — Lương thực nhận sau khấu trừ.</span>
+                        </span>
+                      )
                   }
                   rules={[
                     { required: true, message: 'Chọn Gross hoặc Net.' },
