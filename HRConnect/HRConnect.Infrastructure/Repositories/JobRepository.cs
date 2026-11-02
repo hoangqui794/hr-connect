@@ -189,8 +189,10 @@ public class JobRepository : IJobRepository
             .Where(mapping => mapping.CanView && mapping.Role.IsActive && roleCodes.Contains(mapping.Role.Code))
             .Select(mapping => mapping.ServiceTypeId);
 
+        var now = DateTime.UtcNow;
         var query = _context.Jobs.AsNoTracking()
             .Where(job => job.Status == JobStatuses.Active &&
+                          (!job.ApplicationDeadline.HasValue || job.ApplicationDeadline.Value >= now) &&
                           (bypassServiceTypeRoleCheck || allowedServiceTypeIds.Contains(job.ServiceTypeId)));
 
         if (!string.IsNullOrWhiteSpace(search))
