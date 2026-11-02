@@ -43,7 +43,9 @@ public sealed class RejectIdentityClaimCommandHandlerTests
             It.IsAny<CancellationToken>()), Times.Once);
         _audit.Verify(x => x.AddAsync(It.Is<AuditEntry>(entry =>
             entry.Action == AuditActions.IdentityClaimReviewed &&
-            entry.ActorUserId == _adminUserId), It.IsAny<CancellationToken>()), Times.Once);
+            entry.ActorUserId == _adminUserId &&
+            entry.ActorType == AuditActorTypes.User &&
+            entry.Source == AuditSources.Api), It.IsAny<CancellationToken>()), Times.Once);
         _unit.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         _unit.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _unit.Verify(x => x.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);

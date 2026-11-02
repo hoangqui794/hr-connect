@@ -90,8 +90,8 @@ public sealed class RejectIdentityClaimCommandHandler(
                 EntityType = "CANDIDATE_IDENTITY_CLAIM",
                 EntityId = claim.ClaimId,
                 ActorUserId = request.AdminUserId,
-                ActorType = "ADMIN",
-                Source = "API",
+                ActorType = AuditActorTypes.User,
+                Source = AuditSources.Api,
                 ServiceName = "HRConnect.Presentation",
                 OldValues = new
                 {
