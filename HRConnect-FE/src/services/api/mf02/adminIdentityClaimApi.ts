@@ -2,6 +2,7 @@ import { apiClient } from '../../apiClient';
 import type { ApiEnvelope, Paged } from '@/types/api/admin';
 import type {
   AdminIdentityClaimDecisionResult,
+  AdminIdentityClaimCvDownloadUrl,
   AdminIdentityClaimDetail,
   AdminIdentityClaimListItem,
   AdminIdentityClaimListParams,
@@ -21,6 +22,12 @@ export const adminIdentityClaimApi = {
   async get(claimId: string): Promise<AdminIdentityClaimDetail> {
     const response = await apiClient.get<ApiEnvelope<AdminIdentityClaimDetail>>(
       `/admin/candidate-identity-claims/${claimId}`
+    );
+    return response.data.data;
+  },
+  async getCvDownloadUrl(claimId: string, candidateId: string): Promise<AdminIdentityClaimCvDownloadUrl> {
+    const response = await apiClient.get<ApiEnvelope<AdminIdentityClaimCvDownloadUrl>>(
+      `/admin/candidate-identity-claims/${claimId}/candidates/${candidateId}/cv-download-url`
     );
     return response.data.data;
   },

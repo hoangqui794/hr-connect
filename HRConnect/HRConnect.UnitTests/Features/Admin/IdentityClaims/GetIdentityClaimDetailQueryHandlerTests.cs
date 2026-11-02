@@ -104,6 +104,7 @@ public sealed class GetIdentityClaimDetailQueryHandlerTests
             new DateOnly(2000, 1, 1),
             DateTime.UtcNow.AddYears(-1),
             DateTime.UtcNow,
+            cvCount > 0 ? Guid.NewGuid() : null,
             "CV chính",
             "cv.pdf",
             null,

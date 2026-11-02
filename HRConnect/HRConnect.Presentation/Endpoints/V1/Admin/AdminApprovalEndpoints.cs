@@ -11,6 +11,7 @@ using HRConnect.Application.Features.Admin.Approvals.RejectAffiliate;
 using HRConnect.Application.Features.Admin.Approvals.RejectCompany;
 using HRConnect.Application.Features.Admin.IdentityClaims.GetIdentityClaimList;
 using HRConnect.Application.Features.Admin.IdentityClaims.GetIdentityClaimDetail;
+using HRConnect.Application.Features.Admin.IdentityClaims.GetIdentityClaimCvDownloadUrl;
 using HRConnect.Application.Features.Admin.IdentityClaims.ApproveIdentityClaim;
 using HRConnect.Application.Features.Admin.IdentityClaims.RejectIdentityClaim;
 using MediatR;
@@ -92,6 +93,46 @@ public static class AdminApprovalEndpoints
         .WithSummary("Admin xem chi tiết yêu cầu liên kết danh tính Candidate")
         .WithDescription("Yêu cầu permission candidate.identity.review. Trả bằng chứng của Candidate hiện tại, Candidate cũ, chủ sở hữu email và số lượng dữ liệu nghiệp vụ để Admin đánh giá trước khi approve hoặc reject.")
         .Produces<GetIdentityClaimDetailResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
+
+        group.MapGet("/candidate-identity-claims/{claimId:guid}/candidates/{candidateId:guid}/cv-download-url", async (
+            Guid claimId,
+            Guid candidateId,
+            [FromServices] ISender sender,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            if (!HasIdentityClaimReviewPermission(user))
+            {
+                return Results.Json(new
+                {
+                    success = false,
+                    message = "Bạn không có quyền xem CV đối chiếu danh tính Candidate."
+                }, statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            try
+            {
+                return Results.Ok(await sender.Send(
+                    new GetIdentityClaimCvDownloadUrlQuery(claimId, candidateId),
+                    cancellationToken));
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("GetCandidateIdentityClaimCvDownloadUrl")
+        .WithSummary("Admin lấy liên kết tạm thời để đối chiếu CV")
+        .WithDescription("Yêu cầu permission candidate.identity.review. Chỉ cấp liên kết có hiệu lực 5 phút cho CV chính của một trong hai Candidate thuộc đúng yêu cầu đang đối chiếu; không trả object key hoặc URL lưu trữ cố định.")
+        .Produces<GetIdentityClaimCvDownloadUrlResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound);

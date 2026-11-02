@@ -40,6 +40,7 @@ public sealed record AdminIdentityClaimCandidateRecord(
     DateOnly? DateOfBirth,
     DateTime CreatedAt,
     DateTime UpdatedAt,
+    Guid? PrimaryCvId,
     string? PrimaryCvTitle,
     string? PrimaryCvFileName,
     string? PrimaryCvContentSha256,

@@ -9,10 +9,18 @@ import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
 
 vi.mock('@/services/api/mf02/adminIdentityClaimApi', () => ({
-  adminIdentityClaimApi: { get: vi.fn(), approve: vi.fn(), reject: vi.fn(), previewMerge: vi.fn(), mergeDuplicateCase: vi.fn() },
+  adminIdentityClaimApi: {
+    get: vi.fn(),
+    getCvDownloadUrl: vi.fn(),
+    approve: vi.fn(),
+    reject: vi.fn(),
+    previewMerge: vi.fn(),
+    mergeDuplicateCase: vi.fn(),
+  },
 }));
 
 const getMock = vi.mocked(adminIdentityClaimApi.get);
+const getCvDownloadUrlMock = vi.mocked(adminIdentityClaimApi.getCvDownloadUrl);
 const approveMock = vi.mocked(adminIdentityClaimApi.approve);
 const rejectMock = vi.mocked(adminIdentityClaimApi.reject);
 const previewMergeMock = vi.mocked(adminIdentityClaimApi.previewMerge);
@@ -44,14 +52,14 @@ const detail = {
     status: 'ACTIVE', mergedIntoCandidateId: null, cvCount: 0, submissionCount: 0, applicationCount: 0, matchCount: 0,
     skillCount: 2, highestEducation: 'Đại học', yearsOfExperience: 3, currentJobTitle: 'Backend Developer',
     summary: 'Hồ sơ hiện tại', dateOfBirth: '2000-01-01', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-10-01T00:00:00Z',
-    primaryCvTitle: null, primaryCvFileName: null, hasBusinessData: false,
+    primaryCvId: null, primaryCvTitle: null, primaryCvFileName: null, hasBusinessData: false,
   },
   targetCandidate: {
     candidateId: 'candidate-2', userId: null, fullName: 'Nguyễn An cũ', email: 'old@example.com', phone: '0901000001',
     status: 'ACTIVE', mergedIntoCandidateId: null, cvCount: 2, submissionCount: 2, applicationCount: 1, matchCount: 1,
     skillCount: 3, highestEducation: 'Đại học', yearsOfExperience: 3, currentJobTitle: 'Backend Developer',
     summary: 'Hồ sơ cũ', dateOfBirth: '2000-01-01', createdAt: '2025-01-01T00:00:00Z', updatedAt: '2026-09-01T00:00:00Z',
-    primaryCvTitle: 'CV chính', primaryCvFileName: 'cv.pdf', hasBusinessData: true,
+    primaryCvId: 'cv-2', primaryCvTitle: 'CV chính', primaryCvFileName: 'cv.pdf', hasBusinessData: true,
   },
   currentEmailOwner: {
     emailIdentityId: 'identity-1', userId: 'user-1', primaryEmail: 'new@example.com', displayName: 'Nguyễn An',
@@ -95,6 +103,14 @@ describe('AdminIdentityClaimDetailPage', () => {
       duplicateCaseId: 'case-1', recommendedCanonicalCandidateId: 'candidate-1', sourceCandidateId: 'candidate-2',
       recommendationReason: 'ACCOUNT_OWNER', canMerge: true, collisions: [], financeBlockers: [], concurrencyToken: 'case-token-1',
     });
+    getCvDownloadUrlMock.mockResolvedValue({
+      candidateId: 'candidate-2',
+      cvId: 'cv-2',
+      fileName: 'cv.pdf',
+      mimeType: 'application/pdf',
+      downloadUrl: 'https://storage.example/cv.pdf',
+      expiresAt: '2026-10-09T09:10:00Z',
+    });
   });
 
   it('shows both candidate records and approves with the current concurrency token', async () => {
@@ -108,6 +124,28 @@ describe('AdminIdentityClaimDetailPage', () => {
     const dialog = await screen.findByRole('dialog');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Phê duyệt' }));
     await waitFor(() => expect(approveMock).toHaveBeenCalledWith('claim-1', 'token-1', undefined));
+  });
+
+  it('shows actual comparison values and distinguishes conflicts from missing data', async () => {
+    renderPage();
+
+    expect(await screen.findByRole('columnheader', { name: 'Hồ sơ hiện tại' })).toBeInTheDocument();
+    const nameRow = screen.getByRole('row', { name: /Họ và tên.*Nguyễn An.*Nguyễn An cũ.*Không trùng khớp/ });
+    expect(nameRow).toBeInTheDocument();
+    expect(screen.getByRole('row', { name: /Số điện thoại.*0901000001.*0901000001.*Trùng khớp/ })).toBeInTheDocument();
+    expect(screen.getByRole('row', { name: /CV chính.*Chưa cập nhật.*CV chính.*Thiếu dữ liệu/ })).toBeInTheDocument();
+  });
+
+  it('requests a short-lived link before opening a candidate CV', async () => {
+    const previewWindow = { location: { href: '' }, close: vi.fn(), opener: null };
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(previewWindow as unknown as Window);
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Xem CV cũ/ }));
+
+    await waitFor(() => expect(getCvDownloadUrlMock).toHaveBeenCalledWith('claim-1', 'candidate-2'));
+    expect(previewWindow.location.href).toBe('https://storage.example/cv.pdf');
+    openSpy.mockRestore();
   });
 
   it('requires a reason before rejecting', async () => {

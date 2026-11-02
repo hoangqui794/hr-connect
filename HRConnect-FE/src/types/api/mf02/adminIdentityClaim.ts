@@ -54,6 +54,7 @@ export interface AdminIdentityClaimCandidateDetail {
   dateOfBirth: string | null;
   createdAt: string;
   updatedAt: string;
+  primaryCvId: string | null;
   primaryCvTitle: string | null;
   primaryCvFileName: string | null;
   hasBusinessData: boolean;
@@ -138,5 +139,14 @@ export interface AdminIdentityClaimDecisionResult {
   status: AdminIdentityClaimStatus;
   canonicalCandidateId?: string;
   concurrencyToken: string;
+}
+
+export interface AdminIdentityClaimCvDownloadUrl {
+  candidateId: string;
+  cvId: string;
+  fileName: string;
+  mimeType: string;
+  downloadUrl: string;
+  expiresAt: string;
 }
 

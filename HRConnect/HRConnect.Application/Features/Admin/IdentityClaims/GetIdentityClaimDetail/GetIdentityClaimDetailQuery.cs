@@ -27,6 +27,7 @@ public sealed record IdentityClaimCandidateDetail(
     DateOnly? DateOfBirth,
     DateTime CreatedAt,
     DateTime UpdatedAt,
+    Guid? PrimaryCvId,
     string? PrimaryCvTitle,
     string? PrimaryCvFileName,
     bool HasBusinessData);
@@ -164,6 +165,7 @@ public sealed class GetIdentityClaimDetailQueryHandler(
             candidate.DateOfBirth,
             candidate.CreatedAt,
             candidate.UpdatedAt,
+            candidate.PrimaryCvId,
             candidate.PrimaryCvTitle,
             candidate.PrimaryCvFileName,
             hasBusinessData);

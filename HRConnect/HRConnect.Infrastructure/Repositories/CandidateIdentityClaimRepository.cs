@@ -152,6 +152,10 @@ public sealed class CandidateIdentityClaimRepository(ApplicationDbContext contex
                     claim.RequesterCandidate.CandidateCvs
                         .OrderByDescending(cv => cv.IsPrimary)
                         .ThenByDescending(cv => cv.UpdatedAt)
+                        .Select(cv => (Guid?)cv.CvId).FirstOrDefault(),
+                    claim.RequesterCandidate.CandidateCvs
+                        .OrderByDescending(cv => cv.IsPrimary)
+                        .ThenByDescending(cv => cv.UpdatedAt)
                         .Select(cv => cv.Title).FirstOrDefault(),
                     claim.RequesterCandidate.CandidateCvs
                         .OrderByDescending(cv => cv.IsPrimary)
@@ -188,6 +192,10 @@ public sealed class CandidateIdentityClaimRepository(ApplicationDbContext contex
                         claim.TargetCandidate.DateOfBirth,
                         claim.TargetCandidate.CreatedAt,
                         claim.TargetCandidate.UpdatedAt,
+                        claim.TargetCandidate.CandidateCvs
+                            .OrderByDescending(cv => cv.IsPrimary)
+                            .ThenByDescending(cv => cv.UpdatedAt)
+                            .Select(cv => (Guid?)cv.CvId).FirstOrDefault(),
                         claim.TargetCandidate.CandidateCvs
                             .OrderByDescending(cv => cv.IsPrimary)
                             .ThenByDescending(cv => cv.UpdatedAt)

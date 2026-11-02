@@ -2,7 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Alert, App as AntApp, Button, Descriptions, Form, Input, Modal, Skeleton, Statistic, Tag } from 'antd';
-import { ArrowLeftOutlined, CheckOutlined, CloseOutlined, MergeCellsOutlined, ReloadOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
+import {
+  ArrowLeftOutlined,
+  CheckCircleOutlined,
+  CheckOutlined,
+  CloseCircleOutlined,
+  CloseOutlined,
+  EyeOutlined,
+  FilePdfOutlined,
+  MergeCellsOutlined,
+  MinusCircleOutlined,
+  ReloadOutlined,
+  SafetyCertificateOutlined,
+} from '@ant-design/icons';
 import { adminIdentityClaimApi } from '@/services/api/mf02/adminIdentityClaimApi';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
@@ -34,7 +46,57 @@ const EMAIL_KIND_LABEL: Record<string, string> = {
   LINKED: 'Email đã liên kết',
 };
 
-const CandidateEvidence: React.FC<{ title: string; candidate: AdminIdentityClaimCandidateDetail | null; recommended?: boolean }> = ({ title, candidate, recommended }) => (
+type ComparisonState = 'verified' | 'match' | 'conflict' | 'missing';
+
+const COMPARISON_META: Record<ComparisonState, { label: string; className: string; icon: React.ReactNode }> = {
+  verified: {
+    label: 'Đã xác minh',
+    className: 'border-blue-200 bg-blue-50 text-blue-700',
+    icon: <SafetyCertificateOutlined />,
+  },
+  match: {
+    label: 'Trùng khớp',
+    className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    icon: <CheckCircleOutlined />,
+  },
+  conflict: {
+    label: 'Không trùng khớp',
+    className: 'border-rose-200 bg-rose-50 text-rose-700',
+    icon: <CloseCircleOutlined />,
+  },
+  missing: {
+    label: 'Thiếu dữ liệu',
+    className: 'border-slate-200 bg-slate-50 text-slate-600',
+    icon: <MinusCircleOutlined />,
+  },
+};
+
+const comparisonState = (
+  left: string | null | undefined,
+  right: string | null | undefined,
+  matched: boolean
+): ComparisonState => {
+  if (!left?.trim() || !right?.trim()) return 'missing';
+  return matched ? 'match' : 'conflict';
+};
+
+const ComparisonBadge: React.FC<{ state: ComparisonState }> = ({ state }) => {
+  const meta = COMPARISON_META[state];
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${meta.className}`}>
+      {meta.icon}
+      {meta.label}
+    </span>
+  );
+};
+
+const CandidateEvidence: React.FC<{
+  title: string;
+  candidate: AdminIdentityClaimCandidateDetail | null;
+  recommended?: boolean;
+  loadingCv?: boolean;
+  onViewCv?: (candidate: AdminIdentityClaimCandidateDetail) => void;
+}> = ({ title, candidate, recommended, loadingCv, onViewCv }) => (
   <Surface padded className="h-full">
     <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
       <h2 className="m-0 text-base font-bold text-slate-900">{title}</h2>
@@ -54,7 +116,22 @@ const CandidateEvidence: React.FC<{ title: string; candidate: AdminIdentityClaim
           <Descriptions.Item label="Kinh nghiệm">{candidate.yearsOfExperience == null ? 'Chưa cập nhật' : `${candidate.yearsOfExperience} năm`}</Descriptions.Item>
           <Descriptions.Item label="Học vấn">{candidate.highestEducation ?? 'Chưa cập nhật'}</Descriptions.Item>
           <Descriptions.Item label="Ngày sinh">{candidate.dateOfBirth ?? 'Chưa cập nhật'}</Descriptions.Item>
-          <Descriptions.Item label="CV chính">{candidate.primaryCvTitle ?? candidate.primaryCvFileName ?? 'Chưa có'}</Descriptions.Item>
+          <Descriptions.Item label="CV chính">
+            <div className="flex flex-wrap items-center gap-2">
+              <span>{candidate.primaryCvTitle ?? candidate.primaryCvFileName ?? 'Chưa có'}</span>
+              {candidate.primaryCvId && onViewCv && (
+                <Button
+                  size="small"
+                  icon={<EyeOutlined />}
+                  loading={loadingCv}
+                  onClick={() => onViewCv(candidate)}
+                  aria-label={`Xem CV của ${candidate.fullName}`}
+                >
+                  Xem CV
+                </Button>
+              )}
+            </div>
+          </Descriptions.Item>
           <Descriptions.Item label="Tạo hồ sơ">{formatDateTime(candidate.createdAt)}</Descriptions.Item>
           <Descriptions.Item label="Đã hợp nhất vào">{candidate.mergedIntoCandidateId ?? 'Chưa'}</Descriptions.Item>
         </Descriptions>
@@ -79,6 +156,7 @@ export const AdminIdentityClaimDetailPage: React.FC = () => {
   const canReview = useAuthStore((state) => state.hasPermission('candidate.identity.review'));
   const canMerge = useAuthStore((state) => state.hasPermission('candidate_duplicate.resolve'));
   const [decision, setDecision] = useState<'approve' | 'reject' | 'merge' | null>(null);
+  const [openingCvCandidateId, setOpeningCvCandidateId] = useState<string | null>(null);
   const [form] = Form.useForm<{ text?: string }>();
 
   const detail = useQuery({
@@ -99,6 +177,25 @@ export const AdminIdentityClaimDetailPage: React.FC = () => {
     enabled: Boolean(manualMergeRequired && canMerge && detail.data?.duplicateCaseId),
     retry: false,
   });
+
+  const viewCv = async (candidate: AdminIdentityClaimCandidateDetail) => {
+    const previewWindow = window.open('', '_blank');
+    if (previewWindow) previewWindow.opener = null;
+    setOpeningCvCandidateId(candidate.candidateId);
+    try {
+      const result = await adminIdentityClaimApi.getCvDownloadUrl(claimId, candidate.candidateId);
+      if (previewWindow) {
+        previewWindow.location.href = result.downloadUrl;
+      } else {
+        window.open(result.downloadUrl, '_blank', 'noopener,noreferrer');
+      }
+    } catch (error) {
+      previewWindow?.close();
+      message.error(getApiErrorMessage(error, 'Không mở được CV. Hãy thử lại.'));
+    } finally {
+      setOpeningCvCandidateId(null);
+    }
+  };
 
   useEffect(() => {
     if (detail.isError && getApiError(detail.error).status === 404) {
@@ -231,20 +328,108 @@ export const AdminIdentityClaimDetailPage: React.FC = () => {
               {claim.evidence.supportingSignalCount} tín hiệu phù hợp · {claim.evidence.conflictingSignalCount} xung đột
             </Tag>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-            {[
-              ['Quyền sở hữu email', claim.evidence.emailOwnershipVerified],
-              ['Họ và tên', claim.evidence.sameFullName],
-              ['Số điện thoại', claim.evidence.samePhone],
-              ['Ngày sinh', claim.evidence.sameDateOfBirth],
-              ['Tệp CV giống hệt', claim.evidence.exactCvMatch],
-              ['Nội dung CV tương đồng', claim.evidence.similarCvText],
-            ].map(([label, matched]) => (
-              <div key={String(label)} className={`rounded-xl border p-3 ${matched ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}>
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
-                <div className={`mt-1 font-bold ${matched ? 'text-emerald-700' : 'text-slate-500'}`}>{matched ? 'Trùng khớp' : 'Cần đối chiếu'}</div>
-              </div>
-            ))}
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+              <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                <tr>
+                  <th className="px-4 py-3">Tiêu chí</th>
+                  <th className="px-4 py-3">Hồ sơ hiện tại</th>
+                  <th className="px-4 py-3">Hồ sơ cũ</th>
+                  <th className="px-4 py-3">Kết quả</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 text-slate-800">
+                {[
+                  {
+                    key: 'email',
+                    label: 'Email',
+                    left: claim.requesterPrimaryEmail,
+                    right: claim.assertedEmail,
+                    state: 'verified' as ComparisonState,
+                  },
+                  {
+                    key: 'name',
+                    label: 'Họ và tên',
+                    left: claim.requesterCandidate.fullName,
+                    right: claim.targetCandidate.fullName,
+                    state: comparisonState(
+                      claim.requesterCandidate.fullName,
+                      claim.targetCandidate.fullName,
+                      claim.evidence.sameFullName
+                    ),
+                  },
+                  {
+                    key: 'phone',
+                    label: 'Số điện thoại',
+                    left: claim.requesterCandidate.phone,
+                    right: claim.targetCandidate.phone,
+                    state: comparisonState(
+                      claim.requesterCandidate.phone,
+                      claim.targetCandidate.phone,
+                      claim.evidence.samePhone
+                    ),
+                  },
+                  {
+                    key: 'birthDate',
+                    label: 'Ngày sinh',
+                    left: claim.requesterCandidate.dateOfBirth,
+                    right: claim.targetCandidate.dateOfBirth,
+                    state: comparisonState(
+                      claim.requesterCandidate.dateOfBirth,
+                      claim.targetCandidate.dateOfBirth,
+                      claim.evidence.sameDateOfBirth
+                    ),
+                  },
+                  {
+                    key: 'cv',
+                    label: 'CV chính',
+                    left: claim.requesterCandidate.primaryCvTitle ?? claim.requesterCandidate.primaryCvFileName,
+                    right: claim.targetCandidate.primaryCvTitle ?? claim.targetCandidate.primaryCvFileName,
+                    state: comparisonState(
+                      claim.requesterCandidate.primaryCvId,
+                      claim.targetCandidate.primaryCvId,
+                      claim.evidence.exactCvMatch
+                    ),
+                  },
+                ].map((row) => (
+                  <tr key={row.key}>
+                    <th scope="row" className="px-4 py-3 font-semibold text-slate-700">{row.label}</th>
+                    <td className="max-w-[260px] break-words px-4 py-3">{row.left || 'Chưa cập nhật'}</td>
+                    <td className="max-w-[260px] break-words px-4 py-3">{row.right || 'Chưa cập nhật'}</td>
+                    <td className="px-4 py-3"><ComparisonBadge state={row.state} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3">
+            <div className="flex items-start gap-2 text-sm text-slate-600">
+              <FilePdfOutlined className="mt-0.5 text-base text-blue-600" />
+              <span>
+                Nội dung CV: {claim.evidence.similarCvText ? 'có dấu hiệu tương đồng' : 'chưa đủ bằng chứng tương đồng'}.
+                Liên kết xem CV chỉ có hiệu lực trong 5 phút.
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {claim.requesterCandidate.primaryCvId && (
+                <Button
+                  icon={<EyeOutlined />}
+                  loading={openingCvCandidateId === claim.requesterCandidate.candidateId}
+                  onClick={() => viewCv(claim.requesterCandidate)}
+                >
+                  Xem CV hiện tại
+                </Button>
+              )}
+              {claim.targetCandidate.primaryCvId && (
+                <Button
+                  icon={<EyeOutlined />}
+                  loading={openingCvCandidateId === claim.targetCandidate.candidateId}
+                  onClick={() => viewCv(claim.targetCandidate!)}
+                >
+                  Xem CV cũ
+                </Button>
+              )}
+            </div>
           </div>
           {mergePreview.data && (
             <Alert
@@ -276,8 +461,20 @@ export const AdminIdentityClaimDetailPage: React.FC = () => {
       </Surface>
 
       <div className="mb-5 grid gap-5 xl:grid-cols-2">
-        <CandidateEvidence title="Hồ sơ Candidate hiện tại" candidate={claim.requesterCandidate} recommended={recommendedId === claim.requesterCandidate.candidateId} />
-        <CandidateEvidence title="Hồ sơ Candidate cũ theo email" candidate={claim.targetCandidate} recommended={recommendedId === claim.targetCandidate?.candidateId} />
+        <CandidateEvidence
+          title="Hồ sơ Candidate hiện tại"
+          candidate={claim.requesterCandidate}
+          recommended={recommendedId === claim.requesterCandidate.candidateId}
+          loadingCv={openingCvCandidateId === claim.requesterCandidate.candidateId}
+          onViewCv={viewCv}
+        />
+        <CandidateEvidence
+          title="Hồ sơ Candidate cũ theo email"
+          candidate={claim.targetCandidate}
+          recommended={recommendedId === claim.targetCandidate?.candidateId}
+          loadingCv={openingCvCandidateId === claim.targetCandidate?.candidateId}
+          onViewCv={viewCv}
+        />
       </div>
 
       <Surface padded>
