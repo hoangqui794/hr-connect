@@ -33,7 +33,8 @@ public sealed class AccountLifecycleEmailOutboxWorker : BackgroundService
         RecruitmentCandidateEmailTemplates.OfferSent,
         RecruitmentCandidateEmailTemplates.OfferWithdrawn,
         RecruitmentCandidateEmailTemplates.OfferExpired,
-        RecruitmentCandidateEmailTemplates.ApplicationNotStartedReported
+        RecruitmentCandidateEmailTemplates.ApplicationNotStartedReported,
+        RecruitmentCandidateEmailTemplates.ApplicationStartedConfirmed
     };
 
     /// <summary>
@@ -154,6 +155,7 @@ public sealed class AccountLifecycleEmailOutboxWorker : BackgroundService
                 RecruitmentCandidateEmailTemplates.OfferWithdrawn => HrConnectEmailTemplates.OfferWithdrawn(recruitmentPayload),
                 RecruitmentCandidateEmailTemplates.OfferExpired => HrConnectEmailTemplates.OfferExpired(recruitmentPayload),
                 RecruitmentCandidateEmailTemplates.ApplicationNotStartedReported => HrConnectEmailTemplates.ApplicationNotStartedReported(recruitmentPayload),
+                RecruitmentCandidateEmailTemplates.ApplicationStartedConfirmed => HrConnectEmailTemplates.ApplicationStartedConfirmed(recruitmentPayload),
                 _ => throw new InvalidOperationException($"Không hỗ trợ template email {row.TemplateCode}.")
             };
         }
