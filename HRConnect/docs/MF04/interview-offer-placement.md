@@ -406,3 +406,25 @@ ownership.
 - quy trình Internal HR điều phối Interview, Offer hoặc Placement thay Company;
 - workflow tự động chuyển Placement sang MF-05;
 - hiển thị chi tiết Interview/Offer/Placement cho Affiliate.
+
+## Bổ sung triển khai ngày 01/11/2026
+
+Phần bổ sung này ghi nhận các điều chỉnh mới mà không thay thế lịch sử mô tả ở
+trên:
+
+- Job đã quá `ApplicationDeadline` không còn xuất hiện trong danh sách Job đang
+  nhận hồ sơ; nếu màn hình đang giữ dữ liệu cũ thì nút ứng tuyển bị vô hiệu hóa.
+- Candidate được Affiliate giới thiệu vẫn xem được thông tin vị trí từ chính
+  Application của mình. Quyền này không làm Job nội bộ xuất hiện trong danh sách
+  Job công khai và không mở dữ liệu của Application khác.
+- Lịch phỏng vấn mới chỉ nhận `ONLINE` hoặc `OFFLINE`. Giá trị `PHONE` cũ vẫn
+  được đọc và có thể dời lịch để không làm hỏng dữ liệu lịch sử, nhưng không thể
+  chọn khi tạo hoặc đổi hình thức phỏng vấn.
+- Với sự kiện Offer đã gửi, thu hồi hoặc hết hạn, Candidate đã liên kết tài khoản
+  và có email nhận đồng thời notification in-app và email; Candidate chưa liên
+  kết tài khoản tiếp tục nhận email mời đăng ký/đăng nhập.
+- Khi Company xác nhận Candidate đã đi làm hoặc không bắt đầu làm việc, hệ thống
+  cũng phát cả hai kênh nếu có đủ `UserId` và email. Nội dung gửi Candidate không
+  tiết lộ ghi chú vận hành nội bộ.
+- Giao diện giải thích `Gross` là lương trước thuế/khấu trừ và `Net` là lương
+  thực nhận; `HEADHUNT_COD` tiếp tục chỉ dùng Gross để tính phí.
