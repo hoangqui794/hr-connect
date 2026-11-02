@@ -136,8 +136,8 @@ describe('AdminRolesPermissionsPage', () => {
     expect(screen.getByText('Nhân viên kiểm duyệt')).toBeTruthy();
 
     // Check tags
-    expect(screen.getByText('System Role')).toBeTruthy();
-    expect(screen.getByText('Custom Role')).toBeTruthy();
+    expect(screen.getByText('Vai trò hệ thống')).toBeTruthy();
+    expect(screen.getAllByText('Vai trò tùy chỉnh').length).toBeGreaterThan(0);
   });
 
   it('enforces System Role read-only rules (shows "Chỉ xem", no edit buttons)', async () => {
@@ -169,10 +169,10 @@ describe('AdminRolesPermissionsPage', () => {
 
     renderPage();
 
-    const createBtn = await screen.findByRole('button', { name: /Tạo Custom Role/ });
+    const createBtn = await screen.findByRole('button', { name: /Tạo vai trò tùy chỉnh/ });
     fireEvent.click(createBtn);
 
-    expect(await screen.findByText('Tạo Custom Role mới')).toBeTruthy();
+    expect(await screen.findByText('Tạo vai trò tùy chỉnh mới')).toBeTruthy();
 
     const codeInput = screen.getByLabelText(/Mã vai trò/);
     const nameInput = screen.getByLabelText(/Tên hiển thị vai trò/);

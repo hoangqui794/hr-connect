@@ -291,16 +291,16 @@ public sealed class AuthorizationAdminService(
     private static UserAuthorizationDto MapUser(AppUser x)
     {
         var roles = x.UserRoleUsers.OrderBy(y => y.Role.Code).Select(y => new UserRoleAssignmentDto(
-            y.RoleId, y.Role.Code, y.Role.Name, y.Role.IsSystem, y.Status, y.AssignedAt,
+            y.RoleId, y.Role.Code, y.Role.Name, y.Role.Description, y.Role.IsSystem, y.Status, y.AssignedAt,
             y.AssignedBy, y.AssignmentSource, y.RevokedAt, y.RevokedBy, y.RevokeReason)).ToList();
         var effective = x.UserRoleUsers
             .Where(y => y.Status == "ACTIVE" && y.Role.IsActive)
             .SelectMany(y => y.Role.RolePermissions.Where(rp => rp.Permission.IsActive)
                 .Select(rp => new { rp.Permission, RoleCode = y.Role.Code }))
-            .GroupBy(y => new { y.Permission.PermissionId, y.Permission.Code, y.Permission.Resource, y.Permission.Action })
+            .GroupBy(y => new { y.Permission.PermissionId, y.Permission.Code, y.Permission.Resource, y.Permission.Action, y.Permission.Description })
             .OrderBy(g => g.Key.Code)
             .Select(g => new EffectivePermissionDto(g.Key.PermissionId, g.Key.Code, g.Key.Resource,
-                g.Key.Action, g.Select(y => y.RoleCode).Distinct().OrderBy(y => y).ToList()))
+                g.Key.Action, g.Key.Description, g.Select(y => y.RoleCode).Distinct().OrderBy(y => y).ToList()))
             .ToList();
         return new(x.UserId, x.Email, x.Status, x.AuthorizationConcurrencyToken, roles, effective);
     }

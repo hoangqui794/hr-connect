@@ -402,11 +402,11 @@ export const AdminRolesPermissionsPage: React.FC = () => {
       render: (isSystem: boolean) =>
         isSystem ? (
           <Tag color="blue" icon={<LockOutlined />} className="font-medium">
-            System Role
+            Vai trò hệ thống
           </Tag>
         ) : (
           <Tag color="green" icon={<SafetyCertificateOutlined />} className="font-medium">
-            Custom Role
+            Vai trò tùy chỉnh
           </Tag>
         ),
     },
@@ -564,7 +564,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
       ),
     },
     {
-      title: 'Custom Roles',
+      title: 'Vai trò tùy chỉnh',
       dataIndex: 'customRoleUsageCount',
       key: 'customRoleUsageCount',
       width: 120,
@@ -600,7 +600,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
       <PageHero
         eyebrow="Quản trị phân quyền RBAC"
         title="Vai trò & Danh mục quyền"
-        description="Quản lý vai trò tùy chỉnh (Custom Role), cấu hình ma trận quyền hạn bảo mật và tra cứu danh mục quyền hệ thống."
+        description="Quản lý vai trò truy cập tùy chỉnh, cấu hình quyền được phép ủy quyền và tra cứu danh mục quyền hệ thống."
         actions={
           <Space>
             <Button
@@ -621,7 +621,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
                 setCreateRoleOpen(true);
               }}
             >
-              Tạo Custom Role
+              Tạo vai trò tùy chỉnh
             </Button>
           </Space>
         }
@@ -640,7 +640,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
           }}
         />
         <StatTile
-          label="Custom Roles"
+          label="Vai trò tùy chỉnh"
           value={v(rolesCountsQuery, 'custom')}
           tone="success"
           active={activeTab === 'roles' && roleParams.isSystem === false}
@@ -650,7 +650,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
           }}
         />
         <StatTile
-          label="System Roles (Cố định)"
+          label="Vai trò hệ thống (cố định)"
           value={v(rolesCountsQuery, 'system')}
           tone="info"
           active={activeTab === 'roles' && roleParams.isSystem === true}
@@ -725,8 +725,8 @@ export const AdminRolesPermissionsPage: React.FC = () => {
                   setParam('is_system', val === 'system' ? 'true' : val === 'custom' ? 'false' : undefined);
                 }}
                 options={[
-                  { value: 'custom', label: 'Custom Role' },
-                  { value: 'system', label: 'System Role' },
+                  { value: 'custom', label: 'Vai trò tùy chỉnh' },
+                  { value: 'system', label: 'Vai trò hệ thống' },
                 ]}
                 aria-label="Lọc theo loại vai trò"
               />
@@ -849,7 +849,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
                       ? 'non_delegable'
                       : undefined
                 }
-                placeholder="Ủy quyền cho Custom Role"
+                placeholder="Có thể cấp cho vai trò tùy chỉnh"
                 className="w-52"
                 onChange={(val) => {
                   setParam('perm_delegable', val === 'delegable' ? 'true' : val === 'non_delegable' ? 'false' : undefined);
@@ -909,7 +909,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
         title={
           <div className="flex items-center gap-2 text-base font-bold text-slate-900">
             <SafetyCertificateOutlined className="text-emerald-600" />
-            Tạo Custom Role mới
+            Tạo vai trò tùy chỉnh mới
           </div>
         }
         okText="Tạo vai trò"
@@ -991,11 +991,11 @@ export const AdminRolesPermissionsPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 {roleDetail.isSystem ? (
                   <Tag color="blue" icon={<LockOutlined />}>
-                    System Role
+                    Vai trò hệ thống
                   </Tag>
                 ) : (
                   <Tag color="green" icon={<SafetyCertificateOutlined />}>
-                    Custom Role
+                    Vai trò tùy chỉnh
                   </Tag>
                 )}
                 <span className="font-bold text-slate-900">{roleDetail.name}</span>
@@ -1037,7 +1037,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
                   showIcon
                   icon={<LockOutlined />}
                   message="Vai trò hệ thống cố định"
-                  description="System Role do mã nguồn nền tảng quản lý cố định. Không cho phép sửa tên, trạng thái, xóa hoặc thay đổi danh mục quyền hạn của vai trò này."
+                  description="Vai trò hệ thống được quản lý cố định theo quy trình nghiệp vụ. Không thể sửa tên, trạng thái, xóa hoặc thay đổi danh mục quyền tại đây."
                   className="mb-4"
                 />
                 <div className="admin-surface p-5">
@@ -1098,7 +1098,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
                     <Alert
                       type="info"
                       showIcon
-                      message="Quy tắc cấu hình quyền cho Custom Role"
+                      message="Quy tắc cấu hình quyền cho vai trò tùy chỉnh"
                       description="Chỉ cho phép gán các quyền đang hoạt động, có thể ủy quyền (isDelegable=true) và không bị bảo vệ (isProtected=false). Các quyền hệ thống IAM nhạy cảm bị khóa tự động."
                       className="mb-4"
                     />

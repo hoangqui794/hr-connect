@@ -172,8 +172,15 @@ public sealed class AuthorizationAdminServiceTests : IDisposable
 
         var result = await _service.GetUserAuthorizationAsync(user.UserId, default);
 
+        result.Roles.Should().HaveCount(2);
+        result.Roles.Should().OnlyContain(x =>
+            x.RoleCode.StartsWith("CUSTOM_") &&
+            x.RoleName == x.RoleCode &&
+            x.Description == null &&
+            x.AssignmentSource == "ADMIN_ASSIGNMENT");
         result.EffectivePermissions.Should().ContainSingle();
         result.EffectivePermissions[0].Code.Should().Be("job.view");
+        result.EffectivePermissions[0].Description.Should().BeNull();
         result.EffectivePermissions[0].SourceRoles.Should().Equal("CUSTOM_A", "CUSTOM_B");
     }
 

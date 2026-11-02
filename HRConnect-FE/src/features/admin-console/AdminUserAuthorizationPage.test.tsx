@@ -44,26 +44,24 @@ const mockUserAuth: RbacUserAuthorization = {
   authorizationConcurrencyToken: 'tok-auth-1',
   roles: [
     {
-      assignmentId: 'assign-sys',
       roleId: 'role-sys-1',
       roleCode: 'CLIENT_COMPANY_USER',
       roleName: 'Doanh nghiệp tuyển dụng',
+      description: 'Vai trò doanh nghiệp',
       isSystem: true,
       status: 'ACTIVE',
       assignedAt: '2026-10-01T00:00:00Z',
-      assignedByEmail: 'system@hrconnect.io',
-      assignReason: 'Đăng ký tài khoản',
+      assignmentSource: 'BUSINESS_WORKFLOW',
     },
     {
-      assignmentId: 'assign-custom',
       roleId: 'role-custom-1',
       roleCode: 'CLIENT_REVIEWER',
       roleName: 'Nhân viên kiểm duyệt hồ sơ',
+      description: 'Vai trò kiểm duyệt',
       isSystem: false,
       status: 'ACTIVE',
       assignedAt: '2026-10-05T00:00:00Z',
-      assignedByEmail: 'admin@hrconnect.io',
-      assignReason: 'Bổ nhiệm kiểm duyệt',
+      assignmentSource: 'ADMIN_ASSIGNMENT',
     },
   ],
   effectivePermissions: [
@@ -210,7 +208,7 @@ describe('AdminUserAuthorizationPage', () => {
     expect(screen.getByText('Chế độ bảo vệ tài khoản cá nhân')).toBeTruthy();
 
     // Assign button is disabled
-    const assignBtn = screen.getByRole('button', { name: /Gán Custom Role mới/ });
+    const assignBtn = screen.getByRole('button', { name: /Gán vai trò truy cập/ });
     expect(assignBtn).toBeDisabled();
 
     // Revoke button is disabled
@@ -222,11 +220,11 @@ describe('AdminUserAuthorizationPage', () => {
     renderPage('/admin/user-authorization?userId=target-user-1');
 
     await screen.findByText('employee1@example.com');
-    const assignBtn = await screen.findByRole('button', { name: /Gán Custom Role mới/ });
+    const assignBtn = await screen.findByRole('button', { name: /Gán vai trò truy cập/ });
     expect(assignBtn).not.toBeDisabled();
     fireEvent.click(assignBtn);
 
-    expect(await screen.findByText('Gán Custom Role cho người dùng')).toBeTruthy();
+    expect(await screen.findByText('Gán vai trò truy cập cho người dùng')).toBeTruthy();
     expect(screen.getByLabelText(/Lý do phân công/)).toBeTruthy();
   });
 
@@ -243,7 +241,7 @@ describe('AdminUserAuthorizationPage', () => {
     const revokeBtn = await screen.findByRole('button', { name: /Thu hồi/ });
     fireEvent.click(revokeBtn);
 
-    expect(await screen.findByText('Thu hồi Custom Role')).toBeTruthy();
+    expect(await screen.findByText('Thu hồi vai trò truy cập')).toBeTruthy();
 
     const reasonInput = screen.getByLabelText(/Lý do thu hồi vai trò/);
     fireEvent.change(reasonInput, { target: { value: 'Kết thúc nhiệm kỳ kiểm duyệt' } });
