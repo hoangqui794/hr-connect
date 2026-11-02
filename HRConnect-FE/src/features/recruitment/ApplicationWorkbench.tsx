@@ -1259,7 +1259,7 @@ export const ApplicationWorkbench: React.FC<{
                   label="Loại lương"
                   extra={
                     isHeadhuntCod
-                      ? 'Headhunt chỉ sử dụng lương Gross để tính phí.'
+                      ? 'Headhunt bắt buộc dùng Gross để tính phí.'
                       : (
                         <span className="block leading-5">
                           <span className="block"><b>Gross</b> — Lương trước thuế và các khoản khấu trừ.</span>
