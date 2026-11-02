@@ -97,3 +97,6 @@ docker-compose*.yml
 **/docker-compose*.yml
 
 .agents/
+
+# Reports (Report 1-5, Review 2 forms BM01-BM04) are kept outside the repository.
+docs/reports/
