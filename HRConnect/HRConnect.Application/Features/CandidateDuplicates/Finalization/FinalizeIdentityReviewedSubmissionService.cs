@@ -243,7 +243,9 @@ public sealed class FinalizeIdentityReviewedSubmissionService : IFinalizeIdentit
         {
             NotificationId = Guid.NewGuid(),
             UserId = userId,
-            NotificationType = "CANDIDATE_IDENTITY",
+            // Candidate identity events are account-level notifications. Keep this
+            // value aligned with ck_notification_type in the production schema.
+            NotificationType = "ACCOUNT",
             Title = title,
             Message = message,
             RelatedEntityType = relatedEntityType,

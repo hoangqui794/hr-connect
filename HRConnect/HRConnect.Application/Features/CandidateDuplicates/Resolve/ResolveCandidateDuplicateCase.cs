@@ -343,7 +343,9 @@ public sealed class ResolveCandidateDuplicateCaseCommandHandler
         {
             NotificationId = Guid.NewGuid(),
             UserId = userId.Value,
-            NotificationType = "CANDIDATE_IDENTITY",
+            // Candidate identity events are account-level notifications. Keep this
+            // value aligned with ck_notification_type in the production schema.
+            NotificationType = "ACCOUNT",
             Title = "Hồ sơ danh tính đã được đối chiếu",
             Message = "Hệ thống đã hoàn tất đối chiếu các hồ sơ Candidate của bạn. Lịch sử ứng tuyển vẫn được giữ nguyên.",
             RelatedEntityType = "CANDIDATE_DUPLICATE_CASE",

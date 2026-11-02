@@ -9,6 +9,11 @@ readonly BACKEND_ENV_FILE="${BACKEND_ENV_FILE:-$DEPLOY_ROOT/env/backend.env}"
 readonly AI_ENV_FILE="${AI_ENV_FILE:-$DEPLOY_ROOT/env/ai-v2.env}"
 readonly HEALTH_ATTEMPTS="${HEALTH_ATTEMPTS:-18}"
 readonly HEALTH_DELAY_SECONDS="${HEALTH_DELAY_SECONDS:-10}"
+readonly STOPPED_CONTAINER_RETENTION="${STOPPED_CONTAINER_RETENTION:-24h}"
+readonly BUILDER_CACHE_RETENTION="${BUILDER_CACHE_RETENTION:-24h}"
+readonly UNUSED_IMAGE_RETENTION="${UNUSED_IMAGE_RETENTION:-168h}"
+readonly DISK_WARNING_PERCENT="${DISK_WARNING_PERCENT:-75}"
+readonly MEMORY_WARNING_PERCENT="${MEMORY_WARNING_PERCENT:-85}"
 
 fail() {
   echo "DEPLOYMENT FAILED: $1" >&2
@@ -72,6 +77,71 @@ wait_for_stack() {
   wait_for_url 'Backend live' 'http://127.0.0.1:8080/health/live' \
     && wait_for_url 'Backend ready' 'http://127.0.0.1:8080/health/ready' \
     && wait_for_url 'AI v2' 'http://127.0.0.1:8001/health'
+}
+
+resource_usage_percent() {
+  local kind="$1"
+
+  case "$kind" in
+    disk)
+      df -P / | awk 'NR == 2 { gsub(/%/, "", $5); print $5 }'
+      ;;
+    memory)
+      awk '
+        /MemTotal:/ { total = $2 }
+        /MemAvailable:/ { available = $2 }
+        END {
+          if (total > 0) {
+            printf "%d\n", ((total - available) * 100) / total
+          }
+        }
+      ' /proc/meminfo
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+report_resource_usage() {
+  local disk_percent
+  local memory_percent
+  disk_percent="$(resource_usage_percent disk 2>/dev/null || true)"
+  memory_percent="$(resource_usage_percent memory 2>/dev/null || true)"
+
+  echo "Host resources: disk=${disk_percent:-unknown}% memory=${memory_percent:-unknown}%"
+  docker stats --no-stream \
+    --format 'Container {{.Name}}: memory={{.MemUsage}} cpu={{.CPUPerc}}' \
+    hrconnect-backend hrconnect-ai-v2 2>/dev/null || true
+
+  if [[ "$disk_percent" =~ ^[0-9]+$ ]] && (( disk_percent >= DISK_WARNING_PERCENT )); then
+    echo "WARNING: root disk usage is ${disk_percent}% (threshold ${DISK_WARNING_PERCENT}%)." >&2
+  fi
+
+  if [[ "$memory_percent" =~ ^[0-9]+$ ]] && (( memory_percent >= MEMORY_WARNING_PERCENT )); then
+    echo "WARNING: host memory usage is ${memory_percent}% (threshold ${MEMORY_WARNING_PERCENT}%)." >&2
+  fi
+}
+
+cleanup_after_successful_deploy() {
+  echo 'Cleaning unused Docker resources after successful health checks...'
+
+  docker container prune --force \
+    --filter "until=$STOPPED_CONTAINER_RETENTION" > /dev/null \
+    || echo 'WARNING: unable to prune stopped containers.' >&2
+
+  # Remove only unused images. Active container images are never selected and
+  # volumes are deliberately excluded. A missing rollback image can still be
+  # pulled again from its immutable GHCR sha tag.
+  docker image prune --all --force \
+    --filter "until=$UNUSED_IMAGE_RETENTION" > /dev/null \
+    || echo 'WARNING: unable to prune unused images.' >&2
+
+  docker builder prune --force \
+    --filter "until=$BUILDER_CACHE_RETENTION" > /dev/null \
+    || echo 'WARNING: unable to prune Docker build cache.' >&2
+
+  report_resource_usage
 }
 
 bootstrap_current_release() {
@@ -150,7 +220,7 @@ if compose "$RELEASE_DIR" up -d --remove-orphans && wait_for_stack; then
     ln -sfn "$previous_dir" "$PREVIOUS_LINK"
   fi
   ln -sfn "$RELEASE_DIR" "$CURRENT_LINK"
-  docker image prune --force --filter 'until=168h' > /dev/null || true
+  cleanup_after_successful_deploy
   echo "Deployment succeeded: $DEPLOY_SHA"
   exit 0
 fi

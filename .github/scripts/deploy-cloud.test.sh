@@ -81,6 +81,15 @@ make_fixture "$success_fixture"
 run_deploy "$success_fixture"
 grep -q 'compose.*pull' "$success_fixture/docker.log" \
   || fail 'Healthy deployment did not pull images.'
+grep -q 'container prune --force --filter until=24h' "$success_fixture/docker.log" \
+  || fail 'Healthy deployment did not prune stopped containers.'
+grep -q 'image prune --all --force --filter until=168h' "$success_fixture/docker.log" \
+  || fail 'Healthy deployment did not prune unused images.'
+grep -q 'builder prune --force --filter until=24h' "$success_fixture/docker.log" \
+  || fail 'Healthy deployment did not prune build cache.'
+if grep -q 'volume prune' "$success_fixture/docker.log"; then
+  fail 'Deployment cleanup must never prune Docker volumes.'
+fi
 
 if [[ "${OSTYPE:-}" != msys* && "${OSTYPE:-}" != cygwin* ]]; then
   [[ "$(basename "$(readlink -f "$success_fixture/deploy/current")")" == "$TEST_SHA" ]] \
@@ -96,6 +105,9 @@ EOF
   ln -s "$rollback_fixture/deploy/releases/previous" "$rollback_fixture/deploy/current"
   if run_deploy "$rollback_fixture" true; then
     fail 'An unhealthy deployment must return a failure status after rollback.'
+  fi
+  if grep -q 'builder prune\|image prune\|container prune' "$rollback_fixture/docker.log"; then
+    fail 'Cleanup must not run after an unhealthy deployment or rollback.'
   fi
   [[ "$(basename "$(readlink -f "$rollback_fixture/deploy/current")")" == 'previous' ]] \
     || fail 'Unhealthy deployment did not restore the previous release.'
