@@ -51,6 +51,10 @@ public sealed class ResolveCandidateDuplicateCaseCommandHandlerTests
         late.DuplicateOfSubmissionId.Should().Be(early.SubmissionId);
         lateApplication.Status.Should().Be("CLOSED");
         lateAttribution.Status.Should().Be("SUPERSEDED");
+        _notifications.Verify(x => x.AddAsync(It.Is<Notification>(notification =>
+            notification.NotificationType == "ACCOUNT" &&
+            notification.RelatedEntityType == "CANDIDATE_DUPLICATE_CASE"),
+            It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(x => x.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
