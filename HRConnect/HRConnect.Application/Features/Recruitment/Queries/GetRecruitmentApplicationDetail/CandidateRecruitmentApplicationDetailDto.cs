@@ -24,6 +24,8 @@ public class CandidateRecruitmentApplicationDetailDto
 
     public string CompanyName { get; set; } = string.Empty;
 
+    public CandidateApplicationJobOverviewDto? JobOverview { get; set; }
+
     public Guid CandidateId { get; set; }
 
     public string Status { get; set; } = string.Empty;
@@ -49,6 +51,22 @@ public class CandidateRecruitmentApplicationDetailDto
     public CandidatePlacementSummaryDto? Placement { get; set; }
 
     public List<string> AllowedActions { get; set; } = new();
+}
+
+public class CandidateApplicationJobOverviewDto
+{
+    public string? Description { get; set; }
+    public string? Benefits { get; set; }
+    public string? Location { get; set; }
+    public string? WorkingTime { get; set; }
+    public string? EmploymentType { get; set; }
+    public decimal? SalaryMin { get; set; }
+    public decimal? SalaryMax { get; set; }
+    public bool SalaryNegotiable { get; set; }
+    public string CurrencyCode { get; set; } = "VND";
+    public DateTime? ApplicationDeadline { get; set; }
+    public List<string> Requirements { get; set; } = new();
+    public List<string> Skills { get; set; } = new();
 }
 
 public class CandidateSubmittedCvDto

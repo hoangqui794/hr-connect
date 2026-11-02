@@ -1156,6 +1156,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
 
   // State for Offer Response Modal
   const [selectedOffer, setSelectedOffer] = useState<CandidateOfferSummaryDto | null>(null);
+  const [jobOverviewOpen, setJobOverviewOpen] = useState(false);
   const [offerResponseChoice, setOfferResponseChoice] = useState<'ACCEPTED' | 'DECLINED'>('ACCEPTED');
   const [declineReason, setDeclineReason] = useState('');
   const [selectedInterviewId, setSelectedInterviewId] = useState<string | null>(null);
@@ -1248,8 +1249,58 @@ export const CandidateApplicationDetailPage: React.FC = () => {
         eyebrow="Chi tiết ứng tuyển"
         title={application.jobTitle}
         description={application.companyName}
-        actions={<CandidateDetailStatus stage={stage} />}
+        actions={(
+          <Space wrap>
+            {application.jobOverview && (
+              <Button icon={<FileTextOutlined />} onClick={() => setJobOverviewOpen(true)}>
+                Xem thông tin vị trí
+              </Button>
+            )}
+            <CandidateDetailStatus stage={stage} />
+          </Space>
+        )}
       />
+
+      <Modal
+        open={jobOverviewOpen}
+        onCancel={() => setJobOverviewOpen(false)}
+        footer={<Button onClick={() => setJobOverviewOpen(false)}>Đóng</Button>}
+        title={`Thông tin vị trí · ${application.jobTitle}`}
+        width={760}
+      >
+        {application.jobOverview && (
+          <div className="space-y-5 text-sm text-slate-700">
+            <div className="grid gap-3 rounded-xl bg-slate-50 p-4 sm:grid-cols-2">
+              <div><span className="block text-xs text-slate-500">Công ty</span><strong className="text-slate-900">{application.companyName}</strong></div>
+              <div><span className="block text-xs text-slate-500">Địa điểm</span><strong className="text-slate-900">{application.jobOverview.location || 'Đang cập nhật'}</strong></div>
+              <div><span className="block text-xs text-slate-500">Hình thức làm việc</span><strong className="text-slate-900">{application.jobOverview.employmentType || 'Đang cập nhật'}</strong></div>
+              <div><span className="block text-xs text-slate-500">Thời gian làm việc</span><strong className="text-slate-900">{application.jobOverview.workingTime || 'Đang cập nhật'}</strong></div>
+              <div className="sm:col-span-2">
+                <span className="block text-xs text-slate-500">Mức lương</span>
+                <strong className="text-slate-900">
+                  {application.jobOverview.salaryNegotiable
+                    ? 'Thương lượng'
+                    : application.jobOverview.salaryMin != null || application.jobOverview.salaryMax != null
+                      ? `${application.jobOverview.salaryMin?.toLocaleString('vi-VN') || '0'} – ${application.jobOverview.salaryMax?.toLocaleString('vi-VN') || 'Không giới hạn'} ${application.jobOverview.currencyCode || 'VND'}`
+                      : 'Đang cập nhật'}
+                </strong>
+              </div>
+            </div>
+            {application.jobOverview.description && (
+              <section><h3 className="mb-2 text-base font-semibold text-slate-900">Mô tả công việc</h3><div className="whitespace-pre-line">{application.jobOverview.description}</div></section>
+            )}
+            {application.jobOverview.requirements?.length > 0 && (
+              <section><h3 className="mb-2 text-base font-semibold text-slate-900">Yêu cầu</h3><ul className="m-0 space-y-1 pl-5">{application.jobOverview.requirements.map((item: string, index: number) => <li key={`${index}-${item}`}>{item}</li>)}</ul></section>
+            )}
+            {application.jobOverview.skills?.length > 0 && (
+              <section><h3 className="mb-2 text-base font-semibold text-slate-900">Kỹ năng</h3><Space wrap>{application.jobOverview.skills.map((skill: string) => <Tag key={skill}>{skill}</Tag>)}</Space></section>
+            )}
+            {application.jobOverview.benefits && (
+              <section><h3 className="mb-2 text-base font-semibold text-slate-900">Quyền lợi</h3><div className="whitespace-pre-line">{application.jobOverview.benefits}</div></section>
+            )}
+          </div>
+        )}
+      </Modal>
 
       {/* Main Info Surface */}
       <CandidateSurface className="candidate-application-overview space-y-5 p-6">

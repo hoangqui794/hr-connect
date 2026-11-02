@@ -140,6 +140,20 @@ export interface CandidateRecruitmentApplicationDetailDto {
   jobTitle: string;
   companyId: string;
   companyName: string;
+  jobOverview?: {
+    description?: string | null;
+    benefits?: string | null;
+    location?: string | null;
+    workingTime?: string | null;
+    employmentType?: string | null;
+    salaryMin?: number | null;
+    salaryMax?: number | null;
+    salaryNegotiable: boolean;
+    currencyCode: string;
+    applicationDeadline?: string | null;
+    requirements: string[];
+    skills: string[];
+  } | null;
   candidateId: string;
   status: string;
   currentStage?: string | null;
