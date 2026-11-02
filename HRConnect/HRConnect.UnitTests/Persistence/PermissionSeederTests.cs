@@ -105,6 +105,19 @@ public class PermissionSeederTests
         lifecycle.Sql.Should().Contain("status = 'REVOKED'");
     }
 
+    [Fact]
+    public void CandidateDuplicatePermissionMigration_RepairsExistingProductionCatalog()
+    {
+        var builder = new MigrationBuilder("Npgsql.EntityFrameworkCore.PostgreSQL");
+        new CandidateDuplicatePermissionMigrationHarness().BuildUp(builder);
+        var sql = string.Join("\n", builder.Operations.OfType<SqlOperation>().Select(x => x.Sql));
+
+        sql.Should().Contain("'candidate_duplicate.view'");
+        sql.Should().Contain("'candidate_duplicate.resolve'");
+        sql.Should().Contain("role.code = 'PLATFORM_ADMIN'");
+        sql.Should().Contain("ON CONFLICT (role_id, permission_id) DO NOTHING");
+    }
+
     private static void AssertAffiliateAttributionPermission(string sql)
     {
         sql.Should().Contain("('attribution.view_own'");
@@ -144,6 +157,11 @@ public class PermissionSeederTests
     }
 
     private sealed class RbacMigrationHarness : AddProductionRbacManagement
+    {
+        public void BuildUp(MigrationBuilder builder) => Up(builder);
+    }
+
+    private sealed class CandidateDuplicatePermissionMigrationHarness : SeedCandidateDuplicatePermissions
     {
         public void BuildUp(MigrationBuilder builder) => Up(builder);
     }
