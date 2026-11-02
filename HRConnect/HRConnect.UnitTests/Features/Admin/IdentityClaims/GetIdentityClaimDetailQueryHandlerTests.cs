@@ -12,7 +12,9 @@ public sealed class GetIdentityClaimDetailQueryHandlerTests
     public async Task Handle_ReturnsEvidenceForBothCandidatesAndCurrentEmailOwner()
     {
         var repository = new Mock<ICandidateIdentityClaimRepository>();
+        var duplicates = new Mock<ICandidateDuplicateRepository>();
         var claimId = Guid.NewGuid();
+        var duplicateCaseId = Guid.NewGuid();
         var requester = CandidateRecord(cvCount: 0, submissionCount: 0, applicationCount: 0);
         var target = CandidateRecord(cvCount: 2, submissionCount: 3, applicationCount: 1);
         var owner = new AdminIdentityClaimEmailOwnerRecord(
@@ -39,10 +41,15 @@ public sealed class GetIdentityClaimDetailQueryHandlerTests
                 DateTime.UtcNow.AddDays(-1),
                 DateTime.UtcNow,
                 Guid.NewGuid(),
+                false,
+                false,
                 requester,
                 target,
                 owner));
-        var handler = new GetIdentityClaimDetailQueryHandler(repository.Object);
+        duplicates.Setup(x => x.FindIdentityClaimCaseIdAsync(
+                requester.CandidateId, target.CandidateId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(duplicateCaseId);
+        var handler = new GetIdentityClaimDetailQueryHandler(repository.Object, duplicates.Object);
 
         var response = await handler.Handle(
             new GetIdentityClaimDetailQuery(claimId), CancellationToken.None);
@@ -52,6 +59,9 @@ public sealed class GetIdentityClaimDetailQueryHandlerTests
         response.Data.RequesterCandidate.HasBusinessData.Should().BeFalse();
         response.Data.TargetCandidate!.HasBusinessData.Should().BeTrue();
         response.Data.CurrentEmailOwner!.UserId.Should().Be(owner.UserId);
+        response.Data.DuplicateCaseId.Should().Be(duplicateCaseId);
+        response.Data.Evidence.EmailOwnershipVerified.Should().BeTrue();
+        response.Data.Evidence.SamePhone.Should().BeTrue();
         response.Data.ConcurrencyToken.Should().NotBeEmpty();
     }
 
@@ -59,7 +69,8 @@ public sealed class GetIdentityClaimDetailQueryHandlerTests
     public async Task Handle_WhenClaimDoesNotExist_ReturnsControlledNotFound()
     {
         var repository = new Mock<ICandidateIdentityClaimRepository>();
-        var handler = new GetIdentityClaimDetailQueryHandler(repository.Object);
+        var duplicates = new Mock<ICandidateDuplicateRepository>();
+        var handler = new GetIdentityClaimDetailQueryHandler(repository.Object, duplicates.Object);
 
         var action = () => handler.Handle(
             new GetIdentityClaimDetailQuery(Guid.NewGuid()), CancellationToken.None);
@@ -78,10 +89,23 @@ public sealed class GetIdentityClaimDetailQueryHandlerTests
             "Candidate",
             "candidate@example.com",
             "0900000000",
+            "0900000000",
             "ACTIVE",
             null,
             cvCount,
             submissionCount,
             applicationCount,
-            0);
+            0,
+            0,
+            "Đại học",
+            3,
+            "Backend Developer",
+            "Tóm tắt hồ sơ",
+            new DateOnly(2000, 1, 1),
+            DateTime.UtcNow.AddYears(-1),
+            DateTime.UtcNow,
+            "CV chính",
+            "cv.pdf",
+            null,
+            null);
 }

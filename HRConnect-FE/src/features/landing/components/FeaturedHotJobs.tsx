@@ -173,7 +173,7 @@ export const FeaturedHotJobs: React.FC = () => {
                 letterSpacing: '-0.5px',
               }}
             >
-              Cơ hội Nghề nghiệp Nổi bật dành cho Tech Talent & Headhunter
+              Cơ hội Nghề nghiệp Nổi bật dành cho Tech Talent & Affiliate
             </Title>
             <Text style={{ color: '#94a3b8', fontSize: 15, display: 'block', marginTop: 8 }}>
               Hồ sơ được thẩm định trực tiếp qua hệ thống AI, nhận việc nhanh với mức đãi ngộ và hoa hồng minh bạch.
@@ -320,7 +320,7 @@ export const FeaturedHotJobs: React.FC = () => {
                     }}
                   >
                     <span style={{ color: '#10b981', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
-                      <GiftOutlined /> Hoa hồng Headhunter ({job.commissionRate}%):
+                      <GiftOutlined /> Hoa hồng Affiliate ({job.commissionRate}%):
                     </span>
                     <span style={{ color: '#34d399', fontWeight: 700, fontSize: 13 }}>
                       {job.estimatedCommission}

@@ -28,6 +28,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
     private readonly IPlacementFinanceService _placementFinanceService;
     private readonly IFinanceRepository _financeRepository;
     private readonly IPlacementReconciliationRepository _reconciliationRepository;
+    private readonly IAppNotifier? _notifier;
     private readonly ICandidateRecruitmentDeliveryService? _candidateDeliveryService;
 
     public ConfirmStartWorkCommandHandler(
@@ -41,6 +42,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
         IPlacementFinanceService placementFinanceService,
         IFinanceRepository financeRepository,
         IPlacementReconciliationRepository reconciliationRepository,
+        IAppNotifier? notifier = null,
         ICandidateRecruitmentDeliveryService? candidateDeliveryService = null)
     {
         _applicationRepository = applicationRepository;
@@ -53,6 +55,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
         _placementFinanceService = placementFinanceService;
         _financeRepository = financeRepository;
         _reconciliationRepository = reconciliationRepository;
+        _notifier = notifier;
         _candidateDeliveryService = candidateDeliveryService;
     }
 
@@ -254,6 +257,21 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
                 {
                     EnsureReopenedReconciliation(reconciliation);
                     ResetReconciliation(reconciliation, PlacementReconciliationOutcomes.Started, placement.PlacementId, now);
+                }
+
+                if (_notifier != null)
+                {
+                    var candidateName = application.Candidate?.FullName ?? "ứng viên";
+                    await _notifier.NotifyRoleAsync(
+                        "INTERNAL_HR",
+                        new AppNotice(
+                            "SYSTEM",
+                            "Cần đối soát xác nhận nhận việc",
+                            $"Doanh nghiệp đã xác nhận {candidateName} nhận việc tại vị trí \"{job.Title}\" (ngày đi làm {placement.ActualStartDate:dd/MM/yyyy}). Vui lòng đối soát.",
+                            "PLACEMENT_RECONCILIATION",
+                            application.ApplicationId,
+                            $"/hr/placement-reconciliations?highlight={application.ApplicationId}"),
+                        cancellationToken);
                 }
             }
 

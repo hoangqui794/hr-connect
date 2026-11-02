@@ -2,6 +2,7 @@ import { App as AntApp } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HrPlacementStartDateCorrectionPage } from './HrPlacementStartDateCorrectionPage';
 import { placementCorrectionApi } from '@/services/api/hrApi';
@@ -46,11 +47,13 @@ const renderPage = () => {
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
-    <QueryClientProvider client={queryClient}>
-      <AntApp>
-        <HrPlacementStartDateCorrectionPage />
-      </AntApp>
-    </QueryClientProvider>
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <AntApp>
+          <HrPlacementStartDateCorrectionPage />
+        </AntApp>
+      </QueryClientProvider>
+    </MemoryRouter>
   );
 };
 

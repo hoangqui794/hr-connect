@@ -30,6 +30,20 @@ export const LOCATION_OPTIONS = [
   'Kết hợp tại văn phòng và từ xa',
 ].map((value) => ({ value, label: value }));
 
+export type WorkMode = 'ONSITE' | 'HYBRID' | 'REMOTE';
+
+export const WORK_MODE_OPTIONS: { value: WorkMode; label: string; tag: string }[] = [
+  { value: 'ONSITE', label: 'Tại văn phòng (On-site)', tag: '🏢 On-site' },
+  { value: 'HYBRID', label: 'Kết hợp văn phòng & từ xa (Hybrid)', tag: '🔄 Hybrid' },
+  { value: 'REMOTE', label: 'Làm việc từ xa (Remote)', tag: '🌐 Remote' },
+];
+
+export const WORK_MODE_LABEL: Record<WorkMode, string> = {
+  ONSITE: 'Tại văn phòng (On-site)',
+  HYBRID: 'Kết hợp (Hybrid)',
+  REMOTE: 'Làm việc từ xa (Remote)',
+};
+
 export const WORKING_TIME_OPTIONS = [
   { value: 'Thứ 2 – Thứ 6, giờ hành chính', label: 'Thứ 2 – Thứ 6, giờ hành chính' },
   { value: 'Thứ 2 – Thứ 7, giờ hành chính', label: 'Thứ 2 – Thứ 7, giờ hành chính' },

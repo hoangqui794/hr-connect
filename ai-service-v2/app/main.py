@@ -7,6 +7,17 @@ from contextlib import asynccontextmanager
 from functools import lru_cache
 from typing import Annotated
 
+# Constrain PyTorch CPU threads early to conserve memory and avoid thread contention on low-RAM VPS
+try:
+    import torch
+    torch.set_num_threads(2)
+    try:
+        torch.set_num_interop_threads(1)
+    except RuntimeError:
+        pass
+except ImportError:
+    pass
+
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import ValidationError

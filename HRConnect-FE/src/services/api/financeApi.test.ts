@@ -20,6 +20,27 @@ describe('financeApi', () => {
     vi.clearAllMocks();
   });
 
+  describe('serviceFees', () => {
+    it('filters the deposit fee by job so VNPay receives the correct service fee', async () => {
+      const result = { items: [], totalCount: 0, page: 1, pageSize: 10 };
+      vi.mocked(apiClient.get).mockResolvedValueOnce({
+        data: { success: true, data: result },
+      });
+
+      await expect(financeApi.serviceFees({
+        jobId: 'job-sourcing',
+        kind: 'DEPOSIT',
+        status: 'all',
+        page: 1,
+        pageSize: 10,
+      })).resolves.toEqual(result);
+
+      expect(apiClient.get).toHaveBeenCalledWith('/service-fees', {
+        params: { jobId: 'job-sourcing', kind: 'DEPOSIT', page: 1, pageSize: 10 },
+      });
+    });
+  });
+
   describe('getReplacementSlots', () => {
     it('calls GET /jobs/{jobId}/replacement-slots and unwraps data', async () => {
       const mockSlots: ReplacementSlotDto[] = [

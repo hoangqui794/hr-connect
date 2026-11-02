@@ -46,7 +46,53 @@ export interface AdminIdentityClaimCandidateDetail {
   submissionCount: number;
   applicationCount: number;
   matchCount: number;
+  skillCount: number;
+  highestEducation: string | null;
+  yearsOfExperience: number | null;
+  currentJobTitle: string | null;
+  summary: string | null;
+  dateOfBirth: string | null;
+  createdAt: string;
+  updatedAt: string;
+  primaryCvTitle: string | null;
+  primaryCvFileName: string | null;
   hasBusinessData: boolean;
+}
+
+export interface AdminIdentityClaimEvidence {
+  emailOwnershipVerified: boolean;
+  sameFullName: boolean;
+  samePhone: boolean;
+  sameDateOfBirth: boolean;
+  exactCvMatch: boolean;
+  similarCvText: boolean;
+  supportingSignalCount: number;
+  conflictingSignalCount: number;
+}
+
+export interface CandidateMergePreview {
+  duplicateCaseId: string;
+  recommendedCanonicalCandidateId: string;
+  sourceCandidateId: string;
+  recommendationReason: string;
+  canMerge: boolean;
+  collisions: Array<{
+    jobId: string;
+    jobTitle: string;
+    candidateIds: string[];
+    submissionIds: string[];
+    applicationIds: string[];
+    resolutionRule: string;
+  }>;
+  financeBlockers: Array<{
+    applicationId: string;
+    attributionId: string;
+    commissionId: string;
+    payoutId: string;
+    payoutStatus: string;
+    reasonCode: string;
+  }>;
+  concurrencyToken: string;
 }
 
 export interface AdminIdentityClaimEmailOwner {
@@ -78,9 +124,11 @@ export interface AdminIdentityClaimDetail {
   createdAt: string;
   updatedAt: string;
   concurrencyToken: string;
+  duplicateCaseId: string | null;
   requesterCandidate: AdminIdentityClaimCandidateDetail;
   targetCandidate: AdminIdentityClaimCandidateDetail | null;
   currentEmailOwner: AdminIdentityClaimEmailOwner | null;
+  evidence: AdminIdentityClaimEvidence;
 }
 
 export interface AdminIdentityClaimDecisionResult {

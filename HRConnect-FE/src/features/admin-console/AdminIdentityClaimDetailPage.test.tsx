@@ -9,12 +9,14 @@ import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
 
 vi.mock('@/services/api/mf02/adminIdentityClaimApi', () => ({
-  adminIdentityClaimApi: { get: vi.fn(), approve: vi.fn(), reject: vi.fn() },
+  adminIdentityClaimApi: { get: vi.fn(), approve: vi.fn(), reject: vi.fn(), previewMerge: vi.fn(), mergeDuplicateCase: vi.fn() },
 }));
 
 const getMock = vi.mocked(adminIdentityClaimApi.get);
 const approveMock = vi.mocked(adminIdentityClaimApi.approve);
 const rejectMock = vi.mocked(adminIdentityClaimApi.reject);
+const previewMergeMock = vi.mocked(adminIdentityClaimApi.previewMerge);
+const mergeDuplicateCaseMock = vi.mocked(adminIdentityClaimApi.mergeDuplicateCase);
 
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
@@ -36,20 +38,28 @@ const detail = {
   status: 'PENDING_ADMIN_REVIEW', reviewReason: null, expiresAt: '2026-10-10T00:00:00Z', attemptCount: 1,
   resendCount: 0, lastSentAt: '2026-10-09T09:00:00Z', verifiedAt: '2026-10-09T09:05:00Z', completedAt: null,
   reviewedBy: null, reviewedAt: null, createdAt: '2026-10-09T09:00:00Z', updatedAt: '2026-10-09T09:05:00Z',
-  concurrencyToken: 'token-1',
+  concurrencyToken: 'token-1', duplicateCaseId: 'case-1',
   requesterCandidate: {
     candidateId: 'candidate-1', userId: 'user-1', fullName: 'Nguyễn An', email: 'new@example.com', phone: '0901000001',
     status: 'ACTIVE', mergedIntoCandidateId: null, cvCount: 0, submissionCount: 0, applicationCount: 0, matchCount: 0,
-    hasBusinessData: false,
+    skillCount: 2, highestEducation: 'Đại học', yearsOfExperience: 3, currentJobTitle: 'Backend Developer',
+    summary: 'Hồ sơ hiện tại', dateOfBirth: '2000-01-01', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-10-01T00:00:00Z',
+    primaryCvTitle: null, primaryCvFileName: null, hasBusinessData: false,
   },
   targetCandidate: {
     candidateId: 'candidate-2', userId: null, fullName: 'Nguyễn An cũ', email: 'old@example.com', phone: '0901000001',
     status: 'ACTIVE', mergedIntoCandidateId: null, cvCount: 2, submissionCount: 2, applicationCount: 1, matchCount: 1,
-    hasBusinessData: true,
+    skillCount: 3, highestEducation: 'Đại học', yearsOfExperience: 3, currentJobTitle: 'Backend Developer',
+    summary: 'Hồ sơ cũ', dateOfBirth: '2000-01-01', createdAt: '2025-01-01T00:00:00Z', updatedAt: '2026-09-01T00:00:00Z',
+    primaryCvTitle: 'CV chính', primaryCvFileName: 'cv.pdf', hasBusinessData: true,
   },
   currentEmailOwner: {
     emailIdentityId: 'identity-1', userId: 'user-1', primaryEmail: 'new@example.com', displayName: 'Nguyễn An',
     kind: 'ALIAS', status: 'VERIFIED',
+  },
+  evidence: {
+    emailOwnershipVerified: true, sameFullName: false, samePhone: true, sameDateOfBirth: true,
+    exactCvMatch: false, similarCvText: false, supportingSignalCount: 3, conflictingSignalCount: 1,
   },
 };
 
@@ -81,6 +91,10 @@ describe('AdminIdentityClaimDetailPage', () => {
       },
     });
     getMock.mockResolvedValue(detail);
+    previewMergeMock.mockResolvedValue({
+      duplicateCaseId: 'case-1', recommendedCanonicalCandidateId: 'candidate-1', sourceCandidateId: 'candidate-2',
+      recommendationReason: 'ACCOUNT_OWNER', canMerge: true, collisions: [], financeBlockers: [], concurrencyToken: 'case-token-1',
+    });
   });
 
   it('shows both candidate records and approves with the current concurrency token', async () => {
@@ -115,6 +129,33 @@ describe('AdminIdentityClaimDetailPage', () => {
     renderPage();
     expect(await screen.findByText('Không thể tự động hợp nhất hai hồ sơ đã có dữ liệu nghiệp vụ')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Phê duyệt/ })).toBeDisabled();
+  });
+
+  it('previews, safely merges, then completes the identity claim', async () => {
+    useAuthStore.setState((state) => ({
+      ...state,
+      user: state.user ? { ...state.user, permissions: ['candidate.identity.review', 'candidate_duplicate.resolve'] } : null,
+    }));
+    getMock.mockResolvedValue({
+      ...detail,
+      requesterCandidate: { ...detail.requesterCandidate, cvCount: 1, hasBusinessData: true },
+    });
+    mergeDuplicateCaseMock.mockResolvedValue({});
+    approveMock.mockResolvedValue({
+      success: true, message: 'Đã hợp nhất.', claimId: 'claim-1', status: 'COMPLETED',
+      canonicalCandidateId: 'candidate-1', concurrencyToken: 'token-2',
+    });
+
+    renderPage();
+    const mergeButton = await screen.findByRole('button', { name: /Hợp nhất an toàn/ });
+    await waitFor(() => expect(mergeButton).toBeEnabled());
+    fireEvent.click(mergeButton);
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'Đã đối chiếu email, số điện thoại và hồ sơ.' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Hợp nhất an toàn' }));
+
+    await waitFor(() => expect(mergeDuplicateCaseMock).toHaveBeenCalled());
+    expect(approveMock).toHaveBeenCalledWith('claim-1', 'token-1', 'Đã đối chiếu email, số điện thoại và hồ sơ.');
   });
 
   it('reloads the detail after a stale concurrency conflict', async () => {

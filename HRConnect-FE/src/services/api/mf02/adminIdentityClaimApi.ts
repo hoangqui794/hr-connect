@@ -5,6 +5,7 @@ import type {
   AdminIdentityClaimDetail,
   AdminIdentityClaimListItem,
   AdminIdentityClaimListParams,
+  CandidateMergePreview,
 } from '@/types/api/mf02';
 import { cleanParams } from './shared';
 
@@ -37,6 +38,23 @@ export const adminIdentityClaimApi = {
         `/admin/candidate-identity-claims/${claimId}/reject`,
         { concurrencyToken, reason }
       )
+    ).data;
+  },
+  async previewMerge(caseId: string): Promise<CandidateMergePreview> {
+    return (
+      await apiClient.post<CandidateMergePreview>(
+        `/admin/candidate-duplicate-cases/${caseId}/preview-merge`
+      )
+    ).data;
+  },
+  async mergeDuplicateCase(caseId: string, preview: CandidateMergePreview, reason: string) {
+    return (
+      await apiClient.post(`/admin/candidate-duplicate-cases/${caseId}/resolve`, {
+        decision: 'MERGE',
+        reason,
+        concurrencyToken: preview.concurrencyToken,
+        idempotencyKey: `identity-claim-merge:${caseId}`,
+      })
     ).data;
   },
 };

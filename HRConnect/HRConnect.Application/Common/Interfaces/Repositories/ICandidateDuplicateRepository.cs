@@ -56,6 +56,11 @@ public interface ICandidateDuplicateRepository
         Guid duplicateCaseId,
         CancellationToken cancellationToken = default);
 
+    Task<Guid?> FindIdentityClaimCaseIdAsync(
+        Guid candidateAId,
+        Guid candidateBId,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Candidate>> GetCandidatesForUpdateAsync(
         Guid candidateAId,
         Guid candidateBId,

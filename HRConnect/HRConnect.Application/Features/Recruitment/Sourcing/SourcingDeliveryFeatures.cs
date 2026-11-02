@@ -347,7 +347,7 @@ public sealed class DecideSourcingDeliveryCommandHandler : IRequestHandler<Decid
             await _notifier.NotifyRoleAsync("INTERNAL_HR", new AppNotice(
                 "SOURCING", "Client từ chối một CV đã giao",
                 $"Tin \"{delivery.Job.Title}\": CV bị từ chối (lý do {delivery.RejectReasonCode}). Vui lòng xem xét hoặc thay CV dự phòng.",
-                "SOURCING_DELIVERY", delivery.DeliveryId, "/hr/screening"), cancellationToken);
+                "SOURCING_DELIVERY", delivery.DeliveryId, $"/hr/screening?status=SHORTLISTED&open={delivery.ApplicationId}"), cancellationToken);
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);

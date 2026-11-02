@@ -1,10 +1,11 @@
 import { App as AntApp, message } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mf04Api } from '@/services/api/mf04Api';
+import { candidateCvApi } from '@/services/api/mf02Api';
 import { CandidateProfilePage } from './CandidateProfilePage';
 
 // Mock matchMedia for Ant Design responsive Grid
@@ -39,6 +40,7 @@ describe('CandidateProfilePage', () => {
     vi.clearAllMocks();
     vi.spyOn(message, 'error').mockImplementation((() => undefined) as any);
     vi.spyOn(message, 'success').mockImplementation((() => undefined) as any);
+    vi.spyOn(candidateCvApi, 'list').mockResolvedValue([]);
   });
 
   const mockProfileData = {
@@ -57,7 +59,7 @@ describe('CandidateProfilePage', () => {
     expectedSalaryMin: 35000000,
     expectedSalaryMax: 50000000,
     expectedSalaryCurrency: 'VND',
-    availableFrom: '2026-11-01',
+    availableFrom: '2099-11-01',
     preferredLocations: ['Hà Nội', 'Remote'],
     preferredWorkModes: ['HYBRID', 'REMOTE'],
     skills: [{ skillName: 'React' }, { skillName: 'TypeScript' }],
@@ -105,6 +107,7 @@ describe('CandidateProfilePage', () => {
   });
 
   it('submits form and calls mf04Api.updateProfile with 9 career fields', async () => {
+    const user = userEvent.setup();
     vi.spyOn(mf04Api, 'getProfile').mockResolvedValue(mockProfileData);
     const updateSpy = vi.spyOn(mf04Api, 'updateProfile').mockResolvedValueOnce({
       ...mockProfileData,
@@ -116,7 +119,7 @@ describe('CandidateProfilePage', () => {
     expect(await screen.findByDisplayValue('Senior React Developer', {}, { timeout: 10000 })).toBeInTheDocument();
 
     const saveButton = screen.getByRole('button', { name: /Lưu thay đổi/i });
-    fireEvent.click(saveButton);
+    await user.click(saveButton);
 
     await waitFor(() => {
       expect(updateSpy).toHaveBeenCalledWith(
@@ -134,6 +137,7 @@ describe('CandidateProfilePage', () => {
   });
 
   it('displays error message when DB updateProfile fails', async () => {
+    const user = userEvent.setup();
     vi.spyOn(mf04Api, 'getProfile').mockResolvedValue(mockProfileData);
     const errorSpy = vi.spyOn(message, 'error');
     vi.spyOn(mf04Api, 'updateProfile').mockRejectedValueOnce(
@@ -145,7 +149,7 @@ describe('CandidateProfilePage', () => {
     expect(await screen.findByDisplayValue('Senior React Developer', {}, { timeout: 10000 })).toBeInTheDocument();
 
     const saveButton = screen.getByRole('button', { name: /Lưu thay đổi/i });
-    fireEvent.click(saveButton);
+    await user.click(saveButton);
 
     await waitFor(() => {
       expect(errorSpy).toHaveBeenCalledWith('Lỗi kết nối cơ sở dữ liệu');

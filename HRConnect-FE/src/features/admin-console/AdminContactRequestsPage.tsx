@@ -6,7 +6,7 @@
  *   - PATCH /admin/contact-requests/{id} { status, note }
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -99,6 +99,19 @@ export const AdminContactRequestsPage: React.FC = () => {
       }),
     enabled: hasManagePermission,
   });
+
+  const highlightParam = searchParams.get('highlight');
+  useEffect(() => {
+    if (!highlightParam || isLoading || !data?.items) return;
+    const q = highlightParam.toLowerCase();
+    const match = data.items.find((item) => item.contactRequestId.toLowerCase() === q);
+    if (match) {
+      setDetailItem(match);
+      const next = new URLSearchParams(searchParams);
+      next.delete('highlight');
+      setSearchParams(next, { replace: true });
+    }
+  }, [highlightParam, isLoading, data, searchParams, setSearchParams]);
 
   const isForbidden =
     !hasManagePermission ||

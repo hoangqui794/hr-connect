@@ -191,6 +191,25 @@ public sealed class CandidateDuplicateRepository : ICandidateDuplicateRepository
             .Include(item => item.Job).ThenInclude(job => job!.Company)
             .SingleOrDefaultAsync(cancellationToken);
 
+    public Task<Guid?> FindIdentityClaimCaseIdAsync(
+        Guid candidateAId,
+        Guid candidateBId,
+        CancellationToken cancellationToken = default)
+    {
+        var (orderedAId, orderedBId) = Order(candidateAId, candidateBId);
+        return _context.CandidateDuplicateCases
+            .AsNoTracking()
+            .Where(item =>
+                item.CandidateAId == orderedAId &&
+                item.CandidateBId == orderedBId &&
+                item.JobId == null &&
+                item.Signals.Any(signal => signal.ReasonCode == "VERIFIED_EMAIL_OWNERSHIP"))
+            .OrderByDescending(item => ActiveStatuses.Contains(item.Status))
+            .ThenByDescending(item => item.CreatedAt)
+            .Select(item => (Guid?)item.DuplicateCaseId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Candidate>> GetCandidatesForUpdateAsync(
         Guid candidateAId,
         Guid candidateBId,

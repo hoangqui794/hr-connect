@@ -97,7 +97,7 @@ const DEFAULT_SYSTEM_MATRIX: SystemRoleMatrixItem[] = [
   },
   {
     code: 'AFFILIATE',
-    name: 'Cộng tác viên / Headhunter',
+    name: 'Cộng tác viên / Affiliate',
     badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200/80',
     description: 'Tìm kiếm nguồn ứng viên, nộp hồ sơ vào tin tuyển dụng mở, theo dõi hoa hồng và yêu cầu quyết toán.',
     scope: 'Mạng lưới tuyển dụng',

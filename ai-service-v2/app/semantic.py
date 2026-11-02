@@ -45,8 +45,15 @@ class SemanticMatcher:
             return 0.0
 
         model = _load_model(self._settings.embedding_model)
-        job_vectors = model.encode(job_chunks, normalize_embeddings=True)
-        cv_vectors = model.encode(cv_chunks, normalize_embeddings=True)
+        try:
+            import torch
+            with torch.inference_mode():
+                job_vectors = model.encode(job_chunks, normalize_embeddings=True)
+                cv_vectors = model.encode(cv_chunks, normalize_embeddings=True)
+        except ImportError:
+            job_vectors = model.encode(job_chunks, normalize_embeddings=True)
+            cv_vectors = model.encode(cv_chunks, normalize_embeddings=True)
+
         best = (np.asarray(job_vectors) @ np.asarray(cv_vectors).T).max(axis=1)
         raw = float(best.mean())
         return rescale(raw, self._settings.semantic_floor, self._settings.semantic_ceiling)

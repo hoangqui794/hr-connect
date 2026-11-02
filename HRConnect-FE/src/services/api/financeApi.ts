@@ -69,6 +69,7 @@ export const financeApi = {
   async serviceFees(params: {
     status?: ServiceFeeStatus | 'all';
     kind?: ServiceFeeKind;
+    jobId?: string;
     page: number;
     pageSize: number;
   }): Promise<FinancePage<ServiceFee>> {
