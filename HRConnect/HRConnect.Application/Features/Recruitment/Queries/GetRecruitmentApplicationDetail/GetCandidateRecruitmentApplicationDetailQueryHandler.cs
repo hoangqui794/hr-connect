@@ -122,6 +122,29 @@ public class GetCandidateRecruitmentApplicationDetailQueryHandler
             JobTitle = app.Job?.Title ?? string.Empty,
             CompanyId = app.Job?.CompanyId ?? Guid.Empty,
             CompanyName = app.Job?.Company?.CompanyName ?? string.Empty,
+            JobOverview = app.Job == null ? null : new CandidateApplicationJobOverviewDto
+            {
+                Description = app.Job.Description,
+                Benefits = app.Job.Benefits,
+                Location = app.Job.Location,
+                WorkingTime = app.Job.WorkingTime,
+                EmploymentType = app.Job.EmploymentType,
+                SalaryMin = app.Job.SalaryMin,
+                SalaryMax = app.Job.SalaryMax,
+                SalaryNegotiable = app.Job.SalaryNegotiable,
+                CurrencyCode = app.Job.CurrencyCode,
+                ApplicationDeadline = app.Job.ApplicationDeadline,
+                Requirements = app.Job.JobRequirements
+                    .OrderBy(requirement => requirement.CreatedAt)
+                    .Select(requirement => requirement.Content)
+                    .ToList(),
+                Skills = app.Job.JobSkills
+                    .Where(jobSkill => jobSkill.Skill != null)
+                    .OrderByDescending(jobSkill => jobSkill.IsMandatory)
+                    .ThenBy(jobSkill => jobSkill.Skill.SkillName)
+                    .Select(jobSkill => jobSkill.Skill.SkillName)
+                    .ToList()
+            },
             CandidateId = app.CandidateId,
             Status = app.Status,
             CurrentStage = app.CurrentStage,

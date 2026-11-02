@@ -207,6 +207,12 @@ public static class HrConnectEmailTemplates
     public static HrConnectEmail OfferSent(RecruitmentCandidateEmailPayload payload)
     {
         var company = CompanyOrPlatform(payload.CompanyName);
+        var accountInstruction = payload.HasLinkedAccount
+            ? "Đăng nhập HR Connect để xem nội dung Offer và phản hồi."
+            : "Đăng ký hoặc đăng nhập HR Connect để xem nội dung Offer và phản hồi.";
+        var actionLabel = payload.HasLinkedAccount
+            ? "Xem và phản hồi Offer"
+            : "Đăng ký / đăng nhập để xem Offer";
         var expiry = payload.ExpiryDate is { } value
             ? $" Vui lòng phản hồi trước ngày <strong>{value:dd/MM/yyyy}</strong>."
             : string.Empty;
@@ -216,13 +222,19 @@ public static class HrConnectEmailTemplates
                 "Bạn có một lời mời nhận việc",
                 Greeting(payload.CandidateName) +
                 $"<p style=\"margin:0 0 16px\">{company} đã gửi lời mời nhận việc cho vị trí <strong>{E(payload.JobTitle)}</strong>.{expiry}</p>" +
-                "<p style=\"margin:0 0 18px\">Đăng ký hoặc đăng nhập HR Connect để xem nội dung Offer và phản hồi. Vì an toàn thông tin, email này không chứa chi tiết lương hoặc tài liệu Offer.</p>" +
-                Button("Đăng ký / đăng nhập để xem Offer", payload.PortalUrl),
+                $"<p style=\"margin:0 0 18px\">{accountInstruction} Vì an toàn thông tin, email này không chứa chi tiết lương hoặc tài liệu Offer.</p>" +
+                Button(actionLabel, payload.PortalUrl),
                 $"Bạn có Offer mới cho vị trí {payload.JobTitle}."));
     }
 
     public static HrConnectEmail OfferWithdrawn(RecruitmentCandidateEmailPayload payload)
     {
+        var accountInstruction = payload.HasLinkedAccount
+            ? "Đăng nhập HR Connect để theo dõi trạng thái hồ sơ."
+            : "Đăng ký hoặc đăng nhập HR Connect để theo dõi trạng thái hồ sơ.";
+        var actionLabel = payload.HasLinkedAccount
+            ? "Xem trạng thái hồ sơ"
+            : "Đăng ký / đăng nhập HR Connect";
         var reason = string.IsNullOrWhiteSpace(payload.Reason)
             ? string.Empty
             : $"<p style=\"margin:0 0 16px\">Lý do: {E(payload.Reason.Trim())}</p>";
@@ -233,21 +245,29 @@ public static class HrConnectEmailTemplates
                 Greeting(payload.CandidateName) +
                 $"<p style=\"margin:0 0 16px\">Lời mời nhận việc cho vị trí <strong>{E(payload.JobTitle)}</strong> đã được thu hồi.</p>" +
                 reason +
-                "<p style=\"margin:0 0 18px\">Bạn có thể đăng ký hoặc đăng nhập HR Connect để theo dõi trạng thái hồ sơ.</p>" +
-                Button("Đăng ký / đăng nhập HR Connect", payload.PortalUrl),
+                $"<p style=\"margin:0 0 18px\">{accountInstruction}</p>" +
+                Button(actionLabel, payload.PortalUrl),
                 $"Cập nhật Offer cho vị trí {payload.JobTitle}."));
     }
 
-    public static HrConnectEmail OfferExpired(RecruitmentCandidateEmailPayload payload) =>
-        new(
+    public static HrConnectEmail OfferExpired(RecruitmentCandidateEmailPayload payload)
+    {
+        var accountInstruction = payload.HasLinkedAccount
+            ? "Đăng nhập HR Connect để xem lại trạng thái hồ sơ của bạn."
+            : "Đăng ký hoặc đăng nhập HR Connect để xem lại trạng thái hồ sơ của bạn.";
+        var actionLabel = payload.HasLinkedAccount
+            ? "Xem trạng thái hồ sơ"
+            : "Đăng ký / đăng nhập HR Connect";
+        return new HrConnectEmail(
             SubjectText($"Offer cho vị trí {payload.JobTitle} đã hết hạn phản hồi"),
             Render(
                 "Offer đã hết hạn phản hồi",
                 Greeting(payload.CandidateName) +
                 $"<p style=\"margin:0 0 16px\">Lời mời nhận việc cho vị trí <strong>{E(payload.JobTitle)}</strong> đã hết hạn phản hồi.</p>" +
-                "<p style=\"margin:0 0 18px\">Bạn có thể đăng ký hoặc đăng nhập HR Connect để xem lại trạng thái hồ sơ của mình.</p>" +
-                Button("Đăng ký / đăng nhập HR Connect", payload.PortalUrl),
+                $"<p style=\"margin:0 0 18px\">{accountInstruction}</p>" +
+                Button(actionLabel, payload.PortalUrl),
                 $"Offer cho vị trí {payload.JobTitle} đã hết hạn phản hồi."));
+    }
 
     public static HrConnectEmail ApplicationNotStartedReported(RecruitmentCandidateEmailPayload payload)
     {
@@ -261,6 +281,20 @@ public static class HrConnectEmailTemplates
                 "<p style=\"margin:0 0 18px\">HR Connect sẽ đối soát kết quả này. Nếu thông tin chưa chính xác, vui lòng liên hệ bộ phận hỗ trợ; email này không cho phép tự thay đổi trạng thái hồ sơ.</p>" +
                 Button("Đăng ký / đăng nhập để xem hồ sơ", payload.PortalUrl),
                 $"Cập nhật hồ sơ ứng tuyển vị trí {payload.JobTitle}."));
+    }
+
+    public static HrConnectEmail ApplicationStartedConfirmed(RecruitmentCandidateEmailPayload payload)
+    {
+        var organization = CompanyOrPlatform(payload.CompanyName);
+        return new HrConnectEmail(
+            SubjectText($"Xác nhận bắt đầu làm việc cho vị trí {payload.JobTitle}"),
+            Render(
+                "Đã xác nhận bắt đầu làm việc",
+                Greeting(payload.CandidateName) +
+                $"<p style=\"margin:0 0 16px\">{organization} đã xác nhận bạn bắt đầu làm việc cho vị trí <strong>{E(payload.JobTitle)}</strong>.</p>" +
+                "<p style=\"margin:0 0 18px\">Chúc bạn có một hành trình mới thật nhiều thành công. Bạn có thể mở HR Connect để xem trạng thái hồ sơ.</p>" +
+                Button("Xem hồ sơ ứng tuyển", payload.PortalUrl),
+                $"Bạn đã được xác nhận bắt đầu làm việc cho vị trí {payload.JobTitle}."));
     }
 
     private static HrConnectEmail InterviewNotice(

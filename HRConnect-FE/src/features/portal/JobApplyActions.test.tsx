@@ -84,4 +84,20 @@ describe('JobApplyActions', () => {
     expect(screen.getByRole('button', { name: /Ứng tuyển/i })).toBeDisabled();
     expect(screen.getByText('Tài khoản chưa có quyền tự ứng tuyển.')).toBeInTheDocument();
   });
+
+  it('disables self-apply when the backend marks the job as no longer accepting applications', () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <MemoryRouter>
+        <QueryClientProvider client={queryClient}>
+          <AntApp>
+            <JobApplyActions job={{ ...job, isAcceptingApplications: false }} />
+          </AntApp>
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('button', { name: /Đã hết hạn nhận hồ sơ/i })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /^Ứng tuyển$/i })).not.toBeInTheDocument();
+  });
 });

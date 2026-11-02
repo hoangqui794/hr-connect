@@ -169,6 +169,43 @@ public class CandidateRecruitmentDeliveryServiceTests
     }
 
     [Fact]
+    public async Task DeliverOfferAsync_WithLinkedAccountAndEmail_CreatesInAppAndQueuesEmail()
+    {
+        var userId = Guid.NewGuid();
+        var (application, _) = CreateApplication(new Candidate
+        {
+            UserId = userId,
+            FullName = "An",
+            Email = "candidate@example.com"
+        });
+        var offer = new Offer
+        {
+            OfferId = Guid.NewGuid(),
+            ApplicationId = application.ApplicationId,
+            Application = application,
+            OfferVersion = 1
+        };
+        EmailOutbox? outbox = null;
+        _outboxes.Setup(x => x.AddAsync(It.IsAny<EmailOutbox>(), It.IsAny<CancellationToken>()))
+            .Callback<EmailOutbox, CancellationToken>((value, _) => outbox = value)
+            .Returns(Task.CompletedTask);
+
+        var result = await CreateService().DeliverOfferAsync(
+            offer, OfferCandidateDeliveryEvent.Sent, null, DateTime.UtcNow);
+
+        result.Channel.Should().Be(CandidateRecruitmentDeliveryChannel.InAppAndEmail);
+        _notifications.Verify(x => x.AddAsync(
+            It.Is<Notification>(item => item.UserId == userId && item.NotificationType == "OFFER"),
+            It.IsAny<CancellationToken>()), Times.Once);
+        outbox.Should().NotBeNull();
+        outbox!.UserId.Should().Be(userId);
+        outbox.RecipientEmail.Should().Be("candidate@example.com");
+        var payload = JsonSerializer.Deserialize<RecruitmentCandidateEmailPayload>(outbox.Payload)!;
+        payload.HasLinkedAccount.Should().BeTrue();
+        payload.PortalUrl.Should().Be($"https://portal.example/candidate/applications/{application.ApplicationId}");
+    }
+
+    [Fact]
     public async Task DeliverApplicationOutcomeAsync_WithUnlinkedEmail_QueuesSafeNotStartedEmail()
     {
         var (application, _) = CreateApplication(new Candidate
@@ -192,6 +229,35 @@ public class CandidateRecruitmentDeliveryServiceTests
         outbox.Payload.Should().Contain("Backend Developer");
         outbox.Payload.Should().NotContain("salary");
         outbox.Payload.Should().NotContain("Thông tin nội bộ không được đưa vào email");
+    }
+
+    [Fact]
+    public async Task DeliverApplicationOutcomeAsync_WhenStartIsConfirmed_DeliversBothChannels()
+    {
+        var userId = Guid.NewGuid();
+        var (application, _) = CreateApplication(new Candidate
+        {
+            UserId = userId,
+            FullName = "An",
+            Email = "candidate@example.com"
+        });
+        EmailOutbox? outbox = null;
+        _outboxes.Setup(x => x.AddAsync(It.IsAny<EmailOutbox>(), It.IsAny<CancellationToken>()))
+            .Callback<EmailOutbox, CancellationToken>((value, _) => outbox = value)
+            .Returns(Task.CompletedTask);
+
+        var result = await CreateService().DeliverApplicationOutcomeAsync(
+            application,
+            ApplicationCandidateDeliveryEvent.StartedConfirmed,
+            null,
+            DateTime.UtcNow);
+
+        result.Channel.Should().Be(CandidateRecruitmentDeliveryChannel.InAppAndEmail);
+        _notifications.Verify(x => x.AddAsync(
+            It.Is<Notification>(item => item.Title.Contains("bắt đầu làm việc")),
+            It.IsAny<CancellationToken>()), Times.Once);
+        outbox.Should().NotBeNull();
+        outbox!.TemplateCode.Should().Be(RecruitmentCandidateEmailTemplates.ApplicationStartedConfirmed);
     }
 
     private static (JobApplication Application, Interview Interview) CreateApplication(Candidate candidate)

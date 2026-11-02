@@ -38,6 +38,19 @@ describe('CandidateApplicationDetailPage', () => {
     jobTitle: 'Senior .NET Developer',
     companyId: 'company-1',
     companyName: 'HR Connect',
+    jobOverview: {
+      description: 'Xây dựng nền tảng tuyển dụng.',
+      benefits: 'Bảo hiểm và đào tạo.',
+      location: 'TP. Hồ Chí Minh',
+      workingTime: 'Thứ Hai - Thứ Sáu',
+      employmentType: 'FULL_TIME',
+      salaryMin: 30000000,
+      salaryMax: 45000000,
+      salaryNegotiable: false,
+      currencyCode: 'VND',
+      requirements: ['Từ 3 năm kinh nghiệm .NET'],
+      skills: ['C#', 'PostgreSQL'],
+    },
     status: 'INTERVIEWING',
     currentStage: 'INTERVIEW',
     statusReason: null,
@@ -139,6 +152,25 @@ describe('CandidateApplicationDetailPage', () => {
 
     // Check Timeline event
     expect(screen.getByText('Đã nộp hồ sơ thành công')).toBeInTheDocument();
+  });
+
+  it('shows application-scoped job information without opening the public job page', async () => {
+    vi.spyOn(mf04Api, 'getApplicationDetail').mockResolvedValueOnce(mockMf04Application as any);
+    vi.spyOn(mf04Api, 'getApplicationTimeline').mockResolvedValueOnce({
+      applicationId: 'application-1',
+      candidateName: 'Nguyễn Văn A',
+      jobTitle: 'Senior .NET Developer',
+      currentStatus: 'INTERVIEWING',
+      events: [],
+    });
+    const user = userEvent.setup();
+    renderComponent();
+
+    await user.click(await screen.findByRole('button', { name: /Xem thông tin vị trí/i }));
+
+    expect(screen.getByText('Xây dựng nền tảng tuyển dụng.')).toBeInTheDocument();
+    expect(screen.getByText('Từ 3 năm kinh nghiệm .NET')).toBeInTheDocument();
+    expect(screen.getByText('Bảo hiểm và đào tạo.')).toBeInTheDocument();
   });
 
   it('translates legacy internal status codes into candidate-friendly timeline copy', async () => {

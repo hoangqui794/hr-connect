@@ -12,8 +12,6 @@ public class Mf04InputPolicyTests
     [InlineData("OFFLINE", "OFFLINE")]
     [InlineData("Trực tiếp", "OFFLINE")]
     [InlineData("ONSITE", "OFFLINE")]
-    [InlineData("PHONE", "PHONE")]
-    [InlineData("Điện thoại", "PHONE")]
     public void NormalizeInterviewType_WhenAliasIsSupported_ShouldReturnCanonicalValue(
         string input,
         string expected)
@@ -27,7 +25,27 @@ public class Mf04InputPolicyTests
         Action act = () => Mf04InputPolicy.NormalizeInterviewType("CHAT_APP");
 
         act.Should().Throw<BadRequestException>()
-            .WithMessage("*ONLINE, OFFLINE hoặc PHONE*");
+            .WithMessage("*ONLINE hoặc OFFLINE*");
+    }
+
+    [Theory]
+    [InlineData("PHONE")]
+    [InlineData("Điện thoại")]
+    [InlineData("PHONE_SCREEN")]
+    public void NormalizeInterviewType_WhenPhoneIsRequestedForNewSchedule_ShouldRejectIt(string input)
+    {
+        Action act = () => Mf04InputPolicy.NormalizeInterviewType(input);
+
+        act.Should().Throw<BadRequestException>()
+            .WithMessage("*ONLINE hoặc OFFLINE*");
+    }
+
+    [Theory]
+    [InlineData("PHONE")]
+    [InlineData("Điện thoại")]
+    public void NormalizeStoredInterviewType_WhenLegacyPhoneExists_ShouldKeepItReadable(string input)
+    {
+        Mf04InputPolicy.NormalizeStoredInterviewType(input).Should().Be("PHONE");
     }
 
     [Theory]
@@ -66,7 +84,6 @@ public class Mf04InputPolicyTests
     [Theory]
     [InlineData("ONLINE", null, "https://meet.example.com/room")]
     [InlineData("OFFLINE", "Phòng họp A", null)]
-    [InlineData("PHONE", null, null)]
     public void EnsureInterviewVenue_WhenRequiredDeliveryDetailExists_ShouldAcceptIt(
         string interviewType,
         string? location,
