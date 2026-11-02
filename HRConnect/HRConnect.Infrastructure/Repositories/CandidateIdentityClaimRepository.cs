@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
@@ -346,20 +347,10 @@ public sealed class CandidateIdentityClaimRepository(ApplicationDbContext contex
                              context.UserEmailIdentities.Any(identity =>
                                  identity.NormalizedEmail == claim.NormalizedEmail &&
                                  identity.UserId == claim.RequesterUserId &&
-                                 identity.Status == "VERIFIED") &&
-                             (claim.TargetCandidateId.HasValue &&
-                              claim.TargetCandidateId != claim.RequesterCandidateId
-                                 ? claim.TargetCandidate != null &&
-                                   claim.TargetCandidate.UserId == claim.RequesterUserId &&
-                                   claim.TargetCandidate.Status == "ACTIVE" &&
-                                   claim.TargetCandidate.MergedIntoCandidateId == null &&
-                                   claim.TargetCandidate.NormalizedEmail == claim.NormalizedEmail &&
-                                   claim.RequesterCandidate.UserId == null &&
-                                   claim.RequesterCandidate.Status == "ARCHIVED" &&
-                                   claim.RequesterCandidate.MergedIntoCandidateId == claim.TargetCandidateId
-                                 : claim.RequesterCandidate.UserId == claim.RequesterUserId &&
-                                   claim.RequesterCandidate.Status == "ACTIVE" &&
-                                   claim.RequesterCandidate.MergedIntoCandidateId == null)))
+                                 identity.Status == "VERIFIED")))
+            .Where(status != "COMPLETED"
+                ? claim => true
+                : BuildAdminCompletedCandidateStatePredicate())
             .ExecuteUpdateAsync(update => update
                 .SetProperty(claim => claim.Status, status)
                 .SetProperty(claim => claim.ReviewedBy, reviewedBy)
@@ -368,6 +359,39 @@ public sealed class CandidateIdentityClaimRepository(ApplicationDbContext contex
                 .SetProperty(claim => claim.ReviewReason, reviewReason)
                 .SetProperty(claim => claim.UpdatedAt, reviewedAt)
                 .SetProperty(claim => claim.ConcurrencyToken, newConcurrencyToken), cancellationToken));
+
+    /// <summary>
+    /// Accepts both supported identity-resolution outcomes:
+    /// 1) the empty account profile was archived and the historical profile became canonical; or
+    /// 2) the historical profile was safely merged into the existing account profile.
+    /// Keeping this predicate inside the atomic update prevents a concurrent candidate mutation
+    /// from completing an identity claim against stale state.
+    /// </summary>
+    internal static Expression<Func<CandidateIdentityClaim, bool>>
+        BuildAdminCompletedCandidateStatePredicate() => claim =>
+            claim.TargetCandidateId.HasValue &&
+            claim.TargetCandidateId != claim.RequesterCandidateId
+                ? claim.TargetCandidate != null &&
+                  (
+                      (claim.TargetCandidate.UserId == claim.RequesterUserId &&
+                       claim.TargetCandidate.Status == "ACTIVE" &&
+                       claim.TargetCandidate.MergedIntoCandidateId == null &&
+                       claim.TargetCandidate.NormalizedEmail == claim.NormalizedEmail &&
+                       claim.RequesterCandidate.UserId == null &&
+                       claim.RequesterCandidate.Status == "ARCHIVED" &&
+                       claim.RequesterCandidate.MergedIntoCandidateId == claim.TargetCandidateId)
+                      ||
+                      (claim.TargetCandidate.UserId == null &&
+                       claim.TargetCandidate.Status == "ARCHIVED" &&
+                       claim.TargetCandidate.MergedIntoCandidateId == claim.RequesterCandidateId &&
+                       claim.TargetCandidate.NormalizedEmail == claim.NormalizedEmail &&
+                       claim.RequesterCandidate.UserId == claim.RequesterUserId &&
+                       claim.RequesterCandidate.Status == "ACTIVE" &&
+                       claim.RequesterCandidate.MergedIntoCandidateId == null)
+                  )
+                : claim.RequesterCandidate.UserId == claim.RequesterUserId &&
+                  claim.RequesterCandidate.Status == "ACTIVE" &&
+                  claim.RequesterCandidate.MergedIntoCandidateId == null;
 
     private static async Task<bool> ExecuteAndCheckAsync(Task<int> update) =>
         await update == 1;
