@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App, Button, Form, Input, Modal, Skeleton, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { BankOutlined, CalendarOutlined, CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+import { BankOutlined, ExclamationCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import { affiliateBankApi, financeApi } from '@/services/api/financeApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { Commission, CommissionStatus, Payout } from '@/types/api/finance';
@@ -247,13 +247,6 @@ export const AffiliateCommissionsPage: React.FC = () => {
   const sum = (statuses: CommissionStatus[]) => inGroup(statuses).reduce((t, c) => t + c.amount, 0);
   const shown = group === 'all' ? items : inGroup(GROUPS[group]);
   const recognizedTotal = items.filter((item) => item.status !== 'CANCELLED').reduce((total, item) => total + item.amount, 0);
-  const monthTotals = Array.from({ length: 12 }, (_, month) =>
-    (payouts.data?.items ?? [])
-      .filter((payout) => Boolean(payout.payoutDate) && new Date(payout.payoutDate!).getFullYear() === new Date().getFullYear() && new Date(payout.payoutDate!).getMonth() === month)
-      .reduce((total, payout) => total + payout.amount, 0)
-  );
-  const maxMonthTotal = Math.max(1, ...monthTotals);
-  const upcoming = inGroup(GROUPS.payout).slice(0, 3);
 
   const payoutColumns: ColumnsType<Payout> = [
     { title: 'Ngày chi', dataIndex: 'payoutDate', render: (v) => date(v) },
@@ -272,7 +265,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
   return (
     <div className="affiliate-commissions-page">
       <AffiliatePageHeader
-        title="Hoa hồng & chi trả"
+        title="Hoa hồng và chi trả"
         description="Theo dõi số tiền dự kiến, điều kiện chi trả và lịch sử HR Connect chuyển tiền cho bạn."
         actions={
           <Button
@@ -290,35 +283,36 @@ export const AffiliateCommissionsPage: React.FC = () => {
 
       {commissions.isError && <Alert className="mb-4" type="error" showIcon message={getApiErrorMessage(commissions.error)} />}
 
-      <div className="affiliate-finance-tabs" role="tablist" aria-label="Nội dung hoa hồng">
-        <button type="button" role="tab" aria-selected="true">Tổng quan</button>
-        <button type="button" role="tab" onClick={() => document.getElementById('affiliate-payout-history')?.scrollIntoView({ behavior: 'smooth' })}>Lịch chi trả</button>
-        <button type="button" role="tab" onClick={() => window.location.assign('/affiliate/disputes')}>Khiếu nại</button>
-      </div>
-
       {commissions.isLoading ? <Skeleton active /> : (
         <>
-          <div className="affiliate-finance-kpis">
-            <article><span className="is-gold"><BankOutlined /></span><div><small>Tổng hoa hồng đã ghi nhận</small><strong>{money(recognizedTotal)}</strong><em>{items.length} khoản hoa hồng</em></div></article>
-            <article><span className="sr-only">Sắp nhận</span><span className="is-violet"><ClockCircleOutlined /></span><div><small>Đang chờ chi trả</small><strong>{money(sum(GROUPS.payout))}</strong><em>{inGroup(GROUPS.payout).length} khoản đủ điều kiện</em></div></article>
-            <article><span className="is-green"><CheckCircleOutlined /></span><div><small>Đã chi trả</small><strong>{money(sum(GROUPS.paid))}</strong><em>{inGroup(GROUPS.paid).length} khoản đã nhận</em></div></article>
+          <div className="mb-5 grid grid-cols-2 gap-3 xl:grid-cols-4">
+            {[
+              { label: 'Trong bảo hành', value: sum(GROUPS.warranty), note: `${inGroup(GROUPS.warranty).length} khoản`, tone: 'text-gray-900' },
+              { label: 'Sắp nhận', value: sum(GROUPS.payout), note: `${inGroup(GROUPS.payout).length} khoản đủ điều kiện`, tone: 'text-[color:var(--affiliate-cta)]' },
+              { label: 'Đã nhận', value: sum(GROUPS.paid), note: `${inGroup(GROUPS.paid).length} khoản`, tone: 'text-green-800' },
+              { label: 'Tổng đã ghi nhận', value: recognizedTotal, note: `${items.length} khoản hoa hồng`, tone: 'text-gray-900' },
+            ].map((k) => (
+              <section key={k.label} className="rounded-lg border border-solid border-gray-200 bg-white p-4">
+                <div className="text-[13px] text-gray-600">{k.label}</div>
+                <div className={`mt-1 text-[22px] font-bold tabular-nums ${k.tone}`}>{money(k.value)}</div>
+                <div className="mt-0.5 text-xs text-gray-500">{k.note}</div>
+              </section>
+            ))}
           </div>
 
-          <div className="affiliate-finance-overview">
-            <Surface className="affiliate-monthly-chart p-5">
-              <h2>Thống kê hoa hồng theo tháng</h2>
-              <div className="affiliate-bars" aria-label={`Hoa hồng đã chi trong năm ${new Date().getFullYear()}`}>
-                {monthTotals.map((value, index) => (
-                  <div key={index}><span style={{ height: `${Math.max(value ? 12 : 3, (value / maxMonthTotal) * 100)}%` }} title={`${index + 1}/${new Date().getFullYear()}: ${money(value)}`} /><small>T{index + 1}</small></div>
-                ))}
-              </div>
-              <p>Dữ liệu chỉ tính các khoản HR Connect đã chuyển thành công.</p>
-            </Surface>
-            <Surface className="affiliate-upcoming-payouts p-5">
-              <h2>Lịch chi trả sắp tới</h2>
-              {upcoming.length ? <ul>{upcoming.map((commission) => <li key={commission.commissionId}><CalendarOutlined /><span><strong>{commission.candidateName || 'Ứng viên'}</strong><small>Chờ duyệt lịch chuyển tiền</small></span><b>{money(commission.amount)}</b></li>)}</ul> : <div className="affiliate-upcoming-empty">Chưa có khoản nào chờ lên lịch chi trả.</div>}
-            </Surface>
-          </div>
+          <section aria-labelledby="aff-commission-flow" className="mb-5 rounded-lg border border-solid border-gray-200 bg-white p-4">
+            <h2 id="aff-commission-flow" className="m-0 mb-2.5 text-[15px] font-bold text-gray-900">Hoa hồng đi qua các bước</h2>
+            <ol className="m-0 grid list-none grid-cols-2 gap-2 p-0 text-[13px] lg:grid-cols-4">
+              {[
+                ['Trong bảo hành', 'Ứng viên đã đi làm'],
+                ['Đủ điều kiện', 'Hết bảo hành, chờ doanh nghiệp trả phí'],
+                ['Chờ chi', 'Doanh nghiệp đã trả, Admin đã duyệt'],
+                ['Đã chi', 'Chuyển vào tài khoản của bạn'],
+              ].map(([t, d]) => (
+                <li key={t} className="rounded-md bg-slate-50 p-2.5"><b className="text-gray-900">{t}</b><div className="text-gray-600">{d}</div></li>
+              ))}
+            </ol>
+          </section>
         </>
       )}
 

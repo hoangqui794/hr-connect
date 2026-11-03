@@ -321,7 +321,7 @@ export const AffiliateProfilePage: React.FC = () => {
                               navigator.clipboard.writeText(bankNumberWatched);
                               message.success('Đã sao chép số tài khoản');
                             }}
-                            className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-solid border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-400 bg-white transition-colors cursor-pointer"
+                            className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-solid border-slate-200 text-slate-500 hover:text-sky-700 hover:border-sky-400 bg-white transition-colors cursor-pointer"
                             title="Sao chép số tài khoản"
                             aria-label="Sao chép số tài khoản"
                           >
@@ -347,8 +347,8 @@ export const AffiliateProfilePage: React.FC = () => {
                   </div>
 
                   {/* Security callout */}
-                  <div className="mt-5 bg-blue-50/60 border border-solid border-blue-100 text-blue-800 text-xs rounded-lg p-3 leading-relaxed flex items-start gap-2.5">
-                    <SafetyCertificateOutlined className="mt-0.5 text-blue-600 shrink-0 text-sm" />
+                  <div className="mt-5 bg-sky-50/60 border border-solid border-sky-100 text-sky-900 text-xs rounded-lg p-3 leading-relaxed flex items-start gap-2.5">
+                    <SafetyCertificateOutlined className="mt-0.5 text-sky-700 shrink-0 text-sm" />
                     <div>
                       HR Connect chuyển hoa hồng định kỳ vào tài khoản này sau khi tuyển dụng hoàn tất. Vui lòng đảm bảo thông tin chính xác và trùng khớp với CCCD/CMND.
                     </div>
@@ -538,11 +538,11 @@ export const AffiliateProfilePage: React.FC = () => {
   return (
     <div className="space-y-6">
       <AffiliatePageHeader
-        title="Hồ sơ & cài đặt"
+        title="Hồ sơ và ngân hàng"
         description="Cập nhật thông tin liên hệ, tài khoản nhận hoa hồng và mật khẩu đăng nhập của bạn."
       />
 
-      <Card bordered={false} className="rounded-2xl shadow-sm border border-slate-200">
+      <Card bordered={false} className="rounded-lg border border-solid border-gray-200">
         <Tabs
           activeKey={activeTab}
           onChange={setActiveTab}

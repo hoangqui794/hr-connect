@@ -165,6 +165,10 @@ const AffiliatePerformancePage = React.lazy(() =>
 const AffiliateDisputesPage = React.lazy(() =>
   import('@/features/portal/AffiliateDisputesPage').then((m) => ({ default: m.AffiliateDisputesPage }))
 );
+const AffiliateJobsPage = React.lazy(() => import('@/features/portal/AffiliateJobPages').then((m) => ({ default: m.AffiliateJobsPage })));
+const AffiliateJobDetailPage = React.lazy(() =>
+  import('@/features/portal/AffiliateJobPages').then((m) => ({ default: m.AffiliateJobDetailPage }))
+);
 const AffiliateCommissionsPage = React.lazy(() =>
   import('@/features/finance-mf05/AffiliateCommissionsPage').then((m) => ({ default: m.AffiliateCommissionsPage }))
 );
@@ -466,6 +470,8 @@ export const AppRoutes = {
   Mf01PublicJobSearchPage,
   Mf01PublicJobDetailPage,
   Mf01AffiliateJobDetailPage,
+  AffiliateJobsPage,
+  AffiliateJobDetailPage,
   ConsoleOverviewPage,
   ConsoleApprovalsPage,
   ConsoleIdentityClaimsPage,

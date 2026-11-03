@@ -2,17 +2,18 @@
  * @file portalTheme.tsx
  * @description Candidate and Affiliate workspace palettes (ui-ux-pro-max, chosen 2026-10-08).
  * Candidate: Flat/Swiss, royal blue #2563EB with navy text and a light-blue workspace.
- * Affiliate: violet #6D28D9 (white 7.1:1) with a gold accent for money, light sidebar.
+ * Affiliate (mockup 03/11): sky #0369A1 (white 5.9:1), navy brand #0C4A6E, orange #C2410C for CTA and money.
  */
 import React from 'react';
 import { ConfigProvider } from 'antd';
 
-const scope = (primary: string, hover: string, bg: string) =>
+const scope = (primary: string, hover: string, bg: string, fontFamily?: string) =>
   function Scope({ children }: { children: React.ReactNode }) {
     return (
       <ConfigProvider
         theme={{
           token: {
+            ...(fontFamily ? { fontFamily } : {}),
             colorPrimary: primary,
             colorPrimaryHover: hover,
             colorPrimaryActive: hover,
@@ -37,4 +38,4 @@ const scope = (primary: string, hover: string, bg: string) =>
   };
 
 export const CandidateScope = scope('#2563EB', '#1D4ED8', '#EFF6FF');
-export const AffiliateScope = scope('#2563EB', '#1D4ED8', '#EFF6FF');
+export const AffiliateScope = scope('#0369A1', '#075985', '#E0F2FE', "'Be Vietnam Pro', system-ui, sans-serif");

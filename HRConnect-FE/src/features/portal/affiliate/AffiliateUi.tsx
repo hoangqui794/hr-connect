@@ -7,10 +7,11 @@ type PageHeaderProps = {
   actions?: React.ReactNode;
 };
 
+// The shell's top bar already shows the page title, so the h1 stays for screen readers only.
 export const AffiliatePageHeader: React.FC<PageHeaderProps> = ({ title, description, actions }) => (
   <header className="affiliate-page-header">
     <div className="affiliate-page-header__copy">
-      <h1>{title}</h1>
+      <h1 className="sr-only">{title}</h1>
       <p>{description}</p>
     </div>
     {actions ? <div className="affiliate-page-header__actions">{actions}</div> : null}
@@ -38,7 +39,7 @@ export const AffiliateStatCard: React.FC<{
   icon: React.ReactNode;
   color?: string;
   softColor?: string;
-}> = ({ label, value, hint, icon, color = '#2563eb', softColor = '#eff6ff' }) => (
+}> = ({ label, value, hint, icon, color = '#0369A1', softColor = '#eff6ff' }) => (
   <article
     className="affiliate-stat-card"
     style={{ '--stat-color': color, '--stat-soft': softColor } as React.CSSProperties}
@@ -79,7 +80,7 @@ export const AffiliateFlowSteps: React.FC<{ active?: 1 | 2 | 3 }> = ({ active = 
                   isDone
                     ? 'bg-emerald-500 text-white shadow-sm ring-4 ring-emerald-50'
                     : isCurrent
-                    ? 'bg-blue-600 text-white shadow-sm ring-4 ring-blue-50'
+                    ? 'bg-sky-700 text-white shadow-sm ring-4 ring-sky-50'
                     : 'bg-slate-100 text-slate-500 border border-slate-200'
                 }`}
               >
@@ -88,7 +89,7 @@ export const AffiliateFlowSteps: React.FC<{ active?: 1 | 2 | 3 }> = ({ active = 
               <div className="text-center sm:text-left">
                 <div
                   className={`text-xs sm:text-sm font-semibold leading-tight ${
-                    isCurrent ? 'text-blue-600' : isDone ? 'text-slate-900' : 'text-slate-500'
+                    isCurrent ? 'text-sky-700' : isDone ? 'text-slate-900' : 'text-slate-500'
                   }`}
                 >
                   {step.title}

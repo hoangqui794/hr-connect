@@ -71,7 +71,7 @@ describe('AffiliatePerformancePage', () => {
 
     renderComponent();
 
-    expect(await screen.findByRole('heading', { name: 'Kết quả giới thiệu' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Hiệu suất' })).toBeInTheDocument();
     expect((await screen.findAllByText('Tốt')).length).toBeGreaterThan(0);
     expect(screen.getByText('85')).toBeInTheDocument();
     expect(screen.getByText('13%')).toBeInTheDocument();
