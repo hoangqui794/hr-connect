@@ -14,6 +14,55 @@ export default defineConfig(({ mode }) => {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
     },
+    build: {
+      chunkSizeWarningLimit: 650,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (
+                id.includes('/react/') ||
+                id.includes('\\react\\') ||
+                id.includes('/react-dom/') ||
+                id.includes('\\react-dom\\') ||
+                id.includes('/react-router-dom/') ||
+                id.includes('\\react-router-dom\\') ||
+                id.includes('/@remix-run/') ||
+                id.includes('\\@remix-run\\') ||
+                id.includes('/zustand/') ||
+                id.includes('\\zustand\\')
+              ) {
+                return 'vendor-react';
+              }
+              if (
+                id.includes('/antd/') ||
+                id.includes('\\antd\\') ||
+                id.includes('/@ant-design/') ||
+                id.includes('\\@ant-design\\')
+              ) {
+                return 'vendor-ui';
+              }
+              if (
+                id.includes('/@tanstack/') ||
+                id.includes('\\@tanstack\\')
+              ) {
+                return 'vendor-tanstack';
+              }
+              if (
+                id.includes('/axios/') ||
+                id.includes('\\axios\\') ||
+                id.includes('/dayjs/') ||
+                id.includes('\\dayjs\\') ||
+                id.includes('/lucide-react/') ||
+                id.includes('\\lucide-react\\')
+              ) {
+                return 'vendor-utils';
+              }
+            }
+          },
+        },
+      },
+    },
     server: {
       port: 5173,
       strictPort: true,

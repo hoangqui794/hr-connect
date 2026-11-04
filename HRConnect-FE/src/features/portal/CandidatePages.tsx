@@ -102,13 +102,8 @@ import {
   CANDIDATE_CV_UPDATED_EVENT,
 } from './candidate/cv-builder/services/cvStorage';
 
-export const candidateKeys = {
-  cvs: ['candidate-cvs'] as const,
-  applications: ['candidate-applications'] as const,
-  applicationDetail: (applicationId: string) => ['candidate-applications', applicationId] as const,
-  applicationTimeline: (applicationId: string) => ['candidate-application-timeline', applicationId] as const,
-  submissionConsents: (status: string) => ['candidate-submission-consents', status] as const,
-};
+import { candidateKeys } from './candidate/candidateKeys';
+export { candidateKeys };
 
 export const useCandidateCvs = () => {
   const queryClient = useQueryClient();

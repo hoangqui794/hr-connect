@@ -25,7 +25,7 @@ import {
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuthStore, type UserProfile, getInitials } from '@/stores/authStore';
 import { UserRole, ROLE_LABELS, mapApiRoleToUserRole } from '@/types/roles';
-import { getDashboardRouteForRole } from '@/routes/AppRoutes';
+import { getDashboardRouteForRole } from '@/routes/routeHelpers';
 import { authService, type LoginResponse, type CurrentUserResponse } from '@/services/authService';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { AuthPageShell, AUTH_INPUT_CLASS, AUTH_LABEL_CLASS, AUTH_LINK_CLASS, AUTH_PRIMARY_BUTTON_CLASS } from './AuthPageShell';
