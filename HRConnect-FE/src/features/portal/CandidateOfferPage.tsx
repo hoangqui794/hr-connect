@@ -12,7 +12,7 @@ import { CompanyMark } from '@/features/landing/components/SiteParts';
 import { isCandidateOfferRespondable, mf04Api } from '@/services/api/mf04Api';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import { candidateOfferStatus } from './mf02Labels';
-import { candidateKeys } from './CandidatePages';
+import { candidateKeys } from './candidate/candidateKeys';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';

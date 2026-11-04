@@ -15,7 +15,7 @@ import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import type { CandidateApplication, CandidateApplicationDisplayGroup, CandidateSubmissionConsent } from '@/types/api/mf02';
 import { CandidateAccountFrame } from './candidate/CandidateAccountFrame';
 import { candidateDisplayStage } from './mf02Labels';
-import { candidateKeys } from './CandidatePages';
+import { candidateKeys } from './candidate/candidateKeys';
 
 const PAGE_SIZE = 10;
 /** The API's largest page. */
