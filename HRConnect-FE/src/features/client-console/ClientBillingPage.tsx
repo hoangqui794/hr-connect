@@ -18,7 +18,7 @@ import { getApiErrorMessage } from '@/services/apiClient';
 import type { OnlinePaymentTargetType, ServiceFee, ServiceFeeKind, ServiceFeeStatus } from '@/types/api/finance';
 import type { ServiceTypeCode } from '@/types/api/jobs';
 import { FilterPills, PageHero, StatusDot, Surface, type Tone } from '@/features/admin-console/ui';
-import { SERVICE_FEE_KIND, SERVICE_FEE_STATUS, date, labelOf, money } from '@/features/finance-mf05/financeLabels';
+import { SERVICE_FEE_KIND, SERVICE_FEE_STATUS, date, labelOf, money, OWED_FEE_STATUS, isOwedToClient } from '@/features/finance-mf05/financeLabels';
 import { depositTransferNote, serviceFeeTransferNote, transferNote } from '@/features/finance-mf05/platformBankAccount';
 import { SERVICE_TYPE_LABEL } from '@/features/jobs-mf01/jobDisplay';
 import { BillingPaymentModal } from './BillingPaymentModal';
@@ -33,7 +33,7 @@ export interface BillingRow {
   item: string;
   jobTitle: string;
   candidateName: string | null;
-  /** Negative for a CREDIT returned to the Client. */
+  /** Negative for money returned to the Client. */
   amount: number;
   currencyCode: string;
   dueDate: string | null;
@@ -70,6 +70,12 @@ export const feeBreakdown = (f: ServiceFee): BreakdownLine[] => {
       { label: 'Hệ số phí', value: `× ${f.feeMultiplier}` },
     ];
   }
+  if (kind === 'REPLACEMENT_REFUND') {
+    return [
+      { label: 'Phí dịch vụ đã trả', value: money(f.baseSalary, cur) },
+      { label: 'Tỷ lệ hoàn khi hết hạn thay thế', value: percent(f.feeMultiplier) },
+    ];
+  }
   if (kind === 'DEPOSIT') {
     return [
       ...(f.sourcingTarget && price
@@ -98,7 +104,9 @@ const SERVICE_OF_KIND: Record<ServiceFeeKind, ServiceTypeCode> = {
   DEPOSIT: 'CV_SOURCING',
   SETTLEMENT: 'CV_SOURCING',
   CREDIT: 'CV_SOURCING',
+  REPLACEMENT_REFUND: 'HEADHUNT_COD',
 };
+
 
 const bucketOf = (status: ServiceFeeStatus | 'PENDING' | 'PAID' | 'CANCELLED'): Bucket =>
   status === 'PAID' ? 'PAID' : status === 'OVERDUE' ? 'OVERDUE' : status === 'CANCELLED' ? 'OTHER' : 'UNPAID';
@@ -129,16 +137,16 @@ const useBillingRows = () => {
   const rows = useMemo<BillingRow[]>(() => {
     const serviceRows: BillingRow[] = (fees.data?.items ?? []).map((f) => {
       const kind: ServiceFeeKind = f.kind ?? 'PLACEMENT';
-      const status = labelOf(SERVICE_FEE_STATUS, f.status);
+      const status = (isOwedToClient(kind) && OWED_FEE_STATUS[f.status]) || labelOf(SERVICE_FEE_STATUS, f.status);
       const reconciling = f.reconciliationStatus === 'PENDING' || f.reconciliationStatus === 'FLAGGED';
-      const bucket: Bucket = kind === 'CREDIT' ? 'OTHER' : bucketOf(f.status);
+      const bucket: Bucket = isOwedToClient(kind) ? 'OTHER' : bucketOf(f.status);
       return {
         key: `fee-${f.serviceFeeId}`,
         service: SERVICE_OF_KIND[kind],
         item: labelOf(SERVICE_FEE_KIND, kind).label,
         jobTitle: f.jobTitle ?? '—',
         candidateName: f.candidateName ?? null,
-        amount: kind === 'CREDIT' ? -f.amount : f.amount,
+        amount: isOwedToClient(kind) ? -f.amount : f.amount,
         currencyCode: f.currencyCode,
         dueDate: reconciling ? null : f.dueDate,
         statusLabel: reconciling ? 'Đang đối soát' : status.label,

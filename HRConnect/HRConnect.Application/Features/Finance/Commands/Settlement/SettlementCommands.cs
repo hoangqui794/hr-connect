@@ -135,8 +135,8 @@ public sealed class SettlementCommandHandlers :
         if (_notifier != null)
         {
             await _notifier.NotifyCompanyAsync(fee.CompanyId, new AppNotice(
-                "SERVICE_FEE", "Đã ghi nhận thanh toán",
-                $"HR Connect đã ghi nhận khoản thanh toán {fee.Amount:N0} {fee.CurrencyCode} (mã tham chiếu {fee.PaymentReference}).",
+                "SERVICE_FEE", ServiceFeeKinds.OwedToClient.Contains(fee.Kind) ? "Đã hoàn tiền" : "Đã ghi nhận thanh toán",
+                $"HR Connect đã {(ServiceFeeKinds.OwedToClient.Contains(fee.Kind) ? "hoàn" : "ghi nhận khoản thanh toán")} {fee.Amount:N0} {fee.CurrencyCode} (mã tham chiếu {fee.PaymentReference}).",
                 "SERVICE_FEE", fee.ServiceFeeId, "/client/dashboard"), cancellationToken);
         }
         if (fee.Kind == ServiceFeeKinds.Deposit && fee.JobId is Guid jobId)

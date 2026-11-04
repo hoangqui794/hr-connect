@@ -18,7 +18,7 @@ import { getApiErrorMessage } from '@/services/apiClient';
 import type { Commission, CommissionStatus, Payout, ServiceFee, ServiceFeeStatus } from '@/types/api/finance';
 import { PageHero, StatTile, StatusDot, Surface } from '@/features/admin-console/ui';
 import { PostingFeePaymentsPanel } from './PostingFeePaymentsPanel';
-import { COMMISSION_STATUS, PAYOUT_STATUS, SERVICE_FEE_KIND, SERVICE_FEE_STATUS, date, labelOf, money } from './financeLabels';
+import { COMMISSION_STATUS, PAYOUT_STATUS, SERVICE_FEE_KIND, SERVICE_FEE_STATUS, date, labelOf, money, OWED_FEE_STATUS, isOwedToClient } from './financeLabels';
 
 const byDateDesc = (a?: string | null, b?: string | null) => (b ? Date.parse(b) : 0) - (a ? Date.parse(a) : 0);
 
@@ -49,6 +49,7 @@ const KIND_SERVICE: Record<string, { short: string; color: string }> = {
   DEPOSIT: { short: 'SS', color: 'purple' },
   SETTLEMENT: { short: 'SS', color: 'purple' },
   CREDIT: { short: 'SS', color: 'purple' },
+  REPLACEMENT_REFUND: { short: 'HH', color: 'gold' },
 };
 
 /** Number of rows for one status, from a one-row page (the API returns the total). */
@@ -96,6 +97,10 @@ export const AdminFinancePage: React.FC = () => {
     queryFn: () => placementReconciliationApi.list({ status: 'FLAGGED', page: 1, pageSize: 1 }, true),
   });
   const feesToCollect = useCount('fees-PENDING', () => financeApi.serviceFees({ status: 'PENDING', page: 1, pageSize: 1 }));
+  // PENDING also holds money owed back to the Client, which is not a fee to collect.
+  const creditsPending = useCount('fees-PENDING-CREDIT', () => financeApi.serviceFees({ status: 'PENDING', kind: 'CREDIT', page: 1, pageSize: 1 }));
+  const refundsPending = useCount('fees-PENDING-REFUND', () => financeApi.serviceFees({ status: 'PENDING', kind: 'REPLACEMENT_REFUND', page: 1, pageSize: 1 }));
+  const owedPending = (creditsPending.data ?? 0) + (refundsPending.data ?? 0);
   const feesOverdue = useCount('fees-OVERDUE', () => financeApi.serviceFees({ status: 'OVERDUE', page: 1, pageSize: 1 }));
   const toApprove = useCount('commissions-EARNED', () => financeApi.commissions({ status: 'EARNED', page: 1, pageSize: 1 }));
   const toPay = useCount('commissions-PAYABLE', () => financeApi.commissions({ status: 'PAYABLE', page: 1, pageSize: 1 }));
@@ -280,10 +285,17 @@ export const AdminFinancePage: React.FC = () => {
             {f.paymentReference && <div className="mt-0.5 font-mono text-xs text-slate-500">{f.paymentReference}</div>}
           </div>
         ) : (
-          <span className="text-slate-400">Chưa thanh toán</span>
+          <span className="text-slate-400">{isOwedToClient(f.kind) ? 'Chưa hoàn tiền' : 'Chưa thanh toán'}</span>
         ),
     },
-    { title: 'Trạng thái', dataIndex: 'status', render: (v: ServiceFeeStatus) => { const s = labelOf(SERVICE_FEE_STATUS, v); return <StatusDot tone={s.tone}>{s.label}</StatusDot>; } },
+    {
+      title: 'Trạng thái',
+      dataIndex: 'status',
+      render: (v: ServiceFeeStatus, f) => {
+        const s = (isOwedToClient(f.kind) && OWED_FEE_STATUS[v]) || labelOf(SERVICE_FEE_STATUS, v);
+        return <StatusDot tone={s.tone}>{s.label}</StatusDot>;
+      },
+    },
     {
       title: 'Thao tác',
       key: 'actions',
@@ -302,7 +314,7 @@ export const AdminFinancePage: React.FC = () => {
                 disabled={waitingForReconciliation}
                 onClick={() => { form.setFieldsValue({ paidAt: dayjs() }); setDialog({ kind: 'fee', fee: f }); }}
               >
-                {waitingForReconciliation ? 'Chờ đối soát' : 'Ghi nhận đã thu'}
+                {waitingForReconciliation ? 'Chờ đối soát' : isOwedToClient(f.kind) ? 'Ghi nhận đã hoàn' : 'Ghi nhận đã thu'}
               </Button>
             </span>
           </Tooltip>
@@ -376,8 +388,8 @@ export const AdminFinancePage: React.FC = () => {
       <section aria-label="Việc cần làm" className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile
           label="Phí chờ thu"
-          value={feesToCollect.data ?? '—'}
-          hint="Client chưa thanh toán"
+          value={feesToCollect.data === undefined ? '—' : Math.max(0, feesToCollect.data - owedPending)}
+          hint={owedPending > 0 ? `Client chưa thanh toán · ${owedPending} khoản cần hoàn cho Client` : 'Client chưa thanh toán'}
           tone="warning"
           active={tab === 'fees' && feeStatus === 'PENDING'}
           onClick={() => openFees('PENDING')}
@@ -474,7 +486,7 @@ export const AdminFinancePage: React.FC = () => {
           dialog?.kind === 'payout' ? 'Ghi nhận chi hoa hồng'
             : dialog?.kind === 'adjust' ? 'Điều chỉnh số tiền hoa hồng'
               : dialog?.kind === 'cancel' ? 'Hủy hoa hồng'
-                : 'Ghi nhận Client đã thanh toán phí'
+                : dialog?.kind === 'fee' && isOwedToClient(dialog.fee.kind) ? 'Ghi nhận đã hoàn tiền cho Client' : 'Ghi nhận Client đã thanh toán phí'
         }
         okText="Xác nhận"
         cancelText="Đóng"
@@ -543,7 +555,7 @@ export const AdminFinancePage: React.FC = () => {
           {dialog?.kind === 'fee' && (
             <>
               <Alert className="mb-4" type="info" showIcon message={`${dialog.fee.companyName ?? 'Client'} — ${money(dialog.fee.amount, dialog.fee.currencyCode)}. Đối chiếu sao kê trước khi ghi nhận.`} />
-              <Form.Item name="paidAt" label="Ngày Client thanh toán" rules={[{ required: true, message: 'Chọn ngày.' }]}>
+              <Form.Item name="paidAt" label={isOwedToClient(dialog.fee.kind) ? 'Ngày chuyển tiền cho Client' : 'Ngày Client thanh toán'} rules={[{ required: true, message: 'Chọn ngày.' }]}>
                 <DatePicker className="w-full" format="DD/MM/YYYY" disabledDate={(d) => d.isAfter(dayjs(), 'day')} />
               </Form.Item>
               <Form.Item name="paymentReference" label="Mã tham chiếu chuyển khoản" rules={[{ required: true, whitespace: true, message: 'Nhập mã tham chiếu.' }, { max: 200 }]}>

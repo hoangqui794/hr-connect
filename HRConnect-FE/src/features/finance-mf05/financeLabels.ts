@@ -17,6 +17,15 @@ export const COMMISSION_STATUS: Record<CommissionStatus, StatusLabel> = {
   CANCELLED: { label: 'Đã hủy', tone: 'danger', hint: 'Ứng viên nghỉ trước khi hết thời gian bảo hành (đã xác minh).' },
 };
 
+/** Kinds where the money goes from HR Connect to the Client. */
+export const isOwedToClient = (kind?: string | null) => kind === 'CREDIT' || kind === 'REPLACEMENT_REFUND';
+
+/** Status wording for money owed to the Client: "chờ thanh toán" would read as the Client still owing. */
+export const OWED_FEE_STATUS: Partial<Record<ServiceFeeStatus, StatusLabel>> = {
+  PENDING: { label: 'Chờ hoàn tiền', tone: 'warning' },
+  PAID: { label: 'Đã hoàn tiền', tone: 'success' },
+};
+
 export const SERVICE_FEE_STATUS: Record<ServiceFeeStatus, StatusLabel> = {
   PENDING: { label: 'Chờ thanh toán', tone: 'warning' },
   DUE: { label: 'Sắp đến hạn', tone: 'warning' },
@@ -30,6 +39,7 @@ export const SERVICE_FEE_KIND: Record<ServiceFeeKind, StatusLabel> = {
   DEPOSIT: { label: 'Cọc CV Sourcing', tone: 'info', hint: 'Số CV × giá mỗi CV × tỷ lệ cọc, thu khi job được duyệt.' },
   SETTLEMENT: { label: 'Quyết toán CV Sourcing', tone: 'info', hint: 'Số CV được chấp nhận × giá mỗi CV − tiền cọc.' },
   CREDIT: { label: 'Hoàn cọc cho Client', tone: 'warning', hint: 'Giao thiếu: phần cọc dư được hoàn hoặc trừ vào lần sau.' },
+  REPLACEMENT_REFUND: { label: 'Hoàn phí cho Client', tone: 'warning', hint: 'Suất thay thế hết hạn mà chưa có hồ sơ nào được chuyển cho Client.' },
 };
 
 export const PAYOUT_STATUS: Record<PayoutStatus, StatusLabel> = {

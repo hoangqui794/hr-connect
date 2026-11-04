@@ -5310,11 +5310,11 @@ namespace HRConnect.Infrastructure.Migrations
 
                     b.ToTable("service_fee", "public", t =>
                         {
-                            t.HasComment("MF-05 service fee the Client owes: one HEADHUNT_COD placement (PLACEMENT) or a CV_SOURCING job's DEPOSIT, SETTLEMENT or CREDIT. Paid outside the system; Platform Admin records payment.");
+                            t.HasComment("MF-05 service fee the Client owes: one HEADHUNT_COD placement (PLACEMENT) or a CV_SOURCING job's DEPOSIT, SETTLEMENT or CREDIT, or a REPLACEMENT_REFUND owed to the Client. Paid outside the system; Platform Admin records payment.");
 
                             t.HasCheckConstraint("ck_service_fee_amounts", "amount >= 0 AND base_salary >= 0 AND fee_multiplier > 0");
 
-                            t.HasCheckConstraint("ck_service_fee_kind", "kind IN ('PLACEMENT','DEPOSIT','SETTLEMENT','CREDIT')");
+                            t.HasCheckConstraint("ck_service_fee_kind", "kind IN ('PLACEMENT','DEPOSIT','SETTLEMENT','CREDIT','REPLACEMENT_REFUND')");
 
                             t.HasCheckConstraint("ck_service_fee_paid", "(status = 'PAID') = (paid_at IS NOT NULL)");
 

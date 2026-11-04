@@ -81,6 +81,9 @@ public interface IFinanceRepository
     /// <summary>OPEN slots whose deadline is at or before <paramref name="now"/>.</summary>
     Task<IReadOnlyList<Guid>> GetExpiredReplacementSlotIdsAsync(DateTime now, int take, CancellationToken cancellationToken = default);
 
+    /// <summary>True when a candidate of this slot has reached the Client (same rule as what the Client can see).</summary>
+    Task<bool> HasReplacementCandidateReachedClientAsync(Guid replacementSlotId, CancellationToken cancellationToken = default);
+
     /// <summary>The job's slots with leaver and replacement candidate names (read-only), newest first.</summary>
     Task<IReadOnlyList<ReplacementSlot>> GetReplacementSlotsByJobAsync(Guid jobId, CancellationToken cancellationToken = default);
 

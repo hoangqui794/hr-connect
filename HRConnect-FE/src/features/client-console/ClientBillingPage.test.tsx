@@ -65,6 +65,19 @@ describe('ClientBillingPage', () => {
     expect(screen.getByText('1 khoản quá hạn')).toBeTruthy();
   });
 
+  it('shows a replacement refund as money back, never as something to pay', async () => {
+    vi.mocked(financeApi.serviceFees).mockResolvedValue({
+      items: [fee({ serviceFeeId: 'rf', kind: 'REPLACEMENT_REFUND', jobTitle: 'QA Lead', amount: 9_000_000, status: 'PENDING' })],
+      totalCount: 1, page: 1, pageSize: 100,
+    } as never);
+    vi.mocked(jobsApi.getMine).mockResolvedValue([] as never);
+    renderPage();
+
+    expect(await screen.findByText('Hoàn phí cho Client')).toBeInTheDocument();
+    expect(screen.getByText('Chờ hoàn tiền')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Thanh toán/ })).not.toBeInTheDocument();
+  });
+
   it('filters by service code', async () => {
     renderPage();
     await screen.findByText('Lập trình viên .NET');

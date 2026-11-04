@@ -27,8 +27,11 @@ export interface BusinessSetting {
 }
 
 export type ServiceFeeStatus = 'PENDING' | 'DUE' | 'PAID' | 'OVERDUE' | 'CANCELLED';
-/** PLACEMENT = HEADHUNT_COD placement; DEPOSIT / SETTLEMENT / CREDIT = CV_SOURCING job (CREDIT is owed to the Client). */
-export type ServiceFeeKind = 'PLACEMENT' | 'DEPOSIT' | 'SETTLEMENT' | 'CREDIT';
+/**
+ * PLACEMENT = HEADHUNT_COD placement; DEPOSIT / SETTLEMENT / CREDIT = CV_SOURCING job.
+ * CREDIT and REPLACEMENT_REFUND (replacement slot expired, nobody sent to the Client) are owed to the Client.
+ */
+export type ServiceFeeKind = 'PLACEMENT' | 'DEPOSIT' | 'SETTLEMENT' | 'CREDIT' | 'REPLACEMENT_REFUND';
 export type CommissionStatus = 'PENDING' | 'IN_WARRANTY' | 'ON_HOLD' | 'EARNED' | 'PAYABLE' | 'PAID' | 'CANCELLED';
 export type PayoutStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 

@@ -1,3 +1,4 @@
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
@@ -73,8 +74,14 @@ public class FinanceRepository : IFinanceRepository
             .FirstOrDefaultAsync(s => s.ServiceFeeId == serviceFeeId, cancellationToken);
 
     public Task<ReplacementSlot?> GetReplacementSlotForUpdateAsync(Guid replacementSlotId, CancellationToken cancellationToken = default) =>
-        _context.ReplacementSlots.Include(s => s.Job)
+        _context.ReplacementSlots.Include(s => s.Job).Include(s => s.ServiceFee)
             .FirstOrDefaultAsync(s => s.ReplacementSlotId == replacementSlotId, cancellationToken);
+
+    public Task<bool> HasReplacementCandidateReachedClientAsync(Guid replacementSlotId, CancellationToken cancellationToken = default) =>
+        _context.Applications.AsNoTracking()
+            .Where(a => a.ReplacementSlotId == replacementSlotId)
+            .Where(ClientVisibilityPolicy.IsVisibleToClientExpression)
+            .AnyAsync(cancellationToken);
 
     public Task<ReplacementSlot?> GetReplacementSlotForConsentForUpdateAsync(
         Guid replacementSlotId,
@@ -247,7 +254,8 @@ public class FinanceRepository : IFinanceRepository
 
     public async Task<IReadOnlyList<Guid>> GetServiceFeeIdsDueSoonAsync(DateOnly today, DateOnly dueOnOrBefore, int take, CancellationToken cancellationToken = default) =>
         await _context.ServiceFees.AsNoTracking()
-            .Where(fee => fee.Status == ServiceFeeStates.Pending && fee.DueDate >= today && fee.DueDate <= dueOnOrBefore)
+            .Where(fee => fee.Status == ServiceFeeStates.Pending && fee.DueDate >= today && fee.DueDate <= dueOnOrBefore
+                && !ServiceFeeKinds.OwedToClient.Contains(fee.Kind))
             .OrderBy(fee => fee.DueDate)
             .Take(take)
             .Select(fee => fee.ServiceFeeId)
@@ -262,7 +270,8 @@ public class FinanceRepository : IFinanceRepository
 
     public async Task<IReadOnlyList<Guid>> GetOverdueServiceFeeIdsAsync(DateOnly dueBefore, int take, CancellationToken cancellationToken = default) =>
         await _context.ServiceFees.AsNoTracking()
-            .Where(fee => (fee.Status == ServiceFeeStates.Pending || fee.Status == ServiceFeeStates.Due) && fee.DueDate < dueBefore)
+            .Where(fee => (fee.Status == ServiceFeeStates.Pending || fee.Status == ServiceFeeStates.Due) && fee.DueDate < dueBefore
+                && !ServiceFeeKinds.OwedToClient.Contains(fee.Kind))
             .OrderBy(fee => fee.DueDate)
             .Take(take)
             .Select(fee => fee.ServiceFeeId)
