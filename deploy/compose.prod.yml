@@ -1,16 +1,18 @@
 services:
   ai-v2:
     image: ${AI_IMAGE:?AI_IMAGE is required}
-    container_name: hrconnect-ai-v2
     restart: unless-stopped
     env_file:
       - ${AI_ENV_FILE:-/opt/hrconnect/deploy/env/ai-v2.env}
     ports:
-      - "127.0.0.1:8001:8001"
+      - "127.0.0.1:${AI_HOST_PORT:?AI_HOST_PORT is required}:8001"
     environment:
       - MALLOC_ARENA_MAX=2
       - OMP_NUM_THREADS=2
       - TORCH_NUM_THREADS=2
+      - SCORING_QUEUE_FILE=/var/lib/hrconnect-ai/${DEPLOY_COLOR:?DEPLOY_COLOR is required}/pending-scoring-jobs.json
+    volumes:
+      - ${AI_DATA_DIR:-/opt/hrconnect/deploy/data/ai-v2}:/var/lib/hrconnect-ai
     mem_limit: 1200m
     cpus: 1.0
     healthcheck:
@@ -35,14 +37,13 @@ services:
 
   backend:
     image: ${BACKEND_IMAGE:?BACKEND_IMAGE is required}
-    container_name: hrconnect-backend
     restart: unless-stopped
     env_file:
       - ${BACKEND_ENV_FILE:-/opt/hrconnect/deploy/env/backend.env}
     environment:
       - DOTNET_GCHeapHardLimitPercent=50
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${BACKEND_HOST_PORT:?BACKEND_HOST_PORT is required}:8080"
     mem_limit: 800m
     cpus: 1.0
     depends_on:
@@ -58,9 +59,4 @@ services:
 
 networks:
   internal:
-    name: hrconnect-internal
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.30.0.0/24
-          gateway: 172.30.0.1

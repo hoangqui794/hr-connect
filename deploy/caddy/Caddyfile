@@ -1,6 +1,8 @@
 {
-	admin off
+	admin 127.0.0.1:2019
 }
+
+import active-upstreams.caddy
 
 (security_headers) {
 	header {
@@ -21,7 +23,7 @@ api.hrconnectvn.online {
 		request_body {
 			max_size 6MB
 		}
-		reverse_proxy {$BACKEND_UPSTREAM:127.0.0.1:8080}
+		import backend_upstream
 	}
 
 	@company_logo_upload {
@@ -32,7 +34,7 @@ api.hrconnectvn.online {
 		request_body {
 			max_size 11MB
 		}
-		reverse_proxy {$BACKEND_UPSTREAM:127.0.0.1:8080}
+		import backend_upstream
 	}
 
 	@cv_uploads {
@@ -43,7 +45,7 @@ api.hrconnectvn.online {
 		request_body {
 			max_size 11MB
 		}
-		reverse_proxy {$BACKEND_UPSTREAM:127.0.0.1:8080}
+		import backend_upstream
 	}
 
 	@signed_agreement_upload {
@@ -54,11 +56,11 @@ api.hrconnectvn.online {
 		request_body {
 			max_size 16MB
 		}
-		reverse_proxy {$BACKEND_UPSTREAM:127.0.0.1:8080}
+		import backend_upstream
 	}
 
 	handle {
-		reverse_proxy {$BACKEND_UPSTREAM:127.0.0.1:8080}
+		import backend_upstream
 	}
 }
 
@@ -73,10 +75,10 @@ ai.hrconnectvn.online {
 		request_body {
 			max_size 11MB
 		}
-		reverse_proxy {$AI_V2_UPSTREAM:127.0.0.1:8001}
+		import ai_v2_upstream
 	}
 
 	handle {
-		reverse_proxy {$AI_V2_UPSTREAM:127.0.0.1:8001}
+		import ai_v2_upstream
 	}
 }
