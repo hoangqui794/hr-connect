@@ -19,26 +19,63 @@ const candidate = {
   ],
 };
 
-const json = (body: unknown) => ({
+const json = (body: unknown, headers?: Record<string, string>) => ({
   status: 200,
   contentType: 'application/json',
+  headers,
   body: JSON.stringify(body),
 });
 
-export async function mockCandidateApis(page: Page) {
+interface CandidateApiMockOptions {
+  expireProfileRequestOnce?: boolean;
+}
+
+export async function mockCandidateApis(
+  page: Page,
+  options: CandidateApiMockOptions = {}
+) {
+  const state = {
+    refreshRequestCount: 0,
+    refreshCookieReceived: false,
+    profileRequestCount: 0,
+  };
+
   await page.route('**/api/v1/auth/login', async (route) => {
+    await route.fulfill(
+      json(
+        {
+          success: true,
+          message: 'Đăng nhập thành công.',
+          data: {
+            accessToken: 'e2e-access-token',
+            tokenType: 'Bearer',
+            expiresAt: '2099-01-01T00:00:00Z',
+            accessTokenExpiresAt: '2099-01-01T00:00:00Z',
+            refreshTokenExpiresAt: '2099-01-08T00:00:00Z',
+            user: candidate,
+          },
+        },
+        {
+          'Set-Cookie': 'hrconnect_refresh=e2e-refresh-token; Path=/api/v1/auth; HttpOnly; SameSite=Strict',
+        }
+      )
+    );
+  });
+
+  await page.route('**/api/v1/auth/refresh-token', async (route) => {
+    state.refreshRequestCount += 1;
+    state.refreshCookieReceived = route.request().headers()['cookie']?.includes(
+      'hrconnect_refresh=e2e-refresh-token'
+    ) ?? false;
     await route.fulfill(
       json({
         success: true,
-        message: 'Đăng nhập thành công.',
         data: {
-          accessToken: 'e2e-access-token',
-          refreshToken: 'e2e-refresh-token',
+          accessToken: 'e2e-refreshed-access-token',
           tokenType: 'Bearer',
           expiresAt: '2099-01-01T00:00:00Z',
           accessTokenExpiresAt: '2099-01-01T00:00:00Z',
           refreshTokenExpiresAt: '2099-01-08T00:00:00Z',
-          user: candidate,
         },
       })
     );
@@ -144,6 +181,15 @@ export async function mockCandidateApis(page: Page) {
   });
 
   await page.route('**/api/v1/candidates/profile/me', async (route) => {
+    state.profileRequestCount += 1;
+    if (options.expireProfileRequestOnce && state.profileRequestCount === 1) {
+      await route.fulfill({
+        status: 401,
+        contentType: 'application/problem+json',
+        body: JSON.stringify({ title: 'Unauthorized', status: 401 }),
+      });
+      return;
+    }
     await route.fulfill(
       json({
         success: true,
@@ -168,4 +214,6 @@ export async function mockCandidateApis(page: Page) {
       json({ items: [], page: 1, pageSize: 12, total: 0, totalPages: 0 })
     );
   });
+
+  return state;
 }
