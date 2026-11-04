@@ -18,7 +18,7 @@ try:
 except ImportError:
     pass
 
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import ValidationError
 
@@ -32,6 +32,8 @@ from app.schemas import FileMatchingResponse, MatchingMetadata, ParseResult
 from app.scoring_jobs import ScoringOrchestrator, scoring_job_queue
 from app.scoring_jobs import router as scoring_router
 from app.semantic import SemanticMatcher
+from app.uploads import UploadTooLargeError, read_upload_limited, request_may_exceed_file_limit
+
 
 @lru_cache
 def get_pipeline() -> MatchingPipeline:
@@ -87,20 +89,35 @@ def health() -> dict:
 @app.post("/api/v1/match-file", response_model=FileMatchingResponse, response_model_by_alias=True,
           dependencies=[Depends(require_test_access)])
 async def match_file(
+    request: Request,
     file: Annotated[UploadFile, File(...)],
     metadata: Annotated[str, Form(...)],
     settings: Settings = Depends(get_settings),
 ) -> FileMatchingResponse:
     """Same contract as v1 `/api/v1/match-file`: multipart CV file + matching metadata JSON."""
+    max_upload_bytes = settings.max_upload_size_mb * 1024 * 1024
     try:
+        if request_may_exceed_file_limit(
+            request.headers.get("content-length"),
+            max_file_bytes=max_upload_bytes,
+        ):
+            raise HTTPException(
+                status_code=413,
+                detail=f"File larger than {settings.max_upload_size_mb} MB.",
+            )
+
         parsed = MatchingMetadata.model_validate(json.loads(metadata))
+        try:
+            data = await read_upload_limited(file, max_bytes=max_upload_bytes)
+        except UploadTooLargeError as exc:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File larger than {settings.max_upload_size_mb} MB.",
+            ) from exc
     except (ValidationError, json.JSONDecodeError) as exc:
         raise HTTPException(status_code=422, detail="metadata must be valid matching JSON") from exc
-
-    data = await file.read()
-    await file.close()
-    if len(data) > settings.max_upload_size_mb * 1024 * 1024:
-        raise HTTPException(status_code=413, detail=f"File larger than {settings.max_upload_size_mb} MB.")
+    finally:
+        await file.close()
 
     try:
         document = prepare_document(file.filename or "cv", data)

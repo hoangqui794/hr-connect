@@ -172,6 +172,25 @@ def test_match_file_requires_service_token_by_default(api):
                     headers={"X-Service-Token": "secret-token"}).status_code == 422
 
 
+def test_match_file_rejects_oversized_request_before_processing(api):
+    api.app.dependency_overrides[get_settings] = lambda: Settings(
+        hrconnect_service_token="secret-token",
+        max_upload_size_mb=1,
+    )
+    try:
+        response = api.post(
+            "/api/v1/match-file",
+            files={"file": ("large.pdf", b"a" * (3 * 1024 * 1024), "application/pdf")},
+            data={"metadata": "{}"},
+            headers={"X-Service-Token": "secret-token"},
+        )
+    finally:
+        api.app.dependency_overrides.pop(get_settings, None)
+
+    assert response.status_code == 413
+    assert response.json() == {"detail": "File larger than 1 MB."}
+
+
 def test_docs_are_not_served_by_default(api):
     assert api.get("/docs").status_code == 404
     assert api.get("/openapi.json").status_code == 404

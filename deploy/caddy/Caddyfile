@@ -1,0 +1,82 @@
+{
+	admin off
+}
+
+(security_headers) {
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}
+
+api.hrconnectvn.online {
+	import security_headers
+
+	@avatar_uploads {
+		path /api/v1/users/me/avatar /api/v1/users/avatar
+		method POST
+	}
+	handle @avatar_uploads {
+		request_body {
+			max_size 6MB
+		}
+		reverse_proxy {$BACKEND_UPSTREAM:127.0.0.1:8080}
+	}
+
+	@company_logo_upload {
+		path /api/v1/companies/profile/me/logo
+		method POST
+	}
+	handle @company_logo_upload {
+		request_body {
+			max_size 11MB
+		}
+		reverse_proxy {$BACKEND_UPSTREAM:127.0.0.1:8080}
+	}
+
+	@cv_uploads {
+		path /api/v1/candidates/cv /api/v1/jobs/*/apply /api/v1/jobs/*/candidate-submissions
+		method POST
+	}
+	handle @cv_uploads {
+		request_body {
+			max_size 11MB
+		}
+		reverse_proxy {$BACKEND_UPSTREAM:127.0.0.1:8080}
+	}
+
+	@signed_agreement_upload {
+		path /api/v1/client/jobs/*/service-agreements/*/upload-signed
+		method POST
+	}
+	handle @signed_agreement_upload {
+		request_body {
+			max_size 16MB
+		}
+		reverse_proxy {$BACKEND_UPSTREAM:127.0.0.1:8080}
+	}
+
+	handle {
+		reverse_proxy {$BACKEND_UPSTREAM:127.0.0.1:8080}
+	}
+}
+
+ai.hrconnectvn.online {
+	import security_headers
+
+	@match_file {
+		path /api/v1/match-file
+		method POST
+	}
+	handle @match_file {
+		request_body {
+			max_size 11MB
+		}
+		reverse_proxy {$AI_V2_UPSTREAM:127.0.0.1:8001}
+	}
+
+	handle {
+		reverse_proxy {$AI_V2_UPSTREAM:127.0.0.1:8001}
+	}
+}
