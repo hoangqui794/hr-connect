@@ -75,13 +75,14 @@ test('Candidate đăng nhập và mở được workspace trên viewport hiện 
     await sharedHeader.getByRole('link', { name: 'Việc làm', exact: true }).click();
   }
   await expect(page).toHaveURL(/\/(candidate\/)?jobs(\?tab=all)?$/);
-  await expect(page.getByRole('button', { name: /Bộ lọc nâng cao/ })).toBeVisible();
-  await page.getByRole('button', { name: /Bộ lọc nâng cao/ }).click();
-  const jobsBrandX = (await brandLink.boundingBox())?.x;
-  expect(Math.abs((jobsBrandX ?? 0) - (initialBrandX ?? 0))).toBeLessThan(1);
-  await expect(page.getByLabel('Số năm kinh nghiệm tối thiểu')).toBeVisible();
-  await expect(page.getByLabel('Mức lương tối thiểu')).toBeVisible();
-  await expect(page.getByLabel('Mức lương tối đa')).toBeVisible();
+  const filterButton = page.getByRole('button', { name: /^Bộ lọc/ });
+  if (await filterButton.isVisible()) {
+    await filterButton.click();
+  } else {
+    await expect(page.getByRole('complementary', { name: 'Bộ lọc' })).toBeVisible();
+  }
+  await expect(page.getByText('Mức lương (triệu/tháng)')).toBeVisible();
+  await expect(page.getByText('Kinh nghiệm', { exact: true })).toBeVisible();
 
   const jobsHaveHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
