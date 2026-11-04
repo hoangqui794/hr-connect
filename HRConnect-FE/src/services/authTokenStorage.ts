@@ -6,7 +6,6 @@
 
 export const AUTH_STORAGE_KEYS = {
   ACCESS_TOKEN: 'access_token',
-  REFRESH_TOKEN: 'refresh_token',
   USER_INFO: 'user_info',
   /** Legacy alias of ACCESS_TOKEN still read by older pages. */
   AUTH_TOKEN: 'auth_token',
@@ -14,9 +13,10 @@ export const AUTH_STORAGE_KEYS = {
 
 export interface StoredAuthTokens {
   accessToken?: string | null;
-  refreshToken?: string | null;
   user?: unknown;
 }
+
+const LEGACY_REFRESH_TOKEN_KEY = 'refresh_token';
 
 export const authTokenStorage = {
   getAccessToken(): string | null {
@@ -26,17 +26,12 @@ export const authTokenStorage = {
     );
   },
 
-  getRefreshToken(): string | null {
-    return localStorage.getItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN);
-  },
-
   save(tokens: StoredAuthTokens): void {
+    // Refresh tokens are HttpOnly cookies. Remove data left by older releases.
+    localStorage.removeItem(LEGACY_REFRESH_TOKEN_KEY);
     if (tokens.accessToken) {
       localStorage.setItem(AUTH_STORAGE_KEYS.ACCESS_TOKEN, tokens.accessToken);
       localStorage.setItem(AUTH_STORAGE_KEYS.AUTH_TOKEN, tokens.accessToken);
-    }
-    if (tokens.refreshToken) {
-      localStorage.setItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken);
     }
     if (tokens.user) {
       localStorage.setItem(AUTH_STORAGE_KEYS.USER_INFO, JSON.stringify(tokens.user));
@@ -45,7 +40,7 @@ export const authTokenStorage = {
 
   clear(): void {
     localStorage.removeItem(AUTH_STORAGE_KEYS.ACCESS_TOKEN);
-    localStorage.removeItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN);
+    localStorage.removeItem(LEGACY_REFRESH_TOKEN_KEY);
     localStorage.removeItem(AUTH_STORAGE_KEYS.USER_INFO);
     localStorage.removeItem(AUTH_STORAGE_KEYS.AUTH_TOKEN);
     localStorage.removeItem('token');

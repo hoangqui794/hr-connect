@@ -34,9 +34,12 @@ Merge commit đã duyệt vào main
               ├─ push GHCR tag sha-<40 ký tự>
               ├─ SSH bằng deploy key
               ├─ server pull image, không build source
-              ├─ khởi động đúng commit
-              ├─ kiểm tra Backend live + ready và AI health
-              └─ lỗi thì tự rollback release trước
+              ├─ migrate database một lần
+              ├─ dựng màu không hoạt động (blue hoặc green)
+              ├─ kiểm tra health trực tiếp
+              ├─ chuyển Caddy sang màu mới
+              ├─ kiểm tra lại qua HTTPS công khai
+              └─ lỗi thì giữ/khôi phục màu cũ
 ```
 
 `concurrency: cloud-production` bảo đảm chỉ một lượt production được triển khai tại một thời điểm. Image dùng tag commit SHA bất biến, không dùng `latest` để quyết định bản chạy.
@@ -50,14 +53,30 @@ Các file secrets không được đưa lên GitHub:
 ├── env/
 │   ├── backend.env       # chmod 600
 │   └── ai-v2.env         # chmod 600
+├── caddy/
+│   ├── Caddyfile
+│   └── active-upstreams.caddy
+├── data/
+│   └── ai-v2/
+│       ├── pending-scoring-jobs.json # hàng đợi AI dùng chung, ghi atomic + fsync
+│       └── active-color             # màu duy nhất được nhận/xử lý job AI
+├── state/
+│   ├── active-color      # blue hoặc green
+│   └── deploy.lock       # chặn hai lượt deploy đồng thời
 ├── releases/
-│   ├── bootstrap/        # bản Docker hiện hữu, được ghi nhận lần đầu
-│   └── <commit-sha>/     # compose + release.env + deploy script
+│   └── <commit-sha>/     # compose + Caddyfile + release.env + deploy script
 ├── current -> releases/<commit-sha>
 └── previous -> releases/<commit-sha>
 ```
 
 Workflow chỉ tải manifest triển khai và image. Nó không đọc, ghi hoặc đưa nội dung hai file `.env` vào log.
+
+Khi chuyển blue/green, script ghi trạng thái `handoff` để dừng worker cũ, xác nhận cả hai màu
+đều không xử lý queue, rồi mới trao `active-color` cho màu mới. API của màu chưa active vẫn trả
+health bình thường nhưng endpoint nhận job trả `503`, để dispatcher bền vững phía backend thử lại.
+Job chỉ bị xóa khỏi file queue sau khi callback về backend thành công; mất điện, restart hoặc callback
+tạm lỗi không làm mất job. Nếu file JSON hỏng, service cách ly file với hậu tố `corrupt-<timestamp>`
+thay vì ghi đè bằng một queue rỗng.
 
 ## 4. Chuẩn bị tài khoản triển khai
 
@@ -66,17 +85,31 @@ Máy chủ hiện có thể dùng tài khoản `hradmin`, với điều kiện t
 1. Đăng nhập được bằng SSH key, không dùng mật khẩu.
 2. Có quyền chạy Docker (`docker version` không cần `sudo`).
 3. Có quyền ghi dưới `/opt/hrconnect/deploy`.
+4. Có `caddy`, `flock` và `curl`.
 
 Nên tạo một SSH key riêng chỉ dành cho GitHub Actions, không dùng private key cá nhân. Public key được thêm vào `/home/hradmin/.ssh/authorized_keys`; private key được lưu trong GitHub Secret.
 
 Tạo trước thư mục và bảo vệ env:
 
 ```bash
-sudo mkdir -p /opt/hrconnect/deploy/env /opt/hrconnect/deploy/releases
+sudo mkdir -p /opt/hrconnect/deploy/{env,releases,caddy,data,state}
 sudo chown -R hradmin:hradmin /opt/hrconnect/deploy
-chmod 700 /opt/hrconnect/deploy /opt/hrconnect/deploy/env
+chmod 700 /opt/hrconnect/deploy /opt/hrconnect/deploy/env /opt/hrconnect/deploy/state
 chmod 600 /opt/hrconnect/deploy/env/backend.env /opt/hrconnect/deploy/env/ai-v2.env
 ```
+
+### Thiết lập Caddy một lần
+
+Blue-green chỉ tự chuyển traffic khi Caddy đọc file được pipeline quản lý. Thực hiện một lần trên server:
+
+```bash
+sudo cp -a /etc/caddy/Caddyfile /etc/caddy/Caddyfile.before-hrconnect
+sudo mkdir -p /opt/hrconnect/deploy/caddy
+sudo chown -R hradmin:hradmin /opt/hrconnect/deploy/caddy
+sudo ln -sfn /opt/hrconnect/deploy/caddy/Caddyfile /etc/caddy/Caddyfile
+```
+
+Lượt deploy đầu sẽ nạp cấu hình mới bằng `systemctl reload caddy`. Nếu tài khoản deploy chưa được phép chạy riêng lệnh này không cần mật khẩu, quản trị viên cấu hình `sudoers` theo nguyên tắc quyền tối thiểu hoặc reload thủ công ở lần đầu. Các lượt sau dùng Caddy Admin API tại `127.0.0.1:2019`.
 
 ## 5. GitHub Secrets bắt buộc
 
@@ -118,15 +151,16 @@ ghcr.io/hoangqui794/hrconnect-ai-v2:sha-<commit>
 
 1. Merge workflow vào `main` sau khi CI đạt.
 2. Cấu hình đủ năm GitHub Secrets.
-3. Mở **Actions → CD — Cloud Server → Run workflow** trên nhánh `main`.
-4. Script tự ghi nhận hai container đang chạy dưới tag `*:local` thành release `bootstrap` trước khi thay thế chúng.
-5. Chỉ khi ba endpoint health đạt thì symlink `current` mới chuyển sang release mới.
+3. Hoàn thành bước liên kết Caddy ở mục 4.
+4. Mở **Actions → CD — Cloud Server → Run workflow** trên nhánh `main`.
+5. Script chạy migration bằng image Backend mới nhưng chưa đổi traffic.
+6. Lần đầu dựng `blue`; lần tiếp theo luân phiên `green` và `blue`.
+7. Chỉ khi health trực tiếp và HTTPS công khai đều đạt thì `active-color` và symlink `current` mới được cập nhật.
 
 Endpoint được kiểm tra:
 
-- `http://127.0.0.1:8080/health/live`
-- `http://127.0.0.1:8080/health/ready`
-- `http://127.0.0.1:8001/health`
+- Blue: Backend `18080`, AI `18001`.
+- Green: Backend `28080`, AI `28001`.
 - `https://api.hrconnectvn.online/health/live`
 - `https://api.hrconnectvn.online/health/ready`
 - `https://ai.hrconnectvn.online/health`
@@ -138,16 +172,18 @@ Sau lần chạy thủ công thành công, mọi push vào `main` có CI đạt 
 Script [`deploy/scripts/deploy-production.sh`](../../deploy/scripts/deploy-production.sh) rollback khi:
 
 - không pull được image;
+- migration lỗi;
 - Docker Compose không khởi động được service;
-- Backend live/ready hoặc AI health không đạt trong thời gian chờ.
+- health trực tiếp không đạt trước khi chuyển traffic;
+- health công khai không đạt sau khi chuyển traffic.
 
-Nếu bản mới lỗi sau khi container đã được thay, script chạy lại release ở symlink `current`, xác minh health rồi mới kết thúc với trạng thái thất bại. GitHub Actions vẫn hiển thị màu đỏ để nhóm điều tra dù production đã được phục hồi.
+Nếu lỗi trước switch, màu đang hoạt động không bị thay đổi. Nếu lỗi sau switch, script khôi phục file upstream Caddy cũ rồi dừng màu mới. GitHub Actions vẫn hiển thị màu đỏ để nhóm điều tra dù production đã được phục hồi. Migration không tự rollback; mọi migration production phải theo chiến lược expand/contract để hai phiên bản có thể chạy trong thời gian chuyển màu.
 
-Rollback thủ công về bản gần nhất:
+Kiểm tra màu đang phục vụ:
 
 ```bash
-cd /opt/hrconnect/deploy/previous
-docker compose --project-name hrconnect --env-file release.env -f compose.prod.yml up -d --remove-orphans
+cat /opt/hrconnect/deploy/state/active-color
+cat /opt/hrconnect/deploy/caddy/active-upstreams.caddy
 ```
 
 ## 9. Theo dõi và xử lý lỗi
@@ -161,12 +197,15 @@ docker compose --project-name hrconnect --env-file release.env -f compose.prod.y
 | Pull image lỗi | Kiểm tra dung lượng ổ đĩa, mạng và trạng thái GHCR. |
 | Backend live đạt nhưng ready lỗi | Kiểm tra PostgreSQL và biến môi trường Backend. |
 | AI health lỗi | Xem `docker logs hrconnect-ai-v2` và biến môi trường AI v2. |
-| Workflow rollback | Xem log health, sau đó kiểm tra `deploy/current` và `deploy/previous`. |
+| Workflow rollback | Xem log health, sau đó kiểm tra `state/active-color`, upstream Caddy, `current` và `previous`. |
+| Caddy symlink error | Liên kết `/etc/caddy/Caddyfile` tới file managed như hướng dẫn mục 4. |
+| Migration lỗi | Xem log migration; sửa migration theo expand/contract trước khi chạy lại. |
 
 Các lệnh quan sát an toàn:
 
 ```bash
-docker compose --project-name hrconnect \
+color="$(cat /opt/hrconnect/deploy/state/active-color)"
+docker compose --project-name "hrconnect-$color" \
   --env-file /opt/hrconnect/deploy/current/release.env \
   -f /opt/hrconnect/deploy/current/compose.prod.yml ps
 docker stats --no-stream
@@ -181,4 +220,6 @@ df -h /
 - Không commit `.env`, SSH private key hoặc token.
 - Không chạy `git pull` và không build source trên production.
 - Không tự động xóa image đang được `current` hoặc `previous` sử dụng.
+- Không sửa tay `active-color` hoặc upstream Caddy khi một lượt deploy đang chạy.
+- Không dùng migration phá hủy trong cùng release với thay đổi code phụ thuộc schema mới.
 - Chỉ nâng cấp hệ điều hành/Docker trong cửa sổ bảo trì riêng.

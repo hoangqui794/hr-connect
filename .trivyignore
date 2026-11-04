@@ -1,0 +1,17 @@
+# Trivy ignore file for HRConnect
+# Dev-only dependencies (vitest test runner and vite dev server)
+# These tools run only during local development / CI build and are never bundled into production runtime.
+
+# tinypool: Prototype pollution gadget in worker options (internal to vitest)
+GHSA-5gmw-xhrv-c9v3
+CVE-2026-104848
+GHSA-85c8-ppgw-ccpr
+CVE-2026-104849
+
+# vitest: UI server arbitrary file read (Vitest UI server is never run in CI or production)
+GHSA-5xrq-8626-4rwp
+CVE-2026-47429
+
+# vite: launch-editor path traversal on Windows (dev server error overlay helper only)
+GHSA-587h-7wmj-h5pm
+CVE-2026-112942

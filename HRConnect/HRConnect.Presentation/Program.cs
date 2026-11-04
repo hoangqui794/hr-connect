@@ -38,6 +38,8 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using System.Net;
+using HRConnect.Presentation.Configuration;
+using HRConnect.Presentation.Database;
 
 // ==============================================================================
 // 1. Nạp biến môi trường từ file .env
@@ -46,6 +48,7 @@ DotNetEnv.Env.TraversePath().Load();
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddEnvironmentVariables();
+ProductionConfigurationValidator.Validate(builder.Configuration, builder.Environment);
 
 // ==============================================================================
 // 2. Đăng ký các dịch vụ (Dependency Injection)
@@ -181,14 +184,21 @@ builder.Services.AddRateLimiter(options =>
         }));
 });
 
-// Cấu hình CORS (Cho phép Frontend kết nối API)
+// Chỉ cho phép các frontend đã khai báo gọi API kèm cookie xác thực.
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+if (allowedOrigins.Length == 0 && !builder.Environment.IsProduction())
+{
+    allowedOrigins = ["http://localhost:5173", "http://127.0.0.1:5173"];
+}
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("Frontend", policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        policy.WithOrigins(allowedOrigins)
+                   .AllowAnyMethod()
+                   .AllowAnyHeader()
+                   .AllowCredentials();
     });
 });
 
@@ -251,9 +261,12 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 // Cấu hình Xác thực JWT (Authentication)
-var jwtSecret = builder.Configuration["JwtSettings:Secret"] ?? "YourSuperSecretKeyWithAtLeast32CharactersLong!123456";
-var jwtIssuer = builder.Configuration["JwtSettings:Issuer"] ?? "HRConnect";
-var jwtAudience = builder.Configuration["JwtSettings:Audience"] ?? "HRConnectApp";
+var jwtSecret = builder.Configuration["JwtSettings:Secret"]
+    ?? throw new InvalidOperationException("JwtSettings:Secret chưa được cấu hình.");
+var jwtIssuer = builder.Configuration["JwtSettings:Issuer"]
+    ?? throw new InvalidOperationException("JwtSettings:Issuer chưa được cấu hình.");
+var jwtAudience = builder.Configuration["JwtSettings:Audience"]
+    ?? throw new InvalidOperationException("JwtSettings:Audience chưa được cấu hình.");
 
 builder.Services.AddAuthentication(options =>
 {
@@ -318,6 +331,33 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 
 var app = builder.Build();
 
+var migrationOnly = args.Any(argument =>
+    argument.Equals("--migrate", StringComparison.OrdinalIgnoreCase));
+var migrateOnStartup = !app.Environment.IsProduction()
+    && builder.Configuration.GetValue("Database:RunMigrationsOnStartup", true);
+
+if (migrationOnly || migrateOnStartup)
+{
+    try
+    {
+        await DatabaseMigrationRunner.RunAsync(
+            app.Services,
+            app.Environment,
+            builder.Configuration,
+            app.Logger);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogCritical(ex, "Database migration failed; process aborted.");
+        throw new InvalidOperationException("Database migration failed.", ex);
+    }
+}
+
+if (migrationOnly)
+{
+    return;
+}
+
 // Resolve the original client IP only through trusted proxies. Configure
 // ForwardedHeaders__KnownProxies in production for the reverse proxy addresses.
 app.UseForwardedHeaders();
@@ -354,7 +394,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 // Kích hoạt CORS
-app.UseCors("AllowAll");
+app.UseCors("Frontend");
 
 // Thứ tự bắt buộc: Xác thực (Authentication) -> Phân quyền (Authorization)
 app.UseAuthentication();
@@ -420,49 +460,5 @@ app.MapCandidateSavedJobEndpoints();
 app.MapNotificationEndpoints();
 app.MapReportEndpoints();
 app.MapAdminAffiliatePerformanceEndpoints();
-
-// ==============================================================================
-// 4. Tự động kiểm tra và áp dụng Migration (Code-First) khi ứng dụng khởi động
-// ==============================================================================
-try
-{
-    using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
-    var emailNormalizer = scope.ServiceProvider.GetRequiredService<IEmailNormalizer>();
-    var phoneNormalizer = scope.ServiceProvider.GetRequiredService<IPhoneNormalizer>();
-
-    await dbContext.Database.MigrateAsync();
-
-    var enableDemoAccounts = app.Environment.IsDevelopment()
-        || app.Environment.IsEnvironment("Testing")
-        || app.Environment.IsEnvironment("Demo")
-        || builder.Configuration.GetValue<bool>("SeedDemoAccounts", false);
-
-    await DatabaseSeeder.SeedAsync(
-        dbContext,
-        app.Logger,
-        seedDemoAccounts: enableDemoAccounts,
-        passwordHasher: passwordHasher,
-        emailNormalizer: emailNormalizer,
-        phoneNormalizer: phoneNormalizer);
-
-    app.Logger.LogInformation(">>> Database migrated and seeded successfully! <<<");
-}
-catch (Exception ex)
-{
-    // Never serve traffic against a partially migrated schema. A logging provider
-    // can also fail during startup, so keep the migration exception intact.
-    try
-    {
-        app.Logger.LogCritical(ex, ">>> Database migration failed; application startup aborted. <<<");
-    }
-    catch
-    {
-        Console.Error.WriteLine(ex);
-    }
-
-    throw new InvalidOperationException("Database migration failed. Application startup was aborted.", ex);
-}
 
 app.Run();

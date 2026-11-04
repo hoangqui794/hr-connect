@@ -9,6 +9,10 @@ describe('API client foundation', () => {
     apiClient.defaults.adapter = undefined;
   });
 
+  it('sends the HttpOnly refresh-token cookie with API requests', () => {
+    expect(apiClient.defaults.withCredentials).toBe(true);
+  });
+
   it('normalizes business metadata without changing the legacy message contract', () => {
     const response = {
       status: 429,

@@ -240,10 +240,7 @@ class ScoringOrchestrator:
                     job.request_id, job.application_id, result.match_score, time.monotonic() - started)
 
     async def callback_failed(self, job: ScoringJobRequest, code: str, message: str) -> None:
-        try:
-            await self._client.post_ai_result(build_failed_payload(job, code, message))
-        except Exception:
-            logger.exception("Failed to report scoring failure request=%s", job.request_id)
+        await self._client.post_ai_result(build_failed_payload(job, code, message))
 
 
 class ScoringJobQueue:
@@ -258,49 +255,73 @@ class ScoringJobQueue:
         self._known: set[str] = set()
         self._pending: dict[str, ScoringJobRequest] = {}
         self._file: Path | None = None
-        self._tasks: list[asyncio.Task[None]] = []
+        self._worker_tasks: list[asyncio.Task[None]] = []
+        self._supervisor_task: asyncio.Task[None] | None = None
         self._orchestrator: ScoringOrchestrator | None = None
+        self._active_color_file: Path | None = None
+        self._deploy_color = ""
+        self._activation_poll_seconds = 0.5
+        self._worker_count = 1
+        self._workers_active = False
 
     @property
     def running(self) -> bool:
         return self._queue is not None
 
+    @property
+    def accepting(self) -> bool:
+        return self.running and self._workers_active
+
+    def worker_status(self) -> dict[str, Any]:
+        return {
+            "running": self.running,
+            "accepting": self.accepting,
+            "workersActive": self._workers_active,
+            "workerCount": len(self._worker_tasks),
+            "deployColor": self._deploy_color or None,
+            "pendingJobs": len(self._pending),
+        }
+
     async def start(self, settings: Settings, orchestrator: ScoringOrchestrator) -> None:
-        if self._tasks:
+        if self.running:
             return
         self._orchestrator = orchestrator
         self._queue = asyncio.Queue(maxsize=settings.scoring_queue_size)
         self._known.clear()
         self._pending.clear()
         self._file = Path(settings.scoring_queue_file) if settings.scoring_queue_file else None
-        restored = 0
-        for job in self._load():
-            if job.request_id in self._known or self._queue.full():
-                continue
-            self._known.add(job.request_id)
-            self._pending[job.request_id] = job
-            self._queue.put_nowait(job)
-            restored += 1
-        if restored:
-            logger.info("v2 scoring re-queued %s unfinished job(s) from %s", restored, self._file)
-        self._save()
-        for index in range(settings.scoring_worker_count):
-            self._tasks.append(asyncio.create_task(self._worker(index)))
+        self._active_color_file = (
+            Path(settings.scoring_active_color_file) if settings.scoring_active_color_file else None
+        )
+        self._deploy_color = settings.deploy_color.strip()
+        self._activation_poll_seconds = max(settings.scoring_activation_poll_seconds, 0.1)
+        self._worker_count = settings.scoring_worker_count
+        self._restore_pending()
+        if self._file is not None and not self._file.exists():
+            self._save()
+        if self._active_color_file is None:
+            await self._start_workers()
+        else:
+            if not self._deploy_color:
+                raise RuntimeError("DEPLOY_COLOR is required when SCORING_ACTIVE_COLOR_FILE is configured")
+            self._supervisor_task = asyncio.create_task(self._supervise_activation())
 
     async def stop(self) -> None:
-        for task in self._tasks:
-            task.cancel()
-        for task in self._tasks:
+        if self._supervisor_task is not None:
+            self._supervisor_task.cancel()
             with suppress(asyncio.CancelledError):
-                await task
-        self._tasks.clear()
+                await self._supervisor_task
+            self._supervisor_task = None
+        await self._stop_workers()
         self._queue = None
         self._known.clear()
         self._pending.clear()
+        self._active_color_file = None
+        self._deploy_color = ""
 
     async def enqueue(self, job: ScoringJobRequest) -> bool:
-        if self._queue is None:
-            raise RuntimeError("Scoring job queue is not running")
+        if not self.accepting or self._queue is None:
+            raise RuntimeError("Scoring job queue is not active on this deployment color")
         if job.request_id in self._known:
             return False
         self._known.add(job.request_id)
@@ -313,26 +334,91 @@ class ScoringJobQueue:
         self._save()
         return True
 
+    async def _supervise_activation(self) -> None:
+        while True:
+            should_be_active = self._selected_color() == self._deploy_color
+            if should_be_active and not self._workers_active:
+                self._restore_pending()
+                await self._start_workers()
+                logger.info("v2 scoring workers activated for deployment color %s", self._deploy_color)
+            elif not should_be_active and self._workers_active:
+                await self._stop_workers()
+                logger.info("v2 scoring workers deactivated for deployment color %s", self._deploy_color)
+            await asyncio.sleep(self._activation_poll_seconds)
+
+    def _selected_color(self) -> str:
+        if self._active_color_file is None:
+            return self._deploy_color
+        try:
+            return self._active_color_file.read_text(encoding="utf-8").strip()
+        except FileNotFoundError:
+            return ""
+        except OSError:
+            logger.exception("v2 scoring activation marker %s could not be read", self._active_color_file)
+            return ""
+
+    async def _start_workers(self) -> None:
+        if self._workers_active:
+            return
+        self._workers_active = True
+        for index in range(self._worker_count):
+            self._worker_tasks.append(asyncio.create_task(self._worker(index)))
+
+    async def _stop_workers(self) -> None:
+        self._workers_active = False
+        for task in self._worker_tasks:
+            task.cancel()
+        for task in self._worker_tasks:
+            with suppress(asyncio.CancelledError):
+                await task
+        self._worker_tasks.clear()
+
+    def _restore_pending(self) -> None:
+        assert self._queue is not None
+        self._queue = asyncio.Queue(maxsize=self._queue.maxsize)
+        self._known.clear()
+        self._pending.clear()
+        restored = 0
+        for job in self._load():
+            if job.request_id in self._known or self._queue.full():
+                continue
+            self._known.add(job.request_id)
+            self._pending[job.request_id] = job
+            self._queue.put_nowait(job)
+            restored += 1
+        if restored:
+            logger.info("v2 scoring re-queued %s unfinished job(s) from %s", restored, self._file)
+
     async def _worker(self, worker_id: int) -> None:
         queue = self._queue
         assert queue is not None and self._orchestrator is not None
         while True:
             job = await queue.get()
+            callback_completed = False
             try:
                 await self._orchestrator.process(job)
+                callback_completed = True
             except asyncio.CancelledError:
                 # Shutdown mid-job: keep it in the file so the next start scores it again.
                 queue.task_done()
                 raise
             except Exception:
                 logger.exception("v2 scoring worker %s failed request=%s", worker_id, job.request_id)
-                await self._orchestrator.callback_failed(job, "AI_SCORING_FAILED", "AI scoring failed")
+                try:
+                    await self._orchestrator.callback_failed(job, "AI_SCORING_FAILED", "AI scoring failed")
+                    callback_completed = True
+                except Exception:
+                    logger.exception(
+                        "v2 scoring failure callback did not complete request=%s; keeping it pending",
+                        job.request_id,
+                    )
             finally:
                 import gc
                 gc.collect()
-            self._known.discard(job.request_id)
-            self._pending.pop(job.request_id, None)
-            self._save()
+            if callback_completed:
+                self._known.discard(job.request_id)
+                self._pending.pop(job.request_id, None)
+                self._save()
             queue.task_done()
 
     def _load(self) -> list[ScoringJobRequest]:
@@ -342,20 +428,40 @@ class ScoringJobQueue:
             raw = json.loads(self._file.read_text(encoding="utf-8"))
             return [ScoringJobRequest.model_validate(item) for item in raw]
         except Exception:
-            logger.exception("v2 scoring queue file %s is unreadable; starting empty", self._file)
+            quarantine = self._file.with_name(f"{self._file.name}.corrupt-{time.time_ns()}")
+            logger.exception(
+                "v2 scoring queue file %s is unreadable; quarantining it as %s",
+                self._file,
+                quarantine,
+            )
+            try:
+                os.replace(self._file, quarantine)
+            except OSError:
+                logger.exception("v2 scoring queue file %s could not be quarantined", self._file)
             return []
 
     def _save(self) -> None:
         if self._file is None:
             return
+        tmp = self._file.with_suffix(self._file.suffix + ".tmp")
         try:
             self._file.parent.mkdir(parents=True, exist_ok=True)
-            tmp = self._file.with_suffix(self._file.suffix + ".tmp")
             data = [job.model_dump(by_alias=True) for job in self._pending.values()]
-            tmp.write_text(json.dumps(data), encoding="utf-8")
+            with tmp.open("w", encoding="utf-8") as stream:
+                stream.write(json.dumps(data, separators=(",", ":")))
+                stream.flush()
+                os.fsync(stream.fileno())
             os.replace(tmp, self._file)
+            if hasattr(os, "O_DIRECTORY"):
+                directory = os.open(self._file.parent, os.O_RDONLY | os.O_DIRECTORY)
+                try:
+                    os.fsync(directory)
+                finally:
+                    os.close(directory)
         except OSError:
             logger.exception("v2 scoring queue could not be saved to %s", self._file)
+            with suppress(OSError):
+                tmp.unlink()
 
 
 scoring_job_queue = ScoringJobQueue()
@@ -373,6 +479,12 @@ async def enqueue_scoring_job(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     try:
         await scoring_job_queue.enqueue(payload)
+    except RuntimeError as exc:
+        logger.info("v2 scoring queue inactive request=%s", payload.request_id)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Scoring queue is switching deployment color; retry later",
+        ) from exc
     except asyncio.QueueFull as exc:
         logger.warning("v2 scoring queue full request=%s", payload.request_id)
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
