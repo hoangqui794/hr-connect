@@ -4,98 +4,25 @@
  * job detail. Guests can browse the same ACTIVE/PUBLIC scope as Candidate; authentication is
  * requested only when they choose to apply.
  */
-import React, { useEffect } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Alert, Button, Skeleton, Typography } from 'antd';
-import { ArrowLeftOutlined, LoginOutlined } from '@ant-design/icons';
-import { Navbar } from '@/features/landing/components/Navbar';
+import React from 'react';
+import { Link, useLocation, useParams } from 'react-router-dom';
+import { Alert, Skeleton, Typography } from 'antd';
+import { ArrowLeftOutlined } from '@ant-design/icons';
 import { getApiErrorMessage } from '@/services/apiClient';
-import { useAuthStore } from '@/stores/authStore';
 import { JobDiscoveryPage } from './JobDiscoveryPage';
 import { JobDetailPanel } from './JobDetailPanel';
 import { useJobDetail } from './useJobQueries';
 import { JobApplyActions } from '@/features/portal/JobApplyActions';
 import { CommissionEstimateCard } from '@/features/portal/CommissionEstimateCard';
 
-const { Title, Text } = Typography;
-
-const PublicFrame: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="min-h-screen bg-slate-50 text-slate-900 antialiased">
-    <Navbar />
-    <main className="mx-auto max-w-6xl px-4 pb-16 pt-8 sm:px-6 lg:px-8">{children}</main>
-  </div>
-);
-
 import { PublicJobSplitDiscovery } from './PublicJobSplitDiscovery';
+import { JobPublicDetailView } from './JobPublicDetailView';
+
+const { Title, Text } = Typography;
 
 export const PublicJobSearchPage: React.FC = () => <PublicJobSplitDiscovery />;
 
-export const PublicJobDetailPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const detail = useJobDetail(id);
-  const resumeApply = (location.state as { intent?: string } | null)?.intent === 'apply';
-
-  useEffect(() => {
-    if (isAuthenticated && resumeApply && detail.data) {
-      navigate(location.pathname, { replace: true, state: null });
-    }
-  }, [detail.data, isAuthenticated, location.pathname, navigate, resumeApply]);
-
-  return (
-    <PublicFrame>
-      <Link to="/jobs" className="mb-4 inline-flex items-center gap-1.5 text-sm text-slate-600 hover:text-blue-700">
-        <ArrowLeftOutlined aria-hidden /> Tất cả việc làm
-      </Link>
-      <div className="rounded-xl border border-solid border-slate-200 bg-white p-6">
-        {detail.isError ? (
-          <div className="py-12 px-6 text-center">
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200/80 flex items-center justify-center text-amber-600 mb-4 shadow-2xs">
-              <span className="text-2xl font-bold">404</span>
-            </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2 m-0">
-              Không tìm thấy công việc này hoặc tin tuyển dụng đã hết hạn
-            </h3>
-            <p className="text-sm text-slate-500 max-w-md mx-auto mb-6 mt-1">
-              Vị trí tuyển dụng bạn đang tìm kiếm có thể đã tạm đóng hoặc không còn khả dụng trên hệ thống HR Connect.
-            </p>
-            <Button
-              type="primary"
-              size="large"
-              onClick={() => navigate('/jobs')}
-              className="!bg-blue-600 hover:!bg-blue-700 !h-11 !px-6 !rounded-xl !font-semibold !border-none"
-            >
-              ← Khám phá các việc làm khác
-            </Button>
-          </div>
-        ) : detail.isLoading || !detail.data ? (
-          <Skeleton active paragraph={{ rows: 12 }} />
-        ) : (
-          <>
-            {/* MF-02: candidates apply here, affiliates go to the referral form. */}
-            <div className="mb-5 flex flex-col items-end">
-              {isAuthenticated ? (
-                <JobApplyActions job={detail.data} autoOpen={resumeApply} />
-              ) : (
-                <Button
-                  type="primary"
-                  size="large"
-                  icon={<LoginOutlined />}
-                  onClick={() => navigate('/login', { state: { from: location.pathname, intent: 'apply' } })}
-                >
-                  Đăng nhập để ứng tuyển
-                </Button>
-              )}
-            </div>
-            <JobDetailPanel job={detail.data} isApplicantView />
-          </>
-        )}
-      </div>
-    </PublicFrame>
-  );
-};
+export const PublicJobDetailPage: React.FC = () => <JobPublicDetailView />;
 
 /** In-app (AppShell) variant used by Affiliate, Client and Admin menus. */
 export const InAppJobDiscoveryPage: React.FC = () => {

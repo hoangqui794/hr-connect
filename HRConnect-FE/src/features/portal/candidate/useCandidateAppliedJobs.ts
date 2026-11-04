@@ -3,7 +3,7 @@ import { candidateApplicationsApi } from '@/services/api/mf02Api';
 import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
 import type { CandidateApplication } from '@/types/api/mf02';
-import { candidateKeys } from '../CandidatePages';
+import { candidateKeys } from './candidateKeys';
 
 export const useCandidateAppliedJobs = () => {
   const role = useAuthStore((s) => s.role);

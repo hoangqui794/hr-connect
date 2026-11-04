@@ -8,5 +8,6 @@ public record RespondToOfferCommand(
     string Response,
     string? DeclineReason,
     Guid? ConcurrencyToken,
-    Guid CurrentUserId
+    Guid CurrentUserId,
+    string? AcceptanceAction = null
 ) : IRequest<RespondToOfferResponse>;

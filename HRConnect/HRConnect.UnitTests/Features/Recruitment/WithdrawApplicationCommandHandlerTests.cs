@@ -39,7 +39,14 @@ public class WithdrawApplicationCommandHandlerTests
             },
             Offers = new List<Offer>
             {
-                new() { OfferId = Guid.NewGuid(), Status = "SENT", ConcurrencyToken = Guid.NewGuid() }
+                new() { OfferId = Guid.NewGuid(), Status = "SENT", ConcurrencyToken = Guid.NewGuid() },
+                new()
+                {
+                    OfferId = Guid.NewGuid(),
+                    Status = "ACCEPTED",
+                    RespondedAt = DateTime.UtcNow.AddDays(-1),
+                    ConcurrencyToken = Guid.NewGuid()
+                }
             },
             ApplicationStatusHistories = new List<ApplicationStatusHistory>()
         };
@@ -52,9 +59,9 @@ public class WithdrawApplicationCommandHandlerTests
 
         result.ApplicationStatus.Should().Be("WITHDRAWN");
         result.CancelledInterviewCount.Should().Be(1);
-        result.WithdrawnOfferCount.Should().Be(1);
+        result.WithdrawnOfferCount.Should().Be(2);
         application.Interviews.Single().Status.Should().Be("CANCELLED");
-        application.Offers.Single().Status.Should().Be("WITHDRAWN");
+        application.Offers.Should().OnlyContain(offer => offer.Status == "WITHDRAWN");
         application.ApplicationStatusHistories.Should().ContainSingle(h => h.NewStatus == "WITHDRAWN");
     }
 

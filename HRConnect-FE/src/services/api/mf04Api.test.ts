@@ -274,5 +274,51 @@ describe('mf04Api service', () => {
       });
       expect(result.success).toBe(true);
     });
+
+    it('getOfferAcceptanceImpact loads conflicts and allowed actions before acceptance', async () => {
+      const impact = {
+        targetOfferId: 'off-2',
+        employmentType: 'FULL_TIME',
+        isFullTime: true,
+        acceptedFullTimeOffer: {
+          offerId: 'off-1',
+          applicationId: 'app-1',
+          jobTitle: 'Backend Engineer',
+          companyName: 'Company A',
+          employmentType: 'FULL_TIME',
+          status: 'ACCEPTED',
+        },
+        otherPendingFullTimeOffers: [],
+        activeFullTimePlacement: null,
+        allowedActions: ['KEEP_OTHER_PENDING_OFFERS', 'REPLACE_ACCEPTED_FULL_TIME_OFFER'],
+      };
+      vi.mocked(apiClient.get).mockResolvedValueOnce({
+        data: { success: true, data: impact },
+      });
+
+      const result = await mf04Api.getOfferAcceptanceImpact('off-2');
+
+      expect(apiClient.get).toHaveBeenCalledWith('/offers/off-2/acceptance-impact');
+      expect(result.acceptedFullTimeOffer?.companyName).toBe('Company A');
+      expect(result.allowedActions).toContain('REPLACE_ACCEPTED_FULL_TIME_OFFER');
+    });
+
+    it('respondOffer sends the explicit action chosen for other full-time offers', async () => {
+      vi.mocked(apiClient.post).mockResolvedValueOnce({
+        data: { success: true, message: 'Đã chuyển sang offer mới' },
+      });
+
+      await mf04Api.respondOffer('off-2', {
+        response: 'ACCEPTED',
+        concurrencyToken: 'off-token-2',
+        acceptanceAction: 'REPLACE_ACCEPTED_FULL_TIME_OFFER',
+      });
+
+      expect(apiClient.post).toHaveBeenCalledWith('/offers/off-2/response', {
+        response: 'ACCEPTED',
+        concurrencyToken: 'off-token-2',
+        acceptanceAction: 'REPLACE_ACCEPTED_FULL_TIME_OFFER',
+      });
+    });
   });
 });

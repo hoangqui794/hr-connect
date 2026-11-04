@@ -22,7 +22,7 @@ import { MAX_CV_MB, cvFileError, fileSize } from './mf02Labels';
 
 type Source = { kind: 'vault'; cvId: string } | { kind: 'file'; file: File };
 
-const ApplyModal: React.FC<{ job: Job; open: boolean; onClose: () => void }> = ({ job, open, onClose }) => {
+export const ApplyModal: React.FC<{ job: Job; open: boolean; onClose: () => void }> = ({ job, open, onClose }) => {
   const { message } = AntApp.useApp();
   const navigate = useNavigate();
   const queryClient = useQueryClient();

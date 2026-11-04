@@ -1,0 +1,10 @@
+# This file is replaced atomically by deploy-production.sh after the inactive
+# color is healthy. The defaults keep the legacy single-color installation
+# reachable until the first managed blue-green release succeeds.
+(backend_upstream) {
+	reverse_proxy 127.0.0.1:8080
+}
+
+(ai_v2_upstream) {
+	reverse_proxy 127.0.0.1:8001
+}

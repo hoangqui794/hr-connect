@@ -8,6 +8,7 @@ using HRConnect.Application.Features.Offers.Commands.UpdateOfferDraft;
 using HRConnect.Application.Features.Offers.Commands.WithdrawOffer;
 using HRConnect.Application.Features.Offers.Queries.GetOffers;
 using HRConnect.Application.Features.Offers.Queries.GetOfferDetail;
+using HRConnect.Application.Features.Offers.Queries.GetOfferAcceptanceImpact;
 using HRConnect.Presentation.Authorization;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -280,6 +281,53 @@ public static class OfferEndpoints
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status409Conflict);
 
+        // O06 preview: GET /api/v1/offers/{offerId:guid}/acceptance-impact
+        group.MapGet("/{offerId:guid}/acceptance-impact", async (
+            Guid offerId,
+            [FromServices] ISender sender,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            if (!PermissionAuthorization.HasPermission(user, RespondPermission))
+            {
+                return PermissionAuthorization.Forbidden(RespondPermission);
+            }
+
+            try
+            {
+                var response = await sender.Send(
+                    new GetOfferAcceptanceImpactQuery(offerId, userId.Value),
+                    cancellationToken);
+                return Results.Ok(new { success = true, data = response });
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ForbiddenException ex)
+            {
+                return Results.Json(new { success = false, message = ex.Message }, statusCode: StatusCodes.Status403Forbidden);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("GetOfferAcceptanceImpact")
+        .WithSummary("Xem ảnh hưởng trước khi ứng viên chấp nhận offer")
+        .WithDescription("Trả về các offer toàn thời gian đang chờ/đã chấp nhận và placement toàn thời gian đang hoạt động của chính Candidate. API chỉ đọc dữ liệu và không thay đổi trạng thái.")
+        .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
+
         // O06: POST /api/v1/offers/{offerId:guid}/response
         group.MapPost("/{offerId:guid}/response", async (
             Guid offerId,
@@ -306,7 +354,8 @@ public static class OfferEndpoints
                     Response: request.Response,
                     DeclineReason: request.DeclineReason,
                     ConcurrencyToken: request.ConcurrencyToken,
-                    CurrentUserId: userId.Value
+                    CurrentUserId: userId.Value,
+                    AcceptanceAction: request.AcceptanceAction
                 );
 
                 var response = await sender.Send(command, cancellationToken);
@@ -438,6 +487,7 @@ public class RespondToOfferRequest
     public string Response { get; set; } = string.Empty;
     public string? DeclineReason { get; set; }
     public Guid? ConcurrencyToken { get; set; }
+    public string? AcceptanceAction { get; set; }
 }
 
 public class WithdrawOfferRequest

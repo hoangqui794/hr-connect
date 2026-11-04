@@ -12,7 +12,7 @@ import { vnPayApi } from '@/services/api/financeApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { PLATFORM_BANK_ACCOUNT as BANK } from '@/features/finance-mf05/platformBankAccount';
 import { date, money } from '@/features/finance-mf05/financeLabels';
-import type { BillingRow } from './ClientBillingPage';
+import type { BillingRow } from './billingTypes';
 
 const Line: React.FC<{ label: string; value: string; copyLabel?: string; mono?: boolean; onCopy: (text: string, label: string) => void }> = ({
   label,

@@ -45,7 +45,7 @@ interface AuthState {
   isAuthenticated: boolean;
   setRole: (role: UserRole) => void;
   login: (role: UserRole, customUser?: Partial<UserProfile>) => void;
-  setAuthSession: (userDto: CurrentUserDto, accessToken: string, refreshToken?: string) => void;
+  setAuthSession: (userDto: CurrentUserDto, accessToken: string) => void;
   register: (data: RegisterData) => UserProfile;
   logout: () => void;
   updateUser: (updates: Partial<UserProfile>) => void;
@@ -119,10 +119,9 @@ export const useAuthStore = create<AuthState>()(
       /**
        * Sets official authenticated session from backend CurrentUserDto and tokens
        */
-      setAuthSession: (userDto: CurrentUserDto, accessToken: string, refreshToken?: string) => {
+      setAuthSession: (userDto: CurrentUserDto, accessToken: string) => {
         authService.saveAuthTokens({
           accessToken,
-          refreshToken,
           user: {
             userId: userDto.userId,
             email: userDto.email,

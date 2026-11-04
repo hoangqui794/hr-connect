@@ -13,7 +13,7 @@ import { AccountAvatar } from '@/components/common/AccountAvatar';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { CandidateWorkspaceMenu } from '@/features/portal/candidate/CandidateWorkspaceMenu';
 import { UserRole } from '@/types/roles';
-import { ROLE_DASHBOARD_ROUTES } from '@/routes/AppRoutes';
+import { ROLE_DASHBOARD_ROUTES } from '@/routes/routeHelpers';
 import { BrandMark } from '@/components/common/BrandMark';
 
 export const Navbar: React.FC = () => {
@@ -25,7 +25,7 @@ export const Navbar: React.FC = () => {
 
   const links: { to: string; label: string; active: boolean }[] = [
     {
-      to: isCandidate ? '/candidate/jobs?tab=all' : '/jobs',
+      to: '/jobs',
       label: 'Việc làm',
       active: location.pathname === '/' || location.pathname.startsWith('/jobs') || location.pathname.startsWith('/candidate/jobs'),
     },

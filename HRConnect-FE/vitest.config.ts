@@ -19,5 +19,17 @@ export default defineConfig({
     css: false,
     testTimeout: 30000,
     fileParallelism: false,
+    coverage: {
+      provider: 'v8',
+      include: ['src/services/**/*.{ts,tsx}'],
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/**/*.d.ts'],
+      reporter: ['text', 'html', 'json-summary'],
+      thresholds: {
+        lines: 50,
+        functions: 50,
+        branches: 60,
+        statements: 50,
+      },
+    },
   },
 });

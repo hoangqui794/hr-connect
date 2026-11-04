@@ -25,37 +25,8 @@ import { BillingPaymentModal } from './BillingPaymentModal';
 
 const PAGE_SIZE = 10;
 
-type Bucket = 'UNPAID' | 'OVERDUE' | 'PAID' | 'OTHER';
-
-export interface BillingRow {
-  key: string;
-  service: ServiceTypeCode;
-  item: string;
-  jobTitle: string;
-  candidateName: string | null;
-  /** Negative for money returned to the Client. */
-  amount: number;
-  currencyCode: string;
-  dueDate: string | null;
-  statusLabel: string;
-  tone: Tone;
-  bucket: Bucket;
-  paidAt: string | null;
-  paymentReference: string | null;
-  /** What to write on the bank transfer; shown by "Cách thanh toán". */
-  transferNote: string | null;
-  /** Unpaid and not held for reconciliation, so the Client can transfer now. */
-  payable: boolean;
-  /** What VNPay is asked to pay (service fee id, or job id for a posting fee). */
-  payTarget: { type: OnlinePaymentTargetType; id: string };
-  /** How the amount was worked out, shown in the payment dialog. */
-  breakdown: BreakdownLine[];
-}
-
-export interface BreakdownLine {
-  label: string;
-  value: string;
-}
+import type { Bucket, BillingRow, BreakdownLine } from './billingTypes';
+export type { Bucket, BillingRow, BreakdownLine };
 
 const percent = (ratio: number) => `${Number((ratio * 100).toFixed(2))}%`;
 

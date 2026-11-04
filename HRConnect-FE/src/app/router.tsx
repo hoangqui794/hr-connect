@@ -28,10 +28,10 @@ import {
   ProtectedRoute,
   ROUTE_ACCESS,
 } from '@/routes/AppRoutes';
-import { LandingPage } from '@/features/landing/LandingPage';
-import { LoginPage } from '@/features/auth/LoginPage';
-import { RegisterPage } from '@/features/auth/RegisterPage';
-import { ServicesPage } from '@/features/services/ServicesPage';
+const LandingPage = React.lazy(() => import('@/features/landing/LandingPage').then((m: any) => ({ default: m.default || m.LandingPage })));
+const LoginPage = React.lazy(() => import('@/features/auth/LoginPage').then((m: any) => ({ default: m.default || m.LoginPage })));
+const RegisterPage = React.lazy(() => import('@/features/auth/RegisterPage').then((m: any) => ({ default: m.default || m.RegisterPage })));
+const ServicesPage = React.lazy(() => import('@/features/services/ServicesPage').then((m: any) => ({ default: m.default || m.ServicesPage })));
 import { AdminScope } from '@/features/admin-console/adminTheme';
 import { AdminLayout } from '@/features/admin-console/AdminLayout';
 import { HrScope } from '@/features/hr-console/hrTheme';
@@ -78,15 +78,15 @@ export const router = createBrowserRouter([
   // ── Public routes (no AppShell) ────────────────────────────────────────────
   {
     path: '/',
-    element: <CandidateScope><LandingPage /></CandidateScope>,
+    element: withSuspense(<CandidateScope><LandingPage /></CandidateScope>),
   },
   {
     path: '/login',
-    element: <LoginPage />,
+    element: withSuspense(<LoginPage />),
   },
   {
     path: '/register',
-    element: <RegisterPage />,
+    element: withSuspense(<RegisterPage />),
   },
   {
     path: '/register/affiliate',
@@ -110,7 +110,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/services',
-    element: <ServicesPage />,
+    element: withSuspense(<ServicesPage />),
   },
   {
     path: '/contact',
@@ -216,7 +216,7 @@ export const router = createBrowserRouter([
       // A Candidate's home is the site homepage (mockup 03/11).
       { index: true, element: <Navigate to="/" replace /> },
       { path: 'dashboard', element: <Navigate to="/" replace /> },
-      { path: 'jobs', element: <AppRoutes.CandidateJobsPage /> },
+      { path: 'jobs', element: <Navigate to="/jobs" replace /> },
       { path: 'jobs/:jobId', element: <AppRoutes.CandidateJobDetailPage /> },
       { path: 'applications', element: <AppRoutes.CandidateMyApplicationsPage /> },
       { path: 'applications/:applicationId', element: <AppRoutes.CandidateApplicationDetailPage /> },

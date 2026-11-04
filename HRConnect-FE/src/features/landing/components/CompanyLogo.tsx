@@ -287,7 +287,98 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
     );
   }
 
-  // 14. Fallback for all other companies:
+    // 14. MoMo
+  if (searchKey.includes('momo') || searchKey.includes('mo')) {
+    return (
+      <svg width={pxSize} height={pxSize} viewBox="0 0 48 48" className={className} aria-label={displayName}>
+        <rect width="48" height="48" rx="10" fill="#A50064" />
+        <circle cx="18" cy="24" r="7" fill="none" stroke="#FFFFFF" strokeWidth="3" />
+        <circle cx="30" cy="24" r="7" fill="none" stroke="#FFFFFF" strokeWidth="3" />
+      </svg>
+    );
+  }
+
+  // 15. Tiki
+  if (searchKey.includes('tiki') || searchKey.includes('tk')) {
+    return (
+      <svg width={pxSize} height={pxSize} viewBox="0 0 48 48" className={className} aria-label={displayName}>
+        <rect width="48" height="48" rx="10" fill="#1A94FF" />
+        <text x="24" y="30" fill="#FFFFFF" fontSize="15" fontWeight="900" textAnchor="middle" letterSpacing="0.5">TK</text>
+      </svg>
+    );
+  }
+
+  // 16. KMS Technology
+  if (searchKey.includes('kms')) {
+    return (
+      <svg width={pxSize} height={pxSize} viewBox="0 0 48 48" className={className} aria-label={displayName}>
+        <rect width="48" height="48" rx="10" fill="#004F9F" />
+        <text x="24" y="30" fill="#FFFFFF" fontSize="13" fontWeight="900" textAnchor="middle" letterSpacing="0.5">KMS</text>
+      </svg>
+    );
+  }
+
+  // 17. Thế Giới Di Động / MWG
+  if (searchKey.includes('thế giới di động') || searchKey.includes('the gioi di dong') || searchKey.includes('mwg')) {
+    return (
+      <svg width={pxSize} height={pxSize} viewBox="0 0 48 48" className={className} aria-label={displayName}>
+        <rect width="48" height="48" rx="10" fill="#FFD400" />
+        <text x="24" y="30" fill="#000000" fontSize="13" fontWeight="900" textAnchor="middle" letterSpacing="0.5">MWG</text>
+      </svg>
+    );
+  }
+
+  // 18. MB Bank
+  if (searchKey.includes('mb') || searchKey.includes('quân đội') || searchKey.includes('quan doi')) {
+    return (
+      <svg width={pxSize} height={pxSize} viewBox="0 0 48 48" className={className} aria-label={displayName}>
+        <rect width="48" height="48" rx="10" fill="#1B365D" />
+        <text x="24" y="30" fill="#FFFFFF" fontSize="15" fontWeight="900" textAnchor="middle" letterSpacing="0.5">MB</text>
+      </svg>
+    );
+  }
+
+  // 19. Haravan
+  if (searchKey.includes('haravan') || searchKey.includes('hb')) {
+    return (
+      <svg width={pxSize} height={pxSize} viewBox="0 0 48 48" className={className} aria-label={displayName}>
+        <rect width="48" height="48" rx="10" fill="#EA580C" />
+        <text x="24" y="30" fill="#FFFFFF" fontSize="15" fontWeight="900" textAnchor="middle" letterSpacing="0.5">HB</text>
+      </svg>
+    );
+  }
+
+  // 20. NAB
+  if (searchKey.includes('nab')) {
+    return (
+      <svg width={pxSize} height={pxSize} viewBox="0 0 48 48" className={className} aria-label={displayName}>
+        <rect width="48" height="48" rx="10" fill="#C8102E" />
+        <text x="24" y="30" fill="#FFFFFF" fontSize="13" fontWeight="900" textAnchor="middle" letterSpacing="0.5">NAB</text>
+      </svg>
+    );
+  }
+
+  // 21. TMA Solutions
+  if (searchKey.includes('tma')) {
+    return (
+      <svg width={pxSize} height={pxSize} viewBox="0 0 48 48" className={className} aria-label={displayName}>
+        <rect width="48" height="48" rx="10" fill="#0284C7" />
+        <text x="24" y="30" fill="#FFFFFF" fontSize="13" fontWeight="900" textAnchor="middle" letterSpacing="0.5">TMA</text>
+      </svg>
+    );
+  }
+
+  // 22. Nashtech
+  if (searchKey.includes('nashtech') || searchKey.includes('nv')) {
+    return (
+      <svg width={pxSize} height={pxSize} viewBox="0 0 48 48" className={className} aria-label={displayName}>
+        <rect width="48" height="48" rx="10" fill="#0F172A" />
+        <text x="24" y="30" fill="#38BDF8" fontSize="15" fontWeight="900" textAnchor="middle" letterSpacing="0.5">NV</text>
+      </svg>
+    );
+  }
+
+  // 23. Fallback for all other companies:
   // Render an enterprise-grade gradient badge with distinct monogram
   const grad = getGradient(displayName);
   const initials = displayName
