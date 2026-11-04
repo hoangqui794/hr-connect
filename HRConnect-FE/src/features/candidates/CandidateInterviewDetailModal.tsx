@@ -1,10 +1,11 @@
 /**
  * @file CandidateInterviewDetailModal.tsx
- * @description Modal dialog wrapper for CandidateInterviewDetailView.
+ * @description Dialog showing one interview from the application page (mockup 03/11).
  */
 
 import React from 'react';
 import { Modal } from 'antd';
+import { DIALOG_ROOT, DIALOG_STYLES } from '@/features/portal/candidate/CandidateDialog';
 import { CandidateInterviewDetailView } from './CandidateInterviewDetailView';
 import type { CandidateInterviewDetailDto } from '@/types/api/candidateInterview';
 
@@ -24,24 +25,13 @@ export const CandidateInterviewDetailModal: React.FC<CandidateInterviewDetailMod
   if (!interviewId && !initialData) return null;
 
   return (
-    <Modal
-      open={open}
-      onCancel={onClose}
-      footer={null}
-      width={760}
-      destroyOnHidden
-      centered
-      className="candidate-interview-detail-modal"
-      title="Chi tiết buổi phỏng vấn"
-    >
-      <div className="py-2">
-        <CandidateInterviewDetailView
-          interviewId={interviewId || initialData?.interviewId || ''}
-          initialData={initialData}
-          onBack={onClose}
-          showBackAction={false}
-        />
-      </div>
+    <Modal open={open} onCancel={onClose} footer={null} closable={false} width={700} destroyOnHidden centered title={null} aria-labelledby="interview-title" rootClassName={DIALOG_ROOT} styles={DIALOG_STYLES}>
+      <CandidateInterviewDetailView
+        interviewId={interviewId || initialData?.interviewId || ''}
+        initialData={initialData}
+        onBack={onClose}
+        onClose={onClose}
+      />
     </Modal>
   );
 };

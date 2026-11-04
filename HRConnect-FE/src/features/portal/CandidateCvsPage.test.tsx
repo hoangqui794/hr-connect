@@ -3,8 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App as AntApp } from 'antd';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CandidateCvsPage } from './CandidatePages';
-import { candidateCvApi } from '@/services/api/mf02Api';
+import { CandidateCvsPage } from './CandidateCvsPage';
+import { candidateAffiliateCvApi, candidateCvApi } from '@/services/api/mf02Api';
 import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
 
@@ -29,6 +29,7 @@ vi.mock('@/services/api/mf02Api', async () => {
       setPrimary: vi.fn(),
       remove: vi.fn(),
     },
+    candidateAffiliateCvApi: { list: vi.fn() },
   };
 });
 
@@ -59,6 +60,7 @@ describe('CandidateCvsPage', () => {
       isReferenced: true,
       deleteBehavior: 'ARCHIVE_HISTORY',
     }]);
+    vi.mocked(candidateAffiliateCvApi.list).mockResolvedValue({ items: [], page: 1, pageSize: 1, total: 2, totalPages: 2 } as never);
     vi.mocked(candidateCvApi.updateTitle).mockResolvedValue({ success: true, message: 'Đã cập nhật.' });
     useAuthStore.setState({
       isAuthenticated: true,
@@ -100,7 +102,7 @@ describe('CandidateCvsPage', () => {
 
   it('explains referenced CV retention before deletion', async () => {
     renderPage();
-    expect(await screen.findByText(/Đang được lưu trong 1 đơn ứng tuyển/)).toBeInTheDocument();
+    expect(await screen.findByText('Đã dùng ứng tuyển 1 việc')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Gỡ CV cũ khỏi kho' }));
     expect(await screen.findByText(/bản đã gắn với lượt nộp và đơn ứng tuyển vẫn được giữ/)).toBeInTheDocument();
   });
@@ -156,13 +158,25 @@ describe('CandidateCvsPage', () => {
     expect(screen.queryByRole('button', { name: 'Sửa nội dung CV File PDF' })).not.toBeInTheDocument();
   });
 
-  it('navigates to CV builder when clicking "Tạo CV mới"', async () => {
+  it('uploads a PDF, refuses other files and shows how many partner CVs exist', async () => {
+    vi.mocked(candidateCvApi.upload).mockResolvedValue({ message: 'Đã tải CV lên.' } as never);
+    const { container } = renderPage();
+    await screen.findByText('CV cũ');
+    expect(await screen.findByRole('link', { name: 'CV đối tác gửi kèm giới thiệu (2)' })).toHaveAttribute('href', '/candidate/affiliate-cvs');
+
+    const input = container.querySelector('input[type=file]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File(['x'], 'anh.png', { type: 'image/png' })] } });
+    expect(candidateCvApi.upload).not.toHaveBeenCalled();
+
+    fireEvent.change(input, { target: { files: [new File(['%PDF'], 'moi.pdf', { type: 'application/pdf' })] } });
+    await waitFor(() => expect(vi.mocked(candidateCvApi.upload).mock.calls[0][1]).toBe('moi'));
+  });
+
+  it('navigates to CV builder when clicking "Tạo CV với CV Builder"', async () => {
     renderPage();
     await screen.findByText('CV cũ');
 
-    const createButtons = screen.getAllByRole('button', { name: /Tạo CV mới/i });
-    expect(createButtons.length).toBeGreaterThan(0);
-    fireEvent.click(createButtons[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Tạo CV với CV Builder' }));
 
     expect(mockNavigate).toHaveBeenCalledWith('/candidate/cv-builder');
   });

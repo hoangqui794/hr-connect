@@ -126,6 +126,13 @@ export interface CandidateOfferSummaryDto {
   canRespond: boolean;
 }
 
+export interface CandidateOfferDetailDto extends CandidateOfferSummaryDto {
+  applicationId: string;
+  salaryBasis?: string | null;
+  salaryPeriod?: string | null;
+  job?: { jobId: string; title: string; companyId: string; companyName: string } | null;
+}
+
 export interface CandidatePlacementSummaryDto {
   placementId: string;
   actualStartDate: string;

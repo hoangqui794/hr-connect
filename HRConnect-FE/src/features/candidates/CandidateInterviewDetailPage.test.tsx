@@ -164,12 +164,7 @@ describe('CandidateInterviewDetailPage & CandidateInterviewDetailView', () => {
 
     renderWithProviders(<CandidateInterviewDetailPage />, '/candidate/interviews/iv-online-1');
 
-    const action = await screen.findByRole('button', { name: /Xác nhận tham gia/i });
-    fireEvent.click(action);
-    expect(await screen.findByText('Xác nhận tham gia phỏng vấn?')).toBeInTheDocument();
-
-    const confirmationButtons = screen.getAllByRole('button', { name: 'Xác nhận tham gia' });
-    fireEvent.click(confirmationButtons[confirmationButtons.length - 1]);
+    fireEvent.click(await screen.findByRole('button', { name: /Xác nhận tham gia/i }));
 
     await waitFor(() => {
       expect(candidateInterviewApi.confirmAttendance).toHaveBeenCalledWith('iv-online-1');

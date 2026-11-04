@@ -7,6 +7,7 @@ import dayjs from 'dayjs';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import { apiClient } from '../apiClient';
 import type {
+  CandidateOfferDetailDto,
   CandidateProfileData,
   CandidateProfileResponse,
   UpdateCandidateProfileCommand,
@@ -211,6 +212,12 @@ export const mf04Api = {
       concurrencyToken: o.concurrencyToken,
       canRespond: isCandidateOfferRespondable(o),
     }));
+  },
+
+  /** GET /api/v1/offers/:id: one offer of the current candidate, with its job and salary terms. */
+  async getOfferDetail(offerId: string): Promise<CandidateOfferDetailDto> {
+    const response = await apiClient.get<{ data: CandidateOfferDetailDto }>(`/offers/${offerId}`);
+    return response.data.data;
   },
 
   /**

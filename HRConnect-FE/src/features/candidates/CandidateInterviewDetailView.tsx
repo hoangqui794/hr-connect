@@ -1,58 +1,61 @@
 /**
  * @file CandidateInterviewDetailView.tsx
- * @description Core component for viewing Candidate Interview Detail with complete state handling,
- * quick actions (Copy link, Join room, Confirm attendance, Add to Calendar),
- * and status timeline.
+ * @description One interview for the Candidate (mockup 03/11): schedule, how to join, attendance
+ * confirmation and schedule history. Used by the dialog (with onClose) and by the full page.
  */
 
 import React from 'react';
-import {
-  Card,
-  Tag,
-  Button,
-  Alert,
-  Skeleton,
-  Empty,
-  Tooltip,
-  Timeline,
-  Typography,
-  message,
-  Popconfirm,
-} from 'antd';
-import {
-  CalendarOutlined,
-  ClockCircleOutlined,
-  EnvironmentOutlined,
-  VideoCameraOutlined,
-  CopyOutlined,
-  CheckCircleOutlined,
-  ExclamationCircleOutlined,
-  ReloadOutlined,
-  GoogleOutlined,
-  BankOutlined,
-  HistoryOutlined,
-  InfoCircleOutlined,
-} from '@ant-design/icons';
+import { Alert, Skeleton, message } from 'antd';
 import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
 import utc from 'dayjs/plugin/utc';
+import 'dayjs/locale/vi';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-dayjs.extend(relativeTime);
 dayjs.extend(utc);
 
 import { candidateInterviewApi } from '@/services/api/candidateInterviewApi';
 import { candidateInterviewKeys, useCandidateInterviewDetail } from '@/hooks/useCandidateInterviewDetail';
 import type { CandidateInterviewDetailDto } from '@/types/api/candidateInterview';
-import { candidateInterviewStatus, candidateInterviewType } from '@/features/portal/mf02Labels';
+import { candidateInterviewStatus } from '@/features/portal/mf02Labels';
 
-const { Text, Paragraph, Title } = Typography;
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
+const SECONDARY = `${FONT} flex h-11 cursor-pointer items-center rounded-md border border-solid border-[#D1D5DB] bg-white px-4 text-[14px] text-[#1F2937] no-underline hover:bg-[#F9FAFB] hover:text-[#1F2937]`;
+const PRIMARY = `${FONT} flex h-11 cursor-pointer items-center rounded-md border-0 bg-[#0C4A6E] px-[18px] text-[14px] font-semibold text-white no-underline hover:bg-[#075985] hover:text-white disabled:cursor-not-allowed disabled:bg-[#9CA3AF]`;
+
+const STATUS_STYLE: Record<string, { label: string; text: string; background: string }> = {
+  SCHEDULED: { label: 'Đã lên lịch', text: '#075985', background: '#E0F2FE' },
+  RESCHEDULED: { label: 'Đã dời lịch', text: '#9A3412', background: '#FFEDD5' },
+  COMPLETED: { label: 'Đã hoàn thành', text: '#166534', background: '#DCFCE7' },
+  CANCELLED: { label: 'Đã hủy', text: '#B91C1C', background: '#FEE2E2' },
+  NO_SHOW: { label: 'Vắng mặt', text: '#374151', background: '#F3F4F6' },
+};
+
+const webLink = (url?: string | null) => (url && /^https?:\/\//i.test(url) ? url : undefined);
+const shortDate = (iso: string) => dayjs(iso).locale('vi').format('HH:mm dddd DD/MM');
+
+const calendarUrl = (item: CandidateInterviewDetailDto) => {
+  const start = dayjs(item.scheduledAt);
+  const end = start.add(item.durationMinutes || 45, 'minute');
+  const format = (time: dayjs.Dayjs) => time.utc().format('YYYYMMDDTHHmmss[Z]');
+  const details = [`Buổi phỏng vấn vị trí ${item.jobTitle}.`, item.meetingLink && `Link họp: ${item.meetingLink}`, item.location && `Địa điểm: ${item.location}`].filter(Boolean).join('\n');
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: `Phỏng vấn vòng ${item.interviewRound} - ${item.jobTitle} tại ${item.companyName}`,
+    dates: `${format(start)}/${format(end)}`,
+    details,
+    location: item.meetingLink || item.location || '',
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+};
 
 export interface CandidateInterviewDetailViewProps {
   interviewId: string;
   initialData?: CandidateInterviewDetailDto;
   onBack?: () => void;
   showBackAction?: boolean;
+  /** Set when shown in a dialog: drops the outer cards and adds a close button. */
+  onClose?: () => void;
 }
 
 export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailViewProps> = ({
@@ -60,23 +63,20 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
   initialData,
   onBack,
   showBackAction = false,
+  onClose,
 }) => {
   const { interview: fetchedInterview, isLoading, isError, error, refetch, isRefetching } = useCandidateInterviewDetail(interviewId);
   const queryClient = useQueryClient();
-
   const interview = fetchedInterview || initialData;
+  const inDialog = Boolean(onClose);
+  const frame = inDialog ? 'px-[22px] py-[18px]' : 'rounded-lg border border-solid border-[#E5E7EB] bg-white p-6';
+  const wrapper = `${FONT} text-[14px] text-[#1F2937] [line-height:normal]`;
 
   const confirmAttendance = useMutation({
     mutationFn: () => candidateInterviewApi.confirmAttendance(interviewId),
     onSuccess: (result) => {
       queryClient.setQueryData<CandidateInterviewDetailDto>(candidateInterviewKeys.detail(interviewId), (current) =>
-        current
-          ? {
-              ...current,
-              candidateAttendanceStatus: result.attendanceStatus,
-              candidateRespondedAt: result.respondedAt,
-            }
-          : current
+        current ? { ...current, candidateAttendanceStatus: result.attendanceStatus, candidateRespondedAt: result.respondedAt } : current,
       );
       message.success(result.alreadyConfirmed ? 'Bạn đã xác nhận lịch phỏng vấn này.' : 'Đã xác nhận tham gia phỏng vấn.');
     },
@@ -85,393 +85,154 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
     },
   });
 
-  // Helper copy to clipboard
-  const handleCopy = (text: string, label: string) => {
+  const copy = (text: string, label: string) => {
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(text);
-      message.success(`Đã sao chép ${label} vào bộ nhớ tạm!`);
+      void navigator.clipboard.writeText(text);
+      message.success(`Đã sao chép ${label}.`);
     } else {
-      message.info(`Nội dung: ${text}`);
+      message.info(text);
     }
   };
 
-  // Google Calendar URL generator
-  const getGoogleCalendarUrl = (item: CandidateInterviewDetailDto) => {
-    if (!item.scheduledAt) return '#';
-    const start = dayjs(item.scheduledAt);
-    const end = start.add(item.durationMinutes || 45, 'minute');
-    const startStr = start.utc?.() ? start.utc().format('YYYYMMDDTHHmmss[Z]') : start.format('YYYYMMDDTHHmmss');
-    const endStr = end.utc?.() ? end.utc().format('YYYYMMDDTHHmmss[Z]') : end.format('YYYYMMDDTHHmmss');
+  const closeButton = onClose && (
+    <button type="button" aria-label="Đóng" onClick={onClose} className={`${FONT} -mr-2 -mt-2 h-11 w-11 shrink-0 cursor-pointer border-0 bg-transparent text-[20px] text-[#4B5563]`}>×</button>
+  );
 
-    const title = `Phỏng vấn Vòng ${item.interviewRound} - ${item.jobTitle} tại ${item.companyName}`;
-    const details = `Buổi phỏng vấn vị trí ${item.jobTitle}.\nHình thức: ${candidateInterviewType(item.interviewType)}.\n${
-      item.meetingLink ? `Link họp: ${item.meetingLink}\n` : ''
-    }${item.location ? `Địa điểm: ${item.location}\n` : ''}`;
-    const location = item.meetingLink || item.location || '';
-
-    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
-      title
-    )}&dates=${startStr}/${endStr}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(
-      location
-    )}`;
-  };
-
-  // 1. Loading State
   if (isLoading && !interview) {
-    return (
-      <div className="p-4 space-y-4" data-testid="interview-detail-loading">
-        <Skeleton active paragraph={{ rows: 2 }} />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card size="small" className="rounded-xl border border-slate-200">
-            <Skeleton active avatar paragraph={{ rows: 3 }} />
-          </Card>
-          <Card size="small" className="rounded-xl border border-slate-200">
-            <Skeleton active avatar paragraph={{ rows: 3 }} />
-          </Card>
-        </div>
-        <Card size="small" className="rounded-xl border border-slate-200">
-          <Skeleton active paragraph={{ rows: 4 }} />
-        </Card>
-      </div>
-    );
+    return <div className={`${wrapper} ${frame}`} data-testid="interview-detail-loading"><Skeleton active paragraph={{ rows: 6 }} /></div>;
   }
 
-  // 2. Error State
   if (isError && !interview) {
     return (
-      <div className="p-6" data-testid="interview-detail-error">
-        <Alert
-          type="error"
-          showIcon
-          icon={<ExclamationCircleOutlined />}
-          message="Không thể tải chi tiết lịch phỏng vấn"
-          description={
-            <div className="space-y-3 mt-1">
-              <p className="m-0 text-slate-700">
-                {error?.message || 'Đã có lỗi xảy ra khi truy vấn dữ liệu từ hệ thống. Vui lòng thử lại.'}
-              </p>
-              <Button
-                type="primary"
-                danger
-                icon={<ReloadOutlined spin={isRefetching} />}
-                onClick={() => refetch()}
-              >
-                Thử lại
-              </Button>
-            </div>
-          }
-        />
+      <div className={`${wrapper} ${frame}`} data-testid="interview-detail-error">
+        <div className="flex items-start justify-between gap-3">
+          <h2 id="interview-title" className="m-0 text-[18px] font-bold">Không thể tải lịch phỏng vấn</h2>
+          {closeButton}
+        </div>
+        <p className="m-0 mt-2 text-[#4B5563]">{error?.message || 'Đã có lỗi xảy ra. Vui lòng thử lại.'}</p>
+        <button type="button" disabled={isRefetching} onClick={() => refetch()} className={`${SECONDARY} mt-3`}>Thử lại</button>
       </div>
     );
   }
 
-  // 3. Empty State
   if (!interview) {
     return (
-      <div className="p-12 text-center" data-testid="interview-detail-empty">
-        <Empty
-          description="Không tìm thấy thông tin lịch phỏng vấn hoặc bạn không có quyền xem."
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        >
-          {showBackAction && onBack && (
-            <Button type="primary" onClick={onBack}>
-              Quay lại
-            </Button>
-          )}
-        </Empty>
+      <div className={`${wrapper} ${frame}`} data-testid="interview-detail-empty">
+        <div className="flex items-start justify-between gap-3">
+          <p id="interview-title" className="m-0 text-[#4B5563]">Không tìm thấy thông tin lịch phỏng vấn hoặc bạn không có quyền xem.</p>
+          {closeButton}
+        </div>
+        {showBackAction && onBack && <button type="button" onClick={onBack} className={`${SECONDARY} mt-3`}>Quay lại</button>}
       </div>
     );
   }
 
-  // Status mapping
-  const getStatusBadge = (status: string) => {
-    const map: Record<string, { color: string; label: string; icon: React.ReactNode }> = {
-      SCHEDULED: { color: 'processing', label: 'Đã lên lịch', icon: <ClockCircleOutlined /> },
-      COMPLETED: { color: 'green', label: 'Đã hoàn thành', icon: <CheckCircleOutlined /> },
-      RESCHEDULED: { color: 'warning', label: 'Đã dời lịch', icon: <HistoryOutlined /> },
-      CANCELLED: { color: 'error', label: 'Đã hủy', icon: <ExclamationCircleOutlined /> },
-      NO_SHOW: { color: 'default', label: 'Vắng mặt', icon: <ExclamationCircleOutlined /> },
-    };
-    const s = map[status.toUpperCase()] || { color: 'default', label: candidateInterviewStatus(status), icon: null };
-    return (
-      <Tag color={s.color} className="px-2.5 py-1 text-sm font-semibold rounded-md flex items-center gap-1.5 inline-flex">
-        {s.icon}
-        {s.label}
-      </Tag>
-    );
-  };
-
+  const status = STATUS_STYLE[String(interview.status).toUpperCase()] ?? { label: candidateInterviewStatus(interview.status), text: '#374151', background: '#F3F4F6' };
   const isOnline = (interview.interviewType || '').toUpperCase() === 'ONLINE' || Boolean(interview.meetingLink);
-  const scheduledTime = interview.scheduledAt ? dayjs(interview.scheduledAt) : null;
-  const isUpcoming = scheduledTime && scheduledTime.isAfter(dayjs());
-  const isAttendanceConfirmed = interview.candidateAttendanceStatus === 'CONFIRMED';
-  const canConfirmAttendance = interview.status === 'SCHEDULED' && Boolean(isUpcoming) && !isAttendanceConfirmed;
+  const start = interview.scheduledAt ? dayjs(interview.scheduledAt).locale('vi') : null;
   const duration = interview.durationMinutes || 45;
-  const endTime = scheduledTime ? scheduledTime.add(duration, 'minute') : null;
+  const isConfirmed = interview.candidateAttendanceStatus === 'CONFIRMED';
+  const canConfirm = interview.status === 'SCHEDULED' && Boolean(start?.isAfter(dayjs())) && !isConfirmed;
+  const meetingLink = webLink(interview.meetingLink);
+  const histories = [...(interview.statusHistories ?? [])].sort((a, b) => dayjs(b.changedAt).valueOf() - dayjs(a.changedAt).valueOf());
 
   return (
-    <div className="candidate-interview-detail-content space-y-6" data-testid="interview-detail-content">
-      {/* Header Info */}
-      <div className="candidate-interview-detail-hero bg-gradient-to-r from-blue-50 via-indigo-50/50 to-white p-5 rounded-2xl border border-blue-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 flex-wrap mb-1.5">
-            <Tag color="blue" className="font-bold uppercase tracking-wide">
-              Vòng {interview.interviewRound}
-            </Tag>
-            <Tag color={isOnline ? 'cyan' : 'gold'} className="font-medium">
-              {isOnline ? 'Trực tuyến' : 'Trực tiếp tại văn phòng'}
-            </Tag>
-            {getStatusBadge(interview.status)}
+    <div className={wrapper} data-testid="interview-detail-content">
+      <section aria-labelledby="interview-title" className={frame}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <h1 id="interview-title" className="m-0 text-[20px] font-bold text-[#1F2937]">Phỏng vấn vòng {interview.interviewRound}</h1>
+            <div className="mt-0.5 text-[#4B5563]"><span>{interview.jobTitle}</span> · <span>{interview.companyName}</span></div>
           </div>
-          <Title level={4} className="!m-0 text-slate-900 font-extrabold">
-            {interview.jobTitle || 'Buổi phỏng vấn tuyển dụng'}
-          </Title>
-          <div className="flex items-center gap-2 mt-1.5 text-sm text-slate-600">
-            <BankOutlined className="text-blue-600" />
-            <span className="font-medium text-slate-800">{interview.companyName || 'Công ty tuyển dụng'}</span>
-          </div>
+          <span className="rounded px-2.5 py-1 text-[13px] font-semibold" style={{ color: status.text, background: status.background }}>{status.label}</span>
+          {closeButton}
         </div>
 
-        {/* Quick Action in Header */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {showBackAction && onBack && (
-            <Button onClick={onBack}>
-              Quay lại
-            </Button>
-          )}
-          {scheduledTime && (
-            <Button
-              icon={<GoogleOutlined />}
-              href={getGoogleCalendarUrl(interview)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-slate-700"
-            >
-              Thêm vào Google Calendar
-            </Button>
-          )}
-          {isAttendanceConfirmed && (
-            <Tag color="success" icon={<CheckCircleOutlined />} className="m-0 px-3 py-1.5 text-sm font-semibold">
-              Đã xác nhận tham gia
-            </Tag>
-          )}
-          {canConfirmAttendance && (
-            <Popconfirm
-              title="Xác nhận tham gia phỏng vấn?"
-              description="Lịch vẫn còn hiệu lực nếu bạn chưa xác nhận. Hãy bấm xác nhận khi bạn đã sắp xếp được thời gian."
-              okText="Xác nhận tham gia"
-              cancelText="Để sau"
-              onConfirm={() => confirmAttendance.mutate()}
-            >
-              <Button
-                type="primary"
-                icon={<CheckCircleOutlined />}
-                loading={confirmAttendance.isPending}
-                className="!bg-blue-600 hover:!bg-blue-700 text-white rounded-lg shadow-sm transition-all active:scale-[0.98]"
-              >
-                Xác nhận tham gia
-              </Button>
-            </Popconfirm>
-          )}
-        </div>
-      </div>
-
-      {/* Grid: Time & Location */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Time Card */}
-        <Card
-          size="small"
-          className="rounded-xl border border-slate-200 shadow-sm hover:shadow transition-shadow"
-          title={
-            <div className="flex items-center gap-2 text-slate-800 font-bold">
-              <CalendarOutlined className="text-blue-600" />
-              <span>Thời gian phỏng vấn</span>
-            </div>
-          }
-        >
-          {scheduledTime ? (
-            <div className="space-y-3 py-1">
-              <div className="flex items-start gap-3">
-                <div className="bg-blue-50 text-blue-700 px-3 py-2 rounded-xl text-center min-w-[70px] border border-blue-200/60">
-                  <div className="text-xs uppercase font-bold tracking-wider">{scheduledTime.format('MMM')}</div>
-                  <div className="text-2xl font-black">{scheduledTime.format('DD')}</div>
-                  <div className="text-xs">{scheduledTime.format('YYYY')}</div>
-                </div>
-                <div>
-                  <div className="text-base font-bold text-slate-900">
-                    {scheduledTime.format('HH:mm')} - {endTime ? endTime.format('HH:mm') : ''}
-                  </div>
-                  <div className="text-xs text-slate-500 mt-0.5">
-                    Thứ {scheduledTime.day() === 0 ? 'Chủ nhật' : scheduledTime.day() + 1}, ngày {scheduledTime.format('DD/MM/YYYY')}
-                  </div>
-                  <div className="mt-2 text-xs font-semibold text-blue-600 bg-blue-50/70 inline-block px-2 py-0.5 rounded">
-                    Thời lượng dự kiến: {duration} phút
-                  </div>
-                </div>
-              </div>
-
-              {isUpcoming && (
-                <div className="text-xs text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 flex items-center gap-2">
-                  <InfoCircleOutlined />
-                  <span>Buổi phỏng vấn sắp diễn ra ({scheduledTime.fromNow()}). Hãy sẵn sàng trước 10 phút!</span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-slate-500 py-3 text-sm">Chưa có thông tin lịch cụ thể.</div>
-          )}
-        </Card>
-
-        {/* Location / Meeting Room Card */}
-        <Card
-          size="small"
-          className="rounded-xl border border-slate-200 shadow-sm hover:shadow transition-shadow"
-          title={
-            <div className="flex items-center gap-2 text-slate-800 font-bold">
+        <dl className="m-0 mt-5 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+          <div>
+            <dt className="text-[12px] text-[#6B7280]">Thời gian</dt>
+            <dd className="m-0 mt-0.5 font-semibold">{start ? `${start.format('HH:mm')} – ${start.add(duration, 'minute').format('HH:mm')}, ${start.format('dddd DD/MM/YYYY')}` : 'Chưa có lịch cụ thể'}</dd>
+          </div>
+          <div>
+            <dt className="text-[12px] text-[#6B7280]">Thời lượng</dt>
+            <dd className="m-0 mt-0.5 font-semibold">{duration} phút</dd>
+          </div>
+          <div>
+            <dt className="text-[12px] text-[#6B7280]">Hình thức</dt>
+            <dd className="m-0 mt-0.5 font-semibold">{isOnline ? 'Trực tuyến' : 'Trực tiếp tại văn phòng'}</dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="text-[12px] text-[#6B7280]">{isOnline ? 'Link phòng họp' : 'Địa điểm'}</dt>
+            <dd className="m-0 mt-0.5 flex items-start gap-2 font-semibold">
               {isOnline ? (
-                <>
-                  <VideoCameraOutlined className="text-cyan-600" />
-                  <span>Phòng họp trực tuyến</span>
-                </>
+                meetingLink ? <a href={meetingLink} target="_blank" rel="noopener noreferrer" className={`min-w-0 break-all ${LINK}`}>{interview.meetingLink}</a> : <span className="font-normal text-[#4B5563]">Link sẽ được cập nhật trước giờ phỏng vấn</span>
               ) : (
-                <>
-                  <EnvironmentOutlined className="text-amber-600" />
-                  <span>Địa điểm phỏng vấn</span>
-                </>
+                <span className="min-w-0 break-words">{interview.location || 'Chưa cập nhật địa chỉ'}</span>
               )}
-            </div>
-          }
-        >
-          {isOnline ? (
-            <div className="space-y-3 py-1">
-              <div>
-                <span className="text-xs text-slate-500">Đường dẫn tham gia:</span>
-                {interview.meetingLink ? (
-                  <div className="mt-1 flex items-center gap-2 bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-xs font-mono break-all">
-                    <span className="flex-1 text-blue-700 font-medium">{interview.meetingLink}</span>
-                    <Tooltip title="Sao chép link">
-                      <Button
-                        size="small"
-                        icon={<CopyOutlined />}
-                        onClick={() => handleCopy(interview.meetingLink!, 'đường dẫn phòng họp')}
-                      />
-                    </Tooltip>
-                  </div>
-                ) : (
-                  <div className="text-xs text-slate-500 mt-1 italic">
-                    Link phòng họp sẽ được cập nhật trước giờ phỏng vấn.
-                  </div>
-                )}
-              </div>
-
-              {interview.meetingLink && (
-                <Button
-                  type="primary"
-                  icon={<VideoCameraOutlined />}
-                  href={interview.meetingLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-blue-600 hover:bg-blue-700 w-full font-semibold shadow-sm"
+              {(isOnline ? meetingLink : interview.location) && (
+                <button
+                  type="button"
+                  aria-label={isOnline ? 'Sao chép link phòng họp' : 'Sao chép địa chỉ'}
+                  title="Sao chép"
+                  onClick={() => (isOnline ? copy(interview.meetingLink!, 'link phòng họp') : copy(interview.location!, 'địa chỉ'))}
+                  className="-my-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded border-0 bg-transparent p-0 text-[#6B7280] hover:bg-[#F3F4F6] hover:text-[#1F2937]"
                 >
-                  Vào phòng họp ngay
-                </Button>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 012-2h9" /></svg>
+                </button>
               )}
+            </dd>
+          </div>
+        </dl>
 
-              <div className="text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200/60 space-y-1">
-                <div className="font-semibold text-slate-700">Lưu ý khi phỏng vấn trực tuyến:</div>
-                <ul className="list-disc list-inside m-0 space-y-0.5 text-[11px]">
-                  <li>Kiểm tra camera, micro và đường truyền mạng ổn định.</li>
-                  <li>Chọn không gian yên tĩnh, đủ ánh sáng và trang phục lịch sự.</li>
-                </ul>
-              </div>
+        {canConfirm && (
+          <div className="mt-5 flex flex-wrap items-center gap-3 rounded-md border border-solid border-[#FED7AA] bg-[#FFF7ED] px-4 py-[14px]">
+            <div className="flex-[1_1_300px] text-[#7C2D12]">
+              <b>Bạn sẽ tham gia buổi phỏng vấn này chứ?</b>
+              <div className="text-[13px]">Xác nhận giúp nhà tuyển dụng chuẩn bị. Nếu không tham gia được, hãy báo sớm cho nhà tuyển dụng.</div>
             </div>
-          ) : (
-            <div className="space-y-3 py-1">
-              <div>
-                <span className="text-xs text-slate-500">Địa chỉ cụ thể:</span>
-                <div className="mt-1 text-sm font-medium text-slate-900 bg-slate-50 p-3 rounded-lg border border-slate-200 flex items-start gap-2">
-                  <EnvironmentOutlined className="text-red-500 mt-1" />
-                  <span className="flex-1">{interview.location || 'Chưa cập nhật địa chỉ cụ thể.'}</span>
-                  {interview.location && (
-                    <Tooltip title="Sao chép địa chỉ">
-                      <Button
-                        size="small"
-                        icon={<CopyOutlined />}
-                        onClick={() => handleCopy(interview.location!, 'địa chỉ')}
-                      />
-                    </Tooltip>
+            <button type="button" disabled={confirmAttendance.isPending} onClick={() => confirmAttendance.mutate()} className={PRIMARY}>
+              {confirmAttendance.isPending ? 'Đang gửi…' : 'Xác nhận tham gia'}
+            </button>
+          </div>
+        )}
+        {isConfirmed && (
+          <div className="mt-5 rounded-md border border-solid border-[#BBF7D0] bg-[#F0FDF4] px-4 py-[14px] font-semibold text-[#166534]">Đã xác nhận tham gia</div>
+        )}
+
+        {(start || meetingLink || (!isOnline && interview.location)) && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {meetingLink && <a href={meetingLink} target="_blank" rel="noopener noreferrer" className={PRIMARY}>Vào phòng họp ngay</a>}
+            {!isOnline && interview.location && (
+              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(interview.location)}`} target="_blank" rel="noopener noreferrer" className={SECONDARY}>Xem trên Google Maps</a>
+            )}
+            {start && <a href={calendarUrl(interview)} target="_blank" rel="noopener noreferrer" className={SECONDARY}>Thêm vào Google Calendar</a>}
+            {showBackAction && onBack && <button type="button" onClick={onBack} className={SECONDARY}>Quay lại</button>}
+          </div>
+        )}
+      </section>
+
+      {isError && <div className="px-[22px]"><Alert type="warning" showIcon message="Chưa tải được dữ liệu mới nhất." /></div>}
+
+      {histories.length > 0 && (
+        <section aria-labelledby="interview-history" className={inDialog ? 'border-0 border-t border-solid border-[#E5E7EB] px-[22px] py-[18px]' : 'mt-4 rounded-lg border border-solid border-[#E5E7EB] bg-white p-5'}>
+          <h2 id="interview-history" className="m-0 mb-3 text-[16px] font-bold text-[#1F2937]">Lịch sử thay đổi lịch</h2>
+          <ul className="m-0 list-none p-0">
+            {histories.map((history, index) => {
+              const moved = history.oldScheduledAt && history.newScheduledAt && history.oldScheduledAt !== history.newScheduledAt;
+              return (
+                <li key={history.interviewStatusHistoryId || index} className="border-0 border-t border-solid border-[#F1F5F9] py-2.5">
+                  {moved ? (
+                    <><b>Dời lịch</b> từ {shortDate(history.oldScheduledAt!)} sang {shortDate(history.newScheduledAt!)}</>
+                  ) : (
+                    <b>{history.oldStatus ? candidateInterviewStatus(history.newStatus) : 'Tạo lịch phỏng vấn'}</b>
                   )}
-                </div>
-              </div>
-
-              {interview.location && (
-                <Button
-                  icon={<EnvironmentOutlined />}
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(interview.location)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full text-slate-700"
-                >
-                  Xem trên Google Maps
-                </Button>
-              )}
-
-              <div className="text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200/60 space-y-1">
-                <div className="font-semibold text-slate-700">Lưu ý cho phỏng vấn trực tiếp:</div>
-                <ul className="list-disc list-inside m-0 space-y-0.5 text-[11px]">
-                  <li>Đến sớm trước 10-15 phút để làm thủ tục đón tiếp tại lễ tân.</li>
-                  <li>Mang theo giấy tờ tùy thân, bản in CV và hồ sơ năng lực (nếu có).</li>
-                </ul>
-              </div>
-            </div>
-          )}
-        </Card>
-      </div>
-
-      {/* Status History / Timeline */}
-      {interview.statusHistories && interview.statusHistories.length > 0 && (
-        <Card
-          size="small"
-          className="rounded-xl border border-slate-200 shadow-sm"
-          title={
-            <div className="flex items-center gap-2 text-slate-800 font-bold">
-              <HistoryOutlined className="text-slate-600" />
-              <span>Lịch sử cập nhật phỏng vấn</span>
-            </div>
-          }
-        >
-          <Timeline
-            className="mt-3 ml-2"
-            items={interview.statusHistories.map((h, i) => {
-              const changedTime = dayjs(h.changedAt).format('HH:mm - DD/MM/YYYY');
-              const isReschedule = h.newStatus === 'RESCHEDULED' || (h.oldScheduledAt && h.newScheduledAt);
-              return {
-                key: h.interviewStatusHistoryId || i,
-                color: h.newStatus === 'CANCELLED' ? 'red' : h.newStatus === 'COMPLETED' ? 'green' : 'blue',
-                children: (
-                  <div className="text-xs text-slate-700">
-                    <div className="font-semibold text-slate-900 flex items-center gap-2">
-                      <span>Trạng thái: {candidateInterviewStatus(h.newStatus)}</span>
-                      <span className="text-slate-400 font-normal">({changedTime})</span>
-                    </div>
-                    {isReschedule && h.newScheduledAt && (
-                      <div className="mt-1 text-slate-600">
-                        Giờ mới: <strong className="text-blue-700">{dayjs(h.newScheduledAt).format('HH:mm - DD/MM/YYYY')}</strong>
-                        {h.oldScheduledAt && (
-                          <span className="text-slate-400 line-through ml-2">
-                            {dayjs(h.oldScheduledAt).format('HH:mm - DD/MM/YYYY')}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ),
-              };
+                  <div className="text-[12px] text-[#6B7280]">{dayjs(history.changedAt).format('DD/MM/YYYY, HH:mm')}</div>
+                </li>
+              );
             })}
-          />
-        </Card>
+          </ul>
+        </section>
       )}
-
     </div>
   );
 };

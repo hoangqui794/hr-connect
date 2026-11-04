@@ -120,10 +120,13 @@ const CandidateJobDetailPage = React.lazy(() =>
   import('@/features/portal/candidate/CandidateJobPages').then((m) => ({ default: m.CandidateJobDetailPage }))
 );
 const CandidateMyApplicationsPage = React.lazy(() =>
-  import('@/features/portal/CandidatePages').then((m) => ({ default: m.CandidateApplicationsPage }))
+  import('@/features/portal/CandidateApplicationsPage').then((m) => ({ default: m.CandidateApplicationsPage }))
+);
+const CandidateOfferPage = React.lazy(() =>
+  import('@/features/portal/CandidateOfferPage').then((m) => ({ default: m.CandidateOfferPage }))
 );
 const CandidateApplicationDetailPage = React.lazy(() =>
-  import('@/features/portal/CandidatePages').then((m) => ({ default: m.CandidateApplicationDetailPage }))
+  import('@/features/portal/CandidateApplicationDetailPage').then((m) => ({ default: m.CandidateApplicationDetailPage }))
 );
 const CandidateSubmissionConsentPage = React.lazy(() =>
   import('@/features/portal/CandidateSubmissionConsentPage').then((m) => ({ default: m.CandidateSubmissionConsentPage }))
@@ -131,7 +134,7 @@ const CandidateSubmissionConsentPage = React.lazy(() =>
 const PublicSubmissionConsentPage = React.lazy(() =>
   import('@/features/portal/PublicSubmissionConsentPage').then((m) => ({ default: m.PublicSubmissionConsentPage }))
 );
-const CandidateCvsPage = React.lazy(() => import('@/features/portal/CandidatePages').then((m) => ({ default: m.CandidateCvsPage })));
+const CandidateCvsPage = React.lazy(() => import('@/features/portal/CandidateCvsPage').then((m) => ({ default: m.CandidateCvsPage })));
 const CandidateAffiliateCvsPage = React.lazy(() =>
   import('@/features/portal/CandidateAffiliateCvsPage').then((m) => ({ default: m.CandidateAffiliateCvsPage }))
 );
@@ -507,6 +510,7 @@ export const AppRoutes = {
   CandidateJobDetailPage,
   CandidateMyApplicationsPage,
   CandidateApplicationDetailPage,
+  CandidateOfferPage,
   CandidateSubmissionConsentPage,
   PublicSubmissionConsentPage,
   CandidateCvsPage,

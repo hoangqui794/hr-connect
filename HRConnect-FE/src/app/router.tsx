@@ -220,6 +220,7 @@ export const router = createBrowserRouter([
       { path: 'jobs/:jobId', element: <AppRoutes.CandidateJobDetailPage /> },
       { path: 'applications', element: <AppRoutes.CandidateMyApplicationsPage /> },
       { path: 'applications/:applicationId', element: <AppRoutes.CandidateApplicationDetailPage /> },
+      { path: 'applications/:applicationId/offers/:offerId', element: <AppRoutes.CandidateOfferPage /> },
       { path: 'submission-consents/:submissionId', element: <AppRoutes.CandidateSubmissionConsentPage /> },
       { path: 'consents', element: <Navigate to="/candidate/applications?tab=consents" replace /> },
       { path: 'cvs', element: <AppRoutes.CandidateCvsPage /> },

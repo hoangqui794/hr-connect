@@ -1,250 +1,116 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { App as AntApp } from 'antd';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CandidateSavedJobsPage } from './CandidateSavedJobsPage';
 import { candidateSavedJobApi } from '@/services/api/candidateSavedJobApi';
+import { candidateApplicationsApi, candidateCvApi } from '@/services/api/mf02Api';
 
 vi.mock('@/services/api/candidateSavedJobApi', () => ({
-  candidateSavedJobApi: {
-    getSavedJobs: vi.fn(),
-    saveJob: vi.fn(),
-    unsaveJob: vi.fn(),
-  },
+  candidateSavedJobApi: { getSavedJobs: vi.fn(), saveJob: vi.fn(), unsaveJob: vi.fn() },
 }));
 
 vi.mock('@/features/portal/candidate/useCandidateAppliedJobs', () => ({
   useCandidateAppliedJobs: () => ({
-    isApplied: (id: string) => id === 'job-applied-1',
+    isApplied: (id: string) => id === 'job-applied',
     getApplication: () => ({ applicationId: 'app-123' }),
   }),
 }));
 
-const renderWithProviders = (ui: React.ReactElement) => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  });
-
+const renderPage = (ui: React.ReactElement = <CandidateSavedJobsPage />) => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>{ui}</MemoryRouter>
+      <AntApp><MemoryRouter>{ui}</MemoryRouter></AntApp>
     </QueryClientProvider>
   );
 };
 
-const mockSavedJobsResponse = {
-  items: [
-    {
-      savedJobId: 'saved-1',
-      savedAt: '2026-10-15T10:00:00Z',
-      job: {
-        jobId: 'job-active-1',
-        title: 'Senior Frontend Engineer (React/TypeScript)',
-        companyId: 'comp-1',
-        companyName: 'FPT Software',
-        location: 'Hà Nội',
-        employmentType: 'FULL_TIME',
-        salaryMin: 30000000,
-        salaryMax: 50000000,
-        currencyCode: 'VND',
-        status: 'ACTIVE',
-        minExperienceYears: 3,
-        maxExperienceYears: 5,
-        postedAt: '2026-10-10T00:00:00Z',
-        applicationDeadline: '2026-11-30T23:59:59Z',
-        isAcceptingApplications: true,
-        skills: ['React', 'TypeScript', 'TailwindCSS'],
-      },
-    },
-    {
-      savedJobId: 'saved-2',
-      savedAt: '2026-10-14T08:00:00Z',
-      job: {
-        jobId: 'job-expired-2',
-        title: 'Backend Developer (.NET Core)',
-        companyId: 'comp-2',
-        companyName: 'VNG Corporation',
-        location: 'Hồ Chí Minh',
-        employmentType: 'HYBRID',
-        salaryMin: 25000000,
-        salaryMax: 40000000,
-        currencyCode: 'VND',
-        status: 'ACTIVE',
-        minExperienceYears: 2,
-        maxExperienceYears: 4,
-        postedAt: '2026-09-01T00:00:00Z',
-        applicationDeadline: '2026-10-01T00:00:00Z',
-        isAcceptingApplications: false,
-      },
-    },
-    {
-      savedJobId: 'saved-3',
-      savedAt: '2026-10-12T08:00:00Z',
-      job: {
-        jobId: 'job-applied-1',
-        title: 'DevOps Engineer',
-        companyId: 'comp-3',
-        companyName: 'Tiki',
-        location: 'Hồ Chí Minh',
-        employmentType: 'FULL_TIME',
-        salaryMin: 35000000,
-        salaryMax: 60000000,
-        currencyCode: 'VND',
-        status: 'ACTIVE',
-        minExperienceYears: 4,
-        maxExperienceYears: null,
-        postedAt: '2026-10-05T00:00:00Z',
-        isAcceptingApplications: true,
-      },
-    },
-  ],
-  page: 1,
-  pageSize: 10,
-  totalCount: 3,
-  totalPages: 1,
-};
+const days = (n: number) => new Date(Date.now() + n * 864e5).toISOString();
+const saved = (jobId: string, title: string, extra: Record<string, unknown> = {}) => ({
+  savedJobId: `saved-${jobId}`,
+  savedAt: '2026-10-15T10:00:00Z',
+  job: { jobId, title, companyId: 'c', companyName: 'FPT Software', location: 'Hà Nội', salaryMin: 30e6, salaryMax: 50e6, currencyCode: 'VND', status: 'ACTIVE', isAcceptingApplications: true, ...extra },
+});
+const page = (items: unknown[], totalCount = items.length) => ({ items, page: 1, pageSize: 100, totalCount, totalPages: 1 });
 
-describe('CandidateSavedJobsPage component', () => {
+describe('CandidateSavedJobsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(candidateApplicationsApi, 'list').mockResolvedValue({ items: [], page: 1, pageSize: 1, total: 0, totalPages: 0 });
+    vi.spyOn(candidateCvApi, 'list').mockResolvedValue([]);
   });
 
-  it('renders loading state initially', async () => {
-    let resolvePromise: any;
-    const pendingPromise = new Promise((resolve) => {
-      resolvePromise = resolve;
-    });
-    vi.mocked(candidateSavedJobApi.getSavedJobs).mockReturnValue(pendingPromise as any);
+  it('offers a retry when the list fails to load', async () => {
+    vi.mocked(candidateSavedJobApi.getSavedJobs).mockRejectedValueOnce(new Error('Lỗi máy chủ'));
+    renderPage();
 
-    renderWithProviders(<CandidateSavedJobsPage />);
+    const retry = await screen.findByRole('button', { name: 'Thử lại' });
+    vi.mocked(candidateSavedJobApi.getSavedJobs).mockResolvedValueOnce(page([saved('a', 'Tester')]) as never);
+    fireEvent.click(retry);
 
-    expect(screen.getByText('Việc làm đã lưu')).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'Quản lý và ứng tuyển nhanh các vị trí tuyển dụng bạn đã đánh dấu quan tâm từ Sàn việc làm.'
-      )
-    ).toBeInTheDocument();
-
-    resolvePromise({ items: [], page: 1, pageSize: 10, totalCount: 0, totalPages: 0 });
+    expect(await screen.findByRole('link', { name: 'Tester' })).toBeInTheDocument();
   });
 
-  it('renders error state with retry button when query fails', async () => {
-    vi.mocked(candidateSavedJobApi.getSavedJobs).mockRejectedValueOnce(
-      new Error('Lỗi máy chủ nội bộ (500)')
-    );
+  it('shows the empty state', async () => {
+    vi.mocked(candidateSavedJobApi.getSavedJobs).mockResolvedValue(page([]) as never);
+    renderPage();
 
-    renderWithProviders(<CandidateSavedJobsPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Không thể tải danh sách việc làm đã lưu')).toBeInTheDocument();
-    });
-
-    const retryButton = screen.getByRole('button', { name: /Thử lại/i });
-    expect(retryButton).toBeInTheDocument();
-
-    vi.mocked(candidateSavedJobApi.getSavedJobs).mockResolvedValueOnce(mockSavedJobsResponse as any);
-    fireEvent.click(retryButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('Senior Frontend Engineer (React/TypeScript)')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Bạn chưa lưu việc làm nào')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Tìm việc làm' })).toHaveAttribute('href', '/jobs');
   });
 
-  it('renders empty state when there are no saved jobs', async () => {
-    vi.mocked(candidateSavedJobApi.getSavedJobs).mockResolvedValueOnce({
-      items: [],
-      page: 1,
-      pageSize: 10,
-      totalCount: 0,
-      totalPages: 0,
-    } as any);
+  it('shows each job by its state: open, closing soon, closed and applied', async () => {
+    vi.mocked(candidateSavedJobApi.getSavedJobs).mockResolvedValue(page([
+      saved('open', 'Việc mở', { applicationDeadline: days(30) }),
+      saved('soon', 'Việc sắp hết', { applicationDeadline: days(2) }),
+      saved('closed', 'Việc đóng', { status: 'CLOSED', isAcceptingApplications: false }),
+      saved('job-applied', 'Việc đã nộp'),
+    ]) as never);
+    renderPage();
 
-    renderWithProviders(<CandidateSavedJobsPage />);
+    expect(await screen.findByText('4 việc làm. Tin hết hạn vẫn được giữ để bạn xem lại.')).toBeInTheDocument();
+    const row = (title: string) => within(screen.getByRole('link', { name: title }).closest('article')!);
 
-    await waitFor(() => {
-      expect(screen.getByText('Bạn chưa lưu việc làm nào')).toBeInTheDocument();
-    });
-
-    expect(screen.getByRole('button', { name: /Khám phá việc làm ngay/i })).toBeInTheDocument();
+    expect(row('Việc mở').getByRole('button', { name: /^Ứng tuyển/ })).toBeInTheDocument();
+    expect(row('Việc sắp hết').getByText(/Còn \d ngày để nộp/)).toBeInTheDocument();
+    expect(row('Việc đóng').getByText('Tin đã đóng, không nhận hồ sơ')).toBeInTheDocument();
+    expect(row('Việc đóng').queryByRole('button', { name: /^Ứng tuyển/ })).not.toBeInTheDocument();
+    expect(row('Việc đã nộp').getByRole('link', { name: 'Xem đơn' })).toHaveAttribute('href', '/candidate/applications/app-123');
   });
 
-  it('renders list of saved jobs with status badges, metadata, and quick action buttons', async () => {
-    vi.mocked(candidateSavedJobApi.getSavedJobs).mockResolvedValueOnce(mockSavedJobsResponse as any);
+  it('opens the real apply dialog for an open job', async () => {
+    vi.mocked(candidateSavedJobApi.getSavedJobs).mockResolvedValue(page([saved('open', 'Việc mở')]) as never);
+    renderPage();
 
-    renderWithProviders(<CandidateSavedJobsPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Ứng tuyển Việc mở' }));
 
-    await waitFor(() => {
-      expect(screen.getByText('Senior Frontend Engineer (React/TypeScript)')).toBeInTheDocument();
-    });
-
-    // Verify company names
-    expect(screen.getByText('FPT Software')).toBeInTheDocument();
-    expect(screen.getByText('VNG Corporation')).toBeInTheDocument();
-    expect(screen.getByText('Tiki')).toBeInTheDocument();
-
-    // Verify status badges
-    expect(screen.getAllByText('Còn hạn nhận hồ sơ').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('Hết hạn nhận hồ sơ')).toBeInTheDocument();
-    expect(screen.getByText('Đã ứng tuyển')).toBeInTheDocument();
-
-    // Verify quick action buttons
-    expect(screen.getByRole('button', { name: /Ứng tuyển ngay/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Đã hết hạn/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Xem đơn/i })).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /Chi tiết/i })).toHaveLength(3);
+    expect(await screen.findByRole('heading', { name: 'Ứng tuyển Việc mở' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Nộp hồ sơ' })).toBeInTheDocument();
   });
 
-  it('calls unsaveJob when user confirms unsave', async () => {
-    vi.mocked(candidateSavedJobApi.getSavedJobs)
-      .mockResolvedValueOnce(mockSavedJobsResponse as any)
-      .mockResolvedValue({ items: [], page: 1, pageSize: 10, totalCount: 0, totalPages: 0 } as any);
-    vi.mocked(candidateSavedJobApi.unsaveJob).mockResolvedValueOnce({
-      success: true,
-      message: 'Đã hủy lưu việc làm thành công.',
-    });
+  it('asks before unsaving and then calls the API', async () => {
+    vi.mocked(candidateSavedJobApi.getSavedJobs).mockResolvedValue(page([saved('open', 'Việc mở')]) as never);
+    vi.mocked(candidateSavedJobApi.unsaveJob).mockResolvedValueOnce({ success: true, message: 'ok' });
+    renderPage();
 
-    renderWithProviders(<CandidateSavedJobsPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Bỏ lưu Việc mở' }));
+    expect(candidateSavedJobApi.unsaveJob).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole('button', { name: 'Bỏ lưu' }));
 
-    await waitFor(() => {
-      expect(screen.getByText('Senior Frontend Engineer (React/TypeScript)')).toBeInTheDocument();
-    });
-
-    const unsaveButtons = screen.getAllByLabelText('Bỏ lưu việc làm');
-    expect(unsaveButtons.length).toBeGreaterThan(0);
-
-    fireEvent.click(unsaveButtons[0]);
-
-    // Ant Design Popconfirm displays "Bỏ lưu" confirm button
-    const confirmButton = await screen.findByRole('button', { name: 'Bỏ lưu' });
-    fireEvent.click(confirmButton);
-
-    await waitFor(() => {
-      expect(candidateSavedJobApi.unsaveJob).toHaveBeenCalledWith('job-active-1');
-    });
+    await waitFor(() => expect(candidateSavedJobApi.unsaveJob).toHaveBeenCalledWith('open'));
   });
 
-  it('renders pagination when totalCount exceeds pageSize', async () => {
-    vi.mocked(candidateSavedJobApi.getSavedJobs).mockResolvedValueOnce({
-      items: mockSavedJobsResponse.items,
-      page: 1,
-      pageSize: 10,
-      totalCount: 25,
-      totalPages: 3,
-    } as any);
+  it('pages through more than ten saved jobs', async () => {
+    const many = Array.from({ length: 12 }, (_, i) => saved(`j${i}`, `Việc ${i}`));
+    vi.mocked(candidateSavedJobApi.getSavedJobs).mockResolvedValue(page(many) as never);
+    renderPage();
 
-    renderWithProviders(<CandidateSavedJobsPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Senior Frontend Engineer (React/TypeScript)')).toBeInTheDocument();
-    });
-
-    // Pagination numbers should be displayed (pages 1, 2, 3)
-    expect(screen.getByTitle('2')).toBeInTheDocument();
-    expect(screen.getByTitle('3')).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Việc 0' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Việc 11' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTitle('2'));
+    expect(await screen.findByRole('link', { name: 'Việc 11' })).toBeInTheDocument();
   });
 });

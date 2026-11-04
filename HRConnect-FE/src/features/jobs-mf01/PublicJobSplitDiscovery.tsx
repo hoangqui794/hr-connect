@@ -7,7 +7,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Skeleton } from 'antd';
+import { Select, Skeleton } from 'antd';
 import dayjs from 'dayjs';
 import { Navbar } from '@/features/landing/components/Navbar';
 import { CompanyMark, jobHref, postedText, salaryText } from '@/features/landing/components/SiteParts';
@@ -55,6 +55,7 @@ const SORTS = [
 ];
 
 const SR_ONLY = 'absolute left-[-9999px]';
+const SELECT_TEXT = `${FONT} [&_.ant-select-selection-item]:font-[inherit] [&_.ant-select-selection-item]:!text-[#1F2937]`;
 /** The job list has no reliable work mode field yet, so remote jobs are also recognised from their text. */
 const isRemote = (job: Job) =>
   job.workMode?.toUpperCase() === REMOTE || /remote|từ xa/i.test(`${job.location ?? ''} ${job.workingTime ?? ''}`);
@@ -71,7 +72,7 @@ const Checkbox: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props) 
   <input {...props} className={`h-[18px] w-[18px] shrink-0 cursor-pointer ${props.type === 'radio' ? 'ml-[5px] mr-[3px] mt-[3px]' : 'mx-[3px] ml-1 my-[3px]'}`} />
 );
 
-const JobRow: React.FC<{ job: Job; fit?: number; canSave: boolean; saved: boolean; onSave: () => void; action: string }> = ({ job, fit, canSave, saved, onSave, action }) => {
+const JobRow: React.FC<{ job: Job; fit?: number; canSave: boolean; saved: boolean; onSave: () => void; action: string; applied: boolean }> = ({ job, fit, canSave, saved, onSave, action, applied }) => {
   const deadline = job.applicationDeadline ?? job.expiresAt;
   const href = jobHref(job.jobId);
   return (
@@ -82,7 +83,7 @@ const JobRow: React.FC<{ job: Job; fit?: number; canSave: boolean; saved: boolea
         <div className="mt-0.5 text-[#4B5563]">{job.companyName}</div>
         <div className="mt-2 flex flex-wrap gap-4 text-[13px] text-[#4B5563]">
           <span className="text-[14px] font-semibold text-[#C2410C]">{salaryText(job)}</span>
-          {job.location && <span>{job.location}</span>}
+          {job.location && <span title={job.location} className="min-w-0 max-w-[240px] truncate">{job.location}</span>}
           <span>{experienceText(job.minExperienceYears, job.maxExperienceYears)}</span>
           {job.employmentType && <span>{EMPLOYMENT_TYPE_LABEL[job.employmentType]}</span>}
         </div>
@@ -115,7 +116,12 @@ const JobRow: React.FC<{ job: Job; fit?: number; canSave: boolean; saved: boolea
               </svg>
             </button>
           )}
-          <Link to={href} className="flex h-10 items-center rounded-md bg-[#C2410C] px-[14px] font-semibold text-white no-underline hover:bg-[#9A3412] hover:text-white">{action}</Link>
+          <Link
+            to={href}
+            className={`flex h-10 items-center rounded-md px-[14px] font-semibold no-underline ${applied ? 'border border-solid border-[#86EFAC] bg-[#F0FDF4] text-[#166534] hover:bg-[#DCFCE7] hover:text-[#166534]' : 'bg-[#C2410C] text-white hover:bg-[#9A3412] hover:text-white'}`}
+          >
+            {action}
+          </Link>
         </div>
       </div>
     </article>
@@ -277,14 +283,18 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                 className={`${FONT} h-[44px] w-full border-0 bg-transparent px-0.5 text-[15px] text-[#1F2937] outline-none placeholder:text-[#6B7280]`}
               />
             </label>
-            <label className="relative box-content flex flex-[1_1_200px] items-center gap-2 border-0 px-3 text-[#6B7280] sm:border-l sm:border-solid sm:border-[#E5E7EB]">
-              <span className={SR_ONLY}>Địa điểm</span>
+            <div className="relative box-content flex flex-[1_1_200px] items-center gap-2 border-0 px-3 text-[#6B7280] sm:border-l sm:border-solid sm:border-[#E5E7EB]">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>
-              <select value={locationDraft} onChange={(event) => setLocationDraft(event.target.value)} className={`${FONT} h-[42px] w-full border-0 bg-transparent text-[15px] text-[#1F2937] outline-none`}>
-                <option value="">Tất cả địa điểm</option>
-                {LOCATIONS.map((name) => <option key={name} value={name}>{name}</option>)}
-              </select>
-            </label>
+              <Select
+                aria-label="Địa điểm"
+                variant="borderless"
+                value={locationDraft}
+                onChange={setLocationDraft}
+                options={[{ value: '', label: 'Tất cả địa điểm' }, ...LOCATIONS.map((name) => ({ value: name, label: name }))]}
+                className={`${SELECT_TEXT} h-[42px] min-w-0 flex-1 [&_.ant-select-selector]:!px-0 [&_.ant-select-selection-item]:!text-[15px]`}
+                popupMatchSelectWidth={false}
+              />
+            </div>
             <button type="submit" className={`${FONT} h-[42px] cursor-pointer self-start rounded-md border-0 bg-[#C2410C] px-[26px] text-[15px] font-semibold text-white hover:bg-[#9A3412] max-sm:w-full`}>Tìm việc</button>
           </form>
         </div>
@@ -355,16 +365,17 @@ export const PublicJobSplitDiscovery: React.FC = () => {
               <h1 id="results" className="m-0 text-[18px] font-bold text-[#1F2937]">
                 {results.isLoading ? 'Đang tìm việc làm…' : `${total.toLocaleString('vi-VN')} việc làm${searchText ? ` ${searchText}` : ''}`}
               </h1>
-              <label className="flex items-center gap-2 text-[#4B5563]">
-                Sắp xếp
-                <select
+              <div className="flex items-center gap-2 text-[#4B5563]">
+                <span id="sort-label">Sắp xếp</span>
+                <Select
+                  aria-labelledby="sort-label"
                   value={sort}
-                  onChange={(event) => update((next) => next.set('sort', event.target.value))}
-                  className={`${FONT} h-9 rounded-md border border-solid border-[#D1D5DB] bg-white px-2.5 text-[14px] text-[#1F2937]`}
-                >
-                  {SORTS.filter((option) => !option.candidateOnly || isCandidate).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                </select>
-              </label>
+                  onChange={(value) => update((next) => next.set('sort', value))}
+                  options={SORTS.filter((option) => !option.candidateOnly || isCandidate).map(({ value, label }) => ({ value, label }))}
+                  className={`${SELECT_TEXT} h-9 w-[150px] [&_.ant-select-selector]:!rounded-md [&_.ant-select-selector]:!border-[#D1D5DB]`}
+                  popupMatchSelectWidth={false}
+                />
+              </div>
             </div>
 
             {chips.length > 0 && (
@@ -394,7 +405,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
             ) : (
               <div className="rounded-lg border border-solid border-[#E5E7EB] bg-white">
                 {shown.map((job) => (
-                  <JobRow key={job.jobId} job={job} fit={fitOf.get(job.jobId)} canSave={canSave} saved={isCandidate && isSaved(job.jobId)} onSave={() => onSave(job)} action={actionFor(job)} />
+                  <JobRow key={job.jobId} job={job} fit={fitOf.get(job.jobId)} canSave={canSave} saved={isCandidate && isSaved(job.jobId)} onSave={() => onSave(job)} action={actionFor(job)} applied={isCandidate && isApplied(job.jobId)} />
                 ))}
               </div>
             )}

@@ -7,26 +7,50 @@
  *  - Affiliate: "Giới thiệu ứng viên" → the referral form, preset to this job.
  */
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Alert, App as AntApp, Button, Modal, Result, Skeleton, Upload } from 'antd';
-import { CheckCircleFilled, FilePdfOutlined, InboxOutlined, SendOutlined, UserAddOutlined } from '@ant-design/icons';
-import { applyApi } from '@/services/api/mf02Api';
+import { Link, useNavigate } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import dayjs from 'dayjs';
+import { Alert, App as AntApp, Button, Modal, Result, Skeleton } from 'antd';
+import { CheckCircleFilled, SendOutlined, UserAddOutlined } from '@ant-design/icons';
+import { applyApi, candidateCvApi } from '@/services/api/mf02Api';
+import { mf04Api } from '@/services/api/mf04Api';
 import { getApiError } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
 import type { Job } from '@/types/api/jobs';
-import { candidateKeys, useCandidateCvs } from './CandidatePages';
+import { candidateKeys, useCandidateCvs, useOpenSignedUrl } from './CandidatePages';
 import { useCandidateAppliedJobs } from './candidate/useCandidateAppliedJobs';
 import { MAX_CV_MB, cvFileError, fileSize } from './mf02Labels';
 
 type Source = { kind: 'vault'; cvId: string } | { kind: 'file'; file: File };
+
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
+const SECONDARY = `${FONT} h-11 cursor-pointer rounded-md border border-solid border-[#D1D5DB] bg-white px-[18px] text-[14px] font-medium text-[#1F2937] hover:bg-[#F9FAFB]`;
+const PRIMARY = `${FONT} h-11 cursor-pointer rounded-md border-0 bg-[#C2410C] px-[22px] text-[14px] font-semibold text-white hover:bg-[#9A3412] disabled:cursor-not-allowed disabled:bg-[#9CA3AF]`;
+
+/** Contact details come from the profile; the apply API takes only a CV, so they are shown, not edited, here. */
+const ContactField: React.FC<{ label: string; value?: string | null; type?: string; wide?: boolean }> = ({ label, value, type = 'text', wide }) => (
+  <label className={`flex flex-col gap-1.5 ${wide ? 'col-span-full' : ''}`}>
+    <span className="text-[13px] text-[#374151]">{label}</span>
+    <input
+      type={type}
+      readOnly
+      value={value ?? ''}
+      placeholder="Chưa cập nhật"
+      className={`${FONT} h-[42px] w-full min-w-0 rounded-md border border-solid border-[#D1D5DB] bg-white px-3 text-[14px] text-[#1F2937]`}
+    />
+  </label>
+);
 
 export const ApplyModal: React.FC<{ job: Job; open: boolean; onClose: () => void }> = ({ job, open, onClose }) => {
   const { message } = AntApp.useApp();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const cvs = useCandidateCvs();
+  const openSigned = useOpenSignedUrl();
+  const account = useAuthStore((s) => s.user);
+  const profile = useQuery({ queryKey: ['candidate', 'profile'], queryFn: () => mf04Api.getProfile(), enabled: open });
   const [source, setSource] = useState<Source | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [retryUntil, setRetryUntil] = useState<number | null>(null);
@@ -76,135 +100,157 @@ export const ApplyModal: React.FC<{ job: Job; open: boolean; onClose: () => void
     onClose();
   };
 
+  const pickFile = (file?: File) => {
+    if (!file) return;
+    const problem = cvFileError(file);
+    if (problem) {
+      message.error(problem);
+      return;
+    }
+    setError(null);
+    setSource({ kind: 'file', file });
+  };
+
+  const chosenFile = source?.kind === 'file' ? source.file : null;
+  const companyLine = [job.companyName, job.location].filter(Boolean).join(' · ');
+
   return (
-    <Modal open={open} onCancel={close} footer={null} width={560} destroyOnHidden title={apply.isSuccess ? null : 'Ứng tuyển'}>
-      {apply.isSuccess ? (
-        <Result
-          status="success"
-          title="Đã nộp đơn ứng tuyển"
-          subTitle={`Đơn vào vị trí “${job.title}” đã được tiếp nhận. Hệ thống đang thực hiện đánh giá mức độ phù hợp của hồ sơ.`}
-          extra={[
-            <Button key="go" type="primary" onClick={() => navigate(`/candidate/applications/${apply.data.data.applicationId}`)}>
-              Xem đơn vừa nộp
-            </Button>,
-            <Button key="close" onClick={close}>
-              Đóng
-            </Button>,
-          ]}
-        />
-      ) : (
-        <div className="space-y-4">
-          <div className="rounded-xl bg-slate-50 px-4 py-3">
-            <div className="font-semibold text-slate-900">{job.title}</div>
-            <div className="text-[13px] text-slate-600">{job.companyName}</div>
-          </div>
-
-          {error && <Alert type="error" showIcon message={error} />}
-          {retryRemaining > 0 && (
-            <Alert
-              type="warning"
-              showIcon
-              message={`Bạn có thể thử lại sau ${retryRemaining} giây.`}
-            />
-          )}
-          {cvs.isError && (
-            <Alert
-              type="error"
-              showIcon
-              message={getApiError(cvs.error, 'Không tải được kho CV.').message}
-            />
-          )}
-
-          <div>
-            <div className="mb-2 text-sm font-semibold text-slate-900">Chọn CV gửi kèm</div>
-            {cvs.isLoading ? (
-              <Skeleton active paragraph={{ rows: 2 }} />
-            ) : (
-              <div role="radiogroup" aria-label="Chọn CV" className="space-y-2">
-                {(cvs.data ?? []).map((cv) => {
-                  const selected = source?.kind === 'vault' && source.cvId === cv.cvId;
-                  return (
-                    <label
-                      key={cv.cvId}
-                      className={`flex cursor-pointer items-center gap-3 rounded-xl border border-solid px-3 py-2.5 transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[color:var(--console-accent)] ${
-                        selected ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent-soft)]' : 'border-slate-200 hover:border-slate-400'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="cv"
-                        className="sr-only"
-                        checked={selected}
-                        onChange={() => {
-                          setError(null);
-                          setSource({ kind: 'vault', cvId: cv.cvId });
-                        }}
-                      />
-                      <FilePdfOutlined className="text-xl text-red-700" aria-hidden />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium text-slate-900">{cv.title || cv.fileName}</span>
-                        <span className="block truncate text-xs text-slate-500">
-                          {cv.fileName} · {fileSize(cv.fileSizeBytes)}
-                          {cv.isPrimary ? ' · CV chính' : ''}
-                        </span>
-                      </span>
-                      {selected && <CheckCircleFilled className="text-[color:var(--console-accent)]" aria-hidden />}
-                    </label>
-                  );
-                })}
+    <Modal
+      open={open}
+      onCancel={close}
+      footer={null}
+      closable={false}
+      centered
+      width={620}
+      destroyOnHidden
+      title={null}
+      aria-labelledby="apply-title"
+      rootClassName="[&_.ant-modal-content]:!rounded-[10px] [&_.ant-modal-content]:!border-0 [&_.ant-modal-content]:![box-shadow:0_20px_48px_rgba(15,23,42,.25)]"
+      styles={{ content: { padding: 0 }, mask: { background: 'rgba(15,23,42,.55)' } }}
+    >
+      <div className={`${FONT} flex max-h-[min(900px,calc(100vh-40px))] flex-col text-[14px] text-[#1F2937] [line-height:normal]`}>
+        {apply.isSuccess ? (
+          <Result
+            status="success"
+            title="Đã nộp đơn ứng tuyển"
+            subTitle={`Đơn vào vị trí “${job.title}” đã được tiếp nhận. Hệ thống đang thực hiện đánh giá mức độ phù hợp của hồ sơ.`}
+            extra={
+              <div className="flex flex-wrap justify-center gap-2.5">
+                <button type="button" className={SECONDARY} onClick={close}>Đóng</button>
+                <button type="button" className={PRIMARY} onClick={() => navigate(`/candidate/applications/${apply.data.data.applicationId}`)}>Xem đơn vừa nộp</button>
               </div>
-            )}
-          </div>
-
-          <div>
-            <div className="mb-2 text-sm font-semibold text-slate-900">
-              {(cvs.data ?? []).length ? 'Hoặc tải CV khác' : 'Tải CV của bạn'}
+            }
+          />
+        ) : (
+          <>
+            <div className="flex items-start gap-3 border-0 border-b border-solid border-[#E5E7EB] px-[22px] py-[18px]">
+              <div className="min-w-0 flex-1">
+                <h2 id="apply-title" className="m-0 text-[18px] font-bold text-[#1F2937]">Ứng tuyển {job.title}</h2>
+                {companyLine && <div className="mt-0.5 text-[#4B5563]">{companyLine}</div>}
+              </div>
+              <button type="button" aria-label="Đóng" onClick={close} className={`${FONT} -mr-2 -mt-2 h-11 w-11 shrink-0 cursor-pointer border-0 bg-transparent text-[20px] text-[#4B5563]`}>×</button>
             </div>
-            <Upload.Dragger
-              accept="application/pdf,.pdf"
-              multiple={false}
-              showUploadList={false}
-              beforeUpload={(file) => {
-                const e = cvFileError(file);
-                if (e) message.error(e);
-                else {
-                  setError(null);
-                  setSource({ kind: 'file', file });
-                }
-                return false;
-              }}
-              className="!rounded-xl"
-            >
-              {source?.kind === 'file' ? (
-                <p className="m-0 py-1 text-sm text-slate-800">
-                  <FilePdfOutlined className="mr-1.5 text-red-700" aria-hidden />
-                  {source.file.name} · {fileSize(source.file.size)} <span className="text-slate-500">(bấm để đổi)</span>
-                </p>
-              ) : (
-                <>
-                  <p className="ant-upload-drag-icon !mb-1">
-                    <InboxOutlined className="!text-[color:var(--console-accent)]" />
-                  </p>
-                  <p className="ant-upload-hint">PDF, tối đa {MAX_CV_MB}MB. CV mới cũng được lưu vào kho của bạn.</p>
-                </>
-              )}
-            </Upload.Dragger>
-          </div>
 
-          <div className="flex justify-end gap-2 pt-1">
-            <Button onClick={close}>Hủy</Button>
-            <Button
-              type="primary"
-              icon={<SendOutlined />}
-              disabled={!source || retryRemaining > 0}
-              loading={apply.isPending}
-              onClick={() => apply.mutate()}
+            <form
+              id="apply-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (source && retryRemaining === 0 && !apply.isPending) apply.mutate();
+              }}
+              className="flex flex-col gap-[18px] overflow-auto px-[22px] py-[18px]"
             >
-              Nộp đơn
-            </Button>
-          </div>
-        </div>
-      )}
+              {error && <Alert type="error" showIcon message={error} />}
+              {retryRemaining > 0 && <Alert type="warning" showIcon message={`Bạn có thể thử lại sau ${retryRemaining} giây.`} />}
+              {cvs.isError && <Alert type="error" showIcon message={getApiError(cvs.error, 'Không tải được kho CV.').message} />}
+
+              <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
+                <legend className="mb-2 px-0.5 font-semibold">Chọn CV để ứng tuyển</legend>
+                {cvs.isLoading ? (
+                  <Skeleton active paragraph={{ rows: 2 }} />
+                ) : (
+                  (cvs.data ?? []).map((cv) => {
+                    const selected = source?.kind === 'vault' && source.cvId === cv.cvId;
+                    return (
+                      <label
+                        key={cv.cvId}
+                        className={`flex cursor-pointer items-center gap-3 rounded-lg border-solid p-3 ${selected ? 'border-2 border-[#0369A1] bg-[#F0F9FF]' : 'border border-[#E5E7EB] hover:border-[#94A3B8]'}`}
+                      >
+                        <input
+                          type="radio"
+                          name="cv"
+                          checked={selected}
+                          onChange={() => {
+                            setError(null);
+                            setSource({ kind: 'vault', cvId: cv.cvId });
+                          }}
+                          className="ml-[5px] mr-[3px] mt-[3px] h-[18px] w-[18px] shrink-0 cursor-pointer accent-[#0369A1]"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-semibold">{cv.title || cv.fileName}</span>
+                          <span className="text-[13px] text-[#4B5563]">
+                            Cập nhật {dayjs(cv.updatedAt).format('DD/MM/YYYY')}{cv.fileSizeBytes ? ` · ${fileSize(cv.fileSizeBytes)}` : ''}
+                          </span>
+                        </span>
+                        {cv.isPrimary && <span className="shrink-0 rounded bg-[#E0F2FE] px-2 py-0.5 text-[12px] font-semibold text-[#075985]">CV chính</span>}
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            void openSigned(() => candidateCvApi.downloadUrl(cv.cvId));
+                          }}
+                          className={`${FONT} shrink-0 cursor-pointer border-0 bg-transparent p-0 text-[13px] ${LINK}`}
+                        >
+                          Xem
+                        </button>
+                      </label>
+                    );
+                  })
+                )}
+                <label className={`relative flex cursor-pointer items-center gap-2.5 rounded-lg p-3 text-[#374151] has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[#0369A1] ${chosenFile ? 'border-2 border-solid border-[#0369A1] bg-[#F0F9FF]' : 'border border-dashed border-[#94A3B8]'}`}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true" className="shrink-0"><path d="M12 16V4M7 9l5-5 5 5M5 20h14" /></svg>
+                  {chosenFile ? (
+                    <span className="min-w-0 truncate"><b>{chosenFile.name}</b> <span className="text-[#4B5563]">· {fileSize(chosenFile.size)} · bấm để đổi</span></span>
+                  ) : (
+                    <span><b>Tải CV mới</b> <span className="text-[#4B5563]">· PDF, tối đa {MAX_CV_MB} MB</span></span>
+                  )}
+                  <input
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    className="absolute h-px w-px opacity-0"
+                    onChange={(event) => {
+                      pickFile(event.target.files?.[0]);
+                      event.target.value = '';
+                    }}
+                  />
+                </label>
+              </fieldset>
+
+              <fieldset className="m-0 min-w-0 border-0 p-0">
+                <legend className="mb-2 flex w-full justify-between px-0.5 font-semibold">
+                  Thông tin liên hệ
+                  <Link to="/candidate/profile" className={`text-[13px] font-normal ${LINK}`}>Sửa trong Hồ sơ</Link>
+                </legend>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <ContactField wide label="Họ và tên" value={profile.data?.fullName ?? account?.name} />
+                  <ContactField label="Email" type="email" value={profile.data?.email ?? account?.email} />
+                  <ContactField label="Số điện thoại" type="tel" value={profile.data?.phone} />
+                </div>
+              </fieldset>
+
+              <p className="m-0 rounded-md border border-solid border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5 text-[13px] text-[#4B5563]">
+                Nhà tuyển dụng sẽ xem CV và thông tin liên hệ này. Mỗi việc làm chỉ ứng tuyển được một lần; bạn theo dõi kết quả trong <Link to="/candidate/applications" className={LINK}>Đơn ứng tuyển</Link>.
+              </p>
+            </form>
+
+            <div className="flex justify-end gap-2.5 border-0 border-t border-solid border-[#E5E7EB] px-[22px] py-[14px]">
+              <button type="button" onClick={close} className={SECONDARY}>Hủy</button>
+              <button type="submit" form="apply-form" disabled={!source || retryRemaining > 0 || apply.isPending} className={PRIMARY}>
+                {apply.isPending ? 'Đang nộp…' : 'Nộp hồ sơ'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </Modal>
   );
 };
