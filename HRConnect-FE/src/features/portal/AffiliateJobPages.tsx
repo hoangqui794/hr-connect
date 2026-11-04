@@ -15,7 +15,7 @@ import { affiliateApi } from '@/services/api/mf02Api';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { Job } from '@/types/api/jobs';
 import { formatSalary } from '@/features/jobs-mf01/jobDisplay';
-import { JobDetailPanel } from '@/features/jobs-mf01/JobDetailPanel';
+import { renderFormattedMultilineText } from '@/features/jobs-mf01/RichTextEditor';
 import { useJobDetail } from '@/features/jobs-mf01/useJobQueries';
 import { CommissionEstimateCard, commissionEstimateApi, formatEstimate } from './CommissionEstimateCard';
 import { AffiliatePageHeader } from './affiliate/AffiliateUi';
@@ -94,7 +94,7 @@ export const AffiliateJobsPage: React.FC = () => {
     setParams(p);
   };
 
-  // Affiliates refer into Headhunt and Sourcing jobs only, so those are the useful filters.
+  // Affiliates refer into HEADHUNT_COD and CV_SOURCING jobs only, so those are the useful filters.
   const serviceOptions = (serviceTypes.data ?? [])
     .filter((s) => s.code !== 'CV_APPLICATION')
     .map((s) => ({ value: s.id, label: affiliateServiceLabel(s.code) }));
@@ -112,7 +112,6 @@ export const AffiliateJobsPage: React.FC = () => {
       >
         <Input
           aria-label="Tìm việc"
-          size="large"
           allowClear
           prefix={<SearchOutlined aria-hidden />}
           placeholder="Vị trí, kỹ năng, công ty"
@@ -121,30 +120,28 @@ export const AffiliateJobsPage: React.FC = () => {
             setDraft(e.target.value);
             if (!e.target.value) update({ q: undefined });
           }}
-          className="min-w-[240px] flex-[2_1_260px]"
+          className="!h-10 min-w-[240px] flex-[2_1_260px]"
         />
         <Select
           aria-label="Dịch vụ"
-          size="large"
           allowClear
           placeholder="Tất cả dịch vụ"
           value={serviceTypeId}
           options={serviceOptions}
           loading={serviceTypes.isLoading}
           onChange={(v) => update({ service: v })}
-          className="min-w-[180px] flex-[1_1_180px]"
+          className="!h-10 min-w-[180px] flex-[1_1_180px]"
         />
         <Input
           aria-label="Địa điểm"
-          size="large"
           allowClear
           placeholder="Địa điểm"
           defaultValue={location}
           onPressEnter={(e) => update({ location: (e.target as HTMLInputElement).value.trim() || undefined })}
           onChange={(e) => !e.target.value && update({ location: undefined })}
-          className="min-w-[160px] flex-[1_1_160px]"
+          className="!h-10 min-w-[160px] flex-[1_1_160px]"
         />
-        <Button size="large" htmlType="submit" type="primary" className="!bg-[color:var(--affiliate-brand)]">Lọc</Button>
+        <Button htmlType="submit" type="primary" className="!bg-[color:var(--affiliate-brand)]">Lọc</Button>
       </form>
 
       <p className="m-0 mb-2.5 text-sm text-gray-600">
@@ -183,9 +180,9 @@ export const AffiliateJobsPage: React.FC = () => {
                   </div>
                   <div className="mt-0.5 text-[13px] text-gray-500">{progressLine(job)}</div>
                 </div>
-                <div className="w-[200px] text-right max-sm:w-auto max-sm:text-left">
+                <div className="shrink-0 text-right max-sm:w-full max-sm:text-left">
                   <div className="text-xs text-gray-500">Hoa hồng ước tính</div>
-                  <div className="text-[15px] font-bold tabular-nums text-[color:var(--affiliate-cta)]">
+                  <div className="whitespace-nowrap text-[15px] font-bold tabular-nums text-[color:var(--affiliate-cta)]">
                     {est?.isLoading ? <Skeleton.Input active size="small" /> : (est?.data && formatEstimate(est.data)) || '—'}
                   </div>
                 </div>
@@ -206,6 +203,24 @@ export const AffiliateJobsPage: React.FC = () => {
     </div>
   );
 };
+
+const RequirementList: React.FC<{ title: string; items: Job['requirements'] }> = ({ title, items }) =>
+  items.length === 0 ? null : (
+    <section>
+      <h2 className="m-0 mb-2 text-base font-bold text-gray-900">{title}</h2>
+      <ul className="m-0 space-y-1 pl-5">
+        {items.map((r) => <li key={r.requirementId} className="whitespace-pre-line">{r.content}</li>)}
+      </ul>
+    </section>
+  );
+
+const LongText: React.FC<{ title: string; value?: string | null }> = ({ title, value }) =>
+  !value ? null : (
+    <section>
+      <h2 className="m-0 mb-2 text-base font-bold text-gray-900">{title}</h2>
+      <p className="m-0 whitespace-pre-line break-words">{renderFormattedMultilineText(value)}</p>
+    </section>
+  );
 
 export const AffiliateJobDetailPage: React.FC = () => {
   const { jobId } = useParams<{ jobId: string }>();
@@ -246,8 +261,22 @@ export const AffiliateJobDetailPage: React.FC = () => {
                 </dl>
               </div>
             </section>
-            <article className="rounded-lg border border-solid border-gray-200 bg-white p-5 sm:p-6">
-              <JobDetailPanel job={job} isApplicantView />
+            <article className="space-y-5 rounded-lg border border-solid border-gray-200 bg-white p-5 leading-relaxed sm:p-6">
+              <RequirementList title="Yêu cầu bắt buộc" items={job.requirements.filter((r) => r.requirementType === 'MUST_HAVE')} />
+              <RequirementList title="Ưu tiên" items={job.requirements.filter((r) => r.requirementType === 'SHOULD_HAVE')} />
+              {job.skills.length > 0 && (
+                <section>
+                  <h2 className="m-0 mb-2 text-base font-bold text-gray-900">Kỹ năng</h2>
+                  <div className="flex flex-wrap gap-1.5">
+                    {job.skills.map((skill) => (
+                      <span key={skill.skillId} className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{skill.skillName}</span>
+                    ))}
+                  </div>
+                </section>
+              )}
+              <LongText title="Mô tả công việc" value={job.description} />
+              <LongText title="Quyền lợi" value={job.benefits} />
+              <LongText title="Thời gian làm việc" value={job.workingTime} />
             </article>
           </div>
           <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">

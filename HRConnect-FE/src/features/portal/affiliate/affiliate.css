@@ -1051,3 +1051,41 @@
 .affiliate-console .ant-picker {
   border-radius: 6px !important;
 }
+
+.affiliate-console .affiliate-row-selected > td {
+  background: #f0f9ff;
+}
+
+/* Checked against screenshots 04/11. */
+.affiliate-console .ant-table-thead > tr > th {
+  background: #fff !important;
+  color: #6b7280 !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.affiliate-console .ant-input-affix-wrapper > input.ant-input {
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+}
+
+.affiliate-console .ant-input-affix-wrapper-lg {
+  height: 40px;
+  padding-block: 0;
+}
+
+.affiliate-console .ant-input[disabled] {
+  color: #6b7280;
+}
+
+.affiliate-job-option.ant-radio-wrapper::after {
+  display: none;
+}
+
+.affiliate-job-option__copy strong { font-size: 14px; }
+.affiliate-job-option__copy small { font-size: 13px; }
+.affiliate-job-option__state { border-radius: 4px; background: #e0f2fe; color: #075985; font-size: 12px; font-weight: 500; }

@@ -155,7 +155,7 @@ export const candidateStage = (
 
 export const SUBMISSION_STATUS: Record<string, { label: string; tone: Tone; hint: string }> = {
   RECEIVED: { label: 'Đã tiếp nhận', tone: 'info', hint: 'HR Connect đã tiếp nhận hồ sơ và đang kiểm tra thông tin.' },
-  PENDING_CONSENT: { label: 'Chờ ứng viên xác nhận', tone: 'warning', hint: 'Đã gửi email, ứng viên có 48 giờ để đồng ý.' },
+  PENDING_CONSENT: { label: 'Chờ ứng viên xác nhận', tone: 'warning', hint: 'Đã gửi email, ứng viên cần đồng ý trước khi lời mời hết hạn.' },
   PENDING_IDENTITY_REVIEW: { label: 'Đang xác minh ứng viên', tone: 'warning', hint: 'HR Connect đang kiểm tra thông tin để bảo vệ quyền lợi của các bên.' },
   ACCEPTED: { label: 'Đã cho phép giới thiệu', tone: 'success', hint: 'Ứng viên đã xác nhận cho phép giới thiệu hồ sơ vào vị trí này; quyền ghi nhận của bạn đã được thiết lập.' },
   CONSENT_REJECTED: { label: 'Ứng viên từ chối', tone: 'danger', hint: 'Ứng viên không đồng ý cho bạn giới thiệu.' },

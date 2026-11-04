@@ -54,6 +54,10 @@ const NAV: NavItem[] = [
   { to: '/affiliate/profile', label: 'Hồ sơ và ngân hàng', icon: <UserOutlined /> },
 ];
 
+// Phones get the four most used pages at the bottom; the rest stay in the off-canvas menu.
+const BOTTOM_NAV = ['/affiliate/dashboard', '/affiliate/jobs', '/affiliate/submissions', '/affiliate/commissions'];
+const BOTTOM_LABEL: Record<string, string> = { '/affiliate/submissions': 'Giới thiệu', '/affiliate/commissions': 'Hoa hồng' };
+
 // Pages reached from the CTA rather than the menu still need a header title.
 const ALL_ITEMS: NavItem[] = [
   ...NAV,
@@ -238,7 +242,7 @@ export const AffiliateShell: React.FC = () => {
         </header>
 
         <AdminTopProgress offsetLeft={compact ? 0 : width} />
-        <main className="affiliate-main mx-auto px-4 py-5 lg:px-6 lg:py-6">
+        <main className="affiliate-main mx-auto px-4 py-5 pb-24 md:pb-5 lg:px-6 lg:py-6">
           <AdminPageEnter pathKey={location.pathname}>
             <Suspense fallback={<AdminPageSkeleton />}>
               <Outlet />
@@ -246,6 +250,20 @@ export const AffiliateShell: React.FC = () => {
           </AdminPageEnter>
         </main>
       </div>
+      <nav aria-label="Menu chính" className="fixed inset-x-0 bottom-0 z-20 grid h-16 grid-cols-4 border-0 border-t border-solid border-gray-200 bg-white md:hidden">
+        {NAV.filter((i) => BOTTOM_NAV.includes(i.to)).map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center gap-0.5 text-[11px] no-underline ${isActive ? 'font-semibold text-[color:var(--affiliate-brand)]' : 'text-gray-500'}`
+            }
+          >
+            <span className="text-lg" aria-hidden>{item.icon}</span>
+            {BOTTOM_LABEL[item.to] ?? item.label}
+          </NavLink>
+        ))}
+      </nav>
       <ChangePasswordModal
         open={showPasswordModal}
         onClose={() => setShowPasswordModal(false)}

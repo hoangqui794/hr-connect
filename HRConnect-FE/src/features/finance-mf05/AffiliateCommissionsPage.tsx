@@ -14,7 +14,6 @@ import type { Commission, CommissionStatus, Payout } from '@/types/api/finance';
 import { FilterPills, StatusDot, Surface } from '@/features/admin-console/ui';
 import { COMMISSION_STATUS, PAYOUT_STATUS, date, labelOf, money } from './financeLabels';
 import { AffiliatePageHeader } from '@/features/portal/affiliate/AffiliateUi';
-import { serviceTypeText } from '@/features/jobs-mf01/jobDisplay';
 
 const PAGE_SIZE = 20;
 
@@ -107,7 +106,7 @@ const PayoutAccountCard: React.FC = () => {
   );
 };
 
-/** The four (Headhunt) or three (Sourcing) steps a commission walks through. */
+/** The four (HEADHUNT_COD) or three (CV_SOURCING) steps a commission walks through. */
 const HEADHUNT_STEPS = ['Đi làm', 'Bảo hành', 'Đã đạt', 'Đã nhận'];
 const SOURCING_STEPS = ['CV được nhận', 'Đã đạt', 'Đã nhận'];
 
@@ -164,7 +163,7 @@ const CommissionCard: React.FC<{ c: Commission }> = ({ c }) => {
         <div className="min-w-0">
           <div className="truncate text-[15px] font-semibold text-slate-900">{c.candidateName ?? '—'}</div>
           <div className="truncate text-[13px] text-slate-500">
-            {c.jobTitle ?? '—'} · {serviceTypeText(c.placementId ? 'HEADHUNT_COD' : 'CV_SOURCING')}
+            {c.jobTitle ?? '—'} · {c.placementId ? 'Tuyển qua Affiliate' : 'Mua CV'}
           </div>
         </div>
         <div className="text-right">

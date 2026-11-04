@@ -153,6 +153,12 @@ const AffiliateSubmissionDetailPage = React.lazy(() =>
   import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateSubmissionDetailPage }))
 );
 const AffiliateCandidatesPage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateCandidatesPage })));
+const AffiliateCandidateDetailPage = React.lazy(() =>
+  import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateCandidateDetailPage }))
+);
+const AffiliateRegisterPage = React.lazy(() =>
+  import('@/features/portal/AffiliateRegisterPage').then((m) => ({ default: m.AffiliateRegisterPage }))
+);
 const AffiliateAttributionsPage = React.lazy(() =>
   import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateAttributionsPage }))
 );
@@ -471,6 +477,8 @@ export const AppRoutes = {
   Mf01PublicJobDetailPage,
   Mf01AffiliateJobDetailPage,
   AffiliateJobsPage,
+  AffiliateCandidateDetailPage,
+  AffiliateRegisterPage,
   AffiliateJobDetailPage,
   ConsoleOverviewPage,
   ConsoleApprovalsPage,

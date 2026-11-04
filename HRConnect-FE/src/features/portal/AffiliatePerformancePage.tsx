@@ -58,7 +58,7 @@ export const AffiliatePerformancePage: React.FC = () => {
       <AffiliatePageHeader
         title="Hiệu suất"
         description="Chất lượng hồ sơ và tỉ lệ ứng viên đi làm theo từng kỳ."
-        actions={<Button icon={<ReloadOutlined />} loading={performance.isFetching} onClick={() => performance.refetch()}>Cập nhật dữ liệu</Button>}
+        actions={<Button icon={<ReloadOutlined />} loading={performance.isFetching} onClick={() => performance.refetch()}>Làm mới</Button>}
       />
       {performance.isError ? <Alert type="error" showIcon message="Không tải được báo cáo" description={getApiErrorMessage(performance.error)} /> : null}
 
@@ -105,7 +105,7 @@ export const AffiliatePerformancePage: React.FC = () => {
 
       <Surface className="p-6">
         <AffiliateSectionHeading title="Lịch sử các kỳ đánh giá" description="So sánh kết quả theo thời gian để nhận biết xu hướng chất lượng hồ sơ." />
-        <Table className="admin-soft-table w-full table-auto" rowKey="affiliatePerformanceId" columns={historyColumns} dataSource={data?.history ?? []} loading={performance.isLoading} pagination={false} locale={{ emptyText: <div className="py-8 text-slate-500">Chưa có dữ liệu của kỳ đánh giá trước.</div> }} />
+        <Table className="admin-soft-table w-full table-auto" scroll={{ x: 720 }} rowKey="affiliatePerformanceId" columns={historyColumns} dataSource={data?.history ?? []} loading={performance.isLoading} pagination={false} locale={{ emptyText: <div className="py-8 text-slate-500">Chưa có dữ liệu của kỳ đánh giá trước.</div> }} />
       </Surface>
     </div>
   );

@@ -31,7 +31,7 @@ export const commissionEstimateApi = {
 };
 
 const money = (value: number, currency: string) =>
-  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: currency || 'VND', maximumFractionDigits: 0 }).format(value);
+  `${value.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} ${!currency || currency === 'VND' ? 'đ' : currency}`;
 
 const friendlyExplanation = (value: string) => value
   .replace(/\bClient\b/gi, 'doanh nghiệp')
@@ -63,7 +63,7 @@ export const CommissionEstimateCard: React.FC<{ jobId: string }> = ({ jobId }) =
   return (
     <section aria-label="Hoa hồng ước tính" className="rounded-lg border border-solid border-gray-200 bg-white p-4">
       <h2 className="m-0 text-[15px] font-bold text-gray-900">Hoa hồng ước tính</h2>
-      <div className="mt-1.5 text-2xl font-bold tabular-nums text-[color:var(--affiliate-cta,#C2410C)]">{headline ?? 'Không áp dụng'}</div>
+      <div className="mt-1.5 text-xl font-bold leading-snug tabular-nums text-[color:var(--affiliate-cta,#C2410C)]">{headline ?? 'Không áp dụng'}</div>
       <dl className="m-0 mt-3 space-y-2 text-[13px]">
         {estimate.data.feeMultiplier != null && (
           <div className="flex justify-between gap-2"><dt className="text-gray-600">Phí dịch vụ của doanh nghiệp</dt><dd className="m-0 text-right">{estimate.data.feeMultiplier} × lương tháng</dd></div>

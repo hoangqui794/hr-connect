@@ -89,6 +89,10 @@ export const router = createBrowserRouter([
     element: <RegisterPage />,
   },
   {
+    path: '/register/affiliate',
+    element: withSuspense(<AppRoutes.AffiliateRegisterPage />),
+  },
+  {
     path: '/verify-otp',
     element: withSuspense(<AppRoutes.VerifyOtpPage />),
   },
@@ -224,7 +228,7 @@ export const router = createBrowserRouter([
   { path: '/profile', element: <Navigate to="/candidate/profile" replace /> },
   { path: '/cv-builder', element: <Navigate to="/candidate/cv-builder" replace /> },
 
-  // ── Affiliate workspace (MF-02 branch B): light sidebar, violet accent ──────
+  // ── Affiliate workspace (MF-02 branch B): white sidebar, sky accent ──────
   {
     path: '/affiliate',
     element: (
@@ -243,6 +247,7 @@ export const router = createBrowserRouter([
       { path: 'submissions', element: <AppRoutes.AffiliateMySubmissionsPage /> },
       { path: 'submissions/:submissionId', element: <AppRoutes.AffiliateSubmissionDetailPage /> },
       { path: 'candidates', element: <AppRoutes.AffiliateCandidatesPage /> },
+      { path: 'candidates/:candidateId', element: <AppRoutes.AffiliateCandidateDetailPage /> },
       { path: 'attributions', element: <AppRoutes.AffiliateAttributionsPage /> },
       { path: 'performance', element: <AppRoutes.AffiliatePerformancePage /> },
       { path: 'disputes', element: <AppRoutes.AffiliateDisputesPage /> },

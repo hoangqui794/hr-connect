@@ -13,7 +13,7 @@ const scope = (primary: string, hover: string, bg: string, fontFamily?: string) 
       <ConfigProvider
         theme={{
           token: {
-            ...(fontFamily ? { fontFamily } : {}),
+            ...(fontFamily ? { fontFamily, colorTextPlaceholder: '#6B7280', colorTextDescription: '#6B7280' } : {}),
             colorPrimary: primary,
             colorPrimaryHover: hover,
             colorPrimaryActive: hover,
