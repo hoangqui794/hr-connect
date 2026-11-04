@@ -70,7 +70,11 @@ import 'dayjs/locale/vi';
 import { candidateApplicationsApi, candidateConsentApi, candidateCvApi } from '@/services/api/mf02Api';
 import { mf04Api, isCandidateOfferRespondable } from '@/services/api/mf04Api';
 import { CandidateInterviewDetailModal } from '@/features/candidates/CandidateInterviewDetailModal';
-import type { CandidateOfferSummaryDto } from '@/types/api/mf04';
+import type {
+  CandidateOfferSummaryDto,
+  OfferAcceptanceAction,
+  OfferAcceptanceImpact,
+} from '@/types/api/mf04';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
 import type { CandidateApplication, CandidateApplicationDisplayGroup } from '@/types/api/mf02';
@@ -1151,10 +1155,41 @@ export const CandidateApplicationDetailPage: React.FC = () => {
 
   // State for Offer Response Modal
   const [selectedOffer, setSelectedOffer] = useState<CandidateOfferSummaryDto | null>(null);
+  const [acceptanceImpact, setAcceptanceImpact] = useState<OfferAcceptanceImpact | null>(null);
+  const [acceptanceImpactLoading, setAcceptanceImpactLoading] = useState(false);
+  const [acceptanceAction, setAcceptanceAction] = useState<OfferAcceptanceAction>('KEEP_OTHER_PENDING_OFFERS');
   const [jobOverviewOpen, setJobOverviewOpen] = useState(false);
   const [offerResponseChoice, setOfferResponseChoice] = useState<'ACCEPTED' | 'DECLINED'>('ACCEPTED');
   const [declineReason, setDeclineReason] = useState('');
   const [selectedInterviewId, setSelectedInterviewId] = useState<string | null>(null);
+
+  const openOfferResponse = async (
+    offer: CandidateOfferSummaryDto,
+    response: 'ACCEPTED' | 'DECLINED'
+  ) => {
+    setSelectedOffer(offer);
+    setOfferResponseChoice(response);
+    setDeclineReason('');
+    setAcceptanceImpact(null);
+    setAcceptanceAction('KEEP_OTHER_PENDING_OFFERS');
+
+    if (response !== 'ACCEPTED') return;
+
+    try {
+      setAcceptanceImpactLoading(true);
+      const impact = await mf04Api.getOfferAcceptanceImpact(offer.offerId);
+      setAcceptanceImpact(impact);
+      if (impact.acceptedFullTimeOffer && !impact.activeFullTimePlacement) {
+        setAcceptanceAction('REPLACE_ACCEPTED_FULL_TIME_OFFER');
+      }
+    } catch (err: any) {
+      message.error(err?.response?.data?.message || 'Không thể kiểm tra các lời mời nhận việc khác.');
+      setSelectedOffer(null);
+    } finally {
+      setAcceptanceImpactLoading(false);
+    }
+  };
+
   const respondOfferMutation = useMutation({
     mutationFn: async () => {
       if (!selectedOffer) return;
@@ -1162,19 +1197,31 @@ export const CandidateApplicationDetailPage: React.FC = () => {
         response: offerResponseChoice,
         declineReason: offerResponseChoice === 'DECLINED' ? declineReason.trim() || undefined : undefined,
         concurrencyToken: selectedOffer.concurrencyToken,
+        acceptanceAction: offerResponseChoice === 'ACCEPTED' ? acceptanceAction : undefined,
       });
     },
     onSuccess: (res) => {
       message.success(res?.message || 'Đã phản hồi lời mời nhận việc thành công.');
       setSelectedOffer(null);
       setDeclineReason('');
+      setAcceptanceImpact(null);
+      setAcceptanceAction('KEEP_OTHER_PENDING_OFFERS');
       queryClient.invalidateQueries({ queryKey: candidateKeys.applicationDetail(applicationId) });
       queryClient.invalidateQueries({ queryKey: candidateKeys.applicationTimeline(applicationId) });
     },
     onError: (err: any) => {
       if (err?.response?.status === 409) {
+        const code = err?.response?.data?.errorCode || err?.response?.data?.code;
+        if (code === 'ACCEPTED_FULL_TIME_OFFER_EXISTS' || code === 'ACTIVE_FULL_TIME_PLACEMENT_EXISTS') {
+          message.error(err?.response?.data?.message || 'Không thể chấp nhận lời mời do có xung đột công việc toàn thời gian.');
+          if (selectedOffer) {
+            void mf04Api.getOfferAcceptanceImpact(selectedOffer.offerId).then(setAcceptanceImpact).catch(() => undefined);
+          }
+          return;
+        }
         message.warning('Trạng thái lời mời nhận việc đã thay đổi trên hệ thống. Đang tải lại...');
         setSelectedOffer(null);
+        setAcceptanceImpact(null);
         queryClient.invalidateQueries({ queryKey: candidateKeys.applicationDetail(applicationId) });
         queryClient.invalidateQueries({ queryKey: candidateKeys.applicationTimeline(applicationId) });
         return;
@@ -1517,9 +1564,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                             size="small"
                             className="!bg-blue-600 hover:!bg-blue-700 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] border-none"
                             onClick={() => {
-                              setSelectedOffer(offer);
-                              setOfferResponseChoice('ACCEPTED');
-                              setDeclineReason('');
+                              void openOfferResponse(offer, 'ACCEPTED');
                             }}
                           >
                             Chấp nhận
@@ -1528,9 +1573,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                             danger
                             size="small"
                             onClick={() => {
-                              setSelectedOffer(offer);
-                              setOfferResponseChoice('DECLINED');
-                              setDeclineReason('');
+                              void openOfferResponse(offer, 'DECLINED');
                             }}
                           >
                             Từ chối
@@ -1653,14 +1696,23 @@ export const CandidateApplicationDetailPage: React.FC = () => {
       <Modal
         title={`Phản hồi Thư nhận việc #${selectedOffer?.offerVersion || ''}`}
         open={Boolean(selectedOffer)}
-        onCancel={() => setSelectedOffer(null)}
+        onCancel={() => {
+          setSelectedOffer(null);
+          setAcceptanceImpact(null);
+          setAcceptanceAction('KEEP_OTHER_PENDING_OFFERS');
+        }}
         onOk={() => respondOfferMutation.mutate()}
         okText={offerResponseChoice === 'ACCEPTED' ? 'Xác nhận chấp nhận' : 'Xác nhận từ chối'}
         cancelText="Hủy"
         okButtonProps={{
           loading: respondOfferMutation.isPending,
           danger: offerResponseChoice === 'DECLINED',
-          disabled: offerResponseChoice === 'DECLINED' && !declineReason.trim(),
+          disabled:
+            (offerResponseChoice === 'DECLINED' && !declineReason.trim()) ||
+            (offerResponseChoice === 'ACCEPTED' &&
+              (acceptanceImpactLoading ||
+                !acceptanceImpact ||
+                Boolean(acceptanceImpact.activeFullTimePlacement))),
         }}
       >
         <div className="space-y-4">
@@ -1681,6 +1733,93 @@ export const CandidateApplicationDetailPage: React.FC = () => {
               <p className="text-xs text-slate-500 m-0 ml-6">Tôi xin phép từ chối cơ hội làm việc này.</p>
             </Radio>
           </Radio.Group>
+
+          {offerResponseChoice === 'ACCEPTED' && acceptanceImpactLoading && (
+            <Alert
+              type="info"
+              showIcon
+              message="Đang kiểm tra các lời mời nhận việc khác..."
+            />
+          )}
+
+          {offerResponseChoice === 'ACCEPTED' && acceptanceImpact?.activeFullTimePlacement && (
+            <Alert
+              type="error"
+              showIcon
+              message="Đã có công việc toàn thời gian đang hoạt động"
+              description={
+                <span>
+                  Bạn đang có vị trí <strong>{acceptanceImpact.activeFullTimePlacement.jobTitle}</strong> tại{' '}
+                  <strong>{acceptanceImpact.activeFullTimePlacement.companyName}</strong>. Vui lòng liên hệ bộ phận hỗ trợ nếu thông tin này không còn chính xác.
+                </span>
+              }
+            />
+          )}
+
+          {offerResponseChoice === 'ACCEPTED' &&
+            acceptanceImpact?.isFullTime &&
+            !acceptanceImpact.activeFullTimePlacement &&
+            acceptanceImpact.acceptedFullTimeOffer && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <p className="m-0 text-sm font-semibold text-amber-900">
+                  Bạn đã chấp nhận một Offer toàn thời gian khác
+                </p>
+                <p className="mb-3 mt-1 text-xs text-amber-800">
+                  {acceptanceImpact.acceptedFullTimeOffer.jobTitle} tại{' '}
+                  {acceptanceImpact.acceptedFullTimeOffer.companyName}. Nếu chuyển sang Offer mới, hồ sơ cũ sẽ được rút và nhà tuyển dụng cũ sẽ nhận thông báo, nhưng không được biết tên công ty mới.
+                </p>
+                <Radio.Group
+                  value={acceptanceAction}
+                  onChange={(event) => setAcceptanceAction(event.target.value)}
+                >
+                  <Radio value="REPLACE_ACCEPTED_FULL_TIME_OFFER">
+                    Chuyển sang Offer mới và rút Offer đã chấp nhận trước đó
+                  </Radio>
+                </Radio.Group>
+              </div>
+            )}
+
+          {offerResponseChoice === 'ACCEPTED' &&
+            acceptanceImpact?.isFullTime &&
+            !acceptanceImpact.activeFullTimePlacement &&
+            !acceptanceImpact.acceptedFullTimeOffer &&
+            acceptanceImpact.otherPendingFullTimeOffers.length > 0 && (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                <p className="m-0 text-sm font-semibold text-blue-900">
+                  Bạn còn {acceptanceImpact.otherPendingFullTimeOffers.length} Offer toàn thời gian đang chờ phản hồi
+                </p>
+                <ul className="mb-3 mt-2 list-disc pl-5 text-xs text-blue-800">
+                  {acceptanceImpact.otherPendingFullTimeOffers.map((item) => (
+                    <li key={item.offerId}>{item.jobTitle} — {item.companyName}</li>
+                  ))}
+                </ul>
+                <Radio.Group
+                  value={acceptanceAction}
+                  onChange={(event) => setAcceptanceAction(event.target.value)}
+                  className="space-y-2"
+                >
+                  <Radio value="KEEP_OTHER_PENDING_OFFERS" className="block">
+                    Chấp nhận và vẫn giữ các Offer đang chờ
+                  </Radio>
+                  <Radio value="WITHDRAW_OTHER_PENDING_FULL_TIME_OFFERS" className="block">
+                    Chấp nhận và rút các Offer toàn thời gian đang chờ
+                  </Radio>
+                </Radio.Group>
+              </div>
+            )}
+
+          {offerResponseChoice === 'ACCEPTED' &&
+            acceptanceImpact &&
+            !acceptanceImpact.activeFullTimePlacement &&
+            !acceptanceImpact.acceptedFullTimeOffer &&
+            acceptanceImpact.otherPendingFullTimeOffers.length === 0 && (
+              <Alert
+                type="info"
+                showIcon
+                message="Chấp nhận Offer chưa phải là xác nhận đã đi làm"
+                description="Phí và hoa hồng chỉ được xử lý sau khi doanh nghiệp xác nhận ngày bắt đầu làm việc thực tế."
+              />
+            )}
 
           {offerResponseChoice === 'DECLINED' && (
             <div className="mt-3">

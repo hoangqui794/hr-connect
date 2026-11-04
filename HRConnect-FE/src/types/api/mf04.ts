@@ -206,4 +206,30 @@ export interface RespondOfferRequest {
   response: 'ACCEPTED' | 'DECLINED';
   declineReason?: string;
   concurrencyToken?: string;
+  acceptanceAction?: OfferAcceptanceAction;
+}
+
+export type OfferAcceptanceAction =
+  | 'KEEP_OTHER_PENDING_OFFERS'
+  | 'WITHDRAW_OTHER_PENDING_FULL_TIME_OFFERS'
+  | 'REPLACE_ACCEPTED_FULL_TIME_OFFER';
+
+export interface OfferAcceptanceImpactItem {
+  offerId: string;
+  applicationId: string;
+  jobTitle: string;
+  companyName: string;
+  employmentType: string;
+  status: string;
+  plannedStartDate?: string | null;
+}
+
+export interface OfferAcceptanceImpact {
+  targetOfferId: string;
+  employmentType: string;
+  isFullTime: boolean;
+  acceptedFullTimeOffer?: OfferAcceptanceImpactItem | null;
+  otherPendingFullTimeOffers: OfferAcceptanceImpactItem[];
+  activeFullTimePlacement?: OfferAcceptanceImpactItem | null;
+  allowedActions: OfferAcceptanceAction[];
 }
