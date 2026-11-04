@@ -9,6 +9,7 @@ readonly CADDY_DIR="$DEPLOY_ROOT/caddy"
 readonly CURRENT_LINK="$DEPLOY_ROOT/current"
 readonly PREVIOUS_LINK="$DEPLOY_ROOT/previous"
 readonly ACTIVE_COLOR_FILE="$STATE_DIR/active-color"
+readonly AI_ACTIVE_COLOR_FILE="$DATA_DIR/ai-v2/active-color"
 readonly DEPLOY_LOCK_FILE="$STATE_DIR/deploy.lock"
 readonly CADDY_CONFIG="$CADDY_DIR/Caddyfile"
 readonly CADDY_UPSTREAMS="$CADDY_DIR/active-upstreams.caddy"
@@ -96,6 +97,25 @@ wait_for_color() {
   wait_for_url "Backend $color live" "http://127.0.0.1:$(color_backend_port "$color")/health/live" \
     && wait_for_url "Backend $color ready" "http://127.0.0.1:$(color_backend_port "$color")/health/ready" \
     && wait_for_url "AI v2 $color" "http://127.0.0.1:$(color_ai_port "$color")/health"
+}
+
+wait_for_worker_state() {
+  local color="$1"
+  local expected="$2"
+  local expected_json='false'
+  [[ "$expected" == 'active' ]] && expected_json='true'
+  local url="http://127.0.0.1:$(color_ai_port "$color")/health/worker"
+  local response=''
+  for ((attempt = 1; attempt <= HEALTH_ATTEMPTS; attempt++)); do
+    response="$(curl --silent --show-error --fail --connect-timeout 5 --max-time 15 "$url" || true)"
+    if grep -q "\"workersActive\":$expected_json" <<< "$response"; then
+      echo "AI worker $color is $expected."
+      return 0
+    fi
+    echo "Waiting for AI worker $color to become $expected ($attempt/$HEALTH_ATTEMPTS)."
+    (( attempt < HEALTH_ATTEMPTS )) && sleep "$HEALTH_DELAY_SECONDS"
+  done
+  return 1
 }
 
 wait_for_public_stack() {
@@ -207,9 +227,9 @@ for command_name in docker curl caddy flock; do
 done
 docker compose version > /dev/null || fail 'Docker Compose is not available.'
 
-mkdir -p "$RELEASES_DIR" "$STATE_DIR" "$DATA_DIR/ai-v2/blue" "$DATA_DIR/ai-v2/green" "$CADDY_DIR"
+mkdir -p "$RELEASES_DIR" "$STATE_DIR" "$DATA_DIR/ai-v2" "$CADDY_DIR"
 chmod 700 "$STATE_DIR"
-chmod 750 "$DATA_DIR" "$DATA_DIR/ai-v2" "$DATA_DIR/ai-v2/blue" "$DATA_DIR/ai-v2/green"
+chmod 750 "$DATA_DIR" "$DATA_DIR/ai-v2"
 exec 9>"$DEPLOY_LOCK_FILE"
 flock -n 9 || fail 'Another production deployment is already running.'
 
@@ -239,6 +259,34 @@ if ! compose_color "$RELEASE_DIR" "$target_color" up -d --remove-orphans || ! wa
   exit 1
 fi
 
+# The API can be healthy while inactive, but only the elected color may accept/process scoring jobs.
+# A handoff marker first drains/cancels the old worker before the new worker reads the shared queue.
+if [[ "$active_color" == 'blue' || "$active_color" == 'green' ]]; then
+  echo "Pausing AI workers before handing the persistent queue to $target_color..."
+  atomic_write 'handoff' "$AI_ACTIVE_COLOR_FILE"
+  if ! wait_for_worker_state "$active_color" inactive \
+    || ! wait_for_worker_state "$target_color" inactive; then
+    echo "AI queue handoff failed; restoring worker ownership to $active_color." >&2
+    atomic_write "$active_color" "$AI_ACTIVE_COLOR_FILE"
+    wait_for_worker_state "$active_color" active || true
+    stop_color "$RELEASE_DIR" "$target_color"
+    fail "AI workers did not enter a safe handoff state; active color remains $active_color."
+    exit 1
+  fi
+fi
+atomic_write "$target_color" "$AI_ACTIVE_COLOR_FILE"
+if ! wait_for_worker_state "$target_color" active; then
+  if [[ "$active_color" == 'blue' || "$active_color" == 'green' ]]; then
+    atomic_write "$active_color" "$AI_ACTIVE_COLOR_FILE"
+    wait_for_worker_state "$active_color" active || true
+  else
+    rm -f "$AI_ACTIVE_COLOR_FILE"
+  fi
+  stop_color "$RELEASE_DIR" "$target_color"
+  fail "Target AI worker $target_color did not acquire the persistent queue."
+  exit 1
+fi
+
 readonly CADDY_CONFIG_BACKUP="$STATE_DIR/Caddyfile.before-$DEPLOY_SHA"
 readonly CADDY_UPSTREAMS_BACKUP="$STATE_DIR/active-upstreams.before-$DEPLOY_SHA"
 [[ -f "$CADDY_CONFIG" ]] && cp -f "$CADDY_CONFIG" "$CADDY_CONFIG_BACKUP"
@@ -253,8 +301,14 @@ mv -f "$CADDY_CONFIG.new" "$CADDY_CONFIG"
 resolved_system_config="$(readlink -f "$CADDY_SYSTEM_CONFIG" 2>/dev/null || true)"
 resolved_managed_config="$(readlink -f "$CADDY_CONFIG")"
 if [[ "$resolved_system_config" != "$resolved_managed_config" ]]; then
-  stop_color "$RELEASE_DIR" "$target_color"
   restore_caddy "$CADDY_CONFIG_BACKUP" "$CADDY_UPSTREAMS_BACKUP" || true
+  if [[ "$active_color" == 'blue' || "$active_color" == 'green' ]]; then
+    atomic_write "$active_color" "$AI_ACTIVE_COLOR_FILE"
+    wait_for_worker_state "$active_color" active || true
+  else
+    rm -f "$AI_ACTIVE_COLOR_FILE"
+  fi
+  stop_color "$RELEASE_DIR" "$target_color"
   fail "$CADDY_SYSTEM_CONFIG must be a symlink to $CADDY_CONFIG before automated blue-green deployment."
   exit 1
 fi
@@ -263,6 +317,12 @@ echo "Switching Caddy atomically to $target_color..."
 if ! activate_color "$target_color" || ! wait_for_public_stack; then
   echo 'Post-switch smoke check failed; restoring the previous Caddy upstreams.' >&2
   restore_caddy "$CADDY_CONFIG_BACKUP" "$CADDY_UPSTREAMS_BACKUP" || true
+  if [[ "$active_color" == 'blue' || "$active_color" == 'green' ]]; then
+    atomic_write "$active_color" "$AI_ACTIVE_COLOR_FILE"
+    wait_for_worker_state "$active_color" active || true
+  else
+    atomic_write 'handoff' "$AI_ACTIVE_COLOR_FILE"
+  fi
   wait_for_public_stack || true
   stop_color "$RELEASE_DIR" "$target_color"
   fail "Traffic rollback completed; active color remains $active_color."

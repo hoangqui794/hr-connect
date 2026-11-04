@@ -86,6 +86,11 @@ def health() -> dict:
     return {"status": "ok", "service": "ai-service-v2"}
 
 
+@app.get("/health/worker")
+def worker_health() -> dict:
+    return {"status": "ok", **scoring_job_queue.worker_status()}
+
+
 @app.post("/api/v1/match-file", response_model=FileMatchingResponse, response_model_by_alias=True,
           dependencies=[Depends(require_test_access)])
 async def match_file(

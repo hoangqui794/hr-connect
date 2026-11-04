@@ -131,6 +131,21 @@ def test_scoring_job_is_accepted(api, monkeypatch):
     assert seen == ["req-9"]
 
 
+def test_worker_health_exposes_queue_ownership(api):
+    response = api.get("/health/worker")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "ok",
+        "running": True,
+        "accepting": True,
+        "workersActive": True,
+        "workerCount": 1,
+        "deployColor": None,
+        "pendingJobs": 0,
+    }
+
+
 def test_marketing_years_gap_is_explained():
     from app.schemas import MatchStatus, Requirement, RequirementResult
     from app.scoring_jobs import _years_gap
@@ -248,6 +263,105 @@ async def test_finished_job_is_removed_from_the_file(tmp_path):
     await asyncio.sleep(0.05)
     await queue.stop()
     assert json.loads((tmp_path / "q.json").read_text()) == []
+
+
+@pytest.mark.anyio
+async def test_duplicate_request_is_not_enqueued_twice(tmp_path):
+    from app.scoring_jobs import ScoringJobQueue, ScoringJobRequest
+
+    settings = Settings(scoring_queue_file=str(tmp_path / "q.json"), scoring_worker_count=1)
+    queue = ScoringJobQueue()
+    await queue.start(settings, _BlockingOrchestrator())
+    job = ScoringJobRequest(requestId="r1", applicationId="a", cvId="c", jobId="j", attemptNo=1)
+    assert await queue.enqueue(job) is True
+    assert await queue.enqueue(job) is False
+    await queue.stop()
+    assert [item["requestId"] for item in json.loads((tmp_path / "q.json").read_text())] == ["r1"]
+
+
+@pytest.mark.anyio
+async def test_failed_callback_keeps_job_pending_for_restart(tmp_path):
+    from app.scoring_jobs import ScoringJobQueue, ScoringJobRequest
+
+    class CallbackUnavailable:
+        async def process(self, job):
+            raise RuntimeError("provider failed")
+
+        async def callback_failed(self, job, code, message):
+            raise RuntimeError("backend callback failed")
+
+    settings = Settings(scoring_queue_file=str(tmp_path / "q.json"), scoring_worker_count=1)
+    queue = ScoringJobQueue()
+    await queue.start(settings, CallbackUnavailable())
+    await queue.enqueue(
+        ScoringJobRequest(requestId="r1", applicationId="a", cvId="c", jobId="j", attemptNo=1)
+    )
+    await asyncio.sleep(0.05)
+    await queue.stop()
+    assert [item["requestId"] for item in json.loads((tmp_path / "q.json").read_text())] == ["r1"]
+
+
+@pytest.mark.anyio
+async def test_corrupt_queue_file_is_quarantined(tmp_path):
+    from app.scoring_jobs import ScoringJobQueue
+
+    queue_file = tmp_path / "q.json"
+    queue_file.write_text("not-json", encoding="utf-8")
+    settings = Settings(scoring_queue_file=str(queue_file), scoring_worker_count=1)
+    queue = ScoringJobQueue()
+    await queue.start(settings, _BlockingOrchestrator())
+    await queue.stop()
+
+    assert json.loads(queue_file.read_text(encoding="utf-8")) == []
+    quarantined = list(tmp_path.glob("q.json.corrupt-*"))
+    assert len(quarantined) == 1
+    assert quarantined[0].read_text(encoding="utf-8") == "not-json"
+
+
+@pytest.mark.anyio
+async def test_only_active_deployment_color_accepts_and_processes_jobs(tmp_path):
+    from app.scoring_jobs import ScoringJobQueue, ScoringJobRequest
+
+    class Done:
+        def __init__(self):
+            self.seen = []
+
+        async def process(self, job):
+            self.seen.append(job.request_id)
+
+        async def callback_failed(self, job, code, message):
+            pass
+
+    marker = tmp_path / "active-color"
+    marker.write_text("blue\n", encoding="utf-8")
+    settings = Settings(
+        scoring_queue_file=str(tmp_path / "q.json"),
+        scoring_worker_count=1,
+        scoring_active_color_file=str(marker),
+        scoring_activation_poll_seconds=0.1,
+        deploy_color="green",
+    )
+    orchestrator = Done()
+    queue = ScoringJobQueue()
+    await queue.start(settings, orchestrator)
+    job = ScoringJobRequest(requestId="r1", applicationId="a", cvId="c", jobId="j", attemptNo=1)
+
+    await asyncio.sleep(0.12)
+    assert queue.worker_status()["workersActive"] is False
+    with pytest.raises(RuntimeError, match="not active"):
+        await queue.enqueue(job)
+
+    marker.write_text("green\n", encoding="utf-8")
+    await asyncio.sleep(0.12)
+    assert queue.worker_status()["workersActive"] is True
+    assert await queue.enqueue(job) is True
+    await asyncio.sleep(0.05)
+    assert orchestrator.seen == ["r1"]
+
+    marker.write_text("handoff\n", encoding="utf-8")
+    await asyncio.sleep(0.12)
+    assert queue.worker_status()["workersActive"] is False
+    await queue.stop()
 
 
 @pytest.fixture

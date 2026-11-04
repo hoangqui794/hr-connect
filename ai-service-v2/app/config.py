@@ -68,6 +68,11 @@ class Settings(BaseSettings):
     scoring_queue_size: int = 100
     # One worker keeps LLM calls within provider rate limits.
     scoring_worker_count: int = 1
+    # Blue-green production only: both colors share the queue file, while this marker elects the
+    # single color allowed to accept and process scoring jobs. Empty keeps local/dev behavior unchanged.
+    scoring_active_color_file: str = ""
+    deploy_color: str = ""
+    scoring_activation_poll_seconds: float = 0.5
     # Whole scoring job (download + LLM with retries + scoring). Past it the backend gets FAILED / AI_TIMEOUT
     # and routes the application to manual review instead of waiting forever.
     scoring_job_timeout_seconds: float = 300.0

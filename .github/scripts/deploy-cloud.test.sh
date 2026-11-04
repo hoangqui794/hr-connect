@@ -45,6 +45,16 @@ case "${MOCK_CURL_MODE:-success}" in
   direct-failure) [[ "$url" == http://127.0.0.1:* ]] && exit 22 ;;
   public-failure) [[ "$url" == https://* ]] && exit 22 ;;
 esac
+if [[ "$url" == */health/worker ]]; then
+  color='blue'
+  [[ "$url" == *':28001/'* ]] && color='green'
+  selected="$(cat "$MOCK_AI_ACTIVE_COLOR_FILE" 2>/dev/null || true)"
+  if [[ "$selected" == "$color" ]]; then
+    printf '{"workersActive":true}\n'
+  else
+    printf '{"workersActive":false}\n'
+  fi
+fi
 exit 0
 MOCK_CURL
 
@@ -92,6 +102,7 @@ run_deploy() {
     MOCK_CURL_LOG="$fixture_dir/curl.log" \
     MOCK_CADDY_LOG="$fixture_dir/caddy.log" \
     MOCK_SUDO_LOG="$fixture_dir/sudo.log" \
+    MOCK_AI_ACTIVE_COLOR_FILE="$fixture_dir/deploy/data/ai-v2/active-color" \
     MOCK_CURL_MODE="$curl_mode" \
     bash "$DEPLOY_SCRIPT"
 }
@@ -112,6 +123,7 @@ trap 'rm -rf "$success_fixture" "$pre_switch_fixture" "$rollback_fixture" "$inva
 make_fixture "$success_fixture"
 run_deploy "$success_fixture" "$FIRST_SHA"
 grep -q '^blue$' "$success_fixture/deploy/state/active-color" || fail 'First deployment did not activate blue.'
+grep -q '^blue$' "$success_fixture/deploy/data/ai-v2/active-color" || fail 'First deployment did not activate the blue AI worker.'
 grep -q '127.0.0.1:18080' "$success_fixture/deploy/caddy/active-upstreams.caddy" || fail 'Backend did not switch to blue.'
 grep -q '127.0.0.1:18001' "$success_fixture/deploy/caddy/active-upstreams.caddy" || fail 'AI did not switch to blue.'
 grep -q -- '--project-name hrconnect-blue.*run --rm --no-deps backend --migrate' "$success_fixture/docker.log" || fail 'Migration did not run before startup.'
@@ -125,6 +137,7 @@ assert_no_destructive_cleanup "$success_fixture/docker.log"
 add_release "$success_fixture" "$SECOND_SHA"
 run_deploy "$success_fixture" "$SECOND_SHA"
 grep -q '^green$' "$success_fixture/deploy/state/active-color" || fail 'Second deployment did not activate green.'
+grep -q '^green$' "$success_fixture/deploy/data/ai-v2/active-color" || fail 'Second deployment did not hand the AI queue to green.'
 grep -q '127.0.0.1:28080' "$success_fixture/deploy/caddy/active-upstreams.caddy" || fail 'Backend did not switch to green.'
 if [[ "${OSTYPE:-}" != msys* && "${OSTYPE:-}" != cygwin* ]]; then
   grep -q -- '--project-name hrconnect-blue.*down --remove-orphans' "$success_fixture/docker.log" || fail 'Previous blue services were not stopped.'
@@ -156,6 +169,8 @@ AI_ENV_FILE=/tmp/ai.env
 AI_DATA_DIR=/tmp/ai-data
 EOF
 printf 'blue\n' > "$rollback_fixture/deploy/state/active-color"
+mkdir -p "$rollback_fixture/deploy/data/ai-v2"
+printf 'blue\n' > "$rollback_fixture/deploy/data/ai-v2/active-color"
 cat > "$rollback_fixture/deploy/caddy/active-upstreams.caddy" <<'EOF'
 (backend_upstream) {
 	reverse_proxy 127.0.0.1:18080

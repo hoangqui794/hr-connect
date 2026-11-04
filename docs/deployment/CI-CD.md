@@ -57,7 +57,9 @@ Các file secrets không được đưa lên GitHub:
 │   ├── Caddyfile
 │   └── active-upstreams.caddy
 ├── data/
-│   └── ai-v2/            # hàng đợi AI bền vững cho blue/green
+│   └── ai-v2/
+│       ├── pending-scoring-jobs.json # hàng đợi AI dùng chung, ghi atomic + fsync
+│       └── active-color             # màu duy nhất được nhận/xử lý job AI
 ├── state/
 │   ├── active-color      # blue hoặc green
 │   └── deploy.lock       # chặn hai lượt deploy đồng thời
@@ -68,6 +70,13 @@ Các file secrets không được đưa lên GitHub:
 ```
 
 Workflow chỉ tải manifest triển khai và image. Nó không đọc, ghi hoặc đưa nội dung hai file `.env` vào log.
+
+Khi chuyển blue/green, script ghi trạng thái `handoff` để dừng worker cũ, xác nhận cả hai màu
+đều không xử lý queue, rồi mới trao `active-color` cho màu mới. API của màu chưa active vẫn trả
+health bình thường nhưng endpoint nhận job trả `503`, để dispatcher bền vững phía backend thử lại.
+Job chỉ bị xóa khỏi file queue sau khi callback về backend thành công; mất điện, restart hoặc callback
+tạm lỗi không làm mất job. Nếu file JSON hỏng, service cách ly file với hậu tố `corrupt-<timestamp>`
+thay vì ghi đè bằng một queue rỗng.
 
 ## 4. Chuẩn bị tài khoản triển khai
 

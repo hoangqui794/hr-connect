@@ -10,7 +10,10 @@ services:
       - MALLOC_ARENA_MAX=2
       - OMP_NUM_THREADS=2
       - TORCH_NUM_THREADS=2
-      - SCORING_QUEUE_FILE=/var/lib/hrconnect-ai/${DEPLOY_COLOR:?DEPLOY_COLOR is required}/pending-scoring-jobs.json
+      - DEPLOY_COLOR=${DEPLOY_COLOR:?DEPLOY_COLOR is required}
+      - SCORING_QUEUE_FILE=/var/lib/hrconnect-ai/pending-scoring-jobs.json
+      - SCORING_ACTIVE_COLOR_FILE=/var/lib/hrconnect-ai/active-color
+      - SCORING_ACTIVATION_POLL_SECONDS=0.25
     volumes:
       - ${AI_DATA_DIR:-/opt/hrconnect/deploy/data/ai-v2}:/var/lib/hrconnect-ai
     mem_limit: 1200m
