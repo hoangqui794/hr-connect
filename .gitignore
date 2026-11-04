@@ -100,3 +100,8 @@ docker-compose*.yml
 
 # Reports (Report 1-5, Review 2 forms BM01-BM04) are kept outside the repository.
 docs/reports/
+
+# Coverage results
+coverage/
+**/coverage/
+.coverage*

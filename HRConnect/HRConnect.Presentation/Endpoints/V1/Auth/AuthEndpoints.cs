@@ -241,6 +241,8 @@ public static class AuthEndpoints
         // 5. Đăng nhập hệ thống
         group.MapPost("/login", async (
             [FromBody] LoginCommand command,
+            HttpContext httpContext,
+            [FromServices] IHostEnvironment environment,
             [FromServices] ISender sender,
             [FromServices] IValidator<LoginCommand> validator,
             CancellationToken cancellationToken) =>
@@ -263,6 +265,14 @@ public static class AuthEndpoints
             try
             {
                 var result = await sender.Send(command, cancellationToken);
+                if (result.Data is not null && !string.IsNullOrWhiteSpace(result.Data.RefreshToken))
+                {
+                    RefreshTokenCookie.Write(
+                        httpContext.Response,
+                        result.Data.RefreshToken,
+                        result.Data.RefreshTokenExpiresAt,
+                        environment);
+                }
                 return Results.Ok(result);
             }
             catch (UnauthorizedException ex)
@@ -516,11 +526,26 @@ public static class AuthEndpoints
 
         // 10. Làm mới token (Refresh Token Rotation)
         group.MapPost("/refresh-token", async (
-            [FromBody] RefreshTokenCommand command,
+            HttpContext httpContext,
+            [FromServices] IHostEnvironment environment,
             [FromServices] ISender sender,
             [FromServices] IValidator<RefreshTokenCommand> validator,
             CancellationToken cancellationToken) =>
         {
+            var refreshToken = RefreshTokenCookie.Read(httpContext.Request)
+                ?? await ReadLegacyRefreshTokenAsync(httpContext.Request, environment, cancellationToken);
+
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                RefreshTokenCookie.Delete(httpContext.Response, environment);
+                return Results.Json(new
+                {
+                    success = false,
+                    message = "Phiên đăng nhập không hợp lệ hoặc đã hết hạn."
+                }, statusCode: StatusCodes.Status401Unauthorized);
+            }
+
+            var command = new RefreshTokenCommand(refreshToken);
             var validationResult = await validator.ValidateAsync(command, cancellationToken);
             if (!validationResult.IsValid)
             {
@@ -539,10 +564,19 @@ public static class AuthEndpoints
             try
             {
                 var result = await sender.Send(command, cancellationToken);
+                if (result.Data is not null && !string.IsNullOrWhiteSpace(result.Data.RefreshToken))
+                {
+                    RefreshTokenCookie.Write(
+                        httpContext.Response,
+                        result.Data.RefreshToken,
+                        result.Data.RefreshTokenExpiresAt,
+                        environment);
+                }
                 return Results.Ok(result);
             }
             catch (BadRequestException ex)
             {
+                RefreshTokenCookie.Delete(httpContext.Response, environment);
                 return Results.BadRequest(new
                 {
                     success = false,
@@ -551,6 +585,7 @@ public static class AuthEndpoints
             }
             catch (ForbiddenException ex)
             {
+                RefreshTokenCookie.Delete(httpContext.Response, environment);
                 return Results.Json(new
                 {
                     success = false,
@@ -559,6 +594,7 @@ public static class AuthEndpoints
             }
             catch (UnauthorizedException ex)
             {
+                RefreshTokenCookie.Delete(httpContext.Response, environment);
                 return Results.Json(new
                 {
                     success = false,
@@ -569,7 +605,7 @@ public static class AuthEndpoints
         .AllowAnonymous()
         .WithName("RefreshToken")
         .WithSummary("Làm mới Access Token (Refresh Token Rotation)")
-        .WithDescription("Gửi Refresh Token hợp lệ để nhận cặp Access Token mới và Refresh Token mới. Token cũ sẽ bị vô hiệu hóa ngay sau khi xoay vòng thành công.")
+        .WithDescription("Dùng Refresh Token trong cookie HttpOnly để nhận Access Token mới. Refresh Token được xoay vòng trong cookie và token cũ bị vô hiệu hóa ngay.")
         .Produces<RefreshTokenResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status403Forbidden)
@@ -577,8 +613,9 @@ public static class AuthEndpoints
 
         // 11. Đăng xuất (Thu hồi Refresh Token hiện tại)
         group.MapPost("/logout", async (
-            [FromBody] LogoutCommand command,
+            HttpContext httpContext,
             ClaimsPrincipal user,
+            [FromServices] IHostEnvironment environment,
             [FromServices] ISender sender,
             [FromServices] IValidator<LogoutCommand> validator,
             CancellationToken cancellationToken) =>
@@ -588,9 +625,19 @@ public static class AuthEndpoints
 
             if (string.IsNullOrWhiteSpace(userIdString) || !Guid.TryParse(userIdString, out var userId))
             {
+                RefreshTokenCookie.Delete(httpContext.Response, environment);
                 return UnauthorizedResponse();
             }
 
+            var refreshToken = RefreshTokenCookie.Read(httpContext.Request)
+                ?? await ReadLegacyRefreshTokenAsync(httpContext.Request, environment, cancellationToken);
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                RefreshTokenCookie.Delete(httpContext.Response, environment);
+                return Results.Ok(new LogoutResponse());
+            }
+
+            var command = new LogoutCommand(refreshToken);
             command.UserId = userId;
 
             var validationResult = await validator.ValidateAsync(command, cancellationToken);
@@ -621,18 +668,24 @@ public static class AuthEndpoints
                     message = ex.Message
                 }, statusCode: StatusCodes.Status401Unauthorized);
             }
+            finally
+            {
+                RefreshTokenCookie.Delete(httpContext.Response, environment);
+            }
         })
         .RequireAuthorization()
         .WithName("Logout")
         .WithSummary("Đăng xuất tài khoản (Thu hồi phiên Refresh Token)")
-        .WithDescription("Người dùng đã đăng nhập gửi Refresh Token để thu hồi phiên làm việc hiện tại trên hệ thống.")
+        .WithDescription("Thu hồi Refresh Token trong cookie HttpOnly của phiên hiện tại và xóa cookie khỏi trình duyệt.")
         .Produces<LogoutResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized);
 
         // 12. Đăng xuất khỏi tất cả thiết bị (Thu hồi toàn bộ Refresh Token của người dùng)
         group.MapPost("/logout-all", async (
+            HttpContext httpContext,
             ClaimsPrincipal user,
+            [FromServices] IHostEnvironment environment,
             [FromServices] ISender sender,
             CancellationToken cancellationToken) =>
         {
@@ -641,6 +694,7 @@ public static class AuthEndpoints
 
             if (string.IsNullOrWhiteSpace(userIdString) || !Guid.TryParse(userIdString, out var userId))
             {
+                RefreshTokenCookie.Delete(httpContext.Response, environment);
                 return UnauthorizedResponse();
             }
 
@@ -658,6 +712,10 @@ public static class AuthEndpoints
                     success = false,
                     message = ex.Message
                 }, statusCode: StatusCodes.Status401Unauthorized);
+            }
+            finally
+            {
+                RefreshTokenCookie.Delete(httpContext.Response, environment);
             }
         })
         .RequireAuthorization()
@@ -744,4 +802,25 @@ public static class AuthEndpoints
         success = false,
         message = "Bạn chưa đăng nhập hoặc phiên đăng nhập không hợp lệ."
     }, statusCode: StatusCodes.Status401Unauthorized);
+
+    private static async Task<string?> ReadLegacyRefreshTokenAsync(
+        HttpRequest request,
+        IHostEnvironment environment,
+        CancellationToken cancellationToken)
+    {
+        if (environment.IsProduction() || request.ContentLength is not > 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            var legacyRequest = await request.ReadFromJsonAsync<RefreshTokenCommand>(cancellationToken);
+            return legacyRequest?.RefreshToken;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }

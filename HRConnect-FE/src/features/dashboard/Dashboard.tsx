@@ -3,7 +3,7 @@ import { Card, Typography, Button, Spin } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
-import { getDashboardRouteForRole } from '@/routes/AppRoutes';
+import { getDashboardRouteForRole } from '@/routes/routeHelpers';
 
 const { Title, Text } = Typography;
 

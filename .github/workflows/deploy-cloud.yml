@@ -140,6 +140,7 @@ jobs:
             "mkdir -p '$remote_release'"
           scp -i "$HOME/.ssh/id_ed25519" -P "$PROD_SSH_PORT" \
             deploy/compose.prod.yml \
+            deploy/caddy/Caddyfile \
             deploy/scripts/deploy-production.sh \
             "$PROD_SSH_USER@$PROD_SSH_HOST:$remote_release/"
 

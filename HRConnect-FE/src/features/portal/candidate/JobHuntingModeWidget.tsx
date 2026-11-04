@@ -19,7 +19,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { candidateCvApi } from '@/services/api/mf02Api';
 import { mf04Api } from '@/services/api/mf04Api';
 import type { CandidateCv } from '@/types/api/mf02';
-import { candidateKeys } from '../CandidatePages';
+import { candidateKeys } from './candidateKeys';
 
 interface JobHuntingModeWidgetProps {
   cvs?: CandidateCv[];

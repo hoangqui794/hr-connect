@@ -41,6 +41,7 @@ export const resolveApiAssetUrl = (value?: string | null): string | null => {
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -76,14 +77,16 @@ let refreshInFlight: Promise<string | null> | null = null;
 const refreshAccessToken = (): Promise<string | null> => {
   if (!refreshInFlight) {
     refreshInFlight = (async () => {
-      const refreshToken = authTokenStorage.getRefreshToken();
-      if (!refreshToken) return null;
       try {
         // Plain axios, not apiClient, so this call never re-enters the interceptor.
         const response = await axios.post(
           `${API_BASE_URL}/auth/refresh-token`,
-          { refreshToken },
-          { headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, timeout: 15000 }
+          {},
+          {
+            withCredentials: true,
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            timeout: 15000,
+          }
         );
         const data = response.data?.data;
         if (!response.data?.success || !data?.accessToken) return null;
