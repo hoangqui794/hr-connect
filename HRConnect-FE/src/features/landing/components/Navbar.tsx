@@ -25,7 +25,7 @@ export const Navbar: React.FC = () => {
 
   const links: { to: string; label: string; active: boolean }[] = [
     {
-      to: isCandidate ? '/candidate/jobs?tab=all' : '/jobs',
+      to: '/jobs',
       label: 'Việc làm',
       active: location.pathname === '/' || location.pathname.startsWith('/jobs') || location.pathname.startsWith('/candidate/jobs'),
     },
