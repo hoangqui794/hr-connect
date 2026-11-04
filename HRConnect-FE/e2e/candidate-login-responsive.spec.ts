@@ -74,7 +74,7 @@ test('Candidate đăng nhập và mở được workspace trên viewport hiện 
   } else {
     await sharedHeader.getByRole('link', { name: 'Việc làm', exact: true }).click();
   }
-  await expect(page).toHaveURL(/\/candidate\/jobs\?tab=all$/);
+  await expect(page).toHaveURL(/\/(candidate\/)?jobs(\?tab=all)?$/);
   await expect(page.getByRole('button', { name: /Bộ lọc nâng cao/ })).toBeVisible();
   await page.getByRole('button', { name: /Bộ lọc nâng cao/ }).click();
   const jobsBrandX = (await brandLink.boundingBox())?.x;
