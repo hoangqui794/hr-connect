@@ -78,7 +78,7 @@ export const router = createBrowserRouter([
   // ── Public routes (no AppShell) ────────────────────────────────────────────
   {
     path: '/',
-    element: <LandingPage />,
+    element: <CandidateScope><LandingPage /></CandidateScope>,
   },
   {
     path: '/login',
@@ -99,6 +99,14 @@ export const router = createBrowserRouter([
   {
     path: '/auth/verify',
     element: withSuspense(<AppRoutes.VerifyOtpPage />),
+  },
+  {
+    path: '/companies',
+    element: withSuspense(<CandidateScope><AppRoutes.CompaniesPage /></CandidateScope>),
+  },
+  {
+    path: '/companies/:companyId',
+    element: withSuspense(<CandidateScope><AppRoutes.CompanyDetailPage /></CandidateScope>),
   },
   {
     path: '/services',
@@ -194,7 +202,7 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // ── Candidate workspace (MF-02 branch A): top navigation, blue accent ─────────
+  // ── Candidate workspace (MF-02 branch A): site header, sky accent ─────────
   {
     path: '/candidate',
     element: (
@@ -205,8 +213,9 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <Navigate to="/candidate/dashboard" replace /> },
-      { path: 'dashboard', element: <AppRoutes.CandidateHomePage /> },
+      // A Candidate's home is the site homepage (mockup 03/11).
+      { index: true, element: <Navigate to="/" replace /> },
+      { path: 'dashboard', element: <Navigate to="/" replace /> },
       { path: 'jobs', element: <AppRoutes.CandidateJobsPage /> },
       { path: 'jobs/:jobId', element: <AppRoutes.CandidateJobDetailPage /> },
       { path: 'applications', element: <AppRoutes.CandidateMyApplicationsPage /> },

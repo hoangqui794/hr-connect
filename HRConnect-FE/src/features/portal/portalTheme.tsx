@@ -1,7 +1,7 @@
 /**
  * @file portalTheme.tsx
  * @description Candidate and Affiliate workspace palettes (ui-ux-pro-max, chosen 2026-10-08).
- * Candidate: Flat/Swiss, royal blue #2563EB with navy text and a light-blue workspace.
+ * Candidate and guest pages share the Affiliate palette below (mockup 03/11).
  * Affiliate (mockup 03/11): sky #0369A1 (white 5.9:1), navy brand #0C4A6E, orange #C2410C for CTA and money.
  */
 import React from 'react';
@@ -37,5 +37,5 @@ const scope = (primary: string, hover: string, bg: string, fontFamily?: string) 
     );
   };
 
-export const CandidateScope = scope('#2563EB', '#1D4ED8', '#EFF6FF');
+export const CandidateScope = scope('#0369A1', '#075985', '#E0F2FE', "'Be Vietnam Pro', system-ui, sans-serif");
 export const AffiliateScope = scope('#0369A1', '#075985', '#E0F2FE', "'Be Vietnam Pro', system-ui, sans-serif");
