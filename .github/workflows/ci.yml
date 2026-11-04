@@ -328,6 +328,7 @@ jobs:
           scanners: vuln
           severity: HIGH,CRITICAL
           ignore-unfixed: true
+          exit-code: '1'
           format: table
 
       - name: Scan repository for High/Critical vulnerabilities (SARIF report)
@@ -339,7 +340,8 @@ jobs:
           scanners: vuln
           severity: HIGH,CRITICAL
           ignore-unfixed: true
-          exit-code: '1'
+          limit-severities-for-sarif: true
+          exit-code: '0'
           format: sarif
           output: artifacts/security/trivy.sarif
 
