@@ -60,8 +60,16 @@ public static class ServiceFeeKinds
     public const string Settlement = "SETTLEMENT";
     /// <summary>The deposit exceeded what was delivered: refunded or deducted next time.</summary>
     public const string Credit = "CREDIT";
+    /// <summary>
+    /// HEADHUNT_COD: part of a paid fee returned to the Client when a replacement slot expired and no
+    /// candidate ever reached the Client. BaseSalary is the fee paid, FeeMultiplier the refund ratio.
+    /// </summary>
+    public const string ReplacementRefund = "REPLACEMENT_REFUND";
 
-    public static readonly string[] All = [Placement, Deposit, Settlement, Credit];
+    public static readonly string[] All = [Placement, Deposit, Settlement, Credit, ReplacementRefund];
+
+    /// <summary>Money HR Connect owes the Client: never reminded, never overdue, never paid online.</summary>
+    public static readonly string[] OwedToClient = [Credit, ReplacementRefund];
 
     /// <summary>Kinds that close a CV_SOURCING job; at most one of them exists per job.</summary>
     public static readonly string[] Closing = [Settlement, Credit];

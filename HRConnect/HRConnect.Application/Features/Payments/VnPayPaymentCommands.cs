@@ -239,7 +239,7 @@ public sealed class VnPayPaymentCommandHandlers(
             {
                 throw new NotFoundException("Không tìm thấy khoản phí của doanh nghiệp.");
             }
-            if (fee.Kind == ServiceFeeKinds.Credit || fee.Status is not (ServiceFeeStates.Pending or ServiceFeeStates.Due or ServiceFeeStates.Overdue))
+            if (ServiceFeeKinds.OwedToClient.Contains(fee.Kind) || fee.Status is not (ServiceFeeStates.Pending or ServiceFeeStates.Due or ServiceFeeStates.Overdue))
             {
                 throw new ConflictException("Khoản phí này không ở trạng thái cần thanh toán.", "FEE_NOT_PAYABLE");
             }

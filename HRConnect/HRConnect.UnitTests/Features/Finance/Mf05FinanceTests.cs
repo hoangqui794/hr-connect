@@ -906,6 +906,76 @@ public class Mf05FinanceTests
         (await _context.ReplacementSlots.SingleAsync()).Status.Should().Be(ReplacementSlotStates.Expired);
     }
 
+    private WarrantyProgressService ProgressWithRefundPercent(decimal percent)
+    {
+        var settings = new Mock<IAdminBusinessSettings>();
+        settings.Setup(s => s.GetDecimalAsync(BusinessSettingKeys.ReplacementRefundPercent, It.IsAny<CancellationToken>())).ReturnsAsync(percent);
+        settings.Setup(s => s.GetIntAsync(BusinessSettingKeys.HeadhuntPaymentDueDays, It.IsAny<CancellationToken>())).ReturnsAsync(20);
+        return new WarrantyProgressService(Repository, UnitOfWork, _audit.Object, settings: settings.Object);
+    }
+
+    private async Task<ReplacementSlot> ExpiredSlotReadyAsync()
+    {
+        var (placement, _) = await ResignationReportedAsync(feePaid: true);
+        await ConfirmResignationAsync(placement.PlacementId);
+        return await _context.ReplacementSlots.SingleAsync();
+    }
+
+    [Fact]
+    public async Task Expired_slot_with_nobody_sent_to_the_client_refunds_the_configured_share_of_the_fee()
+    {
+        var slot = await ExpiredSlotReadyAsync();
+        var paid = await _context.ServiceFees.SingleAsync(f => f.ServiceFeeId == slot.ServiceFeeId);
+
+        (await ProgressWithRefundPercent(30m).ExpireReplacementSlotAsync(slot.ReplacementSlotId, slot.ExpiresAt!.Value)).Should().BeTrue();
+
+        var refund = await _context.ServiceFees.SingleAsync(f => f.Kind == ServiceFeeKinds.ReplacementRefund);
+        refund.Amount.Should().Be(decimal.Round(paid.Amount * 0.3m, 0, MidpointRounding.AwayFromZero));
+        refund.BaseSalary.Should().Be(paid.Amount);
+        refund.Status.Should().Be(ServiceFeeStates.Pending);
+        refund.JobId.Should().Be(slot.JobId);
+        (await _context.ServiceFees.SingleAsync(f => f.ServiceFeeId == slot.ServiceFeeId)).Status.Should().Be(ServiceFeeStates.Paid);
+    }
+
+    [Fact]
+    public async Task Expired_slot_refunds_nothing_when_a_candidate_reached_the_client()
+    {
+        var slot = await ExpiredSlotReadyAsync();
+        var now = DateTime.UtcNow;
+        _context.ServiceTypes.Add(new ServiceType { ServiceTypeId = _serviceTypeId, Code = ServiceTypeCodesForTest.Headhunt, Name = "Tuyển qua Affiliate", IsActive = true });
+        _context.Applications.Add(new JobApplication
+        {
+            ApplicationId = Guid.NewGuid(), JobId = slot.JobId, CandidateId = Guid.NewGuid(), Status = ApplicationStates.Shortlisted,
+            AppliedAt = now, UpdatedAt = now, ConcurrencyToken = Guid.NewGuid(), ReplacementSlotId = slot.ReplacementSlotId,
+        });
+        await _context.SaveChangesAsync();
+
+        (await ProgressWithRefundPercent(30m).ExpireReplacementSlotAsync(slot.ReplacementSlotId, slot.ExpiresAt!.Value)).Should().BeTrue();
+
+        (await _context.ServiceFees.AnyAsync(f => f.Kind == ServiceFeeKinds.ReplacementRefund)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Expired_slot_refunds_nothing_when_the_percent_is_zero()
+    {
+        var slot = await ExpiredSlotReadyAsync();
+
+        (await ProgressWithRefundPercent(0m).ExpireReplacementSlotAsync(slot.ReplacementSlotId, slot.ExpiresAt!.Value)).Should().BeTrue();
+
+        (await _context.ServiceFees.AnyAsync(f => f.Kind == ServiceFeeKinds.ReplacementRefund)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Fee_owed_to_the_client_is_not_reminded_or_marked_overdue()
+    {
+        var slot = await ExpiredSlotReadyAsync();
+        await ProgressWithRefundPercent(30m).ExpireReplacementSlotAsync(slot.ReplacementSlotId, slot.ExpiresAt!.Value);
+        var refund = await _context.ServiceFees.SingleAsync(f => f.Kind == ServiceFeeKinds.ReplacementRefund);
+
+        (await Repository.GetOverdueServiceFeeIdsAsync(refund.DueDate.AddDays(1), 10)).Should().NotContain(refund.ServiceFeeId);
+        (await Repository.GetServiceFeeIdsDueSoonAsync(refund.DueDate, refund.DueDate, 10)).Should().NotContain(refund.ServiceFeeId);
+    }
+
     [Fact]
     public async Task Cancel_needs_the_current_token_and_an_open_or_waiting_slot()
     {

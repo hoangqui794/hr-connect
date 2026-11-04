@@ -1,6 +1,7 @@
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Common.Settings;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 
@@ -35,17 +36,20 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
     private readonly IAuditLogService _auditLogService;
     private readonly INotificationRepository? _notificationRepository;
     private readonly IPlacementReconciliationRepository? _reconciliationRepository;
+    private readonly IAdminBusinessSettings? _settings;
 
     public WarrantyProgressService(
         IFinanceRepository financeRepository, IUnitOfWork unitOfWork, IAuditLogService auditLogService,
         INotificationRepository? notificationRepository = null,
-        IPlacementReconciliationRepository? reconciliationRepository = null)
+        IPlacementReconciliationRepository? reconciliationRepository = null,
+        IAdminBusinessSettings? settings = null)
     {
         _financeRepository = financeRepository;
         _unitOfWork = unitOfWork;
         _auditLogService = auditLogService;
         _notificationRepository = notificationRepository;
         _reconciliationRepository = reconciliationRepository;
+        _settings = settings;
     }
 
     public async Task<bool> CompleteWarrantyAsync(Guid placementId, DateOnly today, CancellationToken cancellationToken = default)
@@ -215,11 +219,63 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
             OldValues = new { status = ReplacementSlotStates.Open },
             NewValues = new { status = slot.Status, slot.ExpiresAt },
         }, cancellationToken);
+        var refund = await CreateReplacementRefundAsync(slot, now, cancellationToken);
+        var message = $"Suất thay thế của job \"{slot.Job.Title}\" đã hết hạn ngày {slot.ExpiresAt:dd/MM/yyyy} mà chưa có người đi làm.";
+        if (refund != null)
+        {
+            message += $" HR Connect sẽ hoàn {refund.Amount:N0} {refund.CurrencyCode} phí dịch vụ cho bạn.";
+        }
+
         await ReplacementSlotLifecycle.NotifyClientAsync(slot.Job, slot, "Suất tuyển người thay thế đã hết hạn",
-            $"Suất thay thế của job \"{slot.Job.Title}\" đã hết hạn ngày {slot.ExpiresAt:dd/MM/yyyy} mà chưa có người đi làm.",
-            now, _financeRepository, _notificationRepository, cancellationToken);
+            message, now, _financeRepository, _notificationRepository, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    /// <summary>
+    /// Refund a share of the paid fee only when HR Connect brought the Client nobody during the window.
+    /// A Client who was sent candidates and took none gets no refund, so refusing cannot earn money back.
+    /// </summary>
+    private async Task<ServiceFee?> CreateReplacementRefundAsync(ReplacementSlot slot, DateTime now, CancellationToken cancellationToken)
+    {
+        if (_settings == null || slot.ServiceFee.Status != ServiceFeeStates.Paid)
+        {
+            return null;
+        }
+
+        var percent = await _settings.GetDecimalAsync(BusinessSettingKeys.ReplacementRefundPercent, cancellationToken);
+        if (percent <= 0m
+            || await _financeRepository.HasReplacementCandidateReachedClientAsync(slot.ReplacementSlotId, cancellationToken))
+        {
+            return null;
+        }
+
+        var paidDays = await _settings.GetIntAsync(BusinessSettingKeys.HeadhuntPaymentDueDays, cancellationToken);
+        var refund = new ServiceFee
+        {
+            ServiceFeeId = Guid.NewGuid(),
+            JobId = slot.JobId,
+            Kind = ServiceFeeKinds.ReplacementRefund,
+            CompanyId = slot.ServiceFee.CompanyId,
+            BaseSalary = slot.ServiceFee.Amount,
+            FeeMultiplier = percent / 100m,
+            Amount = decimal.Round(slot.ServiceFee.Amount * percent / 100m, 0, MidpointRounding.AwayFromZero),
+            CurrencyCode = slot.ServiceFee.CurrencyCode,
+            DueDate = DateOnly.FromDateTime(now).AddDays(paidDays),
+            Status = ServiceFeeStates.Pending,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        await _financeRepository.AddServiceFeeAsync(refund, cancellationToken);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.ReplacementRefundCreated,
+            EntityType = "SERVICE_FEE",
+            EntityId = refund.ServiceFeeId,
+            ActorType = AuditActorTypes.Service,
+            NewValues = new { slot.ReplacementSlotId, originalServiceFeeId = slot.ServiceFeeId, percent, refund.Amount },
+        }, cancellationToken);
+        return refund;
     }
 }

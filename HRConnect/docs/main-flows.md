@@ -376,7 +376,7 @@ Phí dịch vụ và hoa hồng là hai khoản độc lập: phí dịch vụ �
 
 1. Từ ngày đi làm, hệ thống đếm ngày bảo hành (**30 ngày**, cấu hình được) và tạo hoa hồng `IN_WARRANTY` cho Affiliate có attribution.
 2. Hết 30 ngày mà không có báo cáo nghỉ việc, hệ thống tự chuyển bảo hành sang `PASSED` và ghi nhận **toàn bộ** hoa hồng là `EARNED` (không chia mốc; quyết định 2026-10-09). Internal HR không phải xác nhận, chỉ xử lý ngoại lệ.
-3. Ứng viên nghỉ việc trong thời hạn bảo hành: Client báo nghỉ (bảo hành `CLAIMED`, hoa hồng `ON_HOLD`) → Internal HR xác minh ngày nghỉ: xác nhận thì bảo hành `VOIDED`, hoa hồng `CANCELLED`, Client **không được hoàn phí** mà được HR Connect **tìm người thay thế miễn phí**; bác bỏ thì quay lại `ACTIVE` / `IN_WARRANTY`.
+3. Ứng viên nghỉ việc trong thời hạn bảo hành: Client báo nghỉ (bảo hành `CLAIMED`, hoa hồng `ON_HOLD`) → Internal HR xác minh ngày nghỉ: xác nhận thì bảo hành `VOIDED`, hoa hồng `CANCELLED`, Client **không được hoàn phí ngay** mà được HR Connect **tìm người thay thế miễn phí** (chỉ hoàn một phần nếu suất hết hạn mà chưa có hồ sơ nào được chuyển cho Client); bác bỏ thì quay lại `ACTIVE` / `IN_WARRANTY`.
    - Mỗi khoản phí chỉ được **thay thế miễn phí 1 lần**; người thay thế cũng nghỉ sớm thì bảo hành coi như hoàn thành, không thay tiếp, không hoàn tiền.
    - Suất thay thế chỉ mở khi Client **đã thanh toán** phí dịch vụ.
    - Suất có **hạn chót** (số ngày cấu hình được); quá hạn chưa có người đi làm thì suất hết hạn.
@@ -385,7 +385,7 @@ Phí dịch vụ và hoa hồng là hai khoản độc lập: phí dịch vụ �
      - Internal HR xác nhận nghỉ: phí đã `PAID` → suất `OPEN` (`expires_at` = lúc mở + `mf05.replacement.fill_window_days`, mặc định 30, chụp lại vào suất); phí chưa trả → `WAITING_PAYMENT`, Admin ghi nhận thu phí thì tự `OPEN`. Job đã `CLOSED` được tự mở lại `ACTIVE` với lý do `REOPENED_FOR_REPLACEMENT`. Người nghỉ là người thay thế hoặc không có phí: không mở suất, audit `REPLACEMENT_NOT_ALLOWED`.
      - Affiliate nộp vào job có suất `OPEN`: lượt nộp tự gắn vào suất mở sớm nhất (`isReplacement = true`). Nhiều lượt nộp có thể cùng gắn một suất; lúc ứng viên đồng ý mà suất không còn `OPEN` thì đóng lượt nộp với `REPLACEMENT_SLOT_UNAVAILABLE`.
      - Người thay thế đi làm (MF-04): khóa suất, chuyển `FILLED`; suất không còn `OPEN` thì `409 REPLACEMENT_SLOT_ALREADY_FILLED`, HR của Client có thể chọn "nhận như tuyển mới" (có phí).
-     - Quá `expires_at` → `EXPIRED` (worker MF-05, có thông báo). Internal HR hủy suất `WAITING_PAYMENT` / `OPEN` kèm lý do → `CANCELLED`, không hoàn phí (`REPLACEMENT_SLOT_NOT_CANCELLABLE` nếu suất đã kết thúc).
+     - Quá `expires_at` → `EXPIRED` (worker MF-05, có thông báo). **Hoàn phí một phần** (chốt 2026-11-04): nếu chưa có hồ sơ nào của suất được chuyển cho Client, hệ thống tạo khoản `REPLACEMENT_REFUND` = phí đã trả × `mf05.replacement.refund_percent` (mặc định 30%, đặt 0 để không hoàn), Platform Admin ghi nhận khi đã chuyển tiền. Đã có hồ sơ được chuyển mà Client không tuyển thì không hoàn. Internal HR hủy suất `WAITING_PAYMENT` / `OPEN` kèm lý do → `CANCELLED`, không hoàn phí (`REPLACEMENT_SLOT_NOT_CANCELLABLE` nếu suất đã kết thúc).
      - API: `GET /api/v1/jobs/{jobId}/replacement-slots`, `POST /api/v1/internal/replacement-slots/{id}/cancel`.
 4. **Thử việc nằm ngoài phạm vi đồ án** (chốt 2026-10-17): không dùng làm mốc tính hoa hồng (thời gian thử việc khác nhau theo vị trí) và hệ thống không ghi kết quả thử việc. Bảng `probation` giữ trong cơ sở dữ liệu cho hướng phát triển sau.
 

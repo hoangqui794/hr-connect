@@ -38,6 +38,7 @@ public static class BusinessSettingKeys
     public const string CvSourcingPaymentDueDays = "mf05.cv_sourcing.payment_due_days";
     public const string FeeDueReminderDays = "mf05.fee.due_reminder_days";
     public const string ReplacementFillWindowDays = "mf05.replacement.fill_window_days";
+    public const string ReplacementRefundPercent = "mf05.replacement.refund_percent";
     public const string CvApplicationFreeActiveLimit = "mf01.cv_application.free_active_limit";
     public const string CvApplicationFreeCooldownMonths = "mf01.cv_application.free_cooldown_months";
     public const string JobTemplatePageSizeDefault = "mf01.job_template.page_size_default";
@@ -123,6 +124,9 @@ public static class BusinessSettingKeys
         new(ReplacementFillWindowDays, "HEADHUNT_COD", "Hạn tìm người thay thế",
             "Số ngày kể từ khi suất thay thế được mở (Client đã trả phí). Quá hạn mà chưa có người đi làm thì suất hết hạn.",
             BusinessSettingType.Integer, 30m, 1m, 180m, "ngày", "main-flows.md, MF-05 suất thay thế"),
+        new(ReplacementRefundPercent, "HEADHUNT_COD", "Tỷ lệ hoàn phí khi hết hạn thay thế",
+            "Phần trăm phí dịch vụ hoàn cho Client khi suất thay thế hết hạn mà chưa có hồ sơ nào được chuyển cho Client. Đặt 0 để không hoàn.",
+            BusinessSettingType.Decimal, 30m, 0m, 100m, "%", "main-flows.md, MF-05 suất thay thế"),
         new(JobTemplatePageSizeDefault, "JOB_TEMPLATE", "Số mẫu JD mỗi trang (mặc định)",
             "Số mẫu JD hiển thị mỗi trang khi Client tìm mẫu ở bước 2 của form tạo job.",
             BusinessSettingType.Integer, 8m, 1m, 50m, "mẫu", "main-flows.md, MF-01 thư viện mẫu JD"),

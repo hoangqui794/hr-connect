@@ -181,10 +181,10 @@ public class ReportRepository : IReportRepository
             .Select(sf => new { sf.Kind, sf.Amount, PaidAt = sf.PaidAt!.Value })
             .ToListAsync(cancellationToken);
 
-        var headhuntBilled = billedFees.Where(f => f.Kind == ServiceFeeKinds.Placement).Sum(f => f.Amount);
-        var headhuntCollected = collectedFees.Where(f => f.Kind == ServiceFeeKinds.Placement).Sum(f => f.Amount);
-        var sourcingBilled = billedFees.Where(f => f.Kind != ServiceFeeKinds.Placement).Sum(f => SignedSourcingAmount(f.Kind, f.Amount));
-        var sourcingCollected = collectedFees.Where(f => f.Kind != ServiceFeeKinds.Placement).Sum(f => SignedSourcingAmount(f.Kind, f.Amount));
+        var headhuntBilled = billedFees.Where(f => IsHeadhuntKind(f.Kind)).Sum(f => SignedAmount(f.Kind, f.Amount));
+        var headhuntCollected = collectedFees.Where(f => IsHeadhuntKind(f.Kind)).Sum(f => SignedAmount(f.Kind, f.Amount));
+        var sourcingBilled = billedFees.Where(f => !IsHeadhuntKind(f.Kind)).Sum(f => SignedAmount(f.Kind, f.Amount));
+        var sourcingCollected = collectedFees.Where(f => !IsHeadhuntKind(f.Kind)).Sum(f => SignedAmount(f.Kind, f.Amount));
 
         // 2. CV_APPLICATION từ job_posting_fee
         var cvAppBilled = await _context.JobPostingFees
@@ -222,9 +222,9 @@ public class ReportRepository : IReportRepository
                 seriesItem = new RevenueSeriesItemDto { Period = period };
                 periodMap[period] = seriesItem;
             }
-            periodMap[period] = item.Kind == ServiceFeeKinds.Placement
-                ? seriesItem with { HEADHUNT_COD = seriesItem.HEADHUNT_COD + item.Amount }
-                : seriesItem with { CV_SOURCING = seriesItem.CV_SOURCING + SignedSourcingAmount(item.Kind, item.Amount) };
+            periodMap[period] = IsHeadhuntKind(item.Kind)
+                ? seriesItem with { HEADHUNT_COD = seriesItem.HEADHUNT_COD + SignedAmount(item.Kind, item.Amount) }
+                : seriesItem with { CV_SOURCING = seriesItem.CV_SOURCING + SignedAmount(item.Kind, item.Amount) };
         }
 
         foreach (var item in cvAppPaidItems)
@@ -260,8 +260,12 @@ public class ReportRepository : IReportRepository
     }
 
     /// <summary>CV_SOURCING fees in revenue: a CREDIT is deposit refunded to the Client.</summary>
-    private static decimal SignedSourcingAmount(string kind, decimal amount) =>
-        kind == ServiceFeeKinds.Credit ? -amount : amount;
+    private static bool IsHeadhuntKind(string kind) =>
+        kind is ServiceFeeKinds.Placement or ServiceFeeKinds.ReplacementRefund;
+
+    /// <summary>Money returned to the Client lowers revenue.</summary>
+    private static decimal SignedAmount(string kind, decimal amount) =>
+        ServiceFeeKinds.OwedToClient.Contains(kind) ? -amount : amount;
 
     /// <summary>
     /// Commissions earned in the period: HEADHUNT_COD when the warranty ends inside it,
@@ -454,8 +458,8 @@ public class ReportRepository : IReportRepository
                 && sf.PaidAt < range.ToUtcPlusOne)
             .Select(sf => new
             {
-                // A CREDIT is deposit refunded to the Client, so it lowers the company revenue.
-                Amount = sf.Kind == ServiceFeeKinds.Credit ? -sf.Amount : sf.Amount,
+                // A CREDIT or REPLACEMENT_REFUND goes back to the Client, so it lowers the company revenue.
+                Amount = ServiceFeeKinds.OwedToClient.Contains(sf.Kind) ? -sf.Amount : sf.Amount,
                 sf.CompanyId
             })
             .ToListAsync(cancellationToken);

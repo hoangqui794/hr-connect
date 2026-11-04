@@ -44,6 +44,7 @@ Ký hiệu trong file:
 | Số lần thay thế | **1 lần** mỗi khoản phí. Người thay thế cũng nghỉ sớm thì bảo hành coi như hoàn thành: không thay tiếp, không hoàn tiền | ✅ (15/10) |
 | Điều kiện mở suất thay thế | Chỉ khi Client **đã thanh toán** phí dịch vụ | ✅ (15/10) |
 | Hạn tìm người thay thế | Cấu hình `mf05.replacement.fill_window_days` (mặc định đề xuất 30 ngày, nhóm chốt). Quá hạn thì suất hết hạn | ✅ (15/10) |
+| Hoàn phí khi hết hạn thay thế | Suất hết hạn mà chưa có hồ sơ nào được chuyển cho Client: hoàn `mf05.replacement.refund_percent` (mặc định 30%) phí đã trả. Đã có hồ sơ được chuyển thì không hoàn | ✅ (04/11) |
 | Người thay thế | Không phát sinh phí mới. Bảo hành tính lại từ đầu cho người thay thế | ✅ |
 
 ### 1.3 Hoa hồng Affiliate

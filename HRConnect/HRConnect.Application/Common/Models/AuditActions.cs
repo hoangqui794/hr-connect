@@ -84,6 +84,7 @@ public static class AuditActions
     public const string ServiceFeeDue = "SERVICE_FEE_DUE";
     public const string ReplacementSlotOpened = "REPLACEMENT_SLOT_OPENED";
     public const string ReplacementSlotFilled = "REPLACEMENT_SLOT_FILLED";
+    public const string ReplacementRefundCreated = "REPLACEMENT_REFUND_CREATED";
     public const string ReplacementSlotCancelled = "REPLACEMENT_SLOT_CANCELLED";
     public const string ReplacementSlotExpired = "REPLACEMENT_SLOT_EXPIRED";
     public const string ReplacementNotAllowed = "REPLACEMENT_NOT_ALLOWED";
