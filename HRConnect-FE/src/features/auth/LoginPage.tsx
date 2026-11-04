@@ -2,7 +2,7 @@
  * @file LoginPage.tsx
  * @description Modern, secure Login Page for HR Connect.
  * Implements Swagger OpenAPI auth flow:
- *   1. POST /api/v1/auth/login -> retrieves JWT accessToken & refreshToken
+ *   1. POST /api/v1/auth/login -> retrieves a JWT access token; refresh is an HttpOnly cookie
  *   2. GET /api/v1/auth/me -> retrieves CurrentUserDto with verified roles & permissions
  *   3. Synchronizes session into authStore and redirects to RBAC portal dashboard.
  *   4. Includes Forgot / Reset Password flow via Modal (POST /auth/forgot-password, /auth/reset-password).
@@ -112,7 +112,6 @@ export const LoginPage: React.FC = () => {
 
       const loginData = response.data;
       const accessToken = loginData.accessToken || '';
-      const refreshToken = loginData.refreshToken || undefined;
 
       let resolvedRole: UserRole = UserRole.CANDIDATE;
       let userProfile: UserProfile;
@@ -125,7 +124,7 @@ export const LoginPage: React.FC = () => {
           resolvedRole = mapApiRoleToUserRole(userDto.roles);
 
           // Update store with official backend session
-          setAuthSession(userDto, accessToken, refreshToken);
+          setAuthSession(userDto, accessToken);
 
           userProfile = {
             id: userDto.userId,

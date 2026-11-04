@@ -1,5 +1,7 @@
 using HRConnect.Application.Features.Auth.Commands.Login;
 
+using System.Text.Json.Serialization;
+
 namespace HRConnect.Application.Features.Auth.Commands.RefreshToken;
 
 public class RefreshTokenResponse
@@ -15,6 +17,7 @@ public class RefreshTokenData
 {
     public string AccessToken { get; set; } = string.Empty;
 
+    [JsonIgnore]
     public string RefreshToken { get; set; } = string.Empty;
 
     public string TokenType { get; set; } = "Bearer";

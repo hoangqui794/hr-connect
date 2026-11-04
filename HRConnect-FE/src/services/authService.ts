@@ -124,7 +124,6 @@ export interface UserInfoData {
  */
 export interface LoginData {
   accessToken?: string | null;
-  refreshToken?: string | null;
   tokenType?: string | null;
   expiresAt?: string;
   accessTokenExpiresAt?: string;
@@ -162,13 +161,8 @@ export interface CurrentUserResponse {
 /**
  * Payload for POST /api/v1/auth/refresh-token
  */
-export interface RefreshTokenCommand {
-  refreshToken?: string | null;
-}
-
 export interface RefreshTokenData {
   accessToken?: string | null;
-  refreshToken?: string | null;
   tokenType?: string | null;
   expiresAt?: string;
   accessTokenExpiresAt?: string;
@@ -185,10 +179,6 @@ export interface RefreshTokenResponse {
 /**
  * Payload for POST /api/v1/auth/logout
  */
-export interface LogoutCommand {
-  refreshToken?: string | null;
-}
-
 export interface LogoutResponse {
   success: boolean;
   message?: string | null;
@@ -278,13 +268,6 @@ export class AuthService {
    */
   public getAccessToken(): string | null {
     return authTokenStorage.getAccessToken();
-  }
-
-  /**
-   * Get current stored refresh token
-   */
-  public getRefreshToken(): string | null {
-    return authTokenStorage.getRefreshToken();
   }
 
   /**
@@ -496,14 +479,8 @@ export class AuthService {
    * POST /api/v1/auth/refresh-token
    * Refresh JWT Access Token using active Refresh Token (Rotation).
    */
-  public async refreshToken(customRefreshToken?: string): Promise<RefreshTokenResponse> {
-    const token = customRefreshToken || this.getRefreshToken();
-    if (!token) {
-      throw new Error('Không tìm thấy Refresh Token trong phiên đăng nhập!');
-    }
-
-    const payload: RefreshTokenCommand = { refreshToken: token };
-    const response = await apiClient.post<RefreshTokenResponse>('/auth/refresh-token', payload);
+  public async refreshToken(): Promise<RefreshTokenResponse> {
+    const response = await apiClient.post<RefreshTokenResponse>('/auth/refresh-token', {});
 
     const result = response.data;
     if (result.success && result.data) {
@@ -518,15 +495,9 @@ export class AuthService {
    * Invalidate current session and revoke Refresh Token on the server.
    */
   public async logout(): Promise<LogoutResponse> {
-    const refreshToken = this.getRefreshToken();
-
     try {
-      if (refreshToken) {
-        const payload: LogoutCommand = { refreshToken };
-        const response = await apiClient.post<LogoutResponse>('/auth/logout', payload);
-        return response.data;
-      }
-      return { success: true, message: 'Đăng xuất thành công.' };
+      const response = await apiClient.post<LogoutResponse>('/auth/logout', {});
+      return response.data;
     } catch (error) {
       console.warn('Backend logout warning:', getApiErrorMessage(error));
       return { success: true, message: 'Đã xóa phiên đăng nhập cục bộ.' };

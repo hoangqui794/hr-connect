@@ -21,8 +21,7 @@ describe('auth store claims', () => {
         roles: ['CANDIDATE', 'AFFILIATE'],
         permissions: ['submission.create', 'submission.view_own'],
       },
-      'access-token',
-      'refresh-token'
+      'access-token'
     );
 
     const state = useAuthStore.getState();
@@ -54,12 +53,12 @@ describe('auth store claims', () => {
     );
   });
 
-  it('replaces the stored refresh token when the backend rotates it', () => {
-    authTokenStorage.save({ accessToken: 'access-1', refreshToken: 'refresh-old' });
-    authTokenStorage.save({ accessToken: 'access-2', refreshToken: 'refresh-new' });
+  it('removes legacy refresh tokens and only stores the rotated access token', () => {
+    localStorage.setItem('refresh_token', 'legacy-refresh-token');
+    authTokenStorage.save({ accessToken: 'access-2' });
 
     expect(authTokenStorage.getAccessToken()).toBe('access-2');
-    expect(authTokenStorage.getRefreshToken()).toBe('refresh-new');
+    expect(localStorage.getItem('refresh_token')).toBeNull();
   });
 });
 

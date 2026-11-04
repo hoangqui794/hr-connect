@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace HRConnect.Application.Features.Auth.Commands.Login;
 
 public class LoginResponse
@@ -13,6 +15,7 @@ public class LoginData
 {
     public string AccessToken { get; set; } = string.Empty;
 
+    [JsonIgnore]
     public string RefreshToken { get; set; } = string.Empty;
 
     public string TokenType { get; set; } = "Bearer";
