@@ -46,6 +46,13 @@ export const SERVICE_AGREEMENT_STATUS: Record<ServiceAgreementStatus, { label: s
 
 export const STATUS_CONFIG = JOB_STATUS;
 
+/** Experience range of a job, e.g. "2 – 4 năm". */
+export const experienceText = (min?: number | null, max?: number | null): string => {
+  if (!min && !max) return 'Không yêu cầu';
+  if (min && max) return `${min} – ${max} năm`;
+  return min ? `Từ ${min} năm` : `Đến ${max} năm`;
+};
+
 export const EMPLOYMENT_TYPE_LABEL: Record<EmploymentType, string> = {
   FULL_TIME: 'Toàn thời gian',
   PART_TIME: 'Bán thời gian',

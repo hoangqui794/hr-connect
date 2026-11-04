@@ -1,18 +1,12 @@
 import React from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { Alert, Skeleton, Tabs } from 'antd';
+import { Navigate, useParams, useSearchParams } from 'react-router-dom';
+import { Tabs } from 'antd';
 import {
   AppstoreOutlined,
-  ArrowLeftOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
-import { getApiErrorMessage } from '@/services/apiClient';
 import { JobDiscoveryPage } from '@/features/jobs-mf01/JobDiscoveryPage';
-import { JobDetailPanel } from '@/features/jobs-mf01/JobDetailPanel';
-import { useJobDetail } from '@/features/jobs-mf01/useJobQueries';
-import { JobApplyActions } from '@/features/portal/JobApplyActions';
-import { BookmarkButton } from '@/components/common/BookmarkButton';
-import { CandidatePageHeader, CandidateSurface } from './CandidateUi';
+import { CandidatePageHeader } from './CandidateUi';
 import { CandidateJobMatchesSection } from './CandidateJobMatchesSection';
 
 export const CandidateJobsPage: React.FC = () => {
@@ -78,31 +72,5 @@ export const CandidateJobsPage: React.FC = () => {
 
 export const CandidateJobDetailPage: React.FC = () => {
   const { jobId } = useParams<{ jobId: string }>();
-  const detail = useJobDetail(jobId);
-
-  return (
-    <div className="candidate-page candidate-job-detail-page">
-      <Link to="/candidate/jobs" className="candidate-back-link">
-        <ArrowLeftOutlined aria-hidden />
-        Quay lại danh sách việc làm
-      </Link>
-      <CandidateSurface className="candidate-job-detail-surface">
-        {detail.isError ? (
-          <Alert type="error" showIcon message="Không thể mở việc làm này" description={getApiErrorMessage(detail.error)} />
-        ) : detail.isLoading || !detail.data ? (
-          <Skeleton active paragraph={{ rows: 12 }} />
-        ) : (
-          <>
-            <div className="mb-5 flex items-center justify-end gap-3">
-              <BookmarkButton jobId={detail.data.jobId} jobTitle={detail.data.title} size="lg" />
-              <JobApplyActions job={detail.data} />
-            </div>
-            <JobDetailPanel job={detail.data} isApplicantView />
-          </>
-        )}
-      </CandidateSurface>
-    </div>
-  );
+  return <Navigate to={`/jobs/${jobId}`} replace />;
 };
-
-export default CandidateJobsPage;

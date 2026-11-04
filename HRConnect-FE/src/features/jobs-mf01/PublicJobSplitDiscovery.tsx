@@ -1,1406 +1,430 @@
 /**
  * @file PublicJobSplitDiscovery.tsx
- * @description Trang tìm việc làm nâng cao chuẩn TopCV (Hình 3):
- * - Thanh tìm kiếm Brand HRConnect trên đầu (Danh mục nghề, Từ khóa với nút xóa, Địa điểm, Nút Tìm kiếm, Quick links tỉnh thành).
- * - Bố cục 2 cột:
- *   + Cột trái: Bộ lọc nâng cao (Sidebar "Lọc nâng cao"):
- *     * Nghỉ thứ 7 AI.
- *     * Theo danh mục nghề: Tìm kiếm danh mục động theo database thực tế (người dùng điền gì sẽ lọc theo đó, đếm số lượng thực tế từ DB).
- *     * Mức lương.
- *     * Kinh nghiệm: Tối thiểu 1 năm, Tối thiểu 2 năm, Tối thiểu 3 năm, Tối thiểu 5 năm, Không yêu cầu KN.
- *     * Cấp bậc, Hình thức làm việc.
- *   + Cột phải: Khối "Việc làm nổi bật" chuẩn TopCV (Hình 3):
- *     * Tabs: Việc văn phòng, Việc phổ thông, Tất cả.
- *     * Dải Pills lọc nhanh: Lọc theo Địa điểm (Ngẫu nhiên, Hà Nội, TP.HCM, Đà Nẵng, Miền Bắc, Miền Nam, Toàn quốc).
- *     * Banner gợi ý: Di chuột vào tiêu đề việc làm để xem thêm thông tin chi tiết.
- *     * Lưới thẻ việc làm Card Grid (2-3 cột) chuẩn TopCV kèm nút chuyển đổi xem List / Grid.
+ * @description Job search at /jobs (mockup 03/11, Jobs.dc.html) on GET /public/jobs. The URL holds the search and the applied filters.
+ *  The API takes one employment type and always includes negotiable salaries; anything beyond that is filtered here
+ *  over the first 100 results (see needsLocalFilter).
  */
-import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import {
-  Search,
-  MapPin,
-  Briefcase,
-  Heart,
-  CheckCircle2,
-  Filter,
-  RotateCcw,
-  Star,
-  ChevronDown,
-  ChevronUp,
-  ChevronLeft,
-  ChevronRight,
-  X,
-  SlidersHorizontal,
-  ArrowRight,
-  LayoutGrid,
-  List as ListIcon,
-  Zap,
-  Info,
-  ShieldCheck,
-  Headphones,
-  MessageSquare,
-  UserPlus,
-} from 'lucide-react';
-import { message } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { Skeleton } from 'antd';
 import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
-import 'dayjs/locale/vi';
 import { Navbar } from '@/features/landing/components/Navbar';
-import { CompanyLogo } from '@/features/landing/components/CompanyLogo';
-import { usePublicJobSearch } from './useJobQueries';
+import { CompanyMark, jobHref, postedText, salaryText } from '@/features/landing/components/SiteParts';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
-import type { Job } from '@/types/api/jobs';
+import { useCandidateAppliedJobs } from '@/features/portal/candidate/useCandidateAppliedJobs';
+import { candidateJobMatchApi } from '@/services/api/candidateJobMatchApi';
+import { useAuthStore } from '@/stores/authStore';
+import { UserRole } from '@/types/roles';
+import type { EmploymentType, Job, JobSearchParams } from '@/types/api/jobs';
+import { EMPLOYMENT_TYPE_LABEL, experienceText } from './jobDisplay';
+import { usePublicJobSearch } from './useJobQueries';
 
-dayjs.extend(relativeTime);
-dayjs.locale('vi');
+const PAGE_SIZE = 10;
+/** The API's largest page; local filters run over this many results. */
+const LOCAL_FILTER_SIZE = 100;
+const REMOTE = 'REMOTE';
 
-// ── Dropdown Options ────────────────────────────────────────────────────────
-export const LOCATION_OPTIONS = [
-  { value: 'ALL', label: 'Tất cả địa điểm' },
-  { value: 'HN', label: 'Hà Nội' },
-  { value: 'HCM', label: 'Hồ Chí Minh' },
-  { value: 'DN', label: 'Đà Nẵng' },
-  { value: 'BN', label: 'Bắc Ninh' },
-  { value: 'BD', label: 'Bình Dương' },
-  { value: 'HP', label: 'Hải Phòng' },
-  { value: 'REMOTE', label: 'Toàn quốc / Remote' },
+const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+const PAGE_BUTTON = 'flex items-center justify-center rounded-md text-[14px]';
+const PAGE_OTHER = `${PAGE_BUTTON} h-[42px] w-[42px] cursor-pointer border border-solid border-[#D1D5DB] bg-white text-[#374151]`;
+
+/** `years` is the value sent to the API, which keeps jobs whose experience range contains it. */
+const EXPERIENCE = [
+  { key: 'FRESHER', label: 'Chưa có kinh nghiệm', years: 0 },
+  { key: 'UNDER_1', label: 'Dưới 1 năm', years: 0.5 },
+  { key: 'FROM_1_3', label: '1 – 3 năm', years: 2 },
+  { key: 'FROM_3_5', label: '3 – 5 năm', years: 4 },
+  { key: 'OVER_5', label: 'Trên 5 năm', years: 6 },
 ];
 
-export interface BaseCategory {
-  value: string;
-  label: string;
-  keywords: RegExp;
-}
-
-export const BASE_CATEGORIES: BaseCategory[] = [
-  { value: 'DESIGN', label: 'Thiết kế và Kiến trúc', keywords: /thiết kế|kiến trúc|design|ui\/ux|figma|graphic|nội thất|nhà|bản vẽ|cad|revit|chế tạo/i },
-  { value: 'IT', label: 'Công nghệ Thông tin / Phần mềm', keywords: /it|công nghệ|software|developer|engineer|frontend|backend|data|devops|fullstack|python|react|java|system|lập trình/i },
-  { value: 'CONSTRUCTION', label: 'Quản lý dự án xây dựng', keywords: /xây dựng|dự án|kỹ sư xây dựng|công trình|hạ tầng|giao thông/i },
-  { value: 'MECHANICAL', label: 'Cơ khí / Tự động hoá / Chế tạo máy', keywords: /cơ khí|chế tạo máy|điện|tự động hoá|mep|khí cụ|plc/i },
-  { value: 'SALES', label: 'Kinh doanh / Bán hàng', keywords: /kinh doanh|bán hàng|sales|telesales|account|thương mại|phát triển thị trường/i },
-  { value: 'MARKETING', label: 'Marketing / PR / Quảng cáo', keywords: /marketing|pr|quảng cáo|truyền thông|content|seo|social|media/i },
-  { value: 'FINANCE', label: 'Tài chính / Kế toán / Ngân hàng', keywords: /tài chính|kế toán|thuế|ngân hàng|kiểm toán|audit/i },
-  { value: 'HR', label: 'Nhân sự / Tuyển dụng / Hành chính', keywords: /nhân sự|tuyển dụng|hành chính|hr|c&b/i },
-  { value: 'OPERATIONS', label: 'Vận hành / Chuỗi cung ứng / Logistics', keywords: /vận hành|logistics|kho|chuỗi cung ứng|operations|kho bãi/i },
-  { value: 'SAFETY', label: 'An toàn lao động / Môi trường', keywords: /an toàn lao động|môi trường|hse|bảo hộ/i },
+const WORK_TYPES = [
+  { key: 'FULL_TIME', label: 'Toàn thời gian' },
+  { key: 'PART_TIME', label: 'Bán thời gian' },
+  { key: 'INTERNSHIP', label: 'Thực tập' },
+  { key: REMOTE, label: 'Làm từ xa' },
 ];
 
-// Fallback compatibility
-export const CATEGORY_OPTIONS = [
-  { value: 'ALL', label: 'Tất cả danh mục nghề', count: 0 },
-  ...BASE_CATEGORIES.map((c) => ({ value: c.value, label: c.label, count: 0 })),
+const LOCATIONS = ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng', 'Bình Dương', 'Cần Thơ'];
+
+const SORTS = [
+  { value: 'FIT', label: 'Phù hợp nhất', candidateOnly: true },
+  { value: 'LATEST', label: 'Mới đăng' },
+  { value: 'SALARY', label: 'Lương cao nhất' },
 ];
 
-export const SALARY_OPTIONS = [
-  { value: 'ALL', label: 'Tất cả mức lương' },
-  { value: 'UNDER_10', label: 'Dưới 10 triệu' },
-  { value: '10_15', label: '10 - 15 triệu' },
-  { value: '15_20', label: '15 - 20 triệu' },
-  { value: '20_30', label: '20 - 30 triệu' },
-  { value: 'OVER_30', label: 'Trên 30 triệu' },
-  { value: 'NEGOTIABLE', label: 'Thoả thuận' },
-];
+const SR_ONLY = 'absolute left-[-9999px]';
+/** The job list has no reliable work mode field yet, so remote jobs are also recognised from their text. */
+const isRemote = (job: Job) =>
+  job.workMode?.toUpperCase() === REMOTE || /remote|từ xa/i.test(`${job.location ?? ''} ${job.workingTime ?? ''}`);
+const positive = (value: string | null) => (value && Number(value) > 0 ? value : '');
 
-// Updated Experience filter according to requirement: "tối thiểu 1 năm 2 năm"
-export const EXPERIENCE_OPTIONS = [
-  { value: 'ALL', label: 'Tất cả kinh nghiệm' },
-  { value: 'NO_EXP', label: 'Không yêu cầu kinh nghiệm' },
-  { value: 'MIN_1', label: 'Tối thiểu 1 năm' },
-  { value: 'MIN_2', label: 'Tối thiểu 2 năm' },
-  { value: 'MIN_3', label: 'Tối thiểu 3 năm' },
-  { value: 'MIN_5', label: 'Tối thiểu 5 năm' },
-  { value: 'UNDER_1', label: 'Dưới 1 năm' },
-];
+/** Page numbers with gaps, e.g. 1 2 3 … 5. */
+const pageList = (current: number, total: number): (number | null)[] => {
+  const wanted = new Set([1, total, current - 1, current, current + 1, ...(current <= 2 ? [2, 3] : [])]);
+  const pages = [...wanted].filter((p) => p >= 1 && p <= total).sort((a, b) => a - b);
+  return pages.flatMap((p, i) => (i > 0 && p - pages[i - 1] > 1 ? [null, p] : [p]));
+};
 
-export const LEVEL_OPTIONS = [
-  { value: 'ALL', label: 'Tất cả cấp bậc' },
-  { value: 'STAFF', label: 'Nhân viên' },
-  { value: 'LEAD', label: 'Trưởng nhóm' },
-  { value: 'MANAGER', label: 'Trưởng phòng / Quản lý' },
-  { value: 'DIRECTOR', label: 'Giám đốc' },
-  { value: 'INTERN', label: 'Thực tập sinh' },
-];
+const Checkbox: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props) => (
+  <input {...props} className={`h-[18px] w-[18px] shrink-0 cursor-pointer ${props.type === 'radio' ? 'ml-[5px] mr-[3px] mt-[3px]' : 'mx-[3px] ml-1 my-[3px]'}`} />
+);
 
-export const WORK_TYPE_OPTIONS = [
-  { value: 'ALL', label: 'Tất cả hình thức' },
-  { value: 'FULL_TIME', label: 'Toàn thời gian' },
-  { value: 'PART_TIME', label: 'Bán thời gian' },
-  { value: 'REMOTE', label: 'Làm việc từ xa (Remote)' },
-];
-
-export const SATURDAY_OPTIONS = [
-  { value: 'ALL', label: 'Không lọc' },
-  { value: 'SATURDAY_WORK', label: 'Làm thứ 7' },
-  { value: 'SATURDAY_OFF', label: 'Nghỉ thứ 7' },
-  { value: 'NOT_MENTIONED', label: 'Tin đăng không đề cập' },
-];
-
-export const QUICK_LOCATION_PILLS = [
-  { id: 'ALL', label: 'Ngẫu Nhiên' },
-  { id: 'HN', label: 'Hà Nội' },
-  { id: 'HCM', label: 'Thành phố Hồ Chí Minh (cũ)' },
-  { id: 'NORTH', label: 'Miền Bắc' },
-  { id: 'SOUTH', label: 'Miền Nam' },
-  { id: 'DN', label: 'Đà Nẵng' },
-  { id: 'REMOTE', label: 'Toàn quốc / Remote' },
-];
+const JobRow: React.FC<{ job: Job; fit?: number; canSave: boolean; saved: boolean; onSave: () => void; action: string }> = ({ job, fit, canSave, saved, onSave, action }) => {
+  const deadline = job.applicationDeadline ?? job.expiresAt;
+  const href = jobHref(job.jobId);
+  return (
+    <article className="flex flex-wrap gap-[14px] border-0 border-b border-solid border-[#F1F5F9] p-4">
+      <CompanyMark name={job.companyName} logoUrl={job.companyLogoUrl} size={66} />
+      <div className="min-w-0 flex-[1_1_360px]">
+        <Link to={href} className="text-[16px] font-semibold text-[#111827] no-underline hover:text-[#075985] hover:underline">{job.title}</Link>
+        <div className="mt-0.5 text-[#4B5563]">{job.companyName}</div>
+        <div className="mt-2 flex flex-wrap gap-4 text-[13px] text-[#4B5563]">
+          <span className="text-[14px] font-semibold text-[#C2410C]">{salaryText(job)}</span>
+          {job.location && <span>{job.location}</span>}
+          <span>{experienceText(job.minExperienceYears, job.maxExperienceYears)}</span>
+          {job.employmentType && <span>{EMPLOYMENT_TYPE_LABEL[job.employmentType]}</span>}
+        </div>
+        {job.skills?.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {job.skills.map((skill) => (
+              <span key={skill.skillId} className="rounded bg-[#F3F4F6] px-2 py-0.5 text-[12px] text-[#374151]">{skill.skillName}</span>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="flex w-full flex-col items-start gap-2 sm:w-[180px] sm:flex-none sm:items-end sm:text-right">
+        {fit !== undefined && (
+          <span className="rounded border border-solid border-[#CBD5E1] bg-[#F8FAFC] px-2 py-0.5 text-[12px] font-semibold text-[#1E293B]">Phù hợp {Math.round(fit)}%</span>
+        )}
+        <span className="text-[12px] text-[#6B7280]">
+          {postedText(job.postedAt)}{deadline ? ` · Hạn ${dayjs(deadline).format('DD/MM')}` : ''}
+        </span>
+        <div className="flex gap-1.5 sm:mt-auto">
+          {canSave && (
+            <button
+              type="button"
+              aria-label={saved ? `Bỏ lưu ${job.title}` : `Lưu ${job.title}`}
+              aria-pressed={saved}
+              onClick={onSave}
+              className="flex h-10 w-11 cursor-pointer items-center justify-center rounded-md border border-solid border-[#D1D5DB] bg-white text-[#4B5563] hover:bg-[#F9FAFB]"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill={saved ? '#C2410C' : 'none'} stroke={saved ? '#C2410C' : 'currentColor'} strokeWidth="1.8" aria-hidden="true">
+                <path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z" />
+              </svg>
+            </button>
+          )}
+          <Link to={href} className="flex h-10 items-center rounded-md bg-[#C2410C] px-[14px] font-semibold text-white no-underline hover:bg-[#9A3412] hover:text-white">{action}</Link>
+        </div>
+      </div>
+    </article>
+  );
+};
 
 export const PublicJobSplitDiscovery: React.FC = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
-  const { isSaved, toggleSave, savedJobsCount } = useSavedJobs();
-  const pillsRef = useRef<HTMLDivElement>(null);
+  const { pathname, search: currentSearch } = useLocation();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const hasAnyRole = useAuthStore((s) => s.hasAnyRole);
+  const isCandidate = isAuthenticated && hasAnyRole([UserRole.CANDIDATE]);
+  const { isSaved, toggleSave } = useSavedJobs();
+  const { isApplied } = useCandidateAppliedJobs();
 
-  // Toggle sidebar Lọc nâng cao (mặc định false để giao diện toàn màn hình chuẩn 100% TopCV screenshot)
-  const [showSidebar, setShowSidebar] = useState<boolean>(false);
-  const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState<boolean>(false);
+  // Applied search, from the URL.
+  const keyword = params.get('keyword') || params.get('search') || '';
+  const location = params.get('location') || '';
+  const page = Math.max(1, Number(params.get('page')) || 1);
+  const sort = params.get('sort') || (isCandidate ? 'FIT' : 'LATEST');
+  const salaryMin = positive(params.get('salaryMin'));
+  const salaryMax = positive(params.get('salaryMax'));
+  const negotiable = params.get('negotiable') === 'true';
+  const expKey = params.get('exp') || '';
+  const types = (params.get('modes') || '').split(',').filter(Boolean);
+  const experience = EXPERIENCE.find((level) => level.key === expKey);
 
-  // Params từ URL
-  const queryKeyword = searchParams.get('keyword') || '';
-  const queryLocation = searchParams.get('location') || 'ALL';
-  const queryCategory = searchParams.get('category') || 'ALL';
-  const querySalary = searchParams.get('salary') || 'ALL';
-  const queryExperience = searchParams.get('experience') || 'ALL';
-  const queryLevel = searchParams.get('level') || 'ALL';
-  const querySaturday = searchParams.get('saturday') || 'ALL';
-  const queryWorkType = searchParams.get('workType') || 'ALL';
+  // Drafts until the visitor submits.
+  const [keywordDraft, setKeywordDraft] = useState(keyword);
+  const [locationDraft, setLocationDraft] = useState(location);
+  const [minDraft, setMinDraft] = useState(salaryMin);
+  const [maxDraft, setMaxDraft] = useState(salaryMax);
+  const [negotiableDraft, setNegotiableDraft] = useState(negotiable);
+  const [expDraft, setExpDraft] = useState(expKey);
+  const [typesDraft, setTypesDraft] = useState(types);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const typesKey = types.join(',');
 
-  // Local Search Input States
-  const [keywordInput, setKeywordInput] = useState(queryKeyword);
-  const [locationSelect, setLocationSelect] = useState(queryLocation);
-  const [categorySelect, setCategorySelect] = useState(queryCategory);
-
-  // Ô tìm kiếm lọc danh mục nghề động bên sidebar trái
-  const [categorySearchText, setCategorySearchText] = useState('');
-
-  // Đếm số lượng bộ lọc nâng cao đang áp dụng
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
-    if (queryCategory !== 'ALL' || categorySearchText.trim()) count++;
-    if (queryExperience !== 'ALL') count++;
-    if (querySalary !== 'ALL') count++;
-    if (querySaturday !== 'ALL') count++;
-    if (queryLevel !== 'ALL') count++;
-    if (queryWorkType !== 'ALL') count++;
-    return count;
-  }, [queryCategory, categorySearchText, queryExperience, querySalary, querySaturday, queryLevel, queryWorkType]);
-  // Tab phân loại: 'OFFICE' (Việc văn phòng) | 'MANUAL' (Việc phổ thông) | 'ALL' (Tất cả)
-  const [jobTypeTab, setJobTypeTab] = useState<'OFFICE' | 'MANUAL' | 'ALL'>('OFFICE');
-  // Chế độ hiển thị: 'GRID' (chuẩn TopCV) | 'LIST' (dạng ngang)
-  const [viewMode, setViewMode] = useState<'GRID' | 'LIST'>('GRID');
-  // Pill địa điểm nhanh chuẩn TopCV
-  const [activeLocationPill, setActiveLocationPill] = useState<string>(queryLocation !== 'ALL' ? queryLocation : 'ALL');
-  // Banner gợi ý TopCV
-  const [showTip, setShowTip] = useState(true);
-
-  // Search Field: 'TITLE' | 'COMPANY' | 'ALL'
-  const [searchField, setSearchField] = useState<'TITLE' | 'COMPANY' | 'ALL'>('TITLE');
-  // Sort: 'AI' | 'NEWEST' | 'SALARY' | 'URGENT'
-  const [sortBy, setSortBy] = useState<string>('AI');
-  // Show more categories toggle in sidebar
-  const [showAllCategories, setShowAllCategories] = useState(false);
-
-  // Đồng bộ URL khi đổi query param từ ngoài
   useEffect(() => {
-    setKeywordInput(queryKeyword);
-    setLocationSelect(queryLocation);
-    setCategorySelect(queryCategory);
-    setActiveLocationPill(queryLocation !== 'ALL' ? queryLocation : 'ALL');
-  }, [queryKeyword, queryLocation, queryCategory]);
+    setKeywordDraft(keyword);
+    setLocationDraft(location);
+    setMinDraft(salaryMin);
+    setMaxDraft(salaryMax);
+    setNegotiableDraft(negotiable);
+    setExpDraft(expKey);
+    setTypesDraft(typesKey ? typesKey.split(',') : []);
+  }, [keyword, location, salaryMin, salaryMax, negotiable, expKey, typesKey]);
 
-  // Gọi API lấy việc làm công khai thực tế từ Database
-  const { data: jobPage, isLoading } = usePublicJobSearch({
-    page: 1,
-    pageSize: 50,
+  const hasSalaryRange = Boolean(salaryMin || salaryMax);
+  const excludeNegotiable = hasSalaryRange && !negotiable;
+  const singleType = types.length === 1 && types[0] !== REMOTE ? (types[0] as EmploymentType) : undefined;
+  const needsLocalFilter = excludeNegotiable || (types.length > 0 && !singleType);
+
+  const query: JobSearchParams = {
+    search: keyword || undefined,
+    location: location || undefined,
+    employmentType: singleType,
+    salaryMin: salaryMin ? Number(salaryMin) * 1_000_000 : undefined,
+    salaryMax: salaryMax ? Number(salaryMax) * 1_000_000 : undefined,
+    experienceYears: experience?.years,
+    sortBy: sort === 'SALARY' ? 'SALARY' : 'POSTED_AT',
+    sortDirection: 'DESC',
+    page: needsLocalFilter ? 1 : page,
+    pageSize: needsLocalFilter ? LOCAL_FILTER_SIZE : PAGE_SIZE,
+  };
+  const results = usePublicJobSearch(query);
+
+  const matches = useQuery({
+    queryKey: ['candidate-job-matches'],
+    queryFn: () => candidateJobMatchApi.getJobMatches(),
+    enabled: isCandidate,
+    staleTime: 5 * 60_000,
   });
+  const fitOf = new Map((matches.data?.items ?? []).map((match) => [match.jobId, match.matchScore]));
 
-  const rawJobs: Job[] = useMemo(() => jobPage?.items ?? [], [jobPage]);
+  const jobs = (results.data?.items ?? []).filter((job) => {
+    if (!needsLocalFilter) return true;
+    if (excludeNegotiable && (job.salaryNegotiable || (!job.salaryMin && !job.salaryMax))) return false;
+    if (types.length === 0) return true;
+    return types.some((type) => (type === REMOTE ? isRemote(job) : job.employmentType === type));
+  });
+  const shown = sort === 'FIT' ? [...jobs].sort((a, b) => (fitOf.get(b.jobId) ?? -1) - (fitOf.get(a.jobId) ?? -1)) : jobs;
+  const total = needsLocalFilter ? jobs.length : results.data?.totalCount ?? 0;
+  const totalPages = needsLocalFilter ? 1 : results.data?.totalPages ?? 1;
 
-  // Tính toán danh mục nghề ĐỘNG kèm số lượng thực tế từ database
-  const dynamicCategories = useMemo(() => {
-    return BASE_CATEGORIES.map((cat) => {
-      const count = rawJobs.filter((job) => {
-        const fullText = `${job.title} ${job.companyName || ''} ${job.company?.industry || ''} ${(job.skills || []).map((s) => s.skillName).join(' ')}`.toLowerCase();
-        return cat.keywords.test(fullText);
-      }).length;
-      return {
-        value: cat.value,
-        label: cat.label,
-        count,
-        keywords: cat.keywords,
-      };
-    });
-  }, [rawJobs]);
+  const searchText = [keyword, location && `tại ${location}`].filter(Boolean).join(' ');
 
-  // Lọc danh mục hiển thị khi người dùng nhập vào ô tìm kiếm danh mục (VD: "thiết kế")
-  const visibleCategories = useMemo(() => {
-    const kw = categorySearchText.toLowerCase().trim();
-    if (!kw) {
-      return showAllCategories ? dynamicCategories : dynamicCategories.slice(0, 5);
-    }
-
-    const matched = dynamicCategories.filter(
-      (cat) => cat.label.toLowerCase().includes(kw) || cat.keywords.test(kw)
-    );
-
-    // Kiểm tra số lượng job thực tế khớp với từ khóa người dùng nhập (VD: "thiết kế nhà")
-    const countCustom = rawJobs.filter((job) => {
-      const text = `${job.title} ${job.companyName || ''} ${job.company?.industry || ''} ${(job.skills || []).map((s) => s.skillName).join(' ')}`.toLowerCase();
-      return text.includes(kw);
-    }).length;
-
-    const alreadyExact = matched.some((m) => m.label.toLowerCase() === kw);
-    if (!alreadyExact && countCustom > 0) {
-      return [
-        {
-          value: `QUERY_${kw}`,
-          label: `Lọc theo: "${categorySearchText.trim()}"`,
-          count: countCustom,
-          keywords: new RegExp(kw, 'i'),
-        },
-        ...matched,
-      ];
-    }
-
-    return matched;
-  }, [dynamicCategories, categorySearchText, showAllCategories, rawJobs]);
-
-  // Cập nhật URL Query
-  const updateParams = (updates: Record<string, string | null>) => {
-    const params = new URLSearchParams(searchParams);
-    Object.entries(updates).forEach(([key, val]) => {
-      if (!val || val === 'ALL' || val === '') {
-        params.delete(key);
-      } else {
-        params.set(key, val);
-      }
-    });
-    setSearchParams(params);
+  const update = (change: (next: URLSearchParams) => void) => {
+    const next = new URLSearchParams(params);
+    change(next);
+    if (!next.has('keepPage')) next.delete('page');
+    next.delete('keepPage');
+    setParams(next);
   };
+  const setOrDelete = (next: URLSearchParams, key: string, value: string) => (value ? next.set(key, value) : next.delete(key));
 
-  const handleSearchSubmit = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    updateParams({
-      keyword: keywordInput.trim() || null,
-      location: locationSelect,
-      category: categorySelect,
+  const submitSearch = (event: React.FormEvent) => {
+    event.preventDefault();
+    update((next) => {
+      next.delete('search');
+      setOrDelete(next, 'keyword', keywordDraft.trim());
+      setOrDelete(next, 'location', locationDraft);
     });
   };
-
-  const handleResetFilters = () => {
-    setKeywordInput('');
-    setLocationSelect('ALL');
-    setCategorySelect('ALL');
-    setCategorySearchText('');
-    setActiveLocationPill('ALL');
-    setSearchParams(new URLSearchParams());
-    void message.info('Đã xóa toàn bộ bộ lọc');
-  };
-
-  const handleSaveFilterAlert = () => {
-    void message.success('Đã lưu tiêu chí lọc vào tài khoản của bạn!');
-  };
-
-  const scrollPills = (offset: number) => {
-    if (pillsRef.current) {
-      pillsRef.current.scrollBy({ left: offset, behavior: 'smooth' });
-    }
-  };
-
-  // Lọc kết quả tìm kiếm đa tiêu chí
-  const filteredJobs = useMemo(() => {
-    return rawJobs.filter((job) => {
-      // 1. Phân loại Tab TopCV: Việc văn phòng vs Việc phổ thông
-      const jobDesc = `${job.title} ${job.description || ''} ${job.employmentType || ''}`.toLowerCase();
-      const isManual = jobDesc.match(/lao động phổ thông|tạp vụ|bảo vệ|lái xe|phục vụ|giao hàng|shipper|công nhân|phụ kho|thời vụ/i);
-      if (jobTypeTab === 'MANUAL' && !isManual) return false;
-      if (jobTypeTab === 'OFFICE' && isManual) return false;
-
-      // 2. Keyword search (theo Tên việc làm, Tên công ty hoặc Cả hai)
-      if (queryKeyword.trim()) {
-        const kw = queryKeyword.toLowerCase().trim();
-        const matchTitle = job.title.toLowerCase().includes(kw);
-        const matchCompany = (job.companyName || '').toLowerCase().includes(kw);
-        const matchSkills = (job.skills || []).some((s) => (s.skillName || '').toLowerCase().includes(kw));
-
-        if (searchField === 'TITLE' && !matchTitle && !matchSkills) return false;
-        if (searchField === 'COMPANY' && !matchCompany) return false;
-        if (searchField === 'ALL' && !matchTitle && !matchCompany && !matchSkills) return false;
-      }
-
-      // 3. Location (từ Dropdown hoặc từ TopCV Quick Pill)
-      const targetLocation = activeLocationPill !== 'ALL' ? activeLocationPill : queryLocation;
-      if (targetLocation !== 'ALL') {
-        const loc = (job.location || '').toLowerCase();
-        if (targetLocation === 'HN' && !loc.includes('hà nội') && !loc.includes('hn')) return false;
-        if (targetLocation === 'HCM' && !loc.includes('hồ chí minh') && !loc.includes('hcm') && !loc.includes('sài gòn')) return false;
-        if (targetLocation === 'DN' && !loc.includes('đà nẵng')) return false;
-        if (targetLocation === 'BN' && !loc.includes('bắc ninh')) return false;
-        if (targetLocation === 'BD' && !loc.includes('bình dương')) return false;
-        if (targetLocation === 'HP' && !loc.includes('hải phòng')) return false;
-        if (targetLocation === 'NORTH' && !loc.includes('hà nội') && !loc.includes('bắc ninh') && !loc.includes('hải phòng') && !loc.includes('hưng yên')) return false;
-        if (targetLocation === 'SOUTH' && !loc.includes('hồ chí minh') && !loc.includes('bình dương') && !loc.includes('đồng nai')) return false;
-        if (targetLocation === 'REMOTE' && !loc.includes('remote') && !loc.includes('toàn quốc')) return false;
-      }
-
-      // 4. Category (Lọc danh mục động từ DB hoặc từ khóa tự do do người dùng chọn)
-      if (queryCategory !== 'ALL') {
-        const fullText = `${job.title} ${job.companyName || ''} ${job.company?.industry || ''} ${(job.skills || []).map((s) => s.skillName).join(' ')}`.toLowerCase();
-        if (queryCategory.startsWith('QUERY_')) {
-          const customQuery = queryCategory.replace('QUERY_', '').toLowerCase();
-          if (!fullText.includes(customQuery)) return false;
-        } else {
-          const matchedDef = BASE_CATEGORIES.find((c) => c.value === queryCategory);
-          if (matchedDef && !matchedDef.keywords.test(fullText)) {
-            return false;
-          }
-        }
-      }
-
-      // 5. Salary
-      if (querySalary !== 'ALL') {
-        if (querySalary === 'NEGOTIABLE') return Boolean(job.salaryNegotiable);
-        const min = job.salaryMin ?? 0;
-        const max = job.salaryMax ?? min;
-        if (querySalary === 'UNDER_10' && max >= 10000000) return false;
-        if (querySalary === '10_15' && (min > 15000000 || max < 10000000)) return false;
-        if (querySalary === '15_20' && (min > 20000000 || max < 15000000)) return false;
-        if (querySalary === '20_30' && (min > 30000000 || max < 20000000)) return false;
-        if (querySalary === 'OVER_30' && max < 30000000) return false;
-      }
-
-      // 6. Experience (Tối thiểu 1 năm, 2 năm...)
-      if (queryExperience !== 'ALL') {
-        const exp = job.minExperienceYears ?? 0;
-        if (queryExperience === 'NO_EXP' && exp > 0) return false;
-        if (queryExperience === 'MIN_1' && exp < 1) return false;
-        if (queryExperience === 'MIN_2' && exp < 2) return false;
-        if (queryExperience === 'MIN_3' && exp < 3) return false;
-        if (queryExperience === 'MIN_5' && exp < 5) return false;
-        if (queryExperience === 'UNDER_1' && (exp <= 0 || exp >= 1)) return false;
-      }
-
-      // 7. Saturday
-      if (querySaturday !== 'ALL') {
-        const text = `${job.description || ''} ${job.workingTime || ''}`.toLowerCase();
-        if (querySaturday === 'SATURDAY_OFF' && !text.includes('nghỉ thứ 7') && !text.includes('từ thứ 2 đến thứ 6')) return false;
-        if (querySaturday === 'SATURDAY_WORK' && !text.includes('thứ 7') && !text.includes('saturday')) return false;
-      }
-
-      return true;
+  const applyFilters = () => {
+    update((next) => {
+      setOrDelete(next, 'salaryMin', positive(minDraft));
+      setOrDelete(next, 'salaryMax', positive(maxDraft));
+      setOrDelete(next, 'negotiable', negotiableDraft ? 'true' : '');
+      setOrDelete(next, 'exp', expDraft);
+      setOrDelete(next, 'modes', typesDraft.join(','));
     });
-  }, [rawJobs, jobTypeTab, queryKeyword, queryLocation, activeLocationPill, queryCategory, querySalary, queryExperience, querySaturday, searchField]);
-
-  const formatSalary = (job: Job): string => {
-    if (job.salaryNegotiable) return 'Thoả thuận';
-    if (job.salaryMin && job.salaryMax) {
-      const minM = Math.round(job.salaryMin / 1000000);
-      const maxM = Math.round(job.salaryMax / 1000000);
-      return `${minM} - ${maxM} triệu`;
-    }
-    if (job.salaryMin) {
-      return `Từ ${Math.round(job.salaryMin / 1000000)} triệu`;
-    }
-    return 'Lương hấp dẫn';
+    setFiltersOpen(false);
+  };
+  const clearFilters = () => update((next) => ['salaryMin', 'salaryMax', 'negotiable', 'exp', 'modes'].forEach((key) => next.delete(key)));
+  const goToPage = (target: number) => {
+    update((next) => {
+      next.set('page', String(target));
+      next.set('keepPage', '1');
+    });
+    window.scrollTo({ top: 0 });
   };
 
-  const formatLocation = (loc?: string | null): string => {
-    if (!loc) return 'Toàn quốc';
-    if (loc.toLowerCase().includes('hồ chí minh') || loc.toLowerCase().includes('hcm')) return 'Hồ Chí Minh';
-    if (loc.toLowerCase().includes('hà nội') || loc.toLowerCase().includes('hn')) return 'Hà Nội';
-    if (loc.toLowerCase().includes('đà nẵng')) return 'Đà Nẵng';
-    if (loc.toLowerCase().includes('bắc ninh')) return 'Bắc Ninh';
-    if (loc.toLowerCase().includes('bình dương')) return 'Bình Dương';
-    return loc.length > 14 ? `${loc.slice(0, 14)}...` : loc;
-  };
+  const salaryChip = salaryMin && salaryMax ? `${salaryMin} – ${salaryMax} triệu` : salaryMin ? `Từ ${salaryMin} triệu` : `Đến ${salaryMax} triệu`;
+  const chips = [
+    ...(hasSalaryRange ? [{ label: salaryChip, aria: 'mức lương', remove: () => update((next) => { next.delete('salaryMin'); next.delete('salaryMax'); }) }] : []),
+    ...(experience ? [{ label: experience.label, aria: 'kinh nghiệm', remove: () => update((next) => next.delete('exp')) }] : []),
+    ...types.flatMap((type) => {
+      const work = WORK_TYPES.find((item) => item.key === type);
+      return work ? [{ label: work.label, aria: 'hình thức', remove: () => update((next) => setOrDelete(next, 'modes', types.filter((t) => t !== type).join(','))) }] : [];
+    }),
+  ];
 
-  const formatExperience = (exp?: number | null): string => {
-    if (!exp || exp <= 0) return 'Không yêu cầu KN';
-    return `Tối thiểu ${exp} năm`;
+  const onSave = (job: Job) => {
+    if (isAuthenticated) toggleSave(job.jobId, job.title);
+    else navigate('/login', { state: { from: pathname + currentSearch } });
+  };
+  const canSave = !isAuthenticated || isCandidate;
+  const actionFor = (job: Job) => {
+    if (isCandidate && isApplied(job.jobId)) return 'Đã ứng tuyển';
+    return !isAuthenticated || isCandidate ? 'Ứng tuyển' : 'Xem chi tiết';
   };
 
   return (
-    <div className="min-h-screen bg-[#f0f4f8] text-slate-900 font-sans">
-      {/* 1. TOP NAVBAR */}
+    <div className={`min-h-screen w-full bg-[#F7F8FA] ${FONT} text-[14px] text-[#1F2937] [line-height:normal]`}>
       <Navbar />
-
-      {/* =================================================================== */}
-      {/* 2. KHỐI TÌM KIẾM BRAND THEME HRCONNECT CHUẨN TOPCV                 */}
-      {/* =================================================================== */}
-      <section className="bg-gradient-to-r from-[#0f172a] via-[#1e3a8a] to-[#2563eb] py-6 px-4 shadow-sm">
-        <div className="max-w-7xl mx-auto">
-          {/* Thanh tìm kiếm tổng hợp: Danh mục nghề | Input từ khóa | Địa điểm | Nút Tìm kiếm */}
-          <form
-            onSubmit={handleSearchSubmit}
-            className="bg-white rounded-xl p-1.5 shadow-md flex flex-col md:flex-row items-stretch md:items-center gap-1.5 md:gap-2 border border-blue-200/50"
-          >
-            {/* Dropdown Danh mục nghề */}
-            <div className="relative flex items-center px-3 py-1.5 md:w-[220px] shrink-0">
-              <SlidersHorizontal className="w-4 h-4 text-slate-500 mr-2 shrink-0" />
-              <select
-                value={categorySelect}
-                onChange={(e) => setCategorySelect(e.target.value)}
-                aria-label="Chọn danh mục nghề"
-                className="w-full bg-transparent border-0 text-xs sm:text-sm font-semibold text-slate-700 focus:outline-none cursor-pointer appearance-none truncate pr-4"
-              >
-                <option value="ALL">Tất cả danh mục nghề</option>
-                {dynamicCategories.map((cat) => (
-                  <option key={cat.value} value={cat.value}>
-                    {cat.label} ({cat.count})
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 pointer-events-none" />
-            </div>
-
-            <div className="hidden md:block w-px h-6 bg-slate-200 shrink-0" />
-
-            {/* Ô nhập từ khóa công việc có nút Xóa nhanh */}
-            <div className="relative flex items-center flex-1 px-3 py-1.5">
-              <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
+      <div className="bg-[#0C4A6E]">
+        <div className="mx-auto max-w-[1248px] px-4 pb-5 pt-3 sm:px-6">
+          <form role="search" onSubmit={submitSearch} className="flex flex-wrap gap-2 rounded-lg bg-white p-1.5">
+            <label className="relative box-content flex flex-[3_1_320px] items-center gap-2.5 px-3 text-[#6B7280]">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
+              <span className={SR_ONLY}>Từ khóa</span>
               <input
                 type="text"
-                value={keywordInput}
-                onChange={(e) => setKeywordInput(e.target.value)}
-                placeholder="Vị trí tuyển dụng, tên công ty, kỹ năng..."
-                className="w-full bg-transparent border-0 text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none"
+                value={keywordDraft}
+                onChange={(event) => setKeywordDraft(event.target.value)}
+                placeholder="Chức danh, kỹ năng, tên công ty"
+                className={`${FONT} h-[44px] w-full border-0 bg-transparent px-0.5 text-[15px] text-[#1F2937] outline-none placeholder:text-[#6B7280]`}
               />
-              {keywordInput && (
-                <button
-                  type="button"
-                  aria-label="Xóa từ khóa"
-                  onClick={() => setKeywordInput('')}
-                  className="text-slate-400 hover:text-slate-600 bg-transparent border-0 p-1 cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            <div className="hidden md:block w-px h-6 bg-slate-200 shrink-0" />
-
-            {/* Dropdown Địa điểm */}
-            <div className="relative flex items-center px-3 py-1.5 md:w-[190px] shrink-0">
-              <MapPin className="w-4 h-4 text-slate-500 mr-2 shrink-0" />
-              <select
-                value={locationSelect}
-                onChange={(e) => setLocationSelect(e.target.value)}
-                aria-label="Chọn địa điểm"
-                className="w-full bg-transparent border-0 text-xs sm:text-sm font-semibold text-slate-700 focus:outline-none cursor-pointer appearance-none truncate pr-4"
-              >
-                {LOCATION_OPTIONS.map((loc) => (
-                  <option key={loc.value} value={loc.value}>
-                    {loc.label}
-                  </option>
-                ))}
+            </label>
+            <label className="relative box-content flex flex-[1_1_200px] items-center gap-2 border-0 px-3 text-[#6B7280] sm:border-l sm:border-solid sm:border-[#E5E7EB]">
+              <span className={SR_ONLY}>Địa điểm</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>
+              <select value={locationDraft} onChange={(event) => setLocationDraft(event.target.value)} className={`${FONT} h-[42px] w-full border-0 bg-transparent text-[15px] text-[#1F2937] outline-none`}>
+                <option value="">Tất cả địa điểm</option>
+                {LOCATIONS.map((name) => <option key={name} value={name}>{name}</option>)}
               </select>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 pointer-events-none" />
-            </div>
-
-            {/* Nút Tìm kiếm Primary TopCV Green */}
-            <button
-              type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm px-7 py-2.5 rounded-lg transition-colors cursor-pointer border-0 shadow-xs whitespace-nowrap active:scale-[0.98]"
-            >
-              Tìm kiếm
-            </button>
+            </label>
+            <button type="submit" className={`${FONT} h-[42px] cursor-pointer self-start rounded-md border-0 bg-[#C2410C] px-[26px] text-[15px] font-semibold text-white hover:bg-[#9A3412] max-sm:w-full`}>Tìm việc</button>
           </form>
-
-          {/* Dải liên kết nhanh theo tỉnh thành (Breadcrumb / Quick tags) */}
-          <div className="text-xs text-white/95 mt-2.5 flex flex-wrap items-center gap-1.5 font-medium">
-            <span>Xem việc làm &ldquo;{queryKeyword || 'tuyển dụng'}&rdquo; tại</span>
-            <button
-              type="button"
-              onClick={() => {
-                updateParams({ location: 'HN' });
-                setActiveLocationPill('HN');
-              }}
-              className={`hover:underline bg-transparent border-0 p-0 text-white cursor-pointer font-semibold ${queryLocation === 'HN' ? 'underline font-bold' : ''}`}
-            >
-              Hà Nội
-            </button>
-            <span>|</span>
-            <button
-              type="button"
-              onClick={() => {
-                updateParams({ location: 'HCM' });
-                setActiveLocationPill('HCM');
-              }}
-              className={`hover:underline bg-transparent border-0 p-0 text-white cursor-pointer font-semibold ${queryLocation === 'HCM' ? 'underline font-bold' : ''}`}
-            >
-              Hồ Chí Minh
-            </button>
-            <span>|</span>
-            <button
-              type="button"
-              onClick={() => {
-                updateParams({ location: 'ALL' });
-                setActiveLocationPill('ALL');
-              }}
-              className="hover:underline bg-transparent border-0 p-0 text-white/90 cursor-pointer inline-flex items-center gap-1"
-            >
-              <span>Chọn tỉnh thành của tôi</span>
-              <ArrowRight className="w-3 h-3" />
-            </button>
-          </div>
         </div>
-      </section>
+      </div>
 
-      {/* =================================================================== */}
-      {/* 3. NỘI DUNG CHÍNH CHUẨN TOPCV (HÌNH ẢNH USER GỬI)                  */}
-      {/* =================================================================== */}
-      <main className="max-w-7xl mx-auto px-4 py-6 space-y-5">
-        {/* TOPCV SAFETY BANNER */}
-        <div className="bg-gradient-to-r from-blue-50/90 via-sky-50/60 to-indigo-50/80 border border-blue-200/90 rounded-2xl p-4 sm:p-5 flex items-center justify-between gap-4 shadow-2xs">
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
-              <ShieldCheck className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <h3 className="font-bold text-base sm:text-lg text-slate-900 m-0">
-                Tìm việc an toàn cùng HR Connect
-              </h3>
-              <p className="text-xs text-slate-600 m-0 mt-0.5">
-                Bảo vệ quyền lợi ứng viên, xác thực 100% tin tuyển dụng &amp; minh bạch mức lương
-              </p>
-            </div>
-          </div>
+      <main className="mx-auto max-w-[1248px] px-4 pb-14 pt-5 sm:px-6">
+        <nav aria-label="Đường dẫn" className="mb-[14px] text-[13px] text-[#6B7280]">
+          <Link to="/" className={LINK}>Trang chủ</Link> › Việc làm{searchText ? ` › ${searchText}` : ''}
+        </nav>
+
+        <div className="flex flex-col items-start gap-5 lg:flex-row">
           <button
             type="button"
-            onClick={() => {
-              void message.info('HR Connect cam kết bảo vệ thông tin cá nhân và quyền lợi ứng viên theo tiêu chuẩn an toàn.');
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition-all shadow-xs border-0 flex items-center gap-1.5 shrink-0 cursor-pointer"
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen((open) => !open)}
+            className={`${FONT} flex h-11 w-full cursor-pointer items-center justify-center rounded-md border border-solid border-[#D1D5DB] bg-white text-[14px] font-medium text-[#1F2937] lg:hidden`}
           >
-            <span>Tìm hiểu thêm</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            Bộ lọc{chips.length > 0 ? ` (${chips.length})` : ''}
           </button>
-        </div>
 
-        {/* =================================================================== */}
-        {/* HEADER TOPCV: VIỆC LÀM NỔI BẬT + TABS + XEM TẤT CẢ / ARROWS         */}
-        {/* =================================================================== */}
-        <div className="space-y-3.5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            {/* Tiêu đề & Pill Tabs (Việc văn phòng, Việc phổ thông, Tất cả) */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <h2 className="text-2xl font-extrabold text-slate-900 m-0 tracking-tight">
-                Việc làm nổi bật
-              </h2>
+          <aside aria-label="Bộ lọc" className={`${filtersOpen ? 'flex' : 'hidden'} w-full shrink-0 flex-col gap-[18px] rounded-lg border border-solid border-[#E5E7EB] bg-white p-4 lg:flex lg:w-[284.3px]`}>
+            <div className="flex items-baseline justify-between">
+              <b className="text-[15px]">Bộ lọc</b>
+              <button type="button" onClick={clearFilters} className={`${FONT} cursor-pointer border-0 bg-transparent p-0 text-[13px] ${LINK}`}>Xóa lọc</button>
+            </div>
+            <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
+              <legend className="mb-2 px-0.5 font-semibold">Mức lương (triệu/tháng)</legend>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setJobTypeTab('OFFICE')}
-                  className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border-0 ${
-                    jobTypeTab === 'OFFICE'
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  Việc văn phòng
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setJobTypeTab('MANUAL')}
-                  className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border-0 ${
-                    jobTypeTab === 'MANUAL'
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  Việc phổ thông
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setJobTypeTab('ALL')}
-                  className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border-0 ${
-                    jobTypeTab === 'ALL'
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  Tất cả
-                </button>
+                <label className="relative min-w-0 flex-1">
+                  <span className={SR_ONLY}>Từ</span>
+                  <input type="number" min="0" value={minDraft} onChange={(event) => setMinDraft(event.target.value)} className={`${FONT} h-[38px] w-full rounded-md border border-solid border-[#D1D5DB] px-2.5 text-[14px] text-[#1F2937]`} />
+                </label>
+                <span className="text-[#6B7280]">–</span>
+                <label className="relative min-w-0 flex-1">
+                  <span className={SR_ONLY}>Đến</span>
+                  <input type="number" min="0" value={maxDraft} onChange={(event) => setMaxDraft(event.target.value)} className={`${FONT} h-[38px] w-full rounded-md border border-solid border-[#D1D5DB] px-2.5 text-[14px] text-[#1F2937]`} />
+                </label>
               </div>
-            </div>
-
-            <div className="flex items-center gap-2 text-xs text-slate-500 self-end sm:self-auto">
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveLocationPill('ALL');
-                  updateParams({ location: 'ALL' });
-                }}
-                className="text-xs text-slate-600 hover:text-blue-600 font-medium bg-transparent border-0 cursor-pointer p-0"
-              >
-                Xem tất cả
-              </button>
-              <button
-                type="button"
-                aria-label="Cuộn trái"
-                onClick={() => scrollPills(-180)}
-                className="w-7 h-7 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-blue-600 cursor-pointer"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                aria-label="Cuộn phải"
-                onClick={() => scrollPills(180)}
-                className="w-7 h-7 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-blue-600 cursor-pointer"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* DẢI PILLS LỌC NHANH ĐỊA ĐIỂM + NÚT BỘ LỌC NÂNG CAO */}
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-            {/* Dropdown button Lọc theo Địa điểm */}
-            <div className="relative shrink-0">
-              <button
-                type="button"
-                onClick={() => setIsLocationDropdownOpen(!isLocationDropdownOpen)}
-                className="bg-white border border-slate-200/90 rounded-lg px-3 py-1.5 text-xs text-slate-700 flex items-center gap-1.5 shadow-2xs hover:border-blue-400 cursor-pointer transition-colors"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
-                <span className="font-medium">Lọc theo: Địa điểm</span>
-                <ChevronDown className="w-3 h-3 text-slate-400" />
-              </button>
-              {isLocationDropdownOpen && (
-                <div className="absolute left-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-30 p-1 py-1.5 animate-fadeIn">
-                  {LOCATION_OPTIONS.map((loc) => (
-                    <button
-                      key={loc.value}
-                      type="button"
-                      onClick={() => {
-                        setLocationSelect(loc.value);
-                        updateParams({ location: loc.value });
-                        setActiveLocationPill(loc.value);
-                        setIsLocationDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer border-0 transition-colors ${
-                        locationSelect === loc.value
-                          ? 'bg-blue-50 text-blue-700 font-bold'
-                          : 'text-slate-700 hover:bg-slate-50'
-                      }`}
-                    >
-                      {loc.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Nút Lọc nâng cao (mở / đóng sidebar bên trái) */}
-            <button
-              type="button"
-              onClick={() => setShowSidebar(!showSidebar)}
-              className={`border rounded-lg px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all shrink-0 ${
-                showSidebar || activeFilterCount > 0
-                  ? 'bg-blue-50 text-blue-700 border-blue-300 font-semibold'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              <Filter className="w-3.5 h-3.5 text-blue-600" />
-              <span>{showSidebar ? 'Ẩn bộ lọc' : 'Lọc nâng cao'}</span>
-              {activeFilterCount > 0 && (
-                <span className="bg-blue-600 text-white rounded-full px-1.5 py-0.2 text-[10px] font-bold">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-
-            {/* Nút scroll trái */}
-            <button
-              type="button"
-              aria-label="Cuộn trái"
-              onClick={() => scrollPills(-180)}
-              className="w-6 h-6 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-blue-600 cursor-pointer shrink-0"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-            </button>
-
-            {/* Dải pills */}
-            <div
-              ref={pillsRef}
-              className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5 scroll-smooth flex-1"
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-            >
-              {QUICK_LOCATION_PILLS.map((pill) => {
-                const isActive = activeLocationPill === pill.id;
-                return (
-                  <button
-                    key={pill.id}
-                    type="button"
-                    onClick={() => {
-                      setActiveLocationPill(pill.id);
-                      updateParams({ location: pill.id });
-                    }}
-                    className={`px-3.5 py-1 rounded-full text-xs whitespace-nowrap transition-all cursor-pointer border ${
-                      isActive
-                        ? 'bg-blue-600 text-white border-blue-600 font-semibold shadow-2xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 font-medium shadow-2xs'
-                    }`}
-                  >
-                    {pill.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Nút scroll phải */}
-            <button
-              type="button"
-              aria-label="Cuộn phải"
-              onClick={() => scrollPills(180)}
-              className="w-6 h-6 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-blue-600 cursor-pointer shrink-0"
-            >
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* BANNER GỢI Ý CHUẨN TOPCV (HÌNH ẢNH USER GỬI) */}
-          {showTip && (
-            <div className="bg-blue-50/90 border border-blue-200/90 rounded-xl px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-blue-900 shadow-2xs animate-fadeIn">
-              <div className="flex items-center gap-2">
-                <span className="text-base text-blue-500">💡</span>
-                <span className="font-normal text-slate-700">
-                  <strong>Gợi ý:</strong> Di chuột vào tiêu đề việc làm để xem thêm thông tin chi tiết
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowTip(false)}
-                className="text-slate-400 hover:text-slate-600 bg-transparent border-0 cursor-pointer p-0.5"
-                title="Đóng gợi ý"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* =================================================================== */}
-        {/* LAYOUT: SIDEBAR LỌC NÂNG CAO (NẾU MỞ) + LƯỚI THẺ VIỆC LÀM TOPCV     */}
-        {/* =================================================================== */}
-        <div className={showSidebar ? 'grid grid-cols-1 lg:grid-cols-12 gap-6 items-start' : 'w-full'}>
-          {showSidebar && (
-            <aside className="lg:col-span-4 xl:col-span-3 space-y-4">
-              <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-2xs space-y-5">
-                {/* Header Lọc nâng cao */}
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <span className="flex items-center gap-2 text-sm font-bold text-slate-800">
-                    <Filter className="w-4 h-4 text-blue-600" />
-                    <span>Lọc nâng cao</span>
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleResetFilters}
-                      className="text-[11px] font-semibold text-slate-400 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0"
-                    >
-                      Xóa tất cả
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowSidebar(false)}
-                      className="text-slate-400 hover:text-slate-700 bg-transparent border-0 cursor-pointer p-0.5"
-                      title="Ẩn bộ lọc"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-            {/* ── 1. Nghỉ thứ 7 (AI ✨) ── */}
-            <div>
-              <div className="text-xs font-bold text-slate-800 mb-2.5 flex items-center gap-1.5">
-                <span>Nghỉ thứ 7</span>
-                <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-emerald-200/60 inline-flex items-center gap-0.5">
-                  AI ✨
-                </span>
-              </div>
-              <div className="space-y-2">
-                {SATURDAY_OPTIONS.map((opt) => (
-                  <label
-                    key={opt.value}
-                    className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none hover:text-blue-600"
-                  >
-                    <input
-                      type="radio"
-                      name="saturday"
-                      checked={querySaturday === opt.value}
-                      onChange={() => updateParams({ saturday: opt.value })}
-                      className="accent-blue-600 cursor-pointer"
-                    />
-                    <span>{opt.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* ── 2. Theo danh mục nghề (DYNAMIC THEO DATABASE & TÌM KIẾM TỰ DO) ── */}
-            <div className="pt-3 border-t border-slate-100">
-              <div className="text-xs font-bold text-slate-800 mb-2 flex items-center justify-between">
-                <span>Theo danh mục nghề</span>
-                <span className="text-[11px] font-normal text-slate-400">Theo database</span>
-              </div>
-
-              {/* Ô nhập tìm nhanh danh mục (VD: thiết kế, kiến trúc) */}
-              <div className="relative mb-2.5">
-                <input
-                  type="text"
-                  value={categorySearchText}
-                  onChange={(e) => setCategorySearchText(e.target.value)}
-                  placeholder="Nhập để tìm danh mục (VD: thiết kế)..."
-                  className="w-full text-xs bg-slate-50 border border-slate-200/90 rounded-lg pl-7 pr-7 py-1.5 focus:outline-none focus:border-blue-500 text-slate-800 placeholder:text-slate-400"
-                />
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-                {categorySearchText && (
-                  <button
-                    type="button"
-                    onClick={() => setCategorySearchText('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 border-0 bg-transparent cursor-pointer p-0"
-                    title="Xóa tìm kiếm danh mục"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-
-              {/* Danh sách danh mục động với số lượng job thực tế */}
-              <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                {visibleCategories.map((cat) => {
-                  const isChecked = queryCategory === cat.value;
-                  return (
-                    <label
-                      key={cat.value}
-                      className="flex items-center justify-between gap-2 text-xs text-slate-700 cursor-pointer select-none hover:text-blue-600"
-                    >
-                      <span className="flex items-center gap-2 min-w-0">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => updateParams({ category: isChecked ? 'ALL' : cat.value })}
-                          className="accent-blue-600 rounded cursor-pointer shrink-0"
-                        />
-                        <span className="truncate">{cat.label}</span>
-                      </span>
-                      <span className="text-[11px] text-slate-400 font-mono shrink-0">({cat.count})</span>
-                    </label>
-                  );
-                })}
-
-                {visibleCategories.length === 0 && (
-                  <div className="text-[11px] text-slate-400 py-2 italic text-center">
-                    Không tìm thấy danh mục nào khớp với &ldquo;{categorySearchText}&rdquo;
-                  </div>
-                )}
-              </div>
-
-              {/* Xem thêm / Thu gọn danh mục */}
-              {!categorySearchText && dynamicCategories.length > 5 && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllCategories(!showAllCategories)}
-                  className="mt-2 text-xs font-semibold text-blue-600 hover:underline bg-transparent border-0 p-0 flex items-center gap-1 cursor-pointer"
-                >
-                  <span>{showAllCategories ? 'Thu gọn' : `Xem thêm (${dynamicCategories.length - 5} danh mục)`}</span>
-                  {showAllCategories ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                </button>
-              )}
-
-              {/* Nút Xóa lọc & Lưu bộ lọc */}
-              <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => {
-                    updateParams({ category: 'ALL' });
-                    setCategorySearchText('');
-                  }}
-                  className="text-xs font-semibold text-slate-500 hover:text-slate-700 bg-transparent border-0 cursor-pointer p-0"
-                >
-                  Xóa lọc
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveFilterAlert}
-                  className="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-xs px-3.5 py-1.5 rounded-full font-bold shadow-2xs transition-colors cursor-pointer border-0"
-                >
-                  <Star className="w-3 h-3 fill-current" />
-                  <span>Lưu bộ lọc</span>
-                </button>
-              </div>
-            </div>
-
-            {/* ── 3. Mức lương ── */}
-            <div className="pt-3 border-t border-slate-100">
-              <div className="text-xs font-bold text-slate-800 mb-2.5">Mức lương</div>
-              <div className="space-y-2">
-                {SALARY_OPTIONS.map((opt) => (
-                  <label
-                    key={opt.value}
-                    className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none hover:text-blue-600"
-                  >
-                    <input
-                      type="radio"
-                      name="salary"
-                      checked={querySalary === opt.value}
-                      onChange={() => updateParams({ salary: opt.value })}
-                      className="accent-blue-600 cursor-pointer"
-                    />
-                    <span>{opt.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* ── 4. Kinh nghiệm (ĐÚNG YÊU CẦU: TỐI THIỂU 1 NĂM, 2 NĂM...) ── */}
-            <div className="pt-3 border-t border-slate-100">
-              <div className="text-xs font-bold text-slate-800 mb-2.5">Kinh nghiệm</div>
-              <div className="space-y-2">
-                {EXPERIENCE_OPTIONS.map((opt) => (
-                  <label
-                    key={opt.value}
-                    className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none hover:text-blue-600"
-                  >
-                    <input
-                      type="radio"
-                      name="experience"
-                      checked={queryExperience === opt.value}
-                      onChange={() => updateParams({ experience: opt.value })}
-                      className="accent-blue-600 cursor-pointer"
-                    />
-                    <span>{opt.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* ── 5. Cấp bậc ── */}
-            <div className="pt-3 border-t border-slate-100">
-              <div className="text-xs font-bold text-slate-800 mb-2.5">Cấp bậc</div>
-              <div className="space-y-2">
-                {LEVEL_OPTIONS.map((opt) => (
-                  <label
-                    key={opt.value}
-                    className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none hover:text-blue-600"
-                  >
-                    <input
-                      type="radio"
-                      name="level"
-                      checked={queryLevel === opt.value}
-                      onChange={() => updateParams({ level: opt.value })}
-                      className="accent-blue-600 cursor-pointer"
-                    />
-                    <span>{opt.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* ── 6. Hình thức làm việc ── */}
-            <div className="pt-3 border-t border-slate-100">
-              <div className="text-xs font-bold text-slate-800 mb-2.5">Hình thức làm việc</div>
-              <div className="space-y-2">
-                {WORK_TYPE_OPTIONS.map((opt) => (
-                  <label
-                    key={opt.value}
-                    className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none hover:text-blue-600"
-                  >
-                    <input
-                      type="radio"
-                      name="workType"
-                      checked={queryWorkType === opt.value}
-                      onChange={() => updateParams({ workType: opt.value })}
-                      className="accent-blue-600 cursor-pointer"
-                    />
-                    <span>{opt.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-        </aside>
-      )}
-
-      {/* =================================================================== */}
-      {/* CỘT PHẢI / TOÀN BỘ CHIỀU RỘNG: DANH SÁCH VIỆC LÀM CHUẨN TOPCV       */}
-      {/* =================================================================== */}
-      <section className={showSidebar ? 'lg:col-span-8 xl:col-span-9 space-y-4' : 'w-full space-y-4'}>
-
-          {/* Thanh Control: Tìm kiếm theo + Sắp xếp theo */}
-          <div className="bg-white rounded-xl border border-slate-200/90 p-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-2xs">
-            {/* Tìm kiếm theo: Tên việc làm | Tên công ty | Cả hai */}
-            <div className="flex items-center gap-2 text-xs text-slate-600 flex-wrap">
-              <span className="font-semibold text-slate-700">Tìm kiếm theo:</span>
-              <button
-                type="button"
-                onClick={() => setSearchField('TITLE')}
-                className={`px-3 py-1 rounded-full text-xs transition-colors cursor-pointer border ${
-                  searchField === 'TITLE'
-                    ? 'bg-blue-50 text-blue-700 border-blue-300 font-bold'
-                    : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200'
-                }`}
-              >
-                {searchField === 'TITLE' ? '✓ ' : ''}Tên việc làm
-              </button>
-              <button
-                type="button"
-                onClick={() => setSearchField('COMPANY')}
-                className={`px-3 py-1 rounded-full text-xs transition-colors cursor-pointer border ${
-                  searchField === 'COMPANY'
-                    ? 'bg-blue-50 text-blue-700 border-blue-300 font-bold'
-                    : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200'
-                }`}
-              >
-                {searchField === 'COMPANY' ? '✓ ' : ''}Tên công ty
-              </button>
-              <button
-                type="button"
-                onClick={() => setSearchField('ALL')}
-                className={`px-3 py-1 rounded-full text-xs transition-colors cursor-pointer border ${
-                  searchField === 'ALL'
-                    ? 'bg-blue-50 text-blue-700 border-blue-300 font-bold'
-                    : 'bg-slate-100 text-slate-600 border-transparent hover:bg-slate-200'
-                }`}
-              >
-                {searchField === 'ALL' ? '✓ ' : ''}Cả hai
-              </button>
-            </div>
-
-            {/* Sắp xếp theo */}
-            <div className="flex items-center gap-2 text-xs text-slate-600 shrink-0">
-              <span className="font-semibold text-slate-700">⇅ Sắp xếp theo:</span>
-              <div className="relative inline-flex items-center">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  aria-label="Sắp xếp kết quả tìm kiếm"
-                  className="appearance-none bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-7 py-1 text-xs font-semibold text-slate-800 focus:outline-none focus:border-blue-500 cursor-pointer"
-                >
-                  <option value="AI">Search by AI</option>
-                  <option value="NEWEST">Mới nhất</option>
-                  <option value="SALARY">Lương cao nhất</option>
-                  <option value="URGENT">Cần tuyển gấp</option>
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 pointer-events-none" />
-              </div>
-            </div>
-          </div>
-
-          {/* Dòng thông báo số lượng tìm thấy */}
-          <div className="flex items-center justify-between text-xs text-slate-500 px-1">
-            <span>
-              Tìm thấy <strong className="text-slate-900 font-bold">{filteredJobs.length}</strong> việc làm phù hợp
-              {queryKeyword ? (
-                <> cho từ khóa &ldquo;<strong className="text-blue-600">{queryKeyword}</strong>&rdquo;</>
-              ) : ''}
-            </span>
-            <span className="text-slate-400">Ưu tiên hiển thị tin tuyển dụng xác thực</span>
-          </div>
-
-          {/* Trạng thái Loading Skeleton */}
-          {isLoading && (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
-              {[...Array(6)].map((_, i) => (
-                <div
-                  key={i}
-                  className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs animate-pulse space-y-3"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-slate-100 shrink-0" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-4 bg-slate-200 rounded w-4/5" />
-                      <div className="h-3 bg-slate-100 rounded w-1/2" />
-                    </div>
-                  </div>
-                  <div className="h-6 bg-slate-100 rounded w-2/3" />
-                </div>
+              <label className="flex cursor-pointer items-center gap-2 text-[#374151]">
+                <Checkbox type="checkbox" checked={negotiableDraft} onChange={(event) => setNegotiableDraft(event.target.checked)} /> Gồm việc lương thương lượng
+              </label>
+            </fieldset>
+            <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
+              <legend className="mb-2 px-0.5 font-semibold">Kinh nghiệm</legend>
+              {EXPERIENCE.map((level) => (
+                <label key={level.key} className="flex cursor-pointer items-center gap-2">
+                  <Checkbox type="radio" name="exp" checked={expDraft === level.key} onChange={() => setExpDraft(level.key)} /> {level.label}
+                </label>
               ))}
+            </fieldset>
+            <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
+              <legend className="mb-2 px-0.5 font-semibold">Hình thức làm việc</legend>
+              {WORK_TYPES.map((type) => (
+                <label key={type.key} className="flex cursor-pointer items-center gap-2">
+                  <Checkbox
+                    type="checkbox"
+                    checked={typesDraft.includes(type.key)}
+                    onChange={(event) => setTypesDraft((current) => (event.target.checked ? [...current, type.key] : current.filter((key) => key !== type.key)))}
+                  /> {type.label}
+                </label>
+              ))}
+            </fieldset>
+            <button type="button" onClick={applyFilters} className={`${FONT} h-10 cursor-pointer rounded-md border border-solid border-[#0C4A6E] bg-[#0C4A6E] text-[14px] font-semibold text-white hover:bg-[#075985]`}>Áp dụng</button>
+          </aside>
+
+          <section aria-labelledby="results" className="w-full min-w-0 flex-1">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <h1 id="results" className="m-0 text-[18px] font-bold text-[#1F2937]">
+                {results.isLoading ? 'Đang tìm việc làm…' : `${total.toLocaleString('vi-VN')} việc làm${searchText ? ` ${searchText}` : ''}`}
+              </h1>
+              <label className="flex items-center gap-2 text-[#4B5563]">
+                Sắp xếp
+                <select
+                  value={sort}
+                  onChange={(event) => update((next) => next.set('sort', event.target.value))}
+                  className={`${FONT} h-9 rounded-md border border-solid border-[#D1D5DB] bg-white px-2.5 text-[14px] text-[#1F2937]`}
+                >
+                  {SORTS.filter((option) => !option.candidateOnly || isCandidate).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </label>
             </div>
-          )}
 
-          {/* Trạng thái Rỗng */}
-          {!isLoading && filteredJobs.length === 0 && (
-            <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-12 text-center my-4 shadow-2xs">
-              <Briefcase className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-              <h3 className="text-base font-bold text-slate-800 m-0">
-                Không tìm thấy việc làm nào phù hợp với bộ lọc hiện tại
-              </h3>
-              <p className="text-xs text-slate-500 mt-1 mb-5">
-                Vui lòng thử bỏ bớt điều kiện lọc ở cột bên trái hoặc nhập từ khóa khác.
-              </p>
-              <button
-                type="button"
-                onClick={handleResetFilters}
-                className="bg-blue-600 text-white hover:bg-blue-700 font-semibold text-xs px-5 py-2.5 rounded-xl transition-colors cursor-pointer border-0 shadow-xs inline-flex items-center gap-1.5"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Xóa toàn bộ bộ lọc</span>
-              </button>
-            </div>
-          )}
+            {chips.length > 0 && (
+              <div className="mb-3 flex flex-wrap gap-2 text-[13px]">
+                {chips.map((chip) => (
+                  <span key={chip.label} className="inline-flex items-center gap-1.5 rounded bg-[#E0F2FE] py-1 pl-2.5 pr-1 text-[#075985]">
+                    {chip.label}
+                    <button type="button" aria-label={`Bỏ lọc ${chip.aria}`} onClick={chip.remove} className="h-6 w-6 cursor-pointer border-0 bg-transparent p-0 text-[#075985]">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
 
-          {/* =============================================================== */}
-          {/* LƯỚI THẺ VIỆC LÀM CARD GRID (CHUẨN TOPCV HÌNH 3)               */}
-          {/* =============================================================== */}
-          {!isLoading && filteredJobs.length > 0 && viewMode === 'GRID' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
-              {filteredJobs.map((job) => {
-                const saved = isSaved(job.jobId);
-                const isFeatured = (job.salaryMin != null && job.salaryMin >= 20000000) || job.postingPackageCode === 'STANDARD';
+            {results.isError ? (
+              <div className="rounded-lg border border-solid border-[#E5E7EB] bg-white px-6 py-12 text-center">
+                <h2 className="m-0 text-[16px] font-bold">Không tải được danh sách việc làm</h2>
+                <button type="button" onClick={() => results.refetch()} className={`${FONT} mt-3 cursor-pointer border-0 bg-transparent p-0 font-semibold ${LINK}`}>Thử lại</button>
+              </div>
+            ) : results.isLoading ? (
+              <div className="rounded-lg border border-solid border-[#E5E7EB] bg-white p-4"><Skeleton active avatar paragraph={{ rows: 6 }} /></div>
+            ) : shown.length === 0 ? (
+              <div className="rounded-lg border border-solid border-[#E5E7EB] bg-white px-6 py-12 text-center">
+                <h2 className="m-0 text-[16px] font-bold">Không tìm thấy việc làm phù hợp</h2>
+                <p className="m-0 mt-2 text-[#4B5563]">Thử bỏ bớt bộ lọc hoặc đổi từ khóa khác.</p>
+                {chips.length > 0 && <button type="button" onClick={clearFilters} className={`${FONT} mt-3 cursor-pointer border-0 bg-transparent p-0 font-semibold ${LINK}`}>Xóa lọc</button>}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-solid border-[#E5E7EB] bg-white">
+                {shown.map((job) => (
+                  <JobRow key={job.jobId} job={job} fit={fitOf.get(job.jobId)} canSave={canSave} saved={isCandidate && isSaved(job.jobId)} onSave={() => onSave(job)} action={actionFor(job)} />
+                ))}
+              </div>
+            )}
 
-                return (
-                  <div
-                    key={job.jobId}
-                    onClick={() => navigate(`/jobs/${job.jobId}`)}
-                    className="bg-white rounded-xl border border-slate-200 shadow-[0_1px_3px_rgba(15,23,42,0.08),0_1px_2px_rgba(15,23,42,0.04)] hover:shadow-[0_10px_25px_-5px_rgba(30,58,138,0.12),0_8px_10px_-6px_rgba(30,58,138,0.08)] hover:border-blue-400 transition-all duration-200 p-4 flex flex-col justify-between cursor-pointer group relative hover:-translate-y-1"
-                  >
-                    <div>
-                      {/* Logo + Tiêu đề + Tên công ty */}
-                      <div className="flex items-start gap-3">
-                        {/* Logo công ty hình vuông bo góc với viền rõ nét */}
-                        <div className="w-14 h-14 rounded-xl border border-slate-200 p-1 bg-slate-50 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
-                          <CompanyLogo
-                            id={job.companyId || 'company'}
-                            name={job.companyName || 'Doanh nghiệp'}
-                            logoUrl={job.companyLogoUrl || job.company?.logoUrl}
-                            size={44}
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          {/* Huy hiệu GẤP màu cam nổi bật */}
-                          {isFeatured && (
-                            <div className="mb-1">
-                              <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full inline-block shadow-2xs">
-                                GẤP
-                              </span>
-                            </div>
-                          )}
-
-                          {/* Tiêu đề việc làm */}
-                          <h3
-                            className="font-bold text-[14.5px] text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2 m-0 leading-snug"
-                            title={job.title}
-                          >
-                            {job.title}
-                          </h3>
-
-                          {/* Tên công ty viết hoa màu xám */}
-                          <p
-                            className="text-xs font-semibold text-slate-500 truncate mt-1 m-0 uppercase tracking-tight"
-                            title={job.companyName || 'CÔNG TY ĐỐI TÁC'}
-                          >
-                            {job.companyName || 'CÔNG TY CỔ PHẦN ĐỐI TÁC'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Hàng dưới cùng: Tag lương + Tag địa điểm + Nút Lưu */}
-                    <div className="mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
-                      <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-                        {/* Tag Mức lương pill xanh thương hiệu HR Connect */}
-                        <span className="bg-blue-50 text-blue-700 font-bold text-xs px-2.5 py-1 rounded-md border border-blue-200/60 whitespace-nowrap">
-                          {formatSalary(job)}
-                        </span>
-                        {/* Tag Địa điểm pill xám */}
-                        <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded-md font-medium whitespace-nowrap truncate max-w-[120px]">
-                          {formatLocation(job.location)}
-                        </span>
-                      </div>
-
-                      {/* Nút lưu việc làm: Vòng tròn viền xám / hover hồng */}
-                      <button
-                        type="button"
-                        aria-label="Lưu việc làm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleSave(job.jobId, job.title);
-                        }}
-                        className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all cursor-pointer shrink-0 ${
-                          saved
-                            ? 'text-rose-500 bg-rose-50 border-rose-300'
-                            : 'text-slate-400 bg-white border-slate-200 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-500'
-                        }`}
-                        title={saved ? 'Đã lưu việc làm' : 'Lưu việc làm'}
-                      >
-                        <Heart
-                          className="h-4 w-4"
-                          fill={saved ? '#f43f5e' : 'none'}
-                          color={saved ? '#f43f5e' : 'currentColor'}
-                          strokeWidth={1.8}
-                        />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* =============================================================== */}
-          {/* CHẾ ĐỘ XEM LIST (DANH SÁCH NGANG)                               */}
-          {/* =============================================================== */}
-          {!isLoading && filteredJobs.length > 0 && viewMode === 'LIST' && (
-            <div className="space-y-3.5">
-              {filteredJobs.map((job) => {
-                const saved = isSaved(job.jobId);
-                const postedText = job.createdAt ? dayjs(job.createdAt).fromNow() : 'Đăng gần đây';
-                const isFeatured = (job.salaryMin != null && job.salaryMin >= 20000000) || job.postingPackageCode === 'STANDARD';
-
-                return (
-                  <div
-                    key={job.jobId}
-                    onClick={() => navigate(`/jobs/${job.jobId}`)}
-                    className="bg-white rounded-xl border border-slate-200 shadow-[0_1px_3px_rgba(15,23,42,0.08),0_1px_2px_rgba(15,23,42,0.04)] hover:shadow-[0_10px_25px_-5px_rgba(30,58,138,0.12),0_8px_10px_-6px_rgba(30,58,138,0.08)] hover:border-blue-400 p-4 transition-all flex flex-col sm:flex-row items-start gap-4 cursor-pointer relative group"
-                  >
-                    {/* Logo doanh nghiệp lớn bên trái */}
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl border border-slate-200 p-2 bg-slate-50 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
-                      <CompanyLogo
-                        id={job.companyId || 'company'}
-                        name={job.companyName || 'Doanh nghiệp'}
-                        logoUrl={job.companyLogoUrl || job.company?.logoUrl}
-                        size={64}
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-
-                    {/* Khối thông tin trung tâm */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {isFeatured && (
-                          <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full inline-block shadow-2xs">
-                            GẤP
-                          </span>
-                        )}
-                        <h3
-                          className="font-bold text-base text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1 m-0 leading-tight"
-                          title={job.title}
-                        >
-                          {job.title}
-                        </h3>
-                        <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 fill-blue-50" />
-                      </div>
-
-                      <p
-                        className="text-xs font-semibold text-slate-500 uppercase mt-1 line-clamp-1 m-0 tracking-tight"
-                        title={job.companyName || 'CÔNG TY TNHH ĐỐI TÁC'}
-                      >
-                        {job.companyName || 'CÔNG TY CỔ PHẦN ĐỐI TÁC HR CONNECT'}
-                      </p>
-
-                      <div className="flex flex-wrap items-center gap-2 mt-2">
-                        <span className="bg-blue-50 text-blue-700 font-bold text-xs px-2.5 py-0.5 rounded border border-blue-200/60">
-                          {formatSalary(job)}
-                        </span>
-                        <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded font-medium">
-                          {formatLocation(job.location)}
-                        </span>
-                        <span className="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded font-medium">
-                          {formatExperience(job.minExperienceYears)}
-                        </span>
-                      </div>
-
-                      <div className="text-xs text-slate-400 mt-2 line-clamp-1 font-normal">
-                        {(job.skills || []).map((s) => s.skillName).filter(Boolean).slice(0, 4).join(' | ') ||
-                          `${job.employmentType || 'Toàn thời gian'} | Môi trường chuyên nghiệp | Đãi ngộ tốt`}
-                      </div>
-                    </div>
-
-                    {/* Khối bên phải */}
-                    <div className="shrink-0 flex sm:flex-col justify-between sm:items-end w-full sm:w-auto sm:h-full sm:min-h-[80px] mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100">
-                      <span className="text-xs text-slate-400 font-normal">
-                        {postedText}
-                      </span>
-
-                      <button
-                        type="button"
-                        aria-label="Lưu việc làm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleSave(job.jobId, job.title);
-                        }}
-                        className={`w-8 h-8 rounded-full border flex items-center justify-center transition-all cursor-pointer mt-auto ${
-                          saved
-                            ? 'text-rose-500 bg-rose-50 border-rose-300'
-                            : 'text-slate-400 bg-white border-slate-200 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-500'
-                        }`}
-                        title={saved ? 'Đã lưu việc làm' : 'Lưu việc làm'}
-                      >
-                        <Heart
-                          className="h-4 w-4"
-                          fill={saved ? '#f43f5e' : 'none'}
-                          color={saved ? '#f43f5e' : 'currentColor'}
-                          strokeWidth={1.8}
-                        />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      </div>
-    </main>
-
-    {/* =================================================================== */}
-    {/* 4. TOPCV FLOATING ACTION WIDGET (GÓC DƯỚI PHẢI MÀN HÌNH)            */}
-    {/* =================================================================== */}
-    <div className="fixed right-3 sm:right-4 bottom-6 z-40 flex flex-col items-center gap-2 select-none">
-      {/* Nút việc đã lưu với số đếm badge */}
-      <button
-        type="button"
-        onClick={() => navigate('/candidate/saved-jobs')}
-        className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-md flex items-center justify-center text-blue-600 hover:bg-blue-50 transition-all cursor-pointer relative"
-        title="Việc làm đã lưu"
-      >
-        <Heart className="w-5 h-5 fill-rose-500 text-rose-500" />
-        <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-xs">
-          {savedJobsCount}
-        </span>
-      </button>
-
-      {/* Nút Thêm hồ sơ / Đăng ký ứng viên */}
-      <button
-        type="button"
-        onClick={() => navigate('/candidate/cvs')}
-        className="w-10 h-10 rounded-full bg-white border border-slate-200 shadow-md flex items-center justify-center text-slate-700 hover:text-blue-600 hover:bg-blue-50 transition-all cursor-pointer"
-        title="Quản lý CV & Hồ sơ"
-      >
-        <UserPlus className="w-4 h-4 text-blue-600" />
-      </button>
-
-      {/* Nút Góp ý */}
-      <button
-        type="button"
-        onClick={() => message.info('Cảm ơn bạn! Đội ngũ HR Connect luôn lắng nghe ý kiến phản hồi.')}
-        className="bg-white border border-slate-200 rounded-full px-2.5 py-1.5 shadow-md flex items-center gap-1 text-slate-700 hover:text-blue-600 transition-all cursor-pointer"
-        title="Góp ý"
-      >
-        <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
-        <span className="font-semibold text-[11px]">Góp ý</span>
-      </button>
-
-      {/* Nút Hỗ trợ */}
-      <button
-        type="button"
-        onClick={() => message.info('Tổng đài hỗ trợ ứng viên HR Connect: 1900 6868 (8:00 - 18:00)')}
-        className="bg-white border border-slate-200 rounded-full px-2.5 py-1.5 shadow-md flex items-center gap-1 text-slate-700 hover:text-blue-600 transition-all cursor-pointer"
-        title="Hỗ trợ"
-      >
-        <Headphones className="w-3.5 h-3.5 text-blue-600" />
-        <span className="font-semibold text-[11px]">Hỗ trợ</span>
-      </button>
+            {totalPages > 1 && (
+              <nav aria-label="Phân trang" className="mt-5 flex flex-wrap items-start justify-center gap-1.5">
+                <button type="button" aria-label="Trang trước" disabled={page <= 1} onClick={() => goToPage(page - 1)} className={`${PAGE_OTHER} ${FONT} disabled:cursor-not-allowed disabled:opacity-50`}>‹</button>
+                {pageList(page, totalPages).map((p, index) =>
+                  p === null ? (
+                    <span key={`gap-${index}`} className={`${PAGE_BUTTON} h-10 w-10 text-[#6B7280]`}>…</span>
+                  ) : (
+                    <button
+                      key={p}
+                      type="button"
+                      aria-current={p === page ? 'page' : undefined}
+                      onClick={() => goToPage(p)}
+                      className={`${FONT} ${p === page ? `${PAGE_BUTTON} h-10 w-10 cursor-pointer border-0 bg-[#0C4A6E] font-semibold text-white` : PAGE_OTHER}`}
+                    >
+                      {p}
+                    </button>
+                  ),
+                )}
+                <button type="button" aria-label="Trang sau" disabled={page >= totalPages} onClick={() => goToPage(page + 1)} className={`${PAGE_OTHER} ${FONT} disabled:cursor-not-allowed disabled:opacity-50`}>›</button>
+              </nav>
+            )}
+          </section>
+        </div>
+      </main>
     </div>
-  </div>
-);
+  );
 };
 
 export default PublicJobSplitDiscovery;

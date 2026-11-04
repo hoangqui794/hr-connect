@@ -216,7 +216,7 @@ export const router = createBrowserRouter([
       // A Candidate's home is the site homepage (mockup 03/11).
       { index: true, element: <Navigate to="/" replace /> },
       { path: 'dashboard', element: <Navigate to="/" replace /> },
-      { path: 'jobs', element: <AppRoutes.CandidateJobsPage /> },
+      { path: 'jobs', element: <Navigate to="/jobs" replace /> },
       { path: 'jobs/:jobId', element: <AppRoutes.CandidateJobDetailPage /> },
       { path: 'applications', element: <AppRoutes.CandidateMyApplicationsPage /> },
       { path: 'applications/:applicationId', element: <AppRoutes.CandidateApplicationDetailPage /> },
