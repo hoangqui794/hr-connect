@@ -6,7 +6,6 @@
 import React, { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App as AntApp, Button, Form, Input, Select, Skeleton } from 'antd';
-import dayjs from 'dayjs';
 import {
   affiliateApi,
   UpdateAffiliateBankAccountInput,
@@ -14,7 +13,6 @@ import {
 } from '@/services/api/mf02Api';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { AvatarUpload } from '@/components/common/AvatarUpload';
-import { AffiliatePageHeader } from './affiliate/AffiliateUi';
 
 const VIETNAM_BANKS = [
   { label: 'Vietcombank (Ngoại thương Việt Nam)', value: 'Vietcombank' },
@@ -39,6 +37,14 @@ const STATUS: Record<string, { label: string; className: string }> = {
   REJECTED: { label: 'Chưa được duyệt', className: 'bg-red-50 text-red-800' },
   SUSPENDED: { label: 'Bị khóa', className: 'bg-gray-100 text-gray-700' },
 };
+
+/** The red star goes after the label, as in the mockup. */
+const requiredAfterLabel = (label: React.ReactNode, { required }: { required: boolean }) => (
+  <>
+    {label}
+    {required && <span className="ml-1 text-red-700">*</span>}
+  </>
+);
 
 export const AffiliateProfilePage: React.FC = () => {
   const { message } = AntApp.useApp();
@@ -97,9 +103,9 @@ export const AffiliateProfilePage: React.FC = () => {
 
   return (
     <div>
-      <AffiliatePageHeader title="Hồ sơ và ngân hàng" description="Thông tin liên hệ và tài khoản nhận hoa hồng của bạn." />
-      <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-2">
-        <section aria-labelledby="aff-profile-form" className="rounded-lg border border-solid border-gray-200 bg-white p-5">
+      <h1 className="sr-only">Hồ sơ và ngân hàng</h1>
+      <div className="flex flex-wrap items-start gap-5">
+        <section aria-labelledby="aff-profile-form" className="min-w-0 flex-[1_1_440px] rounded-lg border border-solid border-gray-200 bg-white p-5">
           <div className="mb-3.5 flex items-center justify-between gap-3">
             <h2 id="aff-profile-form" className="m-0 text-[15px] font-bold text-gray-900">Hồ sơ Affiliate</h2>
             <span className={`rounded px-2 py-0.5 text-xs font-semibold ${status.className}`}>{status.label}</span>
@@ -110,15 +116,9 @@ export const AffiliateProfilePage: React.FC = () => {
             <Alert type="error" showIcon message={getApiErrorMessage(profileQuery.error)} action={<Button onClick={() => profileQuery.refetch()}>Thử lại</Button>} />
           ) : (
             <>
-              <div className="mb-4 flex items-center gap-4">
-                <AvatarUpload size={64} />
-                <div className="min-w-0 text-[13px] text-gray-500">
-                  {p?.createdAt && <div>Tham gia {dayjs(p.createdAt).format('DD/MM/YYYY')}</div>}
-                  {p?.verifiedAt && <div>Duyệt {dayjs(p.verifiedAt).format('DD/MM/YYYY')}</div>}
-                </div>
-              </div>
-              <Form form={profileForm} layout="vertical" requiredMark={false} onFinish={(v) => updateProfile.mutate(v)} disabled={updateProfile.isPending}>
-                <Form.Item name="displayName" label="Tên hiển thị" rules={[{ required: true, whitespace: true, message: 'Nhập tên hiển thị.' }]}>
+              <AvatarUpload size={64} className="affiliate-avatar mb-4" />
+              <Form form={profileForm} layout="vertical" requiredMark={requiredAfterLabel} onFinish={(v) => updateProfile.mutate(v)} disabled={updateProfile.isPending}>
+                <Form.Item name="displayName" label="Họ và tên" rules={[{ required: true, whitespace: true, message: 'Nhập họ và tên.' }]}>
                   <Input size="large" />
                 </Form.Item>
                 <div className="grid gap-x-3.5 sm:grid-cols-2">
@@ -146,13 +146,13 @@ export const AffiliateProfilePage: React.FC = () => {
           )}
         </section>
 
-        <section aria-labelledby="aff-bank-form" className="rounded-lg border border-solid border-gray-200 bg-white p-5">
+        <section aria-labelledby="aff-bank-form" className="min-w-0 flex-[1_1_380px] rounded-lg border border-solid border-gray-200 bg-white p-5">
           <h2 id="aff-bank-form" className="m-0 text-[15px] font-bold text-gray-900">Tài khoản nhận hoa hồng</h2>
           <p className="m-0 mb-3.5 mt-1 text-[13px] text-gray-600">Hoa hồng được chuyển vào tài khoản này. Tài khoản phải thuộc tên của bạn hoặc đơn vị đã đăng ký với HR Connect.</p>
           {bankQuery.isLoading ? (
             <Skeleton active paragraph={{ rows: 5 }} />
           ) : (
-            <Form form={bankForm} layout="vertical" requiredMark={false} onFinish={(v) => updateBank.mutate(v)} disabled={updateBank.isPending}>
+            <Form form={bankForm} layout="vertical" requiredMark={requiredAfterLabel} onFinish={(v) => updateBank.mutate(v)} disabled={updateBank.isPending}>
               <Form.Item name="bankName" label="Ngân hàng" rules={[{ required: true, message: 'Chọn ngân hàng.' }]}>
                 <Select
                   size="large"
@@ -160,6 +160,7 @@ export const AffiliateProfilePage: React.FC = () => {
                   allowClear
                   placeholder="Chọn ngân hàng"
                   options={VIETNAM_BANKS}
+                  labelRender={({ value }) => value}
                   filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
                 />
               </Form.Item>
@@ -170,12 +171,13 @@ export const AffiliateProfilePage: React.FC = () => {
               >
                 <Input size="large" inputMode="numeric" />
               </Form.Item>
-              <Form.Item name="bankAccountHolder" label="Tên chủ tài khoản (in hoa không dấu)" rules={[{ required: true, message: 'Nhập tên chủ tài khoản.' }]}>
-                <Input size="large" onChange={(e) => bankForm.setFieldsValue({ bankAccountHolder: e.target.value.toUpperCase() })} />
+              <Form.Item name="bankAccountHolder" label="Tên chủ tài khoản" rules={[{ required: true, message: 'Nhập tên chủ tài khoản.' }]}>
+                <Input size="large" placeholder="IN HOA KHÔNG DẤU" onChange={(e) => bankForm.setFieldsValue({ bankAccountHolder: e.target.value.toUpperCase() })} />
               </Form.Item>
-              <Form.Item name="bankBranch" label="Chi nhánh (không bắt buộc)">
+              <Form.Item name="bankBranch" label="Chi nhánh">
                 <Input size="large" />
               </Form.Item>
+              <p className="m-0 mb-3.5 rounded-md border border-solid border-orange-200 bg-orange-50 px-3 py-2.5 text-[13px] text-orange-800">Đổi tài khoản khi đang có khoản chờ chi: khoản đó sẽ chuyển vào tài khoản mới.</p>
               <Button type="primary" size="large" block htmlType="submit" loading={updateBank.isPending} className="affiliate-cta">Lưu tài khoản</Button>
             </Form>
           )}

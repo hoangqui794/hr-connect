@@ -11,7 +11,6 @@ import {
   Alert,
   App as AntApp,
   Button,
-  DatePicker,
   Form,
   Input,
   Pagination,
@@ -30,7 +29,6 @@ import {
   FilePdfOutlined,
   InboxOutlined,
   MailOutlined,
-  ReloadOutlined,
   SearchOutlined,
   SendOutlined,
   UserAddOutlined,
@@ -61,12 +59,13 @@ import { CommissionEstimateCard, commissionEstimateApi, formatEstimate } from '.
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
 import type { AffiliateAttribution, AffiliateSubmission } from '@/types/api/mf02';
-import { FilterPills, Initials, PersonCell, StatusDot, Surface } from '@/features/admin-console/ui';
+import { Initials, StatusDot, Surface } from '@/features/admin-console/ui';
 import { ATTRIBUTION_STATUS, MAX_CV_MB, cvFileError, fileSize, submissionStatus } from './mf02Labels';
 import { useOpenSignedUrl } from './CandidatePages';
 import {
   AffiliatePageHeader,
   AffiliateSectionHeading,
+  StatusChip,
   AffiliateStatCard,
 } from './affiliate/AffiliateUi';
 import { isValidVietnamPhoneNumber, VIETNAM_PHONE_VALIDATION_MESSAGE } from '@/constants/phoneValidation';
@@ -676,16 +675,14 @@ export const AffiliateSubmitPage: React.FC = () => {
 
 // ─── Submissions ────────────────────────────────────────────────────────────
 
-const STATUSES = ['all', 'PENDING_CONSENT', 'ACCEPTED', 'CONSENT_REJECTED', 'CONSENT_EXPIRED', 'BLOCKED_DUPLICATE', 'JOB_UNAVAILABLE'] as const;
-
 /** N13: GET /affiliates/referrals progressStatus codes in Vietnamese. */
 const REFERRAL_PROGRESS: Record<string, string> = {
   WAITING_CONSENT: 'Chờ ứng viên xác nhận',
   SUBMITTED: 'Đã nộp',
-  CV_REVIEW: 'Đang xem xét CV',
+  CV_REVIEW: 'HR đang sàng lọc',
   SHORTLISTED: 'Đã được chọn',
-  INTERVIEW: 'Đang phỏng vấn',
-  OFFER: 'Đang chuẩn bị đề nghị nhận việc',
+  INTERVIEW: 'Phỏng vấn',
+  OFFER: 'Offer',
   BACKUP: 'Dự phòng',
   PLACED: 'Đã đi làm',
   CLOSED: 'Đã kết thúc',
@@ -701,19 +698,7 @@ const submissionStatusIcon = (tone: string) => {
   return <InboxOutlined />;
 };
 
-const TONE_CHIP: Record<string, string> = {
-  success: 'bg-green-100 text-green-800',
-  warning: 'bg-orange-50 text-orange-800',
-  danger: 'bg-red-50 text-red-800',
-  info: 'bg-sky-100 text-sky-800',
-  neutral: 'bg-gray-100 text-gray-700',
-};
-
-const StatusChip: React.FC<{ tone?: string; children: React.ReactNode }> = ({ tone = 'neutral', children }) => (
-  <span className={`inline-block whitespace-nowrap rounded px-2 py-0.5 text-xs font-semibold ${TONE_CHIP[tone] ?? TONE_CHIP.neutral}`}>{children}</span>
-);
-
-const PROGRESS_STEPS = ['Chờ xác nhận', 'Đã xác nhận', 'Phỏng vấn', 'Đề nghị nhận việc', 'Đi làm'];
+const PROGRESS_STEPS = ['Chờ xác nhận', 'Đã xác nhận', 'Phỏng vấn', 'Offer', 'Đi làm'];
 const PROGRESS_STEP_INDEX: Record<string, number> = {
   WAITING_CONSENT: 0,
   SUBMITTED: 1,
@@ -725,189 +710,258 @@ const PROGRESS_STEP_INDEX: Record<string, number> = {
   PLACED: 4,
 };
 
+type ReferralGroup = 'all' | 'PENDING_CONSENT' | 'processing' | 'placed' | 'stopped';
+
+const REFERRAL_GROUPS: { key: ReferralGroup; label: string }[] = [
+  { key: 'all', label: 'Tất cả' },
+  { key: 'PENDING_CONSENT', label: 'Chờ xác nhận' },
+  { key: 'processing', label: 'Đang xử lý' },
+  { key: 'placed', label: 'Đã đi làm' },
+  { key: 'stopped', label: 'Đã dừng' },
+];
+
+const WAITING_STATUSES = ['RECEIVED', 'PENDING_CONSENT', 'PENDING_IDENTITY_REVIEW'];
+
+const referralGroupOf = (status: string, code?: string): Exclude<ReferralGroup, 'all'> => {
+  if (WAITING_STATUSES.includes(status)) return 'PENDING_CONSENT';
+  if (status !== 'ACCEPTED' || code === 'CLOSED') return 'stopped';
+  return code === 'PLACED' ? 'placed' : 'processing';
+};
+
+const PROGRESS_HINT: Record<string, string> = {
+  SUBMITTED: 'Ứng viên đã đồng ý. Hồ sơ đã được nộp vào job.',
+  CV_REVIEW: 'Ứng viên đã đồng ý. HR đang xem hồ sơ.',
+  SHORTLISTED: 'Hồ sơ đã được chọn và chuyển cho doanh nghiệp.',
+  BACKUP: 'Hồ sơ đang ở danh sách dự phòng.',
+  INTERVIEW: 'Doanh nghiệp đang phỏng vấn ứng viên.',
+  OFFER: 'Doanh nghiệp đang chuẩn bị đề nghị nhận việc.',
+  PLACED: 'Ứng viên đã đi làm. Hoa hồng hiện ở mục Hoa hồng và chi trả.',
+};
+
+/** The list API filters by one status and the page groups several, so it reads every page and groups here. */
+const readAllPages = async <T,>(read: (page: number) => Promise<{ items: T[]; totalPages: number }>): Promise<T[]> => {
+  const first = await read(1);
+  const rest = await Promise.all(Array.from({ length: Math.max(0, first.totalPages - 1) }, (_, i) => read(i + 2)));
+  return [first, ...rest].flatMap((p) => p.items);
+};
+
+const REFERRALS_PER_PAGE = 10;
+
 export const AffiliateSubmissionsPage: React.FC = () => {
+  const { message } = AntApp.useApp();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const canResend = useAuthStore((state) => state.hasPermission('submission.consent.resend_own'));
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedId, setSelectedId] = useState<string>();
-  const status = (STATUSES as readonly string[]).includes(searchParams.get('status') ?? '') ? (searchParams.get('status') as (typeof STATUSES)[number]) : 'all';
+  const statusParam = searchParams.get('status') as ReferralGroup | null;
+  const group: ReferralGroup = REFERRAL_GROUPS.some((g) => g.key === statusParam) ? statusParam! : 'all';
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  // Set by links from a job or a candidate; shown with a way to clear it.
   const jobId = searchParams.get('jobId') || undefined;
   const candidateId = searchParams.get('candidateId') || undefined;
-  const fromDate = searchParams.get('fromDate') || undefined;
-  const toDate = searchParams.get('toDate') || undefined;
-  const jobs = useQuery({ queryKey: ['aff-jobs', 'submission-filter'], queryFn: () => jobsApi.search({ page: 1, pageSize: 100 }) });
-  const commonFilters = { jobId, candidateId, fromDate, toDate };
 
-  const counts = useQueries({
-    queries: STATUSES.map((s) => ({
-      queryKey: [...keys.submissions, 'count', s, jobId, candidateId, fromDate, toDate],
-      queryFn: async () => (await affiliateApi.submissions({ ...commonFilters, status: s === 'all' ? undefined : s, page: 1, pageSize: 1 })).totalCount,
-    })),
-  });
   const list = useQuery({
-    queryKey: [...keys.submissions, 'list', status, jobId, candidateId, fromDate, toDate, page],
-    queryFn: () => affiliateApi.submissions({ ...commonFilters, status: status === 'all' ? undefined : status, page, pageSize: 10 }),
-    placeholderData: (prev) => prev,
+    queryKey: [...keys.submissions, 'list', jobId, candidateId],
+    queryFn: () => readAllPages((p) => affiliateApi.submissions({ jobId, candidateId, page: p, pageSize: 100 })),
   });
   // Hiring progress of accepted referrals, keyed by submission.
-  const progress = useQuery({ queryKey: [...keys.submissions, 'progress'], queryFn: () => affiliateApi.referrals({ page: 1, pageSize: 100 }) });
-  const progressOf = (id: string) => {
-    const code = progress.data?.items.find((p) => p.submissionId === id)?.progressStatus;
-    return code ? REFERRAL_PROGRESS[code] ?? code : undefined;
-  };
+  const progress = useQuery({
+    queryKey: [...keys.submissions, 'progress'],
+    queryFn: () => readAllPages((p) => affiliateApi.referrals({ page: p, pageSize: 100 })),
+  });
+  const codeOf = (id: string) => progress.data?.find((p) => p.submissionId === id)?.progressStatus;
 
-  const progressCodeOf = (id: string) => progress.data?.items.find((p) => p.submissionId === id)?.progressStatus;
-  const rowStatus = (r: AffiliateSubmission) => {
+  const resend = useMutation({
+    mutationFn: (submissionId: string) => affiliateApi.resendConsent(submissionId),
+    onSuccess: async (result) => {
+      if (result.emailDeliveryStatus === 'FAILED') message.warning(result.message);
+      else message.success(result.message);
+      await queryClient.invalidateQueries({ queryKey: keys.submissions });
+    },
+    onError: (error) => message.error(getApiErrorMessage(error, 'Chưa gửi lại được email xác nhận.')),
+  });
+
+  const all = (list.data ?? []).map((r) => {
+    const code = r.status === 'ACCEPTED' ? codeOf(r.submissionId) : undefined;
+    const rowGroup = referralGroupOf(r.status, code);
     const st = submissionStatus(r.status);
-    const prog = r.status === 'ACCEPTED' ? progressOf(r.submissionId) : undefined;
-    return { label: prog ?? st.label, tone: st.tone, hint: st.hint };
-  };
+    const tone =
+      rowGroup === 'PENDING_CONSENT' ? 'warning'
+      : rowGroup === 'placed' ? 'success'
+      : rowGroup === 'processing' ? 'info'
+      : r.status.startsWith('BLOCKED') ? 'danger'
+      : 'neutral';
+    return {
+      ...r,
+      code,
+      rowGroup,
+      tone,
+      label: code ? REFERRAL_PROGRESS[code] ?? st.label : st.label,
+      hint: (code && PROGRESS_HINT[code]) || st.hint,
+    };
+  });
+  const shown = group === 'all' ? all : all.filter((r) => r.rowGroup === group);
+  const pageItems = shown.slice((page - 1) * REFERRALS_PER_PAGE, page * REFERRALS_PER_PAGE);
+  const selected = pageItems.find((r) => r.submissionId === selectedId) ?? pageItems[0];
+  const selectedStep = selected
+    ? selected.rowGroup === 'PENDING_CONSENT' ? 0 : selected.code ? PROGRESS_STEP_INDEX[selected.code] : undefined
+    : undefined;
+  const resent = resend.data && resend.variables === selected?.submissionId ? resend.data : undefined;
 
-  const items = list.data?.items ?? [];
-  const selected = items.find((r) => r.submissionId === selectedId) ?? items[0];
-  const selectedStatus = selected ? rowStatus(selected) : null;
-  const selectedCode = selected ? (selected.status === 'PENDING_CONSENT' ? 'WAITING_CONSENT' : progressCodeOf(selected.submissionId)) : undefined;
-  const selectedStep = selectedCode ? PROGRESS_STEP_INDEX[selectedCode] : undefined;
-
-  const columns: ColumnsType<AffiliateSubmission> = [
-    {
-      title: 'Ứng viên',
-      key: 'c',
-      render: (_, r) => <span className="whitespace-nowrap font-semibold text-gray-900">{r.candidateName}</span>,
-    },
-    { title: 'Việc làm', dataIndex: 'jobTitle', ellipsis: true, render: (v: string) => <Tooltip title={v}><span className="text-[13px]">{v}</span></Tooltip> },
-    {
-      title: 'Trạng thái',
-      key: 's',
-      width: 200,
-      render: (_, r) => {
-        const st = rowStatus(r);
-        return <Tooltip title={st.hint}><span><StatusChip tone={st.tone}>{st.label}</StatusChip></span></Tooltip>;
-      },
-    },
-    { title: 'Ngày gửi', dataIndex: 'submittedAt', width: 110, render: (v: string) => <span className="text-[13px] tabular-nums text-gray-600">{dayjs(v).format('DD/MM/YYYY')}</span> },
-  ];
-
-  const updateFilters = (updates: Record<string, string | undefined>) => {
+  const update = (updates: Record<string, string | undefined>) => {
     const next = new URLSearchParams(searchParams);
-    Object.entries(updates).forEach(([key, value]) => {
-      if (value) next.set(key, value);
-      else next.delete(key);
-    });
-    if (!Object.prototype.hasOwnProperty.call(updates, 'page')) next.delete('page');
+    Object.entries(updates).forEach(([key, value]) => (value ? next.set(key, value) : next.delete(key)));
+    if (!('page' in updates)) next.delete('page');
     setSearchParams(next);
   };
 
-  const setStatus = (value: string) => updateFilters({ status: value === 'all' ? undefined : value });
-
   return (
     <div className="affiliate-submissions-page">
-      <AffiliatePageHeader
-        title="Lượt giới thiệu"
-        description="Theo dõi từ lúc gửi yêu cầu xác nhận đến khi ứng viên đi làm."
-        actions={<Button icon={<ReloadOutlined />} onClick={() => list.refetch()}>Làm mới</Button>}
-      />
-      <div className="mb-3.5">
-        <FilterPills
-          label="Lọc theo trạng thái"
-          value={status}
-          onChange={setStatus}
-          options={STATUSES.map((s, i) => ({ value: s, label: s === 'all' ? 'Tất cả' : submissionStatus(s).label, count: counts[i].data }))}
-        />
-        <div className="mt-3 flex flex-wrap gap-3">
-          <Select
-            aria-label="Lọc theo việc làm"
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            loading={jobs.isLoading}
-            placeholder="Tất cả việc làm"
-            value={jobId}
-            className="min-w-64"
-            onChange={(value) => updateFilters({ jobId: value })}
-            options={(jobs.data?.items ?? []).map((job) => ({ value: job.jobId, label: `${job.title} — ${job.companyName ?? ''}` }))}
-          />
-          <DatePicker.RangePicker
-            aria-label="Lọc theo ngày gửi"
-            format="DD/MM/YYYY"
-            value={fromDate && toDate ? [dayjs(fromDate), dayjs(toDate)] : null}
-            onChange={(dates) => updateFilters({
-              fromDate: dates?.[0]?.startOf('day').toISOString(),
-              toDate: dates?.[1]?.endOf('day').toISOString(),
-            })}
-          />
-          {(jobId || candidateId || fromDate || toDate) && (
-            <Button onClick={() => setSearchParams(status === 'all' ? {} : { status })}>Xóa bộ lọc</Button>
-          )}
-        </div>
+      <h1 className="sr-only">Lượt giới thiệu</h1>
+      <div role="tablist" aria-label="Lọc theo trạng thái" className="mb-3.5 flex flex-wrap gap-1.5">
+        {REFERRAL_GROUPS.map((g) => {
+          const active = g.key === group;
+          const count = g.key === 'all' ? all.length : all.filter((r) => r.rowGroup === g.key).length;
+          return (
+            <button
+              key={g.key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => update({ status: g.key === 'all' ? undefined : g.key })}
+              className={`h-9 cursor-pointer rounded-full border border-solid px-3 text-[13px] font-medium transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 ${
+                active ? 'border-[#0C4A6E] bg-[#0C4A6E] text-white' : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+              }`}
+            >
+              {g.label} · {list.isLoading ? '…' : count}
+            </button>
+          );
+        })}
+        {(jobId || candidateId) && (
+          <Button className="!h-9" onClick={() => update({ jobId: undefined, candidateId: undefined })}>
+            Bỏ lọc theo {jobId ? 'việc làm' : 'ứng viên'}
+          </Button>
+        )}
       </div>
+
       {list.isError ? (
         <Alert type="error" showIcon message="Không tải được lượt giới thiệu" description={getApiErrorMessage(list.error)} action={<Button onClick={() => list.refetch()}>Thử lại</Button>} />
       ) : (
-        <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <section className="min-w-0 overflow-hidden rounded-lg border border-solid border-gray-200 bg-white">
-            <Table<AffiliateSubmission>
-              className="w-full"
-              rowKey="submissionId"
-              columns={columns}
-              dataSource={items}
-              loading={list.isFetching}
-              scroll={{ x: 680 }}
-              rowClassName={(r) => `cursor-pointer ${r.submissionId === selected?.submissionId ? 'affiliate-row-selected' : ''}`}
-              onRow={(r) => ({
-                tabIndex: 0,
-                onClick: () => setSelectedId(r.submissionId),
-                onKeyDown: (e) => e.key === 'Enter' && setSelectedId(r.submissionId),
-              })}
-              pagination={{
-                current: page,
-                pageSize: 10,
-                total: list.data?.totalCount ?? 0,
-                showSizeChanger: false,
-                hideOnSinglePage: true,
-                onChange: (nextPage) => updateFilters({ page: String(nextPage) }),
-              }}
-              locale={{
-                emptyText: (
-                  <div className="py-10">
-                    <div className="font-semibold text-gray-900">Chưa có lượt giới thiệu phù hợp</div>
-                    <Button className="affiliate-cta mt-3" type="primary" onClick={() => navigate('/affiliate/jobs')}>Xem việc làm</Button>
-                  </div>
-                ),
-              }}
-            />
-          </section>
-
-          {selected && selectedStatus && (
-            <aside aria-label="Chi tiết lượt giới thiệu" className="rounded-lg border border-solid border-gray-200 bg-white p-5 xl:sticky xl:top-24">
-              <div className="text-base font-bold text-gray-900">{selected.candidateName}</div>
-              <div className="text-[13px] text-gray-600">{selected.jobTitle}</div>
-              <div className="mt-2"><StatusChip tone={selectedStatus.tone}>{selectedStatus.label}</StatusChip></div>
-              <p className="m-0 mt-3 text-[13px] leading-relaxed text-gray-700">{selectedStatus.hint}</p>
-              {selected.status === 'PENDING_CONSENT' && selected.consentExpiresAt && (
-                <p className="m-0 mt-1.5 text-[13px] font-semibold text-orange-800">Hết hạn {dayjs(selected.consentExpiresAt).fromNow()}</p>
-              )}
-              <h3 className="m-0 mb-2 mt-4 text-[13px] font-bold text-gray-700">Tiến độ</h3>
-              {selectedStep === undefined ? (
-                <p className="m-0 text-[13px] text-gray-600">Gửi ngày {dayjs(selected.submittedAt).format('DD/MM/YYYY')}. Lượt này không đi tiếp.</p>
-              ) : (
-                <ol className="m-0 flex list-none flex-col gap-2 p-0">
-                  {PROGRESS_STEPS.map((label, i) => (
-                    <li key={label} className="flex items-center gap-2.5 text-[13px]" aria-current={i === selectedStep ? 'step' : undefined}>
-                      <span aria-hidden className={`h-2.5 w-2.5 shrink-0 rounded-full ${i <= selectedStep ? 'bg-sky-700' : 'bg-gray-200'}`} />
-                      <span className={i <= selectedStep ? (i === selectedStep ? 'font-semibold text-gray-900' : 'text-gray-800') : 'text-gray-400'}>{label}</span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-              <div className="mt-4 flex flex-col gap-2 border-0 border-t border-solid border-slate-100 pt-3.5">
-                <Button block onClick={() => navigate(`/affiliate/submissions/${selected.submissionId}`)}>
-                  {selected.status === 'PENDING_CONSENT' ? 'Xem chi tiết và gửi lại email' : 'Xem chi tiết'}
-                </Button>
-                {selected.status === 'BLOCKED_DUPLICATE' && (
-                  <Button block onClick={() => navigate(`/affiliate/disputes?submissionId=${selected.submissionId}`)}>Gửi khiếu nại</Button>
+        <div className="flex flex-wrap items-start gap-5">
+          <section className="min-w-0 flex-[999_1_520px] rounded-lg border border-solid border-gray-200 bg-white">
+            {list.isLoading ? (
+              <div className="p-5"><Skeleton active paragraph={{ rows: 5 }} /></div>
+            ) : pageItems.length === 0 ? (
+              <div className="px-4 py-12 text-center">
+                <div className="font-semibold text-gray-900">{all.length === 0 ? 'Bạn chưa giới thiệu ứng viên nào' : 'Không có lượt nào ở mục này'}</div>
+                {all.length === 0 && (
+                  <>
+                    <p className="m-0 mb-3 mt-1 text-sm text-gray-600">Chọn một job đang mở và gửi ứng viên phù hợp.</p>
+                    <Button type="primary" className="affiliate-cta" onClick={() => navigate('/affiliate/jobs')}>Xem việc làm</Button>
+                  </>
                 )}
               </div>
+            ) : (
+              <div className="relative overflow-x-auto">
+                <table className="w-full min-w-[600px] border-collapse">
+                  <thead>
+                    <tr className="text-left text-xs text-gray-500">
+                      <th className="px-4 py-2.5 font-medium">Ứng viên</th>
+                      <th className="px-4 py-2.5 font-medium">Việc làm</th>
+                      <th className="px-4 py-2.5 font-medium">Trạng thái</th>
+                      <th className="px-4 py-2.5 font-medium">Ngày gửi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pageItems.map((r) => (
+                      <tr
+                        key={r.submissionId}
+                        tabIndex={0}
+                        aria-selected={r.submissionId === selected?.submissionId}
+                        onClick={() => setSelectedId(r.submissionId)}
+                        onKeyDown={(e) => e.key === 'Enter' && setSelectedId(r.submissionId)}
+                        className={`cursor-pointer border-0 border-t border-solid border-slate-100 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-600 ${r.submissionId === selected?.submissionId ? 'bg-sky-50' : 'hover:bg-slate-50'}`}
+                      >
+                        <td className="px-4 py-3 font-bold text-gray-900">{r.candidateName}</td>
+                        <td className="px-4 py-3 text-[13px] text-gray-800">{r.jobTitle}</td>
+                        <td className="px-4 py-3"><StatusChip tone={r.tone}>{r.label}</StatusChip></td>
+                        <td className="px-4 py-3 text-[13px] tabular-nums text-gray-600">{dayjs(r.submittedAt).format('DD/MM/YYYY')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {shown.length > REFERRALS_PER_PAGE && (
+              <div className="flex justify-end border-0 border-t border-solid border-slate-100 p-3">
+                <Pagination current={page} pageSize={REFERRALS_PER_PAGE} total={shown.length} showSizeChanger={false} onChange={(p) => update({ page: String(p) })} />
+              </div>
+            )}
+          </section>
+
+          {selected && (
+            <aside aria-label="Chi tiết lượt giới thiệu" className="min-w-0 flex-[1_1_320px] rounded-lg border border-solid border-gray-200 bg-white p-5">
+              <div className="text-base font-bold text-gray-900">{selected.candidateName}</div>
+              <div className="text-[13px] text-gray-600">{selected.jobTitle}</div>
+              <div className="mt-2"><StatusChip tone={selected.tone}>{selected.label}</StatusChip></div>
+              <p className="m-0 mt-3 text-[13px] leading-relaxed text-gray-700">
+                {selected.hint}
+                {selected.rowGroup === 'PENDING_CONSENT' && selected.consentExpiresAt && ` Hết hạn ${dayjs(selected.consentExpiresAt).fromNow()}.`}
+              </p>
+              <h3 className="m-0 mb-2 mt-4 text-[13px] font-bold text-gray-700">Tiến độ</h3>
+              <ol className="m-0 flex list-none flex-col gap-2.5 p-0">
+                {selectedStep === undefined ? (
+                  <>
+                    <li className="flex items-start gap-2.5">
+                      <span aria-hidden className="mt-[5px] h-2.5 w-2.5 shrink-0 rounded-full bg-sky-700" />
+                      <span><span className="block font-medium text-gray-800">Đã gửi giới thiệu</span><span className="block text-xs text-gray-500">{dayjs(selected.submittedAt).format('DD/MM/YYYY')}</span></span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <span aria-hidden className="mt-[5px] h-2.5 w-2.5 shrink-0 rounded-full bg-red-700" />
+                      <span><span className="block font-medium text-red-800">{selected.label}</span><span className="block text-xs text-gray-500">Kết thúc</span></span>
+                    </li>
+                  </>
+                ) : (
+                  PROGRESS_STEPS.map((label, i) => (
+                    <li key={label} className="flex items-start gap-2.5" aria-current={i === selectedStep ? 'step' : undefined}>
+                      <span aria-hidden className={`mt-[5px] h-2.5 w-2.5 shrink-0 rounded-full ${i <= selectedStep ? 'bg-sky-700' : 'bg-gray-200'}`} />
+                      <span>
+                        <span className={`block font-medium ${i <= selectedStep ? 'text-gray-800' : 'text-gray-400'}`}>{label}</span>
+                        {i <= selectedStep && <span className="block text-xs text-gray-500">{i === selectedStep ? 'Hiện tại' : 'Xong'}</span>}
+                      </span>
+                    </li>
+                  ))
+                )}
+              </ol>
+
+              {selected.status === 'PENDING_CONSENT' && canResend && (
+                <div className="mt-4 border-0 border-t border-solid border-slate-100 pt-3.5">
+                  <Button
+                    block
+                    size="large"
+                    icon={<MailOutlined aria-hidden />}
+                    loading={resend.isPending}
+                    className="!border-sky-700 !text-sky-700"
+                    onClick={() => resend.mutate(selected.submissionId)}
+                  >
+                    Gửi lại email xác nhận
+                  </Button>
+                  <p className="m-0 mt-1.5 text-xs text-gray-500">
+                    {resent ? `Đã gửi ${resent.emailSendCount} lần. Hạn mới ${fmt(resent.expiresAt)}.` : 'Liên kết xác nhận cũ sẽ bị vô hiệu hóa.'}
+                  </p>
+                </div>
+              )}
+              {selected.status === 'BLOCKED_DUPLICATE' && (
+                <Button block size="large" className="mt-4" onClick={() => navigate(`/affiliate/disputes?submissionId=${selected.submissionId}`)}>Gửi khiếu nại</Button>
+              )}
+              <button
+                type="button"
+                className="mt-3 w-full cursor-pointer border-0 bg-transparent p-1 text-center text-[13px] font-semibold text-sky-700 hover:text-sky-900"
+                onClick={() => navigate(`/affiliate/submissions/${selected.submissionId}`)}
+              >
+                Xem đầy đủ
+              </button>
             </aside>
           )}
         </div>

@@ -7,6 +7,8 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Dropdown, Tooltip } from 'antd';
+import { useQuery } from '@tanstack/react-query';
+import { affiliateApi } from '@/services/api/mf02Api';
 import {
   DashboardOutlined,
   DollarOutlined,
@@ -73,6 +75,10 @@ export const AffiliateShell: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const pendingCount = useQuery({
+    queryKey: ['aff-submissions', 'count', 'PENDING_CONSENT'],
+    queryFn: async () => (await affiliateApi.submissions({ status: 'PENDING_CONSENT', page: 1, pageSize: 1 })).totalCount,
+  });
 
   // Off-canvas menu below lg: close it on navigation and on Escape.
   useEffect(() => setMenuOpen(false), [location.pathname, compact]);
@@ -160,6 +166,9 @@ export const AffiliateShell: React.FC = () => {
                       {item.icon}
                     </span>
                     {!collapsed && <span className="truncate">{item.label}</span>}
+                    {!collapsed && item.to === '/affiliate/submissions' && Boolean(pendingCount.data) && (
+                      <span className="ml-auto text-xs text-orange-800" aria-label={`${pendingCount.data} lượt chờ xác nhận`}>{pendingCount.data}</span>
+                    )}
                   </NavLink>
                 </Tooltip>
               </li>

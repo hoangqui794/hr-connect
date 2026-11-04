@@ -75,8 +75,8 @@ describe('AffiliatePerformancePage', () => {
     expect((await screen.findAllByText('Tốt')).length).toBeGreaterThan(0);
     expect(screen.getByText('85')).toBeInTheDocument();
     expect(screen.getByText('13%')).toBeInTheDocument();
-    expect(screen.getByText('Lượt giới thiệu')).toBeInTheDocument();
-    expect(screen.getByText('Tuyển dụng thành công')).toBeInTheDocument();
+    expect(screen.getByText('Đã giới thiệu')).toBeInTheDocument();
+    expect(screen.getByText('Đi làm', { selector: 'span' })).toBeInTheDocument();
     expect(screen.getByText('01/09/2026 – 30/09/2026')).toBeInTheDocument();
   });
 });

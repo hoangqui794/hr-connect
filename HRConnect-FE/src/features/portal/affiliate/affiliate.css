@@ -1089,3 +1089,22 @@
 .affiliate-job-option__copy strong { font-size: 14px; }
 .affiliate-job-option__copy small { font-size: 13px; }
 .affiliate-job-option__state { border-radius: 4px; background: #e0f2fe; color: #075985; font-size: 12px; font-weight: 500; }
+
+/* Profile avatar: flat initials with the button beside them (the shared uploader stacks them). */
+.affiliate-console .affiliate-avatar {
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+}
+
+.affiliate-console .affiliate-avatar .bg-gradient-to-br {
+  border: 0;
+  background: #e0f2fe;
+  box-shadow: none;
+  color: #0c4a6e;
+}
+
+.affiliate-console .affiliate-avatar .ant-btn {
+  height: 36px;
+  font-size: 14px !important;
+}

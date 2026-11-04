@@ -154,7 +154,7 @@ export const financeApi = {
 export const affiliateBankApi = {
   async get(): Promise<AffiliateBankAccount | null> {
     try {
-      return (await apiClient.get<AffiliateBankAccount>('/affiliates/profile/me/bank-account')).data;
+      return (await apiClient.get<ApiEnvelope<AffiliateBankAccount>>('/affiliates/profile/me/bank-account')).data.data;
     } catch (error) {
       // 404 means no account has been saved yet.
       if ((error as { response?: { status?: number } })?.response?.status === 404) return null;

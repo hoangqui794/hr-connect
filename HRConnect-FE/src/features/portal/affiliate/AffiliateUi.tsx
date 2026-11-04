@@ -18,6 +18,19 @@ export const AffiliatePageHeader: React.FC<PageHeaderProps> = ({ title, descript
   </header>
 );
 
+const TONE_CHIP: Record<string, string> = {
+  success: 'bg-green-100 text-green-800',
+  warning: 'bg-orange-50 text-orange-800',
+  amber: 'bg-amber-100 text-amber-800',
+  danger: 'bg-red-50 text-red-800',
+  info: 'bg-sky-100 text-sky-800',
+  neutral: 'bg-gray-100 text-gray-700',
+};
+
+export const StatusChip: React.FC<{ tone?: string; children: React.ReactNode }> = ({ tone = 'neutral', children }) => (
+  <span className={`inline-block whitespace-nowrap rounded px-2 py-0.5 text-xs font-semibold ${TONE_CHIP[tone] ?? TONE_CHIP.neutral}`}>{children}</span>
+);
+
 export const AffiliateSectionHeading: React.FC<{
   title: string;
   description?: string;
