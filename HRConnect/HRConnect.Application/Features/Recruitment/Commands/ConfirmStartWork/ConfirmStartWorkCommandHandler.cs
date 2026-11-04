@@ -8,6 +8,7 @@ using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Finance.Common;
 using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Application.Features.Offers.Common;
 using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Entities;
 using HRConnect.Domain.Constants;
@@ -30,6 +31,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
     private readonly IPlacementReconciliationRepository _reconciliationRepository;
     private readonly IAppNotifier? _notifier;
     private readonly ICandidateRecruitmentDeliveryService? _candidateDeliveryService;
+    private readonly ICandidateTransactionLock? _candidateLock;
 
     public ConfirmStartWorkCommandHandler(
         IApplicationRepository applicationRepository,
@@ -43,7 +45,8 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
         IFinanceRepository financeRepository,
         IPlacementReconciliationRepository reconciliationRepository,
         IAppNotifier? notifier = null,
-        ICandidateRecruitmentDeliveryService? candidateDeliveryService = null)
+        ICandidateRecruitmentDeliveryService? candidateDeliveryService = null,
+        ICandidateTransactionLock? candidateLock = null)
     {
         _applicationRepository = applicationRepository;
         _offerRepository = offerRepository;
@@ -57,6 +60,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
         _reconciliationRepository = reconciliationRepository;
         _notifier = notifier;
         _candidateDeliveryService = candidateDeliveryService;
+        _candidateLock = candidateLock;
     }
 
     public async Task<ConfirmStartWorkResponse> Handle(ConfirmStartWorkCommand request, CancellationToken cancellationToken)
@@ -168,16 +172,59 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
         var acceptedAsNewHire = replacementCandidate && request.AcceptAsNewHire;
         ReplacementSlot? replacementSlot = null;
         ServiceFee? replacementSourceFee = null;
-        var replacementTransactionActive = false;
+        var transactionActive = false;
 
         try
         {
+            if (_candidateLock != null)
+            {
+                await _unitOfWork.BeginTransactionAsync(cancellationToken);
+                transactionActive = true;
+                await _candidateLock.AcquireAsync(application.CandidateId, cancellationToken);
+
+                // The initial check happens before the candidate lock. Re-check after
+                // acquiring it so two concurrent requests for the same application
+                // cannot both create a placement and initialize finance records.
+                var placementCreatedWhileWaiting = await _placementRepository.GetByApplicationIdAsync(
+                    application.ApplicationId,
+                    cancellationToken);
+                if (placementCreatedWhileWaiting != null)
+                {
+                    throw new ConflictException(
+                        "Hồ sơ ứng tuyển này đã có thông tin tiếp nhận việc (Placement).",
+                        OfferAcceptanceErrorCodes.ActiveFullTimePlacementConflict);
+                }
+
+                if (OfferAcceptancePolicy.IsFullTime(job.EmploymentType))
+                {
+                    var activeFullTimePlacement = await _placementRepository.GetActiveFullTimeForCandidateAsync(
+                        application.CandidateId,
+                        application.ApplicationId,
+                        cancellationToken);
+                    if (activeFullTimePlacement != null)
+                    {
+                        throw new ConflictException(
+                            "Ứng viên đã có một vị trí toàn thời gian đang hoạt động. Không thể xác nhận thêm một placement toàn thời gian.",
+                            OfferAcceptanceErrorCodes.ActiveFullTimePlacementConflict,
+                            new Dictionary<string, object?>
+                            {
+                                ["applicationId"] = activeFullTimePlacement.ApplicationId,
+                                ["jobTitle"] = activeFullTimePlacement.Application?.Job?.Title,
+                                ["companyName"] = activeFullTimePlacement.Application?.Job?.Company?.CompanyName
+                            });
+                    }
+                }
+            }
+
             if (fillsReplacementSlot)
             {
                 // Locking happens before a placement is added. A concurrent Client request
                 // waits here, then observes FILLED and gets a stable 409 response.
-                await _unitOfWork.BeginTransactionAsync(cancellationToken);
-                replacementTransactionActive = true;
+                if (!transactionActive)
+                {
+                    await _unitOfWork.BeginTransactionAsync(cancellationToken);
+                    transactionActive = true;
+                }
                 replacementSlot = await _financeRepository.GetReplacementSlotForPlacementForUpdateAsync(
                     application.ReplacementSlotId!.Value,
                     cancellationToken);
@@ -376,10 +423,10 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
                     cancellationToken: cancellationToken);
             }
 
-            if (replacementTransactionActive)
+            if (transactionActive)
             {
                 await _unitOfWork.CommitTransactionAsync(cancellationToken);
-                replacementTransactionActive = false;
+                transactionActive = false;
             }
             else
             {
@@ -405,7 +452,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
         }
         catch
         {
-            if (replacementTransactionActive)
+            if (transactionActive)
             {
                 await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
             }

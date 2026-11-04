@@ -28,6 +28,7 @@ public class ConfirmStartWorkCommandHandlerTests
     private readonly Mock<IPlacementFinanceService> _placementFinanceServiceMock = CreateFinanceMock();
     private readonly Mock<IFinanceRepository> _financeRepositoryMock = new();
     private readonly Mock<IPlacementReconciliationRepository> _reconciliationRepositoryMock = new();
+    private readonly Mock<ICandidateTransactionLock> _candidateLockMock = new();
 
     private static Mock<IPlacementFinanceService> CreateFinanceMock()
     {
@@ -49,6 +50,20 @@ public class ConfirmStartWorkCommandHandlerTests
             _placementFinanceServiceMock.Object,
             _financeRepositoryMock.Object,
             _reconciliationRepositoryMock.Object);
+
+    private ConfirmStartWorkCommandHandler CreateHandlerWithCandidateLock() =>
+        new(
+            _applicationRepositoryMock.Object,
+            _offerRepositoryMock.Object,
+            _placementRepositoryMock.Object,
+            _companyUserRepositoryMock.Object,
+            _unitOfWorkMock.Object,
+            _loggerMock.Object,
+            _auditLogServiceMock.Object,
+            _placementFinanceServiceMock.Object,
+            _financeRepositoryMock.Object,
+            _reconciliationRepositoryMock.Object,
+            candidateLock: _candidateLockMock.Object);
 
     [Fact]
     public async Task Handle_WhenActualStartDateIsInFuture_ShouldThrowBadRequestException()
@@ -398,6 +413,38 @@ public class ConfirmStartWorkCommandHandlerTests
         // Assert
         await act.Should().ThrowAsync<ConflictException>()
             .WithMessage("*đã có thông tin tiếp nhận việc*");
+    }
+
+    [Fact]
+    public async Task Handle_WhenPlacementIsCreatedWhileWaitingForCandidateLock_ShouldRollbackAndReject()
+    {
+        var fixture = ArrangeValidClientStart(null);
+        fixture.Application.CandidateId = Guid.NewGuid();
+        var concurrentPlacement = new Placement
+        {
+            PlacementId = Guid.NewGuid(),
+            ApplicationId = fixture.Application.ApplicationId,
+            Status = PlacementStates.Started
+        };
+        _placementRepositoryMock
+            .SetupSequence(repository => repository.GetByApplicationIdAsync(
+                fixture.Application.ApplicationId,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Placement?)null)
+            .ReturnsAsync(concurrentPlacement);
+
+        var act = () => CreateHandlerWithCandidateLock().Handle(fixture.CreateCommand(false), CancellationToken.None);
+
+        await act.Should().ThrowAsync<ConflictException>()
+            .WithMessage("*đã có thông tin tiếp nhận việc*");
+        _candidateLockMock.Verify(transactionLock => transactionLock.AcquireAsync(
+            fixture.Application.CandidateId,
+            It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(unitOfWork => unitOfWork.RollbackTransactionAsync(
+            It.IsAny<CancellationToken>()), Times.Once);
+        _placementRepositoryMock.Verify(repository => repository.AddAsync(
+            It.IsAny<Placement>(),
+            It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

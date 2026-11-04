@@ -210,6 +210,32 @@ lệ.
 Candidate chỉ phản hồi Offer của chính mình. Candidate không được sửa nội dung,
 lương, hạn phản hồi hay trạng thái Offer của Candidate khác.
 
+#### Nhiều Offer và quy tắc việc làm toàn thời gian
+
+Các Application và Offer của cùng một Candidate vẫn là những quy trình độc lập.
+Hệ thống không tự đóng mọi Offer chỉ vì Candidate nhận được hoặc chấp nhận một
+Offer khác. Quy tắc xung đột chỉ áp dụng cho `FULL_TIME`:
+
+- Candidate có thể giữ nhiều Offer `SENT` để cân nhắc.
+- Candidate chỉ có một Offer `FULL_TIME` ở trạng thái `ACCEPTED` tại một thời
+  điểm. Khi đã chấp nhận một Offer toàn thời gian khác, Candidate phải xác nhận
+  rõ việc thay thế Offer cũ trước khi chấp nhận Offer mới.
+- Khi chấp nhận Offer, Candidate có thể giữ các Offer `SENT` khác hoặc chủ động
+  rút các Offer `FULL_TIME` còn chờ. Offer `PART_TIME`, `CONTRACT` và
+  `FREELANCE` không bị tự động rút.
+- Khi thay thế Offer đã chấp nhận, Offer và Application cũ chuyển `WITHDRAWN`;
+  Company cũ chỉ nhận thông báo Candidate đã rút, không được tiết lộ Company
+  hoặc Offer mới.
+- Nếu đã có Placement `FULL_TIME/STARTED`, Candidate không thể chấp nhận thêm
+  Offer `FULL_TIME`, và Company cũng không thể xác nhận thêm một Placement toàn
+  thời gian đang hoạt động.
+
+Mọi kiểm tra chấp nhận Offer và xác nhận Placement được tuần tự hóa theo
+Candidate trong cùng transaction để hai request đồng thời không tạo hai kết quả
+toàn thời gian hoặc khởi tạo phí hai lần. Việc chấp nhận Offer chưa phát sinh
+phí/hoa hồng; tài chính chỉ bắt đầu khi Company xác nhận Candidate thực tế đi
+làm và Placement được tạo.
+
 Khi Company gửi Offer, Candidate phải có tài khoản HR Connect hoặc email hợp
 lệ; nếu thiếu cả hai, API trả `400 CANDIDATE_DELIVERY_UNAVAILABLE` và Offer
 vẫn là `DRAFT`. Khi có tài khoản, hệ thống tạo notification in-app; khi chưa
@@ -365,7 +391,7 @@ trả token mới để gọi bước kế tiếp.
 | Backup | `POST /api/v1/recruitment/applications/{applicationId}/backup-decision` | Company |
 | Candidate withdraw | `POST /api/v1/recruitment/applications/{applicationId}/withdraw` | Candidate |
 | Offer | `POST /api/v1/recruitment/applications/{applicationId}/offers`; `PUT /api/v1/offers/{offerId}`; `POST /send`, `/withdraw` | Company |
-| Offer response | `POST /api/v1/offers/{offerId}/response` | Candidate |
+| Offer response | `GET /api/v1/offers/{offerId}/acceptance-impact`; `POST /api/v1/offers/{offerId}/response` | Candidate |
 | Start outcome | `PUT /api/v1/recruitment/applications/{applicationId}/planned-start-date`; `POST /start-work`, `/not-started` | Company |
 | Application read | `GET /api/v1/recruitment/applications`, `GET /{applicationId}`, `GET /{applicationId}/timeline` | Theo scope role/ownership |
 | Interview read | `GET /api/v1/interviews`, `GET /{interviewId}`, `GET /{interviewId}/history` | Theo scope role/ownership |

@@ -27,6 +27,11 @@ public interface IPlacementRepository
 
     Task<Placement?> GetByOfferIdAsync(Guid offerId, CancellationToken cancellationToken = default);
 
+    Task<Placement?> GetActiveFullTimeForCandidateAsync(
+        Guid candidateId,
+        Guid? excludeApplicationId = null,
+        CancellationToken cancellationToken = default);
+
     Task AddAsync(Placement placement, CancellationToken cancellationToken = default);
 
     void Update(Placement placement);

@@ -210,6 +210,15 @@ describe('CandidateApplicationDetailPage', () => {
       success: true,
       message: 'Đã chấp nhận offer thành công',
     });
+    vi.spyOn(mf04Api, 'getOfferAcceptanceImpact').mockResolvedValue({
+      targetOfferId: 'off-1',
+      employmentType: 'FULL_TIME',
+      isFullTime: true,
+      acceptedFullTimeOffer: null,
+      otherPendingFullTimeOffers: [],
+      activeFullTimePlacement: null,
+      allowedActions: ['KEEP_OTHER_PENDING_OFFERS'],
+    });
 
     renderComponent();
 
@@ -217,6 +226,7 @@ describe('CandidateApplicationDetailPage', () => {
     await userEvent.click(acceptBtn);
 
     // Modal opens with ACCEPTED selected
+    await screen.findByText(/Chấp nhận Offer chưa phải là xác nhận đã đi làm/i);
     const confirmBtn = screen.getByRole('button', { name: /Xác nhận chấp nhận/i });
     await userEvent.click(confirmBtn);
 
@@ -225,6 +235,54 @@ describe('CandidateApplicationDetailPage', () => {
         response: 'ACCEPTED',
         declineReason: undefined,
         concurrencyToken: 'token-off-1',
+        acceptanceAction: 'KEEP_OTHER_PENDING_OFFERS',
+      });
+    });
+  });
+
+  it('requires explicit replacement when another full-time offer was already accepted', async () => {
+    vi.spyOn(mf04Api, 'getApplicationDetail').mockResolvedValue(mockMf04Application as any);
+    vi.spyOn(mf04Api, 'getApplicationTimeline').mockResolvedValue({
+      applicationId: 'application-1',
+      candidateName: 'Nguyễn Văn A',
+      jobTitle: 'Senior .NET Developer',
+      currentStatus: 'INTERVIEWING',
+      events: [],
+    });
+    vi.spyOn(mf04Api, 'getOfferAcceptanceImpact').mockResolvedValue({
+      targetOfferId: 'off-1',
+      employmentType: 'FULL_TIME',
+      isFullTime: true,
+      acceptedFullTimeOffer: {
+        offerId: 'old-offer',
+        applicationId: 'old-application',
+        jobTitle: 'Backend Engineer',
+        companyName: 'Công ty cũ',
+        employmentType: 'FULL_TIME',
+        status: 'ACCEPTED',
+      },
+      otherPendingFullTimeOffers: [],
+      activeFullTimePlacement: null,
+      allowedActions: ['KEEP_OTHER_PENDING_OFFERS', 'REPLACE_ACCEPTED_FULL_TIME_OFFER'],
+    });
+    const respondSpy = vi.spyOn(mf04Api, 'respondOffer').mockResolvedValue({
+      success: true,
+      message: 'Đã chuyển sang offer mới',
+    });
+
+    renderComponent();
+    await userEvent.click(await screen.findByRole('button', { name: /^Chấp nhận$/i }));
+
+    expect(await screen.findByText(/Bạn đã chấp nhận một Offer toàn thời gian khác/i)).toBeInTheDocument();
+    expect(screen.getByText(/Công ty cũ/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /Xác nhận chấp nhận/i }));
+
+    await waitFor(() => {
+      expect(respondSpy).toHaveBeenCalledWith('off-1', {
+        response: 'ACCEPTED',
+        declineReason: undefined,
+        concurrencyToken: 'token-off-1',
+        acceptanceAction: 'REPLACE_ACCEPTED_FULL_TIME_OFFER',
       });
     });
   });

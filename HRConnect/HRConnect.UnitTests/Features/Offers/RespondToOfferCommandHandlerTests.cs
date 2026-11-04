@@ -6,6 +6,9 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Offers.Commands.RespondToOffer;
+using HRConnect.Application.Features.Offers.Common;
+using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -20,6 +23,7 @@ public class RespondToOfferCommandHandlerTests
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly Mock<ILogger<RespondToOfferCommandHandler>> _loggerMock = new();
     private readonly Mock<IAuditLogService> _auditLogServiceMock = new();
+    private readonly Mock<IPlacementRepository> _placementRepositoryMock = new();
 
     private RespondToOfferCommandHandler CreateHandler() =>
         new(
@@ -28,6 +32,15 @@ public class RespondToOfferCommandHandlerTests
             _unitOfWorkMock.Object,
             _loggerMock.Object,
             _auditLogServiceMock.Object);
+
+    private RespondToOfferCommandHandler CreatePolicyHandler() =>
+        new(
+            _offerRepositoryMock.Object,
+            _applicationRepositoryMock.Object,
+            _unitOfWorkMock.Object,
+            _loggerMock.Object,
+            _auditLogServiceMock.Object,
+            placementRepository: _placementRepositoryMock.Object);
 
     [Fact]
     public async Task Handle_WhenResponseIsEmpty_ShouldThrowBadRequestException()
@@ -346,5 +359,183 @@ public class RespondToOfferCommandHandlerTests
         _offerRepositoryMock.Verify(r => r.Update(offer), Times.Once);
         _applicationRepositoryMock.Verify(r => r.Update(app), Times.Once);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenAnotherFullTimeOfferWasAccepted_WithoutReplaceAction_ShouldConflict()
+    {
+        var candidateId = Guid.NewGuid();
+        var candidateUserId = Guid.NewGuid();
+        var target = CreateOffer(candidateId, candidateUserId, EmploymentTypes.FullTime, OfferStates.Sent);
+        var accepted = CreateOffer(candidateId, candidateUserId, EmploymentTypes.FullTime, OfferStates.Accepted);
+
+        SetupTarget(target);
+        _offerRepositoryMock
+            .Setup(r => r.GetCandidateOffersForAcceptanceAsync(candidateId, target.OfferId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { accepted });
+
+        var command = new RespondToOfferCommand(
+            target.OfferId,
+            OfferStates.Accepted,
+            null,
+            target.ConcurrencyToken,
+            candidateUserId,
+            OfferAcceptanceActions.KeepOtherPendingOffers);
+
+        var act = () => CreatePolicyHandler().Handle(command, CancellationToken.None);
+
+        var exception = await act.Should().ThrowAsync<ConflictException>();
+        exception.Which.ErrorCode.Should().Be(OfferAcceptanceErrorCodes.AcceptedFullTimeOfferExists);
+        target.Status.Should().Be(OfferStates.Sent);
+    }
+
+    [Fact]
+    public async Task Handle_WhenCandidateExplicitlyReplacesAcceptedFullTimeOffer_ShouldWithdrawOldFlow()
+    {
+        var candidateId = Guid.NewGuid();
+        var candidateUserId = Guid.NewGuid();
+        var target = CreateOffer(candidateId, candidateUserId, EmploymentTypes.FullTime, OfferStates.Sent);
+        var accepted = CreateOffer(candidateId, candidateUserId, EmploymentTypes.FullTime, OfferStates.Accepted);
+        var originalRespondedAt = DateTime.UtcNow.AddDays(-2);
+        accepted.RespondedAt = originalRespondedAt;
+
+        SetupTarget(target);
+        _offerRepositoryMock
+            .Setup(r => r.GetCandidateOffersForAcceptanceAsync(candidateId, target.OfferId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { accepted });
+
+        var command = new RespondToOfferCommand(
+            target.OfferId,
+            OfferStates.Accepted,
+            null,
+            target.ConcurrencyToken,
+            candidateUserId,
+            OfferAcceptanceActions.ReplaceAcceptedFullTimeOffer);
+
+        var result = await CreatePolicyHandler().Handle(command, CancellationToken.None);
+
+        result.Status.Should().Be(OfferStates.Accepted);
+        target.Application.Status.Should().Be(ApplicationStates.OfferAccepted);
+        accepted.Status.Should().Be(OfferStates.Withdrawn);
+        accepted.RespondedAt.Should().Be(originalRespondedAt);
+        accepted.Application.Status.Should().Be(ApplicationStates.Withdrawn);
+        accepted.Application.ApplicationStatusHistories.Should()
+            .ContainSingle(history => history.NewStatus == ApplicationStates.Withdrawn);
+        _offerRepositoryMock.Verify(repository => repository.Update(accepted), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenCandidateChoosesWithdrawPendingFullTimeOffers_ShouldLeaveNonFullTimeOfferUntouched()
+    {
+        var candidateId = Guid.NewGuid();
+        var candidateUserId = Guid.NewGuid();
+        var target = CreateOffer(candidateId, candidateUserId, EmploymentTypes.FullTime, OfferStates.Sent);
+        var pendingFullTime = CreateOffer(candidateId, candidateUserId, EmploymentTypes.FullTime, OfferStates.Sent);
+        var pendingPartTime = CreateOffer(candidateId, candidateUserId, "PART_TIME", OfferStates.Sent);
+
+        SetupTarget(target);
+        _offerRepositoryMock
+            .Setup(r => r.GetCandidateOffersForAcceptanceAsync(candidateId, target.OfferId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { pendingFullTime, pendingPartTime });
+
+        var command = new RespondToOfferCommand(
+            target.OfferId,
+            OfferStates.Accepted,
+            null,
+            target.ConcurrencyToken,
+            candidateUserId,
+            OfferAcceptanceActions.WithdrawOtherPendingFullTimeOffers);
+
+        await CreatePolicyHandler().Handle(command, CancellationToken.None);
+
+        pendingFullTime.Status.Should().Be(OfferStates.Withdrawn);
+        pendingFullTime.Application.Status.Should().Be(ApplicationStates.Withdrawn);
+        pendingPartTime.Status.Should().Be(OfferStates.Sent);
+        pendingPartTime.Application.Status.Should().Be(ApplicationStates.OfferPending);
+    }
+
+    [Fact]
+    public async Task Handle_WhenCandidateAlreadyHasActiveFullTimePlacement_ShouldBlockAcceptance()
+    {
+        var candidateId = Guid.NewGuid();
+        var candidateUserId = Guid.NewGuid();
+        var target = CreateOffer(candidateId, candidateUserId, EmploymentTypes.FullTime, OfferStates.Sent);
+        var activePlacement = new Placement
+        {
+            PlacementId = Guid.NewGuid(),
+            ApplicationId = Guid.NewGuid(),
+            Status = PlacementStates.Started,
+            Application = new HRConnect.Domain.Entities.Application
+            {
+                Job = new Job { Title = "Existing role", EmploymentType = EmploymentTypes.FullTime }
+            }
+        };
+
+        SetupTarget(target);
+        _placementRepositoryMock
+            .Setup(r => r.GetActiveFullTimeForCandidateAsync(candidateId, target.ApplicationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(activePlacement);
+
+        var command = new RespondToOfferCommand(
+            target.OfferId,
+            OfferStates.Accepted,
+            null,
+            target.ConcurrencyToken,
+            candidateUserId,
+            OfferAcceptanceActions.KeepOtherPendingOffers);
+
+        var act = () => CreatePolicyHandler().Handle(command, CancellationToken.None);
+
+        var exception = await act.Should().ThrowAsync<ConflictException>();
+        exception.Which.ErrorCode.Should().Be(OfferAcceptanceErrorCodes.ActiveFullTimePlacementExists);
+    }
+
+    private void SetupTarget(Offer target)
+    {
+        _offerRepositoryMock
+            .Setup(r => r.GetByIdWithApplicationAsync(target.OfferId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(target);
+        _unitOfWorkMock
+            .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+    }
+
+    private static Offer CreateOffer(
+        Guid candidateId,
+        Guid candidateUserId,
+        string employmentType,
+        string status)
+    {
+        var application = new HRConnect.Domain.Entities.Application
+        {
+            ApplicationId = Guid.NewGuid(),
+            CandidateId = candidateId,
+            Status = status == OfferStates.Accepted
+                ? ApplicationStates.OfferAccepted
+                : ApplicationStates.OfferPending,
+            Candidate = new Candidate
+            {
+                CandidateId = candidateId,
+                UserId = candidateUserId,
+                FullName = "Candidate"
+            },
+            Job = new Job
+            {
+                JobId = Guid.NewGuid(),
+                Title = "Software Engineer",
+                EmploymentType = employmentType,
+                Company = new Company { CompanyId = Guid.NewGuid(), CompanyName = "Company" }
+            }
+        };
+
+        return new Offer
+        {
+            OfferId = Guid.NewGuid(),
+            ApplicationId = application.ApplicationId,
+            OfferVersion = 1,
+            Status = status,
+            ConcurrencyToken = Guid.NewGuid(),
+            Application = application
+        };
     }
 }
