@@ -153,6 +153,12 @@ const AffiliateSubmissionDetailPage = React.lazy(() =>
   import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateSubmissionDetailPage }))
 );
 const AffiliateCandidatesPage = React.lazy(() => import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateCandidatesPage })));
+const AffiliateCandidateDetailPage = React.lazy(() =>
+  import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateCandidateDetailPage }))
+);
+const AffiliateRegisterPage = React.lazy(() =>
+  import('@/features/portal/AffiliateRegisterPage').then((m) => ({ default: m.AffiliateRegisterPage }))
+);
 const AffiliateAttributionsPage = React.lazy(() =>
   import('@/features/portal/AffiliatePages').then((m) => ({ default: m.AffiliateAttributionsPage }))
 );
@@ -165,6 +171,12 @@ const AffiliatePerformancePage = React.lazy(() =>
 const AffiliateDisputesPage = React.lazy(() =>
   import('@/features/portal/AffiliateDisputesPage').then((m) => ({ default: m.AffiliateDisputesPage }))
 );
+const AffiliateJobsPage = React.lazy(() => import('@/features/portal/AffiliateJobPages').then((m) => ({ default: m.AffiliateJobsPage })));
+const AffiliateJobDetailPage = React.lazy(() =>
+  import('@/features/portal/AffiliateJobPages').then((m) => ({ default: m.AffiliateJobDetailPage }))
+);
+const CompaniesPage = React.lazy(() => import('@/features/landing/CompanyPages').then((m) => ({ default: m.CompaniesPage })));
+const CompanyDetailPage = React.lazy(() => import('@/features/landing/CompanyPages').then((m) => ({ default: m.CompanyDetailPage })));
 const AffiliateCommissionsPage = React.lazy(() =>
   import('@/features/finance-mf05/AffiliateCommissionsPage').then((m) => ({ default: m.AffiliateCommissionsPage }))
 );
@@ -466,6 +478,12 @@ export const AppRoutes = {
   Mf01PublicJobSearchPage,
   Mf01PublicJobDetailPage,
   Mf01AffiliateJobDetailPage,
+  AffiliateJobsPage,
+  CompaniesPage,
+  CompanyDetailPage,
+  AffiliateCandidateDetailPage,
+  AffiliateRegisterPage,
+  AffiliateJobDetailPage,
   ConsoleOverviewPage,
   ConsoleApprovalsPage,
   ConsoleIdentityClaimsPage,

@@ -1,133 +1,28 @@
 /**
- * Affiliate › Hoa hồng & chi trả (MF-05, HEADHUNT_COD). The API returns only the affiliate's own
+ * Affiliate › Hoa hồng và chi trả (MF-05, mockup 03/11). The API returns only the affiliate's own
  * commissions and payouts. A commission is earned in full once the candidate has worked through the
  * warranty, and is paid after the Client has paid the service fee.
  */
 import React, { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App, Button, Form, Input, Modal, Skeleton, Table } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
-import { BankOutlined, CalendarOutlined, CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { Alert, Button, Pagination, Skeleton } from 'antd';
 import { affiliateBankApi, financeApi } from '@/services/api/financeApi';
 import { getApiErrorMessage } from '@/services/apiClient';
-import type { Commission, CommissionStatus, Payout } from '@/types/api/finance';
-import { FilterPills, StatusDot, Surface } from '@/features/admin-console/ui';
+import type { Commission, CommissionStatus } from '@/types/api/finance';
 import { COMMISSION_STATUS, PAYOUT_STATUS, date, labelOf, money } from './financeLabels';
-import { AffiliatePageHeader } from '@/features/portal/affiliate/AffiliateUi';
-import { serviceTypeText } from '@/features/jobs-mf01/jobDisplay';
+import { StatusChip } from '@/features/portal/affiliate/AffiliateUi';
 
 const PAGE_SIZE = 20;
 
-/** Where HR Connect transfers the commission; payouts cannot be made without it. */
-const PayoutAccountCard: React.FC = () => {
-  const { message } = App.useApp();
-  const queryClient = useQueryClient();
-  const [editing, setEditing] = useState(false);
-  const [form] = Form.useForm();
-  const account = useQuery({ queryKey: ['mf05-my-bank-account'], queryFn: () => affiliateBankApi.get() });
-  const save = useMutation({
-    mutationFn: async () => affiliateBankApi.update(await form.validateFields()),
-    onSuccess: () => {
-      message.success('Đã lưu tài khoản nhận tiền.');
-      setEditing(false);
-      queryClient.invalidateQueries({ queryKey: ['mf05-my-bank-account'] });
-    },
-    onError: (error) => {
-      if (!(error && typeof error === 'object' && 'errorFields' in error)) message.error(getApiErrorMessage(error));
-    },
-  });
-  const data = account.data;
-  const hasAccount = Boolean(data?.bankAccountNumber);
-
-  return (
-    <Surface padded className="mb-5">
-      <div className="flex flex-wrap items-center gap-4">
-        <BankOutlined className="text-2xl text-[color:var(--console-accent)]" aria-hidden />
-        <div className="min-w-[220px] flex-1">
-          <div className="text-[15px] font-semibold text-slate-900">Tài khoản nhận tiền</div>
-          {account.isLoading ? (
-            <Skeleton active paragraph={false} />
-          ) : account.isError ? (
-            <div className="text-[13.5px] text-red-700">{getApiErrorMessage(account.error)}</div>
-          ) : hasAccount ? (
-            <div className="text-[13.5px] text-slate-600">
-              {data?.bankName}
-              {data?.bankBranch ? ` — ${data.bankBranch}` : ''} · <span className="font-semibold tabular-nums text-slate-900">{data?.bankAccountNumber}</span> ·{' '}
-              {data?.bankAccountHolder}
-            </div>
-          ) : (
-            <div className="text-[13.5px] text-amber-700">Chưa khai báo. HR Connect cần tài khoản này để chuyển hoa hồng cho bạn.</div>
-          )}
-        </div>
-        <Button
-          type={hasAccount ? 'default' : 'primary'}
-          onClick={() => {
-            form.setFieldsValue({
-              bankName: data?.bankName ?? '',
-              bankAccountNumber: data?.bankAccountNumber ?? '',
-              bankAccountHolder: data?.bankAccountHolder ?? '',
-              bankBranch: data?.bankBranch ?? '',
-            });
-            setEditing(true);
-          }}
-        >
-          {hasAccount ? 'Sửa' : 'Khai báo tài khoản'}
-        </Button>
-      </div>
-      <Modal
-        open={editing}
-        title="Tài khoản nhận hoa hồng"
-        okText="Lưu"
-        cancelText="Hủy"
-        confirmLoading={save.isPending}
-        onOk={() => save.mutate()}
-        onCancel={() => setEditing(false)}
-        destroyOnHidden
-      >
-        <Form form={form} layout="vertical" preserve={false}>
-          <Form.Item name="bankName" label="Ngân hàng" rules={[{ required: true, whitespace: true, message: 'Nhập tên ngân hàng.' }, { min: 2, max: 100, message: 'Từ 2 đến 100 ký tự.' }]}>
-            <Input placeholder="Vietcombank" />
-          </Form.Item>
-          <Form.Item
-            name="bankAccountNumber"
-            label="Số tài khoản"
-            rules={[{ required: true, message: 'Nhập số tài khoản.' }, { pattern: /^[a-zA-Z0-9]{5,50}$/, message: 'Từ 5 đến 50 ký tự, chỉ gồm chữ và số.' }]}
-          >
-            <Input placeholder="0123456789" />
-          </Form.Item>
-          <Form.Item name="bankAccountHolder" label="Chủ tài khoản" rules={[{ required: true, whitespace: true, message: 'Nhập tên chủ tài khoản.' }, { min: 2, max: 180, message: 'Từ 2 đến 180 ký tự.' }]}>
-            <Input placeholder="NGUYEN VAN A" />
-          </Form.Item>
-          <Form.Item name="bankBranch" label="Chi nhánh" rules={[{ max: 180 }]}>
-            <Input placeholder="Không bắt buộc" />
-          </Form.Item>
-        </Form>
-      </Modal>
-    </Surface>
-  );
-};
-
-/** The four (Headhunt) or three (Sourcing) steps a commission walks through. */
-const HEADHUNT_STEPS = ['Đi làm', 'Bảo hành', 'Đã đạt', 'Đã nhận'];
-const SOURCING_STEPS = ['CV được nhận', 'Đã đạt', 'Đã nhận'];
-
-/** Index of the step the commission is on; steps before it are done. */
-const stepIndex = (c: Commission): number => {
-  const sourcing = !c.placementId;
-  switch (c.status) {
-    case 'PENDING':
-      return 0;
-    case 'IN_WARRANTY':
-    case 'ON_HOLD':
-      return sourcing ? 0 : 1;
-    case 'EARNED':
-    case 'PAYABLE':
-      return sourcing ? 1 : 2;
-    case 'PAID':
-      return sourcing ? 3 : 4;
-    default:
-      return -1;
-  }
+const STATUS_CHIP: Record<CommissionStatus, { label: string; tone: string }> = {
+  PENDING: { label: 'Trong bảo hành', tone: 'info' },
+  IN_WARRANTY: { label: 'Trong bảo hành', tone: 'info' },
+  EARNED: { label: 'Đủ điều kiện', tone: 'warning' },
+  PAYABLE: { label: 'Chờ chi', tone: 'amber' },
+  PAID: { label: 'Đã chi', tone: 'success' },
+  ON_HOLD: { label: 'Tạm giữ', tone: 'danger' },
+  CANCELLED: { label: 'Đã hủy', tone: 'neutral' },
 };
 
 const daysLeft = (end?: string | null) => {
@@ -136,100 +31,39 @@ const daysLeft = (end?: string | null) => {
   return Math.max(0, Math.round(ms / 86_400_000));
 };
 
-/** What the step under way means for this commission, in one short line. */
-const stepNote = (c: Commission): string | null => {
-  if (c.status === 'IN_WARRANTY' && c.warrantyEndDate) {
-    const left = daysLeft(c.warrantyEndDate);
-    return `${left === 0 ? 'Hết bảo hành hôm nay' : `Còn ${left} ngày`} · hết bảo hành ${date(c.warrantyEndDate)}`;
+/** What the current status means for this commission, in one short line. */
+const statusNote = (c: Commission): string | null => {
+  switch (c.status) {
+    case 'IN_WARRANTY': {
+      if (!c.warrantyEndDate) return null;
+      const left = daysLeft(c.warrantyEndDate);
+      return `${left === 0 ? 'Hết bảo hành hôm nay' : `Còn ${left} ngày`} · hết bảo hành ${date(c.warrantyEndDate)}`;
+    }
+    case 'EARNED':
+      return c.serviceFeeStatus === 'PAID' ? 'Doanh nghiệp đã thanh toán, chờ Admin duyệt' : 'Chờ doanh nghiệp thanh toán phí dịch vụ';
+    case 'PAYABLE':
+      return 'Admin đã duyệt, chờ chuyển khoản';
+    case 'PENDING':
+      return 'Chờ ứng viên bắt đầu đi làm';
+    case 'ON_HOLD':
+      return 'Đang tạm giữ, bộ phận vận hành đang xác minh';
+    case 'CANCELLED':
+      return labelOf(COMMISSION_STATUS, c.status).hint ?? null;
+    default:
+      return c.approvedAt ? `Duyệt ${date(c.approvedAt)}` : null;
   }
-  if (c.status === 'EARNED') return c.serviceFeeStatus === 'PAID' ? 'Doanh nghiệp đã thanh toán, chờ HR Connect duyệt chi' : 'Chờ doanh nghiệp thanh toán phí dịch vụ';
-  if (c.status === 'PAYABLE') return 'Đã duyệt, chờ chuyển khoản cho bạn';
-  if (c.status === 'PENDING') return 'Chờ ứng viên bắt đầu đi làm';
-  return null;
 };
 
-const CommissionCard: React.FC<{ c: Commission }> = ({ c }) => {
-  const steps = c.placementId ? HEADHUNT_STEPS : SOURCING_STEPS;
-  const current = stepIndex(c);
-  const s = labelOf(COMMISSION_STATUS, c.status);
-  const onHold = c.status === 'ON_HOLD';
-  const cancelled = c.status === 'CANCELLED';
-  const note = stepNote(c);
-  return (
-    <li
-      className={`rounded-2xl border bg-white p-4 sm:p-5 ${onHold ? 'border-amber-300' : 'border-slate-200'}`}
-      aria-label={`${c.candidateName ?? 'Ứng viên'} – ${s.label}`}
-    >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="truncate text-[15px] font-semibold text-slate-900">{c.candidateName ?? '—'}</div>
-          <div className="truncate text-[13px] text-slate-500">
-            {c.jobTitle ?? '—'} · {serviceTypeText(c.placementId ? 'HEADHUNT_COD' : 'CV_SOURCING')}
-          </div>
-        </div>
-        <div className="text-right">
-          <div className={`text-[17px] font-bold tabular-nums ${cancelled ? 'text-slate-400 line-through' : 'text-slate-900'}`}>{money(c.amount)}</div>
-          {c.baseAmount ? <div className="text-xs text-slate-500">tính trên phí {money(c.baseAmount)}</div> : null}
-        </div>
-      </div>
+const FLOW = [
+  ['Trong bảo hành', 'Ứng viên đã đi làm'],
+  ['Đủ điều kiện', 'Hết bảo hành, chờ doanh nghiệp trả phí'],
+  ['Chờ chi', 'Doanh nghiệp đã trả, Admin đã duyệt'],
+  ['Đã chi', 'Chuyển vào tài khoản của bạn'],
+];
 
-      {cancelled ? (
-        <div className="mt-3">
-          <StatusDot tone={s.tone}>{s.label}</StatusDot>
-          <div className="mt-1 text-[13px] text-slate-500">{s.hint}</div>
-        </div>
-      ) : (
-        <>
-          <ol
-            className="mt-4 grid list-none gap-1.5 p-0"
-            style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}
-            aria-label="Tiến trình hoa hồng"
-          >
-            {steps.map((label, i) => {
-              const done = i < current;
-              const now = i === current;
-              const bar = done
-                ? 'bg-[color:var(--console-accent)]'
-                : now
-                  ? onHold
-                    ? 'bg-amber-400'
-                    : 'bg-[color:var(--console-accent-soft)] ring-1 ring-[color:var(--console-accent)]'
-                  : 'bg-slate-200';
-              return (
-                <li key={label} aria-current={now ? 'step' : undefined}>
-                  <div className={`h-1.5 rounded-full ${bar}`} />
-                  <div className={`mt-1.5 text-xs ${done || now ? 'font-semibold text-slate-800' : 'text-slate-400'}`}>
-                    {label}
-                    {done && <span className="sr-only"> (xong)</span>}
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-          {onHold ? (
-            <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-[13px] text-amber-800">
-              <ExclamationCircleOutlined className="mr-1.5" aria-hidden />
-              Doanh nghiệp báo ứng viên đã nghỉ việc; bộ phận vận hành đang xác minh. Nếu thông tin không chính xác, tiến trình hoa hồng sẽ tiếp tục.
-            </div>
-          ) : note ? (
-            <div className="mt-2 text-[13px] text-slate-600">{note}</div>
-          ) : null}
-        </>
-      )}
-    </li>
-  );
-};
-
-type Group = 'all' | 'warranty' | 'payout' | 'hold' | 'paid';
-const GROUPS: Record<Exclude<Group, 'all'>, CommissionStatus[]> = {
-  warranty: ['PENDING', 'IN_WARRANTY'],
-  payout: ['EARNED', 'PAYABLE'],
-  hold: ['ON_HOLD'],
-  paid: ['PAID'],
-};
+const lastDigits = (account: string) => `••• ${account.slice(-4)}`;
 
 export const AffiliateCommissionsPage: React.FC = () => {
-  const [group, setGroup] = useState<Group>('all');
   const [payoutPage, setPayoutPage] = useState(1);
   // One page of up to 100 (the API maximum) covers an affiliate's commissions; the totals need all of them.
   const commissions = useQuery({
@@ -241,144 +75,150 @@ export const AffiliateCommissionsPage: React.FC = () => {
     queryFn: () => financeApi.payouts({ page: payoutPage, pageSize: PAGE_SIZE }),
     placeholderData: (previous) => previous,
   });
+  const account = useQuery({ queryKey: ['mf05-my-bank-account'], queryFn: () => affiliateBankApi.get() });
 
   const items = commissions.data?.items ?? [];
-  const inGroup = (statuses: CommissionStatus[]) => items.filter((c) => statuses.includes(c.status));
-  const sum = (statuses: CommissionStatus[]) => inGroup(statuses).reduce((t, c) => t + c.amount, 0);
-  const shown = group === 'all' ? items : inGroup(GROUPS[group]);
-  const recognizedTotal = items.filter((item) => item.status !== 'CANCELLED').reduce((total, item) => total + item.amount, 0);
-  const monthTotals = Array.from({ length: 12 }, (_, month) =>
-    (payouts.data?.items ?? [])
-      .filter((payout) => Boolean(payout.payoutDate) && new Date(payout.payoutDate!).getFullYear() === new Date().getFullYear() && new Date(payout.payoutDate!).getMonth() === month)
-      .reduce((total, payout) => total + payout.amount, 0)
-  );
-  const maxMonthTotal = Math.max(1, ...monthTotals);
-  const upcoming = inGroup(GROUPS.payout).slice(0, 3);
+  const inStatus = (statuses: CommissionStatus[]) => items.filter((c) => statuses.includes(c.status));
+  const sum = (statuses: CommissionStatus[]) => inStatus(statuses).reduce((t, c) => t + c.amount, 0);
+  const count = (statuses: CommissionStatus[]) => `${inStatus(statuses).length} khoản`;
 
-  const payoutColumns: ColumnsType<Payout> = [
-    { title: 'Ngày chi', dataIndex: 'payoutDate', render: (v) => date(v) },
-    { title: 'Số tiền', dataIndex: 'amount', align: 'right', render: (v: number) => <span className="font-semibold tabular-nums">{money(v)}</span> },
-    { title: 'Mã giao dịch', dataIndex: 'transactionReference', render: (v) => v ?? '—' },
-    {
-      title: 'Kết quả',
-      dataIndex: 'status',
-      render: (v) => {
-        const st = labelOf(PAYOUT_STATUS, v);
-        return <StatusDot tone={st.tone}>{st.label}</StatusDot>;
-      },
-    },
+  const kpis = [
+    { label: 'Trong bảo hành', statuses: ['PENDING', 'IN_WARRANTY'] as CommissionStatus[], note: 'Ứng viên đang đi làm', color: 'text-gray-900' },
+    { label: 'Đủ điều kiện', statuses: ['EARNED'] as CommissionStatus[], note: 'Hết bảo hành', color: 'text-[color:var(--affiliate-cta)]' },
+    { label: 'Chờ chi', statuses: ['PAYABLE'] as CommissionStatus[], note: 'Đã được Admin duyệt', color: 'text-[color:var(--affiliate-cta)]' },
+    { label: 'Đã nhận', statuses: ['PAID'] as CommissionStatus[], note: 'Đã chuyển khoản', color: 'text-green-800' },
   ];
 
+  const payoutItems = payouts.data?.items ?? [];
+  const hasAccount = Boolean(account.data?.bankAccountNumber);
+
   return (
-    <div className="affiliate-commissions-page">
-      <AffiliatePageHeader
-        title="Hoa hồng & chi trả"
-        description="Theo dõi số tiền dự kiến, điều kiện chi trả và lịch sử HR Connect chuyển tiền cho bạn."
-        actions={
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={() => {
-              commissions.refetch();
-              payouts.refetch();
-            }}
-            loading={commissions.isFetching || payouts.isFetching}
-          >
-            Làm mới
-          </Button>
-        }
-      />
-
-      {commissions.isError && <Alert className="mb-4" type="error" showIcon message={getApiErrorMessage(commissions.error)} />}
-
-      <div className="affiliate-finance-tabs" role="tablist" aria-label="Nội dung hoa hồng">
-        <button type="button" role="tab" aria-selected="true">Tổng quan</button>
-        <button type="button" role="tab" onClick={() => document.getElementById('affiliate-payout-history')?.scrollIntoView({ behavior: 'smooth' })}>Lịch chi trả</button>
-        <button type="button" role="tab" onClick={() => window.location.assign('/affiliate/disputes')}>Khiếu nại</button>
-      </div>
-
-      {commissions.isLoading ? <Skeleton active /> : (
-        <>
-          <div className="affiliate-finance-kpis">
-            <article><span className="is-gold"><BankOutlined /></span><div><small>Tổng hoa hồng đã ghi nhận</small><strong>{money(recognizedTotal)}</strong><em>{items.length} khoản hoa hồng</em></div></article>
-            <article><span className="sr-only">Sắp nhận</span><span className="is-violet"><ClockCircleOutlined /></span><div><small>Đang chờ chi trả</small><strong>{money(sum(GROUPS.payout))}</strong><em>{inGroup(GROUPS.payout).length} khoản đủ điều kiện</em></div></article>
-            <article><span className="is-green"><CheckCircleOutlined /></span><div><small>Đã chi trả</small><strong>{money(sum(GROUPS.paid))}</strong><em>{inGroup(GROUPS.paid).length} khoản đã nhận</em></div></article>
-          </div>
-
-          <div className="affiliate-finance-overview">
-            <Surface className="affiliate-monthly-chart p-5">
-              <h2>Thống kê hoa hồng theo tháng</h2>
-              <div className="affiliate-bars" aria-label={`Hoa hồng đã chi trong năm ${new Date().getFullYear()}`}>
-                {monthTotals.map((value, index) => (
-                  <div key={index}><span style={{ height: `${Math.max(value ? 12 : 3, (value / maxMonthTotal) * 100)}%` }} title={`${index + 1}/${new Date().getFullYear()}: ${money(value)}`} /><small>T{index + 1}</small></div>
-                ))}
-              </div>
-              <p>Dữ liệu chỉ tính các khoản HR Connect đã chuyển thành công.</p>
-            </Surface>
-            <Surface className="affiliate-upcoming-payouts p-5">
-              <h2>Lịch chi trả sắp tới</h2>
-              {upcoming.length ? <ul>{upcoming.map((commission) => <li key={commission.commissionId}><CalendarOutlined /><span><strong>{commission.candidateName || 'Ứng viên'}</strong><small>Chờ duyệt lịch chuyển tiền</small></span><b>{money(commission.amount)}</b></li>)}</ul> : <div className="affiliate-upcoming-empty">Chưa có khoản nào chờ lên lịch chi trả.</div>}
-            </Surface>
-          </div>
-        </>
+    <div className="affiliate-commissions-page flex flex-col gap-5">
+      <h1 className="sr-only">Hoa hồng và chi trả</h1>
+      {commissions.isError && (
+        <Alert type="error" showIcon message="Không tải được hoa hồng" description={getApiErrorMessage(commissions.error)} action={<Button onClick={() => commissions.refetch()}>Thử lại</Button>} />
       )}
 
-      <PayoutAccountCard />
-
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="m-0 text-base font-semibold text-slate-900">Tiến trình từng khoản hoa hồng</h2>
-        <FilterPills<Group>
-          label="Lọc hoa hồng"
-          value={group}
-          onChange={setGroup}
-          options={[
-            { value: 'all', label: 'Tất cả', count: items.length },
-            { value: 'warranty', label: 'Đang bảo hành', count: inGroup(GROUPS.warranty).length },
-            { value: 'payout', label: 'Chờ chi', count: inGroup(GROUPS.payout).length },
-            { value: 'hold', label: 'Tạm giữ', count: inGroup(GROUPS.hold).length },
-            { value: 'paid', label: 'Đã nhận', count: inGroup(GROUPS.paid).length },
-          ]}
-        />
-      </div>
-
-      {!commissions.isLoading && shown.length === 0 ? (
-        <Surface padded>
-          <div className="py-6 text-center">
-            <div className="text-[15px] font-semibold text-slate-900">{items.length === 0 ? 'Chưa có hoa hồng' : 'Không có ca nào ở mục này'}</div>
-            <div className="mt-1 text-[13px] text-slate-500">
-              {items.length === 0
-                ? 'Hoa hồng xuất hiện khi ứng viên bạn giới thiệu bắt đầu đi làm hoặc doanh nghiệp tiếp nhận CV.'
-                : 'Chọn mục khác để xem.'}
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {kpis.map((k) => (
+          <section key={k.label} aria-label={k.label} className="rounded-lg border border-solid border-gray-200 bg-white p-4">
+            <div className="text-[13px] text-gray-600">{k.label}</div>
+            <div className={`mt-1 text-lg font-bold tabular-nums sm:text-[22px] ${k.color}`}>
+              {commissions.isLoading ? <Skeleton.Input active size="small" /> : money(sum(k.statuses))}
             </div>
-          </div>
-        </Surface>
-      ) : (
-        <ul className="m-0 grid list-none gap-3 p-0">
-          {shown.map((c) => (
-            <CommissionCard key={c.commissionId} c={c} />
-          ))}
-        </ul>
-      )}
+            <div className="mt-0.5 text-xs text-gray-500">{k.note} · {count(k.statuses)}</div>
+          </section>
+        ))}
+      </div>
 
-      <h2 id="affiliate-payout-history" className="mb-3 mt-8 text-base font-semibold text-slate-900">Lịch sử chuyển tiền</h2>
-      {payouts.isError && <Alert className="mb-4" type="error" showIcon message={getApiErrorMessage(payouts.error)} />}
-      <Surface>
-        <Table
-          className="admin-soft-table w-full table-auto"
-          rowKey="payoutId"
-          columns={payoutColumns}
-          dataSource={payouts.data?.items}
-          loading={payouts.isFetching}
-          pagination={{
-            current: payoutPage,
-            pageSize: PAGE_SIZE,
-            total: payouts.data?.totalCount ?? 0,
-            onChange: setPayoutPage,
-            showSizeChanger: false,
-            hideOnSinglePage: true,
-          }}
-          locale={{ emptyText: 'Chưa có lần chi nào.' }}
-        />
-      </Surface>
+      <section aria-labelledby="aff-commission-flow" className="rounded-lg border border-solid border-gray-200 bg-white p-4">
+        <h2 id="aff-commission-flow" className="m-0 mb-2.5 text-[15px] font-bold text-gray-900">Hoa hồng đi qua các bước</h2>
+        <ol className="m-0 grid list-none grid-cols-2 gap-2 p-0 text-[13px] lg:grid-cols-4">
+          {FLOW.map(([title, body]) => (
+            <li key={title} className="rounded-md bg-slate-50 p-2.5"><b className="text-gray-900">{title}</b><div className="text-gray-600">{body}</div></li>
+          ))}
+        </ol>
+      </section>
+
+      <section aria-labelledby="aff-commission-list" className="rounded-lg border border-solid border-gray-200 bg-white">
+        <h2 id="aff-commission-list" className="m-0 border-0 border-b border-solid border-slate-100 px-4 py-3.5 text-[15px] font-bold text-gray-900">Hoa hồng</h2>
+        {commissions.isLoading ? (
+          <div className="p-4"><Skeleton active paragraph={{ rows: 4 }} /></div>
+        ) : items.length === 0 ? (
+          <div className="px-4 py-10 text-center">
+            <div className="font-semibold text-gray-900">Chưa có hoa hồng</div>
+            <p className="m-0 mt-1 text-sm text-gray-600">Hoa hồng xuất hiện khi ứng viên bạn giới thiệu đi làm hoặc doanh nghiệp nhận CV.</p>
+          </div>
+        ) : (
+          <div className="relative overflow-x-auto">
+            <table className="w-full min-w-[760px] border-collapse">
+              <thead>
+                <tr className="text-left text-xs text-gray-500">
+                  <th className="px-4 py-2.5 font-medium">Ứng viên / Việc làm</th>
+                  <th className="px-4 py-2.5 font-medium">Dịch vụ</th>
+                  <th className="px-4 py-2.5 font-medium">Cách tính</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Số tiền</th>
+                  <th className="px-4 py-2.5 font-medium">Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((c) => {
+                  const chip = STATUS_CHIP[c.status] ?? { label: c.status, tone: 'neutral' };
+                  const note = statusNote(c);
+                  return (
+                    <tr key={c.commissionId} className="border-0 border-t border-solid border-slate-100">
+                      <td className="px-4 py-3">
+                        <b className="text-gray-900">{c.candidateName ?? '—'}</b>
+                        <div className="text-[13px] text-gray-600">{c.jobTitle ?? '—'}</div>
+                      </td>
+                      <td className="px-4 py-3 text-[13px]">{c.placementId ? 'Tuyển qua Affiliate' : 'Mua CV'}</td>
+                      <td className="px-4 py-3 text-[13px] text-gray-600">{c.baseAmount ? `Trên phí ${money(c.baseAmount)}` : 'Theo CV được nhận'}</td>
+                      <td className={`whitespace-nowrap px-4 py-3 text-right font-bold tabular-nums ${c.status === 'CANCELLED' ? 'text-gray-400 line-through' : 'text-[color:var(--affiliate-cta)]'}`}>{money(c.amount)}</td>
+                      <td className="px-4 py-3">
+                        <StatusChip tone={chip.tone}>{chip.label}</StatusChip>
+                        {note && <div className="mt-0.5 text-xs text-gray-500">{note}</div>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section aria-labelledby="aff-payouts" className="rounded-lg border border-solid border-gray-200 bg-white">
+        <div className="flex flex-wrap items-baseline justify-between gap-2 border-0 border-b border-solid border-slate-100 px-4 py-3.5">
+          <h2 id="aff-payouts" className="m-0 text-[15px] font-bold text-gray-900">Lịch sử chi trả</h2>
+          {!account.isLoading && (
+            <span className={`text-[13px] ${hasAccount ? 'text-gray-600' : 'text-orange-800'}`}>
+              {hasAccount ? (
+                <>Nhận vào: {account.data?.bankName} {lastDigits(account.data?.bankAccountNumber ?? '')} · <Link to="/affiliate/profile">Đổi tài khoản</Link></>
+              ) : (
+                <>Chưa có tài khoản nhận tiền · <Link to="/affiliate/profile">Thêm tài khoản</Link></>
+              )}
+            </span>
+          )}
+        </div>
+        {payouts.isError ? (
+          <div className="p-4"><Alert type="error" showIcon message={getApiErrorMessage(payouts.error)} /></div>
+        ) : payouts.isLoading ? (
+          <div className="p-4"><Skeleton active paragraph={{ rows: 2 }} /></div>
+        ) : payoutItems.length === 0 ? (
+          <p className="m-0 px-4 py-8 text-center text-sm text-gray-600">Chưa có lần chi nào.</p>
+        ) : (
+          <div className="relative overflow-x-auto">
+            <table className="w-full min-w-[640px] border-collapse">
+              <thead>
+                <tr className="text-left text-xs text-gray-500">
+                  <th className="px-4 py-2.5 font-medium">Ngày</th>
+                  <th className="px-4 py-2.5 font-medium">Mã giao dịch</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Số tiền</th>
+                  <th className="px-4 py-2.5 font-medium">Kết quả</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payoutItems.map((p) => {
+                  const st = labelOf(PAYOUT_STATUS, p.status);
+                  return (
+                    <tr key={p.payoutId} className="border-0 border-t border-solid border-slate-100">
+                      <td className="px-4 py-3 tabular-nums">{date(p.payoutDate ?? p.createdAt)}</td>
+                      <td className="px-4 py-3 font-mono text-[13px]">{p.transactionReference ?? '—'}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums">{money(p.amount)}</td>
+                      <td className="px-4 py-3"><StatusChip tone={st.tone}>{st.label}</StatusChip></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {(payouts.data?.totalCount ?? 0) > PAGE_SIZE && (
+          <div className="flex justify-end border-0 border-t border-solid border-slate-100 p-3">
+            <Pagination current={payoutPage} pageSize={PAGE_SIZE} total={payouts.data?.totalCount ?? 0} showSizeChanger={false} onChange={setPayoutPage} />
+          </div>
+        )}
+      </section>
     </div>
   );
 };

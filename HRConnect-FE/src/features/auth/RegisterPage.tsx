@@ -124,6 +124,11 @@ export const RegisterPage: React.FC = () => {
     [selectedRole]
   );
 
+  // Affiliates sign up on their own page (/register/affiliate).
+  useEffect(() => {
+    if (selectedRole === UserRole.AFFILIATE) navigate('/register/affiliate', { replace: true });
+  }, [selectedRole, navigate]);
+
   // Password strength calculation
   const passwordStrength = useMemo(() => {
     if (!passwordValue) return { score: 0, label: '', percent: 0, color: '#e2e8f0' };

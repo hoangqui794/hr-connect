@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from 'antd';
 import { MemoryRouter } from 'react-router-dom';
@@ -41,26 +41,26 @@ const renderPage = () =>
     </QueryClientProvider>
   );
 
-describe('Affiliate › Hoa hồng & chi trả', () => {
+describe('Affiliate › Hoa hồng và chi trả', () => {
   beforeEach(() => {
     vi.mocked(financeApi.payouts).mockResolvedValue(page([]));
     vi.mocked(affiliateBankApi.get).mockResolvedValue({ bankName: 'VCB', bankAccountNumber: '0123456789', bankAccountHolder: 'NGUYEN VAN A' });
   });
 
-  it('puts the amount about to be paid first and shows each referral with its progress', async () => {
+  it('totals each stage and shows every commission with how it was worked out', async () => {
     vi.mocked(financeApi.commissions).mockResolvedValue(page([
       commission({ commissionId: 'w', status: 'IN_WARRANTY', warrantyEndDate: inDays(18) }),
       commission({ commissionId: 'e', candidateName: 'Trần Thị Bình', status: 'PAYABLE', amount: 9_000_000 }),
     ]));
     renderPage();
 
-    const card = (await screen.findByText('Sắp nhận')).parentElement!;
-    expect(within(card).getByText(/9\.000\.000/)).toBeInTheDocument();
+    await screen.findByText('Nguyễn Văn An');
+    expect(within(screen.getByRole('region', { name: 'Chờ chi' })).getByText(/9\.000\.000/)).toBeInTheDocument();
 
-    const warranty = screen.getByRole('listitem', { name: /Nguyễn Văn An/ });
+    const warranty = screen.getByText('Nguyễn Văn An').closest('tr')!;
     expect(within(warranty).getByText(/Còn (17|18) ngày/)).toBeInTheDocument();
-    expect(within(warranty).getByText(/tính trên phí 45\.000\.000/)).toBeInTheDocument();
-    expect(within(warranty).getByText('Bảo hành').closest('li')).toHaveAttribute('aria-current', 'step');
+    expect(within(warranty).getByText(/Trên phí 45\.000\.000/)).toBeInTheDocument();
+    expect(within(warranty).getByText('Trong bảo hành')).toBeInTheDocument();
   });
 
   it('explains a commission on hold instead of showing a raw status', async () => {
@@ -70,15 +70,12 @@ describe('Affiliate › Hoa hồng & chi trả', () => {
     expect(await screen.findByText(/bộ phận vận hành đang xác minh/)).toBeInTheDocument();
   });
 
-  it('filters by group and shows an empty state for an empty group', async () => {
-    vi.mocked(financeApi.commissions).mockResolvedValue(page([commission({ status: 'IN_WARRANTY' })]));
+  it('shows the account that receives payouts, masked', async () => {
+    vi.mocked(financeApi.commissions).mockResolvedValue(page([]));
     renderPage();
-    await screen.findByRole('listitem', { name: /Nguyễn Văn An/ });
 
-    fireEvent.click(screen.getByRole('radio', { name: /Tạm giữ/ }));
-
-    expect(screen.getByText('Không có ca nào ở mục này')).toBeInTheDocument();
-    expect(screen.queryByRole('listitem', { name: /Nguyễn Văn An/ })).not.toBeInTheDocument();
+    expect(await screen.findByText(/Nhận vào: VCB ••• 6789/)).toBeInTheDocument();
+    expect(screen.queryByText(/0123456789/)).not.toBeInTheDocument();
   });
 
   it('invites a new affiliate when there is no commission yet', async () => {

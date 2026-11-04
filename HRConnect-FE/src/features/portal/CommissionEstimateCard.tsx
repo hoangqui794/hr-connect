@@ -6,7 +6,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Skeleton } from 'antd';
-import { DollarOutlined } from '@ant-design/icons';
 import { apiClient } from '@/services/apiClient';
 
 export interface JobCommissionEstimate {
@@ -32,7 +31,7 @@ export const commissionEstimateApi = {
 };
 
 const money = (value: number, currency: string) =>
-  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: currency || 'VND', maximumFractionDigits: 0 }).format(value);
+  `${value.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} ${!currency || currency === 'VND' ? 'đ' : currency}`;
 
 const friendlyExplanation = (value: string) => value
   .replace(/\bClient\b/gi, 'doanh nghiệp')
@@ -62,25 +61,21 @@ export const CommissionEstimateCard: React.FC<{ jobId: string }> = ({ jobId }) =
   const headline = formatEstimate(estimate.data);
 
   return (
-    <section
-      aria-label="Hoa hồng ước tính"
-      className="rounded-2xl border border-solid border-blue-200 bg-blue-50/70 p-4"
-    >
-      <div className="flex items-start gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-600 text-white shadow-sm" aria-hidden>
-          <DollarOutlined />
-        </span>
-        <div className="min-w-0">
-          <div className="text-xs font-semibold uppercase tracking-[0.08em] text-blue-700">Hoa hồng ước tính</div>
-          <div className="mt-0.5 text-lg font-bold text-slate-900 tabular-nums">
-            {headline ?? 'Không áp dụng'}
-          </div>
-          {estimate.data.warrantyDays != null && (
-            <div className="text-[13px] text-slate-700">Bảo hành {estimate.data.warrantyDays} ngày</div>
-          )}
-          <p className="m-0 mt-1.5 text-[13px] leading-relaxed text-slate-600">{friendlyExplanation(estimate.data.explanation)}</p>
-        </div>
-      </div>
+    <section aria-label="Hoa hồng ước tính" className="rounded-lg border border-solid border-gray-200 bg-white p-4">
+      <h2 className="m-0 text-[15px] font-bold text-gray-900">Hoa hồng ước tính</h2>
+      <div className="mt-1.5 text-xl font-bold leading-snug tabular-nums text-[color:var(--affiliate-cta,#C2410C)]">{headline ?? 'Không áp dụng'}</div>
+      <dl className="m-0 mt-3 space-y-2 text-[13px]">
+        {estimate.data.feeMultiplier != null && (
+          <div className="flex justify-between gap-2"><dt className="text-gray-600">Phí dịch vụ của doanh nghiệp</dt><dd className="m-0 text-right">{estimate.data.feeMultiplier} × lương tháng</dd></div>
+        )}
+        {estimate.data.rateType === 'PERCENT' && estimate.data.rateValue != null && (
+          <div className="flex justify-between gap-2"><dt className="text-gray-600">Tỉ lệ hoa hồng</dt><dd className="m-0">{estimate.data.rateValue}% phí dịch vụ</dd></div>
+        )}
+        {estimate.data.warrantyDays != null && (
+          <div className="flex justify-between gap-2"><dt className="text-gray-600">Bảo hành</dt><dd className="m-0">{estimate.data.warrantyDays} ngày</dd></div>
+        )}
+      </dl>
+      <p className="m-0 mt-3 text-xs leading-relaxed text-gray-500">{friendlyExplanation(estimate.data.explanation)}</p>
     </section>
   );
 };

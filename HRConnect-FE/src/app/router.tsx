@@ -78,7 +78,7 @@ export const router = createBrowserRouter([
   // ── Public routes (no AppShell) ────────────────────────────────────────────
   {
     path: '/',
-    element: <LandingPage />,
+    element: <CandidateScope><LandingPage /></CandidateScope>,
   },
   {
     path: '/login',
@@ -89,12 +89,24 @@ export const router = createBrowserRouter([
     element: <RegisterPage />,
   },
   {
+    path: '/register/affiliate',
+    element: withSuspense(<AppRoutes.AffiliateRegisterPage />),
+  },
+  {
     path: '/verify-otp',
     element: withSuspense(<AppRoutes.VerifyOtpPage />),
   },
   {
     path: '/auth/verify',
     element: withSuspense(<AppRoutes.VerifyOtpPage />),
+  },
+  {
+    path: '/companies',
+    element: withSuspense(<CandidateScope><AppRoutes.CompaniesPage /></CandidateScope>),
+  },
+  {
+    path: '/companies/:companyId',
+    element: withSuspense(<CandidateScope><AppRoutes.CompanyDetailPage /></CandidateScope>),
   },
   {
     path: '/services',
@@ -190,7 +202,7 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // ── Candidate workspace (MF-02 branch A): top navigation, blue accent ─────────
+  // ── Candidate workspace (MF-02 branch A): site header, sky accent ─────────
   {
     path: '/candidate',
     element: (
@@ -201,8 +213,9 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <Navigate to="/candidate/dashboard" replace /> },
-      { path: 'dashboard', element: <AppRoutes.CandidateHomePage /> },
+      // A Candidate's home is the site homepage (mockup 03/11).
+      { index: true, element: <Navigate to="/" replace /> },
+      { path: 'dashboard', element: <Navigate to="/" replace /> },
       { path: 'jobs', element: <AppRoutes.CandidateJobsPage /> },
       { path: 'jobs/:jobId', element: <AppRoutes.CandidateJobDetailPage /> },
       { path: 'applications', element: <AppRoutes.CandidateMyApplicationsPage /> },
@@ -224,7 +237,7 @@ export const router = createBrowserRouter([
   { path: '/profile', element: <Navigate to="/candidate/profile" replace /> },
   { path: '/cv-builder', element: <Navigate to="/candidate/cv-builder" replace /> },
 
-  // ── Affiliate workspace (MF-02 branch B): light sidebar, violet accent ──────
+  // ── Affiliate workspace (MF-02 branch B): white sidebar, sky accent ──────
   {
     path: '/affiliate',
     element: (
@@ -237,12 +250,13 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/affiliate/dashboard" replace /> },
       { path: 'dashboard', element: <AppRoutes.AffiliateHomePage /> },
-      { path: 'jobs', element: <AppRoutes.Mf01InAppJobDiscoveryPage /> },
-      { path: 'jobs/:jobId', element: <AppRoutes.Mf01AffiliateJobDetailPage /> },
+      { path: 'jobs', element: <AppRoutes.AffiliateJobsPage /> },
+      { path: 'jobs/:jobId', element: <AppRoutes.AffiliateJobDetailPage /> },
       { path: 'submit-candidate', element: <AppRoutes.AffiliateSubmitPage /> },
       { path: 'submissions', element: <AppRoutes.AffiliateMySubmissionsPage /> },
       { path: 'submissions/:submissionId', element: <AppRoutes.AffiliateSubmissionDetailPage /> },
       { path: 'candidates', element: <AppRoutes.AffiliateCandidatesPage /> },
+      { path: 'candidates/:candidateId', element: <AppRoutes.AffiliateCandidateDetailPage /> },
       { path: 'attributions', element: <AppRoutes.AffiliateAttributionsPage /> },
       { path: 'performance', element: <AppRoutes.AffiliatePerformancePage /> },
       { path: 'disputes', element: <AppRoutes.AffiliateDisputesPage /> },

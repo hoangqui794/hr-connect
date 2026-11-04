@@ -1,0 +1,38 @@
+---
+title: MF-05 Client pays a fee through VNPay
+---
+sequenceDiagram
+  autonumber
+  actor C as Client Company User
+  participant FE as Web app (Billing page)
+  participant API as Backend API
+  participant DB as PostgreSQL
+  participant VP as VNPay (sandbox)
+  actor A as Platform Admin
+
+  C->>FE: Pay with VNPay (posting fee / Sourcing deposit / service fee)
+  FE->>API: POST /api/v1/payments/vnpay {targetType, targetId}
+  API->>DB: check own company, fee payable, reuse unexpired PENDING payment
+  API->>DB: insert OnlinePayment PENDING (TxnRef, amount)
+  API-->>FE: payment URL signed with HMAC-SHA512
+  FE->>VP: redirect, Client pays with a test card
+  VP->>API: GET /payments/vnpay/ipn (signed callback)
+  alt bad signature / unknown order / wrong amount
+    API-->>VP: RspCode 97 / 01 / 04, nothing recorded
+  else already confirmed
+    API-->>VP: RspCode 02
+  else valid callback
+    API->>DB: claim PENDING -> PROCESSING
+    alt VNPay success
+      API->>DB: record fee PAID with reference VNPAY-<transaction no> (same command as Admin)
+      API->>DB: OnlinePayment SUCCEEDED (NEEDS_REVIEW if the fee is no longer payable)
+      API-->>A: in-app notification
+    else cancelled / failed
+      API->>DB: OnlinePayment FAILED, fee stays unpaid
+    end
+    API-->>VP: RspCode 00
+  end
+  VP->>FE: redirect to /client/billing/vnpay-return
+  FE->>API: GET /payments/vnpay/return (same confirmation, idempotent)
+  API-->>FE: payment result
+  FE-->>C: Paid / cancelled message

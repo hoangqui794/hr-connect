@@ -442,3 +442,23 @@ body {
     height: auto;
   }
 }
+
+/* Bell on the navy site header: white icon, badge inside the 44px target. */
+.site-bell button,
+.site-bell button .anticon,
+.site-bell button svg {
+  color: #fff !important;
+}
+
+.site-bell .ant-badge-count {
+  top: 6px !important;
+  right: 6px !important;
+  min-width: 16px !important;
+  height: 16px !important;
+  padding: 0 !important;
+  background: #c2410c !important;
+  box-shadow: none !important;
+  font-size: 11px !important;
+  line-height: 16px !important;
+  transform: none !important;
+}

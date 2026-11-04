@@ -16,7 +16,7 @@ flowchart TB
     FE2["API client (Axios, JWT)<br/>+ SignalR client"]
   end
 
-  subgraph BE["Backend API – ASP.NET Core 8, Clean Architecture (Render)"]
+  subgraph BE["Backend API – ASP.NET Core 8, Clean Architecture (Docker, cloud server)"]
     direction TB
     B1["Presentation<br/>REST /api/v1 · auth & permissions<br/>rate limit · SignalR NotificationHub"]
     B2["Application<br/>MediatR commands/queries MF-01..MF-05<br/>validation · business policies"]
@@ -25,7 +25,7 @@ flowchart TB
     B5["Background workers<br/>AI dispatch · consent/offer expiry<br/>warranty & fee progress · e-mail outbox"]
   end
 
-  subgraph AI["AI Matching Service v2 – Python FastAPI (Cloudflare Tunnel)"]
+  subgraph AI["AI Matching Service v2 – Python FastAPI (Docker, cloud server)"]
     direction LR
     A1["Scoring queue & pipeline"]
     A2["CV/JD text extraction<br/>Sentence-BERT similarity"]
@@ -36,7 +36,8 @@ flowchart TB
   R2[("Cloudflare R2<br/>CVs, PDFs, agreements, avatars")]
   MAIL["Resend e-mail API"]:::ext
   LLM["Google Gemini API<br/>(OpenAI / Anthropic fallback)"]:::ext
-  CI["GitHub + GitHub Actions<br/>build, test, deploy"]:::ext
+  PAY["VNPay payment gateway<br/>(sandbox)"]:::ext
+  CI["GitHub + GitHub Actions<br/>build, test, deploy (GHCR images)"]:::ext
 
   U1 & U2 & U3 & U4 -->|"HTTPS"| FE1
   FE1 --> FE2
@@ -54,6 +55,8 @@ flowchart TB
   A2 --> A3
   A3 -->|"(6) prompt with CV text + requirements"| LLM
   A3 -->|"(7) callback /internal/ai-results"| B1
+  B4 -->|"(9) signed payment URL"| PAY
+  PAY -->|"(10) signed IPN / return callback"| B1
   CI -.->|"deploy"| BE
   CI -.->|"deploy"| FE
 
