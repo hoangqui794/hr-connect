@@ -320,7 +320,18 @@ jobs:
           pip-audit -r ai-service-v2/requirements.txt --format json \
             --output artifacts/security/pip-audit.json
 
-      - name: Scan repository for High/Critical vulnerabilities
+      - name: Scan repository for High/Critical vulnerabilities (table report)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          format: table
+
+      - name: Scan repository for High/Critical vulnerabilities (SARIF report)
+        if: always()
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
