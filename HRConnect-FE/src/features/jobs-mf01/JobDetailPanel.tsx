@@ -4,7 +4,8 @@
  * queue and job discovery. Shows exactly what the backend stores — nothing invented.
  */
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { CompanyLogo } from '@/components/common/CompanyLogo';
 import { Alert, Button, Descriptions, Drawer, Empty, Tag, Timeline, Typography } from 'antd';
 import {
   AuditOutlined,
@@ -176,7 +177,9 @@ const safeWebsiteUrl = (website: string | null) => {
   }
 };
 
-export const JobCompanyCard: React.FC<{ company: PublicJobCompany }> = ({ company }) => {
+export const JobCompanyCard: React.FC<{ company: PublicJobCompany; companyId?: string }> = ({ company, companyId }) => {
+  const targetCompanyId = companyId || company.companyId;
+  const companyProfileUrl = targetCompanyId ? `/companies/${targetCompanyId}` : undefined;
   const websiteUrl = safeWebsiteUrl(company.website);
   const facts = [
     company.industry ? { icon: <BankOutlined aria-hidden />, label: 'Lĩnh vực', value: company.industry } : null,
@@ -192,47 +195,88 @@ export const JobCompanyCard: React.FC<{ company: PublicJobCompany }> = ({ compan
       <div className="flex flex-col gap-5 p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-center gap-4">
-            {company.logoUrl ? (
-              <img
-                src={company.logoUrl}
-                alt={`Logo ${company.companyName}`}
-                className="h-14 w-14 shrink-0 rounded-2xl border border-solid border-blue-100 bg-white object-contain p-1.5"
-              />
-            ) : (
-              <span
-                aria-hidden
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-lg font-extrabold tracking-wide text-white"
+            {companyProfileUrl ? (
+              <Link
+                to={companyProfileUrl}
+                className="group shrink-0 no-underline transition-transform duration-200 hover:scale-105"
+                title={`Xem thông tin ${company.companyName}`}
               >
-                {companyInitials(company.companyName)}
-              </span>
+                <CompanyLogo
+                  companyName={company.companyName}
+                  logoUrl={company.logoUrl ?? undefined}
+                  size="lg"
+                  className="!h-14 !w-14 !rounded-2xl shrink-0"
+                />
+              </Link>
+            ) : (
+              <CompanyLogo
+                companyName={company.companyName}
+                logoUrl={company.logoUrl ?? undefined}
+                size="lg"
+                className="!h-14 !w-14 !rounded-2xl shrink-0"
+              />
             )}
 
             <div className="min-w-0">
               <div className="mb-1 flex flex-wrap items-center gap-2">
-                <h2 className="m-0 text-lg font-bold leading-snug text-slate-950">{company.companyName}</h2>
+                {companyProfileUrl ? (
+                  <Link
+                    to={companyProfileUrl}
+                    className="group no-underline"
+                    title={`Xem thông tin ${company.companyName}`}
+                  >
+                    <h2 className="m-0 text-lg font-bold leading-snug text-slate-950 transition-colors group-hover:text-blue-700 group-hover:underline">
+                      {company.companyName}
+                    </h2>
+                  </Link>
+                ) : (
+                  <h2 className="m-0 text-lg font-bold leading-snug text-slate-950">{company.companyName}</h2>
+                )}
                 {company.isVerified && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">
                     <CheckCircleFilled aria-hidden /> Đã xác minh
                   </span>
                 )}
               </div>
-              <p className="m-0 flex items-center gap-1.5 text-sm font-medium text-blue-700">
-                <ShopOutlined aria-hidden /> Về doanh nghiệp tuyển dụng
-              </p>
+              {companyProfileUrl ? (
+                <Link
+                  to={companyProfileUrl}
+                  className="m-0 inline-flex items-center gap-1.5 text-sm font-medium text-blue-700 no-underline hover:text-blue-800 hover:underline"
+                >
+                  <ShopOutlined aria-hidden /> Về doanh nghiệp tuyển dụng →
+                </Link>
+              ) : (
+                <p className="m-0 flex items-center gap-1.5 text-sm font-medium text-blue-700">
+                  <ShopOutlined aria-hidden /> Về doanh nghiệp tuyển dụng
+                </p>
+              )}
             </div>
           </div>
 
-          {websiteUrl && (
-            <Button
-              href={websiteUrl}
-              target="_blank"
-              rel="noopener noreferrer nofollow"
-              icon={<GlobalOutlined />}
-              className="!rounded-full !border-blue-200 !bg-white !font-semibold !text-blue-700 hover:!border-blue-400"
-            >
-              Website công ty
-            </Button>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {companyProfileUrl && (
+              <Link to={companyProfileUrl}>
+                <Button
+                  type="primary"
+                  icon={<ShopOutlined />}
+                  className="!rounded-full !font-semibold !bg-blue-600 hover:!bg-blue-700"
+                >
+                  Xem trang công ty
+                </Button>
+              </Link>
+            )}
+            {websiteUrl && (
+              <Button
+                href={websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                icon={<GlobalOutlined />}
+                className="!rounded-full !border-blue-200 !bg-white !font-semibold !text-blue-700 hover:!border-blue-400"
+              >
+                Website công ty
+              </Button>
+            )}
+          </div>
         </div>
 
         {facts.length > 0 && (
@@ -379,7 +423,17 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         <Title level={4} className="!mb-0">
           {job.title || 'Vị trí chưa đặt tên'}
         </Title>
-        <Text type="secondary">{job.companyName ?? '—'}</Text>
+        {job.companyId ? (
+          <Link
+            to={`/companies/${job.companyId}`}
+            className="text-slate-500 text-sm font-medium no-underline hover:text-blue-700 hover:underline inline-block"
+            title={`Xem thông tin ${job.companyName ?? 'doanh nghiệp'}`}
+          >
+            {job.companyName ?? '—'}
+          </Link>
+        ) : (
+          <Text type="secondary">{job.companyName ?? '—'}</Text>
+        )}
         {!isApplicant && !isInternalReview && job.status === 'REJECTED' && job.statusReason && (
           <div role="note" className="rounded-lg border border-solid border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
             <Text strong className="text-red-800">
@@ -679,7 +733,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         ))}
       </dl>
 
-      {isApplicant && job.company && <JobCompanyCard company={job.company} />}
+      {isApplicant && job.company && <JobCompanyCard company={job.company} companyId={job.companyId} />}
 
       {/* ── Thông tin dịch vụ & Phí đăng tin (CHỈ hiển thị cho Doanh nghiệp, KHÔNG hiển thị khi Internal HR duyệt hay cho Ứng viên) ── */}
       {!isApplicant && !isInternalReview && job.serviceTypeCode === 'CV_APPLICATION' && (

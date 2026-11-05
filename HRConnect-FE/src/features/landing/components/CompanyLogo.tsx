@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { resolveApiAssetUrl } from '@/services/apiClient';
 
 export interface CompanyLogoProps {
   id?: string;
@@ -42,6 +43,12 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
 }) => {
   const [imgFailed, setImgFailed] = useState(false);
 
+  useEffect(() => {
+    setImgFailed(false);
+  }, [logoUrl]);
+
+  const resolvedLogoUrl = resolveApiAssetUrl(logoUrl);
+
   // Normalize effective size in pixels
   const pxSize =
     typeof size === 'number'
@@ -58,10 +65,10 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({
   const searchKey = `${id} ${displayName}`.toLowerCase().trim();
 
   // 1. If explicit valid image URL is passed and hasn't failed, render it
-  if (logoUrl && !imgFailed) {
+  if (resolvedLogoUrl && !imgFailed) {
     return (
       <img
-        src={logoUrl}
+        src={resolvedLogoUrl}
         alt={`Logo ${displayName}`}
         onError={() => setImgFailed(true)}
         loading="lazy"

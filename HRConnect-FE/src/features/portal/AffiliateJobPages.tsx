@@ -19,6 +19,7 @@ import { renderFormattedMultilineText } from '@/features/jobs-mf01/RichTextEdito
 import { useJobDetail } from '@/features/jobs-mf01/useJobQueries';
 import { CommissionEstimateCard, commissionEstimateApi, formatEstimate } from './CommissionEstimateCard';
 import { AffiliatePageHeader } from './affiliate/AffiliateUi';
+import { CompanyLogo as SharedCompanyLogo } from '@/components/common/CompanyLogo';
 
 const PAGE_SIZE = 10;
 
@@ -38,18 +39,15 @@ const initials = (name?: string | null) =>
     .join('')
     .toUpperCase() || 'HR';
 
-const CompanyLogo: React.FC<{ job: Pick<Job, 'companyName' | 'companyLogoUrl'>; size?: number }> = ({ job, size = 52 }) =>
-  job.companyLogoUrl ? (
-    <img src={job.companyLogoUrl} alt="" width={size} height={size} className="shrink-0 rounded-md border border-solid border-gray-200 object-contain" />
-  ) : (
-    <span
-      aria-hidden
-      className="flex shrink-0 items-center justify-center rounded-md border border-solid border-gray-200 text-xs font-bold text-[color:var(--affiliate-brand)]"
-      style={{ width: size, height: size }}
-    >
-      {initials(job.companyName)}
-    </span>
-  );
+const CompanyLogo: React.FC<{ job: Pick<Job, 'companyName' | 'companyLogoUrl'>; size?: number }> = ({ job, size = 52 }) => (
+  <div style={{ width: size, height: size }} className="shrink-0">
+    <SharedCompanyLogo
+      companyName={job.companyName || ''}
+      logoUrl={job.companyLogoUrl ?? undefined}
+      className="!w-full !h-full !rounded-md border border-solid border-gray-200"
+    />
+  </div>
+);
 
 const ServiceChip: React.FC<{ code?: string | null }> = ({ code }) => (
   <span className="rounded bg-sky-100 px-2 py-px text-xs font-medium text-sky-800">{affiliateServiceLabel(code)}</span>

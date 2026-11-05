@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import type { PublicJobCompany } from '@/types/api/jobs';
 import { JobCompanyCard } from './JobDetailPanel';
@@ -16,8 +17,12 @@ const company: PublicJobCompany = {
 };
 
 describe('JobCompanyCard', () => {
-  it('shows the sanitized public company profile with a safe website link', () => {
-    render(<JobCompanyCard company={company} />);
+  it('shows the sanitized public company profile with a safe website link and company profile links', () => {
+    render(
+      <MemoryRouter>
+        <JobCompanyCard company={company} />
+      </MemoryRouter>
+    );
 
     expect(screen.getByRole('region', { name: 'Thông tin doanh nghiệp' })).toBeInTheDocument();
     expect(screen.getByText(company.companyName)).toBeInTheDocument();
@@ -31,21 +36,31 @@ describe('JobCompanyCard', () => {
     expect(website).toHaveAttribute('href', company.website);
     expect(website).toHaveAttribute('target', '_blank');
     expect(website).toHaveAttribute('rel', expect.stringContaining('noopener'));
+
+    // Check link to company profile page
+    const companyPageBtn = screen.getByRole('link', { name: /xem trang công ty/i });
+    expect(companyPageBtn).toHaveAttribute('href', '/companies/' + company.companyId);
+
+    const aboutCompanyLink = screen.getByRole('link', { name: /về doanh nghiệp tuyển dụng/i });
+    expect(aboutCompanyLink).toHaveAttribute('href', '/companies/' + company.companyId);
   });
 
   it('uses a friendly fallback and hides unsafe website values', () => {
     render(
-      <JobCompanyCard
-        company={{
-          ...company,
-          industry: null,
-          companySize: null,
-          address: null,
-          description: null,
-          website: 'javascript:alert(1)',
-          isVerified: false,
-        }}
-      />
+      <MemoryRouter>
+        <JobCompanyCard
+          company={{
+            ...company,
+            companyId: '',
+            industry: null,
+            companySize: null,
+            address: null,
+            description: null,
+            website: 'javascript:alert(1)',
+            isVerified: false,
+          }}
+        />
+      </MemoryRouter>
     );
 
     expect(screen.getByText('Doanh nghiệp chưa cập nhật phần giới thiệu.')).toBeInTheDocument();
