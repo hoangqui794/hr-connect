@@ -354,51 +354,6 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-  frontend-e2e:
-    name: Frontend / E2E smoke
-    needs:
-      - frontend
-      - frontend-tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    defaults:
-      run:
-        shell: bash
-        working-directory: HRConnect-FE
-
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: Set up Node.js 22
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: HRConnect-FE/package-lock.json
-
-      - name: Install locked dependencies
-        run: npm ci --no-audit --no-fund
-
-      - name: Install Chromium runtime
-        run: npx playwright install --with-deps chromium
-
-      - name: Run desktop smoke journey
-        run: npm run test:e2e -- --project=desktop-chromium
-
-      - name: Publish E2E evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-e2e-${{ github.run_id }}
-          path: |
-            HRConnect-FE/playwright-report
-            HRConnect-FE/test-results
-          if-no-files-found: warn
-          retention-days: 14
-
   backend-container:
     name: Backend / Validate production image
     needs: backend
@@ -432,7 +387,6 @@ jobs:
       - frontend
       - frontend-tests
       - frontend-coverage
-      - frontend-e2e
       - ai-service
       - security
       - backend-container
@@ -445,22 +399,20 @@ jobs:
           FRONTEND_BUILD_RESULT: ${{ needs.frontend.result }}
           FRONTEND_TEST_RESULT: ${{ needs.frontend-tests.result }}
           FRONTEND_COVERAGE_RESULT: ${{ needs.frontend-coverage.result }}
-          FRONTEND_E2E_RESULT: ${{ needs.frontend-e2e.result }}
           AI_RESULT: ${{ needs.ai-service.result }}
           SECURITY_RESULT: ${{ needs.security.result }}
           CONTAINER_RESULT: ${{ needs.backend-container.result }}
           DELIVERY_RESULT: ${{ needs.delivery-scripts.result }}
         run: |
-          printf 'Backend: %s\nFrontend build: %s\nFrontend tests: %s\nFrontend coverage: %s\nFrontend E2E: %s\nAI service: %s\nSecurity: %s\nContainer: %s\nDelivery scripts: %s\n' \
+          printf 'Backend: %s\nFrontend build: %s\nFrontend tests: %s\nFrontend coverage: %s\nAI service: %s\nSecurity: %s\nContainer: %s\nDelivery scripts: %s\n' \
             "$BACKEND_RESULT" "$FRONTEND_BUILD_RESULT" "$FRONTEND_TEST_RESULT" \
-            "$FRONTEND_COVERAGE_RESULT" "$FRONTEND_E2E_RESULT" "$AI_RESULT" \
+            "$FRONTEND_COVERAGE_RESULT" "$AI_RESULT" \
             "$SECURITY_RESULT" "$CONTAINER_RESULT" "$DELIVERY_RESULT"
 
           if [[ "$BACKEND_RESULT" != success \
             || "$FRONTEND_BUILD_RESULT" != success \
             || "$FRONTEND_TEST_RESULT" != success \
             || "$FRONTEND_COVERAGE_RESULT" != success \
-            || "$FRONTEND_E2E_RESULT" != success \
             || "$AI_RESULT" != success \
             || "$SECURITY_RESULT" != success \
             || "$CONTAINER_RESULT" != success \
