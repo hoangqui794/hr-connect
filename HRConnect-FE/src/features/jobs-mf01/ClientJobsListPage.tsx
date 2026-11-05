@@ -34,7 +34,7 @@ import {
   SendOutlined,
   FileDoneOutlined,
 } from '@ant-design/icons';
-import type { Job, JobCloseReasonCode, JobStatus } from '@/types/api/jobs';
+import type { Job, JobCloseReasonCode, JobStatus, ServiceTypeCode } from '@/types/api/jobs';
 import { FilterPills, PageHero, Surface } from '@/features/admin-console/ui';
 import { screeningApi } from '@/services/api/hrApi';
 import '@/features/admin-console/admin-console.css';
