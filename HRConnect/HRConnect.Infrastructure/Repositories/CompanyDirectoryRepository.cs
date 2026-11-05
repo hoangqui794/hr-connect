@@ -3,33 +3,84 @@ using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace HRConnect.Infrastructure.Repositories;
 
 public sealed class CompanyDirectoryRepository : ICompanyDirectoryRepository
 {
     private const string Verified = "VERIFIED";
-    private readonly ApplicationDbContext _context;
+    private static readonly TimeSpan CatalogCacheDuration = TimeSpan.FromMinutes(10);
+    private static long _cacheGeneration = 1;
 
-    public CompanyDirectoryRepository(ApplicationDbContext context)
+    private readonly ApplicationDbContext _context;
+    private readonly IMemoryCache? _cache;
+
+    public CompanyDirectoryRepository(ApplicationDbContext context, IMemoryCache? cache = null)
     {
         _context = context;
+        _cache = cache;
     }
 
-    public async Task<IReadOnlyList<Industry>> GetIndustriesAsync(bool includeInactive, CancellationToken cancellationToken = default) =>
-        await _context.Industries.AsNoTracking().Where(i => includeInactive || i.IsActive).ToListAsync(cancellationToken);
+    public static void InvalidateCache() => Interlocked.Increment(ref _cacheGeneration);
 
-    public Task<Industry?> GetIndustryAsync(Guid industryId, CancellationToken cancellationToken = default) =>
-        _context.Industries.FirstOrDefaultAsync(i => i.IndustryId == industryId, cancellationToken);
+    public async Task<IReadOnlyList<Industry>> GetIndustriesAsync(bool includeInactive, CancellationToken cancellationToken = default)
+    {
+        var cacheKey = $"catalog:industries:{Volatile.Read(ref _cacheGeneration)}:{includeInactive}";
+        if (_cache != null && _cache.TryGetValue(cacheKey, out IReadOnlyList<Industry>? cached) && cached != null)
+        {
+            return cached;
+        }
+
+        var rows = await _context.Industries
+            .AsNoTracking()
+            .Where(i => includeInactive || i.IsActive)
+            .ToListAsync(cancellationToken);
+
+        if (_cache != null)
+        {
+            CacheExtensions.Set(_cache, cacheKey, (IReadOnlyList<Industry>)rows, CatalogCacheDuration);
+        }
+
+        return rows;
+    }
+
+    public Task<Industry?> GetIndustryAsync(Guid industryId, CancellationToken cancellationToken = default)
+    {
+        InvalidateCache();
+        return _context.Industries.FirstOrDefaultAsync(i => i.IndustryId == industryId, cancellationToken);
+    }
 
     public Task<bool> IndustryCodeExistsAsync(string code, CancellationToken cancellationToken = default) =>
         _context.Industries.AnyAsync(i => i.Code == code, cancellationToken);
 
-    public async Task AddIndustryAsync(Industry industry, CancellationToken cancellationToken = default) =>
+    public async Task AddIndustryAsync(Industry industry, CancellationToken cancellationToken = default)
+    {
         await _context.Industries.AddAsync(industry, cancellationToken);
+        InvalidateCache();
+    }
 
-    public async Task<IReadOnlyList<CompanySizeOption>> GetActiveCompanySizesAsync(CancellationToken cancellationToken = default) =>
-        await _context.CompanySizes.AsNoTracking().Where(s => s.IsActive).OrderBy(s => s.SortOrder).ToListAsync(cancellationToken);
+    public async Task<IReadOnlyList<CompanySizeOption>> GetActiveCompanySizesAsync(CancellationToken cancellationToken = default)
+    {
+        var cacheKey = $"catalog:company-sizes:{Volatile.Read(ref _cacheGeneration)}";
+        if (_cache != null && _cache.TryGetValue(cacheKey, out IReadOnlyList<CompanySizeOption>? cached) && cached != null)
+        {
+            return cached;
+        }
+
+        var rows = await _context.CompanySizes
+            .AsNoTracking()
+            .Where(s => s.IsActive)
+            .OrderBy(s => s.SortOrder)
+            .ToListAsync(cancellationToken);
+
+        if (_cache != null)
+        {
+            CacheExtensions.Set(_cache, cacheKey, (IReadOnlyList<CompanySizeOption>)rows, CatalogCacheDuration);
+        }
+
+        return rows;
+    }
 
     public Task<CompanySizeOption?> GetCompanySizeAsync(Guid companySizeId, CancellationToken cancellationToken = default) =>
         _context.CompanySizes.AsNoTracking().FirstOrDefaultAsync(s => s.CompanySizeId == companySizeId, cancellationToken);

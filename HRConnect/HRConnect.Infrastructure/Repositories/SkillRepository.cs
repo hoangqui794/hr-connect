@@ -2,16 +2,20 @@ using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace HRConnect.Infrastructure.Repositories;
 
 public sealed class SkillRepository : ISkillRepository
 {
+    private static readonly TimeSpan SkillCacheDuration = TimeSpan.FromMinutes(10);
     private readonly ApplicationDbContext _context;
+    private readonly IMemoryCache? _cache;
 
-    public SkillRepository(ApplicationDbContext context)
+    public SkillRepository(ApplicationDbContext context, IMemoryCache? cache = null)
     {
         _context = context;
+        _cache = cache;
     }
 
     public async Task<(IReadOnlyList<Skill> Items, int TotalCount)> GetActiveAsync(
@@ -20,6 +24,13 @@ public sealed class SkillRepository : ISkillRepository
         int pageSize,
         CancellationToken cancellationToken = default)
     {
+        var normalizedSearch = string.IsNullOrWhiteSpace(search) ? string.Empty : search.Trim().ToLowerInvariant();
+        var cacheKey = $"catalog:skills:{normalizedSearch}:{page}:{pageSize}";
+        if (_cache != null && _cache.TryGetValue(cacheKey, out (IReadOnlyList<Skill> Items, int TotalCount) cached))
+        {
+            return cached;
+        }
+
         var query = _context.Skills
             .AsNoTracking()
             .Where(skill => skill.IsActive);
@@ -40,7 +51,13 @@ public sealed class SkillRepository : ISkillRepository
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
-        return (items, totalCount);
+        var result = ((IReadOnlyList<Skill>)items, totalCount);
+        if (_cache != null)
+        {
+            CacheExtensions.Set(_cache, cacheKey, result, SkillCacheDuration);
+        }
+
+        return result;
     }
 
     public async Task<IReadOnlyDictionary<Guid, Skill>> GetActiveByIdsAsync(

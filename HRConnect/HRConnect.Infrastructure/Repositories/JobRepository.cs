@@ -88,6 +88,7 @@ public class JobRepository : IJobRepository
             .Include(job => job.ServiceAgreements)
             .Where(job => job.CompanyId == companyId)
             .OrderByDescending(job => job.UpdatedAt)
+            .AsSplitQuery()
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<Job>> GetForReviewAsync(string? status = null, CancellationToken cancellationToken = default)
@@ -128,6 +129,7 @@ public class JobRepository : IJobRepository
 
         return await query
             .OrderByDescending(job => job.UpdatedAt)
+            .AsSplitQuery()
             .ToListAsync(cancellationToken);
     }
 

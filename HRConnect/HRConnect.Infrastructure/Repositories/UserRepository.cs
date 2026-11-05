@@ -80,6 +80,7 @@ public class UserRepository : IUserRepository
     public async Task<AppUser?> GetByIdWithRolesAndPermissionsAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         return await _context.AppUsers
+            .AsNoTracking()
             .Include(u => u.UserRoleUsers.Where(ur => ur.Status == "ACTIVE"))
                 .ThenInclude(ur => ur.Role)
                     .ThenInclude(r => r.RolePermissions)
@@ -90,6 +91,7 @@ public class UserRepository : IUserRepository
                     .ThenInclude(c => c.CompanyVerificationRequest)
             .Include(u => u.CompanyVerificationRequestSubmittedByNavigations)
                 .ThenInclude(cvr => cvr.Company)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
     }
 
