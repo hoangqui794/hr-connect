@@ -1,9 +1,10 @@
 import { App as AntApp } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { candidateCvApi } from '@/services/api/mf02Api';
+import { applyApi, candidateCvApi } from '@/services/api/mf02Api';
+import { mf04Api } from '@/services/api/mf04Api';
 import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
 import type { Job } from '@/types/api/jobs';
@@ -74,6 +75,24 @@ describe('JobApplyActions', () => {
   it('uses backend role and permission claims instead of job visibility', () => {
     renderActions();
     expect(screen.getByRole('button', { name: /Ứng tuyển/i })).toBeEnabled();
+  });
+
+  it('applies with the CV the candidate picks and shows contact details read-only', async () => {
+    const cv = (cvId: string, title: string, isPrimary: boolean) => ({ cvId, title, fileName: `${cvId}.pdf`, fileSizeBytes: 1024, isPrimary, updatedAt: '2026-11-01T00:00:00Z' });
+    vi.spyOn(candidateCvApi, 'list').mockResolvedValue([cv('cv-1', 'CV chính thức', true), cv('cv-2', 'CV khác', false)] as never);
+    vi.spyOn(mf04Api, 'getProfile').mockResolvedValue({ fullName: 'Nguyễn An', email: 'an@example.com', phone: '0900000000' } as never);
+    const apply = vi.spyOn(applyApi, 'apply').mockResolvedValue({ data: { applicationId: 'app-1' } } as never);
+    renderActions();
+
+    fireEvent.click(screen.getByRole('button', { name: /Ứng tuyển/i }));
+    expect(await screen.findByRole('radio', { name: /CV chính thức/ })).toBeChecked();
+    expect(await screen.findByDisplayValue('0900000000')).toHaveAttribute('readonly');
+
+    fireEvent.click(screen.getByRole('radio', { name: /CV khác/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Nộp hồ sơ' }));
+
+    await waitFor(() => expect(apply).toHaveBeenCalledWith('job-1', { cvId: 'cv-2' }));
+    expect(await screen.findByText('Đã nộp đơn ứng tuyển')).toBeInTheDocument();
   });
 
   it('disables self-apply when application.create is missing', () => {

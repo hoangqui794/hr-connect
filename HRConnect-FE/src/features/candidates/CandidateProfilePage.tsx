@@ -1,1773 +1,607 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import {
-  Card,
-  Tabs,
-  Form,
-  Input,
-  InputNumber,
-  Select,
-  Button,
-  Row,
-  Col,
-  Tag,
-  Table,
-  Upload,
-  Modal,
-  Avatar,
-  Space,
-  Popconfirm,
-  message,
-  Typography,
-  Divider,
-  Empty,
-  Skeleton,
-  Alert,
-  Switch,
-  Tooltip,
-} from 'antd';
-import {
-  UserOutlined,
-  FileTextOutlined,
-  UploadOutlined,
-  ThunderboltOutlined,
-  AppstoreOutlined,
-  DownloadOutlined,
-  DeleteOutlined,
-  CheckCircleOutlined,
-  SafetyCertificateOutlined,
-  PlusOutlined,
-  CheckOutlined,
-  MailOutlined,
-  PhoneOutlined,
-  EyeOutlined,
-  GlobalOutlined,
-  DollarOutlined,
-  CalendarOutlined,
-  CompassOutlined,
-  LaptopOutlined,
-  EditOutlined,
-  BookOutlined,
-} from '@ant-design/icons';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuthStore } from '@/stores/authStore';
-import { mf04Api } from '@/services/api/mf04Api';
-import type { UpdateCandidateProfileCommand, CandidateProfileData } from '@/types/api/mf04';
+/**
+ * @file CandidateProfilePage.tsx
+ * @description Candidate's profile (mockup 03/11) on /candidates/profile/me, its skills and the account avatar.
+ *  CVs live in the CV vault. Fields without a control here (birth date, gender, unlisted work modes)
+ *  are sent back unchanged when saving.
+ */
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, App as AntApp, AutoComplete, Form, InputNumber, Modal, Popconfirm, Select, Skeleton } from 'antd';
+import { Link } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { candidateService, type CandidateSkillItemDto } from '@/services/candidateService';
+import { mf04Api } from '@/services/api/mf04Api';
+import { userApi } from '@/services/api/userApi';
 import { getApiErrorMessage } from '@/services/apiClient';
-import { AvatarUpload } from '@/components/common/AvatarUpload';
-import { JobHuntingModeWidget } from '@/features/portal/candidate/JobHuntingModeWidget';
-import { ProfileStrengthMeter } from '@/features/portal/candidate/ProfileStrengthMeter';
-import { SALARY_RANGE_PRESETS } from '@/features/jobs-mf01/jobFormOptions';
-import type { UploadProps } from 'antd';
+import { getAvatarImageUrl, getInitials, useAuthStore } from '@/stores/authStore';
+import type { CandidateProfileData, UpdateCandidateProfileCommand } from '@/types/api/mf04';
+import { CandidateAccountFrame } from '@/features/portal/candidate/CandidateAccountFrame';
 
-export interface CandidateCV {
-  id: string;
-  userEmail?: string;
-  name: string;
-  updatedAt: string;
-  size: string;
-  isDefault: boolean;
-  atsScore: number;
-  type: 'Platform Builder' | 'Template ATS' | 'File Upload';
-  fileUrl?: string;
-  previewUrl?: string;
-}
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
+const CARD = 'rounded-lg border border-solid border-[#E5E7EB] bg-white p-5';
+const INPUT = `${FONT} h-[42px] w-full min-w-0 rounded-md border border-solid border-[#D1D5DB] bg-white px-3 text-[14px] text-[#1F2937]`;
+const SELECT = `${FONT} h-[42px] w-full [&_.ant-select-selection-item]:!text-[#1F2937] [&_.ant-select-selector]:!rounded-md [&_.ant-select-selector]:!border-[#D1D5DB]`;
+const LABEL = 'text-[13px] text-[#374151]';
+const H2 = 'm-0 text-[16px] font-bold text-[#1F2937]';
 
-const { Title, Text, Paragraph } = Typography;
-const { Option } = Select;
-
-// 4 Mẫu CV ATS Tiêu Chuẩn (Hỗ trợ trình soạn thảo offline/preview)
-interface AtsTemplateItem {
-  id: string;
-  name: string;
-  category: string;
-  description: string;
-  score: number;
-  previewBg: string;
-}
-
-const ATS_TEMPLATES: AtsTemplateItem[] = [
-  {
-    id: 'tpl-tech',
-    name: 'Công nghệ hiện đại',
-    category: 'IT & Software',
-    description: 'Tối ưu hóa mật độ từ khóa kỹ năng (ReactJS, Microservices, Cloud). Bố cục 2 cột thông minh vượt qua bộ lọc tự động.',
-    score: 96,
-    previewBg: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-  },
-  {
-    id: 'tpl-exec',
-    name: 'Quản lý cấp cao',
-    category: 'Leadership & Management',
-    description: 'Nhấn mạnh thành tựu kinh doanh, quy mô đội ngũ (Team Size 20+) và chỉ số ROI. Phù hợp vị trí Tech Lead, Director, CTO.',
-    score: 94,
-    previewBg: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-  },
-  {
-    id: 'tpl-creative',
-    name: 'Sáng tạo & Thiết kế',
-    category: 'UI/UX & Product',
-    description: 'Trình bày nổi bật hồ sơ năng lực, liên kết Figma/Behance và các dự án thiết kế trải nghiệm người dùng tiêu biểu.',
-    score: 91,
-    previewBg: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
-  },
-  {
-    id: 'tpl-minimal',
-    name: 'Tối giản chuẩn Harvard',
-    category: 'Tiêu chuẩn quốc tế',
-    description: 'Định dạng 1 cột thuần đen trắng chuẩn Đại học Harvard. Tương thích 100% với mọi hệ thống ATS cổ điển và hiện đại.',
-    score: 98,
-    previewBg: 'linear-gradient(135deg, #334155 0%, #1e293b 100%)',
-  },
+const EDUCATION = ['Đại học', 'Thạc sĩ', 'Tiến sĩ', 'Cao đẳng', 'Khác'];
+const LEVELS = [
+  { value: 'Intern', label: 'Thực tập sinh' },
+  { value: 'Fresher', label: 'Mới tốt nghiệp' },
+  { value: 'Junior', label: 'Nhân viên sơ cấp' },
+  { value: 'Mid-Level', label: 'Nhân viên' },
+  { value: 'Senior', label: 'Chuyên viên cao cấp' },
+  { value: 'Lead', label: 'Trưởng nhóm' },
+  { value: 'Manager', label: 'Quản lý' },
+  { value: 'Director', label: 'Giám đốc' },
 ];
+const WORK_MODES = [
+  { value: 'ONSITE', label: 'Tại văn phòng' },
+  { value: 'HYBRID', label: 'Hybrid' },
+  { value: 'REMOTE', label: 'Từ xa' },
+];
+const LOCATION_SUGGESTIONS = ['Hà Nội', 'TP. Hồ Chí Minh', 'Đà Nẵng', 'Cần Thơ', 'Bình Dương', 'Toàn quốc'];
+const SKILL_LEVELS = [
+  { value: 'BEGINNER', label: 'Mới bắt đầu' },
+  { value: 'INTERMEDIATE', label: 'Trung cấp' },
+  { value: 'ADVANCED', label: 'Thành thạo' },
+  { value: 'EXPERT', label: 'Chuyên gia' },
+];
+const MAX_LOCATIONS_LENGTH = 255;
+
+interface ProfileForm {
+  fullName: string;
+  phone: string;
+  currentAddress: string;
+  highestEducation: string;
+  yearsOfExperience: string;
+  summary: string;
+  currentJobTitle: string;
+  currentLevel: string;
+  targetRole: string;
+  availableFrom: string;
+  salaryMin: string;
+  salaryMax: string;
+  preferredLocations: string[];
+  preferredWorkModes: string[];
+}
+
+/** The API may send these lists as an array or as comma-separated text. */
+const toList = (value?: string[] | string | null) =>
+  Array.isArray(value) ? value : (value ?? '').split(',').map((item) => item.trim()).filter(Boolean);
+
+/** Salaries are stored in full; VND is edited in millions. */
+const salaryUnit = (currency?: string | null) => ((currency ?? 'VND').toUpperCase() === 'VND' ? 1_000_000 : 1);
+
+const toForm = (profile: CandidateProfileData | undefined, accountName?: string): ProfileForm => {
+  const unit = salaryUnit(profile?.expectedSalaryCurrency);
+  return {
+    fullName: profile?.fullName || accountName || '',
+    phone: profile?.phone || '',
+    currentAddress: profile?.currentAddress || '',
+    highestEducation: profile?.highestEducation || '',
+    yearsOfExperience: profile?.yearsOfExperience != null ? String(profile.yearsOfExperience) : '',
+    summary: profile?.summary || '',
+    currentJobTitle: profile?.currentJobTitle || '',
+    currentLevel: profile?.currentLevel || '',
+    targetRole: profile?.targetRole || '',
+    availableFrom: profile?.availableFrom?.slice(0, 10) || '',
+    salaryMin: profile?.expectedSalaryMin ? String(profile.expectedSalaryMin / unit) : '',
+    salaryMax: profile?.expectedSalaryMax ? String(profile.expectedSalaryMax / unit) : '',
+    preferredLocations: toList(profile?.preferredLocations),
+    preferredWorkModes: toList(profile?.preferredWorkModes),
+  };
+};
+
+const validate = (form: ProfileForm) => {
+  const errors: Partial<Record<keyof ProfileForm, string>> = {};
+  if (form.fullName.trim().length < 2) errors.fullName = 'Họ và tên phải có tối thiểu 2 ký tự.';
+  if (form.phone.trim() && !/^[0-9+() \-.]{8,20}$/.test(form.phone.trim())) errors.phone = 'Số điện thoại không đúng định dạng.';
+  const years = Number(form.yearsOfExperience);
+  if (form.yearsOfExperience && !(years >= 0 && years <= 50)) errors.yearsOfExperience = 'Số năm kinh nghiệm phải từ 0 đến 50.';
+  if (form.salaryMin && form.salaryMax && Number(form.salaryMax) < Number(form.salaryMin)) errors.salaryMax = 'Mức tối đa phải lớn hơn hoặc bằng mức tối thiểu.';
+  if (form.availableFrom && new Date(`${form.availableFrom}T23:59:59`) < new Date()) errors.availableFrom = 'Ngày có thể nhận việc phải từ hôm nay trở đi.';
+  if (form.preferredLocations.join(', ').length > MAX_LOCATIONS_LENGTH) errors.preferredLocations = 'Danh sách địa điểm quá dài.';
+  return errors;
+};
+
+const skillYears = (years?: number | null) => {
+  if (years == null) return '';
+  return years > 0 && years < 1 ? `${Math.round(years * 12)} tháng` : `${years} năm`;
+};
+
+const FieldError: React.FC<{ message?: string }> = ({ message }) =>
+  message ? <span role="alert" className="text-[12px] text-[#B91C1C]">{message}</span> : null;
+
+const ProfileAvatar: React.FC = () => {
+  const { message } = AntApp.useApp();
+  const { user, updateUser, syncCurrentUser } = useAuthStore();
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+  const avatarUrl = getAvatarImageUrl(user?.avatar);
+  const initials = getInitials(user?.name || user?.email || 'User');
+
+  useEffect(() => setFailed(false), [avatarUrl]);
+
+  const upload = async (file?: File) => {
+    if (!file || busy) return;
+    if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
+      message.error('Chỉ chấp nhận ảnh JPG, PNG hoặc WEBP.');
+      return;
+    }
+    if (file.size >= 5 * 1024 * 1024) {
+      message.error('Kích thước ảnh tối đa là 5 MB.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await userApi.uploadAvatar(file);
+      message.success(result.message || 'Đã cập nhật ảnh đại diện.');
+      if (result.data?.avatarUrl) updateUser({ avatar: result.data.avatarUrl });
+      await syncCurrentUser();
+    } catch (error) {
+      message.error(getApiErrorMessage(error, 'Không thể tải lên ảnh đại diện.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    setBusy(true);
+    try {
+      const result = await userApi.deleteAvatar();
+      message.success(result.message || 'Đã xóa ảnh đại diện.');
+      updateUser({ avatar: initials });
+      await syncCurrentUser();
+    } catch (error) {
+      message.error(getApiErrorMessage(error, 'Không thể xóa ảnh đại diện.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="relative shrink-0">
+      <span className="flex h-[84px] w-[84px] items-center justify-center overflow-hidden rounded-full bg-[#E0F2FE] text-[26px] font-bold text-[#0C4A6E]">
+        {avatarUrl && !failed ? <img src={avatarUrl} alt={user?.name || 'Ảnh đại diện'} className="h-full w-full object-cover" onError={() => setFailed(true)} /> : initials}
+      </span>
+      <button type="button" aria-label="Đổi ảnh đại diện" disabled={busy} onClick={() => input.current?.click()} className="absolute -bottom-1.5 -right-1.5 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-solid border-white bg-[#0C4A6E] text-white hover:bg-[#075985] disabled:opacity-60">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></svg>
+      </button>
+      {avatarUrl && (
+        <Popconfirm title="Xóa ảnh đại diện?" okText="Xóa" okButtonProps={{ danger: true }} cancelText="Hủy" disabled={busy} onConfirm={remove}>
+          <button type="button" aria-label="Xóa ảnh đại diện" disabled={busy} className="absolute -bottom-1.5 -left-1.5 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-solid border-white bg-white text-[#B91C1C] shadow-sm hover:bg-[#FEF2F2]">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>
+          </button>
+        </Popconfirm>
+      )}
+      <input
+        ref={input}
+        type="file"
+        accept=".jpg,.jpeg,.png,.webp"
+        aria-label="Chọn ảnh đại diện"
+        tabIndex={-1}
+        className="absolute h-px w-px opacity-0"
+        onChange={(event) => {
+          void upload(event.target.files?.[0]);
+          event.target.value = '';
+        }}
+      />
+    </div>
+  );
+};
+
+const SkillsSection: React.FC<{ skills: CandidateSkillItemDto[]; onChanged: () => Promise<unknown> }> = ({ skills, onChanged }) => {
+  const { message } = AntApp.useApp();
+  const [form] = Form.useForm();
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<CandidateSkillItemDto | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const catalog = useQuery({
+    queryKey: ['skills-catalog'],
+    queryFn: async () => {
+      const result = await candidateService.getCatalogSkills({ pageSize: 100 });
+      return (result?.data?.items || result?.items || result?.data || []) as { skillId: string; skillName: string; category?: string | null }[];
+    },
+    enabled: open && !editing,
+    staleTime: 5 * 60_000,
+  });
+  const owned = new Set(skills.map((skill) => skill.skillId));
+
+  const openModal = (skill: CandidateSkillItemDto | null) => {
+    setEditing(skill);
+    form.resetFields();
+    form.setFieldsValue({ skillId: skill?.skillId, proficiencyLevel: skill?.proficiencyLevel?.toUpperCase() || 'INTERMEDIATE', yearsOfExperience: skill?.yearsOfExperience ?? 1 });
+    setOpen(true);
+  };
+
+  const run = async (action: () => Promise<unknown>, done: string, fallback: string) => {
+    setSaving(true);
+    try {
+      await action();
+      message.success(done);
+      setOpen(false);
+      await onChanged();
+    } catch (error) {
+      message.error(getApiErrorMessage(error, fallback));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const save = async () => {
+    const values = await form.validateFields();
+    const body = { proficiencyLevel: values.proficiencyLevel, yearsOfExperience: values.yearsOfExperience != null ? Number(values.yearsOfExperience) : undefined };
+    await run(
+      () => (editing?.skillId ? candidateService.updateSkill(editing.skillId, body) : candidateService.addSkill({ skillId: values.skillId, ...body })),
+      editing ? 'Đã cập nhật kỹ năng.' : 'Đã thêm kỹ năng vào hồ sơ.',
+      'Không thể lưu kỹ năng.',
+    );
+  };
+
+  return (
+    <section aria-labelledby="skills" className={CARD}>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 id="skills" className={H2}>Kỹ năng</h2>
+        <button type="button" onClick={() => openModal(null)} className={`${FONT} h-9 cursor-pointer rounded-md border border-solid border-[#D1D5DB] bg-white px-3 text-[14px] text-[#1F2937] hover:bg-[#F9FAFB]`}>Thêm kỹ năng</button>
+      </div>
+      {skills.length === 0 ? (
+        <p className="m-0 border-0 border-t border-solid border-[#F1F5F9] pt-3 text-[#4B5563]">Chưa có kỹ năng nào. Thêm kỹ năng để nhận gợi ý việc làm sát hơn.</p>
+      ) : (
+        <ul className="m-0 list-none p-0">
+          {skills.map((skill) => (
+            <li key={skill.skillId || skill.skillName} className="flex items-center gap-3 border-0 border-t border-solid border-[#F1F5F9] py-2.5">
+              <span className="min-w-0 flex-1 font-medium">{skill.skillName || 'Kỹ năng'}</span>
+              <span className="rounded bg-[#F3F4F6] px-2 py-0.5 text-[12px] text-[#374151]">
+                {SKILL_LEVELS.find((level) => level.value === skill.proficiencyLevel?.toUpperCase())?.label ?? skill.proficiencyLevel ?? 'Chưa rõ'}
+              </span>
+              <span className="w-[70px] text-right text-[13px] text-[#6B7280]">{skillYears(skill.yearsOfExperience)}</span>
+              <button type="button" aria-label={`Sửa kỹ năng ${skill.skillName ?? ''}`} onClick={() => openModal(skill)} className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-[#4B5563] hover:bg-[#F3F4F6]">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16z" /></svg>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <Modal
+        title={editing ? `Sửa kỹ năng: ${editing.skillName ?? ''}` : 'Thêm kỹ năng'}
+        open={open}
+        onCancel={() => setOpen(false)}
+        onOk={save}
+        okText={editing ? 'Lưu' : 'Thêm kỹ năng'}
+        cancelText="Hủy"
+        confirmLoading={saving}
+        destroyOnHidden
+        forceRender
+        footer={(_, { OkBtn, CancelBtn }) => (
+          <div className="flex items-center justify-between">
+            {editing?.skillId ? (
+              <Popconfirm title="Xóa kỹ năng này khỏi hồ sơ?" okText="Xóa" okButtonProps={{ danger: true }} cancelText="Hủy" onConfirm={() => run(() => candidateService.removeSkill(editing.skillId!), 'Đã xóa kỹ năng khỏi hồ sơ.', 'Không thể xóa kỹ năng.')}>
+                <button type="button" className={`${FONT} cursor-pointer border-0 bg-transparent p-0 text-[14px] text-[#B91C1C] hover:underline`}>Xóa kỹ năng</button>
+              </Popconfirm>
+            ) : <span />}
+            <span className="flex gap-2"><CancelBtn /><OkBtn /></span>
+          </div>
+        )}
+      >
+        <Form form={form} layout="vertical" className="!mt-4">
+          {!editing && (
+            <Form.Item name="skillId" label="Kỹ năng" rules={[{ required: true, message: 'Vui lòng chọn kỹ năng.' }]}>
+              <Select
+                showSearch
+                loading={catalog.isLoading}
+                placeholder="Tìm kỹ năng, ví dụ: React, .NET, Docker"
+                optionFilterProp="label"
+                options={(catalog.data ?? []).filter((skill) => !owned.has(skill.skillId)).map((skill) => ({ value: skill.skillId, label: skill.category ? `${skill.skillName} (${skill.category})` : skill.skillName }))}
+              />
+            </Form.Item>
+          )}
+          <Form.Item name="proficiencyLevel" label="Mức độ" rules={[{ required: true, message: 'Vui lòng chọn mức độ.' }]}>
+            <Select options={SKILL_LEVELS} />
+          </Form.Item>
+          <Form.Item name="yearsOfExperience" label="Số năm kinh nghiệm">
+            <InputNumber min={0} max={50} step={0.5} className="!w-full" />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </section>
+  );
+};
 
 export const CandidateProfilePage: React.FC = () => {
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const activeTabKey = searchParams.get('tab') || 'career-info';
-
-  const { user, updateUser } = useAuthStore();
-  const currentUserEmail = (user?.email || '').toLowerCase().trim();
-  const [localCvs, setLocalCvs] = useState<CandidateCV[]>([]);
-
+  const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
-  const [form] = Form.useForm();
-
-  // Load Candidate Profile directly from Database API (Single Source of Truth)
-  const {
-    data: profile,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useQuery({
+  const { user, updateUser } = useAuthStore();
+  const { data: profile, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['candidate', 'profile'],
     queryFn: () => mf04Api.getProfile(),
   });
 
-  // Local state for skills tags
-  // Local state for skills tags
-  const [skillsList, setSkillsList] = useState<string[]>([]);
-  const [newSkillInput, setNewSkillInput] = useState('');
-  const [showSkillInput, setShowSkillInput] = useState(false);
+  const [form, setForm] = useState<ProfileForm>(() => toForm(undefined, user?.name));
+  const [errors, setErrors] = useState<ReturnType<typeof validate>>({});
+  const [addingLocation, setAddingLocation] = useState(false);
+  const [locationDraft, setLocationDraft] = useState('');
 
-  // Local state for salary range preset
-  const [salaryPreset, setSalaryPreset] = useState<string>('CUSTOM');
-
-  // Local state for immediate Visibility Switch responsiveness
-  const [isPublicState, setIsPublicState] = useState<boolean | null>(null);
-  const isPublic = isPublicState !== null
-    ? isPublicState
-    : (profile?.profileVisibility || 'PRIVATE').toUpperCase() === 'PUBLIC';
-
-  // Visibility toggle mutation
-  const visibilityMutation = useMutation({
-    mutationFn: (newVisibility: 'PUBLIC' | 'PRIVATE') =>
-      mf04Api.updateVisibility({ visibility: newVisibility }),
-    onSuccess: (_, newVisibility) => {
-      setIsPublicState(newVisibility === 'PUBLIC');
-      message.success(
-        newVisibility === 'PUBLIC'
-          ? 'Hồ sơ đã chuyển sang chế độ Công khai (Nhà tuyển dụng có thể tìm kiếm bạn).'
-          : 'Hồ sơ đã chuyển sang chế độ Riêng tư (Ẩn khỏi tìm kiếm của Nhà tuyển dụng).'
-      );
-      queryClient.invalidateQueries({ queryKey: ['candidate', 'profile'] });
-    },
-    onError: (err: any) => {
-      setIsPublicState((profile?.profileVisibility || 'PRIVATE').toUpperCase() === 'PUBLIC');
-      message.error(err?.response?.data?.message || err?.message || 'Không thể cập nhật chế độ hiển thị');
-    },
-  });
-
-  // Update profile mutation (saves to DB API)
-  const updateProfileMutation = useMutation({
-    mutationFn: (command: UpdateCandidateProfileCommand) => mf04Api.updateProfile(command),
-    onSuccess: (updatedData) => {
-      message.success('Cập nhật hồ sơ nghề nghiệp thành công!');
-      queryClient.invalidateQueries({ queryKey: ['candidate', 'profile'] });
-      if (updatedData.fullName && updateUser) {
-        updateUser({ name: updatedData.fullName });
-      }
-    },
-    onError: (err: any) => {
-      const errMsg =
-        err?.response?.data?.message ||
-        err?.message ||
-        'Có lỗi xảy ra khi lưu thông tin hồ sơ. Vui lòng kiểm tra lại!';
-      message.error(errMsg);
-    },
-  });
-
-  // Compute formInitialValues from DB profile
-  const formInitialValues = useMemo(() => {
-    if (!profile) return undefined;
-    const locs = profile.preferredLocations
-      ? (Array.isArray(profile.preferredLocations)
-        ? profile.preferredLocations
-        : typeof profile.preferredLocations === 'string'
-          ? (profile.preferredLocations as string).split(',').map((s: string) => s.trim()).filter(Boolean)
-          : [])
-      : [];
-
-    const modes = profile.preferredWorkModes
-      ? (Array.isArray(profile.preferredWorkModes)
-        ? profile.preferredWorkModes
-        : typeof profile.preferredWorkModes === 'string'
-          ? (profile.preferredWorkModes as string).split(',').map((s: string) => s.trim()).filter(Boolean)
-          : [])
-      : [];
-
-    return {
-      fullName: profile.fullName || user?.name || '',
-      email: profile.email || user?.email || '',
-      phone: profile.phone || user?.phone || '',
-      currentAddress: profile.currentAddress || '',
-      highestEducation: profile.highestEducation || '',
-      yearsOfExperience: profile.yearsOfExperience ?? 0,
-      summary: profile.summary || '',
-      // 9 Career Fields
-      currentJobTitle: profile.currentJobTitle || '',
-      currentLevel: profile.currentLevel || 'Mid-Level',
-      targetRole: profile.targetRole || '',
-      expectedSalaryMin: profile.expectedSalaryMin || null,
-      expectedSalaryMax: profile.expectedSalaryMax || null,
-      expectedSalaryCurrency: profile.expectedSalaryCurrency || 'VND',
-      availableFrom: profile.availableFrom || '',
-      preferredLocations: locs,
-      preferredWorkModes: modes,
-    };
-  }, [profile, user?.name, user?.email, user?.phone]);
-
-  // Sync profile data from DB into Form when query resolves
+  const saved = useMemo(() => toForm(profile, user?.name), [profile, user?.name]);
   useEffect(() => {
-    if (profile) {
-      if (profile.profileVisibility) {
-        setIsPublicState(profile.profileVisibility.toUpperCase() === 'PUBLIC');
-      }
+    if (profile) setForm(saved);
+  }, [profile, saved]);
 
-      if (formInitialValues) {
-        form.setFieldsValue(formInitialValues);
-      }
-
-      // Extract skills list
-      if (profile.skills && profile.skills.length > 0) {
-        const nextSkills = profile.skills
-          .map((s) => s.skillName || '')
-          .filter(Boolean);
-        setSkillsList((prev) => {
-          if (prev.length === nextSkills.length && prev.every((v, i) => v === nextSkills[i])) {
-            return prev;
-          }
-          return nextSkills;
-        });
-      }
-
-      // Sync salary preset
-      const min = profile.expectedSalaryMin ?? null;
-      const max = profile.expectedSalaryMax ?? null;
-      if (min == null && max == null) {
-        setSalaryPreset('NEGOTIABLE');
-      } else {
-        const found = SALARY_RANGE_PRESETS.find((p) => p.value !== 'NEGOTIABLE' && p.min === min && p.max === max);
-        setSalaryPreset(found ? found.value : 'CUSTOM');
-      }
-    }
-  }, [profile, formInitialValues, form]);
-
-  const handleSalaryPresetChange = (value: string) => {
-    setSalaryPreset(value);
-    const preset = SALARY_RANGE_PRESETS.find((p) => p.value === value);
-    if (!preset) return;
-    form.setFieldsValue({
-      expectedSalaryMin: preset.min ?? undefined,
-      expectedSalaryMax: preset.max ?? undefined,
-    });
-    form.validateFields(['expectedSalaryMin', 'expectedSalaryMax']);
+  const set = <K extends keyof ProfileForm>(key: K, value: ProfileForm[K]) => {
+    setForm((current) => ({ ...current, [key]: value }));
+    setErrors((current) => ({ ...current, [key]: undefined }));
   };
+  const dirty = JSON.stringify(form) !== JSON.stringify(saved);
 
-  // Dedicated Skills Management (from backend /skills & /candidates/profile/me/skills)
-  const [catalogSkills, setCatalogSkills] = useState<Array<{ skillId: string; skillName: string; category?: string | null }>>([]);
-  const [loadingCatalog, setLoadingCatalog] = useState(false);
-  const [isSkillModalOpen, setIsSkillModalOpen] = useState(false);
-  const [editingSkill, setEditingSkill] = useState<CandidateSkillItemDto | null>(null);
-  const [skillModalForm] = Form.useForm();
-  const [isSavingSkill, setIsSavingSkill] = useState(false);
-
-  const fetchCatalogSkills = async (search?: string) => {
-    setLoadingCatalog(true);
-    try {
-      const res = await candidateService.getCatalogSkills({ search, pageSize: 100 });
-      const items = res?.data?.items || res?.items || res?.data || [];
-      setCatalogSkills(items);
-    } catch (err) {
-      console.error('Failed to load skills catalog', err);
-    } finally {
-      setLoadingCatalog(false);
-    }
-  };
-
-  const handleOpenAddSkill = () => {
-    setEditingSkill(null);
-    skillModalForm.resetFields();
-    skillModalForm.setFieldsValue({ proficiencyLevel: 'INTERMEDIATE', yearsOfExperience: 1 });
-    setIsSkillModalOpen(true);
-    void fetchCatalogSkills();
-  };
-
-  const handleOpenEditSkill = (skill: CandidateSkillItemDto) => {
-    setEditingSkill(skill);
-    skillModalForm.setFieldsValue({
-      skillId: skill.skillId,
-      proficiencyLevel: skill.proficiencyLevel || 'INTERMEDIATE',
-      yearsOfExperience: skill.yearsOfExperience || 1,
-    });
-    setIsSkillModalOpen(true);
-  };
-
-  const handleSaveSkillSubmit = async () => {
-    try {
-      const values = await skillModalForm.validateFields();
-      setIsSavingSkill(true);
-      if (editingSkill?.skillId) {
-        await candidateService.updateSkill(editingSkill.skillId, {
-          proficiencyLevel: values.proficiencyLevel,
-          yearsOfExperience: values.yearsOfExperience != null ? Number(values.yearsOfExperience) : undefined,
-        });
-        message.success('Đã cập nhật kỹ năng thành công!');
-      } else {
-        await candidateService.addSkill({
-          skillId: values.skillId,
-          proficiencyLevel: values.proficiencyLevel,
-          yearsOfExperience: values.yearsOfExperience != null ? Number(values.yearsOfExperience) : undefined,
-        });
-        message.success('Đã thêm kỹ năng vào hồ sơ thành công!');
-      }
-      setIsSkillModalOpen(false);
-      skillModalForm.resetFields();
-      setEditingSkill(null);
-      await refetch();
-    } catch (err) {
-      message.error(getApiErrorMessage(err, 'Không thể lưu kỹ năng.'));
-    } finally {
-      setIsSavingSkill(false);
-    }
-  };
-
-  const handleRemoveSkillApi = async (skillId?: string) => {
-    if (!skillId) return;
-    try {
-      await candidateService.removeSkill(skillId);
-      message.success('Đã xóa kỹ năng khỏi hồ sơ.');
-      await refetch();
-    } catch (err) {
-      message.error(getApiErrorMessage(err, 'Không thể xóa kỹ năng.'));
-    }
-  };
-
-  // Modal 1: Platform Builder Form
-  const [isBuilderModalOpen, setIsBuilderModalOpen] = useState(false);
-  const [builderForm] = Form.useForm();
-
-  // Modal 2: Template Selection Preview
-  const [selectedTemplate, setSelectedTemplate] = useState<AtsTemplateItem | null>(null);
-  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
-
-  // Modal 3: File Upload
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-
-  // Only display CVs created or uploaded by current user
-  const myCvs = React.useMemo(() => {
-    if (!currentUserEmail) return localCvs;
-    return localCvs.filter((c) => !c.userEmail || c.userEmail.toLowerCase().trim() === currentUserEmail);
-  }, [currentUserEmail, localCvs]);
-
-  const addCV = (newCv: CandidateCV) => setLocalCvs((prev) => [newCv, ...prev]);
-  const setDefaultCV = (id: string) =>
-    setLocalCvs((prev) => prev.map((c) => ({ ...c, isDefault: c.id === id })));
-  const deleteCV = (id: string) => setLocalCvs((prev) => prev.filter((c) => c.id !== id));
-
-  /** Returns initials: first char of first word + first char of last word */
-  const getInitials = (name?: string): string => {
-    if (!name) return 'UV';
-    const parts = name.trim().split(/\s+/).filter(Boolean);
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  };
-
-  // Submit Handler: Saves directly to Database API
-  const handleSaveProfile = async (values: any) => {
-    const locsString = Array.isArray(values.preferredLocations)
-      ? (values.preferredLocations.length > 0 ? values.preferredLocations.join(', ') : null)
-      : (typeof values.preferredLocations === 'string' && values.preferredLocations.trim() ? values.preferredLocations.trim() : null);
-
-    const modesString = Array.isArray(values.preferredWorkModes)
-      ? (values.preferredWorkModes.length > 0 ? values.preferredWorkModes.join(', ') : null)
-      : (typeof values.preferredWorkModes === 'string' && values.preferredWorkModes.trim() ? values.preferredWorkModes.trim() : null);
-
-    const command: UpdateCandidateProfileCommand = {
-      fullName: (values.fullName || user?.name || '').trim(),
-      phone: (values.phone || user?.phone || '').trim() || null,
-      dateOfBirth: values.dateOfBirth || profile?.dateOfBirth || null,
-      gender: values.gender || profile?.gender || null,
-      currentAddress: (values.currentAddress || '').trim() || null,
-      highestEducation: values.highestEducation || null,
-      yearsOfExperience:
-        typeof values.yearsOfExperience === 'number'
-          ? values.yearsOfExperience
-          : parseFloat(values.yearsOfExperience) || 0,
-      summary: (values.summary || '').trim() || null,
-      // 9 Career Fields
-      currentJobTitle: (values.currentJobTitle || '').trim() || null,
-      currentLevel: values.currentLevel || null,
-      targetRole: (values.targetRole || '').trim() || null,
-      expectedSalaryMin: values.expectedSalaryMin != null && values.expectedSalaryMin !== '' ? Number(values.expectedSalaryMin) : null,
-      expectedSalaryMax: values.expectedSalaryMax != null && values.expectedSalaryMax !== '' ? Number(values.expectedSalaryMax) : null,
-      expectedSalaryCurrency: values.expectedSalaryCurrency || 'VND',
-      availableFrom: values.availableFrom || null,
-      preferredLocations: locsString as any,
-      preferredWorkModes: modesString as any,
-    };
-
-    updateProfileMutation.mutate(command);
-  };
-
-  // Add / Remove Skill
-  const handleAddSkill = () => {
-    if (newSkillInput.trim() && !skillsList.includes(newSkillInput.trim())) {
-      setSkillsList([...skillsList, newSkillInput.trim()]);
-    }
-    setNewSkillInput('');
-    setShowSkillInput(false);
-  };
-
-  const handleRemoveSkill = (skillToRemove: string) => {
-    setSkillsList(skillsList.filter((s) => s !== skillToRemove));
-  };
-
-  // Handle Save Online Builder CV
-  const handleSaveOnlineCv = async () => {
-    try {
-      const values = await builderForm.validateFields();
-      const newCv: CandidateCV = {
-        id: `cv-builder-${Date.now()}`,
-        name: `CV ${values.roleTarget || profile?.targetRole || 'Chuyên viên'} (tạo trên HR Connect)`,
-        updatedAt: 'Hôm nay',
-        size: '1.9 MB',
-        isDefault: myCvs.length === 0,
-        atsScore: 95,
-        type: 'Platform Builder',
-        userEmail: currentUserEmail,
-      };
-      addCV(newCv);
-      setIsBuilderModalOpen(false);
-      builderForm.resetFields();
-      message.success(`Đã xuất bản CV trực tuyến "${newCv.name}" với điểm chuẩn ATS 95/100!`);
-    } catch {
-      // validation error
-    }
-  };
-
-  // Handle Select ATS Template
-  const handleConfirmTemplate = () => {
-    if (!selectedTemplate) return;
-    const newCv: CandidateCV = {
-      id: `cv-tpl-${Date.now()}`,
-      name: `CV ${profile?.targetRole || 'Chuyên viên'} (${selectedTemplate.name})`,
-      updatedAt: 'Hôm nay',
-      size: '2.1 MB',
-      isDefault: myCvs.length === 0,
-      atsScore: selectedTemplate.score,
-      type: 'Template ATS',
-      userEmail: currentUserEmail,
-    };
-    addCV(newCv);
-    setIsTemplateModalOpen(false);
-    message.success(`Đã tạo hồ sơ từ mẫu "${selectedTemplate.name}" thành công!`);
-  };
-
-  // File Upload Config (Max 5MB)
-  const uploadProps: UploadProps = {
-    name: 'file',
-    multiple: false,
-    showUploadList: false,
-    beforeUpload: (file) => {
-      const isLt5M = file.size / 1024 / 1024 <= 5;
-      if (!isLt5M) {
-        message.error('Dung lượng tệp CV không được vượt quá 5MB!');
-        return false;
-      }
-      const newCv: CandidateCV = {
-        id: `cv-upload-${Date.now()}`,
-        name: file.name,
-        updatedAt: 'Hôm nay',
-        size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-        isDefault: myCvs.length === 0,
-        atsScore: 93,
-        type: 'File Upload',
-        userEmail: currentUserEmail,
-      };
-      addCV(newCv);
-      setIsUploadModalOpen(false);
-      message.success(`Đã tải lên tệp "${file.name}" thành công!`);
-      return false;
+  const visibility = useMutation({
+    mutationFn: (next: 'PUBLIC' | 'PRIVATE') => mf04Api.updateVisibility({ visibility: next }),
+    onSuccess: (_, next) => {
+      message.success(next === 'PUBLIC' ? 'Hồ sơ đã chuyển sang công khai.' : 'Hồ sơ đã chuyển sang riêng tư.');
+      void queryClient.invalidateQueries({ queryKey: ['candidate', 'profile'] });
     },
+    onError: (err) => message.error(getApiErrorMessage(err, 'Không thể đổi chế độ hiển thị.')),
+  });
+
+  const save = useMutation({
+    mutationFn: (command: UpdateCandidateProfileCommand) => mf04Api.updateProfile(command),
+    onSuccess: (updated) => {
+      message.success('Đã lưu hồ sơ.');
+      void queryClient.invalidateQueries({ queryKey: ['candidate', 'profile'] });
+      if (updated.fullName) updateUser({ name: updated.fullName });
+    },
+    onError: (err) => message.error(getApiErrorMessage(err, 'Không lưu được hồ sơ.')),
+  });
+
+  const submit = () => {
+    const problems = validate(form);
+    setErrors(problems);
+    if (Object.values(problems).some(Boolean)) {
+      message.error('Vui lòng kiểm tra các ô được đánh dấu.');
+      return;
+    }
+    const unit = salaryUnit(profile?.expectedSalaryCurrency);
+    const text = (value: string) => value.trim() || null;
+    save.mutate({
+      fullName: form.fullName.trim(),
+      phone: text(form.phone),
+      dateOfBirth: profile?.dateOfBirth ?? null,
+      gender: profile?.gender ?? null,
+      currentAddress: text(form.currentAddress),
+      highestEducation: form.highestEducation || null,
+      yearsOfExperience: form.yearsOfExperience ? Number(form.yearsOfExperience) : 0,
+      summary: text(form.summary),
+      currentJobTitle: text(form.currentJobTitle),
+      currentLevel: form.currentLevel || null,
+      targetRole: text(form.targetRole),
+      expectedSalaryMin: form.salaryMin ? Number(form.salaryMin) * unit : null,
+      expectedSalaryMax: form.salaryMax ? Number(form.salaryMax) * unit : null,
+      expectedSalaryCurrency: profile?.expectedSalaryCurrency || 'VND',
+      availableFrom: form.availableFrom || null,
+      // The API stores these two as comma-separated text.
+      preferredLocations: (form.preferredLocations.join(', ') || null) as unknown as string[] | null,
+      preferredWorkModes: (form.preferredWorkModes.join(', ') || null) as unknown as string[] | null,
+    });
   };
 
-  // Formatted salary string (Định dạng thông minh dạng 100M - 150M VNĐ tránh tràn và cắt cụt ba chấm)
-  const formatSalaryDisplay = () => {
-    const formatValue = (num: number) => {
-      if (num >= 1_000_000_000) {
-        return `${(num / 1_000_000_000).toFixed(1).replace(/\.0$/, '')}B`;
-      }
-      if (num >= 1_000_000) {
-        return `${(num / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
-      }
-      if (num >= 1_000) {
-        return `${(num / 1_000).toFixed(0)}K`;
-      }
-      return num.toLocaleString('vi-VN');
-    };
-
-    const currency = profile?.expectedSalaryCurrency || 'VNĐ';
-
-    if (profile?.expectedSalaryMin && profile?.expectedSalaryMax) {
-      return `${formatValue(profile.expectedSalaryMin)} - ${formatValue(profile.expectedSalaryMax)} ${currency}`;
-    }
-    if (profile?.expectedSalaryMin) {
-      return `Từ ${formatValue(profile.expectedSalaryMin)} ${currency}`;
-    }
-    if (profile?.expectedSalaryMax) {
-      return `Đến ${formatValue(profile.expectedSalaryMax)} ${currency}`;
-    }
-    return 'Thương lượng';
+  const addLocation = (value: string) => {
+    const location = value.trim();
+    if (location && !form.preferredLocations.includes(location)) set('preferredLocations', [...form.preferredLocations, location]);
+    setLocationDraft('');
+    setAddingLocation(false);
   };
-
-  const levelLabel: Record<string, string> = {
-    Intern: 'Thực tập sinh',
-    Fresher: 'Mới tốt nghiệp',
-    Junior: 'Nhân viên sơ cấp',
-    'Mid-Level': 'Nhân viên có kinh nghiệm',
-    Senior: 'Chuyên viên cao cấp',
-    Lead: 'Trưởng nhóm chuyên môn',
-    Manager: 'Quản lý',
-    Director: 'Giám đốc',
-  };
-
-  const profileCompletion = Math.round(
-    ([
-      profile?.fullName,
-      profile?.phone,
-      profile?.currentAddress,
-      profile?.currentJobTitle,
-      profile?.targetRole,
-      profile?.yearsOfExperience,
-      profile?.summary,
-      profile?.preferredLocations?.length,
-    ].filter(Boolean).length / 8) * 100
-  );
 
   if (isLoading) {
-    return (
-      <div style={{ maxWidth: 1180, margin: '0 auto', padding: '32px 16px' }}>
-        <Skeleton active avatar paragraph={{ rows: 6 }} />
-      </div>
-    );
+    return <CandidateAccountFrame><div className={CARD}><Skeleton active avatar paragraph={{ rows: 6 }} /></div></CandidateAccountFrame>;
   }
-
   if (isError) {
     return (
-      <div style={{ maxWidth: 1180, margin: '0 auto', padding: '32px 16px' }}>
-        <Alert
-          type="error"
-          showIcon
-          message="Không thể tải hồ sơ ứng viên"
-          description={error instanceof Error ? error.message : 'Vui lòng kiểm tra lại kết nối mạng hoặc thử lại.'}
-          action={
-            <Button type="primary" onClick={() => refetch()}>
-              Thử lại
-            </Button>
-          }
-        />
-      </div>
+      <CandidateAccountFrame>
+        <Alert type="error" showIcon message="Không thể tải hồ sơ" description={getApiErrorMessage(error)} action={<button type="button" onClick={() => refetch()} className={`${FONT} cursor-pointer border-0 bg-transparent font-semibold ${LINK}`}>Thử lại</button>} />
+      </CandidateAccountFrame>
     );
   }
 
+  const isPublic = (profile?.profileVisibility || 'PRIVATE').toUpperCase() === 'PUBLIC';
+  const completion = Math.round(
+    ([profile?.fullName, profile?.phone, profile?.currentAddress, profile?.currentJobTitle, profile?.targetRole, profile?.yearsOfExperience, profile?.summary, toList(profile?.preferredLocations).length]
+      .filter(Boolean).length / 8) * 100,
+  );
+  const headline = [
+    profile?.currentJobTitle,
+    profile?.yearsOfExperience ? `${profile.yearsOfExperience} năm kinh nghiệm` : null,
+    toList(profile?.preferredLocations)[0],
+  ].filter(Boolean).join(' · ');
+  const currency = (profile?.expectedSalaryCurrency || 'VND').toUpperCase();
+
   return (
-    <div className="candidate-page candidate-profile-page" style={{ width: '100%', paddingBottom: 60 }}>
-      {/* 1. Job Hunting Mode Switch chuẩn TopCV & LinkedIn */}
-      <div className="mb-6">
-        <JobHuntingModeWidget initialIsHunting={isPublic} />
-      </div>
-
-      {/* 2. Thước Đo Sức Mạnh Hồ Sơ (Profile Strength Meter) */}
-      <div className="mb-6">
-        <ProfileStrengthMeter
-          scorePercent={profileCompletion}
-          cvCount={myCvs.length}
-          hasSkills={(profile?.skills?.length ?? 0) > 0 || skillsList.length > 0}
-          onOpenCvModal={() => {
-            setSearchParams({ tab: 'cv-center' });
-          }}
-        />
-      </div>
-
-      <div className="candidate-profile-hero bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
-        <div className="candidate-profile-identity">
-          <div className="candidate-profile-avatar-wrap">
-            <AvatarUpload
-              size={96}
-              statusColor={isPublic ? '#10b981' : '#f59e0b'}
-              statusLabel={isPublic ? 'Hồ sơ công khai' : 'Hồ sơ riêng tư'}
-            />
-          </div>
-          <div className="candidate-profile-identity__content">
-            <div className="candidate-profile-kicker text-slate-500 font-semibold text-xs uppercase tracking-wider">Hồ sơ nghề nghiệp của bạn</div>
-            <div className="candidate-profile-name-row">
-              <h1 className="text-slate-900 font-bold">{profile?.fullName || user?.name || 'Ứng viên'}</h1>
-              <span className="candidate-profile-level bg-slate-100 text-slate-700 border border-slate-200">
-                {levelLabel[profile?.currentLevel || ''] || profile?.currentLevel || 'Chuyên viên'}
-              </span>
-            </div>
-            <p className="candidate-profile-role text-slate-600">
-              {profile?.currentJobTitle || profile?.targetRole || 'Bổ sung chức danh để hồ sơ nổi bật hơn'}
-              {profile?.yearsOfExperience ? <><span aria-hidden> · </span><span>{profile.yearsOfExperience} năm kinh nghiệm</span></> : null}
-            </p>
-            <div className="candidate-profile-contact-list">
-              <span className="bg-slate-50 border border-slate-200 text-slate-700"><MailOutlined className="text-slate-400" /> {profile?.email || user?.email || 'Chưa có email'}</span>
-              <span className="bg-slate-50 border border-slate-200 text-slate-700"><PhoneOutlined className="text-slate-400" /> {profile?.phone || user?.phone || 'Chưa có số điện thoại'}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="candidate-profile-overview bg-slate-50 border border-slate-100 rounded-xl p-4">
-          <div className="candidate-profile-completion">
-            <div className="candidate-profile-overview__label text-slate-600 font-semibold"><CompassOutlined /> Mức hoàn thiện hồ sơ</div>
-            <strong className="text-slate-900 font-bold">{profileCompletion}%</strong>
-            <div className="candidate-profile-completion__track"><span style={{ width: `${profileCompletion}%` }} /></div>
-            <small className="text-slate-500">{profileCompletion < 100 ? 'Bổ sung thông tin để tăng cơ hội được chú ý.' : 'Hồ sơ của bạn đã sẵn sàng.'}</small>
-          </div>
-          <div className="candidate-profile-facts mt-3">
-            <div className="bg-white border border-slate-200/80 rounded-xl p-3">
-              <span className="text-slate-500 font-medium text-xs"><DollarOutlined /> Lương kỳ vọng</span>
-              <strong className="text-slate-900 font-bold text-sm block mt-0.5 break-words">{formatSalaryDisplay()}</strong>
-            </div>
-            <div className="bg-white border border-slate-200/80 rounded-xl p-3">
-              <span className="text-slate-500 font-medium text-xs"><CalendarOutlined /> Có thể nhận việc</span>
-              <strong className="text-slate-900 font-bold text-sm block mt-0.5 break-words">{profile?.availableFrom || 'Linh hoạt'}</strong>
-            </div>
-          </div>
-          <div className="candidate-profile-visibility border-t border-slate-200/80 pt-3">
-            <span className="text-slate-600 font-medium text-xs"><GlobalOutlined /> {isPublic ? 'Nhà tuyển dụng có thể tìm thấy bạn' : 'Hồ sơ đang ở chế độ riêng tư'}</span>
-            <Switch
-              checked={isPublic}
-              loading={visibilityMutation.isPending}
-              onChange={(checked) => visibilityMutation.mutate(checked ? 'PUBLIC' : 'PRIVATE')}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Main Tabs Container */}
-      <Card
-        className="candidate-profile-tabs"
-        variant="borderless"
-        style={{
-          borderRadius: 20,
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.04)',
-        }}
-      >
-        <Tabs
-          activeKey={activeTabKey}
-          onChange={(key) => setSearchParams({ tab: key })}
-          size="large"
-          items={[
-            // ==================== TAB 1 ====================
-            {
-              key: 'career-info',
-              label: (
-                <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
-                  <UserOutlined />
-                  Thông tin cá nhân &amp; nghề nghiệp
-                </span>
-              ),
-              children: (
-                <div style={{ paddingTop: 8 }}>
-                  <Form
-                    form={form}
-                    initialValues={formInitialValues}
-                    layout="vertical"
-                    onFinish={handleSaveProfile}
-                    onFinishFailed={({ errorFields }) => {
-                      const firstError = errorFields?.[0]?.errors?.[0];
-                      message.error(firstError || 'Vui lòng kiểm tra lại các trường thông tin bắt buộc!');
-                    }}
-                    requiredMark="optional"
-                  >
-                    {/* Nhóm 1: Thông tin định danh & Liên hệ */}
-                    <section className="candidate-profile-section">
-                      <div
-                        style={{
-                          fontSize: 15,
-                          fontWeight: 700,
-                          letterSpacing: '-0.01em',
-                          color: '#0f172a',
-                          marginBottom: 4,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: 24,
-                            height: 24,
-                            borderRadius: '50%',
-                            background: '#eff6ff',
-                            color: '#2563eb',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 12,
-                            fontWeight: 800,
-                          }}
-                        >
-                          1
-                        </span>
-                        Thông tin liên hệ &amp; Định danh cá nhân
-                      </div>
-                      <Text style={{ fontSize: 13, color: '#64748b', display: 'block', marginBottom: 16 }}>
-                        Email đăng nhập được bảo vệ và không thể thay đổi tại đây. Bạn có thể liên kết email từng dùng để ứng tuyển trong mục Email liên kết.
-                      </Text>
-
-                      <Row gutter={[20, 16]}>
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="fullName"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Họ và tên <span style={{ color: '#ef4444' }}>*</span></span>}
-                            rules={[{ required: true, message: 'Vui lòng nhập họ và tên của bạn' }]}
-                          >
-                            <Input size="large" placeholder="VD: Nguyễn Văn A" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
-                          </Form.Item>
-                        </Col>
-
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="email"
-                            label={
-                              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                                <span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>
-                                  Địa chỉ Email (Đăng nhập)
-                                  <Tooltip title="Email tài khoản được bảo mật và cố định. Để dùng email khác khi nộp đơn, hãy thêm ở mục Quản lý danh tính.">
-                                    <MailOutlined style={{ marginLeft: 6, color: '#94a3b8' }} />
-                                  </Tooltip>
-                                </span>
-                                <Link
-                                  to="/candidate/settings/email-identities"
-                                  style={{ fontSize: 12, color: '#2563eb', fontWeight: 500 }}
-                                >
-                                  Quản lý email liên kết →
-                                </Link>
-                              </div>
-                            }
-                          >
-                            <Input
-                              size="large"
-                              disabled
-                              style={{ borderRadius: 12, background: '#f8fafc', color: '#64748b' }}
-                            />
-                          </Form.Item>
-                        </Col>
-
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="phone"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Số điện thoại liên hệ</span>}
-                            rules={[
-                              { pattern: /^[0-9+() -]{8,15}$/, message: 'Số điện thoại không hợp lệ (8 - 15 chữ số)' },
-                            ]}
-                          >
-                            <Input size="large" placeholder="VD: 0912 345 678" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
-                          </Form.Item>
-                        </Col>
-
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="currentAddress"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Địa chỉ hiện tại</span>}
-                          >
-                            <Input size="large" placeholder="VD: Quận Cầu Giấy, Hà Nội" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
-                          </Form.Item>
-                        </Col>
-
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="highestEducation"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Trình độ học vấn cao nhất</span>}
-                          >
-                            <Select size="large" placeholder="Chọn học vấn" style={{ borderRadius: 12 }}>
-                              <Option value="Đại học">Đại học</Option>
-                              <Option value="Thạc sĩ">Thạc sĩ</Option>
-                              <Option value="Tiến sĩ">Tiến sĩ</Option>
-                              <Option value="Cao đẳng">Cao đẳng</Option>
-                              <Option value="Khác">Khác</Option>
-                            </Select>
-                          </Form.Item>
-                        </Col>
-
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="yearsOfExperience"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Số năm kinh nghiệm tích lũy</span>}
-                          >
-                            <InputNumber
-                              size="large"
-                              min={0}
-                              max={50}
-                              step={0.5}
-                              style={{ width: '100%', borderRadius: 12 }}
-                              placeholder="VD: 3 hoặc 5.5"
-                            />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-                    </section>
-
-                    <Divider style={{ margin: '8px 0 28px' }} />
-
-                    {/* Nhóm 2: 9 Trường nghề nghiệp MF-04 */}
-                    <section className="candidate-profile-section">
-                      <div
-                        style={{
-                          fontSize: 15,
-                          fontWeight: 700,
-                          letterSpacing: '-0.01em',
-                          color: '#0f172a',
-                          marginBottom: 4,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: 24,
-                            height: 24,
-                            borderRadius: '50%',
-                            background: '#eff6ff',
-                            color: '#2563eb',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 12,
-                            fontWeight: 800,
-                          }}
-                        >
-                          2
-                        </span>
-                        Định hướng nghề nghiệp &amp; mong muốn
-                      </div>
-                      <Text style={{ fontSize: 13, color: '#64748b', display: 'block', marginBottom: 16 }}>
-                        Thông tin này giúp hệ thống gợi ý công việc phù hợp và giúp nhà tuyển dụng hiểu rõ mong muốn của bạn.
-                      </Text>
-
-                      <Row gutter={[20, 16]}>
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="currentJobTitle"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Chức danh hiện tại</span>}
-                          >
-                            <Input size="large" placeholder="VD: Senior React Developer" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
-                          </Form.Item>
-                        </Col>
-
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="currentLevel"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Cấp bậc chuyên môn</span>}
-                          >
-                            <Select size="large" style={{ borderRadius: 12 }}>
-                              <Option value="Intern">Thực tập sinh</Option>
-                              <Option value="Fresher">Mới tốt nghiệp (dưới 1 năm)</Option>
-                              <Option value="Junior">Nhân viên sơ cấp (1 - 2 năm)</Option>
-                              <Option value="Mid-Level">Nhân viên có kinh nghiệm (2 - 4 năm)</Option>
-                              <Option value="Senior">Chuyên viên cao cấp (từ 5 năm)</Option>
-                              <Option value="Lead">Trưởng nhóm chuyên môn</Option>
-                              <Option value="Manager">Quản lý</Option>
-                              <Option value="Director">Giám đốc</Option>
-                            </Select>
-                          </Form.Item>
-                        </Col>
-
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="targetRole"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Vị trí mục tiêu mong muốn</span>}
-                          >
-                            <Input size="large" placeholder="VD: Frontend Lead / Solution Architect" style={{ borderRadius: 12, border: '1px solid #cbd5e1' }} />
-                          </Form.Item>
-                        </Col>
-
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="availableFrom"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Ngày có thể nhận việc</span>}
-                          >
-                            <Input
-                              type="date"
-                              size="large"
-                              min={new Date().toISOString().split('T')[0]}
-                              style={{ borderRadius: 12, border: '1px solid #cbd5e1' }}
-                            />
-                          </Form.Item>
-                        </Col>
-
-                        {/* Salary Range */}
-                        <Col xs={24} md={12}>
-                          <Form.Item label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Chọn nhanh khoảng lương mong muốn</span>}>
-                            <Select
-                              size="large"
-                              value={salaryPreset}
-                              onChange={handleSalaryPresetChange}
-                              style={{ borderRadius: 12 }}
-                              options={[
-                                ...SALARY_RANGE_PRESETS.map((p) => ({ value: p.value, label: p.label })),
-                                { value: 'CUSTOM', label: 'Tự nhập mức lương...' },
-                              ]}
-                            />
-                          </Form.Item>
-                        </Col>
-
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="expectedSalaryCurrency"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Loại tiền tệ</span>}
-                          >
-                            <Select size="large" style={{ borderRadius: 12 }}>
-                              <Option value="VND">VND (Việt Nam Đồng)</Option>
-                              <Option value="USD">USD (Đô la Mỹ)</Option>
-                            </Select>
-                          </Form.Item>
-                        </Col>
-
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="expectedSalaryMin"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Lương tối thiểu (Tùy chọn)</span>}
-                            dependencies={['expectedSalaryMax']}
-                          >
-                            <InputNumber
-                              size="large"
-                              min={0}
-                              formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                              parser={(value) => (value && String(value).trim() ? Number(String(value).replace(/\$\s?|(,*)/g, '')) : (undefined as any))}
-                              style={{ width: '100%', borderRadius: 12 }}
-                              placeholder="VD: 15,000,000 (để trống nếu thỏa thuận)"
-                              onChange={() => setSalaryPreset('CUSTOM')}
-                            />
-                          </Form.Item>
-                        </Col>
-
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="expectedSalaryMax"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Lương tối đa (Tùy chọn)</span>}
-                            dependencies={['expectedSalaryMin']}
-                            rules={[
-                              ({ getFieldValue }) => ({
-                                validator(_, value) {
-                                  const min = getFieldValue('expectedSalaryMin');
-                                  if (value != null && value !== '' && min != null && min !== '' && Number(value) < Number(min)) {
-                                    return Promise.reject(new Error('Mức lương tối đa phải lớn hơn hoặc bằng mức lương tối thiểu'));
-                                  }
-                                  return Promise.resolve();
-                                },
-                              }),
-                            ]}
-                          >
-                            <InputNumber
-                              size="large"
-                              min={0}
-                              formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                              parser={(value) => (value && String(value).trim() ? Number(String(value).replace(/\$\s?|(,*)/g, '')) : (undefined as any))}
-                              style={{ width: '100%', borderRadius: 12 }}
-                              placeholder="VD: 25,000,000 (không bắt buộc)"
-                              onChange={() => setSalaryPreset('CUSTOM')}
-                            />
-                          </Form.Item>
-                        </Col>
-
-                        {/* Preferred Locations */}
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="preferredLocations"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Địa điểm làm việc ưu tiên</span>}
-                          >
-                            <Select
-                              mode="tags"
-                              size="large"
-                              maxTagCount="responsive"
-                              placeholder="Chọn hoặc nhập địa điểm (ví dụ: Hà Nội, TP.HCM, làm việc từ xa)"
-                              style={{ borderRadius: 12 }}
-                            >
-                              <Option value="Hà Nội">Hà Nội</Option>
-                              <Option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</Option>
-                              <Option value="Đà Nẵng">Đà Nẵng</Option>
-                              <Option value="Cần Thơ">Cần Thơ</Option>
-                              <Option value="Remote">Làm việc từ xa</Option>
-                              <Option value="Toàn quốc">Toàn quốc</Option>
-                            </Select>
-                          </Form.Item>
-                        </Col>
-
-                        {/* Preferred Work Modes */}
-                        <Col xs={24} md={12}>
-                          <Form.Item
-                            name="preferredWorkModes"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Chế độ làm việc mong muốn (Tùy chọn)</span>}
-                            tooltip="Có thể chọn từ danh sách hoặc tự nhập thêm (VD: Có thể làm online, Overtime, Làm ca...) rồi nhấn Enter"
-                          >
-                            <Select
-                              mode="tags"
-                              size="large"
-                              maxTagCount="responsive"
-                              placeholder="Chọn hoặc nhập chế độ làm việc (VD: Online, Overtime...)"
-                              style={{ borderRadius: 12 }}
-                            >
-                              <Option value="ONSITE">Tại văn phòng (On-site)</Option>
-                              <Option value="HYBRID">Kết hợp văn phòng và từ xa (Hybrid)</Option>
-                              <Option value="REMOTE">Làm việc từ xa / Online (Remote)</Option>
-                              <Option value="Có thể làm ngoài giờ (OT)">Có thể làm ngoài giờ (Overtime / OT)</Option>
-                              <Option value="Giờ giấc linh hoạt">Giờ giấc linh hoạt (Flexible)</Option>
-                              <Option value="Làm việc theo ca">Làm việc theo ca (Shift work)</Option>
-                            </Select>
-                          </Form.Item>
-                        </Col>
-                      </Row>
-                    </section>
-
-                    <Divider style={{ margin: '8px 0 28px' }} />
-
-                    {/* Nhóm 3: Kỹ năng chuyên môn & Giới thiệu */}
-                    <section className="candidate-profile-section">
-                      <div
-                        style={{
-                          fontSize: 15,
-                          fontWeight: 700,
-                          letterSpacing: '-0.01em',
-                          color: '#0f172a',
-                          marginBottom: 4,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: 24,
-                            height: 24,
-                            borderRadius: '50%',
-                            background: '#00b14f',
-                            color: '#fff',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 12,
-                            fontWeight: 800,
-                          }}
-                        >
-                          3
-                        </span>
-                        Kỹ năng chuyên môn & Giới thiệu bản thân
-                      </div>
-                      <p style={{ margin: '0 0 16px', fontSize: 13, color: '#64748b' }}>
-                        Khai báo kỹ năng từ danh mục hệ thống giúp thuật toán AI so khớp hồ sơ đạt điểm cao nhất.
-                      </p>
-
-                      <Row gutter={[20, 16]}>
-                        <Col xs={24}>
-                          <div style={{ marginBottom: 20 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
-                              <span style={{ fontWeight: 700, fontSize: 14, color: '#1e293b' }}>
-                                Kỹ năng chuyên môn
-                              </span>
-                              <Button
-                                type="primary"
-                                icon={<PlusOutlined />}
-                                onClick={handleOpenAddSkill}
-                                style={{ borderRadius: 8, fontWeight: 600, background: '#2563eb' }}
-                              >
-                                + Thêm kỹ năng từ danh mục
-                              </Button>
-                            </div>
-
-                            {/* Render API Skills List */}
-                            {profile?.skills && profile.skills.length > 0 ? (
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12, marginBottom: 16 }}>
-                                {profile.skills.map((skill) => {
-                                  const levelConfig: Record<string, { label: string; color: string }> = {
-                                    BEGINNER: { label: 'Mới bắt đầu', color: 'cyan' },
-                                    INTERMEDIATE: { label: 'Trung cấp', color: 'blue' },
-                                    ADVANCED: { label: 'Thành thạo', color: 'purple' },
-                                    EXPERT: { label: 'Chuyên gia', color: 'gold' },
-                                  };
-                                  const lvl = levelConfig[skill.proficiencyLevel?.toUpperCase() || ''] || { label: skill.proficiencyLevel || 'Cơ bản', color: 'default' };
-
-                                  return (
-                                    <div
-                                      key={skill.skillId || skill.skillName}
-                                      style={{
-                                        background: '#ffffff',
-                                        border: '1px solid #e2e8f0',
-                                        borderRadius: 12,
-                                        padding: '12px 14px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-                                      }}
-                                    >
-                                      <div style={{ minWidth: 0, flex: 1, paddingRight: 8 }}>
-                                        <div style={{ fontWeight: 700, fontSize: 13.5, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                          <span className="truncate">{skill.skillName || 'Kỹ năng'}</span>
-                                          {skill.category && (
-                                            <Tag style={{ fontSize: 10, padding: '0 6px', borderRadius: 4, margin: 0 }}>
-                                              {skill.category}
-                                            </Tag>
-                                          )}
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                                          <Tag color={lvl.color} style={{ fontSize: 11, padding: '1px 8px', borderRadius: 9999, margin: 0, fontWeight: 600 }}>
-                                            {lvl.label}
-                                          </Tag>
-                                          {skill.yearsOfExperience != null && (
-                                            <span style={{ fontSize: 11, color: '#64748b' }}>
-                                              {skill.yearsOfExperience} năm KN
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                        <Button
-                                          size="small"
-                                          type="text"
-                                          icon={<EditOutlined style={{ color: '#0284c7' }} />}
-                                          onClick={() => handleOpenEditSkill(skill)}
-                                          title="Chỉnh sửa kỹ năng"
-                                        />
-                                        <Popconfirm
-                                          title="Xóa kỹ năng này?"
-                                          description={`Xóa "${skill.skillName}" khỏi hồ sơ của bạn?`}
-                                          okText="Xóa"
-                                          okButtonProps={{ danger: true }}
-                                          cancelText="Hủy"
-                                          onConfirm={() => handleRemoveSkillApi(skill.skillId)}
-                                        >
-                                          <Button
-                                            size="small"
-                                            type="text"
-                                            danger
-                                            icon={<DeleteOutlined />}
-                                            title="Xóa kỹ năng"
-                                          />
-                                        </Popconfirm>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              <div style={{ padding: '16px', background: '#f8fafc', borderRadius: 12, border: '1px dashed #cbd5e1', textAlign: 'center', marginBottom: 16 }}>
-                                <Text style={{ color: '#64748b', fontSize: 13 }}>
-                                  Chưa có kỹ năng chuyên môn nào được lưu trong cơ sở dữ liệu. Bấm "Thêm kỹ năng từ danh mục" để bổ sung.
-                                </Text>
-                              </div>
-                            )}
-
-                            {/* Quick custom skill tags */}
-                            <div style={{ marginTop: 10 }}>
-                              <span style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6 }}>
-                                Từ khóa bổ sung nhanh:
-                              </span>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-                                {skillsList.map((skill) => (
-                                  <Tag
-                                    key={skill}
-                                    closable
-                                    onClose={() => handleRemoveSkill(skill)}
-                                    style={{
-                                      padding: '3px 10px',
-                                      fontSize: 12,
-                                      borderRadius: 9999,
-                                      background: 'rgba(59, 130, 246, 0.08)',
-                                      color: '#1e40af',
-                                      border: '1px solid rgba(59, 130, 246, 0.25)',
-                                      fontWeight: 600,
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                    }}
-                                  >
-                                    {skill}
-                                  </Tag>
-                                ))}
-
-                                {showSkillInput ? (
-                                  <Input
-                                    size="small"
-                                    style={{ width: 140, borderRadius: 8 }}
-                                    value={newSkillInput}
-                                    onChange={(e) => setNewSkillInput(e.target.value)}
-                                    onBlur={handleAddSkill}
-                                    onPressEnter={handleAddSkill}
-                                    autoFocus
-                                    placeholder="Nhập từ khóa..."
-                                  />
-                                ) : (
-                                  <Button
-                                    size="small"
-                                    icon={<PlusOutlined />}
-                                    onClick={() => setShowSkillInput(true)}
-                                    style={{
-                                      borderRadius: 8,
-                                      fontWeight: 600,
-                                      border: '1px dashed #94a3b8',
-                                      color: '#2563eb',
-                                    }}
-                                  >
-                                    + Nhập nhanh
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </Col>
-
-                        <Col xs={24}>
-                          <Form.Item
-                            name="summary"
-                            label={<span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Tóm tắt kinh nghiệm &amp; Mục tiêu nghề nghiệp</span>}
-                          >
-                            <Input.TextArea
-                              rows={4}
-                              placeholder="Mô tả ngắn gọn kinh nghiệm, thế mạnh và định hướng phát triển sự nghiệp..."
-                              style={{ borderRadius: 12, border: '1px solid #cbd5e1', padding: '10px 12px' }}
-                            />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-                    </section>
-
-                    <div style={{ paddingTop: 8 }}>
-                      <Button
-                        type="primary"
-                        size="large"
-                        htmlType="submit"
-                        loading={updateProfileMutation.isPending}
-                        style={{
-                          borderRadius: 9999,
-                          fontWeight: 700,
-                          fontSize: 15,
-                          background: '#2563eb',
-                          borderColor: '#2563eb',
-                          height: 46,
-                          padding: '0 36px',
-                          boxShadow: '0 4px 14px rgba(37, 99, 235, 0.24)',
-                          transition: 'all 0.2s ease',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Lưu thay đổi
-                      </Button>
-                    </div>
-                  </Form>
-                </div>
-              ),
-            },
-
-            // ==================== TAB 2 ====================
-            {
-              key: 'cv-center',
-              forceRender: true,
-              label: (
-                <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <FileTextOutlined />
-                  Kho CV &amp; Công cụ soạn thảo
-                </span>
-              ),
-              children: (
-                <div style={{ paddingTop: 10 }}>
-                  {/* Primary CV Card from DB */}
-                  <Card
-                    style={{
-                      borderRadius: 16,
-                      border: '1.5px solid #bfdbfe',
-                      background: 'linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%)',
-                      marginBottom: 24,
-                    }}
-                  >
-                    <Row align="middle" justify="space-between" gutter={[16, 16]}>
-                      <Col xs={24} md={16}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <SafetyCertificateOutlined style={{ fontSize: 28, color: '#2563eb' }} />
-                          <div>
-                            <div style={{ fontWeight: 800, fontSize: 16, color: '#1e3a8a' }}>
-                              Bản CV mặc định trên hệ thống
-                            </div>
-                            <Text style={{ fontSize: 13, color: '#475569' }}>
-                              {profile?.primaryCv?.title || profile?.primaryCv?.fileName || 'Chưa thiết lập CV mặc định'}
-                            </Text>
-                          </div>
-                        </div>
-                      </Col>
-                      <Col xs={24} md={8} style={{ textAlign: 'right' }}>
-                        <Button
-                          type="primary"
-                          onClick={() => navigate('/candidate/cvs')}
-                          style={{ borderRadius: 8, fontWeight: 600 }}
-                        >
-                          Quản lý kho CV →
-                        </Button>
-                      </Col>
-                    </Row>
-                  </Card>
-
-                  {/* 3 Action blocks */}
-                  <Row gutter={[20, 20]} style={{ marginBottom: 32 }}>
-                    {/* Mode 1: Platform Builder */}
-                    <Col xs={24} md={8}>
-                      <Card
-                        hoverable
-                        style={{
-                          borderRadius: 14,
-                          border: '1.5px solid #e2e8f0',
-                          height: '100%',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'space-between',
-                        }}
-                        styles={{ body: { padding: '24px' } }}
-                      >
-                        <div>
-                          <div style={{ width: 44, height: 44, borderRadius: 10, background: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-                            <ThunderboltOutlined style={{ fontSize: 22, color: '#8b5cf6' }} />
-                          </div>
-                          <Tag color="purple" style={{ borderRadius: 6, fontWeight: 700, marginBottom: 8 }}>
-                            Chế độ 1
-                          </Tag>
-                          <div style={{ fontWeight: 800, fontSize: 16, color: '#0f172a', marginBottom: 6 }}>
-                            Tạo hồ sơ trực tuyến
-                          </div>
-                          <Paragraph style={{ color: '#64748b', fontSize: 13, lineHeight: 1.5 }}>
-                            Điền chi tiết từng đề mục: Học vấn, Kinh nghiệm làm việc, Dự án nổi bật và Chứng chỉ. AI tự động tối ưu hóa điểm chuẩn ATS.
-                          </Paragraph>
-                        </div>
-                        <Button
-                          type="primary"
-                          block
-                          icon={<ThunderboltOutlined />}
-                          onClick={() => setIsBuilderModalOpen(true)}
-                          style={{
-                            borderRadius: 8,
-                            fontWeight: 700,
-                            background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-                            border: 'none',
-                            marginTop: 12,
-                          }}
-                        >
-                          Soạn CV trực tuyến
-                        </Button>
-                      </Card>
-                    </Col>
-
-                    {/* Mode 2: Template-Based */}
-                    <Col xs={24} md={8}>
-                      <Card
-                        hoverable
-                        style={{
-                          borderRadius: 14,
-                          border: '1.5px solid #e2e8f0',
-                          height: '100%',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'space-between',
-                        }}
-                        styles={{ body: { padding: '24px' } }}
-                      >
-                        <div>
-                          <div style={{ width: 44, height: 44, borderRadius: 10, background: '#f0f9ff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-                            <AppstoreOutlined style={{ fontSize: 22, color: '#0284c7' }} />
-                          </div>
-                          <Tag color="blue" style={{ borderRadius: 6, fontWeight: 700, marginBottom: 8 }}>
-                            Chế độ 2
-                          </Tag>
-                          <div style={{ fontWeight: 800, fontSize: 16, color: '#0f172a', marginBottom: 6 }}>
-                            Mẫu CV tiêu chuẩn
-                          </div>
-                          <Paragraph style={{ color: '#64748b', fontSize: 13, lineHeight: 1.5 }}>
-                            Xem trước và lựa chọn 4 mẫu chuẩn hóa quốc tế: Công nghệ hiện đại, Quản lý cấp cao, Sáng tạo, Tối giản Harvard.
-                          </Paragraph>
-                        </div>
-                        <Button
-                          block
-                          icon={<AppstoreOutlined />}
-                          onClick={() => {
-                            setSelectedTemplate(ATS_TEMPLATES[0]);
-                            setIsTemplateModalOpen(true);
-                          }}
-                          style={{
-                            borderRadius: 8,
-                            fontWeight: 700,
-                            borderColor: '#0284c7',
-                            color: '#0284c7',
-                            marginTop: 12,
-                          }}
-                        >
-                          Chọn 4 mẫu ATS
-                        </Button>
-                      </Card>
-                    </Col>
-
-                    {/* Mode 3: File Upload */}
-                    <Col xs={24} md={8}>
-                      <Card
-                        hoverable
-                        style={{
-                          borderRadius: 14,
-                          border: '1.5px solid #e2e8f0',
-                          height: '100%',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'space-between',
-                        }}
-                        styles={{ body: { padding: '24px' } }}
-                      >
-                        <div>
-                          <div style={{ width: 44, height: 44, borderRadius: 10, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-                            <UploadOutlined style={{ fontSize: 22, color: '#2563eb' }} />
-                          </div>
-                          <Tag color="green" style={{ borderRadius: 6, fontWeight: 700, marginBottom: 8 }}>
-                            Chế độ 3
-                          </Tag>
-                          <div style={{ fontWeight: 800, fontSize: 16, color: '#0f172a', marginBottom: 6 }}>
-                            Tải tệp CV lên
-                          </div>
-                          <Paragraph style={{ color: '#64748b', fontSize: 13, lineHeight: 1.5 }}>
-                            Drag &amp; Drop tệp CV sẵn có từ máy tính (hỗ trợ định dạng PDF, DOCX dung lượng tối đa 5MB).
-                          </Paragraph>
-                        </div>
-                        <Button
-                          block
-                          icon={<UploadOutlined />}
-                          onClick={() => setIsUploadModalOpen(true)}
-                          style={{
-                            borderRadius: 8,
-                            fontWeight: 700,
-                            borderColor: '#2563eb',
-                            color: '#2563eb',
-                            marginTop: 12,
-                          }}
-                        >
-                          Tải lên PDF/DOCX (5MB)
-                        </Button>
-                      </Card>
-                    </Col>
-                  </Row>
-
-                  {/* CV Table */}
-                  <div style={{ marginTop: 24 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                      <Title level={5} style={{ margin: 0, fontWeight: 800 }}>
-                        Danh sách hồ sơ CV đã tạo ({myCvs.length})
-                      </Title>
-                    </div>
-
-                    {myCvs.length === 0 ? (
-                      <Empty
-                        description="Bạn chưa tạo hoặc tải lên bản CV nào. Hãy sử dụng một trong các chế độ tạo CV ở trên!"
-                        style={{ padding: '36px 0' }}
-                      />
-                    ) : (
-                      <Table
-                        dataSource={myCvs}
-                        rowKey="id"
-                        pagination={false}
-                        columns={[
-                          {
-                            title: 'Tên bản CV',
-                            key: 'name',
-                            render: (_, record) => (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <FileTextOutlined style={{ color: '#0284c7', fontSize: 18 }} />
-                                <div>
-                                  <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>
-                                    {record.name}
-                                  </div>
-                                  <div style={{ fontSize: 12, color: '#64748b' }}>
-                                    Dung lượng: {record.size} • Cập nhật: {record.updatedAt}
-                                  </div>
-                                </div>
-                              </div>
-                            ),
-                          },
-                          {
-                            title: 'Chế độ tạo',
-                            dataIndex: 'type',
-                            key: 'type',
-                            render: (type) => (
-                              <Tag
-                                color={type === 'Platform Builder' ? 'purple' : type === 'Template ATS' ? 'blue' : 'green'}
-                                style={{ borderRadius: 6, fontWeight: 700 }}
-                              >
-                                {type === 'Platform Builder' ? 'Soạn trực tuyến' : type === 'Template ATS' ? 'Mẫu tiêu chuẩn' : type === 'File Upload' ? 'Tải tệp lên' : type}
-                              </Tag>
-                            ),
-                          },
-                          {
-                            title: 'Điểm chuẩn ATS',
-                            dataIndex: 'atsScore',
-                            key: 'atsScore',
-                            render: (score) => (
-                              <Tag color="cyan" style={{ borderRadius: 6, fontWeight: 700 }}>
-                                ATS {score}/100
-                              </Tag>
-                            ),
-                          },
-                          {
-                            title: 'Trạng thái',
-                            key: 'isDefault',
-                            render: (_, record) =>
-                              record.isDefault ? (
-                                <Tag color="success" style={{ borderRadius: 6, fontWeight: 700 }}>
-                                  ✓ CV Mặc định
-                                </Tag>
-                              ) : (
-                                <Button
-                                  size="small"
-                                  onClick={() => {
-                                    setDefaultCV(record.id);
-                                    message.success(`Đã đặt "${record.name}" làm CV mặc định!`);
-                                  }}
-                                  style={{ borderRadius: 6, fontSize: 12 }}
-                                >
-                                  Đặt làm mặc định
-                                </Button>
-                              ),
-                          },
-                          {
-                            title: 'Thao tác',
-                            key: 'actions',
-                            align: 'right',
-                            render: (_, record) => (
-                              <Space>
-                                <Button
-                                  type="text"
-                                  icon={<EyeOutlined />}
-                                  onClick={() => message.info(`Đang mở bản xem trước cho "${record.name}"`)}
-                                />
-                                <Popconfirm
-                                  title="Xác nhận xóa bản CV này?"
-                                  onConfirm={() => {
-                                    deleteCV(record.id);
-                                    message.success('Đã xóa bản CV!');
-                                  }}
-                                  okText="Xóa"
-                                  cancelText="Hủy"
-                                >
-                                  <Button type="text" danger icon={<DeleteOutlined />} />
-                                </Popconfirm>
-                              </Space>
-                            ),
-                          },
-                        ]}
-                      />
-                    )}
-                  </div>
-                </div>
-              ),
-            },
-          ]}
-        />
-      </Card>
-
-      {/* Modal 1: Platform Builder Form */}
-      <Modal
-        title="Soạn thảo CV trực tuyến"
-        open={isBuilderModalOpen}
-        onCancel={() => setIsBuilderModalOpen(false)}
-        onOk={handleSaveOnlineCv}
-        okText="Lưu & Xuất bản"
-        cancelText="Hủy"
-        width={720}
-      >
-        <Form form={builderForm} layout="vertical" style={{ marginTop: 16 }}>
-          <Form.Item
-            name="roleTarget"
-            label="Vị trí ứng tuyển mục tiêu"
-            rules={[{ required: true, message: 'Vui lòng nhập vị trí mục tiêu' }]}
-          >
-            <Input placeholder="VD: Senior React Developer" />
-          </Form.Item>
-          <Form.Item name="summary" label="Tóm tắt giới thiệu bản thân">
-            <Input.TextArea rows={3} placeholder="Mô tả kỹ năng và kinh nghiệm nổi bật..." />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      {/* Modal 2: Template Selection Preview */}
-      <Modal
-        title="Chọn mẫu CV ATS tiêu chuẩn"
-        open={isTemplateModalOpen}
-        onCancel={() => setIsTemplateModalOpen(false)}
-        onOk={handleConfirmTemplate}
-        okText="Sử dụng mẫu này"
-        cancelText="Hủy"
-        width={780}
-      >
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginTop: 16 }}>
-          {ATS_TEMPLATES.map((tpl) => (
-            <Card
-              key={tpl.id}
-              hoverable
-              onClick={() => setSelectedTemplate(tpl)}
-              style={{
-                borderRadius: 12,
-                border: selectedTemplate?.id === tpl.id ? '2px solid #2563eb' : '1px solid #e2e8f0',
-              }}
-            >
-              <div
-                style={{
-                  height: 90,
-                  borderRadius: 8,
-                  background: tpl.previewBg,
-                  marginBottom: 12,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  fontWeight: 700,
-                }}
-              >
-                {tpl.category}
+    <CandidateAccountFrame>
+      <div className="flex flex-col gap-4">
+        <section aria-labelledby="me" className={`${CARD} flex flex-wrap items-center gap-[18px]`}>
+          <ProfileAvatar />
+          <div className="min-w-0 flex-[1_1_260px]">
+            <h1 id="me" className="m-0 text-[20px] font-bold text-[#1F2937]">{profile?.fullName || user?.name}</h1>
+            {headline && <div className="mt-0.5 text-[#4B5563]">{headline}</div>}
+            <div className="mt-2.5 flex items-center gap-2.5">
+              <div role="progressbar" aria-valuenow={completion} aria-valuemin={0} aria-valuemax={100} aria-label="Mức hoàn thiện hồ sơ" className="h-1.5 max-w-[260px] flex-1 rounded-[3px] bg-[#E5E7EB]">
+                <div className="h-1.5 rounded-[3px] bg-[#0369A1]" style={{ width: `${completion}%` }} />
               </div>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>{tpl.name}</div>
-              <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>{tpl.description}</div>
-              <Tag color="cyan" style={{ marginTop: 8, borderRadius: 4 }}>
-                Điểm ATS: {tpl.score}/100
-              </Tag>
-            </Card>
-          ))}
-        </div>
-      </Modal>
-
-      {/* Modal 3: File Upload */}
-      <Modal
-        title="Tải tệp CV lên (PDF / DOCX)"
-        open={isUploadModalOpen}
-        onCancel={() => setIsUploadModalOpen(false)}
-        footer={null}
-      >
-        <div style={{ padding: '24px 0', textAlign: 'center' }}>
-          <Upload.Dragger {...uploadProps}>
-            <p className="ant-upload-drag-icon">
-              <UploadOutlined style={{ fontSize: 40, color: '#2563eb' }} />
-            </p>
-            <p className="ant-upload-text" style={{ fontWeight: 600 }}>
-              Kéo thả tệp CV vào đây hoặc bấm để chọn tệp từ máy tính
-            </p>
-            <p className="ant-upload-hint" style={{ color: '#64748b' }}>
-              Hỗ trợ định dạng PDF, DOCX dung lượng tối đa 5MB.
-            </p>
-          </Upload.Dragger>
-        </div>
-      </Modal>
-
-      {/* MODAL 4: Thêm / Chỉnh sửa Kỹ năng (API Backend) */}
-      <Modal
-        title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <BookOutlined style={{ color: '#2563eb', fontSize: 18 }} />
-            <span style={{ fontWeight: 800 }}>
-              {editingSkill ? `Chỉnh sửa kỹ năng: ${editingSkill.skillName || ''}` : 'Thêm Kỹ Năng Vào Hồ Sơ'}
-            </span>
-          </div>
-        }
-        open={isSkillModalOpen}
-        onCancel={() => {
-          setIsSkillModalOpen(false);
-          setEditingSkill(null);
-          skillModalForm.resetFields();
-        }}
-        onOk={handleSaveSkillSubmit}
-        okText={editingSkill ? 'Lưu cập nhật' : 'Thêm kỹ năng'}
-        cancelText="Hủy"
-        confirmLoading={isSavingSkill}
-        width={520}
-      >
-        <Form form={skillModalForm} layout="vertical" style={{ marginTop: 16 }}>
-          {!editingSkill ? (
-            <Form.Item
-              name="skillId"
-              label={<span style={{ fontWeight: 700 }}>Chọn kỹ năng từ danh mục hệ thống</span>}
-              rules={[{ required: true, message: 'Vui lòng chọn kỹ năng.' }]}
-            >
-              <Select
-                showSearch
-                placeholder="Tìm kiếm kỹ năng (ví dụ: React, .NET, Docker...)"
-                loading={loadingCatalog}
-                filterOption={(input, option) =>
-                  String(option?.label || '').toLowerCase().includes(input.toLowerCase())
-                }
-                options={catalogSkills.map((s) => ({
-                  value: s.skillId,
-                  label: s.category ? `${s.skillName} (${s.category})` : s.skillName,
-                }))}
-              />
-            </Form.Item>
-          ) : (
-            <div style={{ marginBottom: 16, padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-              <span style={{ fontSize: 12, color: '#64748b', display: 'block' }}>Kỹ năng đang chỉnh sửa:</span>
-              <strong style={{ fontSize: 15, color: '#0f172a' }}>{editingSkill.skillName}</strong>
-              {editingSkill.category && (
-                <Tag color="blue" style={{ marginLeft: 8 }}>{editingSkill.category}</Tag>
-              )}
+              <span className="text-[13px] text-[#374151]">Hồ sơ hoàn thiện {completion}%</span>
             </div>
-          )}
+          </div>
+          <div className="flex flex-[1_1_240px] flex-col gap-2.5">
+            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-md border border-solid border-[#E5E7EB] px-3 py-2.5">
+              <span><b className="block">Công khai hồ sơ</b><span className="text-[12px] text-[#6B7280]">Nhà tuyển dụng tìm thấy bạn</span></span>
+              <input type="checkbox" checked={isPublic} disabled={visibility.isPending} onChange={(event) => visibility.mutate(event.target.checked ? 'PUBLIC' : 'PRIVATE')} className="h-5 w-5 shrink-0 cursor-pointer accent-[#0369A1]" />
+            </label>
+          </div>
+        </section>
 
-          <Form.Item
-            name="proficiencyLevel"
-            label={<span style={{ fontWeight: 700 }}>Mức độ thành thạo</span>}
-            rules={[{ required: true, message: 'Vui lòng chọn mức độ.' }]}
-          >
-            <Select
-              options={[
-                { value: 'BEGINNER', label: 'Mới bắt đầu' },
-                { value: 'INTERMEDIATE', label: 'Trung cấp' },
-                { value: 'ADVANCED', label: 'Thành thạo' },
-                { value: 'EXPERT', label: 'Chuyên gia' },
-              ]}
-            />
-          </Form.Item>
+        <section aria-labelledby="info" className={CARD}>
+          <h2 id="info" className={`${H2} mb-[14px]`}>Thông tin cá nhân</h2>
+          <div className="grid grid-cols-1 gap-x-4 gap-y-[14px] sm:grid-cols-2">
+            <label className="flex flex-col gap-1.5">
+              <span className={LABEL}>Họ và tên <span className="text-[#B91C1C]">*</span></span>
+              <input type="text" required maxLength={180} value={form.fullName} aria-invalid={Boolean(errors.fullName)} onChange={(event) => set('fullName', event.target.value)} className={INPUT} />
+              <FieldError message={errors.fullName} />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className={LABEL}>Email tài khoản</span>
+              <input type="email" readOnly value={profile?.email || user?.email || ''} className={`${INPUT} !border-[#E5E7EB] !bg-[#F9FAFB] !text-[#4B5563]`} />
+              <span className="text-[12px] text-[#6B7280]">Email đăng nhập cố định. Thêm email khác ở <Link to="/candidate/settings/email-identities" className={LINK}>Cài đặt email đăng nhập</Link>.</span>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className={LABEL}>Số điện thoại</span>
+              <input type="tel" value={form.phone} aria-invalid={Boolean(errors.phone)} onChange={(event) => set('phone', event.target.value)} className={INPUT} />
+              <FieldError message={errors.phone} />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className={LABEL}>Địa chỉ hiện tại</span>
+              <input type="text" maxLength={500} value={form.currentAddress} onChange={(event) => set('currentAddress', event.target.value)} className={INPUT} />
+            </label>
+            <div className="flex flex-col gap-1.5">
+              <span id="education-label" className={LABEL}>Trình độ học vấn cao nhất</span>
+              <Select
+                aria-labelledby="education-label"
+                allowClear
+                placeholder="Chọn trình độ"
+                value={form.highestEducation || undefined}
+                onChange={(value) => set('highestEducation', value ?? '')}
+                options={[...new Set([...EDUCATION, ...(form.highestEducation ? [form.highestEducation] : [])])].map((value) => ({ value, label: value }))}
+                className={SELECT}
+              />
+            </div>
+            <label className="flex flex-col gap-1.5">
+              <span className={LABEL}>Số năm kinh nghiệm</span>
+              <input type="number" min={0} max={50} step={0.5} value={form.yearsOfExperience} aria-invalid={Boolean(errors.yearsOfExperience)} onChange={(event) => set('yearsOfExperience', event.target.value)} className={INPUT} />
+              <FieldError message={errors.yearsOfExperience} />
+            </label>
+          </div>
+        </section>
 
-          <Form.Item
-            name="yearsOfExperience"
-            label={<span style={{ fontWeight: 700 }}>Số năm kinh nghiệm</span>}
-            rules={[
-              { required: true, message: 'Vui lòng nhập số năm kinh nghiệm.' },
-            ]}
+        <section aria-labelledby="goal" className={CARD}>
+          <h2 id="goal" className={`${H2} mb-[14px]`}>Mục tiêu nghề nghiệp</h2>
+          <div className="grid grid-cols-1 gap-x-4 gap-y-[14px] sm:grid-cols-2">
+            <label className="flex flex-col gap-1.5">
+              <span className={LABEL}>Chức danh hiện tại</span>
+              <input type="text" maxLength={150} value={form.currentJobTitle} onChange={(event) => set('currentJobTitle', event.target.value)} className={INPUT} />
+            </label>
+            <div className="flex flex-col gap-1.5">
+              <span id="level-label" className={LABEL}>Cấp bậc</span>
+              <Select
+                aria-labelledby="level-label"
+                allowClear
+                placeholder="Chọn cấp bậc"
+                value={form.currentLevel || undefined}
+                onChange={(value) => set('currentLevel', value ?? '')}
+                options={LEVELS.some((level) => level.value === form.currentLevel) || !form.currentLevel ? LEVELS : [...LEVELS, { value: form.currentLevel, label: form.currentLevel }]}
+                className={SELECT}
+              />
+            </div>
+            <label className="flex flex-col gap-1.5">
+              <span className={LABEL}>Vị trí mong muốn</span>
+              <input type="text" maxLength={150} value={form.targetRole} onChange={(event) => set('targetRole', event.target.value)} className={INPUT} />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className={LABEL}>Ngày có thể nhận việc</span>
+              <input type="date" value={form.availableFrom} aria-invalid={Boolean(errors.availableFrom)} onChange={(event) => set('availableFrom', event.target.value)} className={INPUT} />
+              <FieldError message={errors.availableFrom} />
+            </label>
+            <fieldset className="col-span-full m-0 min-w-0 border-0 p-0">
+              <legend className={`${LABEL} mb-1.5 px-0.5`}>Mức lương mong muốn ({currency === 'VND' ? 'triệu VND' : currency}/tháng)</legend>
+              <div className="flex max-w-[420px] items-center gap-2.5">
+                <label className="relative min-w-0 flex-1">
+                  <span className="absolute left-[-9999px]">Tối thiểu</span>
+                  <input type="number" min={0} value={form.salaryMin} onChange={(event) => set('salaryMin', event.target.value)} className={INPUT} />
+                </label>
+                <span className="text-[#6B7280]">–</span>
+                <label className="relative min-w-0 flex-1">
+                  <span className="absolute left-[-9999px]">Tối đa</span>
+                  <input type="number" min={0} value={form.salaryMax} aria-invalid={Boolean(errors.salaryMax)} onChange={(event) => set('salaryMax', event.target.value)} className={INPUT} />
+                </label>
+              </div>
+              <FieldError message={errors.salaryMax} />
+            </fieldset>
+            <fieldset className="m-0 min-w-0 border-0 p-0">
+              <legend className={`${LABEL} mb-1.5 px-0.5`}>Địa điểm ưu tiên</legend>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {form.preferredLocations.map((location) => (
+                  <span key={location} className="inline-flex items-center gap-1 rounded bg-[#E0F2FE] px-2.5 py-1 text-[13px] text-[#075985]">
+                    {location}
+                    <button type="button" aria-label={`Bỏ ${location}`} onClick={() => set('preferredLocations', form.preferredLocations.filter((item) => item !== location))} className="-my-1 -mr-1 h-5 w-5 cursor-pointer border-0 bg-transparent p-0 text-[#075985]">×</button>
+                  </span>
+                ))}
+                {addingLocation ? (
+                  <AutoComplete
+                    autoFocus
+                    defaultOpen
+                    aria-label="Thêm địa điểm"
+                    value={locationDraft}
+                    onChange={setLocationDraft}
+                    onSelect={addLocation}
+                    onBlur={() => addLocation(locationDraft)}
+                    onInputKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        addLocation(locationDraft);
+                      }
+                    }}
+                    options={LOCATION_SUGGESTIONS.filter((item) => !form.preferredLocations.includes(item)).map((value) => ({ value }))}
+                    filterOption={(input, option) => String(option?.value).toLowerCase().includes(input.toLowerCase())}
+                    className="w-[170px]"
+                    placeholder="Nhập địa điểm"
+                  />
+                ) : (
+                  <button type="button" onClick={() => setAddingLocation(true)} className={`${FONT} cursor-pointer rounded border border-dashed border-[#94A3B8] bg-white px-2.5 py-1 text-[13px] text-[#1F2937] hover:bg-[#F9FAFB]`}>+ Thêm</button>
+                )}
+              </div>
+              <FieldError message={errors.preferredLocations} />
+            </fieldset>
+            <fieldset className="m-0 min-w-0 border-0 p-0">
+              <legend className={`${LABEL} mb-1.5 px-0.5`}>Chế độ làm việc</legend>
+              <div className="flex flex-wrap gap-[14px]">
+                {WORK_MODES.map((mode) => (
+                  <label key={mode.value} className="flex cursor-pointer items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      checked={form.preferredWorkModes.includes(mode.value)}
+                      onChange={(event) => set('preferredWorkModes', event.target.checked ? [...form.preferredWorkModes, mode.value] : form.preferredWorkModes.filter((item) => item !== mode.value))}
+                      className="mx-[3px] ml-1 my-[3px] h-[18px] w-[18px] cursor-pointer"
+                    />
+                    {mode.label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <label className="col-span-full flex flex-col gap-1.5">
+              <span className={LABEL}>Giới thiệu bản thân</span>
+              <textarea rows={3} maxLength={2000} value={form.summary} onChange={(event) => set('summary', event.target.value)} className={`${FONT} w-full resize-y rounded-md border border-solid border-[#D1D5DB] px-3 py-2.5 text-[14px] text-[#1F2937]`} />
+            </label>
+          </div>
+        </section>
+
+        <SkillsSection skills={profile?.skills ?? []} onChanged={refetch} />
+
+        <div className="flex justify-end gap-2.5">
+          <button
+            type="button"
+            disabled={!dirty || save.isPending}
+            onClick={() => {
+              setForm(saved);
+              setErrors({});
+            }}
+            className={`${FONT} h-11 cursor-pointer rounded-md border border-solid border-[#D1D5DB] bg-white px-[18px] text-[14px] text-[#1F2937] hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:opacity-60`}
           >
-            <InputNumber
-              min={0}
-              max={80}
-              step={0.5}
-              style={{ width: '100%' }}
-              placeholder="Ví dụ: 2.5"
-              addonAfter="năm"
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
-    </div>
+            Hủy thay đổi
+          </button>
+          <button type="button" disabled={save.isPending} onClick={submit} className={`${FONT} h-11 cursor-pointer rounded-md border-0 bg-[#0C4A6E] px-[22px] text-[14px] font-semibold text-white hover:bg-[#075985] disabled:cursor-not-allowed disabled:opacity-60`}>
+            {save.isPending ? 'Đang lưu…' : 'Lưu hồ sơ'}
+          </button>
+        </div>
+      </div>
+    </CandidateAccountFrame>
   );
 };
 
