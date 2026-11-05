@@ -7,7 +7,7 @@
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Table } from 'antd';
+import { Alert, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { pipelineApi } from '@/services/api/hrApi';
@@ -38,21 +38,60 @@ const useTabCount = (tab: Tab) =>
   });
 
 const interviewColumns: ColumnsType<InterviewItem> = [
-  { title: 'Ứng viên', key: 'c', render: (_, r) => <PersonCell name={r.candidateName} secondary={r.candidateEmail} /> },
-  { title: 'Tin tuyển dụng', key: 'j', render: (_, r) => <JobCell title={r.jobTitle} company={r.companyName} /> },
-  { title: 'Vòng', dataIndex: 'interviewRound', width: 70, align: 'center' },
-  { title: 'Thời gian', dataIndex: 'scheduledAt', width: 150, align: 'center', render: (v) => <span className="tabular-nums">{fmt(v)}</span> },
+  {
+    title: 'Ứng viên',
+    key: 'c',
+    width: 280,
+    render: (_, r) => (
+      <div className="flex items-center gap-3 py-1">
+        <PersonCell name={r.candidateName} secondary={r.candidateEmail} />
+      </div>
+    ),
+  },
+  {
+    title: 'Tin tuyển dụng',
+    key: 'j',
+    width: 280,
+    render: (_, r) => <JobCell title={r.jobTitle} company={r.companyName} />,
+  },
+  {
+    title: 'Vòng',
+    dataIndex: 'interviewRound',
+    width: 100,
+    align: 'center',
+    render: (v) => (
+      <Tag className="m-0 font-semibold rounded-md border-0 bg-slate-100 text-slate-700 px-2 py-0.5 text-xs">
+        Vòng {v}
+      </Tag>
+    ),
+  },
+  {
+    title: 'Thời gian',
+    dataIndex: 'scheduledAt',
+    width: 150,
+    align: 'center',
+    render: (v) => (
+      <div className="tabular-nums space-y-0.5">
+        <div className="text-[13.5px] font-semibold text-slate-800">{v ? dayjs(v).format('HH:mm') : '—'}</div>
+        <div className="text-[11.5px] text-slate-500">{v ? dayjs(v).format('DD/MM/YYYY') : ''}</div>
+      </div>
+    ),
+  },
   {
     title: 'Trạng thái',
     key: 's',
-    width: 190,
-    align: 'center',
+    width: 200,
+    align: 'left',
     render: (_, r) => {
       const st = pick(INTERVIEW_STATUS, r.status);
       return (
-        <div>
+        <div className="py-1 space-y-1 text-left">
           <StatusDot tone={st.tone}>{st.label}</StatusDot>
-          {r.result && <div className="mt-0.5 text-xs text-slate-600">Kết quả: {INTERVIEW_RESULT[r.result] ?? r.result}</div>}
+          {r.result && (
+            <div className="text-[11.5px] text-slate-500 pl-3.5">
+              Kết quả: <span className="font-semibold text-slate-700">{INTERVIEW_RESULT[r.result] ?? r.result}</span>
+            </div>
+          )}
         </div>
       );
     },
@@ -60,35 +99,96 @@ const interviewColumns: ColumnsType<InterviewItem> = [
 ];
 
 const offerColumns: ColumnsType<OfferItem> = [
-  { title: 'Ứng viên', key: 'c', render: (_, r) => <PersonCell name={r.candidateName} secondary={r.candidateEmail} /> },
-  { title: 'Tin tuyển dụng', key: 'j', render: (_, r) => <JobCell title={r.jobTitle} company={r.companyName} /> },
-  { title: 'Lương', key: 'm', width: 150, render: (_, r) => <span className="tabular-nums">{money(r.salary, r.currencyCode)}</span> },
-  { title: 'Ngày bắt đầu', dataIndex: 'startDate', width: 120, align: 'center', render: (v) => <span className="tabular-nums">{fmt(v, 'DD/MM/YYYY')}</span> },
+  {
+    title: 'Ứng viên',
+    key: 'c',
+    width: 280,
+    render: (_, r) => (
+      <div className="flex items-center gap-3 py-1">
+        <PersonCell name={r.candidateName} secondary={r.candidateEmail} />
+      </div>
+    ),
+  },
+  {
+    title: 'Tin tuyển dụng',
+    key: 'j',
+    width: 280,
+    render: (_, r) => <JobCell title={r.jobTitle} company={r.companyName} />,
+  },
+  {
+    title: 'Lương',
+    key: 'm',
+    width: 170,
+    render: (_, r) => (
+      <span className="tabular-nums font-semibold text-emerald-700 text-[13.5px]">
+        {money(r.salary, r.currencyCode)}
+      </span>
+    ),
+  },
+  {
+    title: 'Ngày bắt đầu',
+    dataIndex: 'startDate',
+    width: 130,
+    align: 'center',
+    render: (v) => <span className="tabular-nums text-[13px] text-slate-700">{fmt(v, 'DD/MM/YYYY')}</span>,
+  },
   {
     title: 'Trạng thái',
     key: 's',
-    width: 170,
-    align: 'center',
+    width: 180,
+    align: 'left',
     render: (_, r) => {
       const st = pick(OFFER_STATUS, r.status);
-      return <StatusDot tone={st.tone}>{st.label}</StatusDot>;
+      return (
+        <div className="py-1 text-left">
+          <StatusDot tone={st.tone}>{st.label}</StatusDot>
+        </div>
+      );
     },
   },
 ];
 
 const placementColumns: ColumnsType<PlacementItem> = [
-  { title: 'Ứng viên', key: 'c', render: (_, r) => <PersonCell name={r.candidate.fullName} secondary={r.candidate.email} /> },
-  { title: 'Tin tuyển dụng', key: 'j', render: (_, r) => <JobCell title={r.job.title} company={r.job.companyName} /> },
-  { title: 'Vị trí', key: 'p', render: (_, r) => r.position ?? '—' },
-  { title: 'Ngày đi làm', dataIndex: 'actualStartDate', width: 120, align: 'center', render: (v) => <span className="tabular-nums">{fmt(v, 'DD/MM/YYYY')}</span> },
+  {
+    title: 'Ứng viên',
+    key: 'c',
+    width: 280,
+    render: (_, r) => (
+      <div className="flex items-center gap-3 py-1">
+        <PersonCell name={r.candidate.fullName} secondary={r.candidate.email} />
+      </div>
+    ),
+  },
+  {
+    title: 'Tin tuyển dụng',
+    key: 'j',
+    width: 280,
+    render: (_, r) => <JobCell title={r.job.title} company={r.job.companyName} />,
+  },
+  {
+    title: 'Vị trí',
+    key: 'p',
+    render: (_, r) => <span className="text-[13.5px] font-medium text-slate-800">{r.position ?? '—'}</span>,
+  },
+  {
+    title: 'Ngày đi làm',
+    dataIndex: 'actualStartDate',
+    width: 130,
+    align: 'center',
+    render: (v) => <span className="tabular-nums text-[13px] text-slate-700">{fmt(v, 'DD/MM/YYYY')}</span>,
+  },
   {
     title: 'Trạng thái',
     key: 's',
-    width: 150,
-    align: 'center',
+    width: 180,
+    align: 'left',
     render: (_, r) => {
       const st = pick(PLACEMENT_STATUS, r.status);
-      return <StatusDot tone={st.tone}>{st.label}</StatusDot>;
+      return (
+        <div className="py-1 text-left">
+          <StatusDot tone={st.tone}>{st.label}</StatusDot>
+        </div>
+      );
     },
   },
 ];
