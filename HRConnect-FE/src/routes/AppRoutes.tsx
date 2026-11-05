@@ -37,6 +37,9 @@ const RegisterPage = React.lazy(() =>
 const ContactPage = React.lazy(() =>
   import('@/features/contact/ContactPage').then((m: any) => ({ default: m.default || m.ContactPage }))
 );
+const ForgotPasswordPage = React.lazy(() =>
+  import('@/features/auth/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage }))
+);
 const VerifyOtpPage = React.lazy(() =>
   import('@/features/auth/VerifyOtpPage').then((m: any) => ({ default: m.default || m.VerifyOtpPage }))
 );
@@ -447,6 +450,7 @@ export const AppRoutes = {
   CandidateInterviewDetailPage,
   PlacementDetailPage,
   VerifyOtpPage,
+  ForgotPasswordPage,
   Mf01ClientJobsListPage,
   Mf01JobFormPage,
   Mf01JobReviewPage,

@@ -93,6 +93,10 @@ export const router = createBrowserRouter([
     element: withSuspense(<AppRoutes.AffiliateRegisterPage />),
   },
   {
+    path: '/forgot-password',
+    element: withSuspense(<AppRoutes.ForgotPasswordPage />),
+  },
+  {
     path: '/verify-otp',
     element: withSuspense(<AppRoutes.VerifyOtpPage />),
   },

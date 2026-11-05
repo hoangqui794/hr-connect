@@ -5,19 +5,17 @@
  *   1. POST /api/v1/auth/login -> retrieves a JWT access token; refresh is an HttpOnly cookie
  *   2. GET /api/v1/auth/me -> retrieves CurrentUserDto with verified roles & permissions
  *   3. Synchronizes session into authStore and redirects to RBAC portal dashboard.
- *   4. Includes Forgot / Reset Password flow via Modal (POST /auth/forgot-password, /auth/reset-password).
+ *   4. "Quên mật khẩu?" opens /forgot-password, keeping the typed email and where the user was going.
  */
 
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, message, Alert, Modal } from 'antd';
+import { Form, Input, Button, message, Alert } from 'antd';
 import {
   LockOutlined,
   MailOutlined,
   ArrowRightOutlined,
   CheckCircleFilled,
   SafetyCertificateOutlined,
-  KeyOutlined,
-  ReloadOutlined,
   ApartmentOutlined,
   TeamOutlined,
   SolutionOutlined,
@@ -56,22 +54,6 @@ export const LoginPage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [verifiedSuccessNotice, setVerifiedSuccessNotice] = useState<string | null>(null);
 
-  // Forgot password modal state
-  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
-  const [forgotStep, setForgotStep] = useState<'REQUEST_OTP' | 'RESET_PASSWORD'>('REQUEST_OTP');
-  const [forgotForm] = Form.useForm();
-  const [forgotSubmitting, setForgotSubmitting] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState('');
-  const [forgotCooldown, setForgotCooldown] = useState(0);
-
-  // Cooldown countdown for resending forgot password OTP
-  useEffect(() => {
-    if (forgotCooldown <= 0) return;
-    const timer = setInterval(() => {
-      setForgotCooldown((prev) => Math.max(0, prev - 1));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [forgotCooldown]);
 
   // Auto pre-fill email if passed via query param (e.g. after OTP verification)
   useEffect(() => {
@@ -89,6 +71,11 @@ export const LoginPage: React.FC = () => {
       );
     }
   }, [location.search, form]);
+
+  const returnedFromReset = location.state as { email?: string; passwordReset?: boolean } | null;
+  useEffect(() => {
+    if (returnedFromReset?.email) form.setFieldsValue({ email: returnedFromReset.email, password: '' });
+  }, [returnedFromReset, form]);
 
   // Real API Authentication via authService conforming to swagger.json
   const handleFormSubmit = async (values: { email: string; password?: string }) => {
@@ -184,68 +171,7 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  // ─── FORGOT & RESET PASSWORD HANDLERS (Swagger OpenAPI) ───
-  const handleRequestForgotOtp = async (values: { email: string }) => {
-    setForgotSubmitting(true);
-    try {
-      // POST /api/v1/auth/forgot-password
-      const res = await authService.forgotPassword(values.email.trim());
-      message.success(
-        res.message || `Mã OTP đặt lại mật khẩu đã được gửi tới email ${values.email.trim()}`
-      );
-      setForgotEmail(values.email.trim());
-      setForgotStep('RESET_PASSWORD');
-      setForgotCooldown(60);
-    } catch (err) {
-      message.error(getApiErrorMessage(err, 'Không thể gửi yêu cầu đặt lại mật khẩu lúc này!'));
-    } finally {
-      setForgotSubmitting(false);
-    }
-  };
-
-  const handleResendForgotOtp = async () => {
-    if (!forgotEmail || forgotCooldown > 0) return;
-    try {
-      // POST /api/v1/auth/forgot-password/resend
-      const res = await authService.resendForgotPasswordOtp(forgotEmail);
-      message.success(res.message || 'Đã gửi lại mã OTP mới!');
-      setForgotCooldown(60);
-    } catch (err) {
-      message.error(getApiErrorMessage(err, 'Không thể gửi lại mã OTP!'));
-    }
-  };
-
-  const handleResetPassword = async (values: {
-    otp: string;
-    newPassword: string;
-    confirmPassword?: string;
-  }) => {
-    setForgotSubmitting(true);
-    try {
-      // POST /api/v1/auth/reset-password
-      const res = await authService.resetPassword({
-        email: forgotEmail,
-        otp: values.otp.trim(),
-        newPassword: values.newPassword,
-        confirmPassword: values.confirmPassword,
-      });
-
-      message.success(
-        res.message || 'Đặt lại mật khẩu thành công! Vui lòng đăng nhập với mật khẩu mới.'
-      );
-      setIsForgotModalOpen(false);
-      setForgotStep('REQUEST_OTP');
-      forgotForm.resetFields();
-      form.setFieldsValue({ email: forgotEmail, password: '' });
-    } catch (err) {
-      message.error(getApiErrorMessage(err, 'Không thể đặt lại mật khẩu. Vui lòng kiểm tra lại OTP!'));
-    } finally {
-      setForgotSubmitting(false);
-    }
-  };
-
   return (
-    <>
       <AuthPageShell
         fitScreen
         eyebrow="Chào mừng bạn trở lại"
@@ -278,6 +204,16 @@ export const LoginPage: React.FC = () => {
           },
         ]}
       >
+        {returnedFromReset?.passwordReset && (
+          <Alert
+            message="Đã đặt lại mật khẩu"
+            description="Vui lòng đăng nhập bằng mật khẩu mới."
+            type="success"
+            showIcon
+            className="mb-4 rounded-xl py-2"
+          />
+        )}
+
         {verifiedSuccessNotice && (
           <Alert
             message="Xác thực email thành công"
@@ -351,10 +287,11 @@ export const LoginPage: React.FC = () => {
             <button
               type="button"
               onClick={() => {
-                setIsForgotModalOpen(true);
-                setForgotStep('REQUEST_OTP');
-                const currentEmail = form.getFieldValue('email');
-                if (currentEmail) forgotForm.setFieldsValue({ email: currentEmail });
+                const { from, intent } = (location.state ?? {}) as { from?: string; intent?: string };
+                navigate(
+                  { pathname: '/forgot-password', search: location.search },
+                  { state: { from, intent, email: form.getFieldValue('email') } }
+                );
               }}
               className={`cursor-pointer border-0 bg-transparent px-0 py-2 text-sm ${AUTH_LINK_CLASS}`}
             >
@@ -385,161 +322,6 @@ export const LoginPage: React.FC = () => {
         </div>
 
       </AuthPageShell>
-
-      {/* ─── FORGOT & RESET PASSWORD MODAL ─── */}
-      <Modal
-        title={
-          <div className="flex items-center gap-2 text-base font-bold text-slate-900">
-            <KeyOutlined className="text-blue-600" />
-            <span>
-              {forgotStep === 'REQUEST_OTP'
-                ? 'Quên mật khẩu tài khoản'
-                : 'Đặt lại mật khẩu với OTP'}
-            </span>
-          </div>
-        }
-        open={isForgotModalOpen}
-        onCancel={() => {
-          setIsForgotModalOpen(false);
-          setForgotStep('REQUEST_OTP');
-          forgotForm.resetFields();
-        }}
-        footer={null}
-        destroyOnClose
-        centered
-        className="rounded-2xl"
-      >
-        <div className="py-2">
-          {forgotStep === 'REQUEST_OTP' ? (
-            <Form
-              form={forgotForm}
-              layout="vertical"
-              onFinish={handleRequestForgotOtp}
-              requiredMark={false}
-            >
-              <p className="text-xs text-slate-500 mb-4">
-                Nhập địa chỉ email đăng ký tài khoản của bạn. Hệ thống sẽ gửi mã OTP xác nhận gồm 6 chữ số để đặt lại mật khẩu mới.
-              </p>
-              <Form.Item
-                name="email"
-                label={<span className="text-xs font-semibold text-slate-700">Email tài khoản</span>}
-                rules={[
-                  { required: true, message: 'Vui lòng nhập email!' },
-                  { type: 'email', message: 'Email không đúng định dạng!' },
-                ]}
-              >
-                <Input
-                  size="large"
-                  prefix={<MailOutlined className="text-slate-400" />}
-                  placeholder="name@example.com"
-                  className="rounded-xl"
-                />
-              </Form.Item>
-
-              <Button
-                type="primary"
-                htmlType="submit"
-                block
-                size="large"
-                loading={forgotSubmitting}
-                className="rounded-xl bg-blue-600 font-semibold mt-2"
-              >
-                Gửi mã xác thực OTP
-              </Button>
-            </Form>
-          ) : (
-            <Form
-              form={forgotForm}
-              layout="vertical"
-              onFinish={handleResetPassword}
-              requiredMark={false}
-            >
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 mb-4 text-xs text-slate-600 flex items-center justify-between">
-                <span>
-                  Gửi tới: <strong>{forgotEmail}</strong>
-                </span>
-                {forgotCooldown > 0 ? (
-                  <span className="text-slate-400">Gửi lại sau {forgotCooldown}s</span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleResendForgotOtp}
-                    className="text-blue-600 hover:underline bg-transparent border-none p-0 cursor-pointer font-medium flex items-center gap-1"
-                  >
-                    <ReloadOutlined /> Gửi lại mã
-                  </button>
-                )}
-              </div>
-
-              <Form.Item
-                name="otp"
-                label={<span className="text-xs font-semibold text-slate-700">Mã OTP (6 chữ số)</span>}
-                rules={[
-                  { required: true, message: 'Vui lòng nhập mã OTP!' },
-                  { len: 6, message: 'Mã OTP gồm đúng 6 chữ số!' },
-                ]}
-              >
-                <Input
-                  size="large"
-                  maxLength={6}
-                  placeholder="123456"
-                  className="rounded-xl text-center tracking-widest font-mono font-bold text-lg"
-                />
-              </Form.Item>
-
-              <Form.Item
-                name="newPassword"
-                label={<span className="text-xs font-semibold text-slate-700">Mật khẩu mới</span>}
-                rules={[
-                  { required: true, message: 'Vui lòng nhập mật khẩu mới!' },
-                  { min: 6, message: 'Mật khẩu tối thiểu 6 ký tự!' },
-                ]}
-              >
-                <Input.Password
-                  size="large"
-                  placeholder="Mật khẩu mới"
-                  className="rounded-xl"
-                />
-              </Form.Item>
-
-              <Form.Item
-                name="confirmPassword"
-                dependencies={['newPassword']}
-                label={<span className="text-xs font-semibold text-slate-700">Xác nhận mật khẩu mới</span>}
-                rules={[
-                  { required: true, message: 'Vui lòng xác nhận lại mật khẩu!' },
-                  ({ getFieldValue }) => ({
-                    validator(_, value) {
-                      if (!value || getFieldValue('newPassword') === value) {
-                        return Promise.resolve();
-                      }
-                      return Promise.reject(new Error('Mật khẩu xác nhận không khớp!'));
-                    },
-                  }),
-                ]}
-              >
-                <Input.Password
-                  size="large"
-                  placeholder="Nhập lại mật khẩu mới"
-                  className="rounded-xl"
-                />
-              </Form.Item>
-
-              <Button
-                type="primary"
-                htmlType="submit"
-                block
-                size="large"
-                loading={forgotSubmitting}
-                className="rounded-xl bg-blue-600 font-semibold mt-2"
-              >
-                Lưu mật khẩu mới & Đăng nhập
-              </Button>
-            </Form>
-          )}
-        </div>
-      </Modal>
-    </>
   );
 };
 
