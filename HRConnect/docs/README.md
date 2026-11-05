@@ -2,6 +2,7 @@
 
 ## Kiến trúc và nghiệp vụ chung
 
+- [`BACKEND-FLOWS-AND-API-GUIDE.md`](BACKEND-FLOWS-AND-API-GUIDE.md): **bản đồ tổng Backend** — giải thích toàn bộ MF01–MF05, API, trạng thái, dữ liệu và đường đi code cho Developer/QA/AI agent.
 - [`main-flows.md`](main-flows.md): luồng chính của hệ thống.
 - [`3. ACTOR — CÁC TÁC NHÂN CỦA HỆ THỐNG.md`](3.%20ACTOR%20%E2%80%94%20C%C3%81C%20T%C3%81C%20NH%C3%82N%20C%E1%BB%A6A%20H%E1%BB%86%20TH%E1%BB%90NG.md): actor và trách nhiệm.
 - [`QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md`](QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md): phí và hoa hồng của ba Service Type.
