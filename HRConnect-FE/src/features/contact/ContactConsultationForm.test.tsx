@@ -46,6 +46,9 @@ describe('ContactConsultationForm', () => {
     expect(screen.getByText('Họ và tên')).toBeInTheDocument();
     expect(screen.getByText('Email công việc')).toBeInTheDocument();
     expect(screen.getByText('Dịch vụ quan tâm')).toBeInTheDocument();
+    expect(
+      screen.getByText('Phí thành công, bảo hành và đồng hành trọn quy trình')
+    ).toBeInTheDocument();
     expect(screen.getByText('Nội dung yêu cầu tư vấn')).toBeInTheDocument();
     expect(
       screen.getByText(/Nghị định 13\/2023\/NĐ-CP/)

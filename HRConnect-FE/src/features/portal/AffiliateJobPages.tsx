@@ -19,6 +19,7 @@ import { renderFormattedMultilineText } from '@/features/jobs-mf01/RichTextEdito
 import { useJobDetail } from '@/features/jobs-mf01/useJobQueries';
 import { CommissionEstimateCard, commissionEstimateApi, formatEstimate } from './CommissionEstimateCard';
 import { AffiliatePageHeader } from './affiliate/AffiliateUi';
+import { CompanyLogo as SharedCompanyLogo } from '@/components/common/CompanyLogo';
 
 const PAGE_SIZE = 10;
 
@@ -38,18 +39,15 @@ const initials = (name?: string | null) =>
     .join('')
     .toUpperCase() || 'HR';
 
-const CompanyLogo: React.FC<{ job: Pick<Job, 'companyName' | 'companyLogoUrl'>; size?: number }> = ({ job, size = 52 }) =>
-  job.companyLogoUrl ? (
-    <img src={job.companyLogoUrl} alt="" width={size} height={size} className="shrink-0 rounded-md border border-solid border-gray-200 object-contain" />
-  ) : (
-    <span
-      aria-hidden
-      className="flex shrink-0 items-center justify-center rounded-md border border-solid border-gray-200 text-xs font-bold text-[color:var(--affiliate-brand)]"
-      style={{ width: size, height: size }}
-    >
-      {initials(job.companyName)}
-    </span>
-  );
+const CompanyLogo: React.FC<{ job: Pick<Job, 'companyName' | 'companyLogoUrl'>; size?: number }> = ({ job, size = 52 }) => (
+  <div style={{ width: size, height: size }} className="shrink-0">
+    <SharedCompanyLogo
+      companyName={job.companyName || ''}
+      logoUrl={job.companyLogoUrl ?? undefined}
+      className="!w-full !h-full !rounded-md border border-solid border-gray-200"
+    />
+  </div>
+);
 
 const ServiceChip: React.FC<{ code?: string | null }> = ({ code }) => (
   <span className="rounded bg-sky-100 px-2 py-px text-xs font-medium text-sky-800">{affiliateServiceLabel(code)}</span>
@@ -244,7 +242,7 @@ export const AffiliateJobDetailPage: React.FC = () => {
       ) : detail.isLoading || !job ? (
         <Skeleton active paragraph={{ rows: 12 }} />
       ) : (
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-4">
             <section className="flex flex-wrap gap-4 rounded-lg border border-solid border-gray-200 bg-white p-5">
               <CompanyLogo job={job} size={72} />
@@ -254,7 +252,7 @@ export const AffiliateJobDetailPage: React.FC = () => {
                   <ServiceChip code={job.serviceTypeCode} />
                 </div>
                 <div className="mt-0.5 text-gray-600">{[job.companyName, job.location].filter(Boolean).join(' · ')}</div>
-                <dl className="m-0 mt-3 grid grid-cols-3 gap-x-5 gap-y-2.5 text-[13px] max-sm:grid-cols-2">
+                <dl className="m-0 mt-3 grid grid-cols-1 sm:grid-cols-3 gap-x-5 gap-y-2.5 text-[13px]">
                   <div><dt className="text-gray-500">Lương</dt><dd className="m-0 font-semibold">{formatSalary(job) || '—'}</dd></div>
                   <div><dt className="text-gray-500">Cần tuyển</dt><dd className="m-0 font-semibold">{job.serviceTypeCode === 'CV_SOURCING' && job.sourcingTarget ? `${job.sourcingTarget} CV` : `${job.quantity} người`}</dd></div>
                   <div><dt className="text-gray-500">Hạn nhận hồ sơ</dt><dd className="m-0 font-semibold">{job.applicationDeadline ? dayjs(job.applicationDeadline).format('DD/MM/YYYY') : '—'}</dd></div>
@@ -279,7 +277,7 @@ export const AffiliateJobDetailPage: React.FC = () => {
               <LongText title="Thời gian làm việc" value={job.workingTime} />
             </article>
           </div>
-          <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+          <aside className="min-w-0 space-y-4 xl:sticky xl:top-24 xl:self-start">
             <CommissionEstimateCard jobId={job.jobId} />
             <Button type="primary" size="large" block className="affiliate-cta" onClick={() => navigate(`/affiliate/submit-candidate?job=${job.jobId}`)}>
               Giới thiệu ứng viên

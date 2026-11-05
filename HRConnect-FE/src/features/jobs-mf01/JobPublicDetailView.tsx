@@ -187,7 +187,13 @@ const JobContent: React.FC<{ job: Job }> = ({ job }) => {
       </nav>
 
       <section aria-labelledby="jobtitle" className={`${CARD} flex flex-wrap items-start gap-[18px] p-5`}>
-        <CompanyMark name={companyName} logoUrl={logoUrl} size={82} />
+        {job.companyId ? (
+          <Link to={`/companies/${job.companyId}`} className="shrink-0 transition-transform duration-200 hover:scale-105" title={`Xem trang ${companyName}`}>
+            <CompanyMark name={companyName} logoUrl={logoUrl} size={82} />
+          </Link>
+        ) : (
+          <CompanyMark name={companyName} logoUrl={logoUrl} size={82} />
+        )}
         <div className="min-w-0 flex-[1_1_420px]">
           <h1 id="jobtitle" className="m-0 text-[22px] font-bold text-[#111827]">{job.title}</h1>
           <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -262,8 +268,20 @@ const JobContent: React.FC<{ job: Job }> = ({ job }) => {
         <aside className="flex min-w-0 flex-[1_1_300px] flex-col gap-4">
           <section aria-labelledby="company" className={`${CARD} p-[18px]`}>
             <div className="flex items-center gap-3">
-              <CompanyMark name={companyName} logoUrl={logoUrl} size={58} />
-              <h2 id="company" className="m-0 text-[15px] font-bold text-[#1F2937]">{companyLegalName}</h2>
+              {job.companyId ? (
+                <Link to={`/companies/${job.companyId}`} className="shrink-0 transition-transform duration-200 hover:scale-105" title={`Xem trang ${companyLegalName}`}>
+                  <CompanyMark name={companyName} logoUrl={logoUrl} size={58} />
+                </Link>
+              ) : (
+                <CompanyMark name={companyName} logoUrl={logoUrl} size={58} />
+              )}
+              {job.companyId ? (
+                <Link to={`/companies/${job.companyId}`} className="no-underline group min-w-0">
+                  <h2 id="company" className="m-0 text-[15px] font-bold text-[#1F2937] group-hover:text-[#0369A1] group-hover:underline truncate">{companyLegalName}</h2>
+                </Link>
+              ) : (
+                <h2 id="company" className="m-0 text-[15px] font-bold text-[#1F2937] truncate">{companyLegalName}</h2>
+              )}
             </div>
             {companyFacts.length > 0 && (
               <dl className="m-0 mt-[14px] flex flex-col gap-2 text-[13px]">

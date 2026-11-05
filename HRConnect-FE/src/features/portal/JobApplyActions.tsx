@@ -113,6 +113,8 @@ export const ApplyModal: React.FC<{ job: Job; open: boolean; onClose: () => void
 
   const chosenFile = source?.kind === 'file' ? source.file : null;
   const companyLine = [job.companyName, job.location].filter(Boolean).join(' · ');
+  const hasExistingCvs = Boolean(cvs.data && cvs.data.length > 0);
+  const noCvs = Boolean(!cvs.isLoading && !cvs.isError && (!cvs.data || cvs.data.length === 0));
 
   return (
     <Modal
@@ -155,7 +157,13 @@ export const ApplyModal: React.FC<{ job: Job; open: boolean; onClose: () => void
               id="apply-form"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (source && retryRemaining === 0 && !apply.isPending) apply.mutate();
+                if (!source) {
+                  const msg = 'Vui lòng chọn 1 bản CV trong danh sách hoặc tải lên CV để nộp hồ sơ!';
+                  setError(msg);
+                  message.warning(msg);
+                  return;
+                }
+                if (retryRemaining === 0 && !apply.isPending) apply.mutate();
               }}
               className="flex flex-col gap-[18px] overflow-auto px-[22px] py-[18px]"
             >
@@ -163,66 +171,174 @@ export const ApplyModal: React.FC<{ job: Job; open: boolean; onClose: () => void
               {retryRemaining > 0 && <Alert type="warning" showIcon message={`Bạn có thể thử lại sau ${retryRemaining} giây.`} />}
               {cvs.isError && <Alert type="error" showIcon message={getApiError(cvs.error, 'Không tải được kho CV.').message} />}
 
-              <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
-                <legend className="mb-2 px-0.5 font-semibold">Chọn CV để ứng tuyển</legend>
+              <fieldset className="m-0 flex min-w-0 flex-col gap-2.5 border-0 p-0">
+                <div className="flex items-center justify-between">
+                  <legend className="px-0.5 font-semibold text-[#1F2937]">Chọn CV để ứng tuyển</legend>
+                  <Link
+                    to="/candidate/cv-builder"
+                    onClick={close}
+                    className={`text-[13px] font-medium ${LINK} flex items-center gap-1`}
+                  >
+                    <span>+ Tạo CV online mới</span>
+                  </Link>
+                </div>
+
                 {cvs.isLoading ? (
                   <Skeleton active paragraph={{ rows: 2 }} />
+                ) : noCvs && !chosenFile ? (
+                  <div className="rounded-lg border border-solid border-[#FDE68A] bg-[#FEFCE8] p-4 text-[#1F2937]">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FEF3C7] text-[#D97706]">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                          <line x1="12" y1="18" x2="12" y2="12" />
+                          <line x1="9" y1="15" x2="15" y2="15" />
+                        </svg>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="m-0 text-[15px] font-semibold text-[#92400E]">
+                          Bạn chưa có bản CV nào trong hệ thống
+                        </h4>
+                        <p className="m-0 mt-1 text-[13px] leading-relaxed text-[#78350F]">
+                          Để ứng tuyển vị trí này, bạn cần có một bản CV. Bạn có thể tạo CV mới chuẩn ATS trực tuyến hoặc tải lên file CV có sẵn (PDF).
+                        </p>
+
+                        <div className="mt-3.5 flex flex-wrap items-center gap-2.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              close();
+                              navigate('/candidate/cv-builder');
+                            }}
+                            className={`${FONT} inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border-0 bg-[#0284C7] px-3.5 text-[13px] font-semibold text-white shadow-xs transition-colors hover:bg-[#0369A1]`}
+                          >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M12 20h9" />
+                              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                            </svg>
+                            Tạo CV online ngay
+                          </button>
+
+                          <label className={`${FONT} inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-solid border-[#D1D5DB] bg-white px-3.5 text-[13px] font-semibold text-[#1F2937] shadow-xs transition-colors hover:bg-[#F9FAFB] hover:border-[#9CA3AF]`}>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                              <polyline points="17 8 12 3 7 8" />
+                              <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                            <span>Tải lên CV (PDF)</span>
+                            <input
+                              type="file"
+                              accept="application/pdf,.pdf"
+                              className="hidden"
+                              onChange={(event) => {
+                                pickFile(event.target.files?.[0]);
+                                event.target.value = '';
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 ) : (
-                  (cvs.data ?? []).map((cv) => {
-                    const selected = source?.kind === 'vault' && source.cvId === cv.cvId;
-                    return (
-                      <label
-                        key={cv.cvId}
-                        className={`flex cursor-pointer items-center gap-3 rounded-lg border-solid p-3 ${selected ? 'border-2 border-[#0369A1] bg-[#F0F9FF]' : 'border border-[#E5E7EB] hover:border-[#94A3B8]'}`}
-                      >
-                        <input
-                          type="radio"
-                          name="cv"
-                          checked={selected}
-                          onChange={() => {
-                            setError(null);
-                            setSource({ kind: 'vault', cvId: cv.cvId });
-                          }}
-                          className="ml-[5px] mr-[3px] mt-[3px] h-[18px] w-[18px] shrink-0 cursor-pointer accent-[#0369A1]"
-                        />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-semibold">{cv.title || cv.fileName}</span>
-                          <span className="text-[13px] text-[#4B5563]">
-                            Cập nhật {dayjs(cv.updatedAt).format('DD/MM/YYYY')}{cv.fileSizeBytes ? ` · ${fileSize(cv.fileSizeBytes)}` : ''}
-                          </span>
-                        </span>
-                        {cv.isPrimary && <span className="shrink-0 rounded bg-[#E0F2FE] px-2 py-0.5 text-[12px] font-semibold text-[#075985]">CV chính</span>}
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.preventDefault();
-                            void openSigned(() => candidateCvApi.downloadUrl(cv.cvId));
-                          }}
-                          className={`${FONT} shrink-0 cursor-pointer border-0 bg-transparent p-0 text-[13px] ${LINK}`}
+                  <>
+                    {(cvs.data ?? []).map((cv) => {
+                      const selected = source?.kind === 'vault' && source.cvId === cv.cvId;
+                      return (
+                        <label
+                          key={cv.cvId}
+                          className={`flex cursor-pointer items-center gap-3 rounded-lg border-solid p-3 ${selected ? 'border-2 border-[#0369A1] bg-[#F0F9FF]' : 'border border-[#E5E7EB] hover:border-[#94A3B8]'}`}
                         >
-                          Xem
-                        </button>
+                          <input
+                            type="radio"
+                            name="cv"
+                            checked={selected}
+                            onChange={() => {
+                              setError(null);
+                              setSource({ kind: 'vault', cvId: cv.cvId });
+                            }}
+                            className="ml-[5px] mr-[3px] mt-[3px] h-[18px] w-[18px] shrink-0 cursor-pointer accent-[#0369A1]"
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-semibold">{cv.title || cv.fileName}</span>
+                            <span className="text-[13px] text-[#4B5563]">
+                              Cập nhật {dayjs(cv.updatedAt).format('DD/MM/YYYY')}{cv.fileSizeBytes ? ` · ${fileSize(cv.fileSizeBytes)}` : ''}
+                            </span>
+                          </span>
+                          {cv.isPrimary && <span className="shrink-0 rounded bg-[#E0F2FE] px-2 py-0.5 text-[12px] font-semibold text-[#075985]">CV chính</span>}
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              void openSigned(() => candidateCvApi.downloadUrl(cv.cvId));
+                            }}
+                            className={`${FONT} shrink-0 cursor-pointer border-0 bg-transparent p-0 text-[13px] ${LINK}`}
+                          >
+                            Xem
+                          </button>
+                        </label>
+                      );
+                    })}
+
+                    {chosenFile ? (
+                      <div className="flex items-center justify-between rounded-lg border-2 border-solid border-[#0284C7] bg-[#F0F9FF] p-3 text-[#1F2937]">
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#E0F2FE] text-[#0284C7]">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                          </div>
+                          <div className="min-w-0">
+                            <div className="truncate font-semibold text-[14px] text-[#0F172A]">{chosenFile.name}</div>
+                            <div className="text-[12px] text-[#0369A1]">
+                              {fileSize(chosenFile.size)} · Đã chọn để nộp hồ sơ
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-3">
+                          <label className={`${FONT} cursor-pointer text-[13px] font-medium text-[#0284C7] hover:underline`}>
+                            Đổi file
+                            <input
+                              type="file"
+                              accept="application/pdf,.pdf"
+                              className="hidden"
+                              onChange={(event) => {
+                                pickFile(event.target.files?.[0]);
+                                event.target.value = '';
+                              }}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSource(null);
+                              if (cvs.data?.length) {
+                                const primary = cvs.data.find((c) => c.isPrimary) ?? cvs.data[0];
+                                setSource({ kind: 'vault', cvId: primary.cvId });
+                              }
+                            }}
+                            className={`${FONT} cursor-pointer border-0 bg-transparent text-[13px] text-[#EF4444] hover:underline`}
+                          >
+                            Hủy
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="relative flex cursor-pointer items-center gap-2.5 rounded-lg border border-dashed border-[#94A3B8] p-3 text-[#374151] hover:border-[#0369A1] has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[#0369A1]">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true" className="shrink-0"><path d="M12 16V4M7 9l5-5 5 5M5 20h14" /></svg>
+                        <span><b>Tải CV mới</b> <span className="text-[#4B5563]">· PDF, tối đa {MAX_CV_MB} MB</span></span>
+                        <input
+                          type="file"
+                          accept="application/pdf,.pdf"
+                          className="absolute h-px w-px opacity-0"
+                          onChange={(event) => {
+                            pickFile(event.target.files?.[0]);
+                            event.target.value = '';
+                          }}
+                        />
                       </label>
-                    );
-                  })
+                    )}
+                  </>
                 )}
-                <label className={`relative flex cursor-pointer items-center gap-2.5 rounded-lg p-3 text-[#374151] has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[#0369A1] ${chosenFile ? 'border-2 border-solid border-[#0369A1] bg-[#F0F9FF]' : 'border border-dashed border-[#94A3B8]'}`}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true" className="shrink-0"><path d="M12 16V4M7 9l5-5 5 5M5 20h14" /></svg>
-                  {chosenFile ? (
-                    <span className="min-w-0 truncate"><b>{chosenFile.name}</b> <span className="text-[#4B5563]">· {fileSize(chosenFile.size)} · bấm để đổi</span></span>
-                  ) : (
-                    <span><b>Tải CV mới</b> <span className="text-[#4B5563]">· PDF, tối đa {MAX_CV_MB} MB</span></span>
-                  )}
-                  <input
-                    type="file"
-                    accept="application/pdf,.pdf"
-                    className="absolute h-px w-px opacity-0"
-                    onChange={(event) => {
-                      pickFile(event.target.files?.[0]);
-                      event.target.value = '';
-                    }}
-                  />
-                </label>
               </fieldset>
 
               <fieldset className="m-0 min-w-0 border-0 p-0">
@@ -242,11 +358,25 @@ export const ApplyModal: React.FC<{ job: Job; open: boolean; onClose: () => void
               </p>
             </form>
 
-            <div className="flex justify-end gap-2.5 border-0 border-t border-solid border-[#E5E7EB] px-[22px] py-[14px]">
-              <button type="button" onClick={close} className={SECONDARY}>Hủy</button>
-              <button type="submit" form="apply-form" disabled={!source || retryRemaining > 0 || apply.isPending} className={PRIMARY}>
-                {apply.isPending ? 'Đang nộp…' : 'Nộp hồ sơ'}
-              </button>
+            <div className="flex items-center justify-between border-0 border-t border-solid border-[#E5E7EB] px-[22px] py-[14px]">
+              <div className="text-[13px]">
+                {!source ? (
+                  <span className="font-medium text-[#D97706]">⚠️ Chưa chọn bản CV nào</span>
+                ) : (
+                  <span className="font-medium text-[#059669]">✓ Đã sẵn sàng nộp hồ sơ</span>
+                )}
+              </div>
+              <div className="flex gap-2.5">
+                <button type="button" onClick={close} className={SECONDARY}>Hủy</button>
+                <button
+                  type="submit"
+                  form="apply-form"
+                  disabled={!source || retryRemaining > 0 || apply.isPending}
+                  className={PRIMARY}
+                >
+                  {apply.isPending ? 'Đang nộp…' : 'Xác nhận nộp hồ sơ'}
+                </button>
+              </div>
             </div>
           </>
         )}

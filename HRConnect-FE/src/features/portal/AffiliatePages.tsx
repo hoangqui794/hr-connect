@@ -461,7 +461,7 @@ export const AffiliateSubmitPage: React.FC = () => {
         }}
         disabled={submit.isPending}
       >
-        <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className="space-y-5">
             {submit.isError && <Alert type="error" showIcon message="Chưa gửi được" description={getApiErrorMessage(submit.error)} />}
             {presetRejected && (
@@ -642,7 +642,7 @@ export const AffiliateSubmitPage: React.FC = () => {
             </Surface>
           </div>
 
-          <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+          <aside className="min-w-0 space-y-4 xl:sticky xl:top-24 xl:self-start">
             <Surface className="p-5">
               <div className="text-sm font-bold text-gray-900">Giới thiệu vào</div>
               {selectedJob ? (
@@ -1076,7 +1076,7 @@ export const AffiliateSubmissionDetailPage: React.FC = () => {
         <ArrowLeftOutlined aria-hidden /> Lượt giới thiệu
       </button>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-4">
           <section className="rounded-lg border border-solid border-gray-200 bg-white p-5">
             <div className="flex flex-wrap items-center gap-2.5">
@@ -1085,7 +1085,7 @@ export const AffiliateSubmissionDetailPage: React.FC = () => {
             </div>
             <div className="mt-1 text-gray-600">{submission.jobTitle}{submission.companyName ? ` · ${submission.companyName}` : ''}</div>
             <p className="m-0 mt-2 text-[13px] text-gray-600">{status.hint}</p>
-            <dl className="m-0 mt-4 grid grid-cols-3 gap-x-5 gap-y-3 text-[13px] max-sm:grid-cols-2">
+            <dl className="m-0 mt-4 grid grid-cols-1 sm:grid-cols-3 gap-x-5 gap-y-3 text-[13px]">
               <div><dt className="text-gray-500">Email</dt><dd className="m-0 break-all">{submission.candidateEmail || 'Chưa cung cấp'}</dd></div>
               <div><dt className="text-gray-500">Số điện thoại</dt><dd className="m-0">{submission.candidatePhone || 'Chưa cung cấp'}</dd></div>
               <div><dt className="text-gray-500">Gửi lúc</dt><dd className="m-0 tabular-nums">{fmt(submission.submittedAt)}</dd></div>
@@ -1169,7 +1169,7 @@ export const AffiliateSubmissionDetailPage: React.FC = () => {
           </section>
         </div>
 
-        <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+        <aside className="min-w-0 space-y-4 xl:sticky xl:top-24 xl:self-start">
           {submission.jobId && <CommissionEstimateCard jobId={submission.jobId} />}
           {submission.status === 'BLOCKED_DUPLICATE' && (
             <section className="rounded-lg border border-solid border-red-200 bg-red-50 p-4">

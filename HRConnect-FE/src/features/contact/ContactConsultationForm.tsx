@@ -33,17 +33,17 @@ const { TextArea } = Input;
 const SERVICE_INTEREST_OPTIONS: { value: ContactServiceInterest; label: string; desc: string }[] = [
   {
     value: 'HEADHUNT_COD',
-    label: 'Tuyển trọn gói (Headhunt COD)',
+    label: 'Tuyển trọn gói',
     desc: 'Phí thành công, bảo hành và đồng hành trọn quy trình',
   },
   {
     value: 'CV_SOURCING',
-    label: 'Cung cấp hồ sơ (CV Sourcing)',
-    desc: 'Bàn giao danh sách CV đã qua sàng lọc chuyên sâu',
+    label: 'Cung cấp hồ sơ',
+    desc: 'Bàn giao danh sách hồ sơ đã qua sàng lọc chuyên sâu',
   },
   {
     value: 'CV_APPLICATION',
-    label: 'Đăng tin tuyển dụng (Job Posting)',
+    label: 'Đăng tin tuyển dụng',
     desc: 'Tiếp cận hàng nghìn ứng viên chủ động trên nền tảng',
   },
   {
@@ -75,6 +75,10 @@ export const ContactConsultationForm: React.FC<ContactConsultationFormProps> = (
   className = '',
 }) => {
   const [form] = Form.useForm<FormValues>();
+  const serviceInterest = Form.useWatch('serviceInterest', form);
+  const currentServiceInfo = SERVICE_INTEREST_OPTIONS.find(
+    (item) => item.value === (serviceInterest || initialServiceInterest)
+  );
   const [submitting, setSubmitting] = useState(false);
   const [receipt, setReceipt] = useState<ContactRequestReceipt | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -289,7 +293,7 @@ export const ContactConsultationForm: React.FC<ContactConsultationFormProps> = (
         <div className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
           {/* Phone */}
           <Form.Item
-            label={<span className="font-semibold text-slate-800">Số điện thoại (tùy chọn)</span>}
+            label={<span className="font-semibold text-slate-800">Số điện thoại</span>}
             name="phone"
             rules={[
               {
@@ -308,7 +312,7 @@ export const ContactConsultationForm: React.FC<ContactConsultationFormProps> = (
 
           {/* Company Name */}
           <Form.Item
-            label={<span className="font-semibold text-slate-800">Tên doanh nghiệp (tùy chọn)</span>}
+            label={<span className="font-semibold text-slate-800">Tên doanh nghiệp</span>}
             name="companyName"
             rules={[{ max: 150, message: 'Tên công ty tối đa 150 ký tự' }]}
           >
@@ -326,6 +330,13 @@ export const ContactConsultationForm: React.FC<ContactConsultationFormProps> = (
           label={<span className="font-semibold text-slate-800">Dịch vụ quan tâm</span>}
           name="serviceInterest"
           rules={[{ required: true, message: 'Vui lòng chọn dịch vụ bạn cần tư vấn' }]}
+          extra={
+            currentServiceInfo?.desc ? (
+              <span className="mt-1.5 block text-xs text-slate-500">
+                {currentServiceInfo.desc}
+              </span>
+            ) : null
+          }
         >
           <Select
             size="large"
@@ -333,13 +344,18 @@ export const ContactConsultationForm: React.FC<ContactConsultationFormProps> = (
             placeholder="Chọn mô hình dịch vụ"
             options={SERVICE_INTEREST_OPTIONS.map((item) => ({
               value: item.value,
-              label: (
-                <div className="py-1">
-                  <div className="font-semibold text-slate-900">{item.label}</div>
-                  <div className="text-xs text-slate-500">{item.desc}</div>
-                </div>
-              ),
+              label: item.label,
+              desc: item.desc,
             }))}
+            optionRender={(option) => {
+              const desc = (option.data as { desc?: string })?.desc;
+              return (
+                <div className="py-1">
+                  <div className="font-semibold text-slate-900">{option.label}</div>
+                  {desc && <div className="text-xs text-slate-500">{desc}</div>}
+                </div>
+              );
+            }}
           />
         </Form.Item>
 
