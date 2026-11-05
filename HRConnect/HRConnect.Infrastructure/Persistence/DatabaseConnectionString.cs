@@ -111,9 +111,9 @@ public static class DatabaseConnectionString
             builder.KeepAlive = 30;
         }
 
-        if (builder.MinimumPoolSize == 0)
+        if (builder.MinPoolSize == 0)
         {
-            builder.MinimumPoolSize = 5;
+            builder.MinPoolSize = 5;
         }
     }
 
