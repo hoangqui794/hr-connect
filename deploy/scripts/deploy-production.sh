@@ -22,9 +22,9 @@ readonly DRAIN_SECONDS="${DRAIN_SECONDS:-15}"
 readonly PUBLIC_BACKEND_LIVE_URL="${PUBLIC_BACKEND_LIVE_URL:-https://api.hrconnectvn.online/health/live}"
 readonly PUBLIC_BACKEND_READY_URL="${PUBLIC_BACKEND_READY_URL:-https://api.hrconnectvn.online/health/ready}"
 readonly PUBLIC_AI_HEALTH_URL="${PUBLIC_AI_HEALTH_URL:-https://ai.hrconnectvn.online/health}"
-readonly STOPPED_CONTAINER_RETENTION="${STOPPED_CONTAINER_RETENTION:-24h}"
-readonly BUILDER_CACHE_RETENTION="${BUILDER_CACHE_RETENTION:-24h}"
-readonly UNUSED_IMAGE_RETENTION="${UNUSED_IMAGE_RETENTION:-168h}"
+readonly STOPPED_CONTAINER_RETENTION="${STOPPED_CONTAINER_RETENTION:-1h}"
+readonly BUILDER_CACHE_RETENTION="${BUILDER_CACHE_RETENTION:-1h}"
+readonly UNUSED_IMAGE_RETENTION="${UNUSED_IMAGE_RETENTION:-12h}"
 readonly DISK_WARNING_PERCENT="${DISK_WARNING_PERCENT:-75}"
 readonly MEMORY_WARNING_PERCENT="${MEMORY_WARNING_PERCENT:-85}"
 
@@ -199,6 +199,14 @@ cleanup_after_successful_deploy() {
     || echo 'WARNING: unable to prune unused images.' >&2
   docker builder prune --force --filter "until=$BUILDER_CACHE_RETENTION" > /dev/null \
     || echo 'WARNING: unable to prune Docker build cache.' >&2
+  local disk_percent
+  disk_percent="$(resource_usage_percent disk 2>/dev/null || true)"
+  if [[ "$disk_percent" =~ ^[0-9]+$ ]] && (( disk_percent >= DISK_WARNING_PERCENT )); then
+    echo "Disk usage is ${disk_percent}% (>= ${DISK_WARNING_PERCENT}%); pruning all unused Docker images immediately..."
+    docker container prune --force > /dev/null || true
+    docker image prune --all --force > /dev/null || true
+    docker builder prune --all --force > /dev/null || true
+  fi
   report_resource_usage
 }
 
