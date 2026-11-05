@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
@@ -10,16 +11,53 @@ namespace HRConnect.Application.Features.Settings;
 
 public sealed class BusinessSettingsService : IAdminBusinessSettings
 {
-    private readonly ISystemSettingRepository _repository;
+    private static readonly TimeSpan SharedCacheDuration = TimeSpan.FromMinutes(2);
+    private static readonly ConcurrentDictionary<string, ( string? RawValue, DateTime ExpiresAt )> SharedCache = new();
+    private static DateTime _allLoadedExpiresAt = DateTime.MinValue;
 
-    public BusinessSettingsService(ISystemSettingRepository repository)
+    private readonly ISystemSettingRepository _repository;
+    private readonly bool _enableSharedCache;
+
+    public BusinessSettingsService(ISystemSettingRepository repository, bool enableSharedCache = false)
     {
         _repository = repository;
+        _enableSharedCache = enableSharedCache;
+    }
+
+    public static void InvalidateSharedCache()
+    {
+        SharedCache.Clear();
+        _allLoadedExpiresAt = DateTime.MinValue;
     }
 
     public async Task<decimal> GetDecimalAsync(string key, CancellationToken cancellationToken = default)
     {
         var definition = BusinessSettingKeys.Get(key);
+        if (_enableSharedCache)
+        {
+            var now = DateTime.UtcNow;
+            if (now < _allLoadedExpiresAt && SharedCache.TryGetValue(key, out var cached) && now < cached.ExpiresAt)
+            {
+                return cached.RawValue != null && BusinessSettingKeys.TryParse(definition, cached.RawValue, out var cachedVal)
+                    ? cachedVal
+                    : definition.DefaultValue;
+            }
+
+            var allRows = await _repository.GetAllAsync(cancellationToken);
+            var expiresAt = now.Add(SharedCacheDuration);
+            var lookup = allRows.ToDictionary(r => r.SettingKey, r => r.Value);
+            foreach (var def in BusinessSettingKeys.All)
+            {
+                lookup.TryGetValue(def.Key, out var raw);
+                SharedCache[def.Key] = (raw, expiresAt);
+            }
+            _allLoadedExpiresAt = expiresAt;
+
+            return lookup.TryGetValue(key, out var rawVal) && BusinessSettingKeys.TryParse(definition, rawVal, out var parsedVal)
+                ? parsedVal
+                : definition.DefaultValue;
+        }
+
         var row = await _repository.GetAsync(key, cancellationToken);
         // A stored value outside the allowed range (edited by hand in the database) falls back to the default.
         return row != null && BusinessSettingKeys.TryParse(definition, row.Value, out var value) ? value : definition.DefaultValue;
@@ -144,6 +182,7 @@ public sealed class BusinessSettingHandlers :
             NewValues = new { key = definition.Key, value = row.Value },
         }, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        BusinessSettingsService.InvalidateSharedCache();
         return ToDto(definition, row);
     }
 

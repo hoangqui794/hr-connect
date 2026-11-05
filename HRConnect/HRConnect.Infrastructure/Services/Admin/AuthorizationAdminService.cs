@@ -312,7 +312,11 @@ public sealed class AuthorizationAdminService(
 
     private async Task SaveAsync(CancellationToken cancellationToken)
     {
-        try { await unitOfWork.SaveChangesAsync(cancellationToken); }
+        try
+        {
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            HRConnect.Infrastructure.Authentication.ActiveAuthorizationClaimsTransformation.InvalidateCache();
+        }
         catch (ConflictException ex) when (ex.ErrorCode == "CONCURRENT_UPDATE")
         { throw Conflict("Authorization data changed. Reload and try again.", "RBAC_CONCURRENCY_CONFLICT", ex); }
         catch (DbUpdateConcurrencyException ex)

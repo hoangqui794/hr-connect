@@ -85,6 +85,30 @@ public class ActiveAuthorizationClaimsTransformationTests
         repository.VerifyNoOtherCalls();
     }
 
+    [Fact]
+    public async Task TransformAsync_WithMemoryCache_AvoidsRepeatedDatabaseRoundTripsUntilInvalidated()
+    {
+        var userId = Guid.NewGuid();
+        var repository = new Mock<IUserRepository>();
+        repository.Setup(item => item.GetAuthorizationSnapshotAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserAuthorizationSnapshot("ACTIVE", ["AFFILIATE"], ["submission.create"]));
+
+        using var cache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
+            new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+        var transformer = new ActiveAuthorizationClaimsTransformation(repository.Object, cache);
+
+        var first = await transformer.TransformAsync(Principal(userId));
+        var second = await transformer.TransformAsync(Principal(userId));
+
+        first.IsInRole("AFFILIATE").Should().BeTrue();
+        second.HasClaim("permission", "submission.create").Should().BeTrue();
+        repository.Verify(item => item.GetAuthorizationSnapshotAsync(userId, It.IsAny<CancellationToken>()), Times.Once);
+
+        ActiveAuthorizationClaimsTransformation.InvalidateCache();
+        await transformer.TransformAsync(Principal(userId));
+        repository.Verify(item => item.GetAuthorizationSnapshotAsync(userId, It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
     private static ClaimsPrincipal Principal(Guid userId, params Claim[] claims)
     {
         var allClaims = new List<Claim> { new(ClaimTypes.NameIdentifier, userId.ToString()) };

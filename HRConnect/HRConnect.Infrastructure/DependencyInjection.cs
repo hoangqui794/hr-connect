@@ -85,6 +85,7 @@ public static class DependencyInjection
         services.AddSingleton<ICandidateIdentityEvidenceProtector, CandidateIdentityEvidenceProtector>();
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
 
+        services.AddMemoryCache();
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IRequestContext, HttpRequestContext>();

@@ -16,5 +16,6 @@ public class UserRoleRepository : IUserRoleRepository
     public async Task AddAsync(UserRole userRole, CancellationToken cancellationToken = default)
     {
         await _context.UserRoles.AddAsync(userRole, cancellationToken);
+        HRConnect.Infrastructure.Authentication.ActiveAuthorizationClaimsTransformation.InvalidateCache();
     }
 }
