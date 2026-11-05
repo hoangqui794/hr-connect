@@ -66,6 +66,8 @@
 
 .affiliate-console .affiliate-main {
   width: min(100%, 1280px);
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* Money and primary CTA use the orange accent from the mockup. */
