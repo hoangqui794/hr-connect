@@ -131,11 +131,11 @@ write_upstreams() {
   umask 022
   cat > "$destination" <<EOF
 (backend_upstream) {
-\treverse_proxy 127.0.0.1:$backend_port
+    reverse_proxy 127.0.0.1:$backend_port
 }
 
 (ai_v2_upstream) {
-\treverse_proxy 127.0.0.1:$ai_port
+    reverse_proxy 127.0.0.1:$ai_port
 }
 EOF
 }

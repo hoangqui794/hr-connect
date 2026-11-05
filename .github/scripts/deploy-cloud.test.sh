@@ -126,6 +126,11 @@ grep -q '^blue$' "$success_fixture/deploy/state/active-color" || fail 'First dep
 grep -q '^blue$' "$success_fixture/deploy/data/ai-v2/active-color" || fail 'First deployment did not activate the blue AI worker.'
 grep -q '127.0.0.1:18080' "$success_fixture/deploy/caddy/active-upstreams.caddy" || fail 'Backend did not switch to blue.'
 grep -q '127.0.0.1:18001' "$success_fixture/deploy/caddy/active-upstreams.caddy" || fail 'AI did not switch to blue.'
+grep -Eq '^[[:space:]]+reverse_proxy 127\.0\.0\.1:18080$' "$success_fixture/deploy/caddy/active-upstreams.caddy" || fail 'Backend upstream is not valid Caddy syntax.'
+grep -Eq '^[[:space:]]+reverse_proxy 127\.0\.0\.1:18001$' "$success_fixture/deploy/caddy/active-upstreams.caddy" || fail 'AI upstream is not valid Caddy syntax.'
+if grep -Fq '\treverse_proxy' "$success_fixture/deploy/caddy/active-upstreams.caddy"; then
+  fail 'Generated Caddy upstreams contain a literal backslash-t directive.'
+fi
 grep -q -- '--project-name hrconnect-blue.*run --rm --no-deps backend --migrate' "$success_fixture/docker.log" || fail 'Migration did not run before startup.'
 grep -q -- '--project-name hrconnect-blue.*up -d --remove-orphans' "$success_fixture/docker.log" || fail 'Blue services were not started.'
 grep -q '^stop hrconnect-backend hrconnect-ai-v2$' "$success_fixture/docker.log" || fail 'Legacy containers were not stopped.'
