@@ -88,7 +88,7 @@ describe('CandidateSavedJobsPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Ứng tuyển Việc mở' }));
 
     expect(await screen.findByRole('heading', { name: 'Ứng tuyển Việc mở' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Nộp hồ sơ' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /nộp hồ sơ/i })).toBeInTheDocument();
   });
 
   it('asks before unsaving and then calls the API', async () => {

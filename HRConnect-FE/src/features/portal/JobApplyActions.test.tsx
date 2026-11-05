@@ -89,9 +89,34 @@ describe('JobApplyActions', () => {
     expect(await screen.findByDisplayValue('0900000000')).toHaveAttribute('readonly');
 
     fireEvent.click(screen.getByRole('radio', { name: /CV khác/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Nộp hồ sơ' }));
+    fireEvent.click(screen.getByRole('button', { name: /nộp hồ sơ/i }));
 
     await waitFor(() => expect(apply).toHaveBeenCalledWith('job-1', { cvId: 'cv-2' }));
+    expect(await screen.findByText('Đã nộp đơn ứng tuyển')).toBeInTheDocument();
+  });
+
+  it('guides candidates who have no CV to create one online or upload directly', async () => {
+    vi.spyOn(candidateCvApi, 'list').mockResolvedValue([] as never);
+    vi.spyOn(mf04Api, 'getProfile').mockResolvedValue({ fullName: 'Nguyễn An', email: 'an@example.com' } as never);
+    const apply = vi.spyOn(applyApi, 'apply').mockResolvedValue({ data: { applicationId: 'app-new' } } as never);
+    renderActions();
+
+    fireEvent.click(screen.getByRole('button', { name: /Ứng tuyển/i }));
+    expect(await screen.findByText('Bạn chưa có bản CV nào trong hệ thống')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Tạo CV online ngay/i })).toBeInTheDocument();
+    expect(screen.getByText('Tải lên CV (PDF)')).toBeInTheDocument();
+
+    // Upload a new PDF file directly
+    const testFile = new File(['%PDF-1.4 test cv'], 'my-cv.pdf', { type: 'application/pdf' });
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(fileInput).toBeTruthy();
+    fireEvent.change(fileInput, { target: { files: [testFile] } });
+
+    expect(await screen.findByText('my-cv.pdf')).toBeInTheDocument();
+    expect(screen.getByText(/Đã chọn để nộp hồ sơ/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /nộp hồ sơ/i }));
+    await waitFor(() => expect(apply).toHaveBeenCalledWith('job-1', { file: testFile }));
     expect(await screen.findByText('Đã nộp đơn ứng tuyển')).toBeInTheDocument();
   });
 
