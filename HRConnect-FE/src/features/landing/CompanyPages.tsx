@@ -36,12 +36,18 @@ export const CompaniesPage: React.FC = () => {
 
   return (
     <Frame>
-      <div className="bg-[#0C4A6E]">
-        <div className="mx-auto max-w-[1248px] px-4 pb-7 pt-3 sm:px-6">
-          <h1 className="m-0 mb-3 text-[22px] font-bold text-white">Danh sách công ty</h1>
+      <section className="border-0 border-b border-solid border-slate-200 bg-white">
+        <div className="mx-auto max-w-[1248px] px-4 pb-5 pt-6 sm:px-6">
+          <p className="m-0 text-[12px] font-bold uppercase tracking-[0.14em] text-sky-700">Khám phá doanh nghiệp</p>
+          <h1 className="m-0 mt-1 text-[24px] font-bold text-slate-950">Danh sách công ty</h1>
+          <p className="m-0 mt-1 text-[14px] text-slate-600">Tìm hiểu môi trường làm việc và các cơ hội đang tuyển tại doanh nghiệp phù hợp.</p>
+        </div>
+      </section>
+      <section aria-label="Tìm kiếm công ty" className="border-0 border-b border-solid border-slate-200 bg-[#F7F8FA]">
+        <div className="mx-auto max-w-[1248px] px-4 py-4 sm:px-6">
           <form
             role="search"
-            className="flex flex-wrap gap-2 rounded-lg bg-white p-2"
+            className="flex flex-wrap gap-2 rounded-xl border border-solid border-slate-200 bg-white p-2 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"
             onSubmit={(e) => {
               e.preventDefault();
               setPage(1);
@@ -55,7 +61,7 @@ export const CompaniesPage: React.FC = () => {
             <button type="submit" className="h-11 cursor-pointer rounded-md border-0 bg-[#C2410C] px-7 text-[15px] font-semibold text-white hover:bg-[#9A3412] max-sm:w-full">Tìm công ty</button>
           </form>
         </div>
-      </div>
+      </section>
       <main className="mx-auto flex max-w-[1248px] flex-col gap-8 px-4 pb-14 pt-7 sm:px-6">
         {!search && (featured.data ?? []).length > 0 && (
           <section aria-labelledby="co-top">
@@ -123,9 +129,9 @@ export const CompanyDetailPage: React.FC = () => {
 
   return (
     <Frame>
-      <div className="bg-[#0C4A6E]">
-        <div className="mx-auto max-w-[1248px] px-4 pb-6 pt-3 sm:px-6"><SearchForm /></div>
-      </div>
+      <section aria-label="Tìm kiếm việc làm" className="border-0 border-b border-solid border-slate-200 bg-[#F7F8FA]">
+        <div className="mx-auto max-w-[1248px] px-4 py-4 sm:px-6"><SearchForm /></div>
+      </section>
       <main className="mx-auto max-w-[1248px] px-4 pb-14 pt-5 sm:px-6">
         <nav aria-label="Đường dẫn" className="mb-3.5 text-[13px] text-gray-600">
           <Link to="/" className="text-sky-700">Trang chủ</Link> › <Link to="/companies" className="text-sky-700">Công ty</Link>{company ? ` › ${company.companyName}` : ''}

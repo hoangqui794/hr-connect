@@ -1,6 +1,12 @@
-.candidate-console,
 html:has(.candidate-console) {
   scrollbar-gutter: stable;
+}
+
+/* Reserve the browser gutter once at the document level. Reserving it again
+   on the fixed-height Candidate shell makes the shared Navbar lose a second
+   gutter when entering the CV builder, which causes the whole header to jump. */
+.candidate-console {
+  scrollbar-gutter: auto;
 }
 
 .candidate-console {

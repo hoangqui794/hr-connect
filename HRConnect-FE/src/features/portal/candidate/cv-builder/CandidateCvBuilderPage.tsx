@@ -485,10 +485,21 @@ export const CandidateCvBuilderPage: React.FC = () => {
         <Alert
           type="info"
           showIcon
-          className="!rounded-none !border-x-0 !border-t-0"
-          message="Có bản nháp chưa xuất bản"
-          description={`Được lưu lúc ${new Date(availableDraft.savedAt).toLocaleString('vi-VN')}. Bạn có thể khôi phục để tiếp tục đúng chỗ đang làm.`}
-          action={<div className="flex gap-2"><Button size="small" onClick={discardDraft}>Bỏ bản nháp</Button><Button size="small" type="primary" onClick={restoreDraft}>Khôi phục</Button></div>}
+          className="cv-builder-draft-alert !rounded-none !border-x-0 !border-t-0"
+          message={(
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <span className="font-semibold text-slate-800">Có bản nháp chưa xuất bản</span>
+              <span className="text-xs font-normal text-slate-600">
+                Lưu lúc {new Date(availableDraft.savedAt).toLocaleString('vi-VN')}
+              </span>
+            </div>
+          )}
+          action={(
+            <div className="flex gap-1.5">
+              <Button size="small" type="text" onClick={discardDraft}>Bỏ bản nháp</Button>
+              <Button size="small" type="primary" onClick={restoreDraft}>Khôi phục</Button>
+            </div>
+          )}
         />
       )}
 

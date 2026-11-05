@@ -53,19 +53,30 @@ export const Navbar: React.FC = () => {
 
   return (
     <header className="bg-[#0C4A6E] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[14px] text-white [line-height:normal] [&_button]:[font-family:inherit]">
-      <div className="mx-auto flex h-16 max-w-[1248px] items-center gap-7 px-4 sm:px-6">
-        <Link to="/" className="flex shrink-0 items-center gap-2 text-[18px] font-bold text-white no-underline hover:text-white">
-          <BrandMark size={32} tone="light" /> HR Connect
-        </Link>
-        <nav aria-label="Điều hướng chính" className="hidden gap-[22px] md:flex">
-          {links.map((l) => (
-            <Link key={l.label} to={l.to} aria-current={l.active ? 'page' : undefined} className={`whitespace-nowrap no-underline transition-colors duration-150 hover:text-white ${l.active ? 'font-medium text-white' : 'text-slate-300'}`}>
-              {l.label}
-            </Link>
-          ))}
-        </nav>
+      <div className="mx-auto flex h-16 w-full max-w-[1520px] items-center gap-6 px-4 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 items-center gap-5 lg:gap-7">
+          <Link to="/" className="flex shrink-0 items-center gap-2 whitespace-nowrap text-[18px] font-bold text-white no-underline hover:text-white">
+            <BrandMark size={32} tone="light" /> HR Connect
+          </Link>
+          <nav aria-label="Điều hướng chính" className="hidden h-16 items-stretch gap-1 lg:flex">
+            {links.map((l) => (
+              <Link
+                key={l.label}
+                to={l.to}
+                aria-current={l.active ? 'page' : undefined}
+                className={`relative inline-flex h-full min-w-[78px] items-center justify-center whitespace-nowrap px-2.5 font-medium no-underline transition-colors duration-150 hover:bg-white/5 hover:text-white ${l.active ? 'text-white' : 'text-slate-300'}`}
+              >
+                {l.label}
+                <span
+                  aria-hidden="true"
+                  className={`absolute inset-x-2.5 bottom-0 h-0.5 rounded-full transition-colors duration-150 ${l.active ? 'bg-white' : 'bg-transparent'}`}
+                />
+              </Link>
+            ))}
+          </nav>
+        </div>
 
-        <div className={`ml-auto flex items-center ${isCandidate ? 'gap-2' : 'gap-3'}`}>
+        <div className={`ml-auto flex min-w-0 shrink-0 items-center ${isCandidate ? 'gap-2' : 'gap-3'}`}>
           {isAuthenticated && (
             <span className="site-bell">
               <NotificationBell className="!h-11 !w-11 !border-0 !bg-transparent" />
@@ -91,7 +102,7 @@ export const Navbar: React.FC = () => {
             </Dropdown>
           ) : (
             <>
-              <Link to="/services" className="hidden whitespace-nowrap text-slate-300 no-underline hover:text-white lg:block">Dành cho nhà tuyển dụng</Link>
+              <Link to="/services" className="hidden whitespace-nowrap text-slate-300 no-underline hover:text-white xl:block">Dành cho nhà tuyển dụng</Link>
               <Link to="/login" className="hidden whitespace-nowrap rounded-md border border-solid border-[#7FA6C2] px-3.5 py-2 font-medium text-white no-underline hover:bg-white/10 hover:text-white sm:block">Đăng nhập</Link>
               <Link to="/register" className="whitespace-nowrap rounded-md bg-[#C2410C] px-3.5 py-[9px] font-semibold text-white no-underline transition-colors duration-150 hover:bg-[#9A3412] hover:text-white">Đăng ký</Link>
             </>
@@ -101,7 +112,7 @@ export const Navbar: React.FC = () => {
             aria-label="Mở menu"
             aria-expanded={mobileMenuOpen}
             onClick={() => setMobileMenuOpen(true)}
-            className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-[18px] text-white md:hidden"
+            className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-[18px] text-white lg:hidden"
           >
             <MenuOutlined />
           </button>

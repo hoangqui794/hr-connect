@@ -17,6 +17,11 @@ public class HrConnectEmailTemplatesTests
         Assert.Contains("An &lt;script&gt;alert(1)&lt;/script&gt;", email.HtmlBody);
         Assert.DoesNotContain("<script>alert(1)</script>", email.HtmlBody);
         Assert.Contains("hrconnectvn.online", email.HtmlBody);
+        Assert.Contains("background:#0c4a6e", email.HtmlBody);
+        Assert.Contains("border-bottom:4px solid #38bdf8", email.HtmlBody);
+        Assert.Contains("background:#eff6ff", email.HtmlBody);
+        Assert.Contains("Mã xác thực", email.HtmlBody);
+        Assert.Contains("Lưu ý bảo mật", email.HtmlBody);
     }
 
     [Fact]
@@ -40,5 +45,18 @@ public class HrConnectEmailTemplatesTests
         Assert.Contains("A&amp;B", email.HtmlBody);
         Assert.Contains("https://example.test/?x=1&amp;y=2", email.HtmlBody);
         Assert.Contains("giờ Việt Nam", email.HtmlBody);
+        Assert.Contains("background:#2563eb", email.HtmlBody);
+        Assert.Contains("email-button", email.HtmlBody);
+    }
+
+    [Fact]
+    public void RegistrationUnderReview_UsesResponsiveBrandedEmailShell()
+    {
+        var email = HrConnectEmailTemplates.RegistrationUnderReview("Ứng viên");
+
+        Assert.Contains("lang=\"vi\"", email.HtmlBody);
+        Assert.Contains("@media only screen and (max-width:620px)", email.HtmlBody);
+        Assert.Contains("HR Connect</strong> · Email thông báo tự động", email.HtmlBody);
+        Assert.Contains("https://www.hrconnectvn.online", email.HtmlBody);
     }
 }

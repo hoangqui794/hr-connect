@@ -73,9 +73,10 @@ export const CvTopbar: React.FC<CvTopbarProps> = ({
   };
 
   return (
-    <header className="h-16 w-full bg-white border-0 border-b border-solid border-slate-200 px-4 md:px-6 flex items-center justify-between shadow-xs select-none z-30 shrink-0">
-      {/* Left: Back button & Title editor */}
-      <div className="flex items-center gap-3 min-w-0">
+    <header className="h-16 w-full shrink-0 border-0 border-b border-solid border-slate-200 bg-white shadow-xs select-none z-30">
+      <div className="mx-auto flex h-full w-full max-w-[1520px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        {/* Left: Back button & Title editor */}
+        <div className="flex min-w-0 items-center gap-2.5">
         <Tooltip title="Quay lại Kho CV">
           <Button
             type="text"
@@ -132,12 +133,12 @@ export const CvTopbar: React.FC<CvTopbarProps> = ({
             {mode === 'edit' ? 'Chế độ sửa' : 'Tạo mới'}
           </span>
         </div>
-      </div>
+        </div>
 
-      {/* Right: Actions */}
-      <div className="flex items-center gap-3">
+        {/* Right: Actions */}
+        <div className="flex shrink-0 items-center gap-2">
         {/* Primary CV Checkbox */}
-        <div className="hidden sm:flex items-center mr-2">
+        <div className="hidden items-center xl:flex">
           <Checkbox
             checked={isPrimary}
             disabled={mode === 'edit' && isPrimary}
@@ -149,20 +150,20 @@ export const CvTopbar: React.FC<CvTopbarProps> = ({
         </div>
 
         {/* Completeness Badge */}
-        <div className="hidden md:flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-full px-3 py-1">
+        <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 lg:flex">
           <span className="text-[11px] text-slate-500 font-medium">Hoàn thiện:</span>
           <span className="text-xs font-bold text-blue-600">{completeness}%</span>
         </div>
 
-        <div className="hidden xl:flex min-w-[118px] items-center justify-end text-[11px] font-medium text-slate-500" aria-live="polite">
+        <div className="hidden min-w-[110px] items-center justify-end text-[11px] font-medium text-slate-500 2xl:flex" aria-live="polite">
           {draftStatus === 'saving' && 'Đang lưu nháp…'}
           {draftStatus === 'saved' && 'Đã tự lưu nháp'}
           {draftStatus === 'error' && <span className="text-red-600">Lưu nháp thất bại</span>}
         </div>
 
-        <Button onClick={onSaveDraft} className="!rounded-lg font-semibold">
-          <span className="hidden lg:inline">Lưu nháp</span>
-          <span className="lg:hidden">Nháp</span>
+        <Button type="text" onClick={onSaveDraft} className="!rounded-lg !px-3 font-semibold text-slate-600 hover:!bg-slate-100">
+          <span className="hidden xl:inline">Lưu nháp</span>
+          <span className="xl:hidden">Nháp</span>
         </Button>
 
         {/* Preview Button */}
@@ -180,10 +181,12 @@ export const CvTopbar: React.FC<CvTopbarProps> = ({
           icon={<SaveOutlined />}
           loading={isSaving}
           onClick={onSave}
-          className="!rounded-lg !bg-blue-600 hover:!bg-blue-700 !font-bold !px-5 shadow-sm flex items-center gap-1.5"
+          className="!rounded-lg !bg-blue-600 hover:!bg-blue-700 !font-bold !px-4 xl:!px-5 shadow-sm flex items-center gap-1.5"
         >
-          <span>Xuất &amp; lưu CV</span>
+          <span className="hidden lg:inline">Xuất &amp; lưu CV</span>
+          <span className="lg:hidden">Lưu CV</span>
         </Button>
+        </div>
       </div>
     </header>
   );

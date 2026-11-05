@@ -120,7 +120,7 @@ public static class HrConnectEmailTemplates
 
         var reason = string.IsNullOrWhiteSpace(reviewNote)
             ? string.Empty
-            : $"<div style=\"margin:20px 0;padding:14px 16px;background:#fff7ed;border-left:4px solid #f59e0b;border-radius:6px\"><strong>Lý do:</strong> {E(reviewNote.Trim())}</div>";
+            : $"<div style=\"margin:20px 0;padding:16px 18px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;color:#78350f\"><strong style=\"display:block;margin-bottom:4px;color:#92400e\">Lý do</strong>{E(reviewNote.Trim())}</div>";
 
         return new HrConnectEmail(
             $"Kết quả xét duyệt hồ sơ {accountLabel}",
@@ -157,7 +157,7 @@ public static class HrConnectEmailTemplates
                 $"<p style=\"margin:0 0 16px\">Một Cộng tác viên (Affiliate) đã giới thiệu hồ sơ của bạn cho vị trí <strong>{E(jobTitle)}</strong> tại <strong>{E(companyName)}</strong>.</p>" +
                 $"<p style=\"margin:0 0 22px\">{instruction} CV không được đính kèm trong email để bảo vệ thông tin cá nhân của bạn.</p>" +
                 Button("Xem và xác nhận hồ sơ", confirmationUrl) +
-                $"<p style=\"margin:20px 0 0;font-size:13px;color:#64748b\">Yêu cầu hết hạn lúc <strong>{localExpiry:HH:mm 'ngày' dd/MM/yyyy}</strong> (giờ Việt Nam). Nếu bạn không biết yêu cầu này, hãy chọn Từ chối.</p>",
+                $"<p style=\"margin:20px 0 0;font-size:13px;line-height:1.6;color:#64748b\">Yêu cầu hết hạn lúc <strong style=\"color:#334155\">{localExpiry:HH:mm 'ngày' dd/MM/yyyy}</strong> (giờ Việt Nam). Nếu bạn không biết yêu cầu này, hãy chọn Từ chối.</p>",
                 $"Xác nhận hồ sơ cho vị trí {jobTitle} trước khi hết hạn."));
     }
 
@@ -360,29 +360,66 @@ public static class HrConnectEmailTemplates
 
     private static string Render(string title, string content, string previewText)
     {
-        return $"""
+        return $$"""
             <!doctype html>
             <html lang="vi">
-            <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-            <body style="margin:0;padding:0;background:#f4f7f5;color:#1e293b;font-family:Arial,'Helvetica Neue',sans-serif">
-              <div style="display:none;max-height:0;overflow:hidden;opacity:0">{E(previewText)}</div>
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f7f5;padding:28px 12px">
-                <tr><td align="center">
-                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">
-                    <tr><td style="padding:22px 28px;background:#244c35;color:#ffffff">
-                      <div style="font-size:22px;font-weight:700;letter-spacing:.2px">HR Connect</div>
-                      <div style="margin-top:4px;font-size:13px;color:#dce9df">Kết nối đúng người, đúng cơ hội</div>
-                    </td></tr>
-                    <tr><td style="padding:30px 28px;font-size:15px;line-height:1.65">
-                      <h1 style="margin:0 0 20px;font-size:24px;line-height:1.3;color:#183c29">{E(title)}</h1>
-                      {content}
-                    </td></tr>
-                    <tr><td style="padding:18px 28px;background:#f8faf9;border-top:1px solid #e2e8f0;font-size:12px;line-height:1.5;color:#64748b">
-                      Email này được gửi tự động bởi HR Connect. Vui lòng không trả lời email này.<br>
-                      <span style="color:#94a3b8">hrconnectvn.online</span>
-                    </td></tr>
-                  </table>
-                </td></tr>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width,initial-scale=1">
+              <meta name="color-scheme" content="light">
+              <meta name="supported-color-schemes" content="light">
+              <title>{{E(title)}} | HR Connect</title>
+              <style>
+                @media only screen and (max-width:620px) {
+                  .email-shell { padding:16px 8px !important; }
+                  .email-card { border-radius:14px !important; }
+                  .email-header { padding:20px !important; }
+                  .email-content { padding:26px 20px !important; }
+                  .email-footer { padding:18px 20px !important; }
+                  .email-title { font-size:24px !important; }
+                  .email-button { display:block !important; text-align:center !important; }
+                }
+              </style>
+            </head>
+            <body style="margin:0;padding:0;background:#eff6ff;color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Tahoma,sans-serif;-webkit-text-size-adjust:100%;text-size-adjust:100%">
+              <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">{{E(previewText)}}&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" class="email-shell" style="width:100%;background:#eff6ff;padding:32px 12px">
+                <tr>
+                  <td align="center">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" class="email-card" style="width:100%;max-width:620px;background:#ffffff;border:1px solid #dbeafe;border-radius:18px;overflow:hidden;box-shadow:0 14px 35px rgba(15,23,42,.08)">
+                      <tr>
+                        <td class="email-header" style="padding:24px 30px;background:#0c4a6e;border-bottom:4px solid #38bdf8">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                            <tr>
+                              <td width="52" valign="middle">
+                                <table role="presentation" width="44" height="44" cellspacing="0" cellpadding="0" border="0" style="width:44px;height:44px;background:#ffffff;border-radius:12px">
+                                  <tr><td align="center" valign="middle" style="font-size:23px;line-height:44px;font-weight:800;color:#0c4a6e">H</td></tr>
+                                </table>
+                              </td>
+                              <td valign="middle">
+                                <div style="font-size:21px;line-height:1.2;font-weight:800;letter-spacing:-.3px;color:#ffffff">HR Connect</div>
+                                <div style="margin-top:4px;font-size:12px;line-height:1.4;color:#bae6fd">Kết nối đúng người, đúng cơ hội</div>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="email-content" style="padding:36px 34px 34px;font-size:15px;line-height:1.7;color:#334155">
+                          <h1 class="email-title" style="margin:0 0 20px;font-size:28px;line-height:1.3;letter-spacing:-.5px;color:#0f172a">{{E(title)}}</h1>
+                          {{content}}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="email-footer" style="padding:20px 34px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:12px;line-height:1.65;color:#64748b">
+                          <strong style="color:#334155">HR Connect</strong> · Email thông báo tự động, vui lòng không trả lời.<br>
+                          <a href="https://www.hrconnectvn.online" style="color:#2563eb;text-decoration:none">www.hrconnectvn.online</a>
+                        </td>
+                      </tr>
+                    </table>
+                    <div style="padding:18px 12px 0;font-size:11px;line-height:1.5;color:#64748b">Nền tảng tuyển dụng và kết nối cơ hội nghề nghiệp.</div>
+                  </td>
+                </tr>
               </table>
             </body>
             </html>
@@ -393,13 +430,13 @@ public static class HrConnectEmailTemplates
         $"<p style=\"margin:0 0 16px\">Chào <strong>{E(string.IsNullOrWhiteSpace(name) ? "bạn" : name.Trim())}</strong>,</p>";
 
     private static string OtpBox(string otp) =>
-        $"<div style=\"margin:22px 0;padding:18px;text-align:center;background:#f1f5f2;border:1px solid #dbe7de;border-radius:10px\"><span style=\"font-size:32px;font-weight:700;letter-spacing:8px;color:#183c29\">{E(otp)}</span></div>";
+        $"<div style=\"margin:24px 0;padding:20px 16px;text-align:center;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px\"><div style=\"margin-bottom:6px;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:#1d4ed8\">Mã xác thực</div><span style=\"font-size:34px;line-height:1.2;font-weight:800;letter-spacing:8px;color:#0c4a6e\">{E(otp)}</span></div>";
 
     private static string SecurityNote(string text) =>
-        $"<div style=\"margin-top:22px;padding:14px 16px;background:#f8fafc;border-radius:8px;font-size:13px;color:#475569\">{E(text)}</div>";
+        $"<div style=\"margin-top:22px;padding:15px 17px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;line-height:1.6;color:#475569\"><strong style=\"display:block;margin-bottom:3px;color:#334155\">Lưu ý bảo mật</strong>{E(text)}</div>";
 
     private static string Button(string label, string url) =>
-        $"<div style=\"margin:24px 0\"><a href=\"{E(url)}\" style=\"display:inline-block;padding:12px 20px;background:#2f6a46;color:#ffffff;text-decoration:none;font-weight:700;border-radius:7px\">{E(label)}</a></div>";
+        $"<div style=\"margin:26px 0\"><a class=\"email-button\" href=\"{E(url)}\" style=\"display:inline-block;padding:13px 22px;background:#2563eb;color:#ffffff;text-decoration:none;font-size:15px;line-height:1.3;font-weight:700;border-radius:9px;box-shadow:0 5px 12px rgba(37,99,235,.22)\">{E(label)} &nbsp;&rarr;</a></div>";
 
     private static string E(string value) => WebUtility.HtmlEncode(value);
 
