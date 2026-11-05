@@ -44,11 +44,11 @@ services:
     env_file:
       - ${BACKEND_ENV_FILE:-/opt/hrconnect/deploy/env/backend.env}
     environment:
-      - DOTNET_GCHeapHardLimitPercent=50
+      - DOTNET_GCHeapHardLimitPercent=70
     ports:
       - "127.0.0.1:${BACKEND_HOST_PORT:?BACKEND_HOST_PORT is required}:8080"
-    mem_limit: 800m
-    cpus: 1.0
+    mem_limit: 1400m
+    cpus: 1.5
     depends_on:
       ai-v2:
         condition: service_healthy

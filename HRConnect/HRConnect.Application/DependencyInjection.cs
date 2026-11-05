@@ -18,7 +18,10 @@ public static class DependencyInjection
         services.AddScoped<ISubmissionConsentExpiryService, SubmissionConsentExpiryService>();
         services.AddScoped<IFinalizeIdentityReviewedSubmissionService, FinalizeIdentityReviewedSubmissionService>();
         services.AddScoped<IOfferExpiryService, OfferExpiryService>();
-        services.AddScoped<HRConnect.Application.Common.Settings.IAdminBusinessSettings, HRConnect.Application.Features.Settings.BusinessSettingsService>();
+        services.AddScoped<HRConnect.Application.Common.Settings.IAdminBusinessSettings>(sp =>
+            new HRConnect.Application.Features.Settings.BusinessSettingsService(
+                sp.GetRequiredService<HRConnect.Application.Common.Interfaces.Repositories.ISystemSettingRepository>(),
+                enableSharedCache: true));
         services.AddScoped<HRConnect.Application.Features.Finance.Common.IPlacementFinanceService, HRConnect.Application.Features.Finance.Common.PlacementFinanceService>();
         services.AddScoped<HRConnect.Application.Common.Interfaces.IAppNotifier, HRConnect.Application.Common.Services.AppNotifier>();
         services.AddScoped<HRConnect.Application.Features.Finance.Common.IWarrantyProgressService, HRConnect.Application.Features.Finance.Common.WarrantyProgressService>();

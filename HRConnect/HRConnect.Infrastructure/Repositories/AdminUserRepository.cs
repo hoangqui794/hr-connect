@@ -80,5 +80,6 @@ public sealed class AdminUserRepository : IAdminUserRepository
     public void Update(AppUser user)
     {
         _context.AppUsers.Update(user);
+        HRConnect.Infrastructure.Authentication.ActiveAuthorizationClaimsTransformation.InvalidateCache();
     }
 }

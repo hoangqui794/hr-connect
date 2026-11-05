@@ -14,6 +14,7 @@ import active-upstreams.caddy
 
 api.hrconnectvn.online {
 	import security_headers
+	encode zstd gzip
 
 	@avatar_uploads {
 		path /api/v1/users/me/avatar /api/v1/users/avatar
@@ -66,6 +67,7 @@ api.hrconnectvn.online {
 
 ai.hrconnectvn.online {
 	import security_headers
+	encode zstd gzip
 
 	@match_file {
 		path /api/v1/match-file

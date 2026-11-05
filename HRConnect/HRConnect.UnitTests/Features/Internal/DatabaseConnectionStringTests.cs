@@ -27,6 +27,8 @@ public class DatabaseConnectionStringTests
         builder.Username.Should().Be("app@x");
         builder.Password.Should().Be("p:ss");
         builder.SslMode.Should().Be(SslMode.Require);
+        builder.KeepAlive.Should().Be(30);
+        builder.MinPoolSize.Should().Be(5);
     }
 
     [Fact]

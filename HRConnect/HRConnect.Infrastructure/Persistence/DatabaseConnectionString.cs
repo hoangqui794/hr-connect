@@ -35,7 +35,7 @@ public static class DatabaseConnectionString
                 "Kiểm tra DATABASE_URL / ConnectionStrings__DefaultConnection trên máy chủ (có thể bị ghi đè bằng giá trị local).");
         }
 
-        return connectionString;
+        return ApplyRemotePoolingDefaults(connectionString);
     }
 
     public static string FromUrl(string url)
@@ -43,7 +43,7 @@ public static class DatabaseConnectionString
         if (!url.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) &&
             !url.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
         {
-            return url; // already in Npgsql key=value form
+            return ApplyRemotePoolingDefaults(url); // already in Npgsql key=value form
         }
 
         var uri = new Uri(url);
@@ -74,7 +74,47 @@ public static class DatabaseConnectionString
             builder.SslMode = SslMode.Require; // managed Postgres needs TLS
         }
 
+        ConfigureRemotePool(builder);
         return builder.ConnectionString;
+    }
+
+    private static string ApplyRemotePoolingDefaults(string connectionString)
+    {
+        try
+        {
+            var builder = new NpgsqlConnectionStringBuilder(connectionString);
+            if (!IsLocal(builder.Host))
+            {
+                ConfigureRemotePool(builder);
+                return builder.ConnectionString;
+            }
+        }
+        catch (ArgumentException)
+        {
+            // Let Npgsql report malformed connection strings downstream.
+        }
+
+        return connectionString;
+    }
+
+    private static void ConfigureRemotePool(NpgsqlConnectionStringBuilder builder)
+    {
+        if (IsLocal(builder.Host))
+        {
+            return;
+        }
+
+        // Keep warm TLS connections open for cross-region managed PostgreSQL (e.g. Supabase)
+        // to avoid paying 300-500ms TCP+TLS handshake overhead after brief UI idle periods.
+        if (builder.KeepAlive == 0)
+        {
+            builder.KeepAlive = 30;
+        }
+
+        if (builder.MinimumPoolSize == 0)
+        {
+            builder.MinimumPoolSize = 5;
+        }
     }
 
     private static bool PointsToLocalhost(string connectionString)

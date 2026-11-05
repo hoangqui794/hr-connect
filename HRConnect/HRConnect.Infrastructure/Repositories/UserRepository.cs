@@ -101,5 +101,34 @@ public class UserRepository : IUserRepository
     public void Update(AppUser user)
     {
         _context.AppUsers.Update(user);
+        HRConnect.Infrastructure.Authentication.ActiveAuthorizationClaimsTransformation.InvalidateCache();
+    }
+
+    public async Task<UserAuthorizationSnapshot?> GetAuthorizationSnapshotAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var snapshot = await _context.AppUsers
+            .AsNoTracking()
+            .Where(u => u.UserId == userId)
+            .Select(u => new
+            {
+                u.Status,
+                Roles = u.UserRoleUsers
+                    .Where(ur => ur.Status == "ACTIVE" && ur.Role.IsActive)
+                    .Select(ur => ur.Role.Code)
+                    .Distinct()
+                    .ToList(),
+                Permissions = u.UserRoleUsers
+                    .Where(ur => ur.Status == "ACTIVE" && ur.Role.IsActive)
+                    .SelectMany(ur => ur.Role.RolePermissions)
+                    .Where(rp => rp.Permission.IsActive)
+                    .Select(rp => rp.Permission.Code)
+                    .Distinct()
+                    .ToList()
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return snapshot == null
+            ? null
+            : new UserAuthorizationSnapshot(snapshot.Status, snapshot.Roles, snapshot.Permissions);
     }
 }

@@ -2,6 +2,11 @@ using HRConnect.Domain.Entities;
 
 namespace HRConnect.Application.Common.Interfaces.Repositories;
 
+public sealed record UserAuthorizationSnapshot(
+    string Status,
+    IReadOnlyList<string> Roles,
+    IReadOnlyList<string> Permissions);
+
 public interface IUserRepository
 {
     Task<bool> ExistsByEmailAsync(string normalizedEmail, CancellationToken cancellationToken = default);
@@ -21,6 +26,8 @@ public interface IUserRepository
     Task<IReadOnlyList<Guid>> GetActiveUserIdsByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default);
 
     Task<AppUser?> GetByIdWithRolesAndPermissionsAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<UserAuthorizationSnapshot?> GetAuthorizationSnapshotAsync(Guid userId, CancellationToken cancellationToken = default)
+        => Task.FromResult<UserAuthorizationSnapshot?>(null);
 
     Task AddAsync(AppUser user, CancellationToken cancellationToken = default);
 
