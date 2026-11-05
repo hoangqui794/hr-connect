@@ -90,6 +90,7 @@ public partial class ApplicationDbContext
             entity.Property(e => e.FillWindowDays).HasColumnName("fill_window_days");
             entity.Property(e => e.OpenedAt).HasColumnName("opened_at");
             entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.ExtendedAt).HasColumnName("extended_at");
             entity.Property(e => e.FilledByPlacementId).HasColumnName("filled_by_placement_id");
             entity.Property(e => e.ClosedAt).HasColumnName("closed_at");
             entity.Property(e => e.ClosedBy).HasColumnName("closed_by");

@@ -906,10 +906,11 @@ public class Mf05FinanceTests
         (await _context.ReplacementSlots.SingleAsync()).Status.Should().Be(ReplacementSlotStates.Expired);
     }
 
-    private WarrantyProgressService ProgressWithRefundPercent(decimal percent)
+    private WarrantyProgressService ProgressWithRefundPercent(decimal percent, int extensionDays = 0)
     {
         var settings = new Mock<IAdminBusinessSettings>();
         settings.Setup(s => s.GetDecimalAsync(BusinessSettingKeys.ReplacementRefundPercent, It.IsAny<CancellationToken>())).ReturnsAsync(percent);
+        settings.Setup(s => s.GetIntAsync(BusinessSettingKeys.ReplacementExtensionDays, It.IsAny<CancellationToken>())).ReturnsAsync(extensionDays);
         settings.Setup(s => s.GetIntAsync(BusinessSettingKeys.HeadhuntPaymentDueDays, It.IsAny<CancellationToken>())).ReturnsAsync(20);
         return new WarrantyProgressService(Repository, UnitOfWork, _audit.Object, settings: settings.Object);
     }
@@ -919,6 +920,44 @@ public class Mf05FinanceTests
         var (placement, _) = await ResignationReportedAsync(feePaid: true);
         await ConfirmResignationAsync(placement.PlacementId);
         return await _context.ReplacementSlots.SingleAsync();
+    }
+
+    [Fact]
+    public async Task Unfilled_slot_is_extended_once_before_it_can_expire_and_refund()
+    {
+        var slot = await ExpiredSlotReadyAsync();
+        var firstDeadline = slot.ExpiresAt!.Value;
+        var progress = ProgressWithRefundPercent(30m, extensionDays: 15);
+
+        (await progress.ExpireReplacementSlotAsync(slot.ReplacementSlotId, firstDeadline)).Should().BeTrue();
+
+        var extended = await _context.ReplacementSlots.SingleAsync();
+        extended.Status.Should().Be(ReplacementSlotStates.Open);
+        extended.ExtendedAt.Should().Be(firstDeadline);
+        extended.ExpiresAt.Should().Be(firstDeadline.AddDays(15));
+        (await _context.ServiceFees.AnyAsync(f => f.Kind == ServiceFeeKinds.ReplacementRefund)).Should().BeFalse();
+        _audit.Verify(a => a.AddAsync(It.Is<AuditEntry>(e => e.Action == AuditActions.ReplacementSlotExtended), It.IsAny<CancellationToken>()), Times.Once);
+        (await Repository.GetExpiredReplacementSlotIdsAsync(firstDeadline.AddDays(1), 10)).Should().NotContain(slot.ReplacementSlotId);
+
+        (await progress.ExpireReplacementSlotAsync(slot.ReplacementSlotId, firstDeadline.AddDays(14))).Should().BeFalse();
+        (await progress.ExpireReplacementSlotAsync(slot.ReplacementSlotId, firstDeadline.AddDays(15))).Should().BeTrue();
+
+        var expired = await _context.ReplacementSlots.SingleAsync();
+        expired.Status.Should().Be(ReplacementSlotStates.Expired);
+        expired.ExtendedAt.Should().Be(firstDeadline);
+        (await _context.ServiceFees.CountAsync(f => f.Kind == ServiceFeeKinds.ReplacementRefund)).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Extension_days_of_zero_expires_the_slot_at_the_first_deadline()
+    {
+        var slot = await ExpiredSlotReadyAsync();
+
+        (await ProgressWithRefundPercent(30m, extensionDays: 0).ExpireReplacementSlotAsync(slot.ReplacementSlotId, slot.ExpiresAt!.Value)).Should().BeTrue();
+
+        var expired = await _context.ReplacementSlots.SingleAsync();
+        expired.Status.Should().Be(ReplacementSlotStates.Expired);
+        expired.ExtendedAt.Should().BeNull();
     }
 
     [Fact]

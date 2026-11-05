@@ -4738,6 +4738,10 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
+                    b.Property<DateTime?>("ExtendedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("extended_at");
+
                     b.Property<int>("FillWindowDays")
                         .HasColumnType("integer")
                         .HasColumnName("fill_window_days");

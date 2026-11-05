@@ -285,8 +285,9 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
               </div>
             )}
             {slot.status === 'EXPIRED' && (
-              <span className="text-xs text-red-600 font-medium">Đã hết hạn sau {slot.fillWindowDays} ngày</span>
+              <span className="text-xs text-red-600 font-medium">Đã hết hạn</span>
             )}
+            {slot.extendedAt && <div className="mt-0.5 text-xs text-slate-500">Đã gia hạn ngày {date(slot.extendedAt)}</div>}
           </div>
         );
       },

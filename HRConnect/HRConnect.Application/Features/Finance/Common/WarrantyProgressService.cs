@@ -206,6 +206,11 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
             return false;
         }
 
+        if (await TryExtendReplacementSlotAsync(slot, now, cancellationToken))
+        {
+            return true;
+        }
+
         slot.Status = ReplacementSlotStates.Expired;
         slot.ClosedAt = now;
         slot.ConcurrencyToken = Guid.NewGuid();
@@ -228,6 +233,44 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
 
         await ReplacementSlotLifecycle.NotifyClientAsync(slot.Job, slot, "Suất tuyển người thay thế đã hết hạn",
             message, now, _financeRepository, _notificationRepository, cancellationToken);
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// A slot gets one more window before it can expire, so a refund is the last resort.
+    /// </summary>
+    private async Task<bool> TryExtendReplacementSlotAsync(ReplacementSlot slot, DateTime now, CancellationToken cancellationToken)
+    {
+        if (_settings == null || slot.ExtendedAt != null)
+        {
+            return false;
+        }
+
+        var days = await _settings.GetIntAsync(BusinessSettingKeys.ReplacementExtensionDays, cancellationToken);
+        if (days <= 0)
+        {
+            return false;
+        }
+
+        var previousExpiry = slot.ExpiresAt;
+        slot.ExtendedAt = now;
+        slot.ExpiresAt = now.AddDays(days);
+        slot.ConcurrencyToken = Guid.NewGuid();
+        slot.UpdatedAt = now;
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.ReplacementSlotExtended,
+            EntityType = "REPLACEMENT_SLOT",
+            EntityId = slot.ReplacementSlotId,
+            ActorType = AuditActorTypes.Service,
+            OldValues = new { expiresAt = previousExpiry },
+            NewValues = new { slot.ExpiresAt, extensionDays = days },
+        }, cancellationToken);
+        await ReplacementSlotLifecycle.NotifyClientAsync(slot.Job, slot, "Suất tuyển người thay thế được gia hạn",
+            $"Chưa có người đi làm cho job \"{slot.Job.Title}\", HR Connect gia hạn suất thay thế miễn phí tới {slot.ExpiresAt:dd/MM/yyyy}.",
+            now, _financeRepository, _notificationRepository, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return true;

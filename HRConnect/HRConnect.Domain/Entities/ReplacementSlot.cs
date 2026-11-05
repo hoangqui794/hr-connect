@@ -3,7 +3,7 @@ namespace HRConnect.Domain.Entities;
 /// <summary>
 /// MF-05: one free replacement hire granted when a HEADHUNT_COD placement leaves during warranty.
 /// One slot per placement and per service fee (only one replacement per fee). It opens only once the
-/// Client has paid the fee and expires after <see cref="FillWindowDays"/>.
+/// Client has paid the fee and expires after <see cref="FillWindowDays"/>, extended once if still unfilled.
 /// Design: docs/main-flows.md (MF-05, suất thay thế).
 /// </summary>
 public partial class ReplacementSlot
@@ -27,6 +27,9 @@ public partial class ReplacementSlot
     public DateTime? OpenedAt { get; set; }
 
     public DateTime? ExpiresAt { get; set; }
+
+    /// <summary>Set when the slot used its one automatic extension (mf05.replacement.extension_days).</summary>
+    public DateTime? ExtendedAt { get; set; }
 
     public Guid? FilledByPlacementId { get; set; }
 

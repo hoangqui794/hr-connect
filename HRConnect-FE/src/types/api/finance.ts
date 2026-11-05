@@ -168,6 +168,7 @@ export interface ReplacementSlotDto {
   fillWindowDays: number;
   openedAt: string | null;
   expiresAt: string | null;
+  extendedAt?: string | null;
   filledByPlacementId: string | null;
   replacementCandidateName: string | null;
   closedAt: string | null;
