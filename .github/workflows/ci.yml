@@ -109,7 +109,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Node.js 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -154,7 +154,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Node.js 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -196,7 +196,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Node.js 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -295,7 +295,7 @@ jobs:
           test "$count" -eq 0 || { echo "::error::$count High/Critical .NET vulnerabilities found"; exit 1; }
 
       - name: Set up Node.js 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
