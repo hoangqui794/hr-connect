@@ -1,7 +1,8 @@
 /**
  * @file CandidateOfferPage.tsx
  * @description One offer for the Candidate (mockup 03/11) on GET /offers/{id}: its terms and the answer.
- * The answer section shows only while the offer can still be answered.
+ * The answer section shows only while the offer can still be answered. Before accepting, it asks the backend
+ * how this offer affects the Candidate's other full-time offers and placement (GET /offers/{id}/acceptance-impact).
  */
 import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -11,6 +12,7 @@ import dayjs from 'dayjs';
 import { CompanyMark } from '@/features/landing/components/SiteParts';
 import { isCandidateOfferRespondable, mf04Api } from '@/services/api/mf04Api';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
+import type { OfferAcceptanceAction } from '@/types/api/mf04';
 import { candidateOfferStatus } from './mf02Labels';
 import { candidateKeys } from './candidate/candidateKeys';
 
@@ -37,6 +39,8 @@ const fileNameOf = (url: string) => {
   }
 };
 
+const FULL_TIME_CONFLICT_CODES = ['ACCEPTED_FULL_TIME_OFFER_EXISTS', 'ACTIVE_FULL_TIME_PLACEMENT_EXISTS', 'ACTIVE_FULL_TIME_PLACEMENT_CONFLICT'];
+
 const salaryTerms = (basis?: string | null, period?: string | null) =>
   [
     { GROSS: 'Gross', NET: 'Net' }[String(basis).toUpperCase()],
@@ -50,6 +54,7 @@ export const CandidateOfferPage: React.FC = () => {
   const [choice, setChoice] = useState<'ACCEPTED' | 'DECLINED'>('ACCEPTED');
   const [reason, setReason] = useState('');
   const [reasonMissing, setReasonMissing] = useState(false);
+  const [pendingOffersAction, setPendingOffersAction] = useState<OfferAcceptanceAction>('KEEP_OTHER_PENDING_OFFERS');
 
   const detail = useQuery({
     queryKey: ['candidate-offer', offerId],
@@ -61,6 +66,16 @@ export const CandidateOfferPage: React.FC = () => {
     queryFn: () => mf04Api.getOffers({ applicationId }),
     enabled: Boolean(applicationId),
   });
+
+  const impact = useQuery({
+    queryKey: ['candidate-offer-impact', offerId],
+    queryFn: () => mf04Api.getOfferAcceptanceImpact(offerId),
+    enabled: Boolean(detail.data && isCandidateOfferRespondable(detail.data)),
+  });
+  const conflict = impact.data;
+  // Switching away from an accepted full-time offer is the only way to accept this one, so nothing to choose.
+  const replacesAccepted = Boolean(conflict?.isFullTime && conflict.acceptedFullTimeOffer && !conflict.activeFullTimePlacement);
+  const acceptanceAction: OfferAcceptanceAction = replacesAccepted ? 'REPLACE_ACCEPTED_FULL_TIME_OFFER' : pendingOffersAction;
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['candidate-offer', offerId] });
@@ -75,13 +90,20 @@ export const CandidateOfferPage: React.FC = () => {
       response: choice,
       declineReason: choice === 'DECLINED' ? reason.trim() : undefined,
       concurrencyToken: detail.data!.concurrencyToken,
+      acceptanceAction: choice === 'ACCEPTED' ? acceptanceAction : undefined,
     }),
     onSuccess: (result) => {
       message.success(result?.message || 'Đã gửi trả lời.');
       refresh();
     },
     onError: (error) => {
-      if (getApiError(error, '').status === 409) {
+      const failure = getApiError(error, '');
+      if (failure.status === 409 && FULL_TIME_CONFLICT_CODES.includes(failure.code ?? '')) {
+        message.error(failure.message || 'Không thể chấp nhận thư mời do trùng công việc toàn thời gian.');
+        void impact.refetch();
+        return;
+      }
+      if (failure.status === 409) {
         message.warning('Offer vừa thay đổi. Đang tải lại dữ liệu.');
         refresh();
         return;
@@ -115,6 +137,8 @@ export const CandidateOfferPage: React.FC = () => {
   const daysLeft = offer.expiryDate ? dayjs(offer.expiryDate).startOf('day').diff(dayjs().startOf('day'), 'day') : null;
   const previous = (versions.data ?? []).filter((item) => item.offerVersion < offer.offerVersion).sort((a, b) => b.offerVersion - a.offerVersion)[0];
   const declining = choice === 'DECLINED';
+  const acceptBlocked = !declining && (impact.isLoading || impact.isError || Boolean(conflict?.activeFullTimePlacement));
+  const pendingFullTime = conflict?.isFullTime && !conflict.activeFullTimePlacement && !conflict.acceptedFullTimeOffer ? conflict.otherPendingFullTimeOffers : [];
 
   const submit = () => {
     if (declining && !reason.trim()) {
@@ -206,8 +230,40 @@ export const CandidateOfferPage: React.FC = () => {
               </span>
             </label>
           </fieldset>
+          {!declining && impact.isError && (
+            <p role="alert" className="m-0 mt-3 rounded-md border border-solid border-[#FECACA] bg-[#FEF2F2] p-3 text-[13px] text-[#991B1B]">
+              Chưa kiểm tra được các thư mời khác của bạn nên chưa thể chấp nhận.{' '}
+              <button type="button" onClick={() => impact.refetch()} className={`${FONT} cursor-pointer border-0 bg-transparent p-0 text-[13px] font-semibold ${LINK}`}>Thử lại</button>
+            </p>
+          )}
+          {!declining && conflict?.activeFullTimePlacement && (
+            <p role="alert" className="m-0 mt-3 rounded-md border border-solid border-[#FECACA] bg-[#FEF2F2] p-3 text-[13px] text-[#991B1B]">
+              Bạn đang có công việc toàn thời gian: <b>{conflict.activeFullTimePlacement.jobTitle}</b> tại <b>{conflict.activeFullTimePlacement.companyName}</b>. Vui lòng liên hệ bộ phận hỗ trợ nếu thông tin này không còn chính xác.
+            </p>
+          )}
+          {!declining && replacesAccepted && conflict?.acceptedFullTimeOffer && (
+            <p className="m-0 mt-3 rounded-md border border-solid border-[#FED7AA] bg-[#FFF7ED] p-3 text-[13px] text-[#9A3412]">
+              <b>Bạn đã chấp nhận một thư mời toàn thời gian khác</b>: {conflict.acceptedFullTimeOffer.jobTitle} tại {conflict.acceptedFullTimeOffer.companyName}. Gửi trả lời này sẽ chuyển sang thư mời mới: hồ sơ cũ được rút và nhà tuyển dụng cũ nhận thông báo, nhưng không được biết tên công ty mới.
+            </p>
+          )}
+          {!declining && pendingFullTime.length > 0 && (
+            <fieldset className="m-0 mt-3 min-w-0 rounded-md border border-solid border-[#BAE6FD] bg-[#F0F9FF] p-3 text-[13px]">
+              <legend className="float-left mb-1 w-full p-0 font-semibold text-[#075985]">Bạn còn {pendingFullTime.length} thư mời toàn thời gian đang chờ trả lời</legend>
+              <ul className="m-0 mb-2 clear-both list-disc pl-5 text-[#4B5563]">
+                {pendingFullTime.map((item) => <li key={item.offerId}>{item.jobTitle} – {item.companyName}</li>)}
+              </ul>
+              <label className="flex cursor-pointer items-center gap-2 py-1">
+                <input type="radio" name="pendingOffers" checked={pendingOffersAction === 'KEEP_OTHER_PENDING_OFFERS'} onChange={() => setPendingOffersAction('KEEP_OTHER_PENDING_OFFERS')} className="h-4 w-4 shrink-0 cursor-pointer accent-[#0369A1]" />
+                Chấp nhận và vẫn giữ các thư mời đang chờ
+              </label>
+              <label className="flex cursor-pointer items-center gap-2 py-1">
+                <input type="radio" name="pendingOffers" checked={pendingOffersAction === 'WITHDRAW_OTHER_PENDING_FULL_TIME_OFFERS'} onChange={() => setPendingOffersAction('WITHDRAW_OTHER_PENDING_FULL_TIME_OFFERS')} className="h-4 w-4 shrink-0 cursor-pointer accent-[#0369A1]" />
+                Chấp nhận và rút các thư mời toàn thời gian đang chờ
+              </label>
+            </fieldset>
+          )}
           <div className="mt-[18px] flex justify-end">
-            <button type="button" disabled={respond.isPending} onClick={submit} className={`${FONT} h-11 cursor-pointer rounded-md border-0 bg-[#C2410C] px-[22px] text-[14px] font-semibold text-white hover:bg-[#9A3412] disabled:cursor-not-allowed disabled:bg-[#9CA3AF]`}>
+            <button type="button" disabled={respond.isPending || acceptBlocked} onClick={submit} className={`${FONT} h-11 cursor-pointer rounded-md border-0 bg-[#C2410C] px-[22px] text-[14px] font-semibold text-white hover:bg-[#9A3412] disabled:cursor-not-allowed disabled:bg-[#9CA3AF]`}>
               {respond.isPending ? 'Đang gửi…' : 'Gửi trả lời'}
             </button>
           </div>

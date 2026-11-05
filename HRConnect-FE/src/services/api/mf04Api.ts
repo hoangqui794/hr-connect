@@ -19,6 +19,7 @@ import type {
   RespondOfferRequest,
   CandidateInterviewSummaryDto,
   CandidateOfferSummaryDto,
+  OfferAcceptanceImpact,
 } from '@/types/api/mf04';
 
 dayjs.extend(isSameOrAfter);
@@ -233,5 +234,17 @@ export const mf04Api = {
       payload
     );
     return response.data;
+  },
+
+  /**
+   * GET /api/v1/offers/:id/acceptance-impact
+   * Kiểm tra các offer/placement toàn thời gian khác trước khi Candidate chấp nhận.
+   */
+  async getOfferAcceptanceImpact(offerId: string): Promise<OfferAcceptanceImpact> {
+    const response = await apiClient.get<{
+      success: boolean;
+      data: OfferAcceptanceImpact;
+    }>(`/offers/${offerId}/acceptance-impact`);
+    return response.data.data;
   },
 };

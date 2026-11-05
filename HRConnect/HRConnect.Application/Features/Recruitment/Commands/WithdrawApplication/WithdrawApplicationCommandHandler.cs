@@ -71,9 +71,12 @@ public class WithdrawApplicationCommandHandler : IRequestHandler<WithdrawApplica
         }
 
         var withdrawnOfferCount = 0;
-        foreach (var offer in application.Offers.Where(o => o.Status is OfferStates.Draft or OfferStates.Sent))
+        foreach (var offer in application.Offers.Where(o =>
+                     o.Status is OfferStates.Draft or OfferStates.Sent or OfferStates.Accepted))
         {
             offer.Status = OfferStates.Withdrawn;
+            offer.DeclineReason = reason;
+            offer.RespondedAt ??= now;
             offer.UpdatedAt = now;
             offer.ConcurrencyToken = Guid.NewGuid();
             withdrawnOfferCount++;

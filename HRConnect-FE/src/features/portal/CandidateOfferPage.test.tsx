@@ -38,6 +38,24 @@ const renderPage = () => {
   );
 };
 
+const noConflict = {
+  targetOfferId: 'off-2',
+  employmentType: 'FULL_TIME',
+  isFullTime: true,
+  acceptedFullTimeOffer: null,
+  otherPendingFullTimeOffers: [],
+  activeFullTimePlacement: null,
+  allowedActions: ['KEEP_OTHER_PENDING_OFFERS'],
+};
+const otherOffer = (jobTitle: string, companyName: string, status = 'ACCEPTED') => ({
+  offerId: `other-${jobTitle}`,
+  applicationId: 'old-app',
+  jobTitle,
+  companyName,
+  employmentType: 'FULL_TIME',
+  status,
+});
+
 describe('CandidateOfferPage', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -46,6 +64,7 @@ describe('CandidateOfferPage', () => {
       { offerId: 'off-1', offerVersion: 1, salary: 30_000_000, currencyCode: 'VND', status: 'WITHDRAWN', concurrencyToken: 'x', canRespond: false },
       { offerId: 'off-2', offerVersion: 2, salary: 32_000_000, currencyCode: 'VND', status: 'SENT', concurrencyToken: 'y', canRespond: true },
     ]);
+    vi.spyOn(mf04Api, 'getOfferAcceptanceImpact').mockResolvedValue(noConflict as never);
   });
 
   it('shows the terms and which version this one replaces', async () => {
@@ -62,9 +81,69 @@ describe('CandidateOfferPage', () => {
     const respond = vi.spyOn(mf04Api, 'respondOffer').mockResolvedValue({ success: true, message: 'Đã chấp nhận' });
     renderPage();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Gửi trả lời' }));
+    const send = await screen.findByRole('button', { name: 'Gửi trả lời' });
+    await waitFor(() => expect(send).toBeEnabled());
+    fireEvent.click(send);
 
-    await waitFor(() => expect(respond).toHaveBeenCalledWith('off-2', { response: 'ACCEPTED', declineReason: undefined, concurrencyToken: 'tok-2' }));
+    await waitFor(() => expect(respond).toHaveBeenCalledWith('off-2', { response: 'ACCEPTED', declineReason: undefined, concurrencyToken: 'tok-2', acceptanceAction: 'KEEP_OTHER_PENDING_OFFERS' }));
+  });
+
+  it('switches from an offer already accepted, after saying so', async () => {
+    vi.mocked(mf04Api.getOfferAcceptanceImpact).mockResolvedValue({ ...noConflict, acceptedFullTimeOffer: otherOffer('Backend Engineer', 'Công ty cũ') } as never);
+    const respond = vi.spyOn(mf04Api, 'respondOffer').mockResolvedValue({ success: true, message: 'Đã chuyển' });
+    renderPage();
+
+    expect(await screen.findByText(/Backend Engineer tại Công ty cũ/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Gửi trả lời' }));
+
+    await waitFor(() => expect(respond).toHaveBeenCalledWith('off-2', expect.objectContaining({ acceptanceAction: 'REPLACE_ACCEPTED_FULL_TIME_OFFER' })));
+  });
+
+  it('lets the candidate withdraw other pending full-time offers', async () => {
+    vi.mocked(mf04Api.getOfferAcceptanceImpact).mockResolvedValue({ ...noConflict, otherPendingFullTimeOffers: [otherOffer('QA', 'VNG', 'SENT')] } as never);
+    const respond = vi.spyOn(mf04Api, 'respondOffer').mockResolvedValue({ success: true, message: 'ok' });
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('radio', { name: /rút các thư mời toàn thời gian/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Gửi trả lời' }));
+
+    await waitFor(() => expect(respond).toHaveBeenCalledWith('off-2', expect.objectContaining({ acceptanceAction: 'WITHDRAW_OTHER_PENDING_FULL_TIME_OFFERS' })));
+  });
+
+  it('blocks accepting during an active full-time placement, but not refusing', async () => {
+    vi.mocked(mf04Api.getOfferAcceptanceImpact).mockResolvedValue({ ...noConflict, activeFullTimePlacement: otherOffer('Tester', 'Công ty hiện tại', 'PLACED') } as never);
+    renderPage();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Công ty hiện tại');
+    expect(screen.getByRole('button', { name: 'Gửi trả lời' })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('radio', { name: /Từ chối offer/ }));
+    expect(screen.getByRole('button', { name: 'Gửi trả lời' })).toBeEnabled();
+  });
+
+  it('does not allow accepting when the check fails, and can retry', async () => {
+    vi.mocked(mf04Api.getOfferAcceptanceImpact).mockRejectedValueOnce(new Error('Lỗi'));
+    renderPage();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Chưa kiểm tra được');
+    expect(screen.getByRole('button', { name: 'Gửi trả lời' })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Thử lại' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Gửi trả lời' })).toBeEnabled());
+  });
+
+  it('rechecks instead of reloading when a full-time conflict appears on sending', async () => {
+    const conflict = Object.assign(new Error('Conflict'), { isAxiosError: true, response: { status: 409, data: { message: 'Đã có offer toàn thời gian', errorCode: 'ACCEPTED_FULL_TIME_OFFER_EXISTS' } } });
+    vi.spyOn(mf04Api, 'respondOffer').mockRejectedValue(conflict);
+    renderPage();
+
+    const send = await screen.findByRole('button', { name: 'Gửi trả lời' });
+    await waitFor(() => expect(send).toBeEnabled());
+    fireEvent.click(send);
+
+    expect(await screen.findByText('Đã có offer toàn thời gian')).toBeInTheDocument();
+    await waitFor(() => expect(mf04Api.getOfferAcceptanceImpact).toHaveBeenCalledTimes(2));
+    expect(mf04Api.getOfferDetail).toHaveBeenCalledTimes(1);
   });
 
   it('asks for a reason before sending a refusal', async () => {
@@ -98,7 +177,9 @@ describe('CandidateOfferPage', () => {
     vi.spyOn(mf04Api, 'respondOffer').mockRejectedValue(conflict);
     renderPage();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Gửi trả lời' }));
+    const send = await screen.findByRole('button', { name: 'Gửi trả lời' });
+    await waitFor(() => expect(send).toBeEnabled());
+    fireEvent.click(send);
 
     expect(await screen.findByText(/Offer vừa thay đổi/)).toBeInTheDocument();
     await waitFor(() => expect(mf04Api.getOfferDetail).toHaveBeenCalledTimes(2));

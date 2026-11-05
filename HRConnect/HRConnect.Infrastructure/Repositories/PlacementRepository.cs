@@ -137,6 +137,30 @@ public class PlacementRepository : IPlacementRepository
             .FirstOrDefaultAsync(p => p.OfferId == offerId, cancellationToken);
     }
 
+    public async Task<Placement?> GetActiveFullTimeForCandidateAsync(
+        Guid candidateId,
+        Guid? excludeApplicationId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.Placements
+            .Include(p => p.Application)
+                .ThenInclude(a => a.Job)
+                    .ThenInclude(j => j.Company)
+            .Where(p =>
+                p.Application.CandidateId == candidateId &&
+                p.Status == HRConnect.Domain.Constants.PlacementStates.Started &&
+                p.Application.Job.EmploymentType == HRConnect.Application.Features.Jobs.Common.EmploymentTypes.FullTime);
+
+        if (excludeApplicationId.HasValue)
+        {
+            query = query.Where(p => p.ApplicationId != excludeApplicationId.Value);
+        }
+
+        return await query
+            .OrderByDescending(p => p.ConfirmedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task AddAsync(Placement placement, CancellationToken cancellationToken = default)
     {
         await _context.Placements.AddAsync(placement, cancellationToken);

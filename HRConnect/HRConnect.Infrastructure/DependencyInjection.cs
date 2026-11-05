@@ -147,6 +147,7 @@ public static class DependencyInjection
         services.AddScoped<IAffiliatePerformanceCalculationService, HRConnect.Application.Features.Reports.Common.AffiliatePerformanceCalculationService>();
         services.AddScoped<IAttributionRepository, AttributionRepository>();
         services.AddScoped<ICandidateCompanyTransactionLock, CandidateCompanyTransactionLock>();
+        services.AddScoped<ICandidateTransactionLock, CandidateTransactionLock>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IAdminApprovalService, HRConnect.Infrastructure.Services.Admin.AdminApprovalService>();
         services.AddScoped<IMf03ScoringTrigger, HRConnect.Infrastructure.Services.Integration.Mf03ScoringTrigger>();

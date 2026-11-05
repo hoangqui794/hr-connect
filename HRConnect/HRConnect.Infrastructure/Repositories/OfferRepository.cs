@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -139,6 +141,29 @@ public class OfferRepository : IOfferRepository
                 .ThenInclude(a => a.Candidate)
                     .ThenInclude(c => c.User)
             .FirstOrDefaultAsync(o => o.OfferId == offerId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Offer>> GetCandidateOffersForAcceptanceAsync(
+        Guid candidateId,
+        Guid excludeOfferId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.Offers
+            .Include(o => o.Application)
+                .ThenInclude(a => a.Job)
+                    .ThenInclude(j => j.Company)
+            .Include(o => o.Application)
+                .ThenInclude(a => a.Candidate)
+            .Include(o => o.Application)
+                .ThenInclude(a => a.Placement)
+            .Where(o =>
+                o.Application.CandidateId == candidateId &&
+                o.OfferId != excludeOfferId &&
+                o.Application.Job.EmploymentType == EmploymentTypes.FullTime &&
+                (o.Status == OfferStates.Sent || o.Status == OfferStates.Accepted))
+            .OrderByDescending(o => o.UpdatedAt)
+            .AsSplitQuery()
+            .ToListAsync(cancellationToken);
     }
 
     public async Task AddAsync(Offer offer, CancellationToken cancellationToken = default)

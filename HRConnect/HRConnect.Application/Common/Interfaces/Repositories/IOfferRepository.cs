@@ -28,6 +28,11 @@ public interface IOfferRepository
 
     Task<Offer?> GetByIdWithApplicationAsync(Guid offerId, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Offer>> GetCandidateOffersForAcceptanceAsync(
+        Guid candidateId,
+        Guid excludeOfferId,
+        CancellationToken cancellationToken = default);
+
     Task AddAsync(Offer offer, CancellationToken cancellationToken = default);
 
     void Update(Offer offer);
