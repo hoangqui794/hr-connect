@@ -269,9 +269,10 @@ export const AdminContactRequestsPage: React.FC = () => {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 112,
+      width: 170,
+      fixed: 'right',
       align: 'right',
-      className: 'w-28 text-right pr-4',
+      className: 'w-[170px] text-right pr-4',
       render: (_, record) => (
         <Space size="small">
           <Tooltip title="Xem chi tiết nội dung lời nhắn">
@@ -387,6 +388,7 @@ export const AdminContactRequestsPage: React.FC = () => {
                 onChange: handlePageChange,
                 showSizeChanger: false,
               }}
+              scroll={{ x: 1080 }}
               className="admin-soft-table w-full table-auto"
             />
           </Surface>

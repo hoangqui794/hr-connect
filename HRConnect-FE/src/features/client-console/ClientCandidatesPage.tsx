@@ -9,7 +9,7 @@
 import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { Alert, Button, Input, Select, Skeleton, Table, Tooltip } from 'antd';
+import { Alert, Button, Input, Select, Skeleton, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { AppstoreOutlined, ReloadOutlined, SearchOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -56,8 +56,6 @@ const SERVICES = [
   { value: 'HEADHUNT_COD', label: SERVICE_TYPE.HEADHUNT_COD },
   { value: 'CV_SOURCING', label: SERVICE_TYPE.CV_SOURCING },
 ];
-const SERVICE_SHORT: Record<string, string> = { CV_APPLICATION: 'AP', HEADHUNT_COD: 'HH', CV_SOURCING: 'SS' };
-
 /** Board columns: the active hiring stages, left to right. Closed ones stay in the list view. */
 const BOARD: { code: string; label: string; dot: string }[] = [
   { code: 'SUBMITTED', label: 'Mới nộp', dot: 'bg-orange-500' },
@@ -98,14 +96,14 @@ export const AiScore: React.FC<{ score: number | null; tier?: string | null; sta
     rounded >= 80 ? 'text-emerald-700' : rounded >= 60 ? 'text-blue-700' : rounded >= 40 ? 'text-amber-700' : 'text-slate-600';
 
   return (
-    <div className="inline-flex items-center gap-2 whitespace-nowrap" title={t?.label ? `Điểm AI: ${rounded}% (${t.label})` : `Điểm AI: ${rounded}%`}>
-      <div className={`${compact ? 'w-10' : 'w-16'} h-1.5 bg-slate-100 rounded-full overflow-hidden shrink-0`}>
+    <div className="inline-flex items-center gap-2.5 whitespace-nowrap" title={t?.label ? `Điểm AI: ${rounded}% (${t.label})` : `Điểm AI: ${rounded}%`}>
+      <div className={`${compact ? 'w-10' : 'w-16'} h-2 bg-slate-100 rounded-full overflow-hidden shrink-0`}>
         <div
           className={`h-full rounded-full transition-all duration-300 ${barColor}`}
           style={{ width: `${Math.min(100, Math.max(0, rounded))}%` }}
         />
       </div>
-      <span className={`text-xs font-bold tabular-nums ${textColor}`}>{rounded}%</span>
+      <span className={`text-xs font-bold tabular-nums min-w-[32px] ${textColor}`}>{rounded}%</span>
       {t && <span className="sr-only">{t.label}</span>}
     </div>
   );
@@ -193,45 +191,83 @@ export const ClientCandidatesPage: React.FC = () => {
     {
       title: 'Ứng viên',
       key: 'c',
+      width: 290,
       render: (_, r) => (
-        <div>
-          <PersonCell name={r.candidateName} secondary={r.candidateEmail} />
-          <div className="mt-0.5 pl-[42px] text-xs text-slate-500">cập nhật {dayjs(r.updatedAt ?? r.appliedAt).fromNow()}</div>
+        <div className="flex items-start gap-3 py-1">
+          <Initials name={r.candidateName} size={38} />
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <div className="truncate text-[14px] font-semibold text-slate-900">{r.candidateName}</div>
+            <div className="truncate text-[12px] text-slate-500">{r.candidateEmail || 'Chưa có email'}</div>
+            <div className="text-[11px] text-slate-400">cập nhật {dayjs(r.updatedAt ?? r.appliedAt).fromNow()}</div>
+          </div>
         </div>
       ),
     },
     {
       title: 'Tin tuyển dụng',
       key: 'j',
+      width: 260,
+      render: (_, r) => {
+        const color = r.serviceTypeCode === 'HEADHUNT_COD' ? 'blue' : r.serviceTypeCode === 'CV_SOURCING' ? 'purple' : 'cyan';
+        const label = r.serviceTypeCode ? SERVICE_TYPE[r.serviceTypeCode as keyof typeof SERVICE_TYPE] : null;
+        return (
+          <div className="max-w-[260px] space-y-1.5 py-1">
+            <div className="truncate font-medium text-slate-900 text-[13.5px]" title={r.jobTitle}>
+              {r.jobTitle}
+            </div>
+            {label && (
+              <span className="inline-block">
+                <Tag color={color} className="m-0 text-[10px] font-semibold border-0 px-2 py-0.5 rounded">
+                  {label}
+                </Tag>
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      title: 'Điểm AI',
+      key: 'ai',
+      width: 160,
       render: (_, r) => (
-        <div className="max-w-[280px]">
-          <div className="truncate font-medium text-slate-900">{r.jobTitle}</div>
-          {r.serviceTypeCode && <div className="text-xs text-slate-500">{SERVICE_SHORT[r.serviceTypeCode] ?? r.serviceTypeCode}</div>}
+        <div className="py-1">
+          <AiScore score={r.aiMatchScore} tier={r.aiMatchTier} status={r.aiStatus} />
         </div>
       ),
     },
-    { title: 'Điểm AI', key: 'ai', width: 170, render: (_, r) => <AiScore score={r.aiMatchScore} tier={r.aiMatchTier} status={r.aiStatus} /> },
     {
       title: 'Giai đoạn',
       dataIndex: 'status',
-      width: 170,
+      width: 180,
       render: (v: string, r) => {
         const st = applicationStatusOf(v, r.serviceTypeCode, r.sourcingDeliveryStatus);
-        return <StatusDot tone={st.tone}>{st.label}</StatusDot>;
+        return (
+          <div className="py-1 inline-flex items-center">
+            <StatusDot tone={st.tone}>{st.label}</StatusDot>
+          </div>
+        );
       },
     },
     {
       title: 'Việc tiếp theo',
       key: 'next',
-      width: 190,
+      width: 170,
       render: (_, r) => {
         const step = nextStepOf(r);
-        if (!step) return <span className="text-xs text-slate-400">—</span>;
+        if (!step) {
+          return (
+            <div className="flex h-8 w-[130px] items-center justify-center text-slate-300">
+              <span>—</span>
+            </div>
+          );
+        }
         return (
           <Button
-            size="small"
+            size="middle"
             type={step.urgent ? 'primary' : 'default'}
             ghost={step.urgent}
+            className="w-[130px] !h-8 text-xs font-semibold rounded-lg shadow-sm transition-all"
             onClick={(e) => {
               e.stopPropagation();
               setParam('open', r.applicationId);
@@ -300,7 +336,7 @@ export const ClientCandidatesPage: React.FC = () => {
                 aria-label="Tìm theo tên ứng viên"
               />
             </div>
-            <div role="radiogroup" aria-label="Kiểu hiển thị" className="inline-flex rounded-full bg-slate-100 p-1">
+            <div role="radiogroup" aria-label="Kiểu hiển thị" className="inline-flex h-10 items-center rounded-xl bg-slate-100 p-1">
               {(
                 [
                   ['list', <UnorderedListOutlined key="l" />, 'Danh sách'],
@@ -313,8 +349,8 @@ export const ClientCandidatesPage: React.FC = () => {
                   role="radio"
                   aria-checked={view === v}
                   onClick={() => setParams({ view: v === 'board' ? 'board' : undefined }, true)}
-                  className={`flex h-9 cursor-pointer items-center gap-2 rounded-full border-0 px-4 text-[13px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
-                    view === v ? 'bg-white text-[color:var(--console-accent-strong)] shadow-sm' : 'bg-transparent text-slate-600 hover:text-slate-900'
+                  className={`flex h-8 cursor-pointer items-center gap-2 rounded-lg border-0 px-3.5 text-[13px] font-medium transition-all ${
+                    view === v ? 'bg-white text-blue-700 shadow-sm font-semibold' : 'bg-transparent text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   {icon}
@@ -338,7 +374,7 @@ export const ClientCandidatesPage: React.FC = () => {
 
           {/* Stage strip: one row, each cell a filter; cells that need the Client are tinted */}
           {view === 'list' && (
-            <div role="radiogroup" aria-label="Lọc theo giai đoạn" className="grid grid-cols-3 overflow-hidden rounded-xl border border-solid border-slate-200 sm:grid-cols-7">
+            <div role="radiogroup" aria-label="Lọc theo giai đoạn" className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 overflow-hidden rounded-xl border border-solid border-slate-200 bg-white shadow-xs">
               {GROUPS.map((g, i) => {
                 const n = counts[i].data;
                 const selected = group === g.key;
@@ -350,19 +386,25 @@ export const ClientCandidatesPage: React.FC = () => {
                     role="radio"
                     aria-checked={selected}
                     onClick={() => setParams({ stage: g.key === 'all' ? undefined : g.key, status: undefined })}
-                    className={`cursor-pointer border-0 border-r border-solid border-slate-200 px-3 py-2.5 text-left transition-colors last:border-r-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--console-accent)] ${
+                    className={`group relative cursor-pointer border-0 border-r border-b sm:border-b-0 border-solid border-slate-200 p-3 text-left transition-all duration-150 last:border-r-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--console-accent)] ${
                       selected
-                        ? 'bg-[color:var(--console-accent-soft)] shadow-[inset_0_-2px_0_var(--console-accent)]'
+                        ? 'bg-blue-50/70 shadow-[inset_0_-3px_0_#2563eb]'
                         : needsAction
-                          ? 'bg-orange-50/60 hover:bg-orange-50'
+                          ? 'bg-orange-50/50 hover:bg-orange-50/80'
                           : 'bg-white hover:bg-slate-50'
                     }`}
                   >
-                    <span className={`block text-xs ${selected ? 'font-semibold text-[color:var(--console-accent-strong)]' : 'text-slate-600'}`}>
-                      {g.label}
-                      {needsAction && <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-orange-500 align-middle" aria-label="cần xử lý" />}
-                    </span>
-                    <span className="mt-0.5 block text-xl font-bold tabular-nums text-slate-900">{counts[i].isLoading ? '–' : n ?? 0}</span>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className={`text-[12px] font-medium ${selected ? 'text-blue-700 font-semibold' : 'text-slate-600'}`}>
+                        {g.label}
+                      </span>
+                      {needsAction && (
+                        <span className="inline-block h-2 w-2 rounded-full bg-orange-500" aria-label="cần xử lý" />
+                      )}
+                    </div>
+                    <div className={`mt-1 text-xl font-bold tabular-nums ${selected ? 'text-blue-900' : 'text-slate-900'}`}>
+                      {counts[i].isLoading ? '–' : n ?? 0}
+                    </div>
                   </button>
                 );
               })}

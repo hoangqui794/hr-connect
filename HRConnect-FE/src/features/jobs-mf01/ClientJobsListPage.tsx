@@ -34,7 +34,7 @@ import {
   SendOutlined,
   FileDoneOutlined,
 } from '@ant-design/icons';
-import type { Job, JobCloseReasonCode, JobStatus } from '@/types/api/jobs';
+import type { Job, JobCloseReasonCode, JobStatus, ServiceTypeCode } from '@/types/api/jobs';
 import { FilterPills, PageHero, Surface } from '@/features/admin-console/ui';
 import { screeningApi } from '@/services/api/hrApi';
 import '@/features/admin-console/admin-console.css';
@@ -61,6 +61,17 @@ type StatusFilter = 'ALL' | JobStatus;
 const FILTER_ORDER: JobStatus[] = ['DRAFT', 'PENDING_REVIEW', 'PENDING_AGREEMENT', 'PENDING_PAYMENT', 'ACTIVE', 'PAUSED', 'CLOSED', 'REJECTED'];
 
 type PendingAction = { kind: 'pause' | 'close'; job: Job } | null;
+
+const ServiceTypeTag: React.FC<{ code?: string | null }> = ({ code }) => {
+  if (!code || !SERVICE_TYPE_LABEL[code as ServiceTypeCode]) return null;
+  const info = SERVICE_TYPE_LABEL[code as ServiceTypeCode];
+  const color = code === 'HEADHUNT_COD' ? 'blue' : code === 'CV_SOURCING' ? 'purple' : 'cyan';
+  return (
+    <Tag color={color} className="m-0 text-[11px] font-medium border-0">
+      {info.short} · {info.label}
+    </Tag>
+  );
+};
 
 export const ClientJobsListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -315,8 +326,9 @@ export const ClientJobsListPage: React.FC = () => {
               </span>
             )}
           </div>
-          <div className="text-xs text-slate-500 mt-0.5">
-            {job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode].label : '—'} · {job.location ?? 'Chưa có địa điểm'}
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+            <ServiceTypeTag code={job.serviceTypeCode} />
+            <span className="text-xs text-slate-500">{job.location ?? 'Chưa có địa điểm'}</span>
           </div>
           {job.status === 'REJECTED' && job.statusReason && (
             <div className="text-xs text-red-700 mt-1 line-clamp-2">Lý do từ chối: {job.statusReason}</div>
@@ -501,13 +513,16 @@ export const ClientJobsListPage: React.FC = () => {
                         </button>
                       </div>
                     )}
-                    <div className="flex items-start justify-between gap-3">
-                      <Tooltip title={job.status === 'PENDING_AGREEMENT' && job.hasSignedAgreement ? 'Đã nộp hợp đồng đã ký kết, đang chờ Internal HR kiểm tra và duyệt tin' : JOB_STATUS[job.status].hint}>
-                        <span>
-                          <JobStatusTag status={job.status} hasSignedAgreement={job.hasSignedAgreement} />
-                        </span>
-                      </Tooltip>
-                      <span className="text-xs text-slate-500">{formatDate(job.updatedAt)}</span>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Tooltip title={job.status === 'PENDING_AGREEMENT' && job.hasSignedAgreement ? 'Đã nộp hợp đồng đã ký kết, đang chờ Internal HR kiểm tra và duyệt tin' : JOB_STATUS[job.status].hint}>
+                          <span>
+                            <JobStatusTag status={job.status} hasSignedAgreement={job.hasSignedAgreement} />
+                          </span>
+                        </Tooltip>
+                        <ServiceTypeTag code={job.serviceTypeCode} />
+                      </div>
+                      <span className="text-xs text-slate-500 whitespace-nowrap">{formatDate(job.updatedAt)}</span>
                     </div>
                     <button
                       type="button"
@@ -522,7 +537,6 @@ export const ClientJobsListPage: React.FC = () => {
                       <div className="flex items-center gap-1.5">
                         <EnvironmentOutlined aria-hidden /> {job.location ?? 'Chưa có địa điểm'}
                       </div>
-                      <div>{job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode].label : '—'}</div>
                     </div>
                     {job.status === 'PENDING_AGREEMENT' && (
                       job.hasSignedAgreement ? (

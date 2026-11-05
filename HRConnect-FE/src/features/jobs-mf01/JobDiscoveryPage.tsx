@@ -98,8 +98,7 @@ const JobCard: React.FC<{ job: Job; detailBasePath: string; isApplied?: boolean 
       </div>
       <div className="candidate-job-card__footer mt-auto flex items-center justify-between pt-2 text-xs text-slate-500">
         <div>
-          <span>{job.serviceTypeCode ? SERVICE_TYPE_LABEL[job.serviceTypeCode].label : ''}</span>
-          <span> · Đăng {formatDate(job.postedAt)}</span>
+          <span>Đăng {formatDate(job.postedAt)}</span>
         </div>
         <Link
           to={`${detailBasePath}/${job.jobId}`}

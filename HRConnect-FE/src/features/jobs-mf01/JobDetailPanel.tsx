@@ -408,7 +408,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
               Đã ứng tuyển
             </Tag>
           )}
-          {service && !isApplicant && <Tag className="m-0 font-medium">{service.label}</Tag>}
+          {service && !isApplicant && currentRole !== UserRole.AFFILIATE && <Tag className="m-0 font-medium">{service.label}</Tag>}
           {!isApplicant && job.status === 'PENDING_PAYMENT' && (
             <Tag color="warning" className="m-0 font-medium">
               {awaitingDeposit ? 'Chờ đặt cọc dịch vụ tìm kiếm hồ sơ' : 'Chờ thanh toán phí đăng tin'}
