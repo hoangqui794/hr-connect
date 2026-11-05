@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App as AntApp } from 'antd';
@@ -92,10 +92,10 @@ describe('PublicSubmissionConsentPage', () => {
     renderPage();
     const user = userEvent.setup();
     await screen.findByText('Backend Developer');
-    await user.click(screen.getByRole('button', { name: 'Đồng ý nộp hồ sơ' }));
+    await user.click(screen.getByRole('button', { name: 'Đồng ý ứng tuyển' }));
 
     expect(respondMock).toHaveBeenCalledWith('secret-email-token', 'CONFIRM', false);
-    expect(screen.getByRole('button', { name: /Đồng ý nộp hồ sơ/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Đồng ý ứng tuyển' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Từ chối' })).toBeDisabled();
 
     finish({
@@ -125,10 +125,88 @@ describe('PublicSubmissionConsentPage', () => {
     renderPage();
     const user = userEvent.setup();
     await screen.findByText('Backend Developer');
-    await user.click(screen.getByRole('button', { name: 'Đồng ý nộp hồ sơ' }));
+    await user.click(screen.getByRole('button', { name: 'Đồng ý ứng tuyển' }));
 
     expect(await screen.findByText('Yêu cầu này không còn xử lý được')).toBeInTheDocument();
     expect(screen.getAllByText('Yêu cầu xác nhận đã được xử lý trước đó.').length).toBeGreaterThan(0);
+  });
+
+  it('shows who is referred, to which job, the CV and the deadline', async () => {
+    renderPage();
+
+    expect(await screen.findByRole('heading', { name: 'Bạn được giới thiệu ứng tuyển vào một vị trí' })).toBeInTheDocument();
+    expect(screen.getByText('Nguyễn Văn An')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'cv-an.pdf' })).toHaveAttribute('href', 'https://example.test/cv.pdf');
+    expect(screen.getByText(/còn \d+ giờ/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Báo cho HR Connect' })).toHaveAttribute('href', '/contact');
+  });
+
+  it('does not link a CV whose address is not a web address', async () => {
+    reviewMock.mockResolvedValue({ ...consent, cvDownloadUrl: 'javascript:alert(1)' });
+    renderPage();
+
+    expect(await screen.findByText('cv-an.pdf')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'cv-an.pdf' })).not.toBeInTheDocument();
+  });
+
+  it('sends the reuse permission with the agreement', async () => {
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('checkbox', { name: /dùng lại CV/ }));
+    await user.click(screen.getByRole('button', { name: 'Đồng ý ứng tuyển' }));
+
+    expect(respondMock).toHaveBeenCalledWith('secret-email-token', 'CONFIRM', true);
+  });
+
+  it('asks before declining, then shows the result', async () => {
+    respondMock.mockResolvedValue({
+      success: true,
+      message: 'Đã từ chối.',
+      submissionId: 'submission-1',
+      submissionStatus: 'CONSENT_REJECTED',
+      applicationId: null,
+      aiStatus: null,
+      affiliateReuseStatus: 'NOT_GRANTED',
+      reuseConcurrencyToken: null,
+    } as never);
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Từ chối' }));
+    expect(respondMock).not.toHaveBeenCalled();
+    await user.click(within(await screen.findByRole('tooltip')).getByRole('button', { name: 'Từ chối' }));
+
+    expect(respondMock).toHaveBeenCalledWith('secret-email-token', 'DECLINE', false);
+    expect(await screen.findByText('Đã từ chối hồ sơ')).toBeInTheDocument();
+  });
+
+  it('says the agreement counted when the submission is held for an identity check', async () => {
+    respondMock.mockResolvedValue({
+      success: true,
+      message: 'Đã xác nhận.',
+      submissionId: 'submission-1',
+      submissionStatus: 'PENDING_IDENTITY_REVIEW',
+      applicationId: null,
+      aiStatus: 'NOT_QUEUED',
+      affiliateReuseStatus: 'NOT_GRANTED',
+      reuseConcurrencyToken: null,
+    } as never);
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Đồng ý ứng tuyển' }));
+
+    expect(await screen.findByText('Đã đồng ý nộp hồ sơ')).toBeInTheDocument();
+    expect(screen.getByText(/đang được đối chiếu danh tính/)).toBeInTheDocument();
+    expect(screen.queryByText(/sẽ không được gửi/)).not.toBeInTheDocument();
+  });
+
+  it('offers to register after agreeing', async () => {
+    reviewMock.mockResolvedValue({ ...consent, status: 'CONFIRMED' });
+    renderPage();
+
+    expect(await screen.findByRole('link', { name: 'Đăng ký tài khoản' })).toHaveAttribute('href', '/register');
   });
 
   it('reopening a link that was already confirmed shows the result, not the decision buttons', async () => {
@@ -136,7 +214,7 @@ describe('PublicSubmissionConsentPage', () => {
     renderPage();
 
     expect(await screen.findByText('Đã đồng ý nộp hồ sơ')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Đồng ý nộp hồ sơ' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Đồng ý ứng tuyển' })).not.toBeInTheDocument();
   });
 
   it('reopening an expired pending link shows that the request has ended', async () => {
