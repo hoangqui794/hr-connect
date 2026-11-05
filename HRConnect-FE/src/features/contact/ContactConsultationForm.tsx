@@ -33,17 +33,17 @@ const { TextArea } = Input;
 const SERVICE_INTEREST_OPTIONS: { value: ContactServiceInterest; label: string; desc: string }[] = [
   {
     value: 'HEADHUNT_COD',
-    label: 'Tuyển trọn gói (Headhunt COD)',
+    label: 'Tuyển trọn gói',
     desc: 'Phí thành công, bảo hành và đồng hành trọn quy trình',
   },
   {
     value: 'CV_SOURCING',
-    label: 'Cung cấp hồ sơ (CV Sourcing)',
-    desc: 'Bàn giao danh sách CV đã qua sàng lọc chuyên sâu',
+    label: 'Cung cấp hồ sơ',
+    desc: 'Bàn giao danh sách hồ sơ đã qua sàng lọc chuyên sâu',
   },
   {
     value: 'CV_APPLICATION',
-    label: 'Đăng tin tuyển dụng (Job Posting)',
+    label: 'Đăng tin tuyển dụng',
     desc: 'Tiếp cận hàng nghìn ứng viên chủ động trên nền tảng',
   },
   {
@@ -293,7 +293,7 @@ export const ContactConsultationForm: React.FC<ContactConsultationFormProps> = (
         <div className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
           {/* Phone */}
           <Form.Item
-            label={<span className="font-semibold text-slate-800">Số điện thoại (tùy chọn)</span>}
+            label={<span className="font-semibold text-slate-800">Số điện thoại</span>}
             name="phone"
             rules={[
               {
@@ -312,7 +312,7 @@ export const ContactConsultationForm: React.FC<ContactConsultationFormProps> = (
 
           {/* Company Name */}
           <Form.Item
-            label={<span className="font-semibold text-slate-800">Tên doanh nghiệp (tùy chọn)</span>}
+            label={<span className="font-semibold text-slate-800">Tên doanh nghiệp</span>}
             name="companyName"
             rules={[{ max: 150, message: 'Tên công ty tối đa 150 ký tự' }]}
           >
