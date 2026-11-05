@@ -56,8 +56,6 @@ const SERVICES = [
   { value: 'HEADHUNT_COD', label: SERVICE_TYPE.HEADHUNT_COD },
   { value: 'CV_SOURCING', label: SERVICE_TYPE.CV_SOURCING },
 ];
-const SERVICE_SHORT: Record<string, string> = { CV_APPLICATION: 'AP', HEADHUNT_COD: 'HH', CV_SOURCING: 'SS' };
-
 /** Board columns: the active hiring stages, left to right. Closed ones stay in the list view. */
 const BOARD: { code: string; label: string; dot: string }[] = [
   { code: 'SUBMITTED', label: 'Mới nộp', dot: 'bg-orange-500' },
@@ -210,7 +208,6 @@ export const ClientCandidatesPage: React.FC = () => {
       key: 'j',
       width: 260,
       render: (_, r) => {
-        const short = r.serviceTypeCode ? SERVICE_SHORT[r.serviceTypeCode] : null;
         const color = r.serviceTypeCode === 'HEADHUNT_COD' ? 'blue' : r.serviceTypeCode === 'CV_SOURCING' ? 'purple' : 'cyan';
         const label = r.serviceTypeCode ? SERVICE_TYPE[r.serviceTypeCode as keyof typeof SERVICE_TYPE] : null;
         return (
@@ -218,10 +215,10 @@ export const ClientCandidatesPage: React.FC = () => {
             <div className="truncate font-medium text-slate-900 text-[13.5px]" title={r.jobTitle}>
               {r.jobTitle}
             </div>
-            {short && (
+            {label && (
               <span className="inline-block">
                 <Tag color={color} className="m-0 text-[10px] font-semibold border-0 px-2 py-0.5 rounded">
-                  {short} · {label}
+                  {label}
                 </Tag>
               </span>
             )}
