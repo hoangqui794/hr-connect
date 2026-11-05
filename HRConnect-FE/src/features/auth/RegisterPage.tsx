@@ -1,481 +1,250 @@
 /**
  * @file RegisterPage.tsx
- * @description Modern, sleek Registration Page for HR Connect.
- * Implements 3 distinct registration flows conforming to Swagger OpenAPI:
- *   - Candidate: POST /api/v1/auth/register/candidate
- *   - Client Company: POST /api/v1/auth/register/client
- *   - Affiliate: POST /api/v1/auth/register/affiliate
- *
- * Compact role selector, real-time password strength meter, password matching,
- * defensive error handling, and redirection to OTP verification.
+ * @description Account creation (mockup 03/11, Register). Candidate and Client register here, then verify the
+ * emailed code on /verify-otp; choosing Affiliate opens its own page, /register/affiliate.
+ * A Client also gives company name and tax code (required by the API; the mockup draws only the Candidate form).
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
-import {
-  Form,
-  Input,
-  Button,
-  message,
-  Checkbox,
-  Row,
-  Col,
-  Alert,
-  Progress,
-} from 'antd';
-import {
-  UserOutlined,
-  MailOutlined,
-  LockOutlined,
-  PhoneOutlined,
-  BankOutlined,
-  ArrowRightOutlined,
-  CheckCircleFilled,
-  TeamOutlined,
-  SafetyCertificateOutlined,
-  IdcardOutlined,
-  SolutionOutlined,
-} from '@ant-design/icons';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { UserRole } from '@/types/roles';
-import { authService } from '@/services/authService';
-import { getApiErrorMessage } from '@/services/apiClient';
-import { AuthPageShell, AUTH_INPUT_CLASS, AUTH_LABEL_CLASS, AUTH_LINK_CLASS, AUTH_PRIMARY_BUTTON_CLASS } from './AuthPageShell';
-import { appendCandidateReturnPath, getSafeCandidateReturnPath } from './authReturnPath';
+import React, { useEffect, useState } from 'react';
+import { message } from 'antd';
+import { CheckCircleFilled, EyeInvisibleOutlined, EyeOutlined } from '@ant-design/icons';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { BrandMark } from '@/components/common/BrandMark';
 import { isValidVietnamPhoneNumber, VIETNAM_PHONE_VALIDATION_MESSAGE } from '@/constants/phoneValidation';
+import { getApiErrorMessage } from '@/services/apiClient';
+import { authService } from '@/services/authService';
+import { UserRole } from '@/types/roles';
+import { appendCandidateReturnPath, getSafeCandidateReturnPath } from './authReturnPath';
+
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+const INPUT = `${FONT} box-border h-[46px] w-full rounded-md border border-solid bg-white px-3 text-[14px] text-[#1F2937] outline-none placeholder:text-[#9CA3AF] focus:border-[#0369A1] focus:ring-1 focus:ring-[#0369A1]`;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PASSWORD_RULE = 'Ít nhất 8 ký tự, gồm chữ hoa, chữ thường, chữ số và ký tự đặc biệt.';
+const strongPassword = (value: string) => value.length >= 8 && /[a-z]/.test(value) && /[A-Z]/.test(value) && /\d/.test(value) && /[^A-Za-z\d]/.test(value);
+const borderOf = (error?: string) => (error ? 'border-[#DC2626]' : 'border-[#D1D5DB]');
 
 type RegisterableRole = UserRole.CANDIDATE | UserRole.CLIENT | UserRole.AFFILIATE;
+type Field = 'companyName' | 'taxCode' | 'fullName' | 'email' | 'phone' | 'password' | 'confirmPassword' | 'terms';
+type Errors = Partial<Record<Field, string>>;
 
-interface RoleOption {
-  role: RegisterableRole;
-  title: string;
-  shortTitle: string;
-  hint: string;
-  badge: string;
-  subtitle: string;
-  accentColor: string;
-  activeBg: string;
-  icon: React.ReactNode;
-}
-
-const ROLE_OPTIONS: RoleOption[] = [
-  {
-    role: UserRole.CANDIDATE,
-    title: 'Ứng viên tìm việc',
-    shortTitle: 'Ứng viên',
-    hint: 'Tìm việc, tạo CV',
-    badge: 'Talent',
-    subtitle: 'Tìm việc công nghệ, tạo CV ATS & AI Match',
-    accentColor: '#8b5cf6', // purple-500
-    activeBg: 'rgba(139, 92, 246, 0.1)',
-    icon: <UserOutlined style={{ fontSize: 20, color: '#8b5cf6' }} />,
-  },
-  {
-    role: UserRole.CLIENT,
-    title: 'Doanh nghiệp',
-    shortTitle: 'Doanh nghiệp',
-    hint: 'Đăng tin tuyển dụng',
-    badge: 'Employer',
-    subtitle: 'Đăng tin tuyển dụng, thẩm định AI & bảo hành',
-    accentColor: '#0284c7', // sky-600
-    activeBg: 'rgba(2, 132, 199, 0.1)',
-    icon: <BankOutlined style={{ fontSize: 20, color: '#0284c7' }} />,
-  },
-  {
-    role: UserRole.AFFILIATE,
-    title: 'Cộng tác viên (Affiliate)',
-    shortTitle: 'Affiliate',
-    hint: 'Giới thiệu ứng viên',
-    badge: 'Partner',
-    subtitle: 'Giới thiệu ứng viên & nhận hoa hồng minh bạch',
-    accentColor: '#f59e0b', // amber-500
-    activeBg: 'rgba(245, 158, 11, 0.1)',
-    icon: <TeamOutlined style={{ fontSize: 20, color: '#f59e0b' }} />,
-  },
+const ROLES: Array<{ role: RegisterableRole; title: string; hint: string }> = [
+  { role: UserRole.CANDIDATE, title: 'Người tìm việc', hint: 'Tìm việc, ứng tuyển, tạo CV' },
+  { role: UserRole.CLIENT, title: 'Nhà tuyển dụng', hint: 'Đăng tin, tuyển qua Affiliate, mua CV. Cần xác minh công ty.' },
+  { role: UserRole.AFFILIATE, title: 'Affiliate', hint: 'Giới thiệu ứng viên, nhận hoa hồng. Cần được duyệt.' },
 ];
+
+const TextField: React.FC<{
+  id: string;
+  label: React.ReactNode;
+  value: string;
+  error?: string;
+  hint?: string;
+  type?: string;
+  autoComplete?: string;
+  placeholder?: string;
+  maxLength?: number;
+  disabled: boolean;
+  wide?: boolean;
+  revealable?: boolean;
+  onChange: (value: string) => void;
+}> = ({ id, label, value, error, hint, type = 'text', autoComplete, placeholder, maxLength, disabled, wide, revealable, onChange }) => {
+  const [shown, setShown] = useState(false);
+  const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
+  return (
+    <div className={`flex min-w-0 flex-col gap-1.5 ${wide ? 'sm:col-span-2' : ''}`}>
+      <label htmlFor={id} className="font-medium">{label}</label>
+      <div className="relative">
+        <input
+          id={id}
+          type={revealable && shown ? 'text' : type}
+          value={value}
+          autoComplete={autoComplete}
+          placeholder={placeholder}
+          maxLength={maxLength}
+          disabled={disabled}
+          aria-invalid={Boolean(error)}
+          aria-describedby={describedBy}
+          onChange={(event) => onChange(event.target.value)}
+          className={`${INPUT} ${revealable ? 'pr-11' : ''} ${borderOf(error)}`}
+        />
+        {revealable && (
+          <button
+            type="button"
+            aria-label={`${shown ? 'Ẩn' : 'Hiện'} ${String(label).toLowerCase()}`}
+            onClick={() => setShown((current) => !current)}
+            className="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center border-0 bg-transparent text-[#6B7280] hover:text-[#1F2937]"
+          >
+            {shown ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+          </button>
+        )}
+      </div>
+      {error
+        ? <span id={`${id}-error`} className="text-[12px] text-[#B91C1C]">{error}</span>
+        : hint && <span id={`${id}-hint`} className="text-[12px] text-[#6B7280]">{hint}</span>}
+    </div>
+  );
+};
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [form] = Form.useForm();
-  const [submitting, setSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [passwordValue, setPasswordValue] = useState<string>('');
   const candidateReturnTo = getSafeCandidateReturnPath(searchParams.get('returnTo'));
-
-  // Initial role from query param (?role=candidate|client|affiliate)
-  const initialRole = ((): RegisterableRole => {
-    const r = searchParams.get('role')?.toUpperCase();
-    if (r === 'CLIENT') return UserRole.CLIENT;
-    if (r === 'AFFILIATE') return UserRole.AFFILIATE;
-    return UserRole.CANDIDATE;
-  })();
-
-  const [selectedRole, setSelectedRole] = useState<RegisterableRole>(initialRole);
+  const [role, setRole] = useState<RegisterableRole>(searchParams.get('role')?.toUpperCase() === 'CLIENT' ? UserRole.CLIENT : UserRole.CANDIDATE);
+  const [values, setValues] = useState({ companyName: '', taxCode: '', fullName: '', email: '', phone: '', password: '', confirmPassword: '' });
+  const [terms, setTerms] = useState(false);
+  const [errors, setErrors] = useState<Errors>({});
+  const [formError, setFormError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const isClient = role === UserRole.CLIENT;
 
   useEffect(() => {
-    const r = searchParams.get('role')?.toUpperCase();
-    if (r === 'CLIENT') setSelectedRole(UserRole.CLIENT);
-    else if (r === 'AFFILIATE') setSelectedRole(UserRole.AFFILIATE);
-    else if (r === 'CANDIDATE') setSelectedRole(UserRole.CANDIDATE);
-  }, [searchParams]);
+    const requested = searchParams.get('role')?.toUpperCase();
+    if (requested === 'AFFILIATE') navigate('/register/affiliate', { replace: true });
+    else if (requested === 'CLIENT') setRole(UserRole.CLIENT);
+    else if (requested === 'CANDIDATE') setRole(UserRole.CANDIDATE);
+  }, [searchParams, navigate]);
 
-  const activeOption = useMemo(
-    () => ROLE_OPTIONS.find((opt) => opt.role === selectedRole) || ROLE_OPTIONS[0],
-    [selectedRole]
-  );
+  const chooseRole = (next: RegisterableRole) => {
+    if (next === UserRole.AFFILIATE) {
+      navigate('/register/affiliate');
+      return;
+    }
+    setRole(next);
+    setErrors({});
+    setFormError(null);
+  };
 
-  // Affiliates sign up on their own page (/register/affiliate).
-  useEffect(() => {
-    if (selectedRole === UserRole.AFFILIATE) navigate('/register/affiliate', { replace: true });
-  }, [selectedRole, navigate]);
+  const set = (field: keyof typeof values) => (value: string) => {
+    setValues((current) => ({ ...current, [field]: value }));
+    setErrors((current) => ({ ...current, [field]: undefined }));
+  };
 
-  // Password strength calculation
-  const passwordStrength = useMemo(() => {
-    if (!passwordValue) return { score: 0, label: '', percent: 0, color: '#e2e8f0' };
-    let score = 0;
-    if (passwordValue.length >= 6) score += 1;
-    if (passwordValue.length >= 8) score += 1;
-    if (/[A-Z]/.test(passwordValue) && /[a-z]/.test(passwordValue)) score += 1;
-    if (/\d/.test(passwordValue)) score += 1;
-    if (/[^A-Za-z0-9]/.test(passwordValue)) score += 1;
+  const validate = (): Errors => {
+    const found: Errors = {};
+    if (isClient) {
+      if (values.companyName.trim().length < 3) found.companyName = 'Tên doanh nghiệp cần ít nhất 3 ký tự.';
+      if (!/^[0-9]{10}(-[0-9]{3})?$/.test(values.taxCode.trim())) found.taxCode = 'Mã số thuế gồm 10 hoặc 13 số.';
+      if (!values.phone.trim()) found.phone = 'Vui lòng nhập số điện thoại.';
+    }
+    if (values.fullName.trim().length < 2) found.fullName = 'Họ tên cần ít nhất 2 ký tự.';
+    if (!EMAIL.test(values.email.trim())) found.email = 'Vui lòng nhập đúng địa chỉ email.';
+    if (values.phone.trim() && !isValidVietnamPhoneNumber(values.phone)) found.phone = VIETNAM_PHONE_VALIDATION_MESSAGE;
+    if (!strongPassword(values.password)) found.password = PASSWORD_RULE;
+    if (values.confirmPassword !== values.password) found.confirmPassword = 'Hai mật khẩu chưa khớp.';
+    if (!terms) found.terms = 'Vui lòng đồng ý với điều khoản sử dụng.';
+    return found;
+  };
 
-    if (score <= 1) return { score: 1, label: 'Rất yếu', percent: 20, color: '#ef4444' };
-    if (score === 2) return { score: 2, label: 'Yếu', percent: 40, color: '#f97316' };
-    if (score === 3) return { score: 3, label: 'Trung bình', percent: 65, color: '#f59e0b' };
-    if (score === 4) return { score: 4, label: 'Khá mạnh', percent: 85, color: '#0ea5e9' };
-    return { score: 5, label: 'Rất an toàn', percent: 100, color: '#10b981' };
-  }, [passwordValue]);
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const found = validate();
+    setErrors(found);
+    if (Object.keys(found).length > 0) return;
 
-  // Form submission handler routing to the exact Swagger API endpoint
-  const onFinish = async (values: {
-    fullName: string;
-    email: string;
-    phone: string;
-    password: string;
-    confirmPassword?: string;
-    companyName?: string;
-    taxCode?: string;
-    terms?: boolean;
-  }) => {
-    setErrorMessage(null);
+    setFormError(null);
     setSubmitting(true);
-
-    const emailTrimmed = values.email.trim().toLowerCase();
-    const fullNameTrimmed = values.fullName.trim();
-    const phoneTrimmed = values.phone ? values.phone.trim() : undefined;
-
+    const email = values.email.trim().toLowerCase();
+    const person = { fullName: values.fullName.trim(), phone: values.phone.trim() || undefined, email, password: values.password };
     try {
-      let isSuccess = false;
-      let serverMessage = '';
+      const result = isClient
+        ? await authService.registerClient({ ...person, companyName: values.companyName.trim(), taxCode: values.taxCode.trim() })
+        : await authService.registerCandidate(person);
+      if (!result.success && !result.data) throw new Error(result.message || 'Đăng ký không thành công.');
 
-      if (selectedRole === UserRole.CLIENT) {
-        // POST /api/v1/auth/register/client
-        const res = await authService.registerClient({
-          companyName: values.companyName?.trim(),
-          taxCode: values.taxCode?.trim(),
-          fullName: fullNameTrimmed,
-          phone: phoneTrimmed,
-          email: emailTrimmed,
-          password: values.password,
-        });
-
-        if (res.success || res.data) {
-          isSuccess = true;
-          serverMessage = res.message || 'Đăng ký tài khoản doanh nghiệp thành công!';
-        } else {
-          throw new Error(res.message || 'Đăng ký doanh nghiệp không thành công.');
-        }
-      } else if (selectedRole === UserRole.AFFILIATE) {
-        // POST /api/v1/auth/register/affiliate
-        const res = await authService.registerAffiliate({
-          fullName: fullNameTrimmed,
-          phone: phoneTrimmed,
-          email: emailTrimmed,
-          password: values.password,
-        });
-
-        if (res.success || res.data) {
-          isSuccess = true;
-          serverMessage = res.message || 'Đăng ký đối tác tuyển dụng thành công!';
-        } else {
-          throw new Error(res.message || 'Đăng ký đối tác không thành công.');
-        }
-      } else {
-        // POST /api/v1/auth/register/candidate
-        const res = await authService.registerCandidate({
-          fullName: fullNameTrimmed,
-          phone: phoneTrimmed,
-          email: emailTrimmed,
-          password: values.password,
-        });
-
-        if (res.success || res.data) {
-          isSuccess = true;
-          serverMessage = res.message || 'Đăng ký tài khoản ứng viên thành công!';
-        } else {
-          throw new Error(res.message || 'Đăng ký tài khoản không thành công.');
-        }
-      }
-
-      if (isSuccess) {
-        message.success({
-          content: 'Đăng ký thành công! Vui lòng kiểm tra email để nhập mã OTP kích hoạt tài khoản.',
-          icon: <CheckCircleFilled style={{ color: '#10b981' }} />,
-          duration: 5,
-        });
-
-        // Redirect immediately to OTP Verification page with encoded query params
-        navigate(
-          appendCandidateReturnPath(
-            `/verify-otp?email=${encodeURIComponent(emailTrimmed)}&role=${encodeURIComponent(selectedRole)}`,
-            selectedRole === UserRole.CANDIDATE ? candidateReturnTo : undefined
-          ),
-          {
-            replace: true,
-            state: {
-              email: emailTrimmed,
-              role: selectedRole,
-              returnTo: selectedRole === UserRole.CANDIDATE ? candidateReturnTo : undefined,
-              message: serverMessage,
-            },
-          }
-        );
-      }
-    } catch (err: unknown) {
-      const formattedError = getApiErrorMessage(
-        err,
-        'Không thể hoàn tất đăng ký. Vui lòng kiểm tra lại thông tin!'
-      );
-      setErrorMessage(formattedError);
-      message.error({ content: formattedError, duration: 5 });
+      message.success({
+        content: 'Đăng ký thành công! Vui lòng kiểm tra email để nhập mã xác minh.',
+        icon: <CheckCircleFilled style={{ color: '#10b981' }} />,
+        duration: 5,
+      });
+      const returnTo = isClient ? undefined : candidateReturnTo;
+      navigate(appendCandidateReturnPath(`/verify-otp?email=${encodeURIComponent(email)}&role=${encodeURIComponent(role)}`, returnTo), {
+        replace: true,
+        state: { email, role, returnTo, message: result.message },
+      });
+    } catch (error) {
+      setFormError(getApiErrorMessage(error, 'Không thể hoàn tất đăng ký. Vui lòng kiểm tra lại thông tin!'));
     } finally {
       setSubmitting(false);
     }
   };
 
-  const COMPACT_INPUT_CLASS =
-    'h-11 text-sm rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 hover:border-[#0EA5E9] focus:border-[#0369A1] transition-colors duration-150';
-  const COMPACT_LABEL_CLASS = 'text-sm font-semibold text-slate-700';
-
   return (
-    <AuthPageShell
-      fitScreen
-      wide
-      eyebrow="Bắt đầu cùng HR Connect"
-      title="Tạo tài khoản HR Connect"
-      description="Chọn vai trò và hoàn tất thông tin để bắt đầu không gian làm việc của bạn."
-      sideTitle="Một nền tảng, trọn vẹn vai trò"
-      sideDescription="Trải nghiệm chuyên biệt cho từng chủ thể tuyển dụng."
-      benefits={[
-        {
-          icon: <SolutionOutlined />,
-          title: 'Ứng viên tìm việc',
-          desc: 'Quản lý CV, khớp nối việc làm phù hợp',
-        },
-        {
-          icon: <BankOutlined />,
-          title: 'Doanh nghiệp tuyển dụng',
-          desc: 'Tiếp cận nguồn ứng viên chất lượng cao',
-        },
-        {
-          icon: <TeamOutlined />,
-          title: 'Cộng tác viên (Affiliate)',
-          desc: 'Gửi nguồn giới thiệu, nhận thưởng minh bạch',
-        },
-      ]}
-    >
-      {/* Role selection: three equal cards, short label + one-line hint, radio dot */}
-      <fieldset className="mb-5 border-0 p-0">
-        <legend className="mb-2 text-sm font-semibold text-slate-700">Bạn đăng ký với vai trò nào?</legend>
-        <div className="grid grid-cols-3 gap-2.5" role="radiogroup">
-          {ROLE_OPTIONS.map((option) => {
-            const isSelected = selectedRole === option.role;
+    <div className={`${FONT} min-h-screen bg-[#F7F8FA] text-[14px] text-[#1F2937] [line-height:normal]`}>
+      <header className="bg-[#0C4A6E] text-white">
+        <div className="mx-auto flex h-16 max-w-[1248px] items-center gap-3 px-4 sm:px-6">
+          <Link to="/" className="flex items-center gap-2 whitespace-nowrap text-[18px] font-bold text-white no-underline hover:text-white hover:no-underline">
+            <BrandMark size={32} tone="light" className="block" /> HR Connect
+          </Link>
+          <span className="ml-auto text-right text-[#CFE3F0]">
+            <span className="max-sm:hidden">Đã có tài khoản? </span>
+            <Link to="/login" className="font-semibold text-white no-underline hover:text-white hover:underline">Đăng nhập</Link>
+          </span>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-[808px] px-4 pb-14 pt-8 sm:px-6">
+        <h1 className="m-0 text-[24px] font-bold">Tạo tài khoản HR Connect</h1>
+        <p className="m-0 mb-5 mt-1.5 text-[#4B5563]">Chọn loại tài khoản phù hợp với bạn.</p>
+
+        <fieldset className="m-0 mb-5 grid min-w-0 grid-cols-1 gap-3 border-0 p-0 sm:grid-cols-3">
+          <legend className="absolute left-[-9999px]">Loại tài khoản</legend>
+          {ROLES.map((option) => {
+            const selected = role === option.role;
             return (
-              <button
-                type="button"
-                key={option.role}
-                role="radio"
-                aria-checked={isSelected}
-                onClick={() => {
-                  setSelectedRole(option.role);
-                  setErrorMessage(null);
-                }}
-                className={`flex min-h-[64px] cursor-pointer items-start gap-2.5 rounded-xl border border-solid bg-white px-3 py-3 text-left transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1] ${
-                  isSelected ? 'border-[#0369A1] bg-sky-50/60 ring-1 ring-[#0369A1]' : 'border-slate-300 hover:border-slate-400'
-                }`}
-              >
-                <span
-                  className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-[1.5px] border-solid ${
-                    isSelected ? 'border-[#0369A1]' : 'border-slate-400'
-                  }`}
-                  aria-hidden="true"
-                >
-                  {isSelected && <span className="h-2 w-2 rounded-full bg-[#0369A1]" />}
-                </span>
-                <span className="min-w-0">
-                  <strong className="block text-sm font-semibold leading-tight text-slate-900">{option.shortTitle}</strong>
-                  <span className="mt-1 block text-xs leading-snug text-slate-500">{option.hint}</span>
-                </span>
-              </button>
+              <label key={option.role} className={`flex cursor-pointer items-start gap-2.5 rounded-lg border-solid p-[14px] ${selected ? 'border-2 border-[#0369A1] bg-[#F0F9FF]' : 'border border-[#E5E7EB] bg-white'}`}>
+                <input type="radio" name="role" checked={selected} onChange={() => chooseRole(option.role)} className="ml-[5px] mr-[3px] mt-0.5 h-[18px] w-[18px] shrink-0 cursor-pointer accent-[#0369A1]" />
+                <span><b>{option.title}</b><span className="block text-[13px] text-[#4B5563]">{option.hint}</span></span>
+              </label>
             );
           })}
-        </div>
-      </fieldset>
+        </fieldset>
 
-      {errorMessage && (
-        <Alert
-          message="Chưa thể hoàn tất đăng ký"
-          description={errorMessage}
-          type="error"
-          showIcon
-          closable
-          onClose={() => setErrorMessage(null)}
-          className="mb-2.5 rounded-xl py-1.5 px-3 text-xs"
-        />
-      )}
+        <form noValidate onSubmit={submit} className="grid grid-cols-1 gap-4 rounded-lg border border-solid border-[#E5E7EB] bg-white p-5 sm:grid-cols-2 sm:p-6">
+          {isClient && (
+            <>
+              <TextField id="reg-company" label="Tên doanh nghiệp" autoComplete="organization" value={values.companyName} error={errors.companyName} disabled={submitting} onChange={set('companyName')} />
+              <TextField id="reg-tax" label="Mã số thuế" maxLength={14} value={values.taxCode} error={errors.taxCode} disabled={submitting} onChange={set('taxCode')} />
+            </>
+          )}
+          <TextField id="reg-name" wide label={isClient ? 'Người đại diện' : 'Họ và tên'} autoComplete="name" value={values.fullName} error={errors.fullName} disabled={submitting} onChange={set('fullName')} />
+          <TextField id="reg-email" type="email" label={isClient ? 'Email doanh nghiệp' : 'Email'} autoComplete="email" hint="Mã xác minh sẽ gửi đến email này" value={values.email} error={errors.email} disabled={submitting} onChange={set('email')} />
+          <TextField
+            id="reg-phone"
+            type="tel"
+            label={isClient ? 'Số điện thoại' : <>Số điện thoại <span className="font-normal text-[#6B7280]">(không bắt buộc)</span></>}
+            autoComplete="tel"
+            placeholder="0912 345 678"
+            maxLength={20}
+            value={values.phone}
+            error={errors.phone}
+            disabled={submitting}
+            onChange={set('phone')}
+          />
+          <TextField id="reg-password" type="password" revealable label="Mật khẩu" autoComplete="new-password" hint={PASSWORD_RULE} value={values.password} error={errors.password} disabled={submitting} onChange={set('password')} />
+          <TextField id="reg-confirm" type="password" revealable label="Nhập lại mật khẩu" autoComplete="new-password" value={values.confirmPassword} error={errors.confirmPassword} disabled={submitting} onChange={set('confirmPassword')} />
 
-      <Form form={form} layout="vertical" onFinish={onFinish} requiredMark={false} scrollToFirstError className="[&_.ant-form-item]:mb-3">
-        {selectedRole === UserRole.CLIENT && (
-          <Row gutter={12}>
-            <Col xs={24} sm={12}>
-              <Form.Item
-                name="companyName"
-                label={<span className={COMPACT_LABEL_CLASS}>Tên doanh nghiệp</span>}
-                rules={[
-                  { required: true, message: 'Vui lòng nhập tên doanh nghiệp.' },
-                  { min: 3, message: 'Tên doanh nghiệp cần ít nhất 3 ký tự.' },
-                ]}
-              >
-                <Input prefix={<BankOutlined className="mr-1 text-slate-400" />} placeholder="Công ty Cổ phần Công nghệ XYZ" className={COMPACT_INPUT_CLASS} disabled={submitting} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item
-                name="taxCode"
-                label={<span className={COMPACT_LABEL_CLASS}>Mã số thuế</span>}
-                rules={[
-                  { required: true, message: 'Vui lòng nhập mã số thuế.' },
-                  { pattern: /^[0-9]{10}(-[0-9]{3})?$/, message: 'Mã số thuế gồm 10 hoặc 13 số.' },
-                ]}
-              >
-                <Input prefix={<IdcardOutlined className="mr-1 text-slate-400" />} placeholder="0312345678" maxLength={14} className={COMPACT_INPUT_CLASS} disabled={submitting} />
-              </Form.Item>
-            </Col>
-          </Row>
-        )}
+          <div className="flex flex-col gap-1.5 sm:col-span-2">
+            <label className="flex cursor-pointer items-start gap-2 text-[#374151]">
+              <input
+                type="checkbox"
+                checked={terms}
+                aria-invalid={Boolean(errors.terms)}
+                onChange={(event) => { setTerms(event.target.checked); setErrors((current) => ({ ...current, terms: undefined })); }}
+                className="mx-[3px] ml-1 mt-0.5 h-[18px] w-[18px] shrink-0 cursor-pointer accent-[#0369A1]"
+              />
+              <span>Tôi đồng ý với Điều khoản sử dụng và Chính sách bảo mật của HR Connect.</span>
+            </label>
+            {errors.terms && <span className="text-[12px] text-[#B91C1C]">{errors.terms}</span>}
+          </div>
 
-        <Row gutter={12}>
-          <Col xs={24} sm={12}>
-            <Form.Item
-              name="fullName"
-              label={<span className={COMPACT_LABEL_CLASS}>{selectedRole === UserRole.CLIENT ? 'Người đại diện' : 'Họ và tên'}</span>}
-              rules={[
-                { required: true, message: 'Vui lòng nhập họ và tên.' },
-                { min: 2, message: 'Họ tên cần ít nhất 2 ký tự.' },
-              ]}
-            >
-              <Input autoComplete="name" prefix={<UserOutlined className="mr-1 text-slate-400" />} placeholder="Nguyễn Văn An" className={COMPACT_INPUT_CLASS} disabled={submitting} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={12}>
-            <Form.Item
-              name="phone"
-              label={<span className={COMPACT_LABEL_CLASS}>Số điện thoại</span>}
-              rules={[
-                { required: true, message: 'Vui lòng nhập số điện thoại.' },
-                {
-                  validator: (_, value) =>
-                    !value || isValidVietnamPhoneNumber(value)
-                      ? Promise.resolve()
-                      : Promise.reject(new Error(VIETNAM_PHONE_VALIDATION_MESSAGE)),
-                },
-              ]}
-            >
-              <Input autoComplete="tel" prefix={<PhoneOutlined className="mr-1 text-slate-400" />} placeholder="0912 345 678" maxLength={20} className={COMPACT_INPUT_CLASS} disabled={submitting} />
-            </Form.Item>
-          </Col>
-        </Row>
+          {formError && <p role="alert" className="m-0 rounded-md border border-solid border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-[13px] text-[#B91C1C] sm:col-span-2">{formError}</p>}
 
-        <Form.Item
-          name="email"
-          label={<span className={COMPACT_LABEL_CLASS}>{selectedRole === UserRole.CLIENT ? 'Email doanh nghiệp' : 'Email'}</span>}
-          rules={[
-            { required: true, message: 'Vui lòng nhập địa chỉ email.' },
-            { type: 'email', message: 'Email chưa đúng định dạng.' },
-          ]}
-        >
-          <Input type="email" autoComplete="email" prefix={<MailOutlined className="mr-1 text-slate-400" />} placeholder={selectedRole === UserRole.CLIENT ? 'tuyendung@congty.com' : 'ten@email.com'} className={COMPACT_INPUT_CLASS} disabled={submitting} />
-        </Form.Item>
-
-        <Row gutter={12}>
-          <Col xs={24} sm={12}>
-            <Form.Item
-              name="password"
-              label={<span className={COMPACT_LABEL_CLASS}>Mật khẩu</span>}
-              rules={[
-                { required: true, message: 'Vui lòng nhập mật khẩu.' },
-                { min: 6, message: 'Mật khẩu cần ít nhất 6 ký tự.' },
-              ]}
-            >
-              <Input.Password autoComplete="new-password" prefix={<LockOutlined className="mr-1 text-slate-400" />} placeholder="Tạo mật khẩu" onChange={(event) => setPasswordValue(event.target.value)} className={COMPACT_INPUT_CLASS} disabled={submitting} />
-            </Form.Item>
-            {passwordValue && (
-              <div className="-mt-1 mb-1.5 flex items-center gap-1.5 text-[10px]">
-                <span className="text-slate-400">Độ mạnh:</span>
-                <span className="font-bold" style={{ color: passwordStrength.color }}>{passwordStrength.label}</span>
-                <div className="flex-1 h-1 rounded-full bg-slate-200 overflow-hidden">
-                  <div
-                    className="h-full transition-all duration-300"
-                    style={{ width: `${passwordStrength.percent}%`, backgroundColor: passwordStrength.color }}
-                  />
-                </div>
-              </div>
-            )}
-          </Col>
-          <Col xs={24} sm={12}>
-            <Form.Item
-              name="confirmPassword"
-              dependencies={['password']}
-              label={<span className={COMPACT_LABEL_CLASS}>Nhập lại mật khẩu</span>}
-              rules={[
-                { required: true, message: 'Vui lòng nhập lại mật khẩu.' },
-                ({ getFieldValue }) => ({
-                  validator(_, value) {
-                    if (!value || getFieldValue('password') === value) return Promise.resolve();
-                    return Promise.reject(new Error('Hai mật khẩu chưa khớp.'));
-                  },
-                }),
-              ]}
-            >
-              <Input.Password autoComplete="new-password" prefix={<SafetyCertificateOutlined className="mr-1 text-slate-400" />} placeholder="Nhập lại mật khẩu" className={COMPACT_INPUT_CLASS} disabled={submitting} />
-            </Form.Item>
-          </Col>
-        </Row>
-
-        <Form.Item
-          name="terms"
-          valuePropName="checked"
-          rules={[{
-            validator: (_, value) => value ? Promise.resolve() : Promise.reject(new Error('Vui lòng đồng ý với điều khoản sử dụng.')),
-          }]}
-          className="!mb-2.5"
-        >
-          <Checkbox className="text-xs leading-5 text-slate-600">
-            Tôi đồng ý với <a href="#terms" onClick={(event) => event.preventDefault()} className={AUTH_LINK_CLASS}>Điều khoản dịch vụ</a> và <a href="#privacy" onClick={(event) => event.preventDefault()} className={AUTH_LINK_CLASS}>Chính sách bảo mật</a>.
-          </Checkbox>
-        </Form.Item>
-
-        <Button type="primary" htmlType="submit" size="large" loading={submitting} disabled={submitting} className={AUTH_PRIMARY_BUTTON_CLASS}>
-          <span>{submitting ? 'Đang tạo tài khoản...' : 'Tạo tài khoản'}</span>
-          {!submitting && <ArrowRightOutlined />}
-        </Button>
-      </Form>
-
-      <div className="mt-5 text-center text-sm text-slate-600">
-        Đã có tài khoản?{' '}
-        <Link to="/login" className={AUTH_LINK_CLASS}>Đăng nhập</Link>
-      </div>
-    </AuthPageShell>
+          <button type="submit" disabled={submitting} className={`${FONT} h-[46px] cursor-pointer rounded-md border-0 bg-[#0C4A6E] text-[15px] font-semibold text-white hover:bg-[#075985] disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2`}>
+            {submitting ? 'Đang tạo tài khoản…' : 'Tạo tài khoản'}
+          </button>
+        </form>
+      </main>
+    </div>
   );
 };
 

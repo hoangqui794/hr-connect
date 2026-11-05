@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace HRConnect.Infrastructure.Migrations
 {
     /// <inheritdoc />
+    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     public partial class ReplacementSlotExtension : Migration
     {
         /// <inheritdoc />
