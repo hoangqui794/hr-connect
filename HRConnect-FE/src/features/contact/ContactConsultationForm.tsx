@@ -75,6 +75,10 @@ export const ContactConsultationForm: React.FC<ContactConsultationFormProps> = (
   className = '',
 }) => {
   const [form] = Form.useForm<FormValues>();
+  const serviceInterest = Form.useWatch('serviceInterest', form);
+  const currentServiceInfo = SERVICE_INTEREST_OPTIONS.find(
+    (item) => item.value === (serviceInterest || initialServiceInterest)
+  );
   const [submitting, setSubmitting] = useState(false);
   const [receipt, setReceipt] = useState<ContactRequestReceipt | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -326,6 +330,13 @@ export const ContactConsultationForm: React.FC<ContactConsultationFormProps> = (
           label={<span className="font-semibold text-slate-800">Dịch vụ quan tâm</span>}
           name="serviceInterest"
           rules={[{ required: true, message: 'Vui lòng chọn dịch vụ bạn cần tư vấn' }]}
+          extra={
+            currentServiceInfo?.desc ? (
+              <span className="mt-1.5 block text-xs text-slate-500">
+                {currentServiceInfo.desc}
+              </span>
+            ) : null
+          }
         >
           <Select
             size="large"
@@ -333,13 +344,18 @@ export const ContactConsultationForm: React.FC<ContactConsultationFormProps> = (
             placeholder="Chọn mô hình dịch vụ"
             options={SERVICE_INTEREST_OPTIONS.map((item) => ({
               value: item.value,
-              label: (
-                <div className="py-1">
-                  <div className="font-semibold text-slate-900">{item.label}</div>
-                  <div className="text-xs text-slate-500">{item.desc}</div>
-                </div>
-              ),
+              label: item.label,
+              desc: item.desc,
             }))}
+            optionRender={(option) => {
+              const desc = (option.data as { desc?: string })?.desc;
+              return (
+                <div className="py-1">
+                  <div className="font-semibold text-slate-900">{option.label}</div>
+                  {desc && <div className="text-xs text-slate-500">{desc}</div>}
+                </div>
+              );
+            }}
           />
         </Form.Item>
 
