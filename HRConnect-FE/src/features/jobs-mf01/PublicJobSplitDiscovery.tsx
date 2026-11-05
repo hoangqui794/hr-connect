@@ -269,9 +269,9 @@ export const PublicJobSplitDiscovery: React.FC = () => {
   return (
     <div className={`min-h-screen w-full bg-[#F7F8FA] ${FONT} text-[14px] text-[#1F2937] [line-height:normal]`}>
       <Navbar />
-      <div className="bg-[#0C4A6E]">
-        <div className="mx-auto max-w-[1248px] px-4 pb-5 pt-3 sm:px-6">
-          <form role="search" onSubmit={submitSearch} className="flex flex-wrap gap-2 rounded-lg bg-white p-1.5">
+      <section aria-label="Tìm kiếm việc làm" className="border-0 border-b border-solid border-[#E5E7EB] bg-[#F7F8FA]">
+        <div className="mx-auto max-w-[1248px] px-4 py-4 sm:px-6">
+          <form role="search" onSubmit={submitSearch} className="flex flex-wrap gap-2 rounded-xl border border-solid border-[#E5E7EB] bg-white p-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
             <label className="relative box-content flex flex-[3_1_320px] items-center gap-2.5 px-3 text-[#6B7280]">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
               <span className={SR_ONLY}>Từ khóa</span>
@@ -298,7 +298,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
             <button type="submit" className={`${FONT} h-[42px] cursor-pointer self-start rounded-md border-0 bg-[#C2410C] px-[26px] text-[15px] font-semibold text-white hover:bg-[#9A3412] max-sm:w-full`}>Tìm việc</button>
           </form>
         </div>
-      </div>
+      </section>
 
       <main className="mx-auto max-w-[1248px] px-4 pb-14 pt-5 sm:px-6">
         <nav aria-label="Đường dẫn" className="mb-[14px] text-[13px] text-[#6B7280]">

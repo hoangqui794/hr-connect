@@ -419,17 +419,17 @@ export const HomePage: React.FC = () => {
   return (
     <div className="min-h-screen w-full bg-[#F7F8FA] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[14px] text-gray-800 [line-height:normal] [&_button]:[font-family:inherit] [&_input]:[font-family:inherit] [&_select]:[font-family:inherit]">
       <Navbar />
-      <div className="bg-[#0C4A6E]">
-        <div className={`mx-auto max-w-[1248px] px-4 pt-5 sm:px-6 ${candidate ? 'pb-6' : 'pb-7'}`}>
+      <section aria-label="Tìm kiếm việc làm" className="border-0 border-b border-solid border-slate-200 bg-[#F7F8FA]">
+        <div className={`mx-auto max-w-[1248px] px-4 pt-5 sm:px-6 ${candidate ? 'pb-5' : 'pb-6'}`}>
           <SearchForm />
           {!candidate && (
-            <div className="mt-3.5 flex flex-wrap items-center gap-2.5 text-[13px] text-slate-300">
-              <span className="font-semibold text-white">Tìm nhiều:</span>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-[13px] text-slate-600">
+              <span className="font-semibold text-slate-800">Tìm nhiều:</span>
               {SUGGESTED.map((s) => (
                 <Link
                   key={s}
                   to={`/jobs?keyword=${encodeURIComponent(s)}`}
-                  className="rounded border border-solid border-[#3E7090] px-2.5 py-[3px] text-slate-200 no-underline transition-colors hover:bg-white/10 hover:text-white"
+                  className="rounded-md border border-solid border-slate-300 bg-white px-2.5 py-1 text-slate-600 no-underline transition-colors hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800"
                 >
                   {s}
                 </Link>
@@ -437,7 +437,7 @@ export const HomePage: React.FC = () => {
             </div>
           )}
         </div>
-      </div>
+      </section>
       {candidate ? (
         <Suspense fallback={<div className="mx-auto max-w-[1248px] px-6 py-8"><Skeleton active paragraph={{ rows: 8 }} /></div>}>
           <CandidateHome />

@@ -115,7 +115,7 @@ const LOCATION_OPTIONS = [
   { value: 'Cần Thơ', label: 'Cần Thơ', region: 'Tây Nam Bộ' },
 ];
 
-/** The white search box on the navy band under the header. Goes to the job list of the current role. */
+/** Standalone job search panel below the site header. Goes to the job list of the current role. */
 export const SearchForm: React.FC<{ defaultKeyword?: string; defaultLocation?: string }> = ({ defaultKeyword = '', defaultLocation = '' }) => {
   const navigate = useNavigate();
   const { isAuthenticated, role } = useAuthStore();
@@ -127,7 +127,7 @@ export const SearchForm: React.FC<{ defaultKeyword?: string; defaultLocation?: s
   return (
     <form
       role="search"
-      className="flex flex-wrap gap-2 rounded-xl bg-white p-2 shadow-sm"
+      className="flex flex-wrap gap-2 rounded-xl border border-solid border-slate-200 bg-white p-2 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"
       onSubmit={(e) => {
         e.preventDefault();
         const params = new URLSearchParams(candidate ? { tab: 'all' } : {});

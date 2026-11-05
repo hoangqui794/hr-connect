@@ -107,7 +107,7 @@ export const CvSidebarTools: React.FC<CvSidebarToolsProps> = ({
   ];
 
   return (
-    <aside className="w-[340px] h-full bg-white border-0 border-r border-solid border-slate-200 flex flex-col shrink-0 overflow-y-auto select-none shadow-xs">
+    <aside className="h-full w-[316px] xl:w-[328px] 2xl:w-[340px] bg-white border-0 border-r border-solid border-slate-200 flex flex-col shrink-0 overflow-y-auto select-none shadow-xs">
       <div className="p-4 border-0 border-b border-solid border-slate-100 flex items-center gap-2">
         <LayoutOutlined className="text-blue-600 text-lg" />
         <h2 className="text-sm font-bold text-slate-800 m-0">Công cụ tùy biến CV</h2>

@@ -1,4 +1,14 @@
-html:has(.candidate-cv-builder-page),
+html:has(.candidate-cv-builder-page) {
+  /* The builder owns its internal scroll regions; avoid forcing a second
+     document scrollbar beside the workspace scrollbar. */
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-height: 100vh !important;
+  overscroll-behavior: none !important;
+}
+
 body:has(.candidate-cv-builder-page),
 #root:has(.candidate-cv-builder-page) {
   overflow: hidden !important;
@@ -6,6 +16,27 @@ body:has(.candidate-cv-builder-page),
   height: 100dvh !important;
   max-height: 100vh !important;
   overscroll-behavior: none !important;
+}
+
+.cv-builder-draft-alert.ant-alert {
+  min-height: 48px;
+  padding: 8px max(16px, calc((100vw - 1520px) / 2 + 32px));
+  align-items: center;
+}
+
+.cv-builder-draft-alert .ant-alert-content {
+  min-width: 0;
+}
+
+.cv-builder-draft-alert .ant-alert-action {
+  margin-inline-start: auto;
+  padding-inline-start: 16px;
+}
+
+@media (max-width: 900px) {
+  .cv-builder-draft-alert.ant-alert {
+    padding-inline: 16px;
+  }
 }
 
 .candidate-cv-builder-page {
