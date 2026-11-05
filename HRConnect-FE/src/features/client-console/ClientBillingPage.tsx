@@ -12,13 +12,14 @@ import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ReloadOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
 import { financeApi } from '@/services/api/financeApi';
 import { jobsApi } from '@/services/api/jobsApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { OnlinePaymentTargetType, ServiceFee, ServiceFeeKind, ServiceFeeStatus } from '@/types/api/finance';
 import type { ServiceTypeCode } from '@/types/api/jobs';
 import { FilterPills, PageHero, StatusDot, Surface, type Tone } from '@/features/admin-console/ui';
-import { SERVICE_FEE_KIND, SERVICE_FEE_STATUS, date, labelOf, money, OWED_FEE_STATUS, isOwedToClient } from '@/features/finance-mf05/financeLabels';
+import { SERVICE_FEE_KIND, SERVICE_FEE_STATUS, labelOf, money, OWED_FEE_STATUS, isOwedToClient } from '@/features/finance-mf05/financeLabels';
 import { depositTransferNote, serviceFeeTransferNote, transferNote } from '@/features/finance-mf05/platformBankAccount';
 import { SERVICE_TYPE_LABEL } from '@/features/jobs-mf01/jobDisplay';
 import { BillingPaymentModal } from './BillingPaymentModal';
@@ -77,7 +78,6 @@ const SERVICE_OF_KIND: Record<ServiceFeeKind, ServiceTypeCode> = {
   CREDIT: 'CV_SOURCING',
   REPLACEMENT_REFUND: 'HEADHUNT_COD',
 };
-
 
 const bucketOf = (status: ServiceFeeStatus | 'PENDING' | 'PAID' | 'CANCELLED'): Bucket =>
   status === 'PAID' ? 'PAID' : status === 'OVERDUE' ? 'OVERDUE' : status === 'CANCELLED' ? 'OTHER' : 'UNPAID';
@@ -183,7 +183,7 @@ type StatusFilter = 'all' | 'UNPAID' | 'OVERDUE' | 'PAID';
 const sumVnd = (rows: BillingRow[]) => rows.filter((r) => r.currencyCode === 'VND').reduce((s, r) => s + r.amount, 0);
 
 const Kpi: React.FC<{ label: string; value: string; hint: string; tone?: 'danger' | 'success' }> = ({ label, value, hint, tone }) => (
-  <Surface padded className="!p-5">
+  <Surface padded className="!p-5 shadow-xs transition-shadow hover:shadow-sm">
     <div className="text-[13px] font-medium text-slate-600">{label}</div>
     <div
       className={`mt-1 text-[22px] font-bold tabular-nums ${
@@ -213,15 +213,18 @@ export const ClientBillingPage: React.FC = () => {
     {
       title: 'Dịch vụ',
       key: 'service',
-      width: 210,
+      width: 250,
       render: (_, r) => (
-        <div className="flex items-start gap-2">
-          <Tag className="m-0 font-semibold" color={r.service === 'HEADHUNT_COD' ? 'gold' : r.service === 'CV_SOURCING' ? 'purple' : 'blue'}>
+        <div className="flex items-start gap-2.5 py-1">
+          <Tag
+            className="m-0 font-bold rounded-md px-1.5 py-0.5 text-[11px] border-0 shrink-0 mt-0.5"
+            color={r.service === 'HEADHUNT_COD' ? 'blue' : r.service === 'CV_SOURCING' ? 'purple' : 'cyan'}
+          >
             {SERVICE_TYPE_LABEL[r.service].short}
           </Tag>
           <div className="min-w-0">
-            <div className="text-[13.5px] font-medium text-slate-900">{r.item}</div>
-            <div className="text-xs text-slate-500">{SERVICE_TYPE_LABEL[r.service].label}</div>
+            <div className="text-[13.5px] font-semibold text-slate-900 leading-snug">{r.item}</div>
+            <div className="text-xs text-slate-500 mt-0.5">{SERVICE_TYPE_LABEL[r.service].label}</div>
           </div>
         </div>
       ),
@@ -229,10 +232,17 @@ export const ClientBillingPage: React.FC = () => {
     {
       title: 'Tin tuyển dụng',
       key: 'job',
+      width: 260,
       render: (_, r) => (
-        <div className="min-w-0">
-          <div className="truncate font-medium text-slate-900">{r.jobTitle}</div>
-          {r.candidateName && <div className="truncate text-xs text-slate-500">Ứng viên: {r.candidateName}</div>}
+        <div className="min-w-0 py-1">
+          <div className="truncate font-semibold text-[13.5px] text-slate-900 leading-snug" title={r.jobTitle}>
+            {r.jobTitle}
+          </div>
+          {r.candidateName && (
+            <div className="truncate text-xs text-slate-500 mt-0.5">
+              Ứng viên: <span className="font-medium text-slate-700">{r.candidateName}</span>
+            </div>
+          )}
         </div>
       ),
     },
@@ -242,7 +252,7 @@ export const ClientBillingPage: React.FC = () => {
       align: 'right',
       width: 150,
       render: (_, r) => (
-        <span className={`font-semibold tabular-nums ${r.amount < 0 ? 'text-emerald-700' : 'text-slate-900'}`}>
+        <span className={`font-semibold tabular-nums text-[13.5px] ${r.amount < 0 ? 'text-emerald-700' : 'text-slate-900'}`}>
           {r.amount < 0 ? `Hoàn ${money(-r.amount, r.currencyCode)}` : money(r.amount, r.currencyCode)}
         </span>
       ),
@@ -252,26 +262,48 @@ export const ClientBillingPage: React.FC = () => {
       key: 'due',
       align: 'center',
       width: 130,
-      render: (_, r) => <span className="tabular-nums">{r.dueDate ? date(r.dueDate) : '—'}</span>,
+      render: (_, r) => (
+        <span className="tabular-nums text-[13px] text-slate-700">
+          {r.dueDate ? dayjs(r.dueDate).format('DD/MM/YYYY') : '—'}
+        </span>
+      ),
     },
     {
       title: 'Trạng thái',
       key: 'status',
-      align: 'center',
+      align: 'left',
       width: 170,
       render: (_, r) => (
-        <div>
+        <div className="py-1 space-y-0.5 text-left">
           <StatusDot tone={r.tone}>{r.statusLabel}</StatusDot>
           {r.paidAt && (
-            <div className="mt-0.5 text-xs text-slate-500">
-              {date(r.paidAt)}
+            <div className="text-[11.5px] text-slate-500 pl-3.5">
+              {dayjs(r.paidAt).format('DD/MM/YYYY')}
               {r.paymentReference ? ` · ${r.paymentReference}` : ''}
             </div>
           )}
-          {r.payable && (
-            <Button type="link" size="small" className="!h-auto !px-0 !pt-1 text-[13px] font-medium" onClick={() => setPaying(r)} aria-label={`Thanh toán: ${r.item} · ${r.jobTitle}`}>
+        </div>
+      ),
+    },
+    {
+      title: 'Thao tác',
+      key: 'actions',
+      align: 'right',
+      width: 120,
+      render: (_, r) => (
+        <div className="flex justify-end py-1">
+          {r.payable ? (
+            <Button
+              type="primary"
+              size="small"
+              className="w-[95px] text-xs font-semibold rounded-lg shadow-xs"
+              onClick={() => setPaying(r)}
+              aria-label={`Thanh toán: ${r.item} · ${r.jobTitle}`}
+            >
               Thanh toán
             </Button>
+          ) : (
+            <span className="inline-block w-[95px] text-center text-slate-400 text-xs">—</span>
           )}
         </div>
       ),
@@ -342,7 +374,7 @@ export const ClientBillingPage: React.FC = () => {
             columns={columns}
             dataSource={visible}
             loading={loading}
-            scroll={{ x: 760 }}
+            scroll={{ x: 1040 }}
             pagination={{ current: page, pageSize: PAGE_SIZE, total: visible.length, onChange: setPage, showSizeChanger: false, hideOnSinglePage: true }}
             locale={{
               emptyText: (
