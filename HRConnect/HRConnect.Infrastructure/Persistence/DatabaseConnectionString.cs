@@ -105,15 +105,26 @@ public static class DatabaseConnectionString
         }
 
         // Keep warm TLS connections open for cross-region managed PostgreSQL (e.g. Supabase)
-        // to avoid paying 300-500ms TCP+TLS handshake overhead after brief UI idle periods.
+        // and cap MaxPoolSize to 10 so burst requests (e.g. Warranty / Billing pages) queue
+        // safely in Npgsql memory instead of exceeding Supabase Nano Session Pooler's 15-client limit.
         if (builder.KeepAlive == 0)
         {
             builder.KeepAlive = 30;
         }
 
-        if (builder.MinPoolSize == 0)
+        if (builder.MinPoolSize == 0 || builder.MinPoolSize > 10)
         {
-            builder.MinPoolSize = 5;
+            builder.MinPoolSize = 2;
+        }
+
+        if (builder.MaxPoolSize == 100 || builder.MaxPoolSize > 12)
+        {
+            builder.MaxPoolSize = 10;
+        }
+
+        if (builder.Timeout == 15)
+        {
+            builder.Timeout = 30;
         }
     }
 

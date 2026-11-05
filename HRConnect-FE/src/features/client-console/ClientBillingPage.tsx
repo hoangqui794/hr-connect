@@ -100,7 +100,12 @@ const useBillingRows = () => {
       const paidPackageJobs = jobs.filter(
         (j) => j.serviceTypeCode === 'CV_APPLICATION' && j.postingFeeStatus && j.postingPackageCode !== 'FREE'
       );
-      const fees = await Promise.all(paidPackageJobs.map((j) => jobsApi.getPostingFee(j.jobId).then((fee) => ({ job: j, fee }))));
+      const fees: Array<{ job: (typeof paidPackageJobs)[number]; fee: Awaited<ReturnType<typeof jobsApi.getPostingFee>> }> = [];
+      for (let i = 0; i < paidPackageJobs.length; i += 4) {
+        const batch = paidPackageJobs.slice(i, i + 4);
+        const batchFees = await Promise.all(batch.map((j) => jobsApi.getPostingFee(j.jobId).then((fee) => ({ job: j, fee }))));
+        fees.push(...batchFees);
+      }
       return fees.filter((f) => f.fee && f.fee.amount > 0);
     },
   });

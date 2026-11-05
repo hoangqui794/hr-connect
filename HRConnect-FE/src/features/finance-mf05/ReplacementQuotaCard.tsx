@@ -91,7 +91,9 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
 
         if (Array.isArray(clientJobsRes)) {
           clientJobsRes.forEach((j) => {
-            jobMetaMap.set(j.jobId, { jobTitle: j.title });
+            if (!j.serviceTypeCode || j.serviceTypeCode === 'HEADHUNT_COD') {
+              jobMetaMap.set(j.jobId, { jobTitle: j.title });
+            }
           });
         }
 
@@ -111,18 +113,22 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
       if (jobIds.length === 0) return [];
 
       // Query replacement slots for all relevant jobs in parallel
-      const slotResults = await Promise.all(
-        jobIds.map(async (jid) => {
-          const slots = await financeApi.getReplacementSlots(jid);
-          const meta = jobMetaMap.get(jid);
-          return slots.map((slot) => ({
-            ...slot,
-            jobTitle: meta?.jobTitle || slot.jobId,
-            companyName: meta?.companyName,
-          }));
-        })
-      );
-
+      const slotResults: ReplacementSlotWithMeta[][] = [];
+      for (let i = 0; i < jobIds.length; i += 4) {
+        const batch = jobIds.slice(i, i + 4);
+        const batchRes = await Promise.all(
+          batch.map(async (jid) => {
+            const slots = await financeApi.getReplacementSlots(jid);
+            const meta = jobMetaMap.get(jid);
+            return slots.map((slot) => ({
+              ...slot,
+              jobTitle: meta?.jobTitle || slot.jobId,
+              companyName: meta?.companyName,
+            }));
+          })
+        );
+        slotResults.push(...batchRes);
+      }
       const allSlots = slotResults.flat();
       return allSlots.sort((a, b) => {
         const order: Record<ReplacementSlotStatus, number> = {
