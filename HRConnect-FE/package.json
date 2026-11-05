@@ -12,9 +12,7 @@
     "test:coverage": "vitest run --coverage",
     "test:coverage:critical": "vitest run src/services --coverage",
     "test:watch": "vitest",
-    "test:run": "vitest run",
-    "test:e2e": "playwright test",
-    "test:e2e:report": "playwright show-report"
+    "test:run": "vitest run"
   },
   "dependencies": {
     "@ant-design/icons": "^5.3.7",
