@@ -134,9 +134,9 @@ fi
 grep -q -- '--project-name hrconnect-blue.*run --rm --no-deps backend --migrate' "$success_fixture/docker.log" || fail 'Migration did not run before startup.'
 grep -q -- '--project-name hrconnect-blue.*up -d --remove-orphans' "$success_fixture/docker.log" || fail 'Blue services were not started.'
 grep -q '^stop hrconnect-backend hrconnect-ai-v2$' "$success_fixture/docker.log" || fail 'Legacy containers were not stopped.'
-grep -q 'container prune --force --filter until=24h' "$success_fixture/docker.log" || fail 'Stopped containers were not pruned.'
-grep -q 'image prune --all --force --filter until=168h' "$success_fixture/docker.log" || fail 'Unused images were not pruned.'
-grep -q 'builder prune --force --filter until=24h' "$success_fixture/docker.log" || fail 'Build cache was not pruned.'
+grep -q 'container prune --force --filter until=1h' "$success_fixture/docker.log" || fail 'Stopped containers were not pruned.'
+grep -q 'image prune --all --force --filter until=12h' "$success_fixture/docker.log" || fail 'Unused images were not pruned.'
+grep -q 'builder prune --force --filter until=1h' "$success_fixture/docker.log" || fail 'Build cache was not pruned.'
 assert_no_destructive_cleanup "$success_fixture/docker.log"
 
 add_release "$success_fixture" "$SECOND_SHA"
