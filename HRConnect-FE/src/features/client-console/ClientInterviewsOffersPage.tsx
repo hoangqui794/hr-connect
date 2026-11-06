@@ -56,6 +56,8 @@ export const ClientInterviewsOffersPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
+  const defaultStatusForTab = (t: TabKey) => (t === 'interviews' ? 'SCHEDULED' : 'all');
+
   const [tab, setTab] = useState<TabKey>(() => {
     const initial = searchParams.get('tab');
     return initial && (TABS as string[]).includes(initial) ? (initial as TabKey) : 'interviews';
@@ -64,8 +66,6 @@ export const ClientInterviewsOffersPage: React.FC = () => {
   const page = Number(searchParams.get('page')) || 1;
   const openId = searchParams.get('open') ?? undefined;
 
-  // Lịch phỏng vấn mặc định chỉ lấy những lịch "Đã lên lịch" (SCHEDULED)
-  const defaultStatusForTab = (t: TabKey) => (t === 'interviews' ? 'SCHEDULED' : 'all');
   const [statusFilter, setStatusFilter] = useState<string>(() => {
     return searchParams.get('status') || defaultStatusForTab(tab);
   });
@@ -165,7 +165,6 @@ export const ClientInterviewsOffersPage: React.FC = () => {
     next.set('tab', tab);
     next.set('page', String(p));
     setSearchParams(next);
-  };
   };
 
   // Filter items locally by search keyword and job
