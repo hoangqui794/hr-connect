@@ -731,8 +731,8 @@ export const ClientInterviewsOffersPage: React.FC = () => {
                     title={opt.desc}
                     className={`cursor-pointer rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all border ${
                       isActive
-                        ? 'bg-[#0C4A6E] text-white border-[#0C4A6E] shadow-2xs'
-                        : 'bg-white text-slate-600 border-slate-200/90 hover:bg-slate-100 hover:text-slate-900'
+                        ? 'bg-sky-50 text-[#0C4A6E] border-sky-300 font-bold shadow-2xs ring-1 ring-sky-300/40'
+                        : 'bg-white text-slate-600 border-slate-200/90 hover:bg-slate-50 hover:text-slate-900'
                     }`}
                   >
                     {opt.label}
@@ -762,8 +762,8 @@ export const ClientInterviewsOffersPage: React.FC = () => {
                     onClick={() => handleStatusChange(opt.value)}
                     className={`cursor-pointer rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all border ${
                       isActive
-                        ? 'bg-[#0C4A6E] text-white border-[#0C4A6E] shadow-2xs'
-                        : 'bg-white text-slate-600 border-slate-200/90 hover:bg-slate-100 hover:text-slate-900'
+                        ? 'bg-purple-50 text-purple-700 border-purple-300 font-bold shadow-2xs ring-1 ring-purple-300/40'
+                        : 'bg-white text-slate-600 border-slate-200/90 hover:bg-slate-50 hover:text-slate-900'
                     }`}
                   >
                     {opt.label}
@@ -789,8 +789,8 @@ export const ClientInterviewsOffersPage: React.FC = () => {
                     onClick={() => handleStatusChange(opt.value)}
                     className={`cursor-pointer rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all border ${
                       isActive
-                        ? 'bg-[#0C4A6E] text-white border-[#0C4A6E] shadow-2xs'
-                        : 'bg-white text-slate-600 border-slate-200/90 hover:bg-slate-100 hover:text-slate-900'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-300 font-bold shadow-2xs ring-1 ring-emerald-300/40'
+                        : 'bg-white text-slate-600 border-slate-200/90 hover:bg-slate-50 hover:text-slate-900'
                     }`}
                   >
                     {opt.label}
