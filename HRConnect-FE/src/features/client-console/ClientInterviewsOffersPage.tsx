@@ -62,16 +62,24 @@ export const ClientInterviewsOffersPage: React.FC = () => {
   const page = Number(searchParams.get('page')) || 1;
   const openId = searchParams.get('open') ?? undefined;
 
+  // Lịch phỏng vấn mặc định chỉ lấy những lịch "Đã lên lịch" (SCHEDULED)
+  const defaultStatusForTab = (t: TabKey) => (t === 'interviews' ? 'SCHEDULED' : 'all');
+  const urlStatus = searchParams.get('status');
+  const [statusFilter, setStatusFilter] = useState<string>(urlStatus || defaultStatusForTab(tab));
+
   const [openInterviewId, setOpenInterviewId] = useState<string | null>(null);
   const [searchKeyword, setSearchKeyword] = useState<string>('');
   const [selectedJobId, setSelectedJobId] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const { data: myJobs = [], isLoading: loadingJobs } = useMyJobs();
 
   // Queries for counts
-  const interviewCountQ = useQuery({
-    queryKey: ['client-pipeline', 'count', 'interviews'],
+  const interviewScheduledCountQ = useQuery({
+    queryKey: ['client-pipeline', 'count', 'interviews', 'SCHEDULED'],
+    queryFn: async () => (await pipelineApi.interviews({ status: 'SCHEDULED', page: 1, pageSize: 1 })).total,
+  });
+  const interviewAllCountQ = useQuery({
+    queryKey: ['client-pipeline', 'count', 'interviews', 'all'],
     queryFn: async () => (await pipelineApi.interviews({ page: 1, pageSize: 1 })).total,
   });
   const offerCountQ = useQuery({
@@ -109,8 +117,26 @@ export const ClientInterviewsOffersPage: React.FC = () => {
     const p = new URLSearchParams(searchParams);
     p.set('tab', nextTab);
     p.delete('page');
-    setStatusFilter('all');
+    const newStatus = defaultStatusForTab(nextTab);
+    if (newStatus === 'all') {
+      p.delete('status');
+    } else {
+      p.set('status', newStatus);
+    }
+    setStatusFilter(newStatus);
     setSearchParams(p);
+  };
+
+  const handleStatusChange = (nextStatus: string) => {
+    setStatusFilter(nextStatus);
+    const next = new URLSearchParams(searchParams);
+    if (nextStatus === 'all') {
+      next.delete('status');
+    } else {
+      next.set('status', nextStatus);
+    }
+    next.delete('page');
+    setSearchParams(next);
   };
 
   const setPage = (p: number) => {
@@ -485,7 +511,8 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             className="!h-10 !rounded-xl border-slate-200 hover:!border-slate-300 font-semibold text-slate-700"
             onClick={() => {
               listQ.refetch();
-              interviewCountQ.refetch();
+              interviewScheduledCountQ.refetch();
+              interviewAllCountQ.refetch();
               offerCountQ.refetch();
               placementCountQ.refetch();
             }}
@@ -532,13 +559,19 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             </span>
           </div>
           <div className="my-3">
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Lịch Phỏng Vấn</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Lịch Đã Lên Hẹn</div>
             <div className="mt-1 text-3xl font-black tracking-tight text-slate-900 tabular-nums">
-              {interviewCountQ.isLoading ? <Skeleton.Input active size="small" /> : interviewCountQ.data ?? 0}
+              {interviewScheduledCountQ.isLoading ? (
+                <Skeleton.Input active size="small" />
+              ) : (
+                interviewScheduledCountQ.data ?? 0
+              )}
             </div>
           </div>
           <div className="flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-3 text-xs text-slate-500">
-            <span>Sắp xếp & ghi kết quả</span>
+            <span>
+              {interviewScheduledCountQ.data ?? 0} lịch sắp tới · {interviewAllCountQ.data ?? 0} tất cả
+            </span>
             <span className={`font-bold ${tab === 'interviews' ? 'text-[#0C4A6E]' : 'text-slate-400'}`}>
               {tab === 'interviews' ? 'Đang xem' : 'Mở tab →'}
             </span>
@@ -628,8 +661,8 @@ export const ClientInterviewsOffersPage: React.FC = () => {
 
       {/* ── 3. Main Data Surface with Filters ── */}
       <Surface className="rounded-3xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
-        {/* Filter Toolbar */}
-        <div className="p-5 border-b border-slate-100 flex flex-wrap items-center gap-3">
+        {/* Filter Toolbar Top Row: Search + Job */}
+        <div className="p-5 pb-3 border-b border-slate-100 flex flex-wrap items-center gap-3">
           <div className="flex-1 min-w-[240px]">
             <Input
               size="large"
@@ -647,7 +680,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             value={selectedJobId}
             onChange={setSelectedJobId}
             loading={loadingJobs}
-            className="w-full sm:w-64 font-medium"
+            className="w-full sm:w-72 font-medium"
             options={[
               { value: 'all', label: 'Tất cả vị trí tuyển dụng' },
               ...myJobs.map((j) => ({
@@ -656,35 +689,100 @@ export const ClientInterviewsOffersPage: React.FC = () => {
               })),
             ]}
           />
+        </div>
 
-          <Select
-            size="large"
-            value={statusFilter}
-            onChange={setStatusFilter}
-            className="w-full sm:w-48 font-medium"
-            options={
-              tab === 'interviews'
-                ? [
-                    { value: 'all', label: 'Tất cả trạng thái' },
-                    { value: 'SCHEDULED', label: 'Đã lên lịch' },
-                    { value: 'COMPLETED', label: 'Đã phỏng vấn' },
-                    { value: 'CANCELLED', label: 'Đã hủy' },
-                    { value: 'NO_SHOW', label: 'Vắng mặt' },
-                  ]
-                : tab === 'offers'
-                ? [
-                    { value: 'all', label: 'Tất cả trạng thái' },
-                    { value: 'DRAFT', label: 'Bản nháp' },
-                    { value: 'SENT', label: 'Đã gửi' },
-                    { value: 'ACCEPTED', label: 'Đã nhận offer' },
-                    { value: 'DECLINED', label: 'Từ chối offer' },
-                  ]
-                : [
-                    { value: 'all', label: 'Tất cả trạng thái' },
-                    { value: 'STARTED', label: 'Đã đi làm' },
-                  ]
-            }
-          />
+        {/* Filter Toolbar Bottom Row: Quick Status Pills */}
+        <div className="px-5 py-3 bg-slate-50/70 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label="Lọc theo trạng thái">
+            <span className="text-xs font-bold text-slate-500 mr-1.5 uppercase tracking-wider">Trạng thái:</span>
+            {tab === 'interviews' &&
+              (
+                [
+                  { value: 'SCHEDULED', label: '🗓️ Đã lên lịch', desc: 'Chỉ các lịch sắp tới' },
+                  { value: 'COMPLETED', label: '✅ Đã phỏng vấn', desc: 'Các buổi đã hoàn thành' },
+                  { value: 'all', label: '📋 Xem tất cả', desc: 'Xem toàn bộ lịch sử' },
+                  { value: 'CANCELLED', label: '❌ Đã hủy', desc: 'Lịch phỏng vấn bị hủy' },
+                ] as const
+              ).map((opt) => {
+                const isActive = statusFilter === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={isActive}
+                    onClick={() => handleStatusChange(opt.value)}
+                    title={opt.desc}
+                    className={`cursor-pointer rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border ${
+                      isActive
+                        ? 'bg-[#0C4A6E] text-white border-[#0C4A6E] shadow-2xs'
+                        : 'bg-white text-slate-700 border-slate-200/90 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+
+            {tab === 'offers' &&
+              (
+                [
+                  { value: 'all', label: '📋 Xem tất cả offer' },
+                  { value: 'SENT', label: '✉️ Đã gửi chờ phản hồi' },
+                  { value: 'ACCEPTED', label: '✅ Đã nhận offer' },
+                  { value: 'DECLINED', label: '❌ Từ chối' },
+                  { value: 'DRAFT', label: '📝 Bản nháp' },
+                ] as const
+              ).map((opt) => {
+                const isActive = statusFilter === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={isActive}
+                    onClick={() => handleStatusChange(opt.value)}
+                    className={`cursor-pointer rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border ${
+                      isActive
+                        ? 'bg-[#0C4A6E] text-white border-[#0C4A6E] shadow-2xs'
+                        : 'bg-white text-slate-700 border-slate-200/90 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+
+            {tab === 'placements' &&
+              (
+                [
+                  { value: 'all', label: '📋 Xem tất cả' },
+                  { value: 'STARTED', label: '🚀 Đã đi làm chính thức' },
+                ] as const
+              ).map((opt) => {
+                const isActive = statusFilter === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={isActive}
+                    onClick={() => handleStatusChange(opt.value)}
+                    className={`cursor-pointer rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border ${
+                      isActive
+                        ? 'bg-[#0C4A6E] text-white border-[#0C4A6E] shadow-2xs'
+                        : 'bg-white text-slate-700 border-slate-200/90 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+          </div>
+
+          <span className="text-xs font-medium text-slate-500 tabular-nums">
+            Tìm thấy <b>{filteredItems.length}</b> kết quả
+          </span>
         </div>
 
         {/* Content Table */}
@@ -812,3 +910,4 @@ export const ClientInterviewsOffersPage: React.FC = () => {
 };
 
 export default ClientInterviewsOffersPage;
+
