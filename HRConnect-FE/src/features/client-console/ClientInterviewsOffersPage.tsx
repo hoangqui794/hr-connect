@@ -698,9 +698,10 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             {tab === 'interviews' &&
               (
                 [
+                  { value: 'all', label: 'Tất cả', desc: 'Xem toàn bộ lịch sử' },
                   { value: 'SCHEDULED', label: 'Đã lên lịch', desc: 'Chỉ các lịch sắp tới' },
                   { value: 'COMPLETED', label: 'Đã phỏng vấn', desc: 'Các buổi đã hoàn thành' },
-                  { value: 'all', label: 'Tất cả', desc: 'Xem toàn bộ lịch sử' },
+                  { value: 'NO_SHOW', label: 'Vắng mặt', desc: 'Ứng viên không tham gia' },
                   { value: 'CANCELLED', label: 'Đã hủy', desc: 'Lịch phỏng vấn bị hủy' },
                 ] as const
               ).map((opt) => {
@@ -732,6 +733,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
                   { value: 'ACCEPTED', label: 'Đã nhận' },
                   { value: 'EXPIRED', label: 'Hết hạn' },
                   { value: 'DECLINED', label: 'Từ chối' },
+                  { value: 'WITHDRAWN', label: 'Đã thu hồi' },
                   { value: 'DRAFT', label: 'Bản nháp' },
                 ] as const
               ).map((opt) => {
@@ -759,6 +761,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
                 [
                   { value: 'all', label: 'Tất cả' },
                   { value: 'STARTED', label: 'Đã đi làm' },
+                  { value: 'LEFT_DURING_WARRANTY', label: 'Nghỉ trong bảo hành' },
                 ] as const
               ).map((opt) => {
                 const isActive = statusFilter === opt.value;
