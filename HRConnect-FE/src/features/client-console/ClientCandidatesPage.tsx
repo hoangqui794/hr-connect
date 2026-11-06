@@ -184,9 +184,7 @@ export const ClientCandidatesPage: React.FC = () => {
 
   // Sync urlOpenId if it arrives from outside navigation
   React.useEffect(() => {
-    if (urlOpenId !== activeAppId) {
-      setActiveAppId(urlOpenId);
-    }
+    setActiveAppId((prev) => (prev !== urlOpenId ? urlOpenId : prev));
   }, [urlOpenId]);
 
   const setParams = (changes: Record<string, string | undefined>, replace = false) => {

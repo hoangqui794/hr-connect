@@ -74,12 +74,12 @@ export const ClientInterviewsOffersPage: React.FC = () => {
   // Đồng bộ từ URL vào State nếu người dùng điều hướng back/forward hoặc đổi link
   useEffect(() => {
     const urlTab = searchParams.get('tab');
-    if (urlTab && (TABS as string[]).includes(urlTab) && urlTab !== tab) {
-      setTab(urlTab as TabKey);
+    if (urlTab && (TABS as string[]).includes(urlTab)) {
+      setTab((prev) => (prev !== urlTab ? (urlTab as TabKey) : prev));
     }
     const urlStatus = searchParams.get('status');
-    if (urlStatus && urlStatus !== statusFilter) {
-      setStatusFilter(urlStatus);
+    if (urlStatus) {
+      setStatusFilter((prev) => (prev !== urlStatus ? urlStatus : prev));
     }
   }, [searchParams]);
 
@@ -161,8 +161,8 @@ export const ClientInterviewsOffersPage: React.FC = () => {
   };
 
   // Filter items locally by search keyword and job
-  const rawItems = (listQ.data?.items ?? []) as any[];
   const filteredItems = useMemo(() => {
+    const rawItems = (listQ.data?.items ?? []) as any[];
     return rawItems.filter((item) => {
       // 1. Job filter
       if (selectedJobId !== 'all') {
@@ -188,7 +188,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
 
       return true;
     });
-  }, [rawItems, selectedJobId, searchKeyword, myJobs]);
+  }, [listQ.data?.items, selectedJobId, searchKeyword, myJobs]);
 
   // ── Columns Definitions ──────────────────────────────────────────
   const interviewColumns: ColumnsType<InterviewItem> = useMemo(
