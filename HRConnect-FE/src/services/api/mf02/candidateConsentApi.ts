@@ -1,6 +1,11 @@
 import { apiClient } from '../../apiClient';
 import type { PagedItems } from '@/types/api/hr';
-import type { CandidateSubmissionConsent, SubmissionConsentDecisionResult, SubmissionConsentReview } from '@/types/api/mf02';
+import type {
+  CandidateSubmissionConsent,
+  ReportUnauthorizedConsentResult,
+  SubmissionConsentDecisionResult,
+  SubmissionConsentReview,
+} from '@/types/api/mf02';
 
 export const candidateConsentApi = {
   async list(params: { status?: string; page: number; pageSize: number }): Promise<PagedItems<CandidateSubmissionConsent>> {
@@ -14,11 +19,23 @@ export const candidateConsentApi = {
     const body = decision === 'CONFIRM' ? { decision, allowFutureReuse } : { decision };
     return (await apiClient.post<SubmissionConsentDecisionResult>(`/candidates/me/submission-consents/${submissionId}/respond`, body)).data;
   },
+  async reportUnauthorized(submissionId: string, reason?: string): Promise<ReportUnauthorizedConsentResult> {
+    return (await apiClient.post<ReportUnauthorizedConsentResult>(
+      `/candidates/me/submission-consents/${encodeURIComponent(submissionId)}/report-unauthorized`,
+      reason ? { reason } : {}
+    )).data;
+  },
   async reviewPublic(token: string): Promise<SubmissionConsentReview> {
     return (await apiClient.post<{ success: boolean; data: SubmissionConsentReview }>('/submission-consents/review', { token })).data.data;
   },
   async respondPublic(token: string, decision: 'CONFIRM' | 'DECLINE', allowFutureReuse: boolean) {
     const body = decision === 'CONFIRM' ? { token, decision, allowFutureReuse } : { token, decision };
     return (await apiClient.post<SubmissionConsentDecisionResult>('/submission-consents/respond', body)).data;
+  },
+  async reportUnauthorizedPublic(token: string, reason?: string): Promise<ReportUnauthorizedConsentResult> {
+    return (await apiClient.post<ReportUnauthorizedConsentResult>(
+      '/submission-consents/report-unauthorized',
+      { token, reason }
+    )).data;
   },
 };

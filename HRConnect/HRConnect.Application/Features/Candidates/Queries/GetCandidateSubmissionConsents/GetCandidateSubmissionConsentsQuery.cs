@@ -35,8 +35,26 @@ public sealed class CandidateSubmissionConsentItem
     public Guid CvId { get; init; }
     public string CvTitle { get; init; } = string.Empty;
     public string? CvFileName { get; init; }
+    public long? CvFileSizeBytes { get; init; }
     public Guid AffiliateUserId { get; init; }
     public string AffiliateDisplayName { get; init; } = string.Empty;
+    public string? AffiliateEmail { get; init; }
+    public string? AffiliatePhone { get; init; }
+    public string? PitchText { get; init; }
+    public string? CandidateConditionSummary { get; init; }
+    public decimal? SalaryMin { get; init; }
+    public decimal? SalaryMax { get; init; }
+    public string CurrencyCode { get; init; } = "VND";
+    public string SalaryCurrency { get; init; } = "VND";
+    public bool SalaryNegotiable { get; init; }
+    public bool IsSalaryNegotiable { get; init; }
+    public string? JobLocation { get; init; }
+    public string? WorkLocation { get; init; }
+    public string? WorkMode { get; init; }
+    public string? EmploymentType { get; init; }
+    public decimal? MinExperienceYears { get; init; }
+    public decimal? MaxExperienceYears { get; init; }
+    public string? ExperienceRequirement { get; init; }
     public DateTime RequestedAt { get; init; }
     public DateTime ExpiresAt { get; init; }
     public DateTime? RespondedAt { get; init; }

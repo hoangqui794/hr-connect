@@ -49,7 +49,8 @@ public sealed record MyCandidateDuplicateCaseListItem(
     CandidateDuplicateJobDto? Job,
     IReadOnlyList<string> EvidenceTypes,
     DateTime CreatedAt,
-    DateTime UpdatedAt);
+    DateTime UpdatedAt,
+    Guid ConcurrencyToken = default);
 
 public sealed record MyCandidateDuplicateCaseDetailResponse(
     Guid DuplicateCaseId,
@@ -62,7 +63,8 @@ public sealed record MyCandidateDuplicateCaseDetailResponse(
     IReadOnlyList<string> EvidenceTypes,
     string? Resolution,
     DateTime CreatedAt,
-    DateTime UpdatedAt);
+    DateTime UpdatedAt,
+    Guid ConcurrencyToken = default);
 
 public sealed class GetMyCandidateDuplicateCasesQueryHandler
     : IRequestHandler<GetMyCandidateDuplicateCasesQuery, MyCandidateDuplicateCaseListResponse>
@@ -106,7 +108,8 @@ public sealed class GetMyCandidateDuplicateCasesQueryHandler
             MapJob(duplicateCase),
             MapEvidenceTypes(duplicateCase),
             duplicateCase.CreatedAt,
-            duplicateCase.UpdatedAt);
+            duplicateCase.UpdatedAt,
+            duplicateCase.ConcurrencyToken);
     }
 
     internal static CandidateDuplicateJobDto? MapJob(
@@ -195,6 +198,7 @@ public sealed class GetMyCandidateDuplicateCaseDetailQueryHandler
             GetMyCandidateDuplicateCasesQueryHandler.MapEvidenceTypes(duplicateCase),
             duplicateCase.Resolution,
             duplicateCase.CreatedAt,
-            duplicateCase.UpdatedAt);
+            duplicateCase.UpdatedAt,
+            duplicateCase.ConcurrencyToken);
     }
 }

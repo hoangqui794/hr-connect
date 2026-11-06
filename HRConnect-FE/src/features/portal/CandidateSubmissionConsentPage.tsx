@@ -155,10 +155,48 @@ export const CandidateSubmissionConsentPage: React.FC = () => {
           <div className="min-w-0 flex-1">
             <div className="break-words text-[16px] font-bold text-[#1F2937]">{consent.jobTitle}</div>
             <div className="mt-0.5 break-words text-[#4B5563]">{consent.companyName}</div>
+            {(consent.jobLocation || consent.workMode) && (
+              <div className="mt-0.5 break-words text-[13px] text-[#4B5563]">
+                {[
+                  consent.jobLocation,
+                  consent.workMode === 'ONSITE'
+                    ? 'Làm tại văn phòng'
+                    : consent.workMode === 'HYBRID'
+                      ? 'Linh hoạt (Hybrid)'
+                      : consent.workMode === 'REMOTE'
+                        ? 'Làm từ xa (Remote)'
+                        : consent.workMode,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </div>
+            )}
+            {(consent.salaryMin != null || consent.salaryMax != null || consent.salaryNegotiable || consent.experienceRequirement) && (
+              <div className="mt-0.5 break-words text-[13px] text-[#4B5563]">
+                {[
+                  consent.salaryMin != null && consent.salaryMax != null
+                    ? `${Math.round(consent.salaryMin / 1_000_000)} – ${Math.round(consent.salaryMax / 1_000_000)} triệu ${consent.currencyCode || 'VND'}`
+                    : consent.salaryNegotiable
+                      ? 'Thỏa thuận'
+                      : null,
+                  consent.experienceRequirement,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </div>
+            )}
           </div>
         </div>
 
         <dl className="m-0 mt-4 grid grid-cols-1 gap-x-5 gap-y-3 text-[13px] sm:grid-cols-2">
+          {consent.affiliateDisplayName && (
+            <div className="min-w-0">
+              <dt className="text-[#6B7280]">Người giới thiệu</dt>
+              <dd className="m-0 mt-0.5 break-words font-semibold text-[#1F2937]">
+                {consent.affiliateDisplayName} (Affiliate đối tác của HR Connect)
+              </dd>
+            </div>
+          )}
           <div className="min-w-0">
             <dt className="text-[#6B7280]">CV được gửi kèm</dt>
             <dd className="m-0 mt-0.5 break-words">

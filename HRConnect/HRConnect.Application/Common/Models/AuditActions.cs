@@ -14,6 +14,9 @@ public static class AuditActions
     public const string IdentityClaimOtpResent = "IDENTITY_CLAIM_OTP_RESENT";
     public const string IdentityEmailVerified = "IDENTITY_EMAIL_VERIFIED";
     public const string CandidateEmailIdentityRevoked = "CANDIDATE_EMAIL_IDENTITY_REVOKED";
+    public const string CandidatePrimaryEmailChanged = "CANDIDATE_PRIMARY_EMAIL_CHANGED";
+    public const string CandidateDuplicateCaseDismissedByCandidate = "CANDIDATE_DUPLICATE_CASE_DISMISSED_BY_CANDIDATE";
+    public const string SubmissionConsentUnauthorizedReported = "SUBMISSION_CONSENT_UNAUTHORIZED_REPORTED";
     public const string CandidateIdentityClaimed = "CANDIDATE_IDENTITY_CLAIMED";
     public const string IdentityClaimReviewed = "IDENTITY_CLAIM_REVIEWED";
     public const string PasswordChanged = "PASSWORD_CHANGED";

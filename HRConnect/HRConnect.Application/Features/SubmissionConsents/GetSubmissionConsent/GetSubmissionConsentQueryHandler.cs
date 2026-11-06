@@ -66,23 +66,85 @@ public sealed class GetSubmissionConsentQueryHandler : IRequestHandler<GetSubmis
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
+        var job = consent.Submission.Job;
+        var company = job.Company;
+        var affiliate = consent.Submission.SubmittedByNavigation;
+        var currency = string.IsNullOrWhiteSpace(job.CurrencyCode) ? "VND" : job.CurrencyCode;
+        var salaryNegotiable = job.SalaryNegotiable || (job.SalaryMin == null && job.SalaryMax == null);
+        var expReq = FormatExperienceRequirement(job.MinExperienceYears, job.MaxExperienceYears);
+        var workMode = ResolveWorkMode(job.EmploymentType, job.WorkingTime);
+
         return new SubmissionConsentReviewResponse
         {
             Data = new SubmissionConsentReviewData
             {
                 SubmissionId = consent.SubmissionId,
+                JobId = job.JobId,
+                CompanyId = company?.CompanyId ?? job.CompanyId,
+                CompanyLogoUrl = company?.LogoUrl,
                 Status = consent.Status,
                 ExpiresAt = consent.ExpiresAt,
                 CandidateName = consent.Submission.Candidate.FullName,
-                JobTitle = consent.Submission.Job.Title,
-                CompanyName = consent.Submission.Job.Company.CompanyName,
+                JobTitle = job.Title,
+                CompanyName = company?.CompanyName ?? string.Empty,
+                JobLocation = job.Location,
+                WorkLocation = job.Location,
+                WorkMode = workMode,
+                EmploymentType = job.EmploymentType,
+                SalaryMin = job.SalaryMin,
+                SalaryMax = job.SalaryMax,
+                CurrencyCode = currency,
+                SalaryCurrency = currency,
+                SalaryNegotiable = salaryNegotiable,
+                IsSalaryNegotiable = salaryNegotiable,
+                MinExperienceYears = job.MinExperienceYears,
+                MaxExperienceYears = job.MaxExperienceYears,
+                ExperienceRequirement = expReq,
+                AffiliateDisplayName = affiliate?.DisplayName ?? affiliate?.Email,
+                AffiliateEmail = affiliate?.Email,
+                AffiliatePhone = affiliate?.Phone,
+                PitchText = consent.Submission.Note,
+                CandidateConditionSummary = consent.Submission.Note,
                 CvFileName = consent.Submission.CandidateCv.FileName ?? "candidate-cv.pdf",
+                CvFileSizeBytes = consent.Submission.CandidateCv.FileSizeBytes,
                 CvDownloadUrl = url,
                 CvUrlExpiresAt = urlExpiresAt,
                 AffiliateReuseStatus = consent.Submission.CandidateCv.AffiliateReuseStatus,
                 ReuseConcurrencyToken = consent.Submission.CandidateCv.AffiliateReuseConcurrencyToken
             }
         };
+    }
+
+    internal static string? FormatExperienceRequirement(decimal? min, decimal? max)
+    {
+        if (min.HasValue && max.HasValue)
+        {
+            if (min.Value == max.Value)
+                return min.Value <= 0 ? "Không yêu cầu kinh nghiệm" : $"Yêu cầu {min.Value:0.#} năm kinh nghiệm";
+            return $"Yêu cầu {min.Value:0.#} – {max.Value:0.#} năm kinh nghiệm";
+        }
+        if (min.HasValue)
+            return min.Value <= 0 ? "Không yêu cầu kinh nghiệm" : $"Yêu cầu {min.Value:0.#}+ năm kinh nghiệm";
+        if (max.HasValue)
+            return $"Tối đa {max.Value:0.#} năm kinh nghiệm";
+        return null;
+    }
+
+    internal static string ResolveWorkMode(string? employmentType, string? workingTime)
+    {
+        if (!string.IsNullOrWhiteSpace(employmentType))
+        {
+            var upper = employmentType.Trim().ToUpperInvariant();
+            if (upper.Contains("REMOTE")) return "REMOTE";
+            if (upper.Contains("HYBRID")) return "HYBRID";
+        }
+        if (!string.IsNullOrWhiteSpace(workingTime))
+        {
+            var upper = workingTime.Trim().ToUpperInvariant();
+            if (upper.Contains("REMOTE") || upper.Contains("TỪ XA")) return "REMOTE";
+            if (upper.Contains("HYBRID") || upper.Contains("LINH HOẠT")) return "HYBRID";
+        }
+        return "ONSITE";
     }
 
     private async Task<HRConnect.Domain.Entities.SubmissionConsent> ResolveConsentAsync(
@@ -116,5 +178,4 @@ public sealed class GetSubmissionConsentQueryHandler : IRequestHandler<GetSubmis
         if (candidateUserId.HasValue && requesterUserId != candidateUserId)
             throw new ForbiddenException("Vui lòng đăng nhập đúng tài khoản Candidate để xem và xác nhận hồ sơ.");
     }
-
 }

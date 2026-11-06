@@ -1,11 +1,13 @@
 import { apiClient } from '../../apiClient';
 import type { ApiEnvelope } from '@/types/api/admin';
 import type {
+  CandidateDuplicateCaseDecisionResponse,
   CandidateDuplicateCaseDetail,
   CandidateDuplicateCaseListResponse,
   CandidateEmailIdentity,
   CandidateIdentityClaimState,
   CandidateIdentityClaimVerification,
+  MakeCandidatePrimaryEmailIdentityResponse,
 } from '@/types/api/mf02';
 
 export const candidateIdentityApi = {
@@ -16,6 +18,12 @@ export const candidateIdentityApi = {
     return (await apiClient.post<{ success: boolean; emailIdentityId: string; status: string; revokedAt: string; concurrencyToken: string }>(
       `/candidates/me/email-identities/${emailIdentityId}/revoke`,
       { concurrencyToken }
+    )).data;
+  },
+  async makePrimary(emailIdentityId: string, concurrencyToken?: string): Promise<MakeCandidatePrimaryEmailIdentityResponse> {
+    return (await apiClient.post<MakeCandidatePrimaryEmailIdentityResponse>(
+      `/candidates/me/email-identities/${encodeURIComponent(emailIdentityId)}/make-primary`,
+      concurrencyToken ? { concurrencyToken } : {}
     )).data;
   },
   async start(email: string): Promise<{ success: boolean; message: string; data: CandidateIdentityClaimState }> {
@@ -49,5 +57,22 @@ export const candidateIdentityApi = {
       return res.data.data;
     }
     return res.data as CandidateDuplicateCaseDetail;
+  },
+  async dismissDuplicateCase(caseId: string, reason?: string, concurrencyToken?: string): Promise<CandidateDuplicateCaseDecisionResponse> {
+    return (await apiClient.post<CandidateDuplicateCaseDecisionResponse>(
+      `/candidates/me/duplicate-cases/${encodeURIComponent(caseId)}/dismiss`,
+      { reason, concurrencyToken }
+    )).data;
+  },
+  async decideDuplicateCase(
+    caseId: string,
+    decision: 'DISMISS' | 'NOT_ME' | 'MERGE' | 'CONFIRM_SAME_PERSON',
+    reason?: string,
+    concurrencyToken?: string
+  ): Promise<CandidateDuplicateCaseDecisionResponse> {
+    return (await apiClient.post<CandidateDuplicateCaseDecisionResponse>(
+      `/candidates/me/duplicate-cases/${encodeURIComponent(caseId)}/decision`,
+      { decision, reason, concurrencyToken }
+    )).data;
   },
 };

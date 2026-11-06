@@ -1,5 +1,6 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.SubmissionConsents.GetSubmissionConsent;
 using MediatR;
 
 namespace HRConnect.Application.Features.Candidates.Queries.GetCandidateSubmissionConsents;
@@ -40,6 +41,15 @@ public sealed class GetCandidateSubmissionConsentsQueryHandler(
                     var actionable = record.ConsentStatus == "PENDING" &&
                                      record.SubmissionStatus == "PENDING_CONSENT" &&
                                      record.ExpiresAt > now;
+                    var currency = string.IsNullOrWhiteSpace(record.CurrencyCode) ? "VND" : record.CurrencyCode;
+                    var salaryNegotiable = record.SalaryNegotiable || (record.SalaryMin == null && record.SalaryMax == null);
+                    var expReq = GetSubmissionConsentQueryHandler.FormatExperienceRequirement(
+                        record.MinExperienceYears,
+                        record.MaxExperienceYears);
+                    var workMode = GetSubmissionConsentQueryHandler.ResolveWorkMode(
+                        record.EmploymentType,
+                        record.WorkingTime);
+
                     return new CandidateSubmissionConsentItem
                     {
                         SubmissionId = record.SubmissionId,
@@ -52,8 +62,26 @@ public sealed class GetCandidateSubmissionConsentsQueryHandler(
                         CvId = record.CvId,
                         CvTitle = record.CvTitle,
                         CvFileName = record.CvFileName,
+                        CvFileSizeBytes = record.CvFileSizeBytes,
                         AffiliateUserId = record.AffiliateUserId,
                         AffiliateDisplayName = record.AffiliateDisplayName,
+                        AffiliateEmail = record.AffiliateEmail,
+                        AffiliatePhone = record.AffiliatePhone,
+                        PitchText = record.PitchText,
+                        CandidateConditionSummary = record.PitchText,
+                        SalaryMin = record.SalaryMin,
+                        SalaryMax = record.SalaryMax,
+                        CurrencyCode = currency,
+                        SalaryCurrency = currency,
+                        SalaryNegotiable = salaryNegotiable,
+                        IsSalaryNegotiable = salaryNegotiable,
+                        JobLocation = record.JobLocation,
+                        WorkLocation = record.JobLocation,
+                        WorkMode = workMode,
+                        EmploymentType = record.EmploymentType,
+                        MinExperienceYears = record.MinExperienceYears,
+                        MaxExperienceYears = record.MaxExperienceYears,
+                        ExperienceRequirement = expReq,
                         RequestedAt = record.RequestedAt,
                         ExpiresAt = record.ExpiresAt,
                         RespondedAt = record.RespondedAt,

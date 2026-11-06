@@ -22,7 +22,9 @@ using HRConnect.Application.Features.Candidates.Identity.StartCandidateIdentityC
 using HRConnect.Application.Features.Candidates.Identity.ResendCandidateIdentityClaimOtp;
 using HRConnect.Application.Features.Candidates.Identity.VerifyCandidateIdentityClaim;
 using HRConnect.Application.Features.Candidates.Identity.RevokeCandidateEmailIdentity;
+using HRConnect.Application.Features.Candidates.Identity.MakeCandidatePrimaryEmailIdentity;
 using HRConnect.Application.Features.CandidateDuplicates.Queries;
+using HRConnect.Application.Features.CandidateDuplicates.Resolve;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using HRConnect.Presentation.Authorization;
@@ -263,6 +265,140 @@ public static class CandidateEndpoints
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound);
 
+        duplicateCaseGroup.MapPost("/{caseId:guid}/dismiss", async (
+            Guid caseId,
+            [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] DismissCandidateDuplicateCaseRequest? request,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<DecideMyCandidateDuplicateCaseCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            if (!PermissionAuthorization.HasPermission(user, "candidate.identity.manage_own"))
+                return PermissionAuthorization.Forbidden("candidate.identity.manage_own");
+            var userId = GetUserIdFromClaims(user);
+            if (!userId.HasValue) return Results.Unauthorized();
+
+            var command = new DecideMyCandidateDuplicateCaseCommand(
+                userId.Value,
+                caseId,
+                "DISMISS",
+                request?.Reason,
+                request?.ConcurrencyToken);
+            var validation = await validator.ValidateAsync(command, cancellationToken);
+            if (!validation.IsValid) return Results.ValidationProblem(validation.ToDictionary());
+
+            try
+            {
+                return Results.Ok(await sender.Send(command, cancellationToken));
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message, errorCode = ex.ErrorCode });
+            }
+        })
+        .WithName("DismissMyCandidateDuplicateCase")
+        .WithSummary("Candidate xác nhận 'Đây không phải tôi' cho hồ sơ đang đối chiếu")
+        .WithDescription("Yêu cầu permission candidate.identity.manage_own. Đóng case đối chiếu trùng của chính Candidate với trạng thái DISMISSED (NOT_DUPLICATE) và giải phóng các submission đang chờ đối chiếu danh tính.")
+        .Produces<DecideMyCandidateDuplicateCaseResponse>(StatusCodes.Status200OK)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
+        duplicateCaseGroup.MapPost("/{caseId:guid}/not-me", async (
+            Guid caseId,
+            [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] DismissCandidateDuplicateCaseRequest? request,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<DecideMyCandidateDuplicateCaseCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            if (!PermissionAuthorization.HasPermission(user, "candidate.identity.manage_own"))
+                return PermissionAuthorization.Forbidden("candidate.identity.manage_own");
+            var userId = GetUserIdFromClaims(user);
+            if (!userId.HasValue) return Results.Unauthorized();
+
+            var command = new DecideMyCandidateDuplicateCaseCommand(
+                userId.Value,
+                caseId,
+                "DISMISS",
+                request?.Reason,
+                request?.ConcurrencyToken);
+            var validation = await validator.ValidateAsync(command, cancellationToken);
+            if (!validation.IsValid) return Results.ValidationProblem(validation.ToDictionary());
+
+            try
+            {
+                return Results.Ok(await sender.Send(command, cancellationToken));
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message, errorCode = ex.ErrorCode });
+            }
+        })
+        .WithName("NotMeMyCandidateDuplicateCase")
+        .WithSummary("Candidate xác nhận 'Đây không phải tôi' (alias /not-me)")
+        .Produces<DecideMyCandidateDuplicateCaseResponse>(StatusCodes.Status200OK)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
+        duplicateCaseGroup.MapPost("/{caseId:guid}/decision", async (
+            Guid caseId,
+            [FromBody] DecideCandidateDuplicateCaseRequest request,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<DecideMyCandidateDuplicateCaseCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            if (!PermissionAuthorization.HasPermission(user, "candidate.identity.manage_own"))
+                return PermissionAuthorization.Forbidden("candidate.identity.manage_own");
+            var userId = GetUserIdFromClaims(user);
+            if (!userId.HasValue) return Results.Unauthorized();
+
+            var command = new DecideMyCandidateDuplicateCaseCommand(
+                userId.Value,
+                caseId,
+                request.Decision,
+                request.Reason,
+                request.ConcurrencyToken);
+            var validation = await validator.ValidateAsync(command, cancellationToken);
+            if (!validation.IsValid) return Results.ValidationProblem(validation.ToDictionary());
+
+            try
+            {
+                return Results.Ok(await sender.Send(command, cancellationToken));
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message, errorCode = ex.ErrorCode });
+            }
+        })
+        .WithName("DecideMyCandidateDuplicateCase")
+        .WithSummary("Candidate phản hồi quyết định đối với hồ sơ nghi trùng (DISMISS / MERGE)")
+        .WithDescription("Yêu cầu permission candidate.identity.manage_own. Cho phép Candidate xác nhận 'Không phải cùng một người' (DISMISS / NOT_ME) hoặc 'Gộp thành một hồ sơ' (MERGE / CONFIRM_SAME_PERSON).")
+        .Produces<DecideMyCandidateDuplicateCaseResponse>(StatusCodes.Status200OK)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
         identityGroup.MapGet("", async (
             ClaimsPrincipal user,
             [FromServices] ISender sender,
@@ -337,6 +473,48 @@ public static class CandidateEndpoints
         .WithDescription("Yêu cầu permission candidate.identity.manage_own. Chỉ thu hồi email ALIAS VERIFIED của chính tài khoản; không xóa hồ sơ, CV hay lịch sử ứng tuyển.")
         .Produces<RevokeCandidateEmailIdentityResponse>()
         .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict);
+
+        identityGroup.MapPost("/{emailIdentityId:guid}/make-primary", async (
+            Guid emailIdentityId,
+            [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] MakeCandidatePrimaryEmailIdentityRequest? request,
+            ClaimsPrincipal user,
+            [FromServices] ISender sender,
+            [FromServices] IValidator<MakeCandidatePrimaryEmailIdentityCommand> validator,
+            CancellationToken cancellationToken) =>
+        {
+            if (!PermissionAuthorization.HasPermission(user, "candidate.identity.manage_own"))
+                return PermissionAuthorization.Forbidden("candidate.identity.manage_own");
+            var userId = GetUserIdFromClaims(user);
+            if (!userId.HasValue) return Results.Unauthorized();
+
+            var command = new MakeCandidatePrimaryEmailIdentityCommand(
+                userId.Value,
+                emailIdentityId,
+                request?.ConcurrencyToken);
+            var validation = await validator.ValidateAsync(command, cancellationToken);
+            if (!validation.IsValid) return Results.ValidationProblem(validation.ToDictionary());
+            try
+            {
+                return Results.Ok(await sender.Send(command, cancellationToken));
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message, errorCode = ex.ErrorCode });
+            }
+        })
+        .WithName("MakeCandidatePrimaryEmailIdentity")
+        .WithSummary("Candidate đặt email phụ đã xác minh làm email đăng nhập chính")
+        .WithDescription("Yêu cầu permission candidate.identity.manage_own. Chuyển một email ALIAS VERIFIED của tài khoản thành PRIMARY và chuyển email PRIMARY cũ sang ALIAS.")
+        .Produces<MakeCandidatePrimaryEmailIdentityResponse>(StatusCodes.Status200OK)
+        .ProducesValidationProblem(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
@@ -1287,4 +1465,7 @@ public static class CandidateEndpoints
     }
 
     public sealed record RevokeCandidateEmailIdentityRequest(Guid ConcurrencyToken);
+    public sealed record MakeCandidatePrimaryEmailIdentityRequest(Guid? ConcurrencyToken = null);
+    public sealed record DismissCandidateDuplicateCaseRequest(string? Reason = null, Guid? ConcurrencyToken = null);
+    public sealed record DecideCandidateDuplicateCaseRequest(string Decision = "DISMISS", string? Reason = null, Guid? ConcurrencyToken = null);
 }

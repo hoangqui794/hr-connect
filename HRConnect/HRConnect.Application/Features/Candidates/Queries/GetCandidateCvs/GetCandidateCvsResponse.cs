@@ -16,6 +16,7 @@ public class CandidateCvItemResponse
     public DateTime UpdatedAt { get; set; }
     public int SubmissionUsageCount { get; set; }
     public int ApplicationUsageCount { get; set; }
+    public int ActiveApplicationCount { get; set; }
     public bool IsReferenced { get; set; }
     public string DeleteBehavior { get; set; } = "HARD_DELETE";
 }
