@@ -143,13 +143,6 @@ export const ClientServiceAgreementsPage: React.FC = () => {
     if (eligibleJobs.length > 0) {
       if (selectedJobIdParam && eligibleJobs.some((j) => j.jobId === selectedJobIdParam)) {
         setActiveJobId(selectedJobIdParam);
-        const target = eligibleJobs.find((j) => j.jobId === selectedJobIdParam);
-        if (target) {
-          if (target.status === 'PENDING_AGREEMENT') setStatusFilter('PENDING_AGREEMENT');
-          else if (target.status === 'PENDING_PAYMENT') setStatusFilter('PENDING_PAYMENT');
-          else if (target.status === 'ACTIVE') setStatusFilter('ACTIVE');
-          else if (target.status === 'CLOSED' || target.status === 'PAUSED') setStatusFilter('CLOSED');
-        }
       } else if (!activeJobId || !eligibleJobs.some((j) => j.jobId === activeJobId)) {
         setActiveJobId(eligibleJobs[0].jobId);
       }
