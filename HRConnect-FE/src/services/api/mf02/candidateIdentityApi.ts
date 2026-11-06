@@ -1,6 +1,12 @@
 import { apiClient } from '../../apiClient';
 import type { ApiEnvelope } from '@/types/api/admin';
-import type { CandidateEmailIdentity, CandidateIdentityClaimState, CandidateIdentityClaimVerification } from '@/types/api/mf02';
+import type {
+  CandidateDuplicateCaseDetail,
+  CandidateDuplicateCaseListResponse,
+  CandidateEmailIdentity,
+  CandidateIdentityClaimState,
+  CandidateIdentityClaimVerification,
+} from '@/types/api/mf02';
 
 export const candidateIdentityApi = {
   async listEmailIdentities(): Promise<CandidateEmailIdentity[]> {
@@ -20,5 +26,28 @@ export const candidateIdentityApi = {
   },
   async verify(claimId: string, otp: string, concurrencyToken: string): Promise<CandidateIdentityClaimVerification> {
     return (await apiClient.post<CandidateIdentityClaimVerification>(`/candidates/me/identity-claims/${claimId}/verify`, { otp, concurrencyToken })).data;
+  },
+  async listDuplicateCases(params?: {
+    status?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<CandidateDuplicateCaseListResponse> {
+    const res = await apiClient.get<ApiEnvelope<CandidateDuplicateCaseListResponse> | CandidateDuplicateCaseListResponse>(
+      '/candidates/me/duplicate-cases',
+      { params }
+    );
+    if (res.data && 'data' in res.data && res.data.data) {
+      return res.data.data;
+    }
+    return res.data as CandidateDuplicateCaseListResponse;
+  },
+  async getDuplicateCaseDetail(caseId: string): Promise<CandidateDuplicateCaseDetail> {
+    const res = await apiClient.get<ApiEnvelope<CandidateDuplicateCaseDetail> | CandidateDuplicateCaseDetail>(
+      `/candidates/me/duplicate-cases/${encodeURIComponent(caseId)}`
+    );
+    if (res.data && 'data' in res.data && res.data.data) {
+      return res.data.data;
+    }
+    return res.data as CandidateDuplicateCaseDetail;
   },
 };

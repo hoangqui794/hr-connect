@@ -52,8 +52,13 @@ export const CandidateSavedJobsPage: React.FC = () => {
   const [removing, setRemoving] = useState<string | null>(null);
 
   const saved = useQuery({
-    queryKey: ['candidate-saved-jobs-list'],
-    queryFn: () => candidateSavedJobApi.getSavedJobs({ page: 1, pageSize: MAX_SAVED }),
+    queryKey: ['candidate-saved-jobs-list', sort],
+    queryFn: () =>
+      candidateSavedJobApi.getSavedJobs(
+        sort === 'DEADLINE'
+          ? { page: 1, pageSize: MAX_SAVED, sortBy: 'DEADLINE_ASC' }
+          : { page: 1, pageSize: MAX_SAVED }
+      ),
     staleTime: 15_000,
   });
 

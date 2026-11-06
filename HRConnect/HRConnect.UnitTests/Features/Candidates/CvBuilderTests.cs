@@ -80,13 +80,14 @@ public class CvBuilderTests
         var content = Sample() with
         {
             Presentation = new CvPresentation(
-                "#1D4ED8", "normal", "BE_VIETNAM_PRO", "classic", ["summary", "skills"], ShowAvatar: true)
+                "#1D4ED8", "normal", "BE_VIETNAM_PRO", "classic", ["summary", "skills"], ShowAvatar: true, AvatarDataUrl: $"data:image/png;base64,{Convert.ToBase64String(encoded.ToArray())}")
         };
 
         var validated = CvBuilderHandlers.Validate(content);
         var pdf = new CvPdfRenderer().Render(validated, null, encoded.ToArray());
 
         validated.Presentation!.ShowAvatar.Should().BeTrue();
+        validated.Presentation!.AvatarDataUrl.Should().StartWith("data:image/png;base64,");
         new PdfCvValidator(Options.Create(new R2Settings { MaxCvPdfPages = 30 }), NullLogger<PdfCvValidator>.Instance)
             .Validate(pdf);
         pdf.Should().StartWith(new byte[] { 0x25, 0x50, 0x44, 0x46 });

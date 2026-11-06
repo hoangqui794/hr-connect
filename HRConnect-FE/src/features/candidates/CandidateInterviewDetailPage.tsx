@@ -1,89 +1,46 @@
 /**
  * @file CandidateInterviewDetailPage.tsx
- * @description Dedicated full page for Candidate Interview Detail (/candidate/interviews/:interviewId).
+ * @description Dedicated full page for Candidate Interview Detail (mockup 03/11, Page 11)
+ * on /candidate/interviews/:interviewId and /candidate/applications/:applicationId/interviews/:interviewId.
  */
 
 import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Breadcrumb, Button } from 'antd';
-import { ArrowLeftOutlined, HomeOutlined, SolutionOutlined, CalendarOutlined } from '@ant-design/icons';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useCandidateInterviewDetail } from '@/hooks/useCandidateInterviewDetail';
 import { CandidateInterviewDetailView } from './CandidateInterviewDetailView';
 
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+const LINK = 'text-[#0369A1] no-underline transition-colors duration-200 hover:text-[#075985] hover:underline';
+
 export const CandidateInterviewDetailPage: React.FC = () => {
-  const { interviewId, applicationId } = useParams<{ interviewId: string; applicationId?: string }>();
+  const { interviewId = '', applicationId } = useParams<{ interviewId: string; applicationId?: string }>();
   const navigate = useNavigate();
+  const { interview } = useCandidateInterviewDetail(interviewId);
+
+  const resolvedAppId = applicationId || interview?.applicationId;
+  const backHref = resolvedAppId ? `/candidate/applications/${resolvedAppId}` : '/candidate/applications';
+  const backLabel = interview?.jobTitle
+    ? `‹ Quay lại đơn ứng tuyển ${[interview.jobTitle, interview.companyName].filter(Boolean).join(' – ')}`
+    : '‹ Quay lại đơn ứng tuyển';
 
   const handleBack = () => {
-    if (applicationId) {
-      navigate(`/candidate/applications/${applicationId}`);
-    } else {
-      navigate('/candidate/applications');
-    }
+    navigate(backHref);
   };
 
   return (
-    <div className="candidate-page candidate-interview-detail-page space-y-5">
-      {/* Breadcrumb Navigation */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <Breadcrumb
-          items={[
-            {
-              title: (
-                <span
-                  className="cursor-pointer flex items-center gap-1 text-slate-500 hover:text-blue-600"
-                  onClick={() => navigate('/candidate/dashboard')}
-                >
-                  <HomeOutlined /> Trang chủ
-                </span>
-              ),
-            },
-            {
-              title: (
-                <span
-                  className="cursor-pointer flex items-center gap-1 text-slate-500 hover:text-blue-600"
-                  onClick={() => navigate('/candidate/applications')}
-                >
-                  <SolutionOutlined /> Đơn ứng tuyển
-                </span>
-              ),
-            },
-            ...(applicationId
-              ? [
-                  {
-                    title: (
-                      <span
-                        className="cursor-pointer text-slate-500 hover:text-blue-600"
-                        onClick={() => navigate(`/candidate/applications/${applicationId}`)}
-                      >
-                        Chi tiết đơn
-                      </span>
-                    ),
-                  },
-                ]
-              : []),
-            {
-              title: (
-                <span className="flex items-center gap-1 text-slate-800 font-semibold">
-                  <CalendarOutlined className="text-blue-600" /> Chi tiết lịch phỏng vấn
-                </span>
-              ),
-            },
-          ]}
-        />
-
-        <Button icon={<ArrowLeftOutlined />} onClick={handleBack} className="text-slate-600">
-          Quay lại đơn ứng tuyển
-        </Button>
+    <div className={`${FONT} mx-auto flex max-w-[780px] flex-col gap-3 text-[14px] text-[#1F2937] [line-height:normal] animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
+      <div>
+        <Link to={backHref} className={`inline-flex items-center text-[13.5px] font-medium ${LINK}`}>
+          {backLabel}
+        </Link>
       </div>
 
-      {/* Main View */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm">
-        <CandidateInterviewDetailView
-          interviewId={interviewId || ''}
-          onBack={handleBack}
-          showBackAction={true}
-        />
-      </div>
+      <CandidateInterviewDetailView
+        interviewId={interviewId}
+        initialData={interview}
+        onBack={handleBack}
+        showBackAction={false}
+      />
     </div>
   );
 };

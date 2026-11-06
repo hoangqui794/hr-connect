@@ -8,7 +8,10 @@ import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
 
 vi.mock('@/services/api/mf02Api', () => ({
-  candidateAffiliateCvApi: { list: vi.fn() },
+  candidateAffiliateCvApi: {
+    list: vi.fn(),
+    usages: vi.fn().mockResolvedValue({ items: [], page: 1, pageSize: 1, total: 0, totalPages: 0 }),
+  },
 }));
 
 describe('CandidateAffiliateCvsPage', () => {
@@ -57,10 +60,9 @@ describe('CandidateAffiliateCvsPage', () => {
       </QueryClientProvider>
     );
 
-    expect(await screen.findByText('CV Backend')).toBeInTheDocument();
-    expect(screen.getByText('Affiliate Minh')).toBeInTheDocument();
-    expect(screen.getByText('Cho phép dùng lại')).toBeInTheDocument();
-    expect(screen.getByText('1 yêu cầu đang chờ bạn xác nhận')).toBeInTheDocument();
+    expect(await screen.findByText('backend.pdf')).toBeInTheDocument();
+    expect(screen.getByText(/Affiliate Minh/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Xem' })).toHaveAttribute('href', '/candidate/affiliate-cvs/cv-1');
     expect(candidateAffiliateCvApi.list).toHaveBeenCalledWith(1, 10);
   });
 });

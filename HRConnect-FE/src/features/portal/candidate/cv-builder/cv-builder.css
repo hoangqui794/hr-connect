@@ -1,4 +1,4 @@
-html:has(.candidate-cv-builder-page) {
+.candidate-cv-builder-page-legacy {
   /* The builder owns its internal scroll regions; avoid forcing a second
      document scrollbar beside the workspace scrollbar. */
   overflow-x: hidden !important;
@@ -9,8 +9,8 @@ html:has(.candidate-cv-builder-page) {
   overscroll-behavior: none !important;
 }
 
-body:has(.candidate-cv-builder-page),
-#root:has(.candidate-cv-builder-page) {
+body:has(.candidate-cv-builder-page-legacy),
+#root:has(.candidate-cv-builder-page-legacy) {
   overflow: hidden !important;
   height: 100vh !important;
   height: 100dvh !important;

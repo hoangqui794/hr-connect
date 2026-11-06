@@ -18,5 +18,6 @@ public interface ICandidateSavedJobRepository
         Guid candidateId,
         int page,
         int pageSize,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        string? sortBy = null);
 }

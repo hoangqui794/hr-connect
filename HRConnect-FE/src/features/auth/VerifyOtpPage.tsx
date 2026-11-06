@@ -1,6 +1,6 @@
 /**
  * @file VerifyOtpPage.tsx
- * @description 6-Digit OTP Email Verification Screen for HR Connect.
+ * @description 6-Digit OTP Email Verification Screen for HR Connect (mockup 03/11, Page 17 left card: "Xác minh email").
  * Implements Swagger OpenAPI endpoint:
  *   POST /api/v1/auth/verify-email-otp
  *
@@ -9,28 +9,21 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Input,
-  Button,
-  message,
-  Alert,
-} from 'antd';
-import {
-  CheckCircleFilled,
-  MailOutlined,
-  SafetyCertificateOutlined,
-  ArrowLeftOutlined,
-  ReloadOutlined,
-  LockOutlined,
-  EditOutlined,
-  CheckOutlined,
-  ClockCircleOutlined,
-} from '@ant-design/icons';
+import { message } from 'antd';
+import { CheckCircleFilled, ClockCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
+import { BrandMark } from '@/components/common/BrandMark';
 import { authService } from '@/services/authService';
 import { getApiErrorMessage } from '@/services/apiClient';
-import { AuthPageShell, AUTH_INPUT_CLASS } from './AuthPageShell';
 import { appendCandidateReturnPath, getSafeCandidateReturnPath } from './authReturnPath';
+
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+const LINK = 'text-[#0369A1] no-underline transition-colors duration-200 hover:text-[#075985] hover:underline';
+const BUTTON = `${FONT} h-[46px] w-full cursor-pointer rounded-md border-0 bg-[#0C4A6E] text-[14px] font-semibold text-white transition-all duration-200 hover:bg-[#075985] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`;
+const SECONDARY_BTN = `${FONT} inline-flex h-[42px] cursor-pointer items-center justify-center rounded-md border border-solid border-[#D1D5DB] bg-white px-4 text-[14px] font-medium text-[#1F2937] transition-all duration-200 hover:bg-[#F9FAFB] active:scale-[0.98]`;
+const INPUT = `${FONT} box-border h-[44px] w-full rounded-md border border-solid border-[#D1D5DB] bg-white px-3 text-[14px] text-[#1F2937] outline-none transition-all duration-200 focus:border-[#0369A1] focus:ring-2 focus:ring-[#0369A1]/15`;
+
+const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 
 export const VerifyOtpPage: React.FC = () => {
   const navigate = useNavigate();
@@ -126,7 +119,8 @@ export const VerifyOtpPage: React.FC = () => {
   const fullOtp = otpValues.join('');
 
   // Handle OTP verification submission: calls POST /api/v1/auth/verify-email-otp
-  const handleVerify = async () => {
+  const handleVerify = async (event?: React.FormEvent) => {
+    event?.preventDefault();
     const cleanEmail = email.trim().toLowerCase();
 
     if (!cleanEmail) {
@@ -228,132 +222,169 @@ export const VerifyOtpPage: React.FC = () => {
   };
 
   return (
-    <AuthPageShell
-      wide={approvalPending}
-      eyebrow="Bảo vệ tài khoản"
-      title={approvalPending ? 'Hồ sơ đã được gửi xét duyệt' : 'Xác thực email của bạn'}
-      description={approvalPending ? 'Bạn đã hoàn tất bước xác thực email. Hệ thống sẽ thông báo khi hồ sơ được duyệt.' : 'Nhập mã gồm 6 chữ số trong email để hoàn tất bước đăng ký.'}
-      sideTitle="Chỉ còn một bước để hoàn tất đăng ký."
-      sideDescription="Xác thực email giúp bảo vệ danh tính và đảm bảo mọi thông báo tuyển dụng được gửi đúng người."
-      benefits={[
-        'Mã xác thực chỉ có hiệu lực trong thời gian giới hạn',
-        'Có thể yêu cầu gửi lại nếu bạn chưa nhận được email',
-        'Client và Affiliate sẽ được thông báo sau khi Admin xét duyệt',
-      ]}
-    >
-      {approvalPending ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center sm:p-8">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white text-3xl text-amber-500 shadow-sm">
-            <ClockCircleOutlined />
-          </div>
-          <h2 className="m-0 text-xl font-black text-slate-900">Email đã được xác thực</h2>
-          <p className="mx-auto mb-5 mt-3 max-w-md text-sm leading-6 text-slate-600">
-            {roleParam === 'CLIENT'
-              ? 'Ban quản trị đang kiểm tra thông tin doanh nghiệp. Bạn sẽ nhận email ngay khi tài khoản được kích hoạt.'
-              : 'Ban quản trị đang xem xét hồ sơ Affiliate. Bạn sẽ nhận email ngay khi tài khoản được kích hoạt.'}
-          </p>
-          <div className="mb-6 rounded-xl border border-amber-200 bg-white p-4 text-left text-sm">
-            <div className="flex flex-wrap justify-between gap-2 border-b border-slate-100 pb-3">
-              <span className="text-slate-500">Email</span>
-              <strong className="break-all text-slate-800">{email}</strong>
-            </div>
-            <div className="flex flex-wrap justify-between gap-2 pt-3">
-              <span className="text-slate-500">Trạng thái</span>
-              <strong className="text-amber-700">Đang chờ Admin xét duyệt</strong>
-            </div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Button
-              onClick={() => navigate('/')}
-              className="!h-11 rounded-xl border-slate-300 !px-3 text-xs sm:text-sm font-semibold text-slate-700 hover:border-slate-400"
-            >
-              Về trang chủ
-            </Button>
-            <Button
-              type="primary"
-              onClick={() => navigate(`/login?email=${encodeURIComponent(email)}`)}
-              className="!h-11 rounded-xl border-0 bg-blue-600 !px-3 text-xs sm:text-sm font-semibold !text-white hover:!bg-blue-700"
-            >
-              Đến trang đăng nhập
-            </Button>
-          </div>
+    <div className={`${FONT} min-h-screen bg-[#F7F8FA] text-[14px] text-[#1F2937] [line-height:normal]`}>
+      <header className="bg-[#0C4A6E] text-white">
+        <div className="mx-auto flex h-16 max-w-[1248px] items-center px-6">
+          <Link to="/" className="flex items-center gap-2 text-[18px] font-bold text-white no-underline hover:text-white hover:no-underline">
+            <BrandMark size={32} tone="light" className="block" /> HR Connect
+          </Link>
         </div>
-      ) : (
-        <>
-          <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 p-4">
-            <div className="mb-2 flex items-center justify-between gap-3 text-sm">
-              <span className="flex items-center gap-2 font-semibold text-blue-900"><MailOutlined /> Email nhận mã</span>
-              {!isEditingEmail && (
-                <button type="button" onClick={() => { setTempEmail(email); setIsEditingEmail(true); }} className="cursor-pointer border-0 bg-transparent p-0 text-sm font-bold text-blue-700 hover:text-blue-900">
-                  <EditOutlined /> Thay đổi
-                </button>
-              )}
-            </div>
-            {isEditingEmail ? (
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Input size="large" type="email" value={tempEmail} onChange={(event) => setTempEmail(event.target.value)} placeholder="ten@email.com" className={AUTH_INPUT_CLASS} />
-                <Button size="large" type="primary" icon={<CheckOutlined />} onClick={() => { if (tempEmail.trim()) { setEmail(tempEmail.trim()); setIsEditingEmail(false); } }} className="h-12 rounded-xl bg-blue-600 font-bold">Lưu email</Button>
+      </header>
+
+      <main className="mx-auto flex max-w-[1048px] justify-center px-4 py-10 sm:px-6">
+        <section
+          aria-labelledby="verify-email-title"
+          className="w-full max-w-[488px] rounded-lg border border-solid border-[#E5E7EB] bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)] sm:p-7 animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]"
+        >
+          {approvalPending ? (
+            <div className="text-center">
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[#FEF3C7] text-2xl text-[#D97706]">
+                <ClockCircleOutlined />
               </div>
-            ) : (
-              <strong className="block break-all text-sm text-slate-800">{email || 'Chưa cung cấp email'}</strong>
-            )}
-          </div>
-
-          {errorMessage && (
-            <Alert message="Mã xác thực chưa hợp lệ" description={errorMessage} type="error" showIcon closable onClose={() => setErrorMessage(null)} className="mb-5 rounded-xl" />
-          )}
-
-          <div className="mb-6">
-            <label className="mb-3 block text-center text-sm font-bold text-slate-700">Nhập mã xác thực gồm 6 chữ số</label>
-            <div className="flex justify-center gap-2 sm:gap-3">
-              {otpValues.map((value, index) => (
-                <input
-                  key={index}
-                  ref={(element) => { inputRefs.current[index] = element; }}
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  aria-label={`Số thứ ${index + 1} của mã OTP`}
-                  maxLength={1}
-                  value={value}
-                  onChange={(event) => handleDigitChange(index, event.target.value)}
-                  onKeyDown={(event) => handleKeyDown(index, event)}
-                  onPaste={handlePaste}
-                  disabled={isVerifying}
-                  className={`h-14 w-11 rounded-xl border text-center text-2xl font-black outline-none transition sm:h-16 sm:w-14 ${
-                    value
-                      ? 'border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-100'
-                      : 'border-slate-200 bg-white text-slate-900 hover:border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
-                  }`}
-                />
-              ))}
+              <h1 id="verify-email-title" className="m-0 text-[20px] font-bold text-[#1F2937]">
+                Email đã được xác minh
+              </h1>
+              <p className="mx-auto mb-5 mt-2 text-[13.5px] leading-6 text-[#4B5563]">
+                {roleParam === 'CLIENT'
+                  ? 'Ban quản trị đang kiểm tra thông tin doanh nghiệp. Bạn sẽ nhận email ngay khi tài khoản được kích hoạt.'
+                  : 'Ban quản trị đang xem xét hồ sơ Affiliate. Bạn sẽ nhận email ngay khi tài khoản được kích hoạt.'}
+              </p>
+              <div className="mb-5 rounded-md border border-solid border-[#E5E7EB] bg-[#F9FAFB] p-4 text-left text-[13px]">
+                <div className="flex flex-wrap justify-between gap-2 border-0 border-b border-solid border-[#E5E7EB] pb-2.5">
+                  <span className="text-[#6B7280]">Email</span>
+                  <strong className="break-all font-semibold text-[#1F2937]">{email}</strong>
+                </div>
+                <div className="flex flex-wrap justify-between gap-2 pt-2.5">
+                  <span className="text-[#6B7280]">Trạng thái</span>
+                  <strong className="font-semibold text-[#B45309]">Đang chờ Admin xét duyệt</strong>
+                </div>
+              </div>
+              <div className="grid gap-2.5 sm:grid-cols-2">
+                <button type="button" onClick={() => navigate('/')} className={SECONDARY_BTN}>
+                  Về trang chủ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/login?email=${encodeURIComponent(email)}`)}
+                  className={BUTTON}
+                >
+                  Đến trang đăng nhập
+                </button>
+              </div>
             </div>
-            <p className="mb-0 mt-3 text-center text-xs text-slate-500">Bạn có thể dán toàn bộ mã OTP vào bất kỳ ô nào.</p>
-          </div>
+          ) : (
+            <form onSubmit={handleVerify} noValidate>
+              <h1 id="verify-email-title" className="m-0 text-[20px] font-bold text-[#1F2937]">
+                Xác minh email
+              </h1>
 
-          <Button type="primary" size="large" onClick={handleVerify} loading={isVerifying} disabled={isVerifying || fullOtp.length !== 6} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border-0 bg-blue-600 font-bold shadow-lg shadow-blue-600/20 hover:!bg-blue-700">
-            <SafetyCertificateOutlined />
-            <span>Xác thực email</span>
-          </Button>
+              {isEditingEmail ? (
+                <div className="mt-3">
+                  <label htmlFor="verify-email-input" className="mb-1.5 block text-[13px] font-medium text-[#374151]">
+                    Địa chỉ email nhận mã xác minh
+                  </label>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <input
+                      id="verify-email-input"
+                      type="email"
+                      value={tempEmail}
+                      onChange={(event) => setTempEmail(event.target.value)}
+                      placeholder="ten@email.com"
+                      className={INPUT}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (tempEmail.trim()) {
+                          setEmail(tempEmail.trim());
+                          setIsEditingEmail(false);
+                        }
+                      }}
+                      className={`${SECONDARY_BTN} shrink-0`}
+                    >
+                      Lưu email
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="m-0 mt-1.5 break-words text-[14px] text-[#4B5563]">
+                  Nhập mã 6 số đã gửi đến <strong className="font-semibold text-[#111827]">{email}</strong>.{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTempEmail(email);
+                      setIsEditingEmail(true);
+                    }}
+                    className={`${FONT} cursor-pointer border-0 bg-transparent p-0 text-[13px] ${LINK}`}
+                  >
+                    Đổi email
+                  </button>
+                </p>
+              )}
 
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-sm text-slate-500">
-            <span>Chưa nhận được mã?</span>
-            {resendCooldown > 0 ? (
-              <span>Gửi lại sau <strong className="text-blue-700">{resendCooldown}s</strong></span>
-            ) : (
-              <button type="button" onClick={handleResend} disabled={isResending} className="flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 font-bold text-blue-700 hover:text-blue-900 disabled:opacity-50">
-                <ReloadOutlined spin={isResending} /> Gửi lại mã
+              <div className="mt-5 grid grid-cols-6 gap-2 sm:gap-2.5">
+                {otpValues.map((value, index) => (
+                  <input
+                    key={index}
+                    ref={(element) => {
+                      inputRefs.current[index] = element;
+                    }}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    aria-label={`Số thứ ${index + 1} của mã OTP`}
+                    maxLength={1}
+                    value={value}
+                    onChange={(event) => handleDigitChange(index, event.target.value)}
+                    onKeyDown={(event) => handleKeyDown(index, event)}
+                    onPaste={handlePaste}
+                    disabled={isVerifying}
+                    className={`${FONT} h-[56px] w-full rounded-md border border-solid bg-white text-center text-[20px] font-bold text-[#111827] outline-none transition-all duration-150 ${
+                      value
+                        ? 'border-[#0369A1] ring-1 ring-[#0369A1]/20'
+                        : 'border-[#D1D5DB] hover:border-[#94A3B8] focus:border-[#0369A1] focus:ring-2 focus:ring-[#0369A1]/20'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {errorMessage && (
+                <p
+                  role="alert"
+                  className="m-0 mt-3 rounded-md border border-solid border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-[13px] text-[#B91C1C]"
+                >
+                  {errorMessage}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={isVerifying || fullOtp.length !== 6}
+                className={`${BUTTON} mt-5`}
+              >
+                {isVerifying ? 'Đang xác minh…' : 'Xác minh'}
               </button>
-            )}
-          </div>
 
-          <div className="mt-7 flex items-center justify-between border-t border-slate-100 pt-5 text-sm">
-            <Link to="/register" className="font-semibold text-slate-500 hover:text-slate-800"><ArrowLeftOutlined /> Đăng ký lại</Link>
-            <Link to="/login" className="font-bold text-blue-700 hover:text-blue-900">Đăng nhập</Link>
-          </div>
-        </>
-      )}
-    </AuthPageShell>
+              <p className="m-0 mt-4 text-[13px] text-[#4B5563]">
+                Chưa nhận được mã? Kiểm tra thư rác hoặc{' '}
+                {resendCooldown > 0 ? (
+                  <span className="text-[#4B5563]">gửi lại sau {clock(resendCooldown)}</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={isResending}
+                    className={`${FONT} cursor-pointer border-0 bg-transparent p-0 text-[13px] font-medium ${LINK} disabled:opacity-50`}
+                  >
+                    {isResending ? 'đang gửi…' : 'gửi lại mã'}
+                  </button>
+                )}
+              </p>
+            </form>
+          )}
+        </section>
+      </main>
+    </div>
   );
 };
 

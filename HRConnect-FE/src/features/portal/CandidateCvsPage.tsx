@@ -156,9 +156,16 @@ export const CandidateCvsPage: React.FC = () => {
       {!canView && <Alert className="!mb-3" type="error" showIcon message="Bạn không có quyền xem kho CV cá nhân." />}
 
       <nav aria-label="Loại CV" className="mb-3 flex flex-wrap gap-1 border-0 border-b border-solid border-[#E5E7EB]">
-        <span aria-current="page" className="flex h-11 items-center border-0 border-b-2 border-solid border-[#0369A1] px-3 font-semibold text-[#075985]">CV của tôi ({list.length})</span>
-        <Link to="/candidate/affiliate-cvs" className="flex h-11 items-center px-3 text-[#4B5563] no-underline hover:text-[#075985]">
-          CV đối tác gửi kèm giới thiệu{partnerCvs.data !== undefined ? ` (${partnerCvs.data})` : ''}
+        <span aria-current="page" className="relative -mb-px flex h-11 items-center border-0 border-b-2 border-solid border-[#0369A1] px-3 font-semibold text-[#075985]">CV của tôi ({list.length})</span>
+        <Link to="/candidate/affiliate-cvs" className="relative -mb-px flex h-11 items-center border-0 border-b-2 border-solid border-transparent px-3 text-[#4B5563] no-underline transition-colors duration-200 hover:text-[#075985]">
+          <span className="relative inline-flex flex-col items-center">
+            <span aria-hidden="true" className="invisible select-none font-semibold">
+              CV đối tác gửi kèm giới thiệu{partnerCvs.data !== undefined ? ` (${partnerCvs.data})` : ''}
+            </span>
+            <span className="absolute inset-0 flex items-center font-medium">
+              CV đối tác gửi kèm giới thiệu{partnerCvs.data !== undefined ? ` (${partnerCvs.data})` : ''}
+            </span>
+          </span>
         </Link>
       </nav>
 

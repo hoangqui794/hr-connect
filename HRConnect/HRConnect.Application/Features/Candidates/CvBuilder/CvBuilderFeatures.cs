@@ -27,7 +27,7 @@ public sealed record CvPresentation(
     string? FontFamily,
     string? Layout,
     IReadOnlyList<string>? VisibleSections = null,
-    bool ShowAvatar = false);
+    bool ShowAvatar = false, string? AvatarDataUrl = null);
 
 /// <summary>Content the candidate fills in; the FE sends and receives it as structuredContent.</summary>
 public sealed record StructuredCvContent(
@@ -282,7 +282,18 @@ public sealed class CvBuilderHandlers :
                 throw new BadRequestException("Danh sách mục hiển thị trong CV không hợp lệ.", "CV_PRESENTATION_INVALID");
             }
 
-            return new CvPresentation(accent, density, font, layout, sections, value.ShowAvatar);
+            string? avatarDataUrl = null;
+            if (!string.IsNullOrWhiteSpace(value.AvatarDataUrl))
+            {
+                var trimmedAvatar = value.AvatarDataUrl.Trim();
+                if (trimmedAvatar.Length > 2_000_000)
+                {
+                    throw new BadRequestException("Ảnh đại diện trong CV vượt quá dung lượng cho phép.", "CV_PRESENTATION_INVALID");
+                }
+                avatarDataUrl = trimmedAvatar;
+            }
+
+            return new CvPresentation(accent, density, font, layout, sections, value.ShowAvatar, avatarDataUrl);
         }
 
         var result = new StructuredCvContent(

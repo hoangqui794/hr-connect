@@ -26,6 +26,7 @@ public static class CandidateSavedJobEndpoints
             ClaimsPrincipal user,
             [FromQuery] int? page,
             [FromQuery] int? pageSize,
+            [FromQuery] string? sortBy,
             [FromServices] ISender sender,
             CancellationToken ct) =>
         {
@@ -37,9 +38,14 @@ public static class CandidateSavedJobEndpoints
                 var result = await sender.Send(new GetCandidateSavedJobsQuery(
                     userId.Value,
                     page is > 0 ? page.Value : 1,
-                    pageSize is > 0 ? pageSize.Value : 20), ct);
+                    pageSize is > 0 ? pageSize.Value : 20,
+                    sortBy), ct);
 
                 return Results.Ok(result);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message, errorCode = ex.ErrorCode });
             }
             catch (NotFoundException ex)
             {
@@ -52,8 +58,9 @@ public static class CandidateSavedJobEndpoints
         })
         .WithName("GetCandidateSavedJobs")
         .WithSummary("Lấy danh sách việc làm đã lưu của ứng viên")
-        .WithDescription("Yêu cầu đăng nhập tài khoản Candidate. Danh sách trả về được phân trang tại database, sắp xếp mới nhất trước và chứa thẻ thông tin Job gọn nhẹ.")
+        .WithDescription("Yêu cầu đăng nhập tài khoản Candidate. Danh sách trả về được phân trang tại database, hỗ trợ sortBy=SAVED_AT_DESC|DEADLINE_ASC và chứa thẻ thông tin Job gọn nhẹ.")
         .Produces<SavedJobPageDto>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound);

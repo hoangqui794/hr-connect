@@ -32,3 +32,34 @@ export interface CandidateIdentityClaimVerification {
   concurrencyToken: string;
 }
 
+export interface CandidateDuplicateJobDto {
+  jobId: string;
+  title: string;
+  companyId: string;
+  companyName: string;
+}
+
+export interface CandidateDuplicateCaseItem {
+  duplicateCaseId: string;
+  status: 'OPEN' | 'AWAITING_CANDIDATE' | 'UNDER_REVIEW' | 'MERGED' | 'DISMISSED' | 'BLOCKED_FINANCE' | string;
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | string;
+  title: string;
+  guidance: string;
+  actionRequired: boolean;
+  job: CandidateDuplicateJobDto | null;
+  evidenceTypes: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CandidateDuplicateCaseDetail extends CandidateDuplicateCaseItem {
+  resolution: string | null;
+}
+
+export interface CandidateDuplicateCaseListResponse {
+  items: CandidateDuplicateCaseItem[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+}
