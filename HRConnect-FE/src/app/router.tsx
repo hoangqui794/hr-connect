@@ -319,6 +319,7 @@ export const router = createBrowserRouter([
       { path: 'candidates', element: <AppRoutes.ClientCandidatesPage /> },
       { path: 'interviews-offers', element: <AppRoutes.ClientWorkspaceInterviewsOffersPage /> },
       { path: 'company', element: <AppRoutes.ClientCompanyPage /> },
+      { path: 'profile', element: <AppRoutes.ClientProfilePage /> },
       // MF-05 warranty has no backend API yet: explicit empty state, no mock numbers.
       { path: 'warranty', element: <AppRoutes.ClientWarrantyPlaceholder /> },
       { path: 'billing', element: <AppRoutes.ClientBillingPage /> },

@@ -269,6 +269,8 @@ export interface CompanyProfile {
   address: string | null;
   description: string | null;
   logoUrl: string | null;
+  roleInCompany?: string | null;
+  isPrimaryContact?: boolean;
   [key: string]: unknown;
 }
 export const companyProfileApi = {

@@ -18,6 +18,7 @@ import { CompanyLogo } from '@/components/common/CompanyLogo';
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 
 export { ClientInterviewsOffersPage } from './ClientInterviewsOffersPage';
+export { ClientProfilePage } from './ClientProfilePage';
 
 // Same limit as the backend (R2Settings.MaxCompanyLogoFileSizeMb).
 const MAX_LOGO_MB = 10;

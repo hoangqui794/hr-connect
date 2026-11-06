@@ -8,7 +8,7 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button, Dropdown } from 'antd';
-import { BankOutlined, CloseOutlined, LogoutOutlined, MenuOutlined, PlusOutlined, KeyOutlined } from '@ant-design/icons';
+import { BankOutlined, CloseOutlined, LogoutOutlined, MenuOutlined, PlusOutlined, KeyOutlined, UserOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/authStore';
 import { authService } from '@/services/authService';
 import { AccountAvatar } from '@/components/common/AccountAvatar';
@@ -138,6 +138,7 @@ export const ClientShell: React.FC = () => {
               trigger={['click']}
               menu={{
                 items: [
+                  { key: 'profile', icon: <UserOutlined />, label: 'Hồ sơ cá nhân' },
                   { key: 'company', icon: <BankOutlined />, label: 'Hồ sơ doanh nghiệp' },
                   { key: 'password', icon: <KeyOutlined />, label: 'Đổi mật khẩu' },
                   { type: 'divider' },
@@ -146,6 +147,7 @@ export const ClientShell: React.FC = () => {
                 onClick: ({ key }) => {
                   if (key === 'logout') signOut();
                   else if (key === 'password') setShowPasswordModal(true);
+                  else if (key === 'profile') navigate('/client/profile');
                   else navigate('/client/company');
                 },
               }}
