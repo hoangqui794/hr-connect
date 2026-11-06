@@ -2,9 +2,9 @@
  * @file ClientCandidatesPage.tsx
  * @description Client Company applications (GET /recruitment/applications, scoped by the backend:
  * CV_APPLICATION jobs plus HEADHUNT_COD / CV_SOURCING applications Internal HR has shortlisted).
- * Redesign 21/10 (ui-ux-pro-max): one toolbar (job, service, search, view), a single-row stage strip
- * that groups the stages, AI score with its tier, and a "next step" column. Filters live in the URL;
- * a row opens the shared ApplicationWorkbench, which shows the actions the backend allows.
+ * Redesign: one unified toolbar (job, service, search, view), high-craft stage strip,
+ * AI score with tier indicator, and actionable next-step button. Filters live in URL;
+ * clicking a row opens the shared ApplicationWorkbench.
  */
 import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -19,11 +19,14 @@ import { screeningApi } from '@/services/api/hrApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { RecruitmentApplicationItem } from '@/types/api/hr';
 import { useMyJobs } from '@/features/jobs-mf01/useJobQueries';
-import { Initials, PageHero, PersonCell, StatusDot, Surface } from '@/features/admin-console/ui';
+import { Initials, PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
 import { ApplicationWorkbench } from '@/features/recruitment/ApplicationWorkbench';
 import { applicationStatusOf, SERVICE_TYPE } from '@/features/hr-console/hrLabels';
+import { SERVICE_TYPE_LABEL } from '@/features/jobs-mf01/jobDisplay';
+import type { ServiceTypeCode } from '@/types/api/jobs';
 
 const PAGE_SIZE = 10;
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 
 dayjs.extend(relativeTimePlugin);
 dayjs.locale('vi');
@@ -85,7 +88,7 @@ export const AiScore: React.FC<{ score: number | null; tier?: string | null; sta
 }) => {
   if (score == null) {
     const st = status?.toUpperCase();
-    if (st === 'PENDING' || st === 'PROCESSING') return <span className="text-xs text-blue-600 font-medium">Đang chấm…</span>;
+    if (st === 'PENDING' || st === 'PROCESSING') return <span className="text-xs text-[#0C4A6E] font-medium">Đang chấm…</span>;
     return <span className="text-xs text-slate-400">Chưa có điểm</span>;
   }
   const rounded = Math.round(score);
@@ -135,7 +138,6 @@ export const nextStepOf = (r: Pick<RecruitmentApplicationItem, 'status' | 'servi
 export const ClientCandidatesPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  // ?status=CODE (links from Tổng quan) filters one exact status and highlights its strip cell.
   const exactStatus = searchParams.get('status')?.toUpperCase() || undefined;
   const group: GroupKey = (GROUPS.find((g) => g.key === searchParams.get('stage'))?.key ??
     (exactStatus ? GROUPS.find((g) => (g.statuses as readonly string[]).includes(exactStatus))?.key : undefined) ??
@@ -145,7 +147,6 @@ export const ClientCandidatesPage: React.FC = () => {
   const q = searchParams.get('q') ?? '';
   const page = Number(searchParams.get('page')) || 1;
   const openId = searchParams.get('open') ?? undefined;
-  // The CV list is the default; the stage board is opt-in (?view=board).
   const view: 'board' | 'list' = searchParams.get('view') === 'board' ? 'board' : 'list';
   const jobs = useMyJobs();
 
@@ -159,7 +160,6 @@ export const ClientCandidatesPage: React.FC = () => {
 
   const scope = { jobId, serviceTypeCode: service };
 
-  // One small count per strip cell (cached); together they show where candidates wait.
   const counts = useQueries({
     queries: GROUPS.map((g) => ({
       queryKey: ['client-candidates', 'count', g.key, jobId ?? '', service ?? ''],
@@ -193,10 +193,10 @@ export const ClientCandidatesPage: React.FC = () => {
       key: 'c',
       width: 290,
       render: (_, r) => (
-        <div className="flex items-start gap-3 py-1">
+        <div className="flex items-start gap-3 py-1.5">
           <Initials name={r.candidateName} size={38} />
           <div className="min-w-0 flex-1 space-y-0.5">
-            <div className="truncate text-[14px] font-semibold text-slate-900">{r.candidateName}</div>
+            <div className="truncate text-[14px] font-bold text-slate-900">{r.candidateName}</div>
             <div className="truncate text-[12px] text-slate-500">{r.candidateEmail || 'Chưa có email'}</div>
             <div className="text-[11px] text-slate-400">cập nhật {dayjs(r.updatedAt ?? r.appliedAt).fromNow()}</div>
           </div>
@@ -206,19 +206,19 @@ export const ClientCandidatesPage: React.FC = () => {
     {
       title: 'Tin tuyển dụng',
       key: 'j',
-      width: 260,
+      width: 270,
       render: (_, r) => {
+        const s = r.serviceTypeCode ? SERVICE_TYPE_LABEL[r.serviceTypeCode as ServiceTypeCode] : null;
         const color = r.serviceTypeCode === 'HEADHUNT_COD' ? 'blue' : r.serviceTypeCode === 'CV_SOURCING' ? 'purple' : 'cyan';
-        const label = r.serviceTypeCode ? SERVICE_TYPE[r.serviceTypeCode as keyof typeof SERVICE_TYPE] : null;
         return (
-          <div className="max-w-[260px] space-y-1.5 py-1">
-            <div className="truncate font-medium text-slate-900 text-[13.5px]" title={r.jobTitle}>
+          <div className="max-w-[270px] space-y-1.5 py-1">
+            <div className="truncate font-semibold text-slate-900 text-[13.5px]" title={r.jobTitle}>
               {r.jobTitle}
             </div>
-            {label && (
+            {s && (
               <span className="inline-block">
-                <Tag color={color} className="m-0 text-[10px] font-semibold border-0 px-2 py-0.5 rounded">
-                  {label}
+                <Tag color={color} className="m-0 text-[11px] font-medium border-0 px-2 py-0.5 rounded">
+                  {s.short} · {s.label}
                 </Tag>
               </span>
             )}
@@ -267,7 +267,11 @@ export const ClientCandidatesPage: React.FC = () => {
             size="middle"
             type={step.urgent ? 'primary' : 'default'}
             ghost={step.urgent}
-            className="w-[130px] !h-8 text-xs font-semibold rounded-lg shadow-sm transition-all"
+            className={`w-[130px] !h-8 text-xs font-semibold rounded-lg shadow-sm transition-all ${
+              step.urgent
+                ? '!border-[#0C4A6E] !text-[#0C4A6E] hover:!bg-[#F0F9FF]'
+                : '!border-slate-200 text-slate-700 hover:!border-slate-300'
+            }`}
             onClick={(e) => {
               e.stopPropagation();
               setParam('open', r.applicationId);
@@ -283,20 +287,25 @@ export const ClientCandidatesPage: React.FC = () => {
   const filtered = Boolean(jobId || service || q || exactStatus || group !== 'all');
 
   return (
-    <div>
+    <div className={`${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
       <PageHero
         eyebrow="Tuyển dụng"
         title="Hồ sơ ứng viên"
         tip
         description="Mọi hồ sơ nộp vào tin của bạn. Mở hồ sơ để xem đánh giá AI, hẹn phỏng vấn, gửi offer và xác nhận ngày đi làm."
         actions={
-          <Button icon={<ReloadOutlined />} size="large" onClick={() => (view === 'list' ? list.refetch() : boardQueries.forEach((b) => b.refetch()))}>
+          <Button
+            icon={<ReloadOutlined />}
+            size="large"
+            className="!h-10 !rounded-lg !border-slate-200 font-medium text-slate-700 hover:!border-slate-300 hover:!bg-slate-50"
+            onClick={() => (view === 'list' ? list.refetch() : boardQueries.forEach((b) => b.refetch()))}
+          >
             Tải lại
           </Button>
         }
       />
 
-      <Surface>
+      <Surface className="rounded-2xl border border-solid border-slate-200/90 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
         <div className="space-y-4 px-5 pb-4 pt-5">
           {/* Toolbar: job, service, search, view */}
           <div className="flex flex-wrap items-center gap-2.5">
@@ -334,6 +343,7 @@ export const ClientCandidatesPage: React.FC = () => {
                 onPressEnter={(e) => setParam('q', (e.target as HTMLInputElement).value.trim() || undefined)}
                 onChange={(e) => !e.target.value && q && setParam('q', undefined)}
                 aria-label="Tìm theo tên ứng viên"
+                className="!rounded-lg"
               />
             </div>
             <div role="radiogroup" aria-label="Kiểu hiển thị" className="inline-flex h-10 items-center rounded-xl bg-slate-100 p-1">
@@ -350,7 +360,7 @@ export const ClientCandidatesPage: React.FC = () => {
                   aria-checked={view === v}
                   onClick={() => setParams({ view: v === 'board' ? 'board' : undefined }, true)}
                   className={`flex h-8 cursor-pointer items-center gap-2 rounded-lg border-0 px-3.5 text-[13px] font-medium transition-all ${
-                    view === v ? 'bg-white text-blue-700 shadow-sm font-semibold' : 'bg-transparent text-slate-600 hover:text-slate-900'
+                    view === v ? 'bg-white text-[#0C4A6E] shadow-sm font-bold' : 'bg-transparent text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   {icon}
@@ -366,13 +376,17 @@ export const ClientCandidatesPage: React.FC = () => {
                 <span className="block text-sm font-bold text-teal-900">Vị trí này thuộc dịch vụ CV Sourcing</span>
                 <span>Hồ sơ được HR Connect sàng lọc và bàn giao; bạn phản hồi từng CV trong thời hạn xem xét.</span>
               </div>
-              <Button size="small" onClick={() => navigate(`/client/jobs/${selectedJob.jobId}/sourcing`)}>
+              <Button
+                size="small"
+                className="font-medium !rounded-md"
+                onClick={() => navigate(`/client/jobs/${selectedJob.jobId}/sourcing`)}
+              >
                 Xem tiến độ và phản hồi CV
               </Button>
             </div>
           )}
 
-          {/* Stage strip: one row, each cell a filter; cells that need the Client are tinted */}
+          {/* Stage strip: one row, each cell a filter */}
           {view === 'list' && (
             <div role="radiogroup" aria-label="Lọc theo giai đoạn" className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 overflow-hidden rounded-xl border border-solid border-slate-200 bg-white shadow-xs">
               {GROUPS.map((g, i) => {
@@ -386,23 +400,23 @@ export const ClientCandidatesPage: React.FC = () => {
                     role="radio"
                     aria-checked={selected}
                     onClick={() => setParams({ stage: g.key === 'all' ? undefined : g.key, status: undefined })}
-                    className={`group relative cursor-pointer border-0 border-r border-b sm:border-b-0 border-solid border-slate-200 p-3 text-left transition-all duration-150 last:border-r-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--console-accent)] ${
+                    className={`group relative cursor-pointer border-0 border-r border-b sm:border-b-0 border-solid border-slate-200 p-3.5 text-left transition-all duration-150 last:border-r-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0C4A6E] ${
                       selected
-                        ? 'bg-blue-50/70 shadow-[inset_0_-3px_0_#2563eb]'
+                        ? 'bg-sky-50/80 shadow-[inset_0_-3px_0_#0C4A6E]'
                         : needsAction
-                          ? 'bg-orange-50/50 hover:bg-orange-50/80'
+                          ? 'bg-amber-50/40 hover:bg-amber-50/70'
                           : 'bg-white hover:bg-slate-50'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-1">
-                      <span className={`text-[12px] font-medium ${selected ? 'text-blue-700 font-semibold' : 'text-slate-600'}`}>
+                      <span className={`text-[12px] ${selected ? 'text-[#0C4A6E] font-bold' : 'text-slate-600 font-medium'}`}>
                         {g.label}
                       </span>
                       {needsAction && (
-                        <span className="inline-block h-2 w-2 rounded-full bg-orange-500" aria-label="cần xử lý" />
+                        <span className="inline-block h-2 w-2 rounded-full bg-amber-500" aria-label="cần xử lý" />
                       )}
                     </div>
-                    <div className={`mt-1 text-xl font-bold tabular-nums ${selected ? 'text-blue-900' : 'text-slate-900'}`}>
+                    <div className={`mt-1.5 text-xl font-extrabold tabular-nums ${selected ? 'text-[#0C4A6E]' : 'text-slate-900'}`}>
                       {counts[i].isLoading ? '–' : n ?? 0}
                     </div>
                   </button>
@@ -438,7 +452,7 @@ export const ClientCandidatesPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setParam('open', a.applicationId)}
-                              className="client-soft-card flex w-full cursor-pointer flex-col gap-2 rounded-xl border-0 bg-white p-3 text-left shadow-[0_0_0_1px_rgba(15,23,42,0.06),0_2px_6px_-2px_rgba(15,23,42,0.08)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
+                              className="client-soft-card flex w-full cursor-pointer flex-col gap-2 rounded-xl border-0 bg-white p-3 text-left shadow-[0_0_0_1px_rgba(15,23,42,0.06),0_2px_6px_-2px_rgba(15,23,42,0.08)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E]"
                             >
                               <span className="flex items-center gap-2.5">
                                 <Initials name={a.candidateName} size={30} />
@@ -463,7 +477,7 @@ export const ClientCandidatesPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setParams({ view: undefined, stage: GROUPS.find((g) => (g.statuses as readonly string[]).includes(b.code))?.key }, false)}
-                              className="w-full cursor-pointer rounded-xl border-0 bg-transparent py-2 text-xs font-medium text-[color:var(--console-accent-strong)] hover:bg-white"
+                              className="w-full cursor-pointer rounded-xl border-0 bg-transparent py-2 text-xs font-semibold text-[#0C4A6E] hover:bg-white"
                             >
                               Xem tất cả {qy.data?.total}
                             </button>
@@ -492,12 +506,12 @@ export const ClientCandidatesPage: React.FC = () => {
               onClick: () => setParam('open', r.applicationId),
               onKeyDown: (e) => e.key === 'Enter' && setParam('open', r.applicationId),
               tabIndex: 0,
-              className: 'cursor-pointer',
+              className: 'cursor-pointer hover:bg-slate-50/80 transition-colors',
             })}
             pagination={{ current: page, pageSize: PAGE_SIZE, total: list.data?.total ?? 0, showSizeChanger: false, hideOnSinglePage: true, onChange: (p) => setParam('page', String(p)) }}
             locale={{
               emptyText: (
-                <div className="py-10 text-slate-600">
+                <div className="py-12 text-slate-500 text-[13.5px]">
                   {!filtered ? 'Chưa có hồ sơ nào. Hồ sơ sẽ xuất hiện khi ứng viên nộp vào tin của bạn.' : 'Không có hồ sơ phù hợp bộ lọc.'}
                 </div>
               ),

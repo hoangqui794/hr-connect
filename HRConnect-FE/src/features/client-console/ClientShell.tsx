@@ -1,10 +1,9 @@
 /**
  * @file ClientShell.tsx
- * @description Client Company workspace shell: enterprise top navigation (no sidebar), indigo accent.
+ * @description Client Company workspace shell: enterprise top navigation (no sidebar), indigo/navy accent.
  * Desktop shows the links in the header; below lg they open in an off-canvas menu. The page area is
  * wide and airy, with the same loading feedback (progress bar, skeleton, enter motion) as the
- * other consoles. Menu follows the backend: jobs (MF-01), applications and interviews/offers
- * (MF-03/04); warranty has no API yet and opens an empty state.
+ * other consoles.
  */
 import React, { Suspense, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -20,6 +19,8 @@ import { NotificationBell } from '@/components/notifications/NotificationBell';
 import '@/features/admin-console/admin-console.css';
 import { BrandMark } from '@/components/common/BrandMark';
 
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+
 const NAV = [
   { to: '/client/dashboard', label: 'Tổng quan' },
   { to: '/client/jobs', label: 'Tin tuyển dụng' },
@@ -33,17 +34,20 @@ const NAV = [
 const linkClass = (active: boolean, compact?: boolean) => {
   if (compact) {
     return [
-      'block rounded-xl px-4 py-3 text-[15px] no-underline transition-colors duration-150',
+      FONT,
+      'block rounded-xl px-4 py-3 text-[14.5px] no-underline transition-all duration-150',
       active
-        ? 'bg-blue-50 font-semibold text-blue-600'
+        ? 'bg-sky-50 font-bold text-[#0C4A6E]'
         : 'font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900',
     ].join(' ');
   }
   return [
-    'flex h-16 items-center px-3.5 text-sm no-underline transition-colors duration-150',
+    FONT,
+    'relative flex h-16 items-center px-3.5 text-[14px] no-underline transition-colors duration-150',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0C4A6E]/20 rounded-sm',
     active
-      ? 'border-0 border-b-2 border-solid border-blue-600 font-semibold text-slate-900'
-      : 'border-0 border-b-2 border-solid border-transparent font-medium text-slate-500 hover:text-slate-900',
+      ? 'border-0 border-b-2 border-solid border-[#0C4A6E] font-bold text-[#0C4A6E]'
+      : 'border-0 border-b-2 border-solid border-transparent font-medium text-slate-600 hover:text-slate-900',
   ].join(' ');
 };
 
@@ -76,7 +80,7 @@ export const ClientShell: React.FC = () => {
   const isActive = (to: string) => location.pathname === to || location.pathname.startsWith(`${to}/`);
 
   return (
-    <div className="client-console min-h-screen bg-slate-50 text-slate-900">
+    <div className={`${FONT} client-console min-h-screen bg-[#F8FAFC] text-slate-900`}>
       <header className="sticky top-0 z-30 border-0 border-b border-solid border-slate-200/80 bg-white/95 backdrop-blur">
         <div className="flex h-16 w-full items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <div className="flex shrink-0 items-center gap-3">
@@ -86,7 +90,7 @@ export const ClientShell: React.FC = () => {
                 onClick={() => setMenuOpen(true)}
                 aria-label="Mở menu"
                 aria-expanded={menuOpen}
-                className="-ml-1 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-lg text-slate-700 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]"
+                className="-ml-1 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-lg text-slate-700 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E]"
               >
                 <MenuOutlined />
               </button>
@@ -96,7 +100,7 @@ export const ClientShell: React.FC = () => {
               <BrandMark size={36} />
               <span className="leading-tight">
                 <span className="block text-[15px] font-bold text-slate-900">HR Connect</span>
-                <span className="hidden text-[11px] font-medium tracking-wide text-blue-600 sm:block">Doanh nghiệp tuyển dụng</span>
+                <span className="hidden text-[11px] font-medium tracking-wide text-[#0C4A6E] sm:block">Doanh nghiệp tuyển dụng</span>
               </span>
             </NavLink>
           </div>
@@ -116,7 +120,7 @@ export const ClientShell: React.FC = () => {
               type="primary"
               icon={<PlusOutlined />}
               onClick={() => navigate('/client/jobs/create')}
-              className="hidden sm:inline-flex !bg-blue-600 hover:!bg-blue-700 !text-white !rounded-lg !border-0 shadow-sm font-medium transition-all active:scale-[0.98] !h-9 !px-4"
+              className="hidden sm:inline-flex !bg-[#0C4A6E] hover:!bg-[#075985] !text-white !rounded-lg !border-0 shadow-sm font-semibold transition-all active:scale-[0.98] !h-9 !px-4"
             >
               Đăng tin
             </Button>
@@ -140,7 +144,7 @@ export const ClientShell: React.FC = () => {
               <button
                 type="button"
                 aria-label="Tài khoản"
-                className="flex cursor-pointer items-center gap-3 rounded-full border-0 bg-transparent py-1 pl-1 pr-2 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] sm:pr-3"
+                className="flex cursor-pointer items-center gap-3 rounded-full border-0 bg-transparent py-1 pl-1 pr-2 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E] sm:pr-3"
               >
                 <AccountAvatar name={name} avatar={user?.avatar} size={34} />
                 <span className="hidden text-left leading-tight md:block">
