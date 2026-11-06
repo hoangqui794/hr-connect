@@ -190,6 +190,44 @@ export const CandidateIdentityPage: React.FC = () => {
     },
   });
 
+  const makePrimary = useMutation({
+    mutationFn: (identity: { emailIdentityId: string; concurrencyToken: string }) =>
+      candidateIdentityApi.makePrimary(identity.emailIdentityId, identity.concurrencyToken),
+    onSuccess: async (response) => {
+      message.success(response.message || 'Đã đổi email đăng nhập chính thành công.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: candidateIdentityKeys.all }),
+        syncCurrentUser(),
+      ]);
+    },
+    onError: async (error) => {
+      const apiError = getApiError(error, 'Chưa thể đổi email đăng nhập chính.');
+      message.error(apiError.message);
+      if (apiError.status === 409) await queryClient.invalidateQueries({ queryKey: candidateIdentityKeys.all });
+    },
+  });
+
+  const dismissCase = useMutation({
+    mutationFn: (item: { duplicateCaseId: string; concurrencyToken?: string }) =>
+      candidateIdentityApi.dismissDuplicateCase(
+        item.duplicateCaseId,
+        'Đây không phải hồ sơ của tôi.',
+        item.concurrencyToken
+      ),
+    onSuccess: async (response) => {
+      message.success(response.message || 'Đã ghi nhận đây không phải hồ sơ của bạn.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: candidateIdentityKeys.duplicateCases }),
+        queryClient.invalidateQueries({ queryKey: ['candidate-applications'] }),
+      ]);
+    },
+    onError: async (error) => {
+      const apiError = getApiError(error, 'Chưa thể xử lý yêu cầu đối chiếu.');
+      message.error(apiError.message);
+      await queryClient.invalidateQueries({ queryKey: candidateIdentityKeys.duplicateCases });
+    },
+  });
+
   if (!canManage) return <Alert type="error" showIcon message="Bạn không có quyền quản lý email liên kết." />;
 
   const handleStartClaim = (event: React.FormEvent) => {
@@ -382,6 +420,32 @@ export const CandidateIdentityPage: React.FC = () => {
                                   ? 'Đã thu hồi'
                                   : 'Chờ xác minh'}
                             </span>
+                          )}
+
+                          {identity.canMakePrimary && identity.status === 'VERIFIED' && (
+                            <Popconfirm
+                              title="Đặt làm email đăng nhập chính?"
+                              description={`Bạn sẽ dùng ${identity.email} để đăng nhập và khôi phục mật khẩu. Email chính hiện tại sẽ chuyển thành email phụ đã xác minh.`}
+                              okText="Đặt làm email chính"
+                              cancelText="Hủy"
+                              onConfirm={() =>
+                                makePrimary.mutate({
+                                  emailIdentityId: identity.emailIdentityId,
+                                  concurrencyToken: identity.concurrencyToken,
+                                })
+                              }
+                            >
+                              <button
+                                type="button"
+                                disabled={makePrimary.isPending && makePrimary.variables?.emailIdentityId === identity.emailIdentityId}
+                                aria-label={`Đặt ${identity.email} làm email chính`}
+                                className={`${FONT} inline-flex h-9 shrink-0 cursor-pointer items-center justify-center rounded-md border border-solid border-[#0C4A6E] bg-white px-3.5 text-[13px] font-medium text-[#0C4A6E] transition-all duration-200 hover:bg-[#F0F9FF] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`}
+                              >
+                                {makePrimary.isPending && makePrimary.variables?.emailIdentityId === identity.emailIdentityId
+                                  ? 'Đang đổi…'
+                                  : 'Đặt làm email chính'}
+                              </button>
+                            </Popconfirm>
                           )}
 
                           {identity.canRevoke && identity.status === 'VERIFIED' && (
@@ -673,9 +737,21 @@ export const CandidateIdentityPage: React.FC = () => {
                       >
                         Xác minh để gộp hồ sơ
                       </button>
-                      <Link to="/contact?topic=DATA_PRIVACY" className={`${SECONDARY_BTN} no-underline`}>
-                        Đây không phải tôi
-                      </Link>
+                      <button
+                        type="button"
+                        disabled={dismissCase.isPending && dismissCase.variables?.duplicateCaseId === dupCase.duplicateCaseId}
+                        onClick={() =>
+                          dismissCase.mutate({
+                            duplicateCaseId: dupCase.duplicateCaseId,
+                            concurrencyToken: dupCase.concurrencyToken,
+                          })
+                        }
+                        className={SECONDARY_BTN}
+                      >
+                        {dismissCase.isPending && dismissCase.variables?.duplicateCaseId === dupCase.duplicateCaseId
+                          ? 'Đang xử lý…'
+                          : 'Đây không phải tôi'}
+                      </button>
                     </div>
                   )}
                 </article>

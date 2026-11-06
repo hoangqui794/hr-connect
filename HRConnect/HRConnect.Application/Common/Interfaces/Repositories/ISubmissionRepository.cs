@@ -88,7 +88,20 @@ public sealed record CandidateSubmissionConsentRecord(
     string AffiliateDisplayName,
     DateTime RequestedAt,
     DateTime ExpiresAt,
-    DateTime? RespondedAt);
+    DateTime? RespondedAt,
+    decimal? SalaryMin = null,
+    decimal? SalaryMax = null,
+    string CurrencyCode = "VND",
+    bool SalaryNegotiable = false,
+    string? JobLocation = null,
+    string? EmploymentType = null,
+    string? WorkingTime = null,
+    decimal? MinExperienceYears = null,
+    decimal? MaxExperienceYears = null,
+    string? AffiliateEmail = null,
+    string? AffiliatePhone = null,
+    string? PitchText = null,
+    long? CvFileSizeBytes = null);
 
 public sealed record CandidateAffiliateCvRecord(
     Guid CvId,

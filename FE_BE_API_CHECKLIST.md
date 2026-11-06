@@ -22,30 +22,25 @@ Tài liệu này tổng hợp toàn bộ trạng thái kết nối API giữa **
 
 ---
 
-### 🟨 Nhóm 2: Thuộc phạm vi **MF-02** *(Tiếp nhận hồ sơ, Submission Consent, Email Identity, Đối chiếu trùng / Dedup)* — **CẦN HỎI DEV MF-02**
-- **File BE liên quan:**
+### ✅ Nhóm 2: Thuộc phạm vi **MF-02** *(Tiếp nhận hồ sơ, Submission Consent, Email Identity, Đối chiếu trùng / Dedup)* — **ĐÃ XỬ LÝ XONG**
+- **File BE & FE đã cập nhật:**
   - [`CandidateEndpoints.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Presentation/Endpoints/V1/Candidates/CandidateEndpoints.cs)
-  - [`CandidateDuplicateSelfServiceQueries.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Application/Features/CandidateDuplicates/Queries/CandidateDuplicateSelfServiceQueries.cs)
   - [`SubmissionConsentEndpoints.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Presentation/Endpoints/V1/SubmissionConsents/SubmissionConsentEndpoints.cs)
-  - `SubmissionConsentDtos.cs`
-- **Vấn đề cần hỏi dev MF-02 (Gồm 3 mục):**
-
-  1. **[PDF Trang 31] Nút `"Đây không phải tôi"` cho ứng viên trong màn Hồ sơ đang đối chiếu (`/candidate/settings/email-identities?tab=reconciliation`):**
-     - **Hiện trạng:** MF-02 đã làm 2 API đọc `GET /api/v1/candidates/me/duplicate-cases` và `GET /api/v1/candidates/me/duplicate-cases/{caseId}`, nhưng các API xử lý (`dismiss`, `merge`) chỉ mới có cho `PLATFORM_ADMIN` (`/api/v1/admin/candidate-duplicates/...`). Chưa có API cho chính `CANDIDATE` bấm nút **"Đây không phải tôi"** khi `status = AWAITING_CANDIDATE`.
-     - **API đề xuất:** `POST /api/v1/candidates/me/duplicate-cases/{caseId:guid}/dismiss` (hoặc `/not-me`) với body `{ "reason": "Đây không phải hồ sơ của tôi" }`.
-
-  2. **[PDF Trang 22] Đổi Email phụ đã xác minh thành Email đăng nhập chính (`/candidate/settings/email-identities`):**
-     - **Hiện trạng:** Trong `CandidateEmailIdentityDto` đã có sẵn trường boolean `canMakePrimary`, nhưng trong `GetCandidateEmailIdentitiesQueryHandler` đang gán cứng `canMakePrimary: false` và trong `CandidateEndpoints.cs` mới chỉ có `/revoke`, chưa có endpoint `make-primary`.
-     - **API đề xuất:** `POST /api/v1/candidates/me/email-identities/{emailIdentityId:guid}/make-primary` với body `{ "concurrencyToken": "..." }`.
-
-  3. **[PDF Trang 14 & 15] Bổ sung thông tin tóm tắt Job & Tên Affiliate vào DTO `SubmissionConsentReviewResponse` (`/candidate/submission-consents/:submissionId` & `/submission-consent#token=...`):**
-     - **Hiện trạng:** `GET /api/v1/candidates/me/submission-consents/{submissionId}` và `POST /api/v1/submission-consents/review` hiện chỉ trả về: `submissionId`, `jobId`, `jobTitle`, `companyName`, `candidateName`, `cvFileName`, `cvDownloadUrl`, `status`, `affiliateReuseStatus`, `expiresAt`.
-     - **Thiếu dữ liệu hiển thị trên thẻ Job của PDF Trang 14 & 15:**
-       - `affiliateDisplayName` (tên đối tác giới thiệu)
-       - `jobLocation` & `workMode` (ví dụ: `"Quận 1, TP. Hồ Chí Minh · Làm tại văn phòng"`)
-       - `salaryMin`, `salaryMax`, `currencyCode`, `salaryNegotiable` (ví dụ: `"30 – 45 triệu VND (Gross)"`)
-       - `experienceRequirement` (ví dụ: `"Yêu cầu 3+ năm .NET"`)
-     - *(Tùy chọn)* Thêm `POST /api/v1/submission-consents/report-unauthorized` cho link *"Không phải bạn? Báo cho HR Connect"* ở chân trang PDF 14–15 (hiện FE đang chuyển hướng sang `/contact?topic=DATA_PRIVACY`).
+  - [`DecideMyCandidateDuplicateCase.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Application/Features/CandidateDuplicates/Resolve/DecideMyCandidateDuplicateCase.cs) & [`CandidateDuplicateSelfServiceQueries.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Application/Features/CandidateDuplicates/Queries/CandidateDuplicateSelfServiceQueries.cs)
+  - [`MakeCandidatePrimaryEmailIdentityCommandHandler.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Application/Features/Candidates/Identity/MakeCandidatePrimaryEmailIdentity/MakeCandidatePrimaryEmailIdentityCommandHandler.cs) & [`GetCandidateEmailIdentitiesQueryHandler.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Application/Features/Candidates/Queries/GetCandidateEmailIdentities/GetCandidateEmailIdentitiesQueryHandler.cs)
+  - [`GetSubmissionConsentQuery.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Application/Features/SubmissionConsents/GetSubmissionConsent/GetSubmissionConsentQuery.cs), [`GetSubmissionConsentQueryHandler.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Application/Features/SubmissionConsents/GetSubmissionConsent/GetSubmissionConsentQueryHandler.cs), [`GetCandidateSubmissionConsentsQuery.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Application/Features/Candidates/Queries/GetCandidateSubmissionConsents/GetCandidateSubmissionConsentsQuery.cs) & [`ReportUnauthorizedSubmissionConsentCommand.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Application/Features/SubmissionConsents/ReportUnauthorizedSubmissionConsent/ReportUnauthorizedSubmissionConsentCommand.cs)
+  - [`GetCandidateCvsResponse.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Application/Features/Candidates/Queries/GetCandidateCvs/GetCandidateCvsResponse.cs) & [`CandidateCvRepository.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Infrastructure/Repositories/CandidateCvRepository.cs)
+  - [`candidateIdentityApi.ts`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/services/api/mf02/candidateIdentityApi.ts), [`candidateConsentApi.ts`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/services/api/mf02/candidateConsentApi.ts), [`CandidateIdentityPage.tsx`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/features/portal/CandidateIdentityPage.tsx) & [`CandidateSubmissionConsentPage.tsx`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/features/portal/CandidateSubmissionConsentPage.tsx)
+- **Nội dung đã hoàn thành:**
+  1. **[PDF Trang 31] API xử lý đối chiếu hồ sơ trùng cho ứng viên (`dismiss` / `not-me` / `decision`):**
+     - Đã bổ sung `POST /api/v1/candidates/me/duplicate-cases/{caseId:guid}/dismiss`, `/not-me` và `/decision` trên Backend, đồng thời trả thêm `concurrencyToken` trong danh sách & chi tiết duplicate case.
+  2. **[PDF Trang 22] Đổi Email phụ đã xác minh thành Email đăng nhập chính (`make-primary`):**
+     - Đã bật `canMakePrimary = true` cho các email `ALIAS` ở trạng thái `VERIFIED` và bổ sung endpoint `POST /api/v1/candidates/me/email-identities/{emailIdentityId:guid}/make-primary`.
+  3. **[PDF Trang 14 & 15] Bổ sung đầy đủ thông tin Job, Mức lương, Địa điểm, Affiliate, PitchText, CvFileSizeBytes & API `report-unauthorized`:**
+     - Đã bổ sung các trường tóm tắt Job (`jobLocation`/`workLocation`, `workMode`, `salaryMin`, `salaryMax`, `currencyCode`/`salaryCurrency`, `salaryNegotiable`/`isSalaryNegotiable`, `experienceRequirement`, `affiliateDisplayName`, `affiliateEmail`, `affiliatePhone`, `pitchText`/`candidateConditionSummary`, `cvFileSizeBytes`) vào cả `SubmissionConsentReviewData` và `CandidateSubmissionConsentItem`.
+     - Đã bổ sung `POST /api/v1/submission-consents/report-unauthorized` và `POST /api/v1/candidates/me/submission-consents/{submissionId:guid}/report-unauthorized`.
+  4. **[PDF Trang 16] Bổ sung `activeApplicationCount` vào DTO Kho CV (`GET /api/v1/candidates/cv/my`):**
+     - Đã tính toán và trả về `activeApplicationCount` (số đơn ứng tuyển đang mở sử dụng CV đó) cùng với `applicationUsageCount` và `submissionUsageCount`.
 
 ---
 

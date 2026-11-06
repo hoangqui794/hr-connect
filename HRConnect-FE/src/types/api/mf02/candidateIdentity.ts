@@ -50,6 +50,7 @@ export interface CandidateDuplicateCaseItem {
   evidenceTypes: string[];
   createdAt: string;
   updatedAt: string;
+  concurrencyToken?: string;
 }
 
 export interface CandidateDuplicateCaseDetail extends CandidateDuplicateCaseItem {
@@ -62,4 +63,26 @@ export interface CandidateDuplicateCaseListResponse {
   pageSize: number;
   totalCount: number;
   totalPages: number;
+}
+
+export interface CandidateDuplicateCaseDecisionResponse {
+  success: boolean;
+  message: string;
+  duplicateCaseId: string;
+  status: string;
+  resolution: string | null;
+  title: string;
+  guidance: string;
+  actionRequired: boolean;
+  concurrencyToken: string;
+}
+
+export interface MakeCandidatePrimaryEmailIdentityResponse {
+  success: boolean;
+  message: string;
+  emailIdentityId: string;
+  email: string;
+  kind: 'PRIMARY' | string;
+  status: 'VERIFIED' | string;
+  concurrencyToken: string;
 }

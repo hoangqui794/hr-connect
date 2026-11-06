@@ -61,7 +61,9 @@ public class CandidateCvRepository : ICandidateCvRepository
             .Select(cv => new CandidateCvUsageRecord(
                 cv,
                 cv.Submissions.Count,
-                cv.Submissions.SelectMany(submission => submission.Applications).Count()))
+                cv.Submissions.SelectMany(submission => submission.Applications).Count(),
+                cv.Submissions.SelectMany(submission => submission.Applications).Count(app =>
+                    app.Status != "CLOSED" && app.Status != "WITHDRAWN" && app.Status != "REJECTED")))
             .ToListAsync(cancellationToken);
     }
 

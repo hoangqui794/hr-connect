@@ -3,9 +3,11 @@ using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.SubmissionConsents.GetSubmissionConsent;
 using HRConnect.Application.Features.SubmissionConsents.RespondSubmissionConsent;
+using HRConnect.Application.Features.SubmissionConsents.ReportUnauthorizedSubmissionConsent;
 using HRConnect.Application.Features.Candidates.Queries.GetCandidateSubmissionConsents;
 using HRConnect.Presentation.Authorization;
 using MediatR;
+using Microsoft.AspNetCore.Mvc;
 
 namespace HRConnect.Presentation.Endpoints.V1.SubmissionConsents;
 
@@ -75,6 +77,30 @@ public static class SubmissionConsentEndpoints
             .Produces(StatusCodes.Status403Forbidden)
             .Produces(StatusCodes.Status404NotFound)
             .Produces(StatusCodes.Status409Conflict)
+            .Produces(StatusCodes.Status429TooManyRequests);
+
+        group.MapPost("/report-unauthorized", async (
+            ReportUnauthorizedConsentRequest request,
+            ClaimsPrincipal user,
+            HttpContext httpContext,
+            ISender sender,
+            CancellationToken cancellationToken) =>
+            await Run(() => sender.Send(
+                new ReportUnauthorizedSubmissionConsentCommand(
+                    request.Token,
+                    request.SubmissionId,
+                    UserId(user),
+                    request.Reason,
+                    httpContext.Connection.RemoteIpAddress?.ToString(),
+                    httpContext.Request.Headers.UserAgent.ToString()),
+                cancellationToken)))
+            .WithName("ReportUnauthorizedSubmissionConsent")
+            .WithSummary("Báo cáo yêu cầu xác nhận hồ sơ trái phép ('Không phải bạn? Báo cho HR Connect')")
+            .WithDescription("Ghi nhận báo cáo từ người nhận email xác nhận, tự động đóng/từ chối yêu cầu đang chờ và thu hồi quyền tái sử dụng CV của Affiliate.")
+            .Produces<ReportUnauthorizedSubmissionConsentResponse>()
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound)
             .Produces(StatusCodes.Status429TooManyRequests);
 
         var candidateGroup = app.MapGroup("/api/v1/candidates/me/submission-consents")
@@ -163,6 +189,34 @@ public static class SubmissionConsentEndpoints
             .Produces(StatusCodes.Status409Conflict)
             .Produces(StatusCodes.Status429TooManyRequests);
 
+        candidateGroup.MapPost("/{submissionId:guid}/report-unauthorized", async (
+            Guid submissionId,
+            [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] CandidateReportUnauthorizedConsentRequest? request,
+            ClaimsPrincipal user,
+            HttpContext httpContext,
+            ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = UserId(user);
+            if (!userId.HasValue) return Results.Unauthorized();
+            return await Run(() => sender.Send(
+                new ReportUnauthorizedSubmissionConsentCommand(
+                    null,
+                    submissionId,
+                    userId,
+                    request?.Reason,
+                    httpContext.Connection.RemoteIpAddress?.ToString(),
+                    httpContext.Request.Headers.UserAgent.ToString()),
+                cancellationToken));
+        })
+            .WithName("ReportAuthenticatedUnauthorizedSubmissionConsent")
+            .WithSummary("Candidate đã đăng nhập báo cáo yêu cầu xác nhận hồ sơ trái phép")
+            .Produces<ReportUnauthorizedSubmissionConsentResponse>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status429TooManyRequests);
+
         return app;
     }
 
@@ -193,4 +247,6 @@ public static class SubmissionConsentEndpoints
     public sealed record ConsentTokenRequest(string Token);
     public sealed record ConsentDecisionRequest(string Token, string Decision, bool? AllowFutureReuse);
     public sealed record CandidateConsentDecisionRequest(string Decision, bool? AllowFutureReuse);
+    public sealed record ReportUnauthorizedConsentRequest(string? Token = null, Guid? SubmissionId = null, string? Reason = null);
+    public sealed record CandidateReportUnauthorizedConsentRequest(string? Reason = null);
 }

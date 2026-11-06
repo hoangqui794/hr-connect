@@ -46,6 +46,7 @@ public class GetCandidateCvsQueryHandler : IRequestHandler<GetCandidateCvsQuery,
             UpdatedAt = record.Cv.UpdatedAt,
             SubmissionUsageCount = record.SubmissionUsageCount,
             ApplicationUsageCount = record.ApplicationUsageCount,
+            ActiveApplicationCount = record.ActiveApplicationCount > 0 ? record.ActiveApplicationCount : record.ApplicationUsageCount,
             IsReferenced = record.SubmissionUsageCount > 0,
             DeleteBehavior = record.SubmissionUsageCount > 0 ? "ARCHIVE_HISTORY" : "HARD_DELETE"
         }).ToList();

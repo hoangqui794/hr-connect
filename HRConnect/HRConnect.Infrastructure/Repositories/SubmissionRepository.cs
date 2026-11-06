@@ -534,7 +534,20 @@ public class SubmissionRepository : ISubmissionRepository
                 consent.Submission.SubmittedByNavigation.DisplayName ?? consent.Submission.SubmittedByNavigation.Email,
                 consent.RequestedAt,
                 consent.ExpiresAt,
-                consent.RespondedAt))
+                consent.RespondedAt,
+                consent.Submission.Job.SalaryMin,
+                consent.Submission.Job.SalaryMax,
+                consent.Submission.Job.CurrencyCode,
+                consent.Submission.Job.SalaryNegotiable,
+                consent.Submission.Job.Location,
+                consent.Submission.Job.EmploymentType,
+                consent.Submission.Job.WorkingTime,
+                consent.Submission.Job.MinExperienceYears,
+                consent.Submission.Job.MaxExperienceYears,
+                consent.Submission.SubmittedByNavigation.Email,
+                consent.Submission.SubmittedByNavigation.Phone,
+                consent.Submission.Note,
+                consent.Submission.CandidateCv.FileSizeBytes))
             .ToListAsync(cancellationToken);
 
         return (items, totalCount);

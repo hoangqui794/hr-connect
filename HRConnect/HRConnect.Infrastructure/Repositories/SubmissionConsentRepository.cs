@@ -17,6 +17,7 @@ public class SubmissionConsentRepository : ISubmissionConsentRepository
         _context.SubmissionConsents
             .Include(c => c.Submission).ThenInclude(s => s.Candidate)
             .Include(c => c.Submission).ThenInclude(s => s.CandidateCv)
+            .Include(c => c.Submission).ThenInclude(s => s.SubmittedByNavigation)
             .Include(c => c.Submission).ThenInclude(s => s.Applications)
             .Include(c => c.Submission).ThenInclude(s => s.Job).ThenInclude(j => j.Company)
             .Include(c => c.Submission).ThenInclude(s => s.Job).ThenInclude(j => j.ServiceType)
@@ -26,6 +27,7 @@ public class SubmissionConsentRepository : ISubmissionConsentRepository
         _context.SubmissionConsents
             .Include(c => c.Submission).ThenInclude(s => s.Candidate)
             .Include(c => c.Submission).ThenInclude(s => s.CandidateCv)
+            .Include(c => c.Submission).ThenInclude(s => s.SubmittedByNavigation)
             .Include(c => c.Submission).ThenInclude(s => s.Applications)
             .Include(c => c.Submission).ThenInclude(s => s.Job).ThenInclude(j => j.Company)
             .Include(c => c.Submission).ThenInclude(s => s.Job).ThenInclude(j => j.ServiceType)

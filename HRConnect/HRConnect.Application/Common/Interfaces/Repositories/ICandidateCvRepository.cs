@@ -28,4 +28,5 @@ public interface ICandidateCvRepository
 public sealed record CandidateCvUsageRecord(
     CandidateCv Cv,
     int SubmissionUsageCount,
-    int ApplicationUsageCount);
+    int ApplicationUsageCount,
+    int ActiveApplicationCount = 0);
