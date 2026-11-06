@@ -85,7 +85,6 @@ describe('CandidateAffiliateCvDetailPage', () => {
     });
     detailMock.mockResolvedValue(detail);
     vi.mocked(candidateAffiliateCvApi.downloadUrl).mockResolvedValue({
-      cvId: 'cv-1',
       downloadUrl: 'https://example.com/cv-1.pdf',
       expiresAt: '2026-10-08T01:00:00Z',
     });
