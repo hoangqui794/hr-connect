@@ -8,6 +8,9 @@ import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
 
 vi.mock('@/services/api/mf02Api', () => ({
+  candidateCvApi: {
+    list: vi.fn().mockResolvedValue([]),
+  },
   candidateAffiliateCvApi: {
     list: vi.fn(),
     usages: vi.fn().mockResolvedValue({ items: [], page: 1, pageSize: 1, total: 0, totalPages: 0 }),
@@ -64,5 +67,46 @@ describe('CandidateAffiliateCvsPage', () => {
     expect(screen.getByText(/Affiliate Minh/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Xem' })).toHaveAttribute('href', '/candidate/affiliate-cvs/cv-1');
     expect(candidateAffiliateCvApi.list).toHaveBeenCalledWith(1, 10);
+  });
+
+  it('links to submission consent when candidate was referred without an application yet', async () => {
+    vi.mocked(candidateAffiliateCvApi.usages).mockResolvedValueOnce({
+      items: [{
+        submissionId: 'sub-456',
+        jobId: 'job-456',
+        jobTitle: 'Mobile Engineering Lead',
+        companyName: 'Lotus Commerce',
+        companyId: 'company-1',
+        affiliateUserId: 'affiliate-user',
+        affiliateDisplayName: 'Affiliate Minh',
+        submissionStatus: 'SUBMITTED',
+        submittedAt: '2026-10-08T00:00:00Z',
+        consentStatus: 'PENDING',
+        consentRequestedAt: '2026-10-08T00:00:00Z',
+        consentExpiresAt: null,
+        consentRespondedAt: null,
+        applicationId: null,
+        applicationStatus: null,
+        applicationCurrentStage: null,
+        aiStatus: null,
+        aiMatchScore: null,
+        aiMatchTier: null,
+        aiCompletedAt: null,
+      }],
+      page: 1,
+      pageSize: 1,
+      total: 1,
+      totalPages: 1,
+    });
+
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter><CandidateAffiliateCvsPage /></MemoryRouter>
+      </QueryClientProvider>
+    );
+
+    const jobLink = await screen.findByRole('link', { name: /Mobile Engineering Lead – Lotus Commerce/ });
+    expect(jobLink).toHaveAttribute('href', '/candidate/submission-consents/sub-456');
   });
 });

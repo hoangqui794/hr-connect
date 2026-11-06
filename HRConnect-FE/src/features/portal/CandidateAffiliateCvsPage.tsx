@@ -51,7 +51,9 @@ const PartnerCvRow: React.FC<{
   const jobHref = latestUsage
     ? latestUsage.applicationId
       ? `/candidate/applications/${latestUsage.applicationId}`
-      : `/jobs/${latestUsage.jobId}`
+      : latestUsage.submissionId
+        ? `/candidate/submission-consents/${latestUsage.submissionId}`
+        : `/jobs/${latestUsage.jobId}`
     : undefined;
 
   return (
@@ -334,7 +336,9 @@ export const CandidateAffiliateCvDetailPage: React.FC = () => {
   const jobHref = latestUsage
     ? latestUsage.applicationId
       ? `/candidate/applications/${latestUsage.applicationId}`
-      : `/jobs/${latestUsage.jobId}`
+      : latestUsage.submissionId
+        ? `/candidate/submission-consents/${latestUsage.submissionId}`
+        : `/jobs/${latestUsage.jobId}`
     : undefined;
 
   return (
