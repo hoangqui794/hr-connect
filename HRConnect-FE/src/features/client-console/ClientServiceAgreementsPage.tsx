@@ -407,35 +407,43 @@ export const ClientServiceAgreementsPage: React.FC = () => {
 
   return (
     <div className={`space-y-6 ${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
-      {/* Hero (shared PageHero, same as the other Client pages) */}
-      <PageHero
-        eyebrow="Pháp lý & Thỏa thuận"
-        title="Thỏa thuận dịch vụ"
-        tip
-        description="Xem, ký điện tử bằng OTP và lưu hợp đồng dịch vụ cho các tin HH · Tuyển dụng theo kết quả và SS · Tìm hồ sơ phù hợp."
-        actions={
-          <>
-            <Button
-              icon={<HistoryOutlined />}
-              className="!h-10 !rounded-lg border-slate-200 hover:!border-slate-300 text-slate-700"
-              onClick={() => {
-                refetchCurrent();
-                refetchHistory();
-              }}
-            >
-              Làm mới
-            </Button>
-            <Button
-              type="primary"
-              icon={<FileTextOutlined />}
-              className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white !h-10 !rounded-lg font-semibold shadow-sm transition-all active:scale-[0.98] !px-4"
-              onClick={() => navigate('/client/jobs')}
-            >
-              Quản lý tin tuyển dụng
-            </Button>
-          </>
-        }
-      />
+      {/* ── Studio Header ── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="m-0 text-2xl font-black tracking-tight text-slate-900 sm:text-[26px]">
+              Thỏa Thuận Dịch Vụ Tuyển Dụng
+            </h1>
+            <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0C4A6E] border border-sky-100">
+              {counts.all} hợp đồng
+            </span>
+          </div>
+          <p className="m-0 mt-1 text-sm text-slate-500">
+            Thẩm định điều khoản thương mại, ký kết hợp đồng điện tử qua OTP và theo dõi tình trạng kích hoạt vị trí.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <Button
+            icon={<HistoryOutlined />}
+            className="!h-10 !rounded-xl border-slate-200 hover:!border-slate-300 font-semibold text-slate-700"
+            onClick={() => {
+              refetchCurrent();
+              refetchHistory();
+            }}
+          >
+            Làm mới
+          </Button>
+          <Button
+            type="primary"
+            icon={<FileTextOutlined />}
+            className="!bg-gradient-to-r !from-[#0C4A6E] !to-[#0284C7] hover:!from-[#075985] hover:!to-[#0369A1] !border-0 text-white !h-10 !rounded-xl font-bold shadow-sm transition-all active:scale-[0.98] !px-4"
+            onClick={() => navigate('/client/jobs')}
+          >
+            Quản lý tin tuyển dụng
+          </Button>
+        </div>
+      </div>
 
       {/* Main Content Area */}
       {loadingJobs ? (

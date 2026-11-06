@@ -316,21 +316,32 @@ export const ClientBillingPage: React.FC = () => {
 
   return (
     <div className={`${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
-      <PageHero
-        eyebrow="Tài chính & Thanh toán"
-        title="Công nợ phí dịch vụ"
-        tip
-        description="Mọi khoản phí với HR Connect của 3 dịch vụ HH, SS và AP ở cùng một nơi. Thanh toán qua VNPay thì khoản phí chuyển Đã thanh toán ngay; chuyển khoản thì trạng thái cập nhật khi HR Connect nhận được tiền."
-        actions={
+      {/* ── Studio Header ── */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="m-0 text-2xl font-black tracking-tight text-slate-900 sm:text-[26px]">
+              Công Nợ & Phí Dịch Vụ
+            </h1>
+            <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0C4A6E] border border-sky-100">
+              {rows.length} khoản phí
+            </span>
+          </div>
+          <p className="m-0 mt-1 text-sm text-slate-500">
+            Quản lý và thanh toán các khoản phí tuyển dụng qua cổng trực tuyến VNPay hoặc chuyển khoản ngân hàng.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5">
           <Button
             icon={<ReloadOutlined spin={fetching} />}
-            className="!h-10 !rounded-lg border-slate-200 hover:!border-slate-300 text-slate-700"
+            className="!h-10 !rounded-xl border-slate-200 hover:!border-slate-300 font-semibold text-slate-700"
             onClick={refetch}
           >
             Làm mới
           </Button>
-        }
-      />
+        </div>
+      </div>
 
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
         <Kpi label="Cần thanh toán" value={money(sumVnd(unpaid))} hint={`${unpaid.length} khoản chưa thanh toán`} />

@@ -150,12 +150,28 @@ export const ClientCompanyPage: React.FC = () => {
 
   return (
     <div className={`${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
-      <PageHero
-        eyebrow="Doanh nghiệp"
-        title="Hồ sơ doanh nghiệp"
-        tip
-        description="Thông tin công ty hiển thị trên tin tuyển dụng và trang công ty mà ứng viên xem."
-      />
+      {/* ── Studio Header ── */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="m-0 text-2xl font-black tracking-tight text-slate-900 sm:text-[26px]">
+              Hồ Sơ Doanh Nghiệp
+            </h1>
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-xs font-bold border ${
+                verified
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                  : 'bg-amber-50 text-amber-700 border-amber-200/80'
+              }`}
+            >
+              {verified ? '✓ Doanh nghiệp đã xác thực' : 'Đang chờ xác thực'}
+            </span>
+          </div>
+          <p className="m-0 mt-1 text-sm text-slate-500">
+            Xây dựng thương hiệu nhà tuyển dụng uy tín, hiển thị logo và thông tin công ty tới toàn bộ ứng viên.
+          </p>
+        </div>
+      </div>
       {company.isLoading ? (
         <Surface padded>
           <Skeleton active paragraph={{ rows: 6 }} />

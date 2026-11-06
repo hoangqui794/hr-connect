@@ -35,19 +35,19 @@ const linkClass = (active: boolean, compact?: boolean) => {
   if (compact) {
     return [
       FONT,
-      'block rounded-xl px-4 py-3 text-[14.5px] no-underline transition-all duration-150',
+      'flex items-center justify-between rounded-xl px-4 py-3 text-[14px] no-underline transition-all duration-150',
       active
-        ? 'bg-sky-50 font-bold text-[#0C4A6E]'
+        ? 'bg-[#0C4A6E]/10 font-bold text-[#0C4A6E]'
         : 'font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900',
     ].join(' ');
   }
   return [
     FONT,
-    'relative flex h-16 items-center px-3.5 text-[14px] no-underline transition-colors duration-150',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0C4A6E]/20 rounded-sm',
+    'relative inline-flex items-center gap-1.5 px-3 py-1.5 text-[13.5px] rounded-lg no-underline transition-all duration-150',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0C4A6E]/30',
     active
-      ? 'border-0 border-b-2 border-solid border-[#0C4A6E] font-bold text-[#0C4A6E]'
-      : 'border-0 border-b-2 border-solid border-transparent font-medium text-slate-600 hover:text-slate-900',
+      ? 'bg-slate-100 text-[#0C4A6E] font-bold shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)]'
+      : 'font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900',
   ].join(' ');
 };
 
@@ -96,31 +96,40 @@ export const ClientShell: React.FC = () => {
               </button>
             )}
 
-            <NavLink to="/client/dashboard" className="flex shrink-0 items-center gap-2.5 no-underline" aria-label="HR Connect, về tổng quan">
+            <NavLink to="/client/dashboard" className="flex shrink-0 items-center gap-2.5 no-underline group" aria-label="HR Connect, về tổng quan">
               <BrandMark size={36} />
-              <span className="leading-tight">
-                <span className="block text-[15px] font-bold text-slate-900">HR Connect</span>
-                <span className="hidden text-[11px] font-medium tracking-wide text-[#0C4A6E] sm:block">Doanh nghiệp tuyển dụng</span>
-              </span>
+              <div className="leading-tight">
+                <div className="flex items-center gap-2">
+                  <span className="text-[15px] font-bold text-slate-900 group-hover:text-[#0C4A6E] transition-colors">HR Connect</span>
+                  <span className="hidden sm:inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-[#0C4A6E] border border-sky-200/60">
+                    Doanh nghiệp
+                  </span>
+                </div>
+                <span className="hidden text-[11px] font-medium text-slate-500 sm:block">Trung tâm quản lý tuyển dụng</span>
+              </div>
             </NavLink>
           </div>
 
           {!compact && (
-            <nav aria-label="Điều hướng chính" className="flex items-center gap-1 h-16">
-              {NAV.map((n) => (
-                <NavLink key={n.to} to={n.to} className={linkClass(isActive(n.to))} aria-current={isActive(n.to) ? 'page' : undefined}>
-                  {n.label}
-                </NavLink>
-              ))}
+            <nav aria-label="Điều hướng chính" className="flex items-center gap-1">
+              {NAV.map((n) => {
+                const active = isActive(n.to);
+                return (
+                  <NavLink key={n.to} to={n.to} className={linkClass(active)} aria-current={active ? 'page' : undefined}>
+                    {active && <span className="h-1.5 w-1.5 rounded-full bg-[#0C4A6E]" aria-hidden />}
+                    {n.label}
+                  </NavLink>
+                );
+              })}
             </nav>
           )}
 
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2.5">
             <Button
               type="primary"
               icon={<PlusOutlined />}
               onClick={() => navigate('/client/jobs/create')}
-              className="hidden sm:inline-flex !bg-[#0C4A6E] hover:!bg-[#075985] !text-white !rounded-lg !border-0 shadow-sm font-semibold transition-all active:scale-[0.98] !h-9 !px-4"
+              className="hidden sm:inline-flex !bg-gradient-to-r !from-[#0C4A6E] !to-[#0284C7] hover:!from-[#075985] hover:!to-[#0369A1] !text-white !rounded-lg !border-0 shadow-sm font-semibold transition-all active:scale-[0.98] !h-9 !px-4"
             >
               Đăng tin
             </Button>
@@ -144,12 +153,12 @@ export const ClientShell: React.FC = () => {
               <button
                 type="button"
                 aria-label="Tài khoản"
-                className="flex cursor-pointer items-center gap-3 rounded-full border-0 bg-transparent py-1 pl-1 pr-2 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E] sm:pr-3"
+                className="flex cursor-pointer items-center gap-2.5 rounded-full border border-slate-200/80 bg-white/80 py-1 pl-1 pr-2.5 shadow-2xs transition-all hover:border-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E]"
               >
-                <AccountAvatar name={name} avatar={user?.avatar} size={34} />
+                <AccountAvatar name={name} avatar={user?.avatar} size={30} />
                 <span className="hidden text-left leading-tight md:block">
-                  <span className="block max-w-[160px] truncate text-sm font-semibold text-slate-900">{name}</span>
-                  <span className="block max-w-[160px] truncate text-xs text-slate-500">{user?.email}</span>
+                  <span className="block max-w-[140px] truncate text-xs font-bold text-slate-900">{name}</span>
+                  <span className="block max-w-[140px] truncate text-[11px] text-slate-500">{user?.email}</span>
                 </span>
               </button>
             </Dropdown>

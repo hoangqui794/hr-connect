@@ -288,22 +288,33 @@ export const ClientCandidatesPage: React.FC = () => {
 
   return (
     <div className={`${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
-      <PageHero
-        eyebrow="Tuyển dụng"
-        title="Hồ sơ ứng viên"
-        tip
-        description="Mọi hồ sơ nộp vào tin của bạn. Mở hồ sơ để xem đánh giá AI, hẹn phỏng vấn, gửi offer và xác nhận ngày đi làm."
-        actions={
+      {/* ── Studio Header ── */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="m-0 text-2xl font-black tracking-tight text-slate-900 sm:text-[26px]">
+              Hồ Sơ Ứng Viên
+            </h1>
+            <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0C4A6E] border border-sky-100">
+              {view === 'list' ? list.data?.total ?? 0 : 'Bảng Kanban'} hồ sơ
+            </span>
+          </div>
+          <p className="m-0 mt-1 text-sm text-slate-500">
+            Đánh giá điểm AI Match, hẹn lịch phỏng vấn và phát hành offer trực tiếp tới ứng viên.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5">
           <Button
             icon={<ReloadOutlined />}
-            size="large"
-            className="!h-10 !rounded-lg !border-slate-200 font-medium text-slate-700 hover:!border-slate-300 hover:!bg-slate-50"
+            aria-label="Tải lại danh sách"
+            className="!h-10 !rounded-xl border-slate-200 hover:!border-slate-300 font-semibold text-slate-700"
             onClick={() => (view === 'list' ? list.refetch() : boardQueries.forEach((b) => b.refetch()))}
           >
             Tải lại
           </Button>
-        }
-      />
+        </div>
+      </div>
 
       <Surface className="rounded-2xl border border-solid border-slate-200/90 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
         <div className="space-y-4 px-5 pb-4 pt-5">
@@ -386,9 +397,13 @@ export const ClientCandidatesPage: React.FC = () => {
             </div>
           )}
 
-          {/* Stage strip: one row, each cell a filter */}
+          {/* Stage strip: modern interactive process pipeline */}
           {view === 'list' && (
-            <div role="radiogroup" aria-label="Lọc theo giai đoạn" className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 overflow-hidden rounded-xl border border-solid border-slate-200 bg-white shadow-xs">
+            <div
+              role="radiogroup"
+              aria-label="Lọc theo giai đoạn"
+              className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7 rounded-2xl bg-slate-50/80 p-1.5 border border-slate-200/80"
+            >
               {GROUPS.map((g, i) => {
                 const n = counts[i].data;
                 const selected = group === g.key;
@@ -400,23 +415,33 @@ export const ClientCandidatesPage: React.FC = () => {
                     role="radio"
                     aria-checked={selected}
                     onClick={() => setParams({ stage: g.key === 'all' ? undefined : g.key, status: undefined })}
-                    className={`group relative cursor-pointer border-0 border-r border-b sm:border-b-0 border-solid border-slate-200 p-3.5 text-left transition-all duration-150 last:border-r-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0C4A6E] ${
+                    className={`group relative cursor-pointer rounded-xl border p-3 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E] ${
                       selected
-                        ? 'bg-sky-50/80 shadow-[inset_0_-3px_0_#0C4A6E]'
+                        ? 'border-[#0C4A6E] bg-white shadow-sm ring-1 ring-[#0C4A6E]/30'
                         : needsAction
-                          ? 'bg-amber-50/40 hover:bg-amber-50/70'
-                          : 'bg-white hover:bg-slate-50'
+                        ? 'border-amber-200/90 bg-amber-50/50 hover:bg-white hover:border-slate-300'
+                        : 'border-transparent bg-transparent hover:bg-white hover:border-slate-200 hover:shadow-2xs'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-1">
-                      <span className={`text-[12px] ${selected ? 'text-[#0C4A6E] font-bold' : 'text-slate-600 font-medium'}`}>
+                      <span
+                        className={`text-xs ${
+                          selected ? 'font-bold text-[#0C4A6E]' : 'font-medium text-slate-600'
+                        }`}
+                      >
                         {g.label}
                       </span>
                       {needsAction && (
-                        <span className="inline-block h-2 w-2 rounded-full bg-amber-500" aria-label="cần xử lý" />
+                        <span className="flex h-2 w-2 items-center justify-center" aria-label="cần xử lý">
+                          <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                        </span>
                       )}
                     </div>
-                    <div className={`mt-1.5 text-xl font-extrabold tabular-nums ${selected ? 'text-[#0C4A6E]' : 'text-slate-900'}`}>
+                    <div
+                      className={`mt-1.5 text-2xl font-black tabular-nums tracking-tight ${
+                        selected ? 'text-[#0C4A6E]' : 'text-slate-900'
+                      }`}
+                    >
                       {counts[i].isLoading ? '–' : n ?? 0}
                     </div>
                   </button>
