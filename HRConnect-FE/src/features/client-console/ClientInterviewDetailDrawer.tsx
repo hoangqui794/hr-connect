@@ -44,6 +44,8 @@ import { StatusDot } from '@/features/admin-console/ui';
 import { INTERVIEW_STATUS, INTERVIEW_RESULT, pick } from '@/features/hr-console/hrLabels';
 import type { CandidateInterviewDetailDto } from '@/types/api/candidateInterview';
 
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+
 export interface ClientInterviewDetailDrawerProps {
   interviewId?: string | null;
   onClose: () => void;
@@ -229,17 +231,18 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
         width="min(680px, 100vw)"
         title="Chi tiết buổi phỏng vấn"
         destroyOnClose
+        rootClassName={FONT}
         styles={{ body: { background: '#F8FAFC', padding: 20 } }}
         footer={
           interview && isScheduled ? (
             <div className="flex flex-wrap justify-end gap-2 py-1">
-              <Button danger onClick={() => setCancelModalOpen(true)} disabled={busy}>
+              <Button danger onClick={() => setCancelModalOpen(true)} disabled={busy} className="!h-9 rounded-lg font-medium">
                 Hủy lịch
               </Button>
-              <Button onClick={handleOpenReschedule} disabled={busy}>
+              <Button onClick={handleOpenReschedule} disabled={busy} className="!h-9 rounded-lg border-slate-200 text-slate-700 hover:border-slate-300 font-medium">
                 Dời lịch
               </Button>
-              <Button icon={<EditOutlined />} onClick={handleOpenEdit} disabled={busy}>
+              <Button icon={<EditOutlined />} onClick={handleOpenEdit} disabled={busy} className="!h-9 rounded-lg border-slate-200 text-slate-700 hover:border-slate-300 font-medium">
                 Sửa thông tin
               </Button>
               <Button
@@ -247,13 +250,18 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                 icon={<CheckOutlined />}
                 onClick={() => setResultModalOpen(true)}
                 disabled={busy}
+                className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white font-semibold rounded-lg shadow-sm transition-all active:scale-[0.98] !h-9 px-4"
               >
                 Ghi kết quả
               </Button>
             </div>
           ) : interview?.applicationId && onOpenApplication ? (
             <div className="flex justify-end gap-2 py-1">
-              <Button type="primary" onClick={() => onOpenApplication(interview.applicationId)}>
+              <Button
+                type="primary"
+                onClick={() => onOpenApplication(interview.applicationId)}
+                className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white font-semibold rounded-lg shadow-sm transition-all active:scale-[0.98] !h-9 px-4"
+              >
                 Xem hồ sơ ứng viên
               </Button>
             </div>

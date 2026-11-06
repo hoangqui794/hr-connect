@@ -55,6 +55,8 @@ import {
 
 export type WorkbenchAudience = 'hr' | 'client';
 
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+
 const fmt = (v?: string | null, f = 'HH:mm DD/MM/YYYY') => (v ? dayjs(v).format(f) : '—');
 const money = (v: number | null, c: string) => (v == null ? '—' : `${new Intl.NumberFormat('vi-VN').format(v)} ${c === 'VND' ? '₫' : c}`);
 const REQUIRED = [{ required: true, whitespace: true, message: 'Vui lòng nhập lý do.' }];
@@ -701,6 +703,7 @@ export const ApplicationWorkbench: React.FC<{
       onClose={onClose}
       title="Hồ sơ ứng tuyển"
       destroyOnClose
+      rootClassName={audience === 'client' ? FONT : undefined}
       styles={{ wrapper: { maxWidth: '100vw' }, body: { background: '#F4F7FB', padding: 'clamp(12px, 3vw, 20px)' } }}
       footer={footer.length ? <div className="flex flex-wrap justify-end gap-2 py-1">{footer}</div> : null}
     >

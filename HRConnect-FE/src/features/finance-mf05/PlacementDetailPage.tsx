@@ -10,6 +10,8 @@ import { ArrowLeftOutlined, HomeOutlined, SafetyCertificateOutlined, AuditOutlin
 import { useAuthStore } from '@/stores/authStore';
 import { PlacementDetailView } from './PlacementDetailView';
 
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+
 export const PlacementDetailPage: React.FC = () => {
   const { placementId } = useParams<{ placementId: string }>();
   const navigate = useNavigate();
@@ -29,7 +31,7 @@ export const PlacementDetailPage: React.FC = () => {
   };
 
   return (
-    <div className="placement-detail-page max-w-5xl mx-auto px-4 py-6 space-y-5">
+    <div className={`placement-detail-page max-w-5xl mx-auto px-4 py-6 space-y-5 ${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
       {/* Breadcrumb Navigation */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <Breadcrumb
@@ -37,7 +39,7 @@ export const PlacementDetailPage: React.FC = () => {
             {
               title: (
                 <span
-                  className="cursor-pointer flex items-center gap-1 text-slate-500 hover:text-blue-600"
+                  className="cursor-pointer flex items-center gap-1 text-slate-500 hover:text-[#0C4A6E]"
                   onClick={() => navigate('/dashboard')}
                 >
                   <HomeOutlined /> Bàn làm việc
@@ -47,7 +49,7 @@ export const PlacementDetailPage: React.FC = () => {
             {
               title: (
                 <span
-                  className="cursor-pointer flex items-center gap-1 text-slate-500 hover:text-blue-600"
+                  className="cursor-pointer flex items-center gap-1 text-slate-500 hover:text-[#0C4A6E]"
                   onClick={handleBack}
                 >
                   <SafetyCertificateOutlined /> Theo dõi bảo hành
@@ -57,14 +59,18 @@ export const PlacementDetailPage: React.FC = () => {
             {
               title: (
                 <span className="flex items-center gap-1 text-slate-800 font-semibold">
-                  <AuditOutlined className="text-blue-600" /> Chi tiết tiếp nhận việc
+                  <AuditOutlined className="text-[#0C4A6E]" /> Chi tiết tiếp nhận việc
                 </span>
               ),
             },
           ]}
         />
 
-        <Button icon={<ArrowLeftOutlined />} onClick={handleBack} className="text-slate-600">
+        <Button
+          icon={<ArrowLeftOutlined />}
+          onClick={handleBack}
+          className="!h-9 rounded-xl border-slate-200 text-slate-700 hover:border-slate-300 font-medium"
+        >
           Quay lại danh sách
         </Button>
       </div>
