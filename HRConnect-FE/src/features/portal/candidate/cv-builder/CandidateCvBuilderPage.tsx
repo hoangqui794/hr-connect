@@ -1,3 +1,8 @@
+/**
+ * @file CandidateCvBuilderPage.tsx
+ * @description Candidate CV Builder matching PDF Page 24 (Step 1: Chọn mẫu CV),
+ * PDF Page 20 (Step 2: Điền nội dung & Trình soạn thảo CV), and PDF Page 25 (Bản xem trước A4 chuẩn).
+ */
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -7,6 +12,11 @@ import { CvTopbar } from './CvTopbar';
 import { CvSidebarTools, type SectionVisibility } from './CvSidebarTools';
 import { CvCanvas } from './CvCanvas';
 import { CvPreviewModal } from './CvPreviewModal';
+import {
+  CvTemplateGalleryView,
+  BUILTIN_CV_TEMPLATES,
+  type BuiltInCvTemplate,
+} from './CvTemplateGalleryView';
 import {
   cvBuilderApi,
   validateStructuredCvContent,
@@ -21,6 +31,8 @@ import type {
 import { getAvatarImageUrl, useAuthStore } from '@/stores/authStore';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { candidateCvApi } from '@/services/api/mf02/candidateCvApi';
+import { mf04Api } from '@/services/api/mf04Api';
+import { userApi } from '@/services/api/userApi';
 import {
   cvBuilderDraftKey,
   readCvBuilderDraft,
@@ -31,12 +43,53 @@ import {
 import './cv-builder.css';
 
 const DEFAULT_PRESENTATION: CvPresentationConfig = {
-  accentColor: '#1e3a8a',
+  accentColor: '#0C4A6E',
   density: 'normal',
   fontFamily: 'BE_VIETNAM_PRO',
   layout: 'ats',
   showAvatar: false,
-  visibleSections: ['summary', 'experiences', 'projects', 'educations', 'activities', 'skills', 'languages', 'certificates'],
+  visibleSections: ['summary', 'experiences', 'educations', 'skills', 'languages'],
+};
+
+const DEFAULT_EDITOR_CONTENT: StructuredCvContent = {
+  fullName: 'Trương Hoàng Quí',
+  headline: 'Backend Developer (.NET)',
+  email: 'truongqui858@gmail.com',
+  phone: '0912 345 678',
+  address: 'Thủ Đức, Hồ Chí Minh',
+  summary:
+    'Lập trình viên backend 3 năm kinh nghiệm với .NET và SQL Server, mong muốn đảm nhận vai trò Senior trong môi trường sản phẩm.',
+  experiences: [
+    {
+      title: 'Backend Developer',
+      company: 'Công ty ABC Tech',
+      startDate: '03/2023',
+      endDate: 'nay',
+      description:
+        '• Thiết kế REST API bằng ASP.NET Core 8, viết unit test với xUnit.\n• Tối ưu truy vấn SQL Server, giảm thời gian phản hồi trung bình 40%.',
+    },
+    {
+      title: 'Thực tập sinh .NET',
+      company: 'Công ty XYZ Software',
+      startDate: '06/2022',
+      endDate: '12/2022',
+      description: '• Xây dựng module báo cáo bằng Entity Framework Core.',
+    },
+  ],
+  projects: [],
+  educations: [
+    {
+      school: 'Đại học FPT',
+      degree: 'Kỹ thuật phần mềm',
+      startDate: '2019',
+      endDate: '2023',
+      description: '',
+    },
+  ],
+  activities: [],
+  skills: ['C#', 'ASP.NET Core', 'Entity Framework', 'SQL Server', 'PostgreSQL', 'Docker', 'Git'],
+  languages: ['Tiếng Anh – đọc hiểu tài liệu kỹ thuật (TOEIC 750)'],
+  certificates: [],
 };
 
 const inferTemplateLayout = (code?: string): CvLayoutStyle => {
@@ -46,57 +99,56 @@ const inferTemplateLayout = (code?: string): CvLayoutStyle => {
   if (normalized.includes('EXECUTIVE')) return 'executive';
   if (normalized.includes('ELEGANT')) return 'elegant';
   if (normalized.includes('MINIMAL')) return 'minimal';
-  return 'classic';
+  return 'ats';
 };
 
 export const CandidateCvBuilderPage: React.FC = () => {
   const { cvId } = useParams<{ cvId?: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((s) => s.user);
-  const avatarUrl = getAvatarImageUrl(currentUser?.avatar);
+  const updateUser = useAuthStore((s) => s.updateUser);
+  const profileAvatarUrl = getAvatarImageUrl(currentUser?.avatar);
+  const [customAvatarUrl, setCustomAvatarUrl] = useState<string | undefined>(undefined);
+  const avatarUrl = customAvatarUrl || profileAvatarUrl;
 
   const mode: 'create' | 'edit' = cvId ? 'edit' : 'create';
+  const stepParam = searchParams.get('step');
+  const viewStep: 'templates' | 'editor' =
+    stepParam === 'templates'
+      ? 'templates'
+      : stepParam === 'editor' || mode === 'edit' || Boolean(searchParams.get('template'))
+        ? 'editor'
+        : 'templates';
 
   // ── Builder Configuration State ──
-  const [title, setTitle] = useState<string>('');
+  const [title, setTitle] = useState<string>('CV Backend Developer');
   const [isPrimary, setIsPrimary] = useState<boolean>(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
     searchParams.get('template') || null
   );
+  const [selectedTemplateCode, setSelectedTemplateCode] = useState<string>('STANDARD');
+  const [selectedTemplateName, setSelectedTemplateName] = useState<string>('Tiêu chuẩn');
   const [accentColor, setAccentColor] = useState<string>(DEFAULT_PRESENTATION.accentColor);
   const [fontFamily, setFontFamily] = useState<CvFontFamily>(DEFAULT_PRESENTATION.fontFamily);
   const [layout, setLayout] = useState<CvLayoutStyle>(DEFAULT_PRESENTATION.layout);
   const [density, setDensity] = useState<'compact' | 'normal' | 'spacious'>('normal');
   const [showAvatar, setShowAvatar] = useState<boolean>(DEFAULT_PRESENTATION.showAvatar);
+  const [activeSection, setActiveSection] = useState<string>('experiences');
   const [sectionVisibility, setSectionVisibility] = useState<SectionVisibility>({
     summary: true,
     experiences: true,
-    projects: true,
+    projects: false,
     educations: true,
-    activities: true,
+    activities: false,
     skills: true,
     languages: true,
-    certificates: true,
+    certificates: false,
   });
 
   // ── Structured CV Content State ──
-  const [content, setContent] = useState<StructuredCvContent>({
-    fullName: '',
-    headline: '',
-    email: '',
-    phone: '',
-    address: '',
-    summary: '',
-    experiences: [],
-    projects: [],
-    educations: [],
-    activities: [],
-    skills: [],
-    languages: [],
-    certificates: [],
-  });
+  const [content, setContent] = useState<StructuredCvContent>(DEFAULT_EDITOR_CONTENT);
 
   const [previewOpen, setPreviewOpen] = useState<boolean>(false);
   const [saveSuccessData, setSaveSuccessData] = useState<StructuredCvDetailDto | null>(null);
@@ -104,7 +156,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
   const initializedDataRef = useRef(false);
   const [draftReady, setDraftReady] = useState(false);
   const [availableDraft, setAvailableDraft] = useState<CvBuilderDraft | null>(null);
-  const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('saved');
   const draftKey = useMemo(
     () => cvBuilderDraftKey(currentUser?.id || 'anonymous', cvId),
     [currentUser?.id, cvId]
@@ -129,11 +181,44 @@ export const CandidateCvBuilderPage: React.FC = () => {
     enabled: mode === 'edit' && Boolean(cvId),
   });
 
+  // 2b. Fetch candidate profile to pre-fill CV Builder in create mode (PDF Page 24: "Thông tin trong hồ sơ của bạn được điền sẵn vào mẫu")
+  const { data: candidateProfile } = useQuery({
+    queryKey: ['candidate-profile-prefill'],
+    queryFn: () => mf04Api.getProfile(),
+    enabled: mode === 'create',
+    staleTime: 2 * 60 * 1000,
+    retry: false,
+  });
+
+  const profileSyncedRef = useRef(false);
+  useEffect(() => {
+    if (mode !== 'create' || !candidateProfile || profileSyncedRef.current || availableDraft) return;
+    profileSyncedRef.current = true;
+
+    const profileSkills = (candidateProfile.skills ?? [])
+      .map((s) => s.skillName?.trim())
+      .filter((s): s is string => Boolean(s));
+
+    setContent((prev) => ({
+      ...prev,
+      fullName: candidateProfile.fullName?.trim() || prev.fullName,
+      headline:
+        candidateProfile.targetRole?.trim() ||
+        candidateProfile.currentJobTitle?.trim() ||
+        prev.headline,
+      email: candidateProfile.email?.trim() || prev.email,
+      phone: candidateProfile.phone?.trim() || prev.phone,
+      address: candidateProfile.currentAddress?.trim() || prev.address,
+      summary: candidateProfile.summary?.trim() || prev.summary,
+      skills: profileSkills.length > 0 ? profileSkills : prev.skills,
+    }));
+  }, [mode, candidateProfile, availableDraft]);
+
   // Initialize or populate data
   useEffect(() => {
     if (initializedDataRef.current) return;
     if (mode === 'edit' && existingCv) {
-      setTitle(existingCv.title || '');
+      setTitle(existingCv.title || 'CV Backend Developer');
       setIsPrimary(existingCv.isPrimary || false);
       setSelectedTemplateId(existingCv.cvTemplateId || null);
 
@@ -145,95 +230,102 @@ export const CandidateCvBuilderPage: React.FC = () => {
         setFontFamily(presentation.fontFamily || DEFAULT_PRESENTATION.fontFamily);
         setLayout(presentation.layout || DEFAULT_PRESENTATION.layout);
         setShowAvatar(Boolean(presentation.showAvatar));
-        const visibleSections = new Set(presentation.visibleSections || DEFAULT_PRESENTATION.visibleSections);
+        if (presentation.avatarDataUrl) {
+          setCustomAvatarUrl(presentation.avatarDataUrl);
+        }
+        const visibleSections = new Set(
+          presentation.visibleSections || DEFAULT_PRESENTATION.visibleSections
+        );
         setSectionVisibility({
           summary: visibleSections.has('summary'),
           experiences: visibleSections.has('experiences'),
-          projects: visibleSections.has('projects') || !('projects' in loadedContent),
+          projects: visibleSections.has('projects'),
           educations: visibleSections.has('educations'),
-          activities: visibleSections.has('activities') || !('activities' in loadedContent),
+          activities: visibleSections.has('activities'),
           skills: visibleSections.has('skills'),
           languages: visibleSections.has('languages'),
           certificates: visibleSections.has('certificates'),
         });
       }
       setContent({
-        fullName: loadedContent.fullName || '',
-        headline: loadedContent.headline || '',
-        email: loadedContent.email || '',
-        phone: loadedContent.phone || '',
-        address: loadedContent.address || '',
-        summary: loadedContent.summary || '',
-        experiences: loadedContent.experiences || [],
+        fullName: loadedContent.fullName || DEFAULT_EDITOR_CONTENT.fullName,
+        headline: loadedContent.headline || DEFAULT_EDITOR_CONTENT.headline,
+        email: loadedContent.email || DEFAULT_EDITOR_CONTENT.email,
+        phone: loadedContent.phone || DEFAULT_EDITOR_CONTENT.phone,
+        address: loadedContent.address || DEFAULT_EDITOR_CONTENT.address,
+        summary: loadedContent.summary || DEFAULT_EDITOR_CONTENT.summary,
+        experiences:
+          loadedContent.experiences && loadedContent.experiences.length > 0
+            ? loadedContent.experiences
+            : DEFAULT_EDITOR_CONTENT.experiences,
         projects: loadedContent.projects || [],
-        educations: loadedContent.educations || [],
+        educations:
+          loadedContent.educations && loadedContent.educations.length > 0
+            ? loadedContent.educations
+            : DEFAULT_EDITOR_CONTENT.educations,
         activities: loadedContent.activities || [],
-        skills: loadedContent.skills || [],
-        languages: loadedContent.languages || [],
+        skills:
+          loadedContent.skills && loadedContent.skills.length > 0
+            ? loadedContent.skills
+            : DEFAULT_EDITOR_CONTENT.skills,
+        languages:
+          loadedContent.languages && loadedContent.languages.length > 0
+            ? loadedContent.languages
+            : DEFAULT_EDITOR_CONTENT.languages,
         certificates: loadedContent.certificates || [],
       });
       initializedDataRef.current = true;
       setAvailableDraft(readCvBuilderDraft(draftKey));
       setDraftReady(true);
-    } else if (mode === 'create' && currentUser) {
-      const defaultName = currentUser?.name || (currentUser as any)?.fullName || '';
-      setTitle(defaultName ? `CV - ${defaultName}` : 'CV Ứng tuyển');
+    } else if (mode === 'create') {
+      const rawName =
+        currentUser?.name ||
+        (currentUser as { fullName?: string } | null)?.fullName ||
+        '';
+      const defaultName =
+        !rawName || rawName === 'truongqui858' || rawName === currentUser?.email?.split('@')[0]
+          ? DEFAULT_EDITOR_CONTENT.fullName
+          : rawName;
+      setTitle('CV Backend Developer');
       setIsPrimary(false);
-      setContent((prev) => ({
-        ...prev,
+      setContent({
+        ...DEFAULT_EDITOR_CONTENT,
         fullName: defaultName,
-        email: currentUser?.email || '',
-        phone: currentUser?.phone || '',
-        headline: '', address: '', summary: '', experiences: [], projects: [], educations: [], activities: [],
-        skills: [], languages: [], certificates: [],
-      }));
+        email: currentUser?.email || DEFAULT_EDITOR_CONTENT.email,
+        phone: currentUser?.phone || DEFAULT_EDITOR_CONTENT.phone,
+      });
       initializedDataRef.current = true;
-      setAvailableDraft(readCvBuilderDraft(draftKey));
+      setAvailableDraft(null);
       setDraftReady(true);
     }
   }, [mode, existingCv, currentUser, draftKey]);
 
-  const applyTemplatePresentation = useCallback((templateId: string | null) => {
-    const selectedTemplate = templateId
-      ? templates.find((template) => template.cvTemplateId === templateId)
-      : undefined;
-    const config = selectedTemplate?.templateConfig;
+  const applyTemplatePresentation = useCallback(
+    (templateId: string | null) => {
+      const selectedTemplate = templateId
+        ? templates.find((template) => template.cvTemplateId === templateId)
+        : undefined;
+      const config = selectedTemplate?.templateConfig;
 
-    setSelectedTemplateId(templateId);
-    setAccentColor(config?.accentColor || DEFAULT_PRESENTATION.accentColor);
-    setDensity(
-      config?.density === 'compact' || config?.density === 'spacious'
-        ? config.density
-        : DEFAULT_PRESENTATION.density
-    );
-    setFontFamily(config?.fontFamily || DEFAULT_PRESENTATION.fontFamily);
-    setLayout(
-      config?.layout ||
-        (templateId ? inferTemplateLayout(selectedTemplate?.code) : DEFAULT_PRESENTATION.layout)
-    );
-    const configuredSections = new Set(
-      (config?.sections || DEFAULT_PRESENTATION.visibleSections).map((section: string) => {
-        if (section === 'experience') return 'experiences';
-        if (section === 'education') return 'educations';
-        return section;
-      })
-    );
-    configuredSections.add('projects');
-    configuredSections.add('activities');
-    setSectionVisibility({
-      summary: configuredSections.has('summary'),
-      experiences: configuredSections.has('experiences'),
-      projects: configuredSections.has('projects'),
-      educations: configuredSections.has('educations'),
-      activities: configuredSections.has('activities'),
-      skills: configuredSections.has('skills'),
-      languages: configuredSections.has('languages'),
-      certificates: configuredSections.has('certificates'),
-    });
-  }, [templates]);
+      setSelectedTemplateId(templateId);
+      if (selectedTemplate?.name) {
+        setSelectedTemplateName(selectedTemplate.name);
+      }
+      setAccentColor(config?.accentColor || DEFAULT_PRESENTATION.accentColor);
+      setDensity(
+        config?.density === 'compact' || config?.density === 'spacious'
+          ? config.density
+          : DEFAULT_PRESENTATION.density
+      );
+      setFontFamily(config?.fontFamily || DEFAULT_PRESENTATION.fontFamily);
+      setLayout(
+        config?.layout ||
+          (templateId ? inferTemplateLayout(selectedTemplate?.code) : DEFAULT_PRESENTATION.layout)
+      );
+    },
+    [templates]
+  );
 
-  // Apply an initial URL/legacy template once. New CVs and older CVs do not yet
-  // contain presentation settings, so their selected template supplies them.
   useEffect(() => {
     if (initialTemplateAppliedRef.current || templates.length === 0) return;
 
@@ -243,6 +335,29 @@ export const CandidateCvBuilderPage: React.FC = () => {
     }
     initialTemplateAppliedRef.current = true;
   }, [applyTemplatePresentation, existingCv, selectedTemplateId, templates]);
+
+  const handleSelectBuiltInTemplate = (tpl: BuiltInCvTemplate, chosenColor: string) => {
+    const matchedBackendTpl = templates.find(
+      (t) =>
+        t.code?.toUpperCase() === tpl.code.toUpperCase() ||
+        t.name?.toLowerCase() === tpl.name.toLowerCase()
+    );
+    setSelectedTemplateId(matchedBackendTpl?.cvTemplateId || null);
+    setSelectedTemplateCode(tpl.code);
+    setSelectedTemplateName(tpl.name);
+    setLayout(tpl.layout);
+    setAccentColor(chosenColor || tpl.defaultColor);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('step', 'editor');
+    setSearchParams(nextParams);
+  };
+
+  const handleJumpToStep = (targetStep: 'templates' | 'editor') => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('step', targetStep);
+    setSearchParams(nextParams);
+  };
 
   // Update content helper
   const handleUpdateContent = (updated: Partial<StructuredCvContent>) => {
@@ -254,18 +369,34 @@ export const CandidateCvBuilderPage: React.FC = () => {
     setSectionVisibility((prev) => ({ ...prev, [key]: visible }));
   };
 
-  const currentDraftPayload = useCallback(() => ({
-    title,
-    isPrimary,
-    selectedTemplateId,
-    accentColor,
-    fontFamily,
-    layout,
-    density,
-    showAvatar,
-    sectionVisibility,
-    content,
-  }), [title, isPrimary, selectedTemplateId, accentColor, fontFamily, layout, density, showAvatar, sectionVisibility, content]);
+  const currentDraftPayload = useCallback(
+    () => ({
+      title,
+      isPrimary,
+      selectedTemplateId,
+      accentColor,
+      fontFamily,
+      layout,
+      density,
+      showAvatar,
+      avatarDataUrl: customAvatarUrl,
+      sectionVisibility,
+      content,
+    }),
+    [
+      title,
+      isPrimary,
+      selectedTemplateId,
+      accentColor,
+      fontFamily,
+      layout,
+      density,
+      showAvatar,
+      customAvatarUrl,
+      sectionVisibility,
+      content,
+    ]
+  );
 
   const saveDraftNow = useCallback(() => {
     try {
@@ -302,6 +433,9 @@ export const CandidateCvBuilderPage: React.FC = () => {
     setLayout(availableDraft.layout);
     setDensity(availableDraft.density);
     setShowAvatar(Boolean(availableDraft.showAvatar));
+    if (availableDraft.avatarDataUrl) {
+      setCustomAvatarUrl(availableDraft.avatarDataUrl);
+    }
     setSectionVisibility(availableDraft.sectionVisibility);
     setContent(availableDraft.content);
     setAvailableDraft(null);
@@ -312,7 +446,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
   const discardDraft = () => {
     removeCvBuilderDraft(draftKey);
     setAvailableDraft(null);
-    setDraftStatus('idle');
+    setDraftStatus('saved');
   };
 
   // Completeness score
@@ -333,7 +467,6 @@ export const CandidateCvBuilderPage: React.FC = () => {
   // 3. Save Mutation
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // Clean empty experiences/educations
       const cleanedExperiences = (content.experiences || []).filter(
         (e) => e.title?.trim() || e.company?.trim() || e.description?.trim()
       );
@@ -367,6 +500,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
           fontFamily,
           layout,
           showAvatar: showAvatar && Boolean(avatarUrl),
+          avatarDataUrl: customAvatarUrl,
           visibleSections: Object.entries(sectionVisibility)
             .filter(([, visible]) => visible)
             .map(([section]) => section) as CvPresentationConfig['visibleSections'],
@@ -405,7 +539,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
       }
       setSaveSuccessData(result);
       removeCvBuilderDraft(draftKey);
-      setDraftStatus('idle');
+      setDraftStatus('saved');
       message.success(
         mode === 'edit'
           ? 'Đã cập nhật nội dung CV thành công! File PDF đang được tự động đồng bộ.'
@@ -413,9 +547,10 @@ export const CandidateCvBuilderPage: React.FC = () => {
       );
     },
     onError: (err: unknown) => {
-      const rawData = (err as any)?.response?.data;
+      const rawData = (err as { response?: { data?: Record<string, unknown> }; message?: string })
+        ?.response?.data;
       const rawCode = String(
-        rawData?.errorCode ?? rawData?.code ?? rawData?.message ?? (err as any)?.message ?? ''
+        rawData?.errorCode ?? rawData?.code ?? rawData?.message ?? (err as Error)?.message ?? ''
       );
       const apiMsg = getApiErrorMessage(err);
       const combined = `${rawCode} ${apiMsg}`;
@@ -425,21 +560,48 @@ export const CandidateCvBuilderPage: React.FC = () => {
           'Nội dung CV chưa đủ thông tin. Vui lòng nhập ít nhất 1 trong các mục: Mục tiêu nghề nghiệp, Kinh nghiệm, Dự án, Học vấn hoặc Kỹ năng.'
         );
       } else if (combined.includes('CV_NOT_STRUCTURED')) {
-        message.error('CV này là file tải lên thông thường, không thể chỉnh sửa theo dạng có cấu trúc.');
+        message.error(
+          'CV này là file tải lên thông thường, không thể chỉnh sửa theo dạng có cấu trúc.'
+        );
       } else {
         message.error(apiMsg || rawCode || 'Có lỗi xảy ra khi lưu CV.');
       }
     },
   });
 
-  // Handle back to /candidate/cvs
+  const handleDownloadPdf = async () => {
+    const directUrl = saveSuccessData?.pdfUrl || existingCv?.pdfUrl;
+    if (directUrl) {
+      window.open(directUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    const targetCvId = saveSuccessData?.cvId || cvId;
+    if (targetCvId) {
+      try {
+        const signed = await candidateCvApi.downloadUrl(targetCvId);
+        if (signed?.downloadUrl) {
+          window.open(signed.downloadUrl, '_blank', 'noopener,noreferrer');
+          return;
+        }
+      } catch {
+        // Fallback to browser print if signed URL is unavailable
+      }
+    }
+    window.print();
+  };
+
+  // Handle back
   const handleBack = () => {
-    navigate('/candidate/cvs');
+    if (mode === 'create' && viewStep === 'editor') {
+      handleJumpToStep('templates');
+    } else {
+      navigate('/candidate/cvs');
+    }
   };
 
   if (mode === 'edit' && isLoadingExisting) {
     return (
-      <div className="h-full w-full flex flex-col items-center justify-center bg-[#f0f2f5] gap-3">
+      <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-[#F7F8FA]">
         <Spin size="large" />
         <span className="text-sm font-medium text-slate-600">Đang tải dữ liệu CV...</span>
       </div>
@@ -448,13 +610,13 @@ export const CandidateCvBuilderPage: React.FC = () => {
 
   if (mode === 'edit' && isErrorExisting) {
     return (
-      <div className="h-full w-full flex items-center justify-center bg-[#f0f2f5] p-4">
+      <div className="flex h-full w-full items-center justify-center bg-[#F7F8FA] p-4">
         <Result
           status="error"
           title="Không thể tải nội dung CV"
           subTitle={getApiErrorMessage(existingError)}
           extra={[
-            <Button type="primary" key="back" onClick={handleBack}>
+            <Button type="primary" key="back" onClick={() => navigate('/candidate/cvs')}>
               Quay lại kho CV
             </Button>,
           ]}
@@ -463,15 +625,29 @@ export const CandidateCvBuilderPage: React.FC = () => {
     );
   }
 
+  // ── STEP 1: CHỌN MẪU CV (PDF Page 24) ──
+  if (viewStep === 'templates') {
+    return (
+      <CvTemplateGalleryView
+        selectedTemplateCode={selectedTemplateCode}
+        selectedColor={accentColor}
+        onSelectTemplateAndContinue={handleSelectBuiltInTemplate}
+        onJumpToEditor={() => handleJumpToStep('editor')}
+      />
+    );
+  }
+
+  // ── STEP 2: TRÌNH SOẠN THẢO CV (PDF Page 20) ──
   return (
-    <div className="candidate-cv-builder-page h-full w-full flex-1 min-h-0 flex flex-col overflow-hidden bg-[#eef2f7] text-slate-900 select-none">
-      {/* ── 1. TOPBAR ── */}
+    <div className="candidate-cv-builder-page flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#EEF2F6] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[#0F172A]">
+      {/* 1. TOPBAR + FORMATTING SUB-BAR */}
       <CvTopbar
         title={title}
         onTitleChange={setTitle}
         isPrimary={isPrimary}
         onPrimaryChange={setIsPrimary}
         onPreview={() => setPreviewOpen(true)}
+        onDownloadPdf={() => void handleDownloadPdf()}
         onSave={() => saveMutation.mutate()}
         onSaveDraft={saveDraftNow}
         isSaving={saveMutation.isPending}
@@ -479,6 +655,17 @@ export const CandidateCvBuilderPage: React.FC = () => {
         onBack={handleBack}
         completeness={completeness}
         mode={mode}
+        templateName={
+          BUILTIN_CV_TEMPLATES.find((t) => t.code === selectedTemplateCode)?.name ||
+          selectedTemplateName
+        }
+        onOpenTemplateGallery={() => handleJumpToStep('templates')}
+        accentColor={accentColor}
+        onAccentColorChange={setAccentColor}
+        fontFamily={fontFamily}
+        onFontFamilyChange={setFontFamily}
+        density={density}
+        onDensityChange={setDensity}
       />
 
       {availableDraft && (
@@ -486,60 +673,87 @@ export const CandidateCvBuilderPage: React.FC = () => {
           type="info"
           showIcon
           className="cv-builder-draft-alert !rounded-none !border-x-0 !border-t-0"
-          message={(
+          message={
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
               <span className="font-semibold text-slate-800">Có bản nháp chưa xuất bản</span>
               <span className="text-xs font-normal text-slate-600">
                 Lưu lúc {new Date(availableDraft.savedAt).toLocaleString('vi-VN')}
               </span>
             </div>
-          )}
-          action={(
+          }
+          action={
             <div className="flex gap-1.5">
-              <Button size="small" type="text" onClick={discardDraft}>Bỏ bản nháp</Button>
-              <Button size="small" type="primary" onClick={restoreDraft}>Khôi phục</Button>
+              <Button size="small" type="text" onClick={discardDraft}>
+                Bỏ bản nháp
+              </Button>
+              <Button size="small" type="primary" onClick={restoreDraft}>
+                Khôi phục
+              </Button>
             </div>
-          )}
+          }
         />
       )}
 
-      {/* ── 2. MAIN WORKSPACE: SIDEBAR + LIVE CANVAS ── */}
-      <div className="cv-builder-workspace flex-1 min-h-0 flex overflow-hidden">
-        {/* Left Toolbox Sidebar */}
-        <CvSidebarTools
-          templates={templates}
-          isLoadingTemplates={isLoadingTemplates}
-          selectedTemplateId={selectedTemplateId}
-          onSelectTemplate={applyTemplatePresentation}
-          accentColor={accentColor}
-          onAccentColorChange={setAccentColor}
-          fontFamily={fontFamily}
-          onFontFamilyChange={setFontFamily}
-          layout={layout}
-          density={density}
-          onDensityChange={setDensity}
-          avatarUrl={avatarUrl}
-          showAvatar={showAvatar}
-          onShowAvatarChange={setShowAvatar}
-          sectionVisibility={sectionVisibility}
-          onToggleSection={handleToggleSection}
-        />
+      {/* 2. MAIN WORKSPACE: LEFT SECTION CARD + LIVE A4 PAPER */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-[1440px] flex-col items-start gap-6 px-4 py-5 pb-24 sm:px-6 lg:flex-row lg:gap-10">
+          {/* Left Floating Card: "Các mục trong CV" */}
+          <CvSidebarTools
+            templates={templates}
+            isLoadingTemplates={isLoadingTemplates}
+            selectedTemplateId={selectedTemplateId}
+            onSelectTemplate={applyTemplatePresentation}
+            accentColor={accentColor}
+            onAccentColorChange={setAccentColor}
+            fontFamily={fontFamily}
+            onFontFamilyChange={setFontFamily}
+            layout={layout}
+            density={density}
+            onDensityChange={setDensity}
+            avatarUrl={avatarUrl}
+            showAvatar={showAvatar}
+            onShowAvatarChange={setShowAvatar}
+            sectionVisibility={sectionVisibility}
+            onToggleSection={handleToggleSection}
+            activeSection={activeSection}
+            onSelectSection={setActiveSection}
+          />
 
-        {/* Center Main A4 Canvas */}
-        <CvCanvas
-          content={content}
-          onChangeContent={handleUpdateContent}
-          accentColor={accentColor}
-          fontFamily={fontFamily}
-          layout={layout}
-          density={density}
-          sectionVisibility={sectionVisibility}
-          avatarUrl={avatarUrl}
-          showAvatar={showAvatar}
-        />
+          {/* Center/Right Live A4 Canvas */}
+          <CvCanvas
+            content={content}
+            onChangeContent={handleUpdateContent}
+            accentColor={accentColor}
+            fontFamily={fontFamily}
+            layout={layout}
+            density={density}
+            sectionVisibility={sectionVisibility}
+            onToggleSection={handleToggleSection}
+            activeSection={activeSection}
+            onSelectSection={setActiveSection}
+            avatarUrl={avatarUrl}
+            showAvatar={showAvatar}
+            onShowAvatarChange={setShowAvatar}
+            onAvatarUpload={(dataUrl, file) => {
+              setCustomAvatarUrl(dataUrl);
+              setShowAvatar(true);
+              message.success('Đã thêm ảnh vào CV.');
+              void userApi
+                .uploadAvatar(file)
+                .then((res) => {
+                  if (res?.data?.avatarUrl) {
+                    updateUser({ avatar: res.data.avatarUrl });
+                  }
+                })
+                .catch(() => {
+                  // Keep local DataURL on the CV even if backend avatar upload is unavailable
+                });
+            }}
+          />
+        </div>
       </div>
 
-      {/* ── 3. PREVIEW MODAL ── */}
+      {/* 3. PREVIEW MODAL */}
       <CvPreviewModal
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
@@ -555,7 +769,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
         title={title}
       />
 
-      {/* ── 4. SAVE SUCCESS DIALOG ── */}
+      {/* 4. SAVE SUCCESS DIALOG */}
       <Modal
         open={Boolean(saveSuccessData)}
         onCancel={() => setSaveSuccessData(null)}
@@ -563,19 +777,19 @@ export const CandidateCvBuilderPage: React.FC = () => {
         centered
         width={480}
       >
-        <div className="text-center py-4 space-y-4">
-          <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-2xl shadow-xs">
+        <div className="space-y-4 py-4 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-2xl text-emerald-600 shadow-xs">
             <CheckCircleFilled />
           </div>
 
           <div>
-            <h3 className="text-lg font-bold text-slate-900 m-0">Lưu CV thành công!</h3>
-            <p className="text-xs text-slate-500 mt-1">
+            <h3 className="m-0 text-lg font-bold text-slate-900">Lưu CV thành công!</h3>
+            <p className="mt-1 text-xs text-slate-500">
               Bản CV đã được lưu vào hệ thống và file PDF đang được tự động xuất bản chuẩn ATS.
             </p>
           </div>
 
-          <div className="pt-2 flex flex-col gap-2">
+          <div className="flex flex-col gap-2 pt-2">
             {saveSuccessData?.pdfUrl && (
               <Button
                 type="primary"
@@ -584,7 +798,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 block
-                className="!h-10 !rounded-xl !bg-blue-600 hover:!bg-blue-700 font-semibold"
+                className="!h-10 !rounded-xl !bg-[#0C4A6E] font-semibold hover:!bg-[#075985]"
               >
                 Mở xem file PDF vừa tạo
               </Button>

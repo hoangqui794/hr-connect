@@ -27,6 +27,18 @@ const normalizeTemplate = (template: CvTemplateDto & { templateConfig?: CvTempla
   }
 };
 
+const normalizeStructuredCvDto = (
+  raw: StructuredCvDetailDto & { content?: StructuredCvContent }
+): StructuredCvDetailDto => {
+  if (!raw.structuredContent && raw.content) {
+    return {
+      ...raw,
+      structuredContent: raw.content,
+    };
+  }
+  return raw;
+};
+
 /**
  * Validates structured CV content according to business rules:
  * - fullName is required.
@@ -91,9 +103,9 @@ export const cvBuilderApi = {
       payload
     );
     if (res.data && 'data' in res.data && res.data.data) {
-      return res.data.data;
+      return normalizeStructuredCvDto(res.data.data);
     }
-    return res.data as StructuredCvDetailDto;
+    return normalizeStructuredCvDto(res.data as StructuredCvDetailDto);
   },
 
   /**
@@ -105,9 +117,9 @@ export const cvBuilderApi = {
       `/candidates/cv/structured/${encodeURIComponent(cvId)}`
     );
     if (res.data && 'data' in res.data && res.data.data) {
-      return res.data.data;
+      return normalizeStructuredCvDto(res.data.data);
     }
-    return res.data as StructuredCvDetailDto;
+    return normalizeStructuredCvDto(res.data as StructuredCvDetailDto);
   },
 
   /**
@@ -123,9 +135,9 @@ export const cvBuilderApi = {
       payload
     );
     if (res.data && 'data' in res.data && res.data.data) {
-      return res.data.data;
+      return normalizeStructuredCvDto(res.data.data);
     }
-    return res.data as StructuredCvDetailDto;
+    return normalizeStructuredCvDto(res.data as StructuredCvDetailDto);
   },
 };
 

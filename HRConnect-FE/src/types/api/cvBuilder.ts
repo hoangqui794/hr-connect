@@ -20,6 +20,7 @@ export interface CvPresentationConfig {
   fontFamily: CvFontFamily;
   layout: CvLayoutStyle;
   showAvatar: boolean;
+  avatarDataUrl?: string;
   visibleSections: Array<
     | 'summary'
     | 'experiences'

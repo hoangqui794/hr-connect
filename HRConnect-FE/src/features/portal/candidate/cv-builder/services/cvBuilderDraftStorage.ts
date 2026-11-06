@@ -14,6 +14,7 @@ export interface CvBuilderDraft {
   layout: CvLayoutStyle;
   density: 'compact' | 'normal' | 'spacious';
   showAvatar: boolean;
+  avatarDataUrl?: string;
   sectionVisibility: SectionVisibility;
   content: StructuredCvContent;
 }
