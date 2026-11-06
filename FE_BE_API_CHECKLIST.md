@@ -44,19 +44,25 @@ Tài liệu này tổng hợp toàn bộ trạng thái kết nối API giữa **
 
 ---
 
-### 🟩 Nhóm 3: Thuộc phạm vi **MF-04** *(Vòng đời Application, Lịch phỏng vấn, Offer, Hồ sơ cá nhân Candidate Profile)* — **CẦN HỎI DEV MF-04**
-- **File BE liên quan:**
+### ✅ Nhóm 3: Thuộc phạm vi **MF-04** *(Vòng đời Application, Lịch phỏng vấn, Offer, Hồ sơ cá nhân Candidate Profile)* — **ĐÃ THỐNG NHẤT & CHỐT THIẾT KẾ (HOÀN TẤT)**
+- **File BE & FE liên quan:**
   - [`InterviewEndpoints.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Presentation/Endpoints/V1/Recruitment/InterviewEndpoints.cs)
+  - [`CandidateInterviewDetailView.tsx`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/features/portal/CandidateInterviewDetailView.tsx)
   - [`CandidateEndpoints.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Presentation/Endpoints/V1/Candidates/CandidateEndpoints.cs) (`/api/v1/candidates/profile/me`)
-- **Vấn đề cần hỏi dev MF-04 (Gồm 2 mục):**
+  - [`CandidateProfilePage.tsx`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/features/portal/CandidateProfilePage.tsx)
+- **Kết luận thống nhất với Dev MF-04 (Gồm 2 mục):**
 
-  1. **[PDF Trang 11] Ứng viên Báo bận / Đề xuất dời lịch phỏng vấn (`/candidate/interviews/:interviewId`):**
-     - **Hiện trạng:** `InterviewEndpoints.cs` mới chỉ có `POST /api/v1/interviews/{interviewId:guid}/candidate-confirm` (chỉ xác nhận tham gia `CONFIRMED`). Còn `PUT /reschedule` và `PATCH /cancel` chỉ cho phép `CLIENT_COMPANY_USER` (`interview.update`). Chưa có API cho `CANDIDATE` báo bận hoặc gửi yêu cầu xin đổi lịch phỏng vấn.
-     - **API đề xuất:** Mở rộng hoặc thêm `POST /api/v1/interviews/{interviewId:guid}/candidate-reschedule-request` với body `{ "reason": "...", "proposedTimes": ["..."], "concurrencyToken": "..." }`.
+  1. **[PDF Trang 11] Xác nhận / Dời lịch phỏng vấn (`/candidate/interviews/:interviewId`):**
+     - **Quyết định chốt:** Theo đúng đặc tả nghiệp vụ chuẩn của MF-04 (`interview-offer-placement.md`), **Candidate chỉ xác nhận tham gia (`candidate-confirm`)**, quyền dời (`reschedule`) hoặc hủy (`cancel`) lịch thuộc về phía **Client Company**.
+     - **Hiện trạng FE:** Giao diện [`CandidateInterviewDetailView.tsx`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/features/portal/CandidateInterviewDetailView.tsx) đã triển khai đúng chuẩn nghiệp vụ này.
+     - **Hành động:** Giữ nguyên thiết kế và API hiện tại; không mở thêm API xin dời lịch cho Candidate.
 
-  2. **[PDF Trang 18] Lưu danh sách nhiều mục Học vấn, Kinh nghiệm, Dự án, Chứng chỉ trong Hồ sơ cá nhân (`/candidate/profile`):**
-     - **Hiện trạng:** `GET/PUT /api/v1/candidates/profile/me` đã lưu đầy đủ thông tin cá nhân, 9 trường nghề nghiệp (`targetRole`, `currentLevel`, `expectedSalaryMin/Max`, `preferredLocations[]`, `preferredWorkModes[]`, ...) và bảng `skills[]` (`/candidates/profile/me/skills`). Tuy nhiên, học vấn chỉ có 1 trường chuỗi `highestEducation` và kinh nghiệm chỉ có 1 trường số `yearsOfExperience` — chưa có mảng `educations[]`, `experiences[]`, `projects[]`, `certificates[]` ở cấp Candidate Profile (các mảng này hiện chỉ lưu trong từng bản CV của CV Builder).
-     - **Câu hỏi chốt với dev MF-04:** Có cần mở rộng `GET/PUT /api/v1/candidates/profile/me` thêm JSONB/bảng con cho `educations[]`, `experiences[]`, `certificates[]` để đồng bộ với CV Builder không, hay giữ nguyên thiết kế hiện tại (Profile lưu tổng quan + Kỹ năng, còn chi tiết từng giai đoạn lưu trong CV Builder)?
+  2. **[PDF Trang 18] Hồ sơ cá nhân Candidate Profile (`/candidate/profile`):**
+     - **Quyết định chốt:** Giữ nguyên thiết kế kiến trúc phân tách hiện tại:
+       - **Candidate Profile (`/api/v1/candidates/profile/me`):** Lưu trữ thông tin cá nhân tổng quan, 9 trường định hướng nghề nghiệp (`targetRole`, `expectedSalary`, `preferredLocations`...) và danh sách kỹ năng `skills[]`.
+       - **CV Builder (`/api/v1/candidates/cv/structured`):** Lưu trữ chi tiết lịch sử học vấn `educations[]`, kinh nghiệm `experiences[]`, dự án `projects[]`, chứng chỉ `certificates[]` theo từng bản CV ứng tuyển.
+     - **Hiện trạng FE:** Giao diện [`CandidateProfilePage.tsx`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/features/portal/CandidateProfilePage.tsx) đã khớp hoàn toàn 100% với API này.
+     - **Hành động:** Giữ nguyên, không cần mở rộng thêm các mảng con vào bảng Candidate Profile.
 
 ---
 
