@@ -203,6 +203,9 @@ const ClientWorkspaceInterviewsOffersPage = React.lazy(() =>
 const ClientCompanyPage = React.lazy(() =>
   import('@/features/client-console/ClientMorePages').then((m) => ({ default: m.ClientCompanyPage }))
 );
+const ClientProfilePage = React.lazy(() =>
+  import('@/features/client-console/ClientMorePages').then((m) => ({ default: m.ClientProfilePage }))
+);
 const ClientBillingPage = React.lazy(() => import('@/features/client-console/ClientBillingPage'));
 const ClientVnPayReturnPage = React.lazy(() => import('@/features/client-console/ClientVnPayReturnPage'));
 const ClientWarrantyPlaceholder = React.lazy(() =>
@@ -516,6 +519,7 @@ export const AppRoutes = {
   ClientServiceAgreementsPage,
   ClientWorkspaceInterviewsOffersPage,
   ClientCompanyPage,
+  ClientProfilePage,
   ClientWarrantyPlaceholder,
   ClientBillingPage,
   ClientVnPayReturnPage,

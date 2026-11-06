@@ -27,7 +27,7 @@ import {
   Tag,
   Tooltip,
 } from 'antd';
-import { CheckOutlined, CloseOutlined, EditOutlined, ExperimentOutlined, FileOutlined, HistoryOutlined, LoadingOutlined, LockOutlined, SendOutlined, WarningOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, CheckOutlined, CloseOutlined, EditOutlined, ExperimentOutlined, FileOutlined, HistoryOutlined, LoadingOutlined, LockOutlined, SendOutlined, WarningOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { clientActionsApi, interviewHistoryApi, screeningApi, type ConfirmStartWorkInput } from '@/services/api/hrApi';
 import { sourcingApi } from '@/services/api/sourcingApi';
@@ -55,6 +55,8 @@ import {
 
 export type WorkbenchAudience = 'hr' | 'client';
 
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+
 const fmt = (v?: string | null, f = 'HH:mm DD/MM/YYYY') => (v ? dayjs(v).format(f) : '—');
 const money = (v: number | null, c: string) => (v == null ? '—' : `${new Intl.NumberFormat('vi-VN').format(v)} ${c === 'VND' ? '₫' : c}`);
 const REQUIRED = [{ required: true, whitespace: true, message: 'Vui lòng nhập lý do.' }];
@@ -67,10 +69,10 @@ export const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ la
 );
 
 export const Panel: React.FC<{ title?: string; children: React.ReactNode; extra?: React.ReactNode }> = ({ title, children, extra }) => (
-  <section className="admin-surface p-5">
+  <section className="rounded-2xl border border-solid border-slate-200/90 bg-white p-5 shadow-[0_1px_3px_rgba(15,23,42,0.03)]">
     {title && (
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="m-0 text-sm font-semibold text-slate-900">{title}</h3>
+      <div className="mb-3.5 flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+        <h3 className="m-0 text-sm font-bold text-slate-900 tracking-tight">{title}</h3>
         {extra}
       </div>
     )}
@@ -590,6 +592,13 @@ export const ApplicationWorkbench: React.FC<{
         disabled={busy}
         loading={o.loading ?? (pendingAction === key || (busy && !pendingAction && o.type === 'primary'))}
         onClick={onClick}
+        className={`!h-10 !rounded-xl font-semibold transition-all ${
+          o.type === 'primary' && !o.danger
+            ? '!bg-[#0C4A6E] hover:!bg-[#075985] !border-[#0C4A6E] text-white shadow-2xs'
+            : o.danger
+            ? 'shadow-2xs'
+            : 'border-slate-200 text-slate-700 hover:!border-slate-300'
+        }`}
       >
         {label}
       </Button>
@@ -697,12 +706,22 @@ export const ApplicationWorkbench: React.FC<{
     <Drawer
       open={Boolean(applicationId)}
       // N7: a fixed width plus a viewport cap keeps the panel on screen at ~800px and on phones.
-      width={760}
+      width={780}
       onClose={onClose}
-      title="Hồ sơ ứng tuyển"
+      title={
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-slate-900">Hồ sơ ứng tuyển</span>
+        </div>
+      }
       destroyOnClose
-      styles={{ wrapper: { maxWidth: '100vw' }, body: { background: '#F4F7FB', padding: 'clamp(12px, 3vw, 20px)' } }}
-      footer={footer.length ? <div className="flex flex-wrap justify-end gap-2 py-1">{footer}</div> : null}
+      rootClassName={FONT}
+      styles={{
+        wrapper: { maxWidth: '100vw' },
+        header: { borderBottom: '1px solid rgba(226, 232, 240, 0.8)', padding: '16px 24px' },
+        body: { background: '#F8FAFC', padding: 'clamp(14px, 3vw, 24px)' },
+        footer: { borderTop: '1px solid rgba(226, 232, 240, 0.8)', padding: '12px 24px', background: '#FFFFFF' },
+      }}
+      footer={footer.length ? <div className="flex flex-wrap justify-end gap-2.5 py-1">{footer}</div> : null}
     >
       {detail.isLoading ? (
         <Skeleton active avatar paragraph={{ rows: 10 }} />
@@ -822,19 +841,19 @@ export const ApplicationWorkbench: React.FC<{
                 {d.interviews.map((i) => {
                   const s = pick(INTERVIEW_STATUS, i.status);
                   return (
-                    <div key={i.interviewId} className="rounded-xl bg-slate-50 px-4 py-3">
+                    <div key={i.interviewId} className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 transition-all hover:border-slate-300">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-medium text-slate-900">Phỏng vấn vòng {i.interviewRound}</span>
+                        <span className="font-bold text-slate-900">Phỏng vấn vòng {i.interviewRound}</span>
                         <StatusDot tone={s.tone}>{s.label}</StatusDot>
                       </div>
                       <div className="mt-1 text-[13px] text-slate-600">
                         {fmt(i.scheduledAt)} · {i.durationMinutes ?? '—'} phút · {i.interviewType ?? '—'}
                         {i.location ? ` · ${i.location}` : ''}
                       </div>
-                      {i.meetingLink && <div className="truncate text-[13px] text-slate-600">Link: {i.meetingLink}</div>}
-                      {i.result && <div className="mt-1 text-[13px] text-slate-800">Kết quả: {INTERVIEW_RESULT[i.result] ?? i.result}{i.feedback ? ` — ${i.feedback}` : ''}</div>}
-                      <div className="mt-2 flex justify-end">
-                        <Button size="small" icon={<HistoryOutlined />} onClick={() => setHistoryInterviewId(i.interviewId)}>
+                      {i.meetingLink && <div className="mt-0.5 truncate text-[13px] text-[#0C4A6E] font-medium">Link: {i.meetingLink}</div>}
+                      {i.result && <div className="mt-1.5 text-[13px] text-slate-800 font-medium">Kết quả: {INTERVIEW_RESULT[i.result] ?? i.result}{i.feedback ? ` — ${i.feedback}` : ''}</div>}
+                      <div className="mt-2.5 flex justify-end">
+                        <Button size="small" icon={<HistoryOutlined />} onClick={() => setHistoryInterviewId(i.interviewId)} className="!rounded-lg text-slate-600 font-medium border-slate-200">
                           Lịch sử
                         </Button>
                       </div>
@@ -844,9 +863,9 @@ export const ApplicationWorkbench: React.FC<{
                 {d.offers.map((o) => {
                   const s = pick(OFFER_STATUS, o.status);
                   return (
-                    <div key={o.offerId} className="rounded-xl bg-slate-50 px-4 py-3">
+                    <div key={o.offerId} className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 transition-all hover:border-slate-300">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-medium text-slate-900">Offer v{o.offerVersion} · {money(o.salary, o.currencyCode)}</span>
+                        <span className="font-bold text-slate-900">Offer v{o.offerVersion} · {money(o.salary, o.currencyCode)}</span>
                         <StatusDot tone={s.tone}>{s.label}</StatusDot>
                       </div>
                       <div className="mt-1 text-[13px] text-slate-600">
@@ -860,13 +879,13 @@ export const ApplicationWorkbench: React.FC<{
                           {o.monthlyGrossSalary != null ? ` · Gross tháng quy đổi ${money(o.monthlyGrossSalary, o.currencyCode)}` : ''}
                         </div>
                       )}
-                      {o.declineReason && <div className="text-[13px] text-red-800">Lý do từ chối: {o.declineReason}</div>}
+                      {o.declineReason && <div className="mt-1.5 text-[13px] text-red-800 font-medium">Lý do từ chối: {o.declineReason}</div>}
                     </div>
                   );
                 })}
                 {d.plannedStartDate && <Row label="Ngày dự kiến nhận việc">{fmt(d.plannedStartDate, 'DD/MM/YYYY')}</Row>}
                 {d.placement && (
-                  <div className="rounded-xl bg-emerald-50 px-4 py-3 text-emerald-950">
+                  <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/70 p-4 text-emerald-950 font-medium">
                     Đã đi làm từ {fmt(d.placement.actualStartDate, 'DD/MM/YYYY')}
                     {d.placement.position ? ` · ${d.placement.position}` : ''}
                     {d.placement.department ? ` · ${d.placement.department}` : ''}
@@ -939,49 +958,63 @@ export const ApplicationWorkbench: React.FC<{
                 );
               }
               return (
-                <div className="flex flex-col gap-4 sm:flex-row">
-                  <div className="flex shrink-0 flex-col items-center justify-center rounded-xl bg-slate-50 px-6 py-4">
-                    <span className="text-[34px] font-bold leading-none tabular-nums text-slate-900">
+                <div className="flex flex-col gap-5 sm:flex-row">
+                  <div className="flex shrink-0 flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-slate-50 to-sky-50/50 border border-sky-100/80 px-6 py-5 shadow-2xs">
+                    <span className="text-[38px] font-black leading-none tabular-nums text-[#0C4A6E]">
                       {d.aiMatch.matchScore != null ? Math.round(d.aiMatch.matchScore) : '—'}
                     </span>
-                    <span className="mt-1 text-xs text-slate-600">điểm phù hợp / 100</span>
+                    <span className="mt-1.5 text-xs font-medium text-slate-500">điểm phù hợp / 100</span>
                     {d.aiMatch.matchTier && (
-                      <span className="mt-1.5 inline-flex items-center rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
+                      <span className="mt-2 inline-flex items-center rounded-full bg-sky-100/80 px-3 py-0.5 text-xs font-bold text-[#0C4A6E] border border-sky-200/60">
                         Tier {d.aiMatch.matchTier}
                       </span>
                     )}
                     {d.aiMatch.requiresManualReview && (
-                      <span className="mt-2 text-xs font-semibold text-amber-800">Cần xem tay</span>
+                      <span className="mt-2 inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800 border border-amber-200/80">
+                        Cần xem tay
+                      </span>
                     )}
                   </div>
-                  <div className="min-w-0 flex-1 space-y-3 text-sm">
+                  <div className="min-w-0 flex-1 space-y-3.5 text-sm">
                     {highlights.length > 0 && (
                       <div>
-                        <div className="mb-1 font-medium text-slate-900">Điểm khớp</div>
-                        <ul className="m-0 space-y-1 pl-5 text-slate-700">
+                        <div className="mb-1.5 font-bold text-slate-900 flex items-center gap-1.5">
+                          <CheckCircleOutlined className="text-emerald-600" />
+                          <span>Điểm khớp</span>
+                        </div>
+                        <ul className="m-0 space-y-1.5 pl-0 list-none text-slate-700">
                           {highlights.slice(0, 6).map((h) => (
-                            <li key={h}>{h}</li>
+                            <li key={h} className="flex items-start gap-2">
+                              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+                              <span className="leading-snug">{h}</span>
+                            </li>
                           ))}
                         </ul>
                       </div>
                     )}
                     {d.aiMatch.missingRequirements.length > 0 && (
                       <div>
-                        <div className="mb-1 font-medium text-slate-900">Còn thiếu</div>
-                        <ul className="m-0 space-y-1 pl-5 text-slate-700">
+                        <div className="mb-1.5 font-bold text-slate-900 flex items-center gap-1.5">
+                          <WarningOutlined className="text-amber-600" />
+                          <span>Còn thiếu</span>
+                        </div>
+                        <ul className="m-0 space-y-1.5 pl-0 list-none text-slate-700">
                           {d.aiMatch.missingRequirements.map((h) => (
-                            <li key={h}>{h}</li>
+                            <li key={h} className="flex items-start gap-2">
+                              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                              <span className="leading-snug">{h}</span>
+                            </li>
                           ))}
                         </ul>
                       </div>
                     )}
                     {d.aiMatch.warnings.length > 0 && (
-                      <div className="rounded-lg bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
+                      <div className="rounded-xl border border-amber-200/80 bg-amber-50/70 px-3.5 py-2.5 text-[13px] text-amber-900">
                         {d.aiMatch.warnings.join(' · ')}
                       </div>
                     )}
                     {highlights.length === 0 && d.aiMatch.missingRequirements.length === 0 && (
-                      <p className="m-0 text-slate-600">AI chưa trả về giải thích chi tiết.</p>
+                      <p className="m-0 text-slate-500">AI chưa trả về giải thích chi tiết.</p>
                     )}
                   </div>
                 </div>

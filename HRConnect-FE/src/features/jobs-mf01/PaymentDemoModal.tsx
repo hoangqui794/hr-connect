@@ -18,6 +18,8 @@ import { formatPostingPackage } from './jobDisplay';
 import { financeApi, vnPayApi } from '@/services/api/financeApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+
 interface PaymentDemoModalProps {
   open?: boolean;
   visible?: boolean;
@@ -90,16 +92,17 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
       destroyOnHidden
       centered
       width={460}
+      className={FONT}
       title={
-        <div className="flex items-center gap-2 text-slate-800">
-          <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-base">
+        <div className="flex items-center gap-2.5 text-slate-900">
+          <div className="w-9 h-9 rounded-xl bg-sky-50 text-[#0C4A6E] flex items-center justify-center font-bold text-base border border-sky-100">
             <CreditCardOutlined />
           </div>
           <div>
             <div className="font-bold text-base leading-tight">
               {isDepositMode ? 'Đặt cọc dịch vụ tìm hồ sơ' : 'Thanh toán phí gói đăng tin'}
             </div>
-            <div className="text-[12px] text-slate-500 font-normal">
+            <div className="text-xs text-slate-500 font-normal mt-0.5">
               Thanh toán an toàn và được xác nhận tự động
             </div>
           </div>
@@ -108,47 +111,47 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
     >
       <div className="py-2 space-y-3.5">
         {/* Khối tóm tắt thông tin gói & số tiền */}
-        <div className="rounded-xl border border-solid border-blue-100 bg-slate-50 p-3.5">
-          <div className="flex justify-between items-start gap-2 mb-1.5">
+        <div className="rounded-xl border border-solid border-slate-200/90 bg-slate-50 p-4">
+          <div className="flex justify-between items-start gap-2 mb-2">
             <div className="font-semibold text-slate-900 text-sm leading-snug break-words">
               {jobTitle}
             </div>
-            <Tag color={isDepositMode ? 'purple' : 'blue'} className="m-0 font-medium shrink-0 text-xs">
+            <Tag color={isDepositMode ? 'purple' : 'blue'} className="m-0 font-medium shrink-0 text-xs rounded">
               {isDepositMode ? 'CV Sourcing' : formatPostingPackage(fee.data?.packageCode, fee.data?.packageName)}
             </Tag>
           </div>
 
-          <div className="flex items-baseline justify-between pt-1 border-t border-dashed border-indigo-200/60">
+          <div className="flex items-baseline justify-between pt-2 border-t border-dashed border-slate-200">
             <span className="text-xs text-slate-600">Số tiền cần thanh toán:</span>
-            <span className="text-xl font-bold text-indigo-700 tabular-nums">
+            <span className="text-xl font-bold text-[#0C4A6E] tabular-nums">
               {formatMoney(displayedAmount, isDepositMode ? (payableDeposit?.currencyCode ?? 'VND') : (fee.data?.currencyCode ?? 'VND'))}
             </span>
           </div>
 
           {!isDepositMode && (
-            <div className="text-[11px] text-slate-500 mt-0.5 text-right">
+            <div className="text-[11px] text-slate-500 mt-1 text-right">
               {pkg?.durationDays ? `${pkg.durationDays} ngày hiển thị` : '30 ngày hiển thị'}
               {pkg?.maxApplications ? ` • Tối đa ${pkg.maxApplications} hồ sơ` : ''}
             </div>
           )}
         </div>
 
-        <div className="rounded-xl border border-solid border-blue-200 bg-blue-50/60 p-4">
+        <div className="rounded-xl border border-solid border-sky-200/80 bg-sky-50/50 p-4">
             <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-blue-600 shadow-sm">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#0C4A6E] shadow-xs border border-sky-100">
                 <SafetyCertificateOutlined className="text-lg" />
               </div>
               <div className="min-w-0">
-                <div className="font-semibold text-slate-900">
+                <div className="font-semibold text-slate-900 text-sm">
                   {isDepositMode ? 'Đặt cọc trực tuyến qua VNPay' : 'Thanh toán trực tuyến qua VNPay'}
                 </div>
-                <p className="m-0 mt-1 text-[13px] leading-5 text-slate-600">
+                <p className="m-0 mt-1 text-xs leading-relaxed text-slate-600">
                   Bạn sẽ được chuyển sang cổng VNPay để thanh toán bằng ứng dụng ngân hàng, thẻ ATM hoặc thẻ quốc tế.
                   {isDepositMode ? ' Dịch vụ tìm hồ sơ' : ' Tin tuyển dụng'} tự động được kích hoạt sau khi VNPay xác nhận thành công.
                 </p>
               </div>
             </div>
-            <div className="mt-3 flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs text-slate-600">
+            <div className="mt-3 flex items-center gap-2 rounded-lg bg-white/80 border border-sky-100/80 px-3 py-2 text-xs text-slate-600">
               <CheckCircleOutlined className="text-emerald-600" />
               Không cần gửi ảnh giao dịch hoặc xác nhận thanh toán thủ công.
             </div>
@@ -160,11 +163,12 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
             )}
           </div>
 
-        <div className="pt-2.5 flex items-center justify-between gap-2 border-t border-slate-100">
+        <div className="pt-3 flex items-center justify-between gap-2 border-t border-slate-100">
           {isDepositMode ? (
             <Button
               size="middle"
               icon={<FileProtectOutlined />}
+              className="!h-9 rounded-xl border-slate-200 text-slate-700"
               onClick={() => {
                 onClose();
                 navigate(`/client/agreements?jobId=${jobId}`);
@@ -173,13 +177,13 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
               Hợp đồng cọc
             </Button>
           ) : (
-            <span className="text-[11px] text-slate-400">
+            <span className="text-xs text-slate-400">
               Tin được công bố ngay sau thanh toán
             </span>
           )}
 
           <div className="flex items-center gap-2 ml-auto">
-            <Button size="middle" onClick={onClose}>
+            <Button size="middle" onClick={onClose} className="!h-9 rounded-xl border-slate-200 text-slate-700">
               Đóng
             </Button>
             <Button
@@ -188,7 +192,7 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
               icon={isDepositMode ? <CheckCircleOutlined /> : <CreditCardOutlined />}
               loading={paying}
               disabled={isDepositMode && (!payableDeposit || depositFee.isLoading)}
-              className="!bg-blue-600 hover:!bg-blue-700 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-semibold"
+              className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-xl shadow-sm transition-all active:scale-[0.98] font-semibold !h-10 px-4"
               onClick={handleConfirmPayment}
             >
               {isDepositMode ? 'Đặt cọc qua VNPay' : 'Thanh toán qua VNPay'}

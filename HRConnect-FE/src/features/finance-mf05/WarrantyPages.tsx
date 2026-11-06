@@ -18,6 +18,8 @@ import { COMMISSION_STATUS, SERVICE_FEE_STATUS, WARRANTY_STATUS, date, labelOf, 
 import { ReplacementQuotaCard } from './ReplacementQuotaCard';
 import { PlacementDetailDrawer } from './PlacementDetailDrawer';
 
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+
 const PAGE_SIZE = 20;
 type Mode = 'client' | 'hr';
 
@@ -369,18 +371,28 @@ const ClientFees: React.FC = () => {
 };
 
 export const ClientWarrantyPage: React.FC = () => (
-  <div>
-    <PageHero
-      eyebrow="HH · Tuyển dụng theo kết quả"
-      title="Bảo hành & phí dịch vụ"
-      tip
-      description="Ứng viên đi làm được bảo hành theo thỏa thuận dịch vụ. Nếu ứng viên nghỉ trong thời gian bảo hành, hãy báo nghỉ để nhận suất tuyển thay thế miễn phí."
-    />
+  <div className={`${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
+    {/* ── Studio Header ── */}
+    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5">
+      <div>
+        <div className="flex items-center gap-2.5">
+          <h1 className="m-0 text-2xl font-black tracking-tight text-slate-900 sm:text-[26px]">
+            Chính Sách & Quản Lý Bảo Hành
+          </h1>
+          <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0C4A6E] border border-sky-100">
+            Dịch vụ Headhunt
+          </span>
+        </div>
+        <p className="m-0 mt-1 text-sm text-slate-500">
+          Theo dõi thời hạn cam kết bảo hành ứng viên đã đi làm và gửi yêu cầu suất tuyển thay thế miễn phí khi cần.
+        </p>
+      </div>
+    </div>
     <ReplacementQuotaCard mode="client" />
-    <h2 className="mb-3 mt-8 text-lg font-semibold text-slate-900">Danh sách bảo hành ứng viên</h2>
+    <h2 className="mb-3 mt-8 text-base font-semibold text-slate-900 tracking-tight">Danh sách bảo hành ứng viên</h2>
     <WarrantyList mode="client" />
-    <h2 className="mb-3 mt-8 text-lg font-semibold text-slate-900">Công nợ phí dịch vụ</h2>
-    <p className="-mt-2 mb-3 text-[13.5px] text-slate-600">Phí = lương gross tháng trong offer × hệ số phí. Thanh toán bằng chuyển khoản; HR Connect ghi nhận khi nhận được tiền.</p>
+    <h2 className="mb-3 mt-8 text-base font-semibold text-slate-900 tracking-tight">Công nợ phí dịch vụ</h2>
+    <p className="-mt-2 mb-3 text-xs text-slate-500">Phí = lương gross tháng trong offer × hệ số phí. Thanh toán bằng chuyển khoản; HR Connect ghi nhận khi nhận được tiền.</p>
     <ClientFees />
   </div>
 );

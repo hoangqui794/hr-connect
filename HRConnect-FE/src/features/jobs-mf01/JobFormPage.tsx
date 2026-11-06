@@ -15,6 +15,8 @@
  */
 import '@/features/admin-console/admin-console.css';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import dayjs from 'dayjs';
@@ -1217,7 +1219,7 @@ export const JobFormPage: React.FC = () => {
   ];
 
   return (
-    <div className="pb-24 lg:pb-0">
+    <div className={`pb-24 lg:pb-0 ${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
       {/* Back button */}
       <Button
         type="link"

@@ -26,7 +26,34 @@ export interface DeleteAvatarResponse {
   };
 }
 
+export interface UpdateUserProfileInput {
+  displayName: string;
+  phone?: string | null;
+  roleInCompany?: string | null;
+}
+
+export interface UpdateUserProfileResponse {
+  success: boolean;
+  message: string;
+  data: {
+    userId: string;
+    email: string;
+    displayName: string;
+    phone: string | null;
+    avatarUrl: string | null;
+    roleInCompany?: string | null;
+  };
+}
+
 export const userApi = {
+  /**
+   * PUT /api/v1/users/me
+   * Update current user's profile information.
+   */
+  async updateProfile(input: UpdateUserProfileInput): Promise<UpdateUserProfileResponse> {
+    const res = await apiClient.put<UpdateUserProfileResponse>('/users/me', input);
+    return res.data;
+  },
   /**
    * POST /api/v1/users/me/avatar
    * Upload user avatar as multipart/form-data.

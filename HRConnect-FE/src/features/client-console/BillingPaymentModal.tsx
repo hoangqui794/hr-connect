@@ -14,6 +14,8 @@ import { PLATFORM_BANK_ACCOUNT as BANK } from '@/features/finance-mf05/platformB
 import { date, money } from '@/features/finance-mf05/financeLabels';
 import type { BillingRow } from './billingTypes';
 
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+
 const Line: React.FC<{ label: string; value: string; copyLabel?: string; mono?: boolean; onCopy: (text: string, label: string) => void }> = ({
   label,
   value,
@@ -63,16 +65,21 @@ export const BillingPaymentModal: React.FC<{ row: BillingRow | null; onClose: ()
       open={Boolean(row)}
       title="Thanh toán"
       onCancel={onClose}
-      footer={<Button onClick={onClose}>Đóng</Button>}
+      footer={
+        <Button onClick={onClose} className="!h-9 rounded-lg border-slate-200 text-slate-700">
+          Đóng
+        </Button>
+      }
       width={460}
       centered
       destroyOnClose
+      className={FONT}
     >
       {row && (
         <div className="space-y-4 pt-1">
-          <div className="rounded-xl bg-slate-50 p-4">
+          <div className="rounded-xl bg-slate-50 border border-slate-200/80 p-4">
             <div className="text-[13px] text-slate-600">{row.item}</div>
-            <div className="mt-0.5 font-medium text-slate-900">{row.jobTitle}</div>
+            <div className="mt-0.5 font-semibold text-slate-900">{row.jobTitle}</div>
             {row.breakdown.length > 0 && (
               <dl className="m-0 mt-3 space-y-1.5 border-t border-solid border-slate-200 pt-3">
                 {row.breakdown.map((line) => (
@@ -85,7 +92,7 @@ export const BillingPaymentModal: React.FC<{ row: BillingRow | null; onClose: ()
             )}
             <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-dashed border-slate-200 pt-3">
               <span className="text-[13px] text-slate-600">Số tiền cần thanh toán</span>
-              <span className="text-xl font-bold tabular-nums text-slate-900">{money(row.amount, row.currencyCode)}</span>
+              <span className="text-xl font-bold tabular-nums text-[#0C4A6E]">{money(row.amount, row.currencyCode)}</span>
             </div>
             {row.dueDate && (
               <div className={`mt-1 text-right text-xs ${row.bucket === 'OVERDUE' ? 'font-medium text-red-600' : 'text-slate-500'}`}>
@@ -97,7 +104,15 @@ export const BillingPaymentModal: React.FC<{ row: BillingRow | null; onClose: ()
 
           {vnPay.data && (
             <div>
-              <Button type="primary" size="large" block icon={<CreditCardOutlined />} loading={redirecting} onClick={payWithVnPay}>
+              <Button
+                type="primary"
+                size="large"
+                block
+                icon={<CreditCardOutlined />}
+                loading={redirecting}
+                onClick={payWithVnPay}
+                className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white font-semibold !h-11 rounded-xl shadow-sm transition-all active:scale-[0.98]"
+              >
                 Thanh toán qua VNPay
               </Button>
               <p className="m-0 mt-2 text-center text-xs text-slate-500">
@@ -108,13 +123,13 @@ export const BillingPaymentModal: React.FC<{ row: BillingRow | null; onClose: ()
 
           <div>
             <div className="mb-1.5 text-[13px] font-semibold text-slate-700">{vnPay.data ? 'Hoặc chuyển khoản' : 'Chuyển khoản'}</div>
-            <div className="divide-y divide-slate-100 rounded-xl border border-solid border-slate-200 px-4 py-1">
+            <div className="divide-y divide-slate-100 rounded-xl border border-solid border-slate-200 bg-white px-4 py-1">
               <Line label="Ngân hàng" value={BANK.bankName} onCopy={copy} />
               <Line label="Số tài khoản" value={BANK.accountNumber} copyLabel="số tài khoản" mono onCopy={copy} />
               <Line label="Chủ tài khoản" value={BANK.accountHolder} onCopy={copy} />
               {row.transferNote && <Line label="Nội dung chuyển khoản" value={row.transferNote} copyLabel="nội dung chuyển khoản" mono onCopy={copy} />}
             </div>
-            <p className="m-0 mt-2 text-[13px] leading-relaxed text-slate-600">
+            <p className="m-0 mt-2 text-xs leading-relaxed text-slate-500">
               Ghi đúng nội dung chuyển khoản để HR Connect đối chiếu; trạng thái cập nhật khi HR Connect nhận được tiền.
             </p>
           </div>

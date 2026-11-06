@@ -12,12 +12,85 @@ using Microsoft.Extensions.Options;
 
 namespace HRConnect.Presentation.Endpoints.V1.Users;
 
+public sealed record UpdateUserProfileRequest(
+    string DisplayName,
+    string? Phone,
+    string? RoleInCompany = null);
+
 public static class UserEndpoints
 {
     public static IEndpointRouteBuilder MapUserEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/users")
                        .WithTags("Users");
+
+        // 0. PUT /api/v1/users/me - Cập nhật thông tin hồ sơ cá nhân
+        group.MapPut("/me", async (
+            ClaimsPrincipal user,
+            [FromBody] UpdateUserProfileRequest request,
+            [FromServices] IUserRepository userRepository,
+            [FromServices] ICompanyUserRepository companyUserRepository,
+            [FromServices] IUnitOfWork unitOfWork,
+            [FromServices] IAvatarUrlResolver avatarUrlResolver,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId is null) return Results.Unauthorized();
+
+            if (string.IsNullOrWhiteSpace(request.DisplayName))
+            {
+                return Results.BadRequest(new { success = false, message = "Họ và tên không được để trống." });
+            }
+
+            var appUser = await userRepository.GetByIdAsync(userId.Value, cancellationToken);
+            if (appUser is null)
+            {
+                return Results.NotFound(new { success = false, message = "Không tìm thấy người dùng." });
+            }
+
+            appUser.DisplayName = request.DisplayName.Trim();
+            appUser.Phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim();
+            appUser.UpdatedAt = DateTime.UtcNow;
+            userRepository.Update(appUser);
+
+            string? roleInCompany = null;
+            var companyUser = await companyUserRepository.GetByUserIdAsync(userId.Value, cancellationToken);
+            if (companyUser is not null)
+            {
+                if (request.RoleInCompany is not null)
+                {
+                    companyUser.RoleInCompany = string.IsNullOrWhiteSpace(request.RoleInCompany) ? null : request.RoleInCompany.Trim();
+                    companyUser.UpdatedAt = DateTime.UtcNow;
+                    companyUserRepository.Update(companyUser);
+                }
+                roleInCompany = companyUser.RoleInCompany;
+            }
+
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+
+            return Results.Ok(new
+            {
+                success = true,
+                message = "Cập nhật hồ sơ cá nhân thành công.",
+                data = new
+                {
+                    userId = appUser.UserId,
+                    email = appUser.Email,
+                    displayName = appUser.DisplayName,
+                    phone = appUser.Phone,
+                    avatarUrl = avatarUrlResolver.Resolve(appUser),
+                    roleInCompany
+                }
+            });
+        })
+        .RequireAuthorization()
+        .WithName("UpdateCurrentUserProfile")
+        .WithSummary("Cập nhật thông tin hồ sơ cá nhân của người dùng hiện tại")
+        .WithDescription("Cập nhật DisplayName, Phone và RoleInCompany (nếu là nhân viên doanh nghiệp).")
+        .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status404NotFound);
 
         group.MapPost("/me/avatar", HandleAvatarUploadAsync)
         .RequireAuthorization()
