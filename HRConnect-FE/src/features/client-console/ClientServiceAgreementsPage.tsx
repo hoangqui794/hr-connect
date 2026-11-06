@@ -531,12 +531,15 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                   </span>
                 </div>
                 {activeJob?.serviceTypeCode && SERVICE_TYPE_LABEL[activeJob.serviceTypeCode] && (
-                  <Tag
-                    color={activeJob.serviceTypeCode === 'HEADHUNT_COD' ? 'blue' : 'purple'}
-                    className="m-0 text-xs font-semibold rounded-full px-2.5 border-0"
+                  <span
+                    className={`m-0 text-xs font-semibold rounded-full px-2.5 py-0.5 border ${
+                      activeJob.serviceTypeCode === 'HEADHUNT_COD'
+                        ? 'bg-sky-50 text-sky-700 border-sky-200'
+                        : 'bg-purple-50 text-purple-700 border-purple-200'
+                    }`}
                   >
                     {SERVICE_TYPE_LABEL[activeJob.serviceTypeCode].short}
-                  </Tag>
+                  </span>
                 )}
               </div>
 
@@ -603,16 +606,55 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           >
                             {job.title}
                           </Text>
-                          <Tag
-                            color={isSignedPendingReview ? 'cyan' : job.status === 'PENDING_PAYMENT' && isDeposited(job) ? 'processing' : statusMeta.color}
-                            className="m-0 text-[10px] font-bold shrink-0 rounded border-0"
-                          >
-                            {isSignedPendingReview
-                              ? 'Chờ HR duyệt bản ký'
-                              : job.status === 'PENDING_PAYMENT' && isDeposited(job)
-                              ? 'Đã nộp cọc'
-                              : statusMeta.label}
-                          </Tag>
+                          {(() => {
+                            if (isSignedPendingReview) {
+                              return (
+                                <span className="m-0 text-[10.5px] font-bold shrink-0 rounded px-2 py-0.5 border border-teal-200 bg-teal-50 text-teal-700">
+                                  Chờ HR duyệt bản ký
+                                </span>
+                              );
+                            }
+                            if (job.status === 'PENDING_PAYMENT' && isDeposited(job)) {
+                              return (
+                                <span className="m-0 text-[10.5px] font-bold shrink-0 rounded px-2 py-0.5 border border-sky-200 bg-sky-50 text-sky-700">
+                                  Đã nộp cọc
+                                </span>
+                              );
+                            }
+                            if (job.status === 'ACTIVE') {
+                              return (
+                                <span className="m-0 text-[10.5px] font-bold shrink-0 rounded px-2 py-0.5 border border-emerald-200 bg-emerald-50 text-emerald-700">
+                                  Đang tuyển
+                                </span>
+                              );
+                            }
+                            if (job.status === 'PENDING_AGREEMENT') {
+                              return (
+                                <span className="m-0 text-[10.5px] font-bold shrink-0 rounded px-2 py-0.5 border border-purple-200 bg-purple-50 text-purple-700">
+                                  Chờ ký thỏa thuận
+                                </span>
+                              );
+                            }
+                            if (job.status === 'PENDING_PAYMENT') {
+                              return (
+                                <span className="m-0 text-[10.5px] font-bold shrink-0 rounded px-2 py-0.5 border border-amber-200 bg-amber-50 text-amber-700">
+                                  Chờ thanh toán
+                                </span>
+                              );
+                            }
+                            if (job.status === 'CLOSED' || job.status === 'PAUSED') {
+                              return (
+                                <span className="m-0 text-[10.5px] font-bold shrink-0 rounded px-2 py-0.5 border border-slate-200 bg-slate-100 text-slate-600">
+                                  {job.status === 'PAUSED' ? 'Tạm dừng' : 'Đã đóng'}
+                                </span>
+                              );
+                            }
+                            return (
+                              <span className="m-0 text-[10.5px] font-bold shrink-0 rounded px-2 py-0.5 border border-slate-200 bg-slate-100 text-slate-700">
+                                {statusMeta.label}
+                              </span>
+                            );
+                          })()}
                         </div>
 
                         <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
@@ -695,15 +737,27 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           {activeJob?.serviceTypeCode ? SERVICE_TYPE_LABEL[activeJob.serviceTypeCode]?.label : ''}
                         </Text>
                         {(() => {
-                          const meta =
-                            SERVICE_AGREEMENT_STATUS[currentAgreement.status] ?? {
-                              label: currentAgreement.status,
-                              color: 'default',
-                            };
+                          const s = currentAgreement.status;
+                          const styles: Record<string, { bg: string; text: string; border: string; label: string }> = {
+                            DRAFT: { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200', label: 'Dự thảo' },
+                            SENT_TO_CLIENT: { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200', label: 'Chờ phản hồi' },
+                            CHANGE_REQUESTED: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', label: 'Yêu cầu điều chỉnh' },
+                            ACCEPTED: { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', label: 'Đã chấp thuận' },
+                            AWAITING_SIGNATURE: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', label: 'Chờ nộp HĐ đã ký' },
+                            SIGNED: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', label: 'Đã ký kết' },
+                            VOID: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', label: 'Đã hủy' },
+                            LEGACY_CONFIRMED: { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200', label: 'Đã xác nhận' },
+                          };
+                          const meta = styles[s] ?? {
+                            bg: 'bg-slate-100',
+                            text: 'text-slate-700',
+                            border: 'border-slate-200',
+                            label: SERVICE_AGREEMENT_STATUS[s]?.label ?? s,
+                          };
                           return (
-                            <Tag color={meta.color} className="font-bold text-xs rounded-full border-0 px-2.5 py-0.5">
+                            <span className={`font-bold text-xs rounded-full border px-2.5 py-0.5 ${meta.bg} ${meta.text} ${meta.border}`}>
                               {meta.label}
-                            </Tag>
+                            </span>
                           );
                         })()}
                       </div>
@@ -779,7 +833,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           <div className="space-y-1">
                             <div className="font-bold text-blue-900 flex items-center gap-2">
                               Đã xác nhận nộp tiền cọc dịch vụ tìm kiếm hồ sơ
-                              <Tag color="processing" className="m-0 font-bold text-xs">Chờ HR xác nhận</Tag>
+                              <span className="m-0 font-bold text-xs px-2 py-0.5 rounded border border-blue-200 bg-blue-50 text-blue-700">Chờ HR xác nhận</span>
                             </div>
                             <div className="text-xs text-blue-800 leading-relaxed">
                               Doanh nghiệp đã hoàn tất gửi thông tin nộp cọc ({formatMoney(depositAmount, 'VND')}). Đội ngũ HR Connect đang đối soát và sẽ kích hoạt tin tuyển dụng trong thời gian sớm nhất.
@@ -800,7 +854,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           <div className="space-y-1">
                             <div className="font-bold text-amber-900 flex items-center gap-2">
                               {isAwaitingDeposit ? 'Chờ đặt cọc dịch vụ tìm kiếm hồ sơ' : 'Chờ thanh toán phí gói đăng tin'}
-                              <Tag color="warning" className="m-0 font-bold text-xs">Chờ thanh toán</Tag>
+                              <span className="m-0 font-bold text-xs px-2 py-0.5 rounded border border-amber-300 bg-amber-50 text-amber-800">Chờ thanh toán</span>
                             </div>
                             <div className="text-xs text-amber-800 leading-relaxed">
                               {isAwaitingDeposit
@@ -979,9 +1033,9 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           <div className="text-sm font-bold text-slate-900 flex items-center gap-2">
                             Hợp đồng đã ký
                             {currentAgreement.hasSignedDocument ? (
-                              <Tag color="success" className="m-0 text-[10px] font-bold border-0 px-2">Đã nộp</Tag>
+                              <span className="m-0 text-[10px] font-bold border border-emerald-200 bg-emerald-50 text-emerald-700 rounded px-2 py-0.5">Đã nộp</span>
                             ) : (
-                              <Tag color="warning" className="m-0 text-[10px] font-bold border-0 px-2">Chưa nộp</Tag>
+                              <span className="m-0 text-[10px] font-bold border border-amber-300 bg-amber-50 text-amber-800 rounded px-2 py-0.5">Chưa nộp</span>
                             )}
                           </div>
                           <div className="text-xs text-slate-500 mt-0.5">
@@ -1079,12 +1133,27 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           dataIndex: 'status',
                           key: 'status',
                           render: (st: string) => {
-                            const meta =
-                              SERVICE_AGREEMENT_STATUS[st as keyof typeof SERVICE_AGREEMENT_STATUS] ?? {
-                                label: st,
-                                color: 'default',
-                              };
-                            return <Tag color={meta.color} className="font-semibold border-0">{meta.label}</Tag>;
+                            const styles: Record<string, { bg: string; text: string; border: string; label: string }> = {
+                              DRAFT: { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200', label: 'Dự thảo' },
+                              SENT_TO_CLIENT: { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200', label: 'Chờ phản hồi' },
+                              CHANGE_REQUESTED: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', label: 'Yêu cầu điều chỉnh' },
+                              ACCEPTED: { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', label: 'Đã chấp thuận' },
+                              AWAITING_SIGNATURE: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', label: 'Chờ nộp HĐ đã ký' },
+                              SIGNED: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', label: 'Đã ký kết' },
+                              VOID: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', label: 'Đã hủy' },
+                              LEGACY_CONFIRMED: { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200', label: 'Đã xác nhận' },
+                            };
+                            const meta = styles[st] ?? {
+                              bg: 'bg-slate-100',
+                              text: 'text-slate-700',
+                              border: 'border-slate-200',
+                              label: SERVICE_AGREEMENT_STATUS[st as keyof typeof SERVICE_AGREEMENT_STATUS]?.label ?? st,
+                            };
+                            return (
+                              <span className={`font-semibold text-xs rounded px-2 py-0.5 border ${meta.bg} ${meta.text} ${meta.border}`}>
+                                {meta.label}
+                              </span>
+                            );
                           },
                         },
                         {
