@@ -6,58 +6,18 @@
  *  - ClientCompanyPage: company profile (GET/PUT /companies/profile/me).
  */
 import React, { useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App as AntApp, Button, Form, Input, Select, Skeleton } from 'antd';
 import { CameraOutlined, DeleteOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { companyProfileApi } from '@/services/api/hrApi';
 import { getApiErrorMessage } from '@/services/apiClient';
-import { PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
+import { StatusDot, Surface } from '@/features/admin-console/ui';
 import { CompanyLogo } from '@/components/common/CompanyLogo';
-import { HrPipelinePage } from '@/features/hr-console/HrPipelinePage';
-import { ApplicationWorkbench } from '@/features/recruitment/ApplicationWorkbench';
-import { ClientInterviewDetailDrawer } from '@/features/client-console/ClientInterviewDetailDrawer';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 
-export const ClientInterviewsOffersPage: React.FC = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const openId = searchParams.get('open') ?? undefined;
-  const [openInterviewId, setOpenInterviewId] = React.useState<string | null>(null);
-
-  const setOpen = (id?: string) => {
-    const next = new URLSearchParams(searchParams);
-    if (id) next.set('open', id);
-    else next.delete('open');
-    setSearchParams(next, { replace: true });
-  };
-
-  return (
-    <div className={`${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
-      <HrPipelinePage
-        eyebrow="Tuyển dụng"
-        tip
-        description="Lịch phỏng vấn, offer đã gửi và ứng viên đã đi làm. Bấm một dòng để xem chi tiết, dời lịch, ghi kết quả hoặc xem lịch sử."
-        onOpenApplication={setOpen}
-        onOpenInterview={(iv) => setOpenInterviewId(iv.interviewId)}
-        emptyHints={{
-          interviews: 'Chưa có lịch phỏng vấn. Vào “Hồ sơ ứng viên”, chọn một hồ sơ rồi bấm “Lên lịch phỏng vấn”.',
-          offers: 'Chưa có offer. Offer được tạo khi ứng viên đạt phỏng vấn vòng cuối.',
-        }}
-      />
-      <ApplicationWorkbench applicationId={openId} audience="client" onClose={() => setOpen(undefined)} />
-      <ClientInterviewDetailDrawer
-        interviewId={openInterviewId}
-        onClose={() => setOpenInterviewId(null)}
-        onOpenApplication={(appId) => {
-          setOpenInterviewId(null);
-          setOpen(appId);
-        }}
-      />
-    </div>
-  );
-};
+export { ClientInterviewsOffersPage } from './ClientInterviewsOffersPage';
 
 // Same limit as the backend (R2Settings.MaxCompanyLogoFileSizeMb).
 const MAX_LOGO_MB = 10;
