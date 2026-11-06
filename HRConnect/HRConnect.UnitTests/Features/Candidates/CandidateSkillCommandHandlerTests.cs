@@ -44,6 +44,32 @@ public sealed class CandidateSkillCommandHandlerTests
     }
 
     [Fact]
+    public async Task Add_WhenCustomSkillNameProvided_CreatesAndAddsSkill()
+    {
+        var userId = Guid.NewGuid();
+        var customSkill = NewSkill("Kế toán tổng hợp");
+        var candidate = NewCandidate(userId);
+        var candidates = CandidateRepositoryFor(candidate, userId);
+        var skills = new Mock<ISkillRepository>();
+        skills.Setup(r => r.GetOrCreateByNameAsync("Kế toán tổng hợp", null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(customSkill);
+        var unitOfWork = UnitOfWork();
+        var handler = new AddCandidateSkillCommandHandler(candidates.Object, skills.Object, unitOfWork.Object);
+
+        var result = await handler.Handle(new AddCandidateSkillCommand
+        {
+            UserId = userId,
+            SkillName = "Kế toán tổng hợp",
+            ProficiencyLevel = "ADVANCED",
+            YearsOfExperience = 3
+        }, CancellationToken.None);
+
+        result.Data.SkillName.Should().Be("Kế toán tổng hợp");
+        candidate.CandidateSkills.Should().ContainSingle(item => item.SkillId == customSkill.SkillId);
+        unitOfWork.Verify(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task Add_WhenSkillAlreadyExists_ThrowsConflict()
     {
         var userId = Guid.NewGuid();

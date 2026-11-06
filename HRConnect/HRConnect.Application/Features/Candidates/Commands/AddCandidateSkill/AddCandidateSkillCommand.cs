@@ -9,7 +9,8 @@ public sealed class AddCandidateSkillCommand : IRequest<CandidateSkillMutationRe
     [JsonIgnore]
     public Guid UserId { get; set; }
 
-    public Guid SkillId { get; set; }
+    public Guid? SkillId { get; set; }
+    public string? SkillName { get; set; }
     public string? ProficiencyLevel { get; set; }
     public decimal? YearsOfExperience { get; set; }
 }

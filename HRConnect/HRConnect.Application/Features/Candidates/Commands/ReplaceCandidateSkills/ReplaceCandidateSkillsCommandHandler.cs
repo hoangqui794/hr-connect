@@ -30,11 +30,39 @@ public sealed class ReplaceCandidateSkillsCommandHandler : IRequestHandler<Repla
         var candidate = await _candidateRepository.GetByUserIdWithSkillsForUpdateAsync(request.UserId, cancellationToken)
             ?? throw new NotFoundException("Không tìm thấy hồ sơ ứng viên tương ứng với tài khoản này.");
 
-        var skillIds = request.Skills.Select(skill => skill.SkillId).ToArray();
-        var skillsById = await _skillRepository.GetActiveByIdsAsync(skillIds, cancellationToken);
-        if (skillsById.Count != skillIds.Length)
+        var explicitSkillIds = request.Skills
+            .Where(s => s.SkillId.HasValue && s.SkillId.Value != Guid.Empty)
+            .Select(s => s.SkillId!.Value)
+            .Distinct()
+            .ToArray();
+
+        var skillsById = await _skillRepository.GetActiveByIdsAsync(explicitSkillIds, cancellationToken);
+        if (skillsById.Count != explicitSkillIds.Length)
         {
             throw new BadRequestException("Một hoặc nhiều kỹ năng không tồn tại hoặc đã ngừng hoạt động.");
+        }
+
+        var resolvedSkills = new List<(Skill Skill, string? ProficiencyLevel, decimal? YearsOfExperience)>();
+        foreach (var input in request.Skills)
+        {
+            Skill skill;
+            if (input.SkillId.HasValue && input.SkillId.Value != Guid.Empty)
+            {
+                skill = skillsById[input.SkillId.Value];
+            }
+            else if (!string.IsNullOrWhiteSpace(input.SkillName))
+            {
+                skill = await _skillRepository.GetOrCreateByNameAsync(input.SkillName, null, cancellationToken);
+            }
+            else
+            {
+                throw new BadRequestException("Vui lòng chọn hoặc nhập tên kỹ năng.");
+            }
+
+            if (!resolvedSkills.Any(s => s.Skill.SkillId == skill.SkillId))
+            {
+                resolvedSkills.Add((skill, input.ProficiencyLevel, input.YearsOfExperience));
+            }
         }
 
         foreach (var existingSkill in candidate.CandidateSkills.ToList())
@@ -42,12 +70,12 @@ public sealed class ReplaceCandidateSkillsCommandHandler : IRequestHandler<Repla
             candidate.CandidateSkills.Remove(existingSkill);
         }
 
-        var candidateSkills = request.Skills.Select(input => new CandidateSkill
+        var candidateSkills = resolvedSkills.Select(item => new CandidateSkill
         {
             CandidateId = candidate.CandidateId,
-            SkillId = input.SkillId,
-            ProficiencyLevel = CandidateSkillRules.NormalizeProficiencyLevel(input.ProficiencyLevel),
-            YearsOfExperience = input.YearsOfExperience
+            SkillId = item.Skill.SkillId,
+            ProficiencyLevel = CandidateSkillRules.NormalizeProficiencyLevel(item.ProficiencyLevel),
+            YearsOfExperience = item.YearsOfExperience
         }).ToList();
 
         foreach (var candidateSkill in candidateSkills)
@@ -62,8 +90,8 @@ public sealed class ReplaceCandidateSkillsCommandHandler : IRequestHandler<Repla
         return new ReplaceCandidateSkillsResponse(
             true,
             "Đã cập nhật danh sách kỹ năng của ứng viên.",
-            candidateSkills
-                .Select(candidateSkill => CandidateSkillRules.ToDto(candidateSkill, skillsById[candidateSkill.SkillId]))
-                .ToList());
+            resolvedSkills.Select(item => CandidateSkillRules.ToDto(
+                candidateSkills.First(cs => cs.SkillId == item.Skill.SkillId),
+                item.Skill)).ToList());
     }
 }

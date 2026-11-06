@@ -144,7 +144,7 @@ export class CandidateService {
    * POST /api/v1/candidates/profile/me/skills
    * Thêm một kỹ năng mới vào hồ sơ ứng viên.
    */
-  public async addSkill(skill: { skillId: string; proficiencyLevel?: string; yearsOfExperience?: number }): Promise<any> {
+  public async addSkill(skill: { skillId?: string; skillName?: string; proficiencyLevel?: string; yearsOfExperience?: number }): Promise<any> {
     const response = await apiClient.post('/candidates/profile/me/skills', skill);
     return response.data;
   }

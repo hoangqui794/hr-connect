@@ -74,4 +74,39 @@ public sealed class SkillRepository : ISkillRepository
             .Where(skill => skillIds.Contains(skill.SkillId) && skill.IsActive)
             .ToDictionaryAsync(skill => skill.SkillId, cancellationToken);
     }
+
+    public async Task<Skill> GetOrCreateByNameAsync(
+        string skillName,
+        string? category = null,
+        CancellationToken cancellationToken = default)
+    {
+        var trimmed = skillName.Trim();
+        var normalized = trimmed.ToUpperInvariant();
+        var existing = await _context.Skills
+            .FirstOrDefaultAsync(s => s.NormalizedName == normalized || EF.Functions.ILike(s.SkillName, trimmed), cancellationToken);
+
+        if (existing != null)
+        {
+            if (!existing.IsActive)
+            {
+                existing.IsActive = true;
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+            return existing;
+        }
+
+        var newSkill = new Skill
+        {
+            SkillId = Guid.NewGuid(),
+            SkillName = trimmed,
+            NormalizedName = normalized,
+            Category = string.IsNullOrWhiteSpace(category) ? "Khác" : category.Trim(),
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.Skills.Add(newSkill);
+        await _context.SaveChangesAsync(cancellationToken);
+        return newSkill;
+    }
 }
