@@ -2,16 +2,28 @@
  * @file ClientCandidatesPage.tsx
  * @description Client Company applications (GET /recruitment/applications, scoped by the backend:
  * CV_APPLICATION jobs plus HEADHUNT_COD / CV_SOURCING applications Internal HR has shortlisted).
- * Redesign: one unified toolbar (job, service, search, view), high-craft stage strip,
- * AI score with tier indicator, and actionable next-step button. Filters live in URL;
- * clicking a row opens the shared ApplicationWorkbench.
+ * Redesign: modern Studio header, high-craft stage pipeline strip, AI score with tier indicator,
+ * actionable next-step button, unified filter toolbar with view toggle (Table / Kanban Board).
+ * Follows Vercel Web Interface Guidelines and Anthropic Frontend Design principles.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { Alert, Button, Input, Select, Skeleton, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { AppstoreOutlined, ReloadOutlined, SearchOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import {
+  AppstoreOutlined,
+  ArrowRightOutlined,
+  CalendarOutlined,
+  CheckCircleOutlined,
+  ClearOutlined,
+  FileTextOutlined,
+  ReloadOutlined,
+  SearchOutlined,
+  ThunderboltOutlined,
+  UnorderedListOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
 import dayjs from 'dayjs';
 import relativeTimePlugin from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
@@ -19,7 +31,7 @@ import { screeningApi } from '@/services/api/hrApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { RecruitmentApplicationItem } from '@/types/api/hr';
 import { useMyJobs } from '@/features/jobs-mf01/useJobQueries';
-import { Initials, PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
+import { Initials, StatusDot, Surface } from '@/features/admin-console/ui';
 import { ApplicationWorkbench } from '@/features/recruitment/ApplicationWorkbench';
 import { applicationStatusOf, SERVICE_TYPE } from '@/features/hr-console/hrLabels';
 import { SERVICE_TYPE_LABEL } from '@/features/jobs-mf01/jobDisplay';
@@ -46,6 +58,7 @@ const GROUPS = [
   },
 ] as const;
 type GroupKey = (typeof GROUPS)[number]['key'];
+
 /** Cells that ask the Client to act; they are tinted when not empty. */
 const ACTION_GROUPS: GroupKey[] = ['review', 'shortlisted', 'offer'];
 const statusParam = (key: GroupKey) => {
@@ -59,6 +72,7 @@ const SERVICES = [
   { value: 'HEADHUNT_COD', label: SERVICE_TYPE.HEADHUNT_COD },
   { value: 'CV_SOURCING', label: SERVICE_TYPE.CV_SOURCING },
 ];
+
 /** Board columns: the active hiring stages, left to right. Closed ones stay in the list view. */
 const BOARD: { code: string; label: string; dot: string }[] = [
   { code: 'SUBMITTED', label: 'Mới nộp', dot: 'bg-orange-500' },
@@ -73,10 +87,10 @@ const BOARD_LIMIT = 20;
 
 /** Tier labels follow match_tier_config (HIGH ≥ 80, MEDIUM_HIGH 70–79, MEDIUM 60–69, LOW < 60). */
 const TIER: Record<string, { label: string; cls: string }> = {
-  HIGH: { label: 'Rất phù hợp', cls: 'bg-emerald-50 text-emerald-800' },
-  MEDIUM_HIGH: { label: 'Khá phù hợp', cls: 'bg-sky-50 text-sky-800' },
-  MEDIUM: { label: 'Phù hợp một phần', cls: 'bg-amber-50 text-amber-800' },
-  LOW: { label: 'Ít phù hợp', cls: 'bg-slate-100 text-slate-600' },
+  HIGH: { label: 'Rất phù hợp', cls: 'bg-emerald-50 text-emerald-800 border-emerald-200/80' },
+  MEDIUM_HIGH: { label: 'Khá phù hợp', cls: 'bg-sky-50 text-sky-800 border-sky-200/80' },
+  MEDIUM: { label: 'Phù hợp một phần', cls: 'bg-amber-50 text-amber-800 border-amber-200/80' },
+  LOW: { label: 'Ít phù hợp', cls: 'bg-slate-100 text-slate-600 border-slate-200/80' },
 };
 
 /** AI score rendered as a sleek mini progress bar with percentage. */
@@ -89,25 +103,40 @@ export const AiScore: React.FC<{ score: number | null; tier?: string | null; sta
   if (score == null) {
     const st = status?.toUpperCase();
     if (st === 'PENDING' || st === 'PROCESSING') return <span className="text-xs text-[#0C4A6E] font-medium">Đang chấm…</span>;
-    return <span className="text-xs text-slate-400">Chưa có điểm</span>;
+    return <span className="text-xs text-slate-400 font-medium">Chưa có điểm</span>;
   }
   const rounded = Math.round(score);
   const t = tier ? TIER[tier.toUpperCase()] : undefined;
   const barColor =
-    rounded >= 80 ? 'bg-emerald-500' : rounded >= 60 ? 'bg-blue-500' : rounded >= 40 ? 'bg-amber-500' : 'bg-slate-400';
+    rounded >= 80
+      ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
+      : rounded >= 60
+      ? 'bg-gradient-to-r from-blue-500 to-sky-500'
+      : rounded >= 40
+      ? 'bg-gradient-to-r from-amber-500 to-orange-400'
+      : 'bg-slate-400';
   const textColor =
     rounded >= 80 ? 'text-emerald-700' : rounded >= 60 ? 'text-blue-700' : rounded >= 40 ? 'text-amber-700' : 'text-slate-600';
 
   return (
-    <div className="inline-flex items-center gap-2.5 whitespace-nowrap" title={t?.label ? `Điểm AI: ${rounded}% (${t.label})` : `Điểm AI: ${rounded}%`}>
-      <div className={`${compact ? 'w-10' : 'w-16'} h-2 bg-slate-100 rounded-full overflow-hidden shrink-0`}>
-        <div
-          className={`h-full rounded-full transition-all duration-300 ${barColor}`}
-          style={{ width: `${Math.min(100, Math.max(0, rounded))}%` }}
-        />
+    <div
+      className="inline-flex flex-col gap-1"
+      title={t?.label ? `Điểm AI: ${rounded}% (${t.label})` : `Điểm AI: ${rounded}%`}
+    >
+      <div className="inline-flex items-center gap-2 whitespace-nowrap">
+        <div className={`${compact ? 'w-10' : 'w-16'} h-2 bg-slate-100 rounded-full overflow-hidden shrink-0 ring-1 ring-black/5`}>
+          <div
+            className={`h-full rounded-full transition-all duration-300 ${barColor}`}
+            style={{ width: `${Math.min(100, Math.max(0, rounded))}%` }}
+          />
+        </div>
+        <span className={`text-xs font-bold tabular-nums min-w-[32px] ${textColor}`}>{rounded}%</span>
       </div>
-      <span className={`text-xs font-bold tabular-nums min-w-[32px] ${textColor}`}>{rounded}%</span>
-      {t && <span className="sr-only">{t.label}</span>}
+      {t && (
+        <span className={`inline-block text-[10.5px] font-semibold px-1.5 py-0.5 rounded border leading-none w-fit ${t.cls}`}>
+          {t.label}
+        </span>
+      )}
     </div>
   );
 };
@@ -146,9 +175,19 @@ export const ClientCandidatesPage: React.FC = () => {
   const service = searchParams.get('service') ?? undefined;
   const q = searchParams.get('q') ?? '';
   const page = Number(searchParams.get('page')) || 1;
-  const openId = searchParams.get('open') ?? undefined;
+  const urlOpenId = searchParams.get('open') ?? undefined;
   const view: 'board' | 'list' = searchParams.get('view') === 'board' ? 'board' : 'list';
   const jobs = useMyJobs();
+
+  // Local state for modal workbench so opening drawer doesn't reload page or displace behind screen
+  const [activeAppId, setActiveAppId] = useState<string | undefined>(urlOpenId);
+
+  // Sync urlOpenId if it arrives from outside navigation
+  React.useEffect(() => {
+    if (urlOpenId !== activeAppId) {
+      setActiveAppId(urlOpenId);
+    }
+  }, [urlOpenId]);
 
   const setParams = (changes: Record<string, string | undefined>, replace = false) => {
     const next = new URLSearchParams(searchParams);
@@ -157,6 +196,16 @@ export const ClientCandidatesPage: React.FC = () => {
     setSearchParams(next, { replace });
   };
   const setParam = (key: string, value?: string) => setParams({ [key]: value }, key === 'open');
+
+  const handleOpenCandidate = (appId: string) => {
+    setActiveAppId(appId);
+    setParam('open', appId);
+  };
+
+  const handleCloseCandidate = () => {
+    setActiveAppId(undefined);
+    setParam('open', undefined);
+  };
 
   const scope = { jobId, serviceTypeCode: service };
 
@@ -191,12 +240,14 @@ export const ClientCandidatesPage: React.FC = () => {
     {
       title: 'Ứng viên',
       key: 'c',
-      width: 290,
+      width: 280,
       render: (_, r) => (
-        <div className="flex items-start gap-3 py-1.5">
+        <div className="flex items-start gap-3 py-1">
           <Initials name={r.candidateName} size={38} />
           <div className="min-w-0 flex-1 space-y-0.5">
-            <div className="truncate text-[14px] font-bold text-slate-900">{r.candidateName}</div>
+            <div className="truncate text-[14px] font-bold text-slate-900 hover:text-[#0C4A6E] transition-colors">
+              {r.candidateName}
+            </div>
             <div className="truncate text-[12px] text-slate-500">{r.candidateEmail || 'Chưa có email'}</div>
             <div className="text-[11px] text-slate-400">cập nhật {dayjs(r.updatedAt ?? r.appliedAt).fromNow()}</div>
           </div>
@@ -229,7 +280,7 @@ export const ClientCandidatesPage: React.FC = () => {
     {
       title: 'Điểm AI',
       key: 'ai',
-      width: 160,
+      width: 170,
       render: (_, r) => (
         <div className="py-1">
           <AiScore score={r.aiMatchScore} tier={r.aiMatchTier} status={r.aiStatus} />
@@ -239,7 +290,7 @@ export const ClientCandidatesPage: React.FC = () => {
     {
       title: 'Giai đoạn',
       dataIndex: 'status',
-      width: 180,
+      width: 170,
       render: (v: string, r) => {
         const st = applicationStatusOf(v, r.serviceTypeCode, r.sourcingDeliveryStatus);
         return (
@@ -267,14 +318,14 @@ export const ClientCandidatesPage: React.FC = () => {
             size="middle"
             type={step.urgent ? 'primary' : 'default'}
             ghost={step.urgent}
-            className={`w-[130px] !h-8 text-xs font-semibold rounded-lg shadow-sm transition-all ${
+            className={`w-[135px] !h-8 text-xs font-semibold rounded-lg shadow-2xs transition-all ${
               step.urgent
-                ? '!border-[#0C4A6E] !text-[#0C4A6E] hover:!bg-[#F0F9FF]'
-                : '!border-slate-200 text-slate-700 hover:!border-slate-300'
+                ? '!border-[#0C4A6E] !text-[#0C4A6E] hover:!bg-[#0C4A6E] hover:!text-white'
+                : '!border-slate-200 text-slate-700 hover:!border-slate-300 hover:bg-slate-50'
             }`}
             onClick={(e) => {
               e.stopPropagation();
-              setParam('open', r.applicationId);
+              handleOpenCandidate(r.applicationId);
             }}
           >
             {step.label}
@@ -286,29 +337,34 @@ export const ClientCandidatesPage: React.FC = () => {
 
   const filtered = Boolean(jobId || service || q || exactStatus || group !== 'all');
 
+  const handleResetFilters = () => {
+    setSearchParams(new URLSearchParams(), { replace: true });
+  };
+
   return (
-    <div className={`${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
-      {/* ── Studio Header ── */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5">
-        <div>
-          <div className="flex items-center gap-2.5">
+    <div className={`${FONT} space-y-6 max-w-full animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
+      {/* ── 1. Studio Header ── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="m-0 text-2xl font-black tracking-tight text-slate-900 sm:text-[26px]">
               Hồ Sơ Ứng Viên
             </h1>
-            <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0C4A6E] border border-sky-100">
-              {view === 'list' ? list.data?.total ?? 0 : 'Bảng Kanban'} hồ sơ
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-[#0C4A6E] border border-sky-200/80 shadow-2xs">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#0C4A6E] animate-pulse" />
+              {view === 'list' ? `${list.data?.total ?? 0} hồ sơ` : 'Bảng Kanban'}
             </span>
           </div>
-          <p className="m-0 mt-1 text-sm text-slate-500">
-            Đánh giá điểm AI Match, hẹn lịch phỏng vấn và phát hành offer trực tiếp tới ứng viên.
+          <p className="m-0 text-sm text-slate-500 max-w-2xl">
+            Đối soát điểm AI Match, theo dõi lộ trình tuyển dụng và ra quyết định hẹn lịch hoặc gửi offer cho ứng viên.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
           <Button
-            icon={<ReloadOutlined />}
+            icon={<ReloadOutlined className={list.isFetching ? 'animate-spin' : ''} />}
             aria-label="Tải lại danh sách"
-            className="!h-10 !rounded-xl border-slate-200 hover:!border-slate-300 font-semibold text-slate-700"
+            className="!h-10 !rounded-xl border-slate-200 hover:!border-slate-300 font-semibold text-slate-700 bg-white shadow-2xs hover:shadow-xs transition-all"
             onClick={() => (view === 'list' ? list.refetch() : boardQueries.forEach((b) => b.refetch()))}
           >
             Tải lại
@@ -316,9 +372,9 @@ export const ClientCandidatesPage: React.FC = () => {
         </div>
       </div>
 
-      <Surface className="rounded-2xl border border-solid border-slate-200/90 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+      <Surface className="rounded-2xl border border-solid border-slate-200/90 shadow-[0_1px_3px_rgba(15,23,42,0.03)] bg-white overflow-hidden">
         <div className="space-y-4 px-5 pb-4 pt-5">
-          {/* Toolbar: job, service, search, view */}
+          {/* ── 2. Unified Filter Toolbar ── */}
           <div className="flex flex-wrap items-center gap-2.5">
             <Select
               size="large"
@@ -338,26 +394,47 @@ export const ClientCandidatesPage: React.FC = () => {
             />
             <Select
               size="large"
-              className="w-full sm:w-[200px]"
+              className="w-full sm:w-[190px]"
               aria-label="Lọc theo dịch vụ"
               value={service ?? 'all'}
-              onChange={(v) => setParams({ service: v === 'all' ? undefined : v, job: selectedJob && v !== 'all' && selectedJob.serviceTypeCode !== v ? undefined : jobId })}
+              onChange={(v) =>
+                setParams({
+                  service: v === 'all' ? undefined : v,
+                  job: selectedJob && v !== 'all' && selectedJob.serviceTypeCode !== v ? undefined : jobId,
+                })
+              }
               options={SERVICES}
             />
-            <div key={q} className="min-w-[200px] flex-1">
+            <div key={q} className="min-w-[220px] flex-1">
               <Input
                 size="large"
                 allowClear
                 defaultValue={q}
                 prefix={<SearchOutlined className="text-slate-400" />}
-                placeholder="Tìm ứng viên, nhấn Enter"
+                placeholder="Tìm ứng viên theo tên, email... (Enter)"
                 onPressEnter={(e) => setParam('q', (e.target as HTMLInputElement).value.trim() || undefined)}
                 onChange={(e) => !e.target.value && q && setParam('q', undefined)}
                 aria-label="Tìm theo tên ứng viên"
-                className="!rounded-lg"
+                className="!rounded-xl"
               />
             </div>
-            <div role="radiogroup" aria-label="Kiểu hiển thị" className="inline-flex h-10 items-center rounded-xl bg-slate-100 p-1">
+
+            {filtered && (
+              <Button
+                icon={<ClearOutlined />}
+                onClick={handleResetFilters}
+                className="!h-10 !rounded-xl border-dashed border-slate-300 text-slate-600 hover:!border-rose-400 hover:!text-rose-600 font-medium"
+              >
+                Xóa bộ lọc
+              </Button>
+            )}
+
+            {/* View Mode Switch */}
+            <div
+              role="radiogroup"
+              aria-label="Kiểu hiển thị"
+              className="inline-flex h-10 items-center rounded-xl bg-slate-100/90 p-1 border border-slate-200/60"
+            >
               {(
                 [
                   ['list', <UnorderedListOutlined key="l" />, 'Danh sách'],
@@ -371,7 +448,9 @@ export const ClientCandidatesPage: React.FC = () => {
                   aria-checked={view === v}
                   onClick={() => setParams({ view: v === 'board' ? 'board' : undefined }, true)}
                   className={`flex h-8 cursor-pointer items-center gap-2 rounded-lg border-0 px-3.5 text-[13px] font-medium transition-all ${
-                    view === v ? 'bg-white text-[#0C4A6E] shadow-sm font-bold' : 'bg-transparent text-slate-600 hover:text-slate-900'
+                    view === v
+                      ? 'bg-white text-[#0C4A6E] shadow-2xs font-bold'
+                      : 'bg-transparent text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   {icon}
@@ -397,7 +476,7 @@ export const ClientCandidatesPage: React.FC = () => {
             </div>
           )}
 
-          {/* Stage strip: modern interactive process pipeline */}
+          {/* ── 3. Stage Pipeline Strip: Interactive Process Cards ── */}
           {view === 'list' && (
             <div
               role="radiogroup"
@@ -417,9 +496,9 @@ export const ClientCandidatesPage: React.FC = () => {
                     onClick={() => setParams({ stage: g.key === 'all' ? undefined : g.key, status: undefined })}
                     className={`group relative cursor-pointer rounded-xl border p-3 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E] ${
                       selected
-                        ? 'border-[#0C4A6E] bg-white shadow-sm ring-1 ring-[#0C4A6E]/30'
+                        ? 'border-[#0C4A6E] bg-white shadow-sm ring-2 ring-[#0C4A6E]/20'
                         : needsAction
-                        ? 'border-amber-200/90 bg-amber-50/50 hover:bg-white hover:border-slate-300'
+                        ? 'border-amber-300/80 bg-gradient-to-b from-amber-50/60 to-amber-50/20 hover:bg-white hover:border-slate-300'
                         : 'border-transparent bg-transparent hover:bg-white hover:border-slate-200 hover:shadow-2xs'
                     }`}
                   >
@@ -432,7 +511,7 @@ export const ClientCandidatesPage: React.FC = () => {
                         {g.label}
                       </span>
                       {needsAction && (
-                        <span className="flex h-2 w-2 items-center justify-center" aria-label="cần xử lý">
+                        <span className="flex h-2.5 w-2.5 items-center justify-center" aria-label="cần xử lý">
                           <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
                         </span>
                       )}
@@ -451,48 +530,59 @@ export const ClientCandidatesPage: React.FC = () => {
           )}
         </div>
 
+        {/* ── 4. Main Content: Board or Table ── */}
         {view === 'board' ? (
           <div className="overflow-x-auto px-5 pb-5" role="region" aria-label="Bảng ứng viên theo giai đoạn" tabIndex={0}>
-            <div className="flex min-w-max gap-3">
+            <div className="flex min-w-max gap-3.5 pt-1">
               {BOARD.map((b, i) => {
                 const qy = boardQueries[i];
                 const items = qy.data?.items ?? [];
                 return (
-                  <section key={b.code} aria-label={b.label} className="flex w-[236px] shrink-0 flex-col rounded-2xl bg-slate-50 p-2.5">
-                    <header className="mb-2 flex items-center justify-between px-1.5 py-1">
-                      <span className="flex items-center gap-2 text-[13px] font-semibold text-slate-800">
-                        <span className={`h-2 w-2 rounded-full ${b.dot}`} aria-hidden />
+                  <section
+                    key={b.code}
+                    aria-label={b.label}
+                    className="flex w-[260px] shrink-0 flex-col rounded-2xl bg-slate-50/90 border border-slate-200/80 p-3"
+                  >
+                    <header className="mb-2.5 flex items-center justify-between px-1">
+                      <span className="flex items-center gap-2 text-[13px] font-bold text-slate-800">
+                        <span className={`h-2.5 w-2.5 rounded-full ${b.dot} shadow-2xs`} aria-hidden />
                         {b.label}
                       </span>
-                      <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold tabular-nums text-slate-700 shadow-sm">{qy.data?.total ?? 0}</span>
+                      <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-bold tabular-nums text-slate-700 shadow-2xs border border-slate-200/60">
+                        {qy.data?.total ?? 0}
+                      </span>
                     </header>
                     {qy.isLoading ? (
                       <Skeleton active paragraph={{ rows: 2 }} title={false} className="px-1.5" />
                     ) : items.length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-slate-200 px-3 py-5 text-center text-xs text-slate-500">Trống</div>
+                      <div className="rounded-xl border border-dashed border-slate-200 px-3 py-6 text-center text-xs text-slate-400">
+                        Chưa có ứng viên
+                      </div>
                     ) : (
-                      <ul className="m-0 list-none space-y-2 p-0">
+                      <ul className="m-0 list-none space-y-2.5 p-0">
                         {items.map((a) => (
                           <li key={a.applicationId}>
                             <button
                               type="button"
-                              onClick={() => setParam('open', a.applicationId)}
-                              className="client-soft-card flex w-full cursor-pointer flex-col gap-2 rounded-xl border-0 bg-white p-3 text-left shadow-[0_0_0_1px_rgba(15,23,42,0.06),0_2px_6px_-2px_rgba(15,23,42,0.08)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E]"
+                              onClick={() => handleOpenCandidate(a.applicationId)}
+                              className="client-soft-card group flex w-full cursor-pointer flex-col gap-2 rounded-xl border border-slate-200/90 bg-white p-3.5 text-left shadow-2xs transition-all duration-200 hover:border-[#0C4A6E]/50 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E]"
                             >
                               <span className="flex items-center gap-2.5">
-                                <Initials name={a.candidateName} size={30} />
+                                <Initials name={a.candidateName} size={32} />
                                 <span className="min-w-0 flex-1">
-                                  <span className="block truncate text-[13.5px] font-semibold text-slate-900">{a.candidateName}</span>
-                                  <span className="block truncate text-xs text-slate-600">{a.jobTitle}</span>
+                                  <span className="block truncate text-[13.5px] font-bold text-slate-900 group-hover:text-[#0C4A6E] transition-colors">
+                                    {a.candidateName}
+                                  </span>
+                                  <span className="block truncate text-xs text-slate-500">{a.jobTitle}</span>
                                 </span>
                               </span>
-                              <span className="flex items-center justify-between">
+                              <span className="flex items-center justify-between pt-1 border-t border-slate-100">
                                 <Tooltip title="Điểm phù hợp do AI chấm">
                                   <span>
                                     <AiScore score={a.aiMatchScore} tier={a.aiMatchTier} status={a.aiStatus} compact />
                                   </span>
                                 </Tooltip>
-                                <span className="text-[11px] text-slate-500">{dayjs(a.updatedAt ?? a.appliedAt).fromNow()}</span>
+                                <span className="text-[11px] text-slate-400">{dayjs(a.updatedAt ?? a.appliedAt).fromNow()}</span>
                               </span>
                             </button>
                           </li>
@@ -501,8 +591,16 @@ export const ClientCandidatesPage: React.FC = () => {
                           <li>
                             <button
                               type="button"
-                              onClick={() => setParams({ view: undefined, stage: GROUPS.find((g) => (g.statuses as readonly string[]).includes(b.code))?.key }, false)}
-                              className="w-full cursor-pointer rounded-xl border-0 bg-transparent py-2 text-xs font-semibold text-[#0C4A6E] hover:bg-white"
+                              onClick={() =>
+                                setParams(
+                                  {
+                                    view: undefined,
+                                    stage: GROUPS.find((g) => (g.statuses as readonly string[]).includes(b.code))?.key,
+                                  },
+                                  false
+                                )
+                              }
+                              className="w-full cursor-pointer rounded-xl border border-slate-200/60 bg-white py-2 text-xs font-semibold text-[#0C4A6E] hover:bg-sky-50/50 shadow-2xs transition-all"
                             >
                               Xem tất cả {qy.data?.total}
                             </button>
@@ -528,15 +626,22 @@ export const ClientCandidatesPage: React.FC = () => {
             dataSource={list.data?.items ?? []}
             loading={list.isFetching}
             onRow={(r) => ({
-              onClick: () => setParam('open', r.applicationId),
-              onKeyDown: (e) => e.key === 'Enter' && setParam('open', r.applicationId),
+              onClick: () => handleOpenCandidate(r.applicationId),
+              onKeyDown: (e) => e.key === 'Enter' && handleOpenCandidate(r.applicationId),
               tabIndex: 0,
-              className: 'cursor-pointer hover:bg-slate-50/80 transition-colors',
+              className: 'cursor-pointer hover:bg-sky-50/40 transition-colors',
             })}
-            pagination={{ current: page, pageSize: PAGE_SIZE, total: list.data?.total ?? 0, showSizeChanger: false, hideOnSinglePage: true, onChange: (p) => setParam('page', String(p)) }}
+            pagination={{
+              current: page,
+              pageSize: PAGE_SIZE,
+              total: list.data?.total ?? 0,
+              showSizeChanger: false,
+              hideOnSinglePage: true,
+              onChange: (p) => setParam('page', String(p)),
+            }}
             locale={{
               emptyText: (
-                <div className="py-12 text-slate-500 text-[13.5px]">
+                <div className="py-12 text-center text-slate-500 text-[13.5px]">
                   {!filtered ? 'Chưa có hồ sơ nào. Hồ sơ sẽ xuất hiện khi ứng viên nộp vào tin của bạn.' : 'Không có hồ sơ phù hợp bộ lọc.'}
                 </div>
               ),
@@ -545,7 +650,8 @@ export const ClientCandidatesPage: React.FC = () => {
         )}
       </Surface>
 
-      <ApplicationWorkbench applicationId={openId} audience="client" onClose={() => setParam('open', undefined)} />
+      {/* ── 5. Application Workbench Drawer ── */}
+      <ApplicationWorkbench applicationId={activeAppId} audience="client" onClose={handleCloseCandidate} />
     </div>
   );
 };
