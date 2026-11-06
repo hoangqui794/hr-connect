@@ -698,10 +698,10 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             {tab === 'interviews' &&
               (
                 [
-                  { value: 'SCHEDULED', label: '🗓️ Đã lên lịch', desc: 'Chỉ các lịch sắp tới' },
-                  { value: 'COMPLETED', label: '✅ Đã phỏng vấn', desc: 'Các buổi đã hoàn thành' },
-                  { value: 'all', label: '📋 Xem tất cả', desc: 'Xem toàn bộ lịch sử' },
-                  { value: 'CANCELLED', label: '❌ Đã hủy', desc: 'Lịch phỏng vấn bị hủy' },
+                  { value: 'SCHEDULED', label: 'Đã lên lịch', desc: 'Chỉ các lịch sắp tới' },
+                  { value: 'COMPLETED', label: 'Đã phỏng vấn', desc: 'Các buổi đã hoàn thành' },
+                  { value: 'all', label: 'Tất cả', desc: 'Xem toàn bộ lịch sử' },
+                  { value: 'CANCELLED', label: 'Đã hủy', desc: 'Lịch phỏng vấn bị hủy' },
                 ] as const
               ).map((opt) => {
                 const isActive = statusFilter === opt.value;
@@ -713,10 +713,10 @@ export const ClientInterviewsOffersPage: React.FC = () => {
                     aria-checked={isActive}
                     onClick={() => handleStatusChange(opt.value)}
                     title={opt.desc}
-                    className={`cursor-pointer rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border ${
+                    className={`cursor-pointer rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all border ${
                       isActive
                         ? 'bg-[#0C4A6E] text-white border-[#0C4A6E] shadow-2xs'
-                        : 'bg-white text-slate-700 border-slate-200/90 hover:bg-slate-100 hover:text-slate-900'
+                        : 'bg-white text-slate-600 border-slate-200/90 hover:bg-slate-100 hover:text-slate-900'
                     }`}
                   >
                     {opt.label}
@@ -727,11 +727,12 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             {tab === 'offers' &&
               (
                 [
-                  { value: 'all', label: '📋 Xem tất cả offer' },
-                  { value: 'SENT', label: '✉️ Đã gửi chờ phản hồi' },
-                  { value: 'ACCEPTED', label: '✅ Đã nhận offer' },
-                  { value: 'DECLINED', label: '❌ Từ chối' },
-                  { value: 'DRAFT', label: '📝 Bản nháp' },
+                  { value: 'all', label: 'Tất cả' },
+                  { value: 'SENT', label: 'Đã gửi' },
+                  { value: 'ACCEPTED', label: 'Đã nhận' },
+                  { value: 'EXPIRED', label: 'Hết hạn' },
+                  { value: 'DECLINED', label: 'Từ chối' },
+                  { value: 'DRAFT', label: 'Bản nháp' },
                 ] as const
               ).map((opt) => {
                 const isActive = statusFilter === opt.value;
@@ -742,10 +743,10 @@ export const ClientInterviewsOffersPage: React.FC = () => {
                     role="radio"
                     aria-checked={isActive}
                     onClick={() => handleStatusChange(opt.value)}
-                    className={`cursor-pointer rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border ${
+                    className={`cursor-pointer rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all border ${
                       isActive
                         ? 'bg-[#0C4A6E] text-white border-[#0C4A6E] shadow-2xs'
-                        : 'bg-white text-slate-700 border-slate-200/90 hover:bg-slate-100 hover:text-slate-900'
+                        : 'bg-white text-slate-600 border-slate-200/90 hover:bg-slate-100 hover:text-slate-900'
                     }`}
                   >
                     {opt.label}
@@ -756,8 +757,8 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             {tab === 'placements' &&
               (
                 [
-                  { value: 'all', label: '📋 Xem tất cả' },
-                  { value: 'STARTED', label: '🚀 Đã đi làm chính thức' },
+                  { value: 'all', label: 'Tất cả' },
+                  { value: 'STARTED', label: 'Đã đi làm' },
                 ] as const
               ).map((opt) => {
                 const isActive = statusFilter === opt.value;
@@ -768,10 +769,10 @@ export const ClientInterviewsOffersPage: React.FC = () => {
                     role="radio"
                     aria-checked={isActive}
                     onClick={() => handleStatusChange(opt.value)}
-                    className={`cursor-pointer rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border ${
+                    className={`cursor-pointer rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all border ${
                       isActive
                         ? 'bg-[#0C4A6E] text-white border-[#0C4A6E] shadow-2xs'
-                        : 'bg-white text-slate-700 border-slate-200/90 hover:bg-slate-100 hover:text-slate-900'
+                        : 'bg-white text-slate-600 border-slate-200/90 hover:bg-slate-100 hover:text-slate-900'
                     }`}
                   >
                     {opt.label}
