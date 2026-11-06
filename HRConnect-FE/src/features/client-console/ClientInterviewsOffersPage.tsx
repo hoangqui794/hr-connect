@@ -8,7 +8,7 @@
  *  - Ergonomic Data Tables with visual date badges, compensation pills, and primary CTAs
  *  - Seamless integration with ClientInterviewDetailDrawer and ApplicationWorkbench
  */
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Empty, Input, Select, Skeleton, Table, Tag, Tooltip } from 'antd';
@@ -56,15 +56,31 @@ export const ClientInterviewsOffersPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const tab = (TABS as string[]).includes(searchParams.get('tab') ?? '')
-    ? (searchParams.get('tab') as TabKey)
-    : 'interviews';
+  const [tab, setTab] = useState<TabKey>(() => {
+    const initial = searchParams.get('tab');
+    return initial && (TABS as string[]).includes(initial) ? (initial as TabKey) : 'interviews';
+  });
+
   const page = Number(searchParams.get('page')) || 1;
   const openId = searchParams.get('open') ?? undefined;
 
   // Lịch phỏng vấn mặc định chỉ lấy những lịch "Đã lên lịch" (SCHEDULED)
   const defaultStatusForTab = (t: TabKey) => (t === 'interviews' ? 'SCHEDULED' : 'all');
-  const statusFilter = searchParams.get('status') || defaultStatusForTab(tab);
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    return searchParams.get('status') || defaultStatusForTab(tab);
+  });
+
+  // Đồng bộ từ URL vào State nếu người dùng điều hướng back/forward hoặc đổi link
+  useEffect(() => {
+    const urlTab = searchParams.get('tab');
+    if (urlTab && (TABS as string[]).includes(urlTab) && urlTab !== tab) {
+      setTab(urlTab as TabKey);
+    }
+    const urlStatus = searchParams.get('status');
+    if (urlStatus && urlStatus !== statusFilter) {
+      setStatusFilter(urlStatus);
+    }
+  }, [searchParams]);
 
   const openInterviewId = searchParams.get('interview');
 
@@ -123,21 +139,25 @@ export const ClientInterviewsOffersPage: React.FC = () => {
   };
 
   const switchTab = (nextTab: TabKey) => {
+    setTab(nextTab);
+    const defStatus = defaultStatusForTab(nextTab);
+    setStatusFilter(defStatus);
     const next = new URLSearchParams(searchParams);
     next.set('tab', nextTab);
-    next.set('status', defaultStatusForTab(nextTab));
+    next.set('status', defStatus);
     next.delete('page');
     next.delete('open');
     next.delete('interview');
-    setSearchParams(next);
+    setSearchParams(next, { replace: true });
   };
 
   const handleStatusChange = (nextStatus: string) => {
+    setStatusFilter(nextStatus);
     const next = new URLSearchParams(searchParams);
     next.set('tab', tab);
     next.set('status', nextStatus);
     next.delete('page');
-    setSearchParams(next);
+    setSearchParams(next, { replace: true });
   };
 
   const setPage = (p: number) => {
