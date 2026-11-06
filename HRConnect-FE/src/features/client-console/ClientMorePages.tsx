@@ -19,6 +19,8 @@ import { HrPipelinePage } from '@/features/hr-console/HrPipelinePage';
 import { ApplicationWorkbench } from '@/features/recruitment/ApplicationWorkbench';
 import { ClientInterviewDetailDrawer } from '@/features/client-console/ClientInterviewDetailDrawer';
 
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+
 export const ClientInterviewsOffersPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const openId = searchParams.get('open') ?? undefined;
@@ -32,7 +34,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
   };
 
   return (
-    <>
+    <div className={`${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
       <HrPipelinePage
         eyebrow="Tuyển dụng"
         tip
@@ -53,7 +55,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
           setOpen(appId);
         }}
       />
-    </>
+    </div>
   );
 };
 
@@ -147,7 +149,7 @@ export const ClientCompanyPage: React.FC = () => {
   const verified = c?.verificationStatus === 'VERIFIED';
 
   return (
-    <div>
+    <div className={`${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
       <PageHero
         eyebrow="Doanh nghiệp"
         title="Hồ sơ doanh nghiệp"
@@ -162,12 +164,12 @@ export const ClientCompanyPage: React.FC = () => {
         <Alert type="error" showIcon message={getApiErrorMessage(company.error, 'Không tải được hồ sơ doanh nghiệp.')} />
       ) : (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[340px_minmax(0,1fr)]">
-          <Surface padded className="self-start">
+          <Surface padded className="self-start rounded-2xl bg-white border border-slate-200/90 shadow-xs">
             <div className="flex flex-col items-center text-center">
               <div className="relative rounded-[22px] bg-gradient-to-br from-blue-50 to-cyan-50 p-1 ring-1 ring-blue-100">
                 <CompanyLogo companyName={c.companyName} logoUrl={c.logoUrl ?? undefined} size="xl" className="!h-24 !w-24 !rounded-2xl !shadow-sm" />
                 {uploadLogo.isPending && (
-                  <div className="absolute inset-1 flex items-center justify-center rounded-2xl bg-white/80 text-sm font-semibold text-blue-700 backdrop-blur-sm">
+                  <div className="absolute inset-1 flex items-center justify-center rounded-2xl bg-white/80 text-sm font-semibold text-[#0C4A6E] backdrop-blur-sm">
                     Đang tải…
                   </div>
                 )}
@@ -179,11 +181,11 @@ export const ClientCompanyPage: React.FC = () => {
               </div>
               <input ref={logoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={selectLogo} aria-label="Chọn logo doanh nghiệp" />
               <div className="mt-4 flex w-full gap-2">
-                <Button className="min-h-11 flex-1" icon={<CameraOutlined />} loading={uploadLogo.isPending} onClick={() => logoInputRef.current?.click()}>
+                <Button className="!h-10 flex-1 rounded-xl font-medium border-slate-200 hover:!border-slate-300 text-slate-700" icon={<CameraOutlined />} loading={uploadLogo.isPending} onClick={() => logoInputRef.current?.click()}>
                   {c.logoUrl ? 'Đổi logo' : 'Thêm logo'}
                 </Button>
                 {c.logoUrl && (
-                  <Button danger className="min-h-11" icon={<DeleteOutlined />} loading={deleteLogo.isPending} onClick={confirmDeleteLogo} aria-label="Xóa logo doanh nghiệp" />
+                  <Button danger className="!h-10 rounded-xl" icon={<DeleteOutlined />} loading={deleteLogo.isPending} onClick={confirmDeleteLogo} aria-label="Xóa logo doanh nghiệp" />
                 )}
               </div>
               <p className="mb-0 mt-2 text-xs leading-5 text-slate-500">JPG, PNG hoặc WebP · tối đa {MAX_LOGO_MB}MB. Logo sẽ xuất hiện trên tin tuyển dụng.</p>
@@ -203,35 +205,41 @@ export const ClientCompanyPage: React.FC = () => {
               ))}
             </div>
           </Surface>
-          <Surface padded>
+          <Surface padded className="rounded-2xl bg-white border border-slate-200/90 shadow-xs">
             <h2 className="m-0 text-base font-semibold text-slate-900">Chỉnh sửa thông tin</h2>
             <p className="mb-5 mt-1 text-sm text-slate-600">Trạng thái xác thực do HR Connect quản lý.</p>
             <Form form={form} layout="vertical" requiredMark={false} validateTrigger="onBlur" onFinish={(v) => save.mutate(v)}>
               <Form.Item name="companyName" label="Tên doanh nghiệp" rules={[{ required: true, whitespace: true, message: 'Nhập tên doanh nghiệp.' }, { max: 255, message: 'Tối đa 255 ký tự.' }]}>
-                <Input size="large" />
+                <Input size="large" className="rounded-xl" />
               </Form.Item>
               <div className="grid gap-x-4 sm:grid-cols-2">
                 <Form.Item name="taxCode" label="Mã số thuế" rules={[{ max: 80, message: 'Tối đa 80 ký tự.' }]}>
-                  <Input size="large" />
+                  <Input size="large" className="rounded-xl" />
                 </Form.Item>
                 <Form.Item name="industry" label="Ngành" rules={[{ max: 120, message: 'Tối đa 120 ký tự.' }]}>
-                  <Input size="large" />
+                  <Input size="large" className="rounded-xl" />
                 </Form.Item>
                 <Form.Item name="companySize" label="Quy mô">
-                  <Select size="large" allowClear options={SIZES} placeholder="Chọn quy mô" />
+                  <Select size="large" allowClear options={SIZES} placeholder="Chọn quy mô" className="rounded-xl" />
                 </Form.Item>
                 <Form.Item name="website" label="Website" rules={[{ type: 'url', message: 'Website không hợp lệ (cần https://…).' }]}>
-                  <Input size="large" placeholder="https://" />
+                  <Input size="large" placeholder="https://" className="rounded-xl" />
                 </Form.Item>
               </div>
               <Form.Item name="address" label="Địa chỉ" rules={[{ max: 500, message: 'Tối đa 500 ký tự.' }]}>
-                <Input size="large" />
+                <Input size="large" className="rounded-xl" />
               </Form.Item>
               <Form.Item name="description" label="Giới thiệu" rules={[{ max: 4000, message: 'Tối đa 4000 ký tự.' }]}>
-                <Input.TextArea rows={4} showCount maxLength={4000} />
+                <Input.TextArea rows={4} showCount maxLength={4000} className="rounded-xl" />
               </Form.Item>
-              <div className="flex justify-end">
-                <Button type="primary" size="large" htmlType="submit" loading={save.isPending}>
+              <div className="flex justify-end pt-2">
+                <Button
+                  type="primary"
+                  size="large"
+                  htmlType="submit"
+                  loading={save.isPending}
+                  className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white font-semibold !h-11 px-6 rounded-xl shadow-sm transition-all active:scale-[0.98]"
+                >
                   Lưu thay đổi
                 </Button>
               </div>

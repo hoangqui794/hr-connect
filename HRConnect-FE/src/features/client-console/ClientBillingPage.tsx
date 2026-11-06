@@ -24,6 +24,8 @@ import { depositTransferNote, serviceFeeTransferNote, transferNote } from '@/fea
 import { SERVICE_TYPE_LABEL } from '@/features/jobs-mf01/jobDisplay';
 import { BillingPaymentModal } from './BillingPaymentModal';
 
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+
 const PAGE_SIZE = 10;
 
 import type { Bucket, BillingRow, BreakdownLine } from './billingTypes';
@@ -296,14 +298,14 @@ export const ClientBillingPage: React.FC = () => {
             <Button
               type="primary"
               size="small"
-              className="w-[95px] text-xs font-semibold rounded-lg shadow-xs"
+              className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white w-[100px] !h-8 text-xs font-semibold rounded-lg shadow-sm transition-all active:scale-[0.98]"
               onClick={() => setPaying(r)}
               aria-label={`Thanh toán: ${r.item} · ${r.jobTitle}`}
             >
               Thanh toán
             </Button>
           ) : (
-            <span className="inline-block w-[95px] text-center text-slate-400 text-xs">—</span>
+            <span className="inline-block w-[100px] text-center text-slate-400 text-xs">—</span>
           )}
         </div>
       ),
@@ -313,14 +315,18 @@ export const ClientBillingPage: React.FC = () => {
   const count = (code: ServiceTypeCode) => rows.filter((r) => r.service === code).length;
 
   return (
-    <div>
+    <div className={`${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
       <PageHero
-        eyebrow="Tài chính"
+        eyebrow="Tài chính & Thanh toán"
         title="Công nợ phí dịch vụ"
         tip
         description="Mọi khoản phí với HR Connect của 3 dịch vụ HH, SS và AP ở cùng một nơi. Thanh toán qua VNPay thì khoản phí chuyển Đã thanh toán ngay; chuyển khoản thì trạng thái cập nhật khi HR Connect nhận được tiền."
         actions={
-          <Button icon={<ReloadOutlined spin={fetching} />} onClick={refetch}>
+          <Button
+            icon={<ReloadOutlined spin={fetching} />}
+            className="!h-10 !rounded-lg border-slate-200 hover:!border-slate-300 text-slate-700"
+            onClick={refetch}
+          >
             Làm mới
           </Button>
         }

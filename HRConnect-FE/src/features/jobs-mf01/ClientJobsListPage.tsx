@@ -57,6 +57,8 @@ import {
 } from './jobDisplay';
 
 
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+
 type StatusFilter = 'ALL' | JobStatus;
 const FILTER_ORDER: JobStatus[] = ['DRAFT', 'PENDING_REVIEW', 'PENDING_AGREEMENT', 'PENDING_PAYMENT', 'ACTIVE', 'PAUSED', 'CLOSED', 'REJECTED'];
 
@@ -250,11 +252,11 @@ export const ClientJobsListPage: React.FC = () => {
       ...(can.canClose ? [{ key: 'close', label: 'Đóng tin', danger: true }] : []),
     ];
     return (
-      <div className="flex items-center justify-end gap-1">
+      <div className="flex items-center justify-end gap-1.5">
         {job.serviceTypeCode === 'CV_SOURCING' && job.status !== 'PENDING_AGREEMENT' && (
           <Button
             size="small"
-            className="!text-teal-700 !border-teal-300 hover:!border-teal-500 bg-teal-50/50 font-medium whitespace-nowrap"
+            className="!text-sky-800 !border-sky-200 hover:!border-sky-400 bg-sky-50 hover:bg-sky-100 font-medium whitespace-nowrap !h-8 !rounded-lg text-xs"
             icon={<TeamOutlined />}
             onClick={() => navigate(`/client/jobs/${job.jobId}/sourcing`)}
           >
@@ -265,7 +267,7 @@ export const ClientJobsListPage: React.FC = () => {
           <Button
             size="small"
             type="primary"
-            className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium"
+            className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white !rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium !h-8 px-3 text-xs"
             icon={<CreditCardOutlined />}
             onClick={() => setPaymentModalJob({ jobId: job.jobId, title: job.title })}
           >
@@ -273,7 +275,14 @@ export const ClientJobsListPage: React.FC = () => {
           </Button>
         )}
         {can.canSubmit && !needsPayment && (
-          <Button size="small" type="primary" icon={<SendOutlined />} loading={busy} onClick={() => confirmSubmit(job)}>
+          <Button
+            size="small"
+            type="primary"
+            className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white !rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium !h-8 px-3 text-xs"
+            icon={<SendOutlined />}
+            loading={busy}
+            onClick={() => confirmSubmit(job)}
+          >
             Gửi duyệt
           </Button>
         )}
@@ -283,6 +292,7 @@ export const ClientJobsListPage: React.FC = () => {
               size="small"
               icon={<EditOutlined />}
               aria-label={`Sửa tin ${job.title}`}
+              className="!h-8 !w-8 !rounded-lg border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300"
               onClick={() => navigate(`/client/jobs/${job.jobId}/edit`)}
             />
           </Tooltip>
@@ -300,7 +310,13 @@ export const ClientJobsListPage: React.FC = () => {
             },
           }}
         >
-          <Button size="small" icon={<MoreOutlined />} aria-label={`Thao tác khác cho ${job.title}`} loading={busy && !can.canSubmit} />
+          <Button
+            size="small"
+            icon={<MoreOutlined />}
+            aria-label={`Thao tác khác cho ${job.title}`}
+            loading={busy && !can.canSubmit}
+            className="!h-8 !w-8 !rounded-lg border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300"
+          />
         </Dropdown>
       </div>
     );
@@ -395,7 +411,7 @@ export const ClientJobsListPage: React.FC = () => {
   ];
 
   return (
-    <div>
+    <div className={`${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
       <PageHero
         eyebrow="Tuyển dụng"
         title="Tin tuyển dụng của tôi"
@@ -403,9 +419,22 @@ export const ClientJobsListPage: React.FC = () => {
         actions={
           <>
             <Tooltip title="Tải lại">
-              <Button size="large" icon={<ReloadOutlined />} aria-label="Tải lại danh sách" loading={isFetching && !isLoading} onClick={() => refetch()} />
+              <Button
+                size="large"
+                icon={<ReloadOutlined />}
+                aria-label="Tải lại danh sách"
+                loading={isFetching && !isLoading}
+                onClick={() => refetch()}
+                className="!h-10 !rounded-lg border-slate-200 hover:!border-slate-300 text-slate-700"
+              />
             </Tooltip>
-            <Button size="large" type="primary" icon={<PlusOutlined />} className="client-cta" onClick={() => navigate('/client/jobs/create')}>
+            <Button
+              size="large"
+              type="primary"
+              icon={<PlusOutlined />}
+              className="!bg-[#0C4A6E] hover:!bg-[#075985] !text-white !h-10 !rounded-lg !border-0 font-semibold shadow-sm transition-all active:scale-[0.98] !px-4"
+              onClick={() => navigate('/client/jobs/create')}
+            >
               Đăng tin mới
             </Button>
           </>
@@ -493,128 +522,132 @@ export const ClientJobsListPage: React.FC = () => {
                   <article
                     id={`job-card-${job.jobId}`}
                     key={job.jobId}
-                    className={`client-soft-card relative flex flex-col gap-3 rounded-[18px] p-5 transition-all duration-500 ${isHighlighted
-                      ? 'bg-gradient-to-b from-blue-50/95 via-sky-50/50 to-white ring-4 ring-blue-500/80 border-2 border-solid border-blue-500 shadow-xl shadow-blue-500/25 scale-[1.02]'
-                      : 'bg-white shadow-[0_0_0_1px_rgba(15,23,42,0.07)]'
+                    className={`relative flex flex-col justify-between rounded-2xl p-5 transition-all duration-200 border ${isHighlighted
+                      ? 'bg-blue-50/70 border-blue-500 ring-2 ring-blue-500/30 shadow-md'
+                      : 'bg-white border-slate-200/90 hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5'
                       }`}
                   >
-                    {isHighlighted && (
-                      <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm">
-                        <span className="flex items-center gap-1.5 animate-pulse">
-                          <span>🔔</span> Đang xem tin từ thông báo
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setHighlightedJobId(null)}
-                          className="cursor-pointer border-0 bg-transparent text-white/80 hover:text-white p-0 text-xs"
-                          title="Tắt làm nổi bật"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    )}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <Tooltip title={job.status === 'PENDING_AGREEMENT' && job.hasSignedAgreement ? 'Đã nộp hợp đồng đã ký kết, đang chờ Internal HR kiểm tra và duyệt tin' : JOB_STATUS[job.status].hint}>
-                          <span>
-                            <JobStatusTag status={job.status} hasSignedAgreement={job.hasSignedAgreement} />
+                    <div>
+                      {isHighlighted && (
+                        <div className="mb-3 flex items-center justify-between rounded-lg bg-[#0C4A6E] px-3 py-1.5 text-xs font-semibold text-white shadow-sm">
+                          <span className="flex items-center gap-1.5">
+                            <span>🔔</span> Đang xem tin từ thông báo
                           </span>
-                        </Tooltip>
-                        <ServiceTypeTag code={job.serviceTypeCode} />
+                          <button
+                            type="button"
+                            onClick={() => setHighlightedJobId(null)}
+                            className="cursor-pointer border-0 bg-transparent text-white/80 hover:text-white p-0 text-xs"
+                            title="Tắt làm nổi bật"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Tooltip title={job.status === 'PENDING_AGREEMENT' && job.hasSignedAgreement ? 'Đã nộp hợp đồng đã ký kết, đang chờ Internal HR kiểm tra và duyệt tin' : JOB_STATUS[job.status].hint}>
+                            <span>
+                              <JobStatusTag status={job.status} hasSignedAgreement={job.hasSignedAgreement} />
+                            </span>
+                          </Tooltip>
+                          <ServiceTypeTag code={job.serviceTypeCode} />
+                        </div>
+                        <span className="text-[11px] text-slate-400 whitespace-nowrap">{formatDate(job.updatedAt)}</span>
                       </div>
-                      <span className="text-xs text-slate-500 whitespace-nowrap">{formatDate(job.updatedAt)}</span>
+                      <button
+                        type="button"
+                        onClick={() => setDetailJobId(job.jobId)}
+                        className={`cursor-pointer rounded border-0 bg-transparent p-0 text-left text-[15px] font-semibold leading-snug hover:text-[#0C4A6E] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E] transition-colors mb-2 line-clamp-2 ${isHighlighted ? 'text-[#0C4A6E]' : 'text-slate-900'
+                          }`}
+                      >
+                        {job.title || 'Vị trí chưa đặt tên'}
+                      </button>
+                      <div className="space-y-1 text-[13px] text-slate-600 mb-3">
+                        <div className="font-semibold text-[#0C4A6E]">{formatSalary(job)}</div>
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                          <EnvironmentOutlined aria-hidden className="text-slate-400" /> {job.location ?? 'Chưa có địa điểm'}
+                        </div>
+                      </div>
+
+                      {job.status === 'PENDING_AGREEMENT' && (
+                        job.hasSignedAgreement ? (
+                          <div className="flex items-center justify-between rounded-xl bg-teal-50 border border-teal-200/80 px-3 py-2 text-xs text-teal-900 mb-3">
+                            <span className="font-medium text-[11px]">📄 Đã nộp hợp đồng · Chờ duyệt</span>
+                            <Button
+                              type="primary"
+                              size="small"
+                              className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] !text-xs !h-6 font-medium whitespace-nowrap ml-2"
+                              onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
+                            >
+                              Xem hợp đồng
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between rounded-xl bg-purple-50 border border-purple-200/80 px-3 py-2 text-xs text-purple-900 mb-3">
+                            <span className="font-medium text-[11px]">Hợp đồng dịch vụ đã soạn xong</span>
+                            <Button
+                              type="primary"
+                              size="small"
+                              className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] !text-xs !h-6 font-medium whitespace-nowrap ml-2"
+                              onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
+                            >
+                              Xem hợp đồng
+                            </Button>
+                          </div>
+                        )
+                      )}
+                      {isAwaitingSourcingDeposit(job) && (
+                        <div className="flex flex-col gap-2 rounded-xl bg-amber-50 border border-amber-200/80 px-3 py-2.5 text-xs text-amber-900 mb-3">
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold text-amber-950 text-xs">
+                              Chờ cọc ({formatMoney(sourcingDepositAmount(job) ?? 200000, 'VND')})
+                            </span>
+                            <span className="text-[10px] text-amber-700">Mở tin khi nhận cọc</span>
+                          </div>
+                          <div className="flex items-center gap-2 pt-1 border-0 border-t border-solid border-amber-200/60">
+                            <Button
+                              type="primary"
+                              size="small"
+                              className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] !text-xs !h-6 font-medium"
+                              onClick={() =>
+                                setPaymentModalJob({
+                                  jobId: job.jobId,
+                                  title: job.title,
+                                  isDeposit: true,
+                                  depositAmount: sourcingDepositAmount(job) ?? 200000,
+                                })
+                              }
+                            >
+                              Đặt cọc
+                            </Button>
+                            <Button
+                              size="small"
+                              className="!text-xs !h-6 border-amber-300 text-amber-900 hover:text-amber-700 rounded-lg"
+                              onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
+                            >
+                              Hợp đồng cọc
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      {job.status === 'PENDING_PAYMENT' && !isAwaitingSourcingDeposit(job) && (
+                        <div className="flex items-center justify-between rounded-xl bg-amber-50/80 border border-amber-200/80 px-3 py-1.5 text-xs text-amber-900 mb-3">
+                          <span className="font-medium text-[11px]">Chờ thanh toán phí kích hoạt để công bố</span>
+                        </div>
+                      )}
+                      {job.status === 'REJECTED' && job.statusReason && (
+                        <div className="line-clamp-3 rounded-xl bg-red-50 border border-red-200/60 px-3 py-2 text-xs text-red-800 mb-3">Lý do từ chối: {job.statusReason}</div>
+                      )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setDetailJobId(job.jobId)}
-                      className={`cursor-pointer rounded border-0 bg-transparent p-0 text-left text-[16px] leading-snug hover:text-[color:var(--console-accent-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${isHighlighted ? 'font-bold text-blue-900' : 'font-semibold text-slate-900'
-                        }`}
-                    >
-                      {job.title || 'Vị trí chưa đặt tên'}
-                    </button>
-                    <div className="space-y-1 text-[13px] text-slate-600">
-                      <div className="font-semibold text-[color:var(--console-accent-strong)]">{formatSalary(job)}</div>
-                      <div className="flex items-center gap-1.5">
-                        <EnvironmentOutlined aria-hidden /> {job.location ?? 'Chưa có địa điểm'}
-                      </div>
-                    </div>
-                    {job.status === 'PENDING_AGREEMENT' && (
-                      job.hasSignedAgreement ? (
-                        <div className="flex items-center justify-between rounded-xl bg-teal-50 border border-solid border-teal-200 px-3 py-2 text-xs text-teal-900">
-                          <span className="font-medium">📄 Đã nộp hợp đồng · Đang chờ kiểm tra & duyệt tin</span>
-                          <Button
-                            type="primary"
-                            size="small"
-                            className="!bg-teal-600 hover:!bg-teal-700 !border-teal-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] !text-xs !h-6 font-medium whitespace-nowrap ml-2"
-                            onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
-                          >
-                            Xem hợp đồng
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between rounded-xl bg-purple-50 border border-solid border-purple-200 px-3 py-2 text-xs text-purple-900">
-                          <span className="font-medium">Hợp đồng dịch vụ đã soạn xong</span>
-                          <Button
-                            type="primary"
-                            size="small"
-                            className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] !text-xs !h-6 font-medium whitespace-nowrap ml-2"
-                            onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
-                          >
-                            Xem hợp đồng
-                          </Button>
-                        </div>
-                      )
-                    )}
-                    {isAwaitingSourcingDeposit(job) && (
-                      <div className="flex flex-col gap-2 rounded-xl bg-amber-50 border border-solid border-amber-200 px-3 py-2.5 text-xs text-amber-900">
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold text-amber-950">
-                            Chờ đặt cọc dịch vụ ({formatMoney(sourcingDepositAmount(job) ?? 200000, 'VND')})
-                          </span>
-                          <span className="text-[11px] text-amber-700">Mở tin khi nhận cọc</span>
-                        </div>
-                        <div className="flex items-center gap-2 pt-1 border-0 border-t border-solid border-amber-200/60">
-                          <Button
-                            type="primary"
-                            size="small"
-                            className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] !text-xs !h-6 font-medium"
-                            onClick={() =>
-                              setPaymentModalJob({
-                                jobId: job.jobId,
-                                title: job.title,
-                                isDeposit: true,
-                                depositAmount: sourcingDepositAmount(job) ?? 200000,
-                              })
-                            }
-                          >
-                            Đặt cọc
-                          </Button>
-                          <Button
-                            size="small"
-                            className="!text-xs !h-6 border-amber-300 text-amber-900 hover:text-amber-700"
-                            onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
-                          >
-                            Hợp đồng cọc
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                    {job.status === 'PENDING_PAYMENT' && !isAwaitingSourcingDeposit(job) && (
-                      <div className="flex items-center justify-between rounded-xl bg-amber-50/80 border border-solid border-amber-200 px-3 py-1.5 text-xs text-amber-900">
-                        <span className="font-medium">Chờ thanh toán phí kích hoạt để công bố</span>
-                      </div>
-                    )}
-                    {job.status === 'REJECTED' && job.statusReason && (
-                      <div className="line-clamp-3 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-800">Lý do từ chối: {job.statusReason}</div>
-                    )}
-                    <div className="mt-auto flex items-center justify-between gap-2 border-0 border-t border-solid border-slate-100 pt-3">
+
+                    <div className="mt-3 flex items-center justify-between gap-2 border-0 border-t border-solid border-slate-100 pt-3">
                       {count ? (
                         <button
                           type="button"
                           onClick={() => navigate(`/client/candidates?job=${job.jobId}`)}
-                          className="flex cursor-pointer items-center gap-1.5 rounded-full border-0 bg-[color:var(--console-accent-soft)] px-3 py-1 text-[13px] font-medium text-[color:var(--console-accent-strong)] hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] shrink-0 whitespace-nowrap"
+                          className="flex cursor-pointer items-center gap-1.5 rounded-full border border-sky-100 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-800 hover:bg-sky-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E] shrink-0 whitespace-nowrap transition-colors"
                         >
-                          <TeamOutlined aria-hidden />
+                          <TeamOutlined aria-hidden className="text-sky-600" />
                           <span className="tabular-nums">
                             {count.isLoading ? '…' : count.data ?? 0}
                             {job.maxApplications ? ` / ${job.maxApplications}` : ''}

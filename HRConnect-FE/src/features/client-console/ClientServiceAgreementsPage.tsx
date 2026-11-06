@@ -70,6 +70,8 @@ import type { Job, ServiceAgreementDto } from '@/types/api/jobs';
 
 const { Text, Title, Paragraph } = Typography;
 
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+
 type AgreementTabKey = 'ALL' | 'PENDING_AGREEMENT' | 'PENDING_PAYMENT' | 'ACTIVE' | 'CLOSED';
 
 export const ClientServiceAgreementsPage: React.FC = () => {
@@ -404,10 +406,10 @@ export const ClientServiceAgreementsPage: React.FC = () => {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
       {/* Hero (shared PageHero, same as the other Client pages) */}
       <PageHero
-        eyebrow="HH · SS · Thỏa thuận"
+        eyebrow="Pháp lý & Thỏa thuận"
         title="Thỏa thuận dịch vụ"
         tip
         description="Xem, ký điện tử bằng OTP và lưu hợp đồng dịch vụ cho các tin HH · Tuyển dụng theo kết quả và SS · Tìm hồ sơ phù hợp."
@@ -415,6 +417,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
           <>
             <Button
               icon={<HistoryOutlined />}
+              className="!h-10 !rounded-lg border-slate-200 hover:!border-slate-300 text-slate-700"
               onClick={() => {
                 refetchCurrent();
                 refetchHistory();
@@ -422,7 +425,12 @@ export const ClientServiceAgreementsPage: React.FC = () => {
             >
               Làm mới
             </Button>
-            <Button type="primary" icon={<FileTextOutlined />} onClick={() => navigate('/client/jobs')}>
+            <Button
+              type="primary"
+              icon={<FileTextOutlined />}
+              className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white !h-10 !rounded-lg font-semibold shadow-sm transition-all active:scale-[0.98] !px-4"
+              onClick={() => navigate('/client/jobs')}
+            >
               Quản lý tin tuyển dụng
             </Button>
           </>
@@ -537,7 +545,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                         }}
                         className={`w-full cursor-pointer text-left rounded-xl p-3.5 transition-all border relative ${
                           isSelected
-                            ? 'border-indigo-600 bg-indigo-50/70 shadow-xs ring-1 ring-indigo-500/20 border-l-4 border-l-indigo-600'
+                            ? 'border-[#0C4A6E] bg-sky-50/70 shadow-xs ring-1 ring-[#0C4A6E]/20 border-l-4 border-l-[#0C4A6E]'
                             : isSignedPendingReview
                               ? 'border-teal-200/90 bg-teal-50/20 hover:border-teal-300 hover:bg-teal-50/40'
                               : isAwaitingAction
@@ -549,7 +557,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           <Text
                             strong
                             className={`text-sm line-clamp-1 ${
-                              isSelected ? 'text-indigo-950 font-bold' : 'text-slate-800'
+                              isSelected ? 'text-[#0C4A6E] font-bold' : 'text-slate-800'
                             }`}
                           >
                             {job.title}
@@ -683,7 +691,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           className={
                             isDeposited(activeJob)
                               ? '!bg-slate-100 !text-slate-400 !border-slate-200 cursor-not-allowed rounded-lg shadow-none font-semibold h-9'
-                              : '!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm font-semibold h-9'
+                              : '!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm font-semibold h-9'
                           }
                           onClick={() => !isDeposited(activeJob) && setPaymentModalOpen(true)}
                         >
@@ -755,7 +763,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           type="primary"
                           size="middle"
                           icon={<CreditCardOutlined />}
-                          className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-xl shadow-sm font-bold shrink-0 self-start sm:self-center"
+                          className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-xl shadow-sm font-semibold !h-10 px-5 shrink-0 self-start sm:self-center transition-all active:scale-[0.98]"
                           onClick={() => setPaymentModalOpen(true)}
                         >
                           {isAwaitingDeposit ? 'Đặt cọc ngay' : 'Thanh toán ngay'}
@@ -875,7 +883,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                             className={
                               isDeposited(activeJob)
                                 ? '!bg-slate-100 !text-slate-400 !border-slate-200 cursor-not-allowed rounded-lg font-medium'
-                                : '!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm font-medium'
+                                : '!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm font-semibold !h-9 px-4 transition-all active:scale-[0.98]'
                             }
                             onClick={() => !isDeposited(activeJob) && setPaymentModalOpen(true)}
                           >
@@ -890,7 +898,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           <Button
                             type={currentAgreement.hasSignedDocument ? 'default' : 'primary'}
                             icon={<UploadOutlined />}
-                            className={currentAgreement.hasSignedDocument ? '' : '!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium'}
+                            className={currentAgreement.hasSignedDocument ? '!h-9 rounded-lg' : '!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-semibold !h-9 px-4'}
                             onClick={() => setUploadModalOpen(true)}
                           >
                             {currentAgreement.hasSignedDocument ? 'Thay thế' : 'Tải lên'}
@@ -1028,7 +1036,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
           >
             Mở tab mới
           </Button>,
-          <Button key="close" type="primary" className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98]" onClick={() => setPreview(null)}>
+          <Button key="close" type="primary" className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-semibold" onClick={() => setPreview(null)}>
             Đóng
           </Button>,
         ]}

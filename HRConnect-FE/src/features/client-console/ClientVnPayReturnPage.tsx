@@ -11,6 +11,8 @@ import { vnPayApi } from '@/services/api/financeApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { money } from '@/features/finance-mf05/financeLabels';
 
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+
 // VNPay response code 24 = the customer cancelled on VNPay.
 const CANCELLED = '24';
 
@@ -33,57 +35,62 @@ export const ClientVnPayReturnPage: React.FC = () => {
 
   const back = (
     <Link to="/client/billing">
-      <Button type="primary">Về trang Công nợ</Button>
+      <Button
+        type="primary"
+        className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white font-semibold !h-10 px-5 rounded-xl shadow-sm transition-all active:scale-[0.98]"
+      >
+        Về trang Công nợ
+      </Button>
     </Link>
   );
 
-  if (!search.includes('vnp_')) {
-    return <Result status="warning" title="Không có kết quả thanh toán" subTitle="Trang này chỉ mở khi VNPay chuyển bạn về." extra={back} />;
-  }
-  if (result.isLoading) {
-    return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 text-slate-600">
-        <Spin size="large" />
-        Đang xác nhận kết quả thanh toán với VNPay…
-      </div>
-    );
-  }
-  if (result.isError || !result.data) {
-    return <Result status="error" title="Không xác nhận được kết quả" subTitle={getApiErrorMessage(result.error)} extra={back} />;
-  }
-
-  const p = result.data;
-  const amount = money(p.amount, p.currencyCode);
-  if (p.status === 'SUCCEEDED') {
-    return (
-      <Result
-        status="success"
-        title="Thanh toán thành công"
-        subTitle={`Đã thanh toán ${amount} qua VNPay${p.providerTransactionNo ? ` (mã giao dịch ${p.providerTransactionNo})` : ''}. Khoản phí đã chuyển sang Đã thanh toán.`}
-        extra={back}
-      />
-    );
-  }
-  if (p.status === 'NEEDS_REVIEW') {
-    return (
-      <Result
-        status="warning"
-        title="Đã nhận tiền, đang chờ HR Connect kiểm tra"
-        subTitle={`VNPay đã nhận ${amount} nhưng khoản phí chưa tự cập nhật được. HR Connect sẽ kiểm tra và liên hệ bạn.`}
-        extra={back}
-      />
-    );
-  }
-  if (p.status === 'PENDING' || p.status === 'PROCESSING') {
-    return <Result status="info" title="Đang chờ VNPay xác nhận" subTitle="Tải lại trang Công nợ sau ít phút để xem trạng thái mới." extra={back} />;
-  }
   return (
-    <Result
-      status="error"
-      title={p.responseCode === CANCELLED ? 'Bạn đã hủy thanh toán' : 'Thanh toán không thành công'}
-      subTitle="Khoản phí vẫn ở trạng thái chờ thanh toán. Bạn có thể thanh toán lại từ trang Công nợ."
-      extra={back}
-    />
+    <div className={`${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
+      {!search.includes('vnp_') ? (
+        <Result status="warning" title="Không có kết quả thanh toán" subTitle="Trang này chỉ mở khi VNPay chuyển bạn về." extra={back} />
+      ) : result.isLoading ? (
+        <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 text-slate-600">
+          <Spin size="large" />
+          Đang xác nhận kết quả thanh toán với VNPay…
+        </div>
+      ) : result.isError || !result.data ? (
+        <Result status="error" title="Không xác nhận được kết quả" subTitle={getApiErrorMessage(result.error)} extra={back} />
+      ) : (() => {
+        const p = result.data;
+        const amount = money(p.amount, p.currencyCode);
+        if (p.status === 'SUCCEEDED') {
+          return (
+            <Result
+              status="success"
+              title="Thanh toán thành công"
+              subTitle={`Đã thanh toán ${amount} qua VNPay${p.providerTransactionNo ? ` (mã giao dịch ${p.providerTransactionNo})` : ''}. Khoản phí đã chuyển sang Đã thanh toán.`}
+              extra={back}
+            />
+          );
+        }
+        if (p.status === 'NEEDS_REVIEW') {
+          return (
+            <Result
+              status="warning"
+              title="Đã nhận tiền, đang chờ HR Connect kiểm tra"
+              subTitle={`VNPay đã nhận ${amount} nhưng khoản phí chưa tự cập nhật được. HR Connect sẽ kiểm tra và liên hệ bạn.`}
+              extra={back}
+            />
+          );
+        }
+        if (p.status === 'PENDING' || p.status === 'PROCESSING') {
+          return <Result status="info" title="Đang chờ VNPay xác nhận" subTitle="Tải lại trang Công nợ sau ít phút để xem trạng thái mới." extra={back} />;
+        }
+        return (
+          <Result
+            status="error"
+            title={p.responseCode === CANCELLED ? 'Bạn đã hủy thanh toán' : 'Thanh toán không thành công'}
+            subTitle="Khoản phí vẫn ở trạng thái chờ thanh toán. Bạn có thể thanh toán lại từ trang Công nợ."
+            extra={back}
+          />
+        );
+      })()}
+    </div>
   );
 };
 

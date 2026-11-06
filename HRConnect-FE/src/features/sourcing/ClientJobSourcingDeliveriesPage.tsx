@@ -13,6 +13,8 @@ import { useJobDetail } from '@/features/jobs-mf01/useJobQueries';
 import { ApplicationWorkbench } from '@/features/recruitment/ApplicationWorkbench';
 import { SourcingDeliveriesView } from './SourcingDeliveriesView';
 
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+
 export const ClientJobSourcingDeliveriesPage: React.FC = () => {
   const { id, jobId: paramJobId } = useParams<{ id?: string; jobId?: string }>();
   const jobId = id || paramJobId || '';
@@ -22,7 +24,7 @@ export const ClientJobSourcingDeliveriesPage: React.FC = () => {
   const { data: job, isLoading, refetch } = useJobDetail(jobId);
 
   return (
-    <div>
+    <div className={`${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
       <PageHero
         eyebrow="SS · Tìm hồ sơ phù hợp"
         title={job ? `Hồ sơ nhận được · ${job.title}` : 'Hồ sơ nhận được (CV Sourcing)'}
@@ -33,6 +35,7 @@ export const ClientJobSourcingDeliveriesPage: React.FC = () => {
             <Button
               icon={<ArrowLeftOutlined />}
               size="large"
+              className="!h-10 !rounded-lg border-slate-200 hover:!border-slate-300 text-slate-700"
               onClick={() => navigate('/client/jobs')}
             >
               Về danh sách tin
@@ -40,6 +43,8 @@ export const ClientJobSourcingDeliveriesPage: React.FC = () => {
             <Button
               icon={<ReloadOutlined />}
               size="large"
+              type="primary"
+              className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white !h-10 !rounded-lg font-semibold shadow-sm transition-all active:scale-[0.98] !px-4"
               onClick={() => refetch()}
             >
               Tải lại tin

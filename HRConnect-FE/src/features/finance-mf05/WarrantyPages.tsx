@@ -18,6 +18,8 @@ import { COMMISSION_STATUS, SERVICE_FEE_STATUS, WARRANTY_STATUS, date, labelOf, 
 import { ReplacementQuotaCard } from './ReplacementQuotaCard';
 import { PlacementDetailDrawer } from './PlacementDetailDrawer';
 
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+
 const PAGE_SIZE = 20;
 type Mode = 'client' | 'hr';
 
@@ -369,7 +371,7 @@ const ClientFees: React.FC = () => {
 };
 
 export const ClientWarrantyPage: React.FC = () => (
-  <div>
+  <div className={`${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
     <PageHero
       eyebrow="HH · Tuyển dụng theo kết quả"
       title="Bảo hành & phí dịch vụ"
@@ -377,10 +379,10 @@ export const ClientWarrantyPage: React.FC = () => (
       description="Ứng viên đi làm được bảo hành theo thỏa thuận dịch vụ. Nếu ứng viên nghỉ trong thời gian bảo hành, hãy báo nghỉ để nhận suất tuyển thay thế miễn phí."
     />
     <ReplacementQuotaCard mode="client" />
-    <h2 className="mb-3 mt-8 text-lg font-semibold text-slate-900">Danh sách bảo hành ứng viên</h2>
+    <h2 className="mb-3 mt-8 text-base font-semibold text-slate-900 tracking-tight">Danh sách bảo hành ứng viên</h2>
     <WarrantyList mode="client" />
-    <h2 className="mb-3 mt-8 text-lg font-semibold text-slate-900">Công nợ phí dịch vụ</h2>
-    <p className="-mt-2 mb-3 text-[13.5px] text-slate-600">Phí = lương gross tháng trong offer × hệ số phí. Thanh toán bằng chuyển khoản; HR Connect ghi nhận khi nhận được tiền.</p>
+    <h2 className="mb-3 mt-8 text-base font-semibold text-slate-900 tracking-tight">Công nợ phí dịch vụ</h2>
+    <p className="-mt-2 mb-3 text-xs text-slate-500">Phí = lương gross tháng trong offer × hệ số phí. Thanh toán bằng chuyển khoản; HR Connect ghi nhận khi nhận được tiền.</p>
     <ClientFees />
   </div>
 );
