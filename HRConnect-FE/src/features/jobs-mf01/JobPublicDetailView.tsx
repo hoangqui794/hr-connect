@@ -19,6 +19,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
 import type { Job } from '@/types/api/jobs';
 import { EMPLOYMENT_TYPE_LABEL, experienceText } from './jobDisplay';
+import { WORK_MODE_LABEL, detectWorkMode } from './jobFormOptions';
 import { useJobDetail, usePublicJobSearch } from './useJobQueries';
 
 const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
@@ -169,7 +170,8 @@ const JobContent: React.FC<{ job: Job }> = ({ job }) => {
     { label: 'Mức lương', value: salaryText(job), accent: true },
     { label: 'Địa điểm', value: job.location ?? '—' },
     { label: 'Kinh nghiệm', value: experienceText(job.minExperienceYears, job.maxExperienceYears) },
-    { label: 'Hình thức', value: job.employmentType ? EMPLOYMENT_TYPE_LABEL[job.employmentType] : '—' },
+    { label: 'Loại hình làm việc', value: job.employmentType ? EMPLOYMENT_TYPE_LABEL[job.employmentType] : '—' },
+    { label: 'Hình thức làm việc', value: WORK_MODE_LABEL[detectWorkMode(job)] ?? 'Tại văn phòng (On-site)' },
     { label: 'Số lượng tuyển', value: `${job.quantity} người` },
     { label: 'Hạn nộp hồ sơ', value: deadline ? dayjs(deadline).format('DD/MM/YYYY') : '—' },
   ];
