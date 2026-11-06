@@ -44,6 +44,23 @@ export const WORK_MODE_LABEL: Record<WorkMode, string> = {
   REMOTE: 'Làm việc từ xa (Remote)',
 };
 
+export const detectWorkMode = (job?: {
+  location?: string | null;
+  workingTime?: string | null;
+  employmentType?: string | null;
+  workMode?: string | null;
+} | null): WorkMode => {
+  if (!job) return 'ONSITE';
+  if (job.workMode) {
+    const wm = String(job.workMode).toUpperCase();
+    if (wm === 'REMOTE' || wm === 'HYBRID' || wm === 'ONSITE') return wm as WorkMode;
+  }
+  const text = `${job?.location || ''} ${job?.workingTime || ''} ${job?.employmentType || ''}`.toLowerCase();
+  if (text.includes('remote') || text.includes('từ xa') || text.includes('tu xa')) return 'REMOTE';
+  if (text.includes('hybrid') || text.includes('kết hợp') || text.includes('ket hop')) return 'HYBRID';
+  return 'ONSITE';
+};
+
 export const WORKING_TIME_OPTIONS = [
   { value: 'Thứ 2 – Thứ 6, giờ hành chính', label: 'Thứ 2 – Thứ 6, giờ hành chính' },
   { value: 'Thứ 2 – Thứ 7, giờ hành chính', label: 'Thứ 2 – Thứ 7, giờ hành chính' },

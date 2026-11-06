@@ -13,4 +13,9 @@ public interface ISkillRepository
     Task<IReadOnlyDictionary<Guid, Skill>> GetActiveByIdsAsync(
         IReadOnlyCollection<Guid> skillIds,
         CancellationToken cancellationToken = default);
+
+    Task<Skill> GetOrCreateByNameAsync(
+        string skillName,
+        string? category = null,
+        CancellationToken cancellationToken = default);
 }

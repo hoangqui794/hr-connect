@@ -10,9 +10,10 @@ public sealed record CandidateSkillDto(
     decimal? YearsOfExperience);
 
 public sealed record CandidateSkillInput(
-    Guid SkillId,
-    string? ProficiencyLevel,
-    decimal? YearsOfExperience);
+    Guid? SkillId = null,
+    string? ProficiencyLevel = null,
+    decimal? YearsOfExperience = null,
+    string? SkillName = null);
 
 public static class CandidateSkillRules
 {

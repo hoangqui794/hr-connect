@@ -32,7 +32,7 @@ import { useCandidateAppliedJobs } from '@/features/portal/candidate/useCandidat
 import { SourcingDeliveriesView } from '@/features/sourcing/SourcingDeliveriesView';
 import { PaymentDemoModal } from './PaymentDemoModal';
 import { renderFormattedMultilineText } from './RichTextEditor';
-import { WORK_MODE_LABEL, type WorkMode } from './jobFormOptions';
+import { WORK_MODE_LABEL, detectWorkMode, type WorkMode } from './jobFormOptions';
 import { formatMoney, useCurrentServiceAgreement, useJobFeeInfo, useJobTemplate } from './useJobQueries';
 import {
   EMPLOYMENT_TYPE_LABEL,
@@ -677,12 +677,10 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           { label: 'Mức lương', value: <span className="tabular-nums">{formatSalary(job)}</span> },
           { label: 'Kinh nghiệm', value: formatExperience(job.minExperienceYears, job.maxExperienceYears) },
           { label: 'Loại hình làm việc', value: job.employmentType ? EMPLOYMENT_TYPE_LABEL[job.employmentType] : '—' },
-          ...(job.workMode || (job as any).workMode
-            ? [{
-                label: 'Hình thức làm việc',
-                value: WORK_MODE_LABEL[(job.workMode || (job as any).workMode) as WorkMode] ?? job.workMode,
-              }]
-            : []),
+          {
+            label: 'Hình thức làm việc',
+            value: WORK_MODE_LABEL[detectWorkMode(job)] ?? 'Tại văn phòng (On-site)',
+          },
           {
             label: job.serviceTypeCode === 'CV_SOURCING' ? 'Số hồ sơ cần nhận' : 'Số lượng cần tuyển',
             value: (<span className="inline-flex items-center gap-1.5 whitespace-nowrap"><TeamOutlined aria-hidden className="text-slate-400" />{formatHeadcount(job)}</span>),

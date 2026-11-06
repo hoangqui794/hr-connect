@@ -92,6 +92,7 @@ import {
   WORKING_TIME_OPTIONS,
   WORK_MODE_OPTIONS,
   WORK_MODE_LABEL,
+  detectWorkMode,
   type WorkMode,
   salaryRangeOf,
 } from './jobFormOptions';
@@ -542,16 +543,7 @@ const hasStep3Data = (values: Partial<JobFormValues>, code?: ServiceTypeCode): b
   return false;
 };
 
-const detectWorkMode = (job: Job): WorkMode => {
-  if ((job as any).workMode) {
-    const wm = String((job as any).workMode).toUpperCase();
-    if (wm === 'REMOTE' || wm === 'HYBRID' || wm === 'ONSITE') return wm as WorkMode;
-  }
-  const text = `${job.location || ''} ${job.workingTime || ''} ${job.employmentType || ''}`.toLowerCase();
-  if (text.includes('remote') || text.includes('từ xa') || text.includes('tu xa')) return 'REMOTE';
-  if (text.includes('hybrid') || text.includes('kết hợp') || text.includes('ket hop')) return 'HYBRID';
-  return 'ONSITE';
-};
+// detectWorkMode imported from jobFormOptions
 
 const toFormValues = (job: Job): JobFormValues => {
   const proposed = job.proposedTerms as ProposedTerms | undefined;

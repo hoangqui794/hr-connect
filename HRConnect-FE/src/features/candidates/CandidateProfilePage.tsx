@@ -5,7 +5,7 @@
  *  are sent back unchanged when saving.
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, App as AntApp, AutoComplete, Form, InputNumber, Modal, Popconfirm, Select, Skeleton } from 'antd';
+import { Alert, App as AntApp, AutoComplete, Form, Input, InputNumber, Modal, Popconfirm, Radio, Select, Skeleton } from 'antd';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { candidateService, type CandidateSkillItemDto } from '@/services/candidateService';
@@ -192,12 +192,38 @@ const ProfileAvatar: React.FC = () => {
   );
 };
 
+
+const INDUSTRY_SKILL_SUGGESTIONS: { category: string; skills: string[] }[] = [
+  {
+    category: 'Kế toán & Tài chính',
+    skills: ['Kế toán tổng hợp', 'Kế toán thuế', 'Báo cáo tài chính', 'MISA', 'Excel nâng cao', 'Kiểm toán nội bộ'],
+  },
+  {
+    category: 'Kinh doanh & Bán hàng',
+    skills: ['Bán hàng B2B', 'Telesales', 'Chăm sóc khách hàng', 'Đàm phán thương mại', 'CRM', 'Phát triển thị trường'],
+  },
+  {
+    category: 'Marketing & Truyền thông',
+    skills: ['Digital Marketing', 'Content Creator', 'SEO / SEM', 'Chạy Ads', 'Thiết kế đồ họa (Canva/Photoshop)', 'Social Media'],
+  },
+  {
+    category: 'Nhân sự & Hành chính',
+    skills: ['Tuyển dụng nhân sự', 'C&B (Tiền lương)', 'Hành chính văn phòng', 'Đào tạo nội bộ', 'Quản lý hồ sơ'],
+  },
+  {
+    category: 'Kỹ năng mềm & Ngoại ngữ',
+    skills: ['Giao tiếp thuyết phục', 'Làm việc nhóm', 'Quản lý thời gian', 'Tiếng Anh giao tiếp', 'Tiếng Trung', 'Tiếng Nhật'],
+  },
+];
+
 const SkillsSection: React.FC<{ skills: CandidateSkillItemDto[]; onChanged: () => Promise<unknown> }> = ({ skills, onChanged }) => {
   const { message } = AntApp.useApp();
   const [form] = Form.useForm();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<CandidateSkillItemDto | null>(null);
   const [saving, setSaving] = useState(false);
+  const [inputMode, setInputMode] = useState<'CATALOG' | 'CUSTOM'>('CATALOG');
+  const [searchText, setSearchText] = useState('');
 
   const catalog = useQuery({
     queryKey: ['skills-catalog'],
@@ -208,12 +234,20 @@ const SkillsSection: React.FC<{ skills: CandidateSkillItemDto[]; onChanged: () =
     enabled: open && !editing,
     staleTime: 5 * 60_000,
   });
-  const owned = new Set(skills.map((skill) => skill.skillId));
+  const ownedIds = new Set(skills.map((skill) => skill.skillId));
+  const ownedNames = new Set(skills.map((skill) => (skill.skillName || '').trim().toLowerCase()));
 
   const openModal = (skill: CandidateSkillItemDto | null) => {
     setEditing(skill);
     form.resetFields();
-    form.setFieldsValue({ skillId: skill?.skillId, proficiencyLevel: skill?.proficiencyLevel?.toUpperCase() || 'INTERMEDIATE', yearsOfExperience: skill?.yearsOfExperience ?? 1 });
+    setInputMode('CATALOG');
+    setSearchText('');
+    form.setFieldsValue({
+      skillId: skill?.skillId,
+      customSkillName: '',
+      proficiencyLevel: skill?.proficiencyLevel?.toUpperCase() || 'INTERMEDIATE',
+      yearsOfExperience: skill?.yearsOfExperience ?? 1,
+    });
     setOpen(true);
   };
 
@@ -233,12 +267,55 @@ const SkillsSection: React.FC<{ skills: CandidateSkillItemDto[]; onChanged: () =
 
   const save = async () => {
     const values = await form.validateFields();
-    const body = { proficiencyLevel: values.proficiencyLevel, yearsOfExperience: values.yearsOfExperience != null ? Number(values.yearsOfExperience) : undefined };
-    await run(
-      () => (editing?.skillId ? candidateService.updateSkill(editing.skillId, body) : candidateService.addSkill({ skillId: values.skillId, ...body })),
-      editing ? 'Đã cập nhật kỹ năng.' : 'Đã thêm kỹ năng vào hồ sơ.',
-      'Không thể lưu kỹ năng.',
+    const body = {
+      proficiencyLevel: values.proficiencyLevel,
+      yearsOfExperience: values.yearsOfExperience != null ? Number(values.yearsOfExperience) : undefined,
+    };
+
+    if (editing?.skillId) {
+      await run(
+        () => candidateService.updateSkill(editing.skillId!, body),
+        'Đã cập nhật kỹ năng.',
+        'Không thể lưu kỹ năng.'
+      );
+      return;
+    }
+
+    if (inputMode === 'CUSTOM' || !values.skillId) {
+      const name = (values.customSkillName || searchText || '').trim();
+      if (!name) {
+        message.warning('Vui lòng nhập tên kỹ năng.');
+        return;
+      }
+      if (ownedNames.has(name.toLowerCase())) {
+        message.warning('Kỹ năng này đã có trong hồ sơ của bạn.');
+        return;
+      }
+      await run(
+        () => candidateService.addSkill({ skillName: name, ...body }),
+        'Đã thêm kỹ năng mới vào hồ sơ.',
+        'Không thể lưu kỹ năng.'
+      );
+    } else {
+      await run(
+        () => candidateService.addSkill({ skillId: values.skillId, ...body }),
+        'Đã thêm kỹ năng vào hồ sơ.',
+        'Không thể lưu kỹ năng.'
+      );
+    }
+  };
+
+  const handlePickSuggestion = (skillName: string) => {
+    const foundInCatalog = catalog.data?.find(
+      (item) => item.skillName.trim().toLowerCase() === skillName.trim().toLowerCase()
     );
+    if (foundInCatalog) {
+      setInputMode('CATALOG');
+      form.setFieldsValue({ skillId: foundInCatalog.skillId, customSkillName: '' });
+    } else {
+      setInputMode('CUSTOM');
+      form.setFieldsValue({ customSkillName: skillName, skillId: undefined });
+    }
   };
 
   return (
@@ -276,6 +353,7 @@ const SkillsSection: React.FC<{ skills: CandidateSkillItemDto[]; onChanged: () =
         confirmLoading={saving}
         destroyOnHidden
         forceRender
+        width={560}
         footer={(_, { OkBtn, CancelBtn }) => (
           <div className="flex items-center justify-between">
             {editing?.skillId ? (
@@ -289,21 +367,113 @@ const SkillsSection: React.FC<{ skills: CandidateSkillItemDto[]; onChanged: () =
       >
         <Form form={form} layout="vertical" className="!mt-4">
           {!editing && (
-            <Form.Item name="skillId" label="Kỹ năng" rules={[{ required: true, message: 'Vui lòng chọn kỹ năng.' }]}>
-              <Select
-                showSearch
-                loading={catalog.isLoading}
-                placeholder="Tìm kỹ năng, ví dụ: React, .NET, Docker"
-                optionFilterProp="label"
-                options={(catalog.data ?? []).filter((skill) => !owned.has(skill.skillId)).map((skill) => ({ value: skill.skillId, label: skill.category ? `${skill.skillName} (${skill.category})` : skill.skillName }))}
-              />
-            </Form.Item>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-700">Hình thức nhập:</span>
+                <Radio.Group
+                  size="small"
+                  value={inputMode}
+                  onChange={(e) => {
+                    setInputMode(e.target.value);
+                    if (e.target.value === 'CUSTOM' && searchText && !form.getFieldValue('customSkillName')) {
+                      form.setFieldsValue({ customSkillName: searchText });
+                    }
+                  }}
+                >
+                  <Radio.Button value="CATALOG">Chọn từ danh mục</Radio.Button>
+                  <Radio.Button value="CUSTOM">Tự nhập kỹ năng</Radio.Button>
+                </Radio.Group>
+              </div>
+
+              {inputMode === 'CATALOG' ? (
+                <Form.Item
+                  name="skillId"
+                  label="Chọn kỹ năng từ danh mục hệ thống"
+                  extra={
+                    <span className="text-xs text-slate-500">
+                      Không tìm thấy kỹ năng của bạn?{' '}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInputMode('CUSTOM');
+                          if (searchText) form.setFieldsValue({ customSkillName: searchText });
+                        }}
+                        className="text-blue-600 hover:underline border-0 bg-transparent p-0 cursor-pointer text-xs font-medium"
+                      >
+                        Bấm để tự nhập kỹ năng mới
+                      </button>
+                    </span>
+                  }
+                  rules={[{ required: inputMode === 'CATALOG', message: 'Vui lòng chọn kỹ năng hoặc bấm tự nhập.' }]}
+                >
+                  <Select
+                    showSearch
+                    loading={catalog.isLoading}
+                    placeholder="Tìm kiếm kỹ năng (ví dụ: React, .NET, Docker...)"
+                    optionFilterProp="label"
+                    onSearch={setSearchText}
+                    options={(catalog.data ?? [])
+                      .filter((skill) => !ownedIds.has(skill.skillId))
+                      .map((skill) => ({
+                        value: skill.skillId,
+                        label: skill.category ? `${skill.skillName} (${skill.category})` : skill.skillName,
+                      }))}
+                  />
+                </Form.Item>
+              ) : (
+                <Form.Item
+                  name="customSkillName"
+                  label="Nhập tên kỹ năng (Áp dụng mọi ngành nghề: Kế toán, Sales, Marketing...)"
+                  rules={[
+                    { required: true, message: 'Vui lòng nhập tên kỹ năng.' },
+                    { max: 120, message: 'Tên kỹ năng tối đa 120 ký tự.' },
+                  ]}
+                >
+                  <Input
+                    placeholder="Ví dụ: Kế toán thuế, Bán hàng B2B, Tiếng Anh giao tiếp, Photoshop..."
+                    className="h-10"
+                    maxLength={120}
+                  />
+                </Form.Item>
+              )}
+
+              {/* Gợi ý kỹ năng đa ngành nghề */}
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-600 space-y-2">
+                <div className="font-semibold text-slate-700">Gợi ý kỹ năng đa ngành nghề (Bấm để chọn nhanh):</div>
+                <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                  {INDUSTRY_SKILL_SUGGESTIONS.map((grp) => (
+                    <div key={grp.category} className="flex flex-wrap items-center gap-1.5">
+                      <span className="font-medium text-slate-500 text-[11px] min-w-[115px]">{grp.category}:</span>
+                      {grp.skills.map((sk) => {
+                        const isOwned = ownedNames.has(sk.toLowerCase());
+                        return (
+                          <button
+                            key={sk}
+                            type="button"
+                            disabled={isOwned}
+                            onClick={() => handlePickSuggestion(sk)}
+                            className={`rounded px-1.5 py-0.5 text-[11px] border cursor-pointer transition-colors ${
+                              isOwned
+                                ? 'bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed'
+                                : 'bg-white text-slate-700 border-slate-300 hover:border-blue-500 hover:text-blue-600'
+                            }`}
+                          >
+                            {sk} {isOwned ? '(Đã có)' : ''}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
+
           <Form.Item name="proficiencyLevel" label="Mức độ" rules={[{ required: true, message: 'Vui lòng chọn mức độ.' }]}>
             <Select options={SKILL_LEVELS} />
           </Form.Item>
           <Form.Item name="yearsOfExperience" label="Số năm kinh nghiệm">
-            <InputNumber min={0} max={50} step={0.5} className="!w-full" />
+            <InputNumber min={0} max={50} step={0.5} className="!w-full" placeholder="Ví dụ: 2" />
           </Form.Item>
         </Form>
       </Modal>

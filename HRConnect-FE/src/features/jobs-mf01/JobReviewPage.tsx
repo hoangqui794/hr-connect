@@ -258,6 +258,13 @@ export const JobReviewPage: React.FC = () => {
   // Tự động chọn item khi danh sách tải xong hoặc khi có highlightParam từ thông báo
   useEffect(() => {
     if (highlightParam) {
+      if (
+        lastHandledHighlightRef.current === highlightParam ||
+        lastHandledHighlightRef.current === '__USER_DISMISSED__'
+      ) {
+        return;
+      }
+
       const q = highlightParam.toLowerCase();
       const target = jobs.find(
         (j) =>
@@ -283,9 +290,9 @@ export const JobReviewPage: React.FC = () => {
         return () => clearTimeout(timer);
       }
 
-      // Nếu tin đã chuyển sang trạng thái khác sau khi thông báo được tạo, tự động chuyển sang đúng tab của tin đó
-      if (!queue.isLoading && !allJobsQueue.isLoading && allJobsQueue.data) {
-        const targetInAll = allJobsQueue.data.find(
+      // Nếu tin chưa có trong tab hiện tại, kiểm tra xem tin có ở tab khác không
+      if (!queue.isLoading && !allJobsQueue.isLoading) {
+        const targetInAll = (allJobsQueue.data ?? []).find(
           (j) =>
             j.jobId.toLowerCase() === q ||
             j.title?.toLowerCase().includes(q) ||
@@ -309,9 +316,25 @@ export const JobReviewPage: React.FC = () => {
               : 'ALL';
 
           if (actualTab !== statusFilter) {
+            lastHandledHighlightRef.current = targetInAll.jobId;
             setSearchParams({ status: actualTab, highlight: targetInAll.jobId }, { replace: true });
             return;
+          } else {
+            // Đã ở đúng tab nhưng không khớp ID trong danh sách (lọc/phân trang), xóa highlight để tránh kẹt tab
+            lastHandledHighlightRef.current = highlightParam;
+            const next = new URLSearchParams(searchParams);
+            next.delete('highlight');
+            next.delete('jobId');
+            setSearchParams(next, { replace: true });
           }
+        } else {
+          // Không tìm thấy tin ở bất kỳ tab nào (tin đã bị xóa hoặc mã highlight không hợp lệ)
+          // Xóa highlight param khỏi URL để người dùng chuyển tab tự do
+          lastHandledHighlightRef.current = highlightParam;
+          const next = new URLSearchParams(searchParams);
+          next.delete('highlight');
+          next.delete('jobId');
+          setSearchParams(next, { replace: true });
         }
       }
     }
@@ -768,6 +791,7 @@ export const JobReviewPage: React.FC = () => {
   };
 
   const handleStatusChange = (val: StatusFilter) => {
+    lastHandledHighlightRef.current = '__USER_DISMISSED__';
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set('status', val);
@@ -779,6 +803,7 @@ export const JobReviewPage: React.FC = () => {
 
   const handleSelectJob = (jobId: string) => {
     setSelectedId(jobId);
+    lastHandledHighlightRef.current = '__USER_DISMISSED__';
     if (highlightParam) {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);

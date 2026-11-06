@@ -132,13 +132,50 @@ describe('CandidateAffiliateCvDetailPage', () => {
     });
   });
 
-  it('loads detail and usage history from the owned CV endpoints', async () => {
+  it('loads detail and usage history from the owned CV endpoints and links to application when present', async () => {
     renderPage();
 
     expect(await screen.findByText('backend.pdf')).toBeInTheDocument();
-    expect(await screen.findByText(/Senior Backend Developer/)).toBeInTheDocument();
+    const jobLink = await screen.findByRole('link', { name: /Senior Backend Developer/ });
+    expect(jobLink).toHaveAttribute('href', '/candidate/applications/application-1');
     expect(detailMock).toHaveBeenCalledWith('cv-1');
     expect(usagesMock).toHaveBeenCalledWith('cv-1', 1, 5);
+  });
+
+  it('links to submission consent when application does not exist yet', async () => {
+    usagesMock.mockResolvedValueOnce({
+      items: [{
+        submissionId: 'sub-999',
+        jobId: 'job-999',
+        jobTitle: 'Product Manager',
+        companyId: 'company-999',
+        companyName: 'Tech Corp',
+        affiliateUserId: 'affiliate-user',
+        affiliateDisplayName: 'Affiliate Minh',
+        submissionStatus: 'SUBMITTED',
+        submittedAt: '2026-10-08T00:00:00Z',
+        consentStatus: 'PENDING',
+        consentRequestedAt: '2026-10-08T00:00:00Z',
+        consentExpiresAt: null,
+        consentRespondedAt: null,
+        applicationId: null,
+        applicationStatus: null,
+        applicationCurrentStage: null,
+        aiStatus: null,
+        aiMatchScore: null,
+        aiMatchTier: null,
+        aiCompletedAt: null,
+      }],
+      page: 1,
+      pageSize: 5,
+      total: 1,
+      totalPages: 1,
+    });
+    renderPage();
+
+    expect(await screen.findByText('backend.pdf')).toBeInTheDocument();
+    const jobLink = await screen.findByRole('link', { name: /Product Manager/ });
+    expect(jobLink).toHaveAttribute('href', '/candidate/submission-consents/sub-999');
   });
 
   it('opens a fresh signed URL when Candidate clicks Tải về', async () => {

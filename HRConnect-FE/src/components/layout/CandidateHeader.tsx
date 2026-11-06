@@ -121,7 +121,7 @@ export const CandidateHeader: React.FC = () => {
         <LanguageSwitcher theme="light" size="middle" />
 
         {/* Chuông thông báo */}
-        <NotificationBell />
+        <NotificationBell variant="candidate" />
 
         <CandidateWorkspaceMenu />
       </Space>

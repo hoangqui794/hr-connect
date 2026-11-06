@@ -79,7 +79,7 @@ export const Navbar: React.FC = () => {
         <div className={`ml-auto flex min-w-0 shrink-0 items-center ${isCandidate ? 'gap-2' : 'gap-3'}`}>
           {isAuthenticated && (
             <span className="site-bell">
-              <NotificationBell className="!h-11 !w-11 !border-0 !bg-transparent" />
+              <NotificationBell className="!h-11 !w-11 !border-0 !bg-transparent" variant={isCandidate ? 'candidate' : 'default'} />
             </span>
           )}
           {isCandidate ? (
