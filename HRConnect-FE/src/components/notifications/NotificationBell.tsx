@@ -208,7 +208,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
     staleTime: 10000,
   });
 
-  const items = pageData?.items ?? [];
+  const items = useMemo(() => pageData?.items ?? [], [pageData?.items]);
   const cachedAllPage = queryClient.getQueryData<{ totalCount?: number }>(['notifications', 'list', 'all']);
   const allTotalCount = filter === 'all' ? (pageData?.totalCount ?? items.length) : (cachedAllPage?.totalCount ?? null);
 
