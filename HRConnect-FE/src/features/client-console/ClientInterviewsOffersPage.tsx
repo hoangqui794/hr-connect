@@ -64,7 +64,8 @@ export const ClientInterviewsOffersPage: React.FC = () => {
   });
 
   const page = Number(searchParams.get('page')) || 1;
-  const openId = searchParams.get('open') ?? undefined;
+  const [openId, setOpenId] = useState<string | null>(() => searchParams.get('open'));
+  const [openInterviewId, setOpenInterviewId] = useState<string | null>(() => searchParams.get('interview'));
 
   const [statusFilter, setStatusFilter] = useState<string>(() => {
     return searchParams.get('status') || defaultStatusForTab(tab);
@@ -82,14 +83,12 @@ export const ClientInterviewsOffersPage: React.FC = () => {
     }
   }, [searchParams]);
 
-  const openInterviewId = searchParams.get('interview');
+  const handleSetOpenInterviewId = (id: string | null) => {
+    setOpenInterviewId(id);
+  };
 
-  const setOpenInterviewId = (id: string | null) => {
-    const next = new URLSearchParams(searchParams);
-    next.set('tab', tab);
-    if (id) next.set('interview', id);
-    else next.delete('interview');
-    setSearchParams(next, { replace: true });
+  const setOpen = (id?: string) => {
+    setOpenId(id || null);
   };
 
   const [searchKeyword, setSearchKeyword] = useState<string>('');
@@ -130,18 +129,12 @@ export const ClientInterviewsOffersPage: React.FC = () => {
     },
   });
 
-  const setOpen = (id?: string) => {
-    const next = new URLSearchParams(searchParams);
-    next.set('tab', tab);
-    if (id) next.set('open', id);
-    else next.delete('open');
-    setSearchParams(next, { replace: true });
-  };
-
   const switchTab = (nextTab: TabKey) => {
     setTab(nextTab);
     const defStatus = defaultStatusForTab(nextTab);
     setStatusFilter(defStatus);
+    setOpenId(null);
+    setOpenInterviewId(null);
     const next = new URLSearchParams(searchParams);
     next.set('tab', nextTab);
     next.set('status', defStatus);
@@ -313,7 +306,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             className="!h-8 !rounded-lg !border-0 !bg-[#0C4A6E] hover:!bg-[#075985] text-white font-bold text-xs shadow-2xs transition-all active:scale-[0.98]"
             onClick={(e) => {
               e.stopPropagation();
-              setOpenInterviewId(r.interviewId);
+              handleSetOpenInterviewId(r.interviewId);
             }}
           >
             Chi tiết & Đánh giá
@@ -873,7 +866,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
               showSizeChanger: false,
             }}
             onRow={(r) => ({
-              onClick: () => setOpenInterviewId(r.interviewId),
+              onClick: () => handleSetOpenInterviewId(r.interviewId),
               className: 'cursor-pointer hover:bg-slate-50/80 transition-colors',
             })}
           />
@@ -921,13 +914,13 @@ export const ClientInterviewsOffersPage: React.FC = () => {
       </Surface>
 
       {/* ── Drawers ── */}
-      <ApplicationWorkbench applicationId={openId} audience="client" onClose={() => setOpen(undefined)} />
+      <ApplicationWorkbench applicationId={openId ?? undefined} audience="client" onClose={() => setOpen(undefined)} />
 
       <ClientInterviewDetailDrawer
         interviewId={openInterviewId}
-        onClose={() => setOpenInterviewId(null)}
+        onClose={() => handleSetOpenInterviewId(null)}
         onOpenApplication={(appId) => {
-          setOpenInterviewId(null);
+          handleSetOpenInterviewId(null);
           setOpen(appId);
         }}
       />
