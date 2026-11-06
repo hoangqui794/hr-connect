@@ -64,10 +64,18 @@ export const ClientInterviewsOffersPage: React.FC = () => {
 
   // Lịch phỏng vấn mặc định chỉ lấy những lịch "Đã lên lịch" (SCHEDULED)
   const defaultStatusForTab = (t: TabKey) => (t === 'interviews' ? 'SCHEDULED' : 'all');
-  const urlStatus = searchParams.get('status');
-  const [statusFilter, setStatusFilter] = useState<string>(urlStatus || defaultStatusForTab(tab));
+  const statusFilter = searchParams.get('status') || defaultStatusForTab(tab);
 
-  const [openInterviewId, setOpenInterviewId] = useState<string | null>(null);
+  const openInterviewId = searchParams.get('interview');
+
+  const setOpenInterviewId = (id: string | null) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', tab);
+    if (id) next.set('interview', id);
+    else next.delete('interview');
+    setSearchParams(next, { replace: true });
+  };
+
   const [searchKeyword, setSearchKeyword] = useState<string>('');
   const [selectedJobId, setSelectedJobId] = useState<string>('all');
 
@@ -108,41 +116,36 @@ export const ClientInterviewsOffersPage: React.FC = () => {
 
   const setOpen = (id?: string) => {
     const next = new URLSearchParams(searchParams);
+    next.set('tab', tab);
     if (id) next.set('open', id);
     else next.delete('open');
     setSearchParams(next, { replace: true });
   };
 
   const switchTab = (nextTab: TabKey) => {
-    const p = new URLSearchParams(searchParams);
-    p.set('tab', nextTab);
-    p.delete('page');
-    const newStatus = defaultStatusForTab(nextTab);
-    if (newStatus === 'all') {
-      p.delete('status');
-    } else {
-      p.set('status', newStatus);
-    }
-    setStatusFilter(newStatus);
-    setSearchParams(p);
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', nextTab);
+    next.set('status', defaultStatusForTab(nextTab));
+    next.delete('page');
+    next.delete('open');
+    next.delete('interview');
+    setSearchParams(next);
   };
 
   const handleStatusChange = (nextStatus: string) => {
-    setStatusFilter(nextStatus);
     const next = new URLSearchParams(searchParams);
-    if (nextStatus === 'all') {
-      next.delete('status');
-    } else {
-      next.set('status', nextStatus);
-    }
+    next.set('tab', tab);
+    next.set('status', nextStatus);
     next.delete('page');
     setSearchParams(next);
   };
 
   const setPage = (p: number) => {
     const next = new URLSearchParams(searchParams);
+    next.set('tab', tab);
     next.set('page', String(p));
     setSearchParams(next);
+  };
   };
 
   // Filter items locally by search keyword and job

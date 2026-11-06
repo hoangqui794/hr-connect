@@ -552,7 +552,7 @@ export const ClientOverviewPage: React.FC = () => {
               {interviews.data!.map((iv) => (
                 <div
                   key={iv.interviewId}
-                  onClick={() => navigate('/client/interviews-offers')}
+                  onClick={() => navigate(`/client/interviews-offers?tab=interviews&interview=${iv.interviewId}`)}
                   className="group flex cursor-pointer items-center gap-3.5 rounded-2xl border border-slate-100 bg-slate-50/80 p-3.5 transition-all hover:border-slate-200 hover:bg-slate-50 hover:shadow-2xs"
                 >
                   {/* Date badge */}
