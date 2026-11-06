@@ -535,7 +535,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                   <Button
                     type="primary"
                     size="small"
-                    className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98]"
+                    className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium"
                     onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
                   >
                     Xem hợp đồng
@@ -581,7 +581,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                       type="primary"
                       size="small"
                       icon={<CreditCardOutlined />}
-                      className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98]"
+                      className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium"
                       onClick={() => setShowPaymentModal(true)}
                     >
                       Nộp cọc
@@ -599,7 +599,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                   type="primary"
                   size="small"
                   icon={<CreditCardOutlined />}
-                  className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98]"
+                  className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium"
                   onClick={() => setShowPaymentModal(true)}
                 >
                   Thanh toán ngay
@@ -661,7 +661,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
               <Button
                 type="primary"
                 size="small"
-                className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium text-xs"
+                className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium text-xs"
                 onClick={() => navigate(`/candidate/applications/${appliedApp.applicationId}`)}
               >
                 Xem chi tiết đơn

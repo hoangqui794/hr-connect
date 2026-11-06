@@ -45,6 +45,8 @@ import {
 import { date } from './financeLabels';
 import { PlacementDetailDrawer } from './PlacementDetailDrawer';
 
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+
 export interface ReplacementSlotWithMeta extends ReplacementSlotDto {
   jobTitle?: string;
   companyName?: string;
@@ -321,6 +323,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
               type="primary"
               size="small"
               icon={<PlusOutlined />}
+              className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm font-semibold !h-8 px-3 transition-all active:scale-[0.98]"
               onClick={() => handleUseQuota(slot)}
             >
               Sử dụng suất
@@ -331,6 +334,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
             <Button
               size="small"
               icon={<UserOutlined />}
+              className="!h-8 px-2.5 rounded-lg border-slate-200 text-slate-700 hover:border-slate-300 font-medium"
               onClick={() => navigate(`/client/candidates?jobId=${slot.jobId}`)}
             >
               Hồ sơ
@@ -371,7 +375,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
 
 
   return (
-    <div className={`mb-8 ${className}`}>
+    <div className={`mb-8 ${FONT} ${className}`}>
       {/* Header Card */}
       <Surface padded className="mb-4 bg-gradient-to-r from-emerald-50/70 via-teal-50/40 to-white border border-emerald-100">
         <div className="flex flex-wrap items-start justify-between gap-4">

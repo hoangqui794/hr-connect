@@ -55,6 +55,8 @@ import {
   getSourcingReviewDeadlineInfo,
 } from './sourcingUtils';
 
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+
 export interface SourcingDeliveriesViewProps {
   jobId: string;
   jobTitle?: string;
@@ -322,6 +324,7 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
                   size="small"
                   icon={<CheckCircleOutlined />}
                   loading={decideMutation.isPending}
+                  className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm font-semibold !h-8 px-3 transition-all active:scale-[0.98]"
                   onClick={() => handleAcceptClick(r)}
                 >
                   Chấp nhận CV
@@ -331,6 +334,7 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
                   size="small"
                   icon={<CloseCircleOutlined />}
                   loading={decideMutation.isPending}
+                  className="!h-8 px-3 rounded-lg font-medium"
                   onClick={() => {
                     rejectForm.resetFields();
                     setRejectModalItem(r);
@@ -387,7 +391,7 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
   ];
 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${FONT}`}>
       {/* Summary progress bar */}
       {summary && (
         <Card

@@ -7,6 +7,8 @@
 import React, { useEffect } from 'react';
 import { Form, Input, Modal, Radio, Space, Typography } from 'antd';
 
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+
 export interface ReasonModalValues {
   reasonCode?: string;
   reasonText: string;
@@ -56,6 +58,7 @@ export const ReasonModal: React.FC<ReasonModalProps> = ({
       onCancel={onCancel}
       onOk={() => form.submit()}
       destroyOnClose
+      className={FONT}
     >
       <Typography.Paragraph type="secondary">{description}</Typography.Paragraph>
       <Form

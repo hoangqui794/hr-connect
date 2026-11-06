@@ -349,15 +349,33 @@ export const HrPipelinePage: React.FC<{
 
   return (
     <div>
-      <PageHero
-        eyebrow={eyebrow}
-        title={onOpenApplication ? 'Phỏng vấn & Offer' : 'Tiến độ tuyển dụng'}
-        tip={tip}
-        description={
-          description ??
-          'Client là bên phỏng vấn, gửi offer và xác nhận ứng viên đi làm. Internal HR theo dõi để hỗ trợ, trang này chỉ để xem.'
-        }
-      />
+      {onOpenApplication ? (
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="m-0 text-2xl font-black tracking-tight text-slate-900 sm:text-[26px]">
+                Phỏng Vấn & Đề Nghị Làm Việc
+              </h1>
+              <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0C4A6E] border border-sky-100">
+                Tiến độ tuyển dụng
+              </span>
+            </div>
+            <p className="m-0 mt-1 text-sm text-slate-500">
+              {description ?? 'Quản lý lịch phỏng vấn, tạo và gửi offer trực tuyến, đồng thời xác nhận kết quả tiếp nhận ứng viên.'}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <PageHero
+          eyebrow={eyebrow}
+          title="Tiến độ tuyển dụng"
+          tip={tip}
+          description={
+            description ??
+            'Client là bên phỏng vấn, gửi offer và xác nhận ứng viên đi làm. Internal HR theo dõi để hỗ trợ, trang này chỉ để xem.'
+          }
+        />
+      )}
       <Surface>
         <div className="px-5 pb-4 pt-5">
           <div

@@ -94,6 +94,7 @@ export const OFFER_STATUS: Record<string, { label: string; tone: Tone }> = {
 /** PlacementStates: the backend currently only writes STARTED. */
 export const PLACEMENT_STATUS: Record<string, { label: string; tone: Tone }> = {
   STARTED: { label: 'Đã đi làm', tone: 'success' },
+  LEFT_DURING_WARRANTY: { label: 'Nghỉ trong bảo hành', tone: 'warning' },
 };
 
 export const pick = (map: Record<string, { label: string; tone: Tone }>, code: string) =>
