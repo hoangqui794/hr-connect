@@ -233,6 +233,7 @@ export const router = createBrowserRouter([
       { path: 'affiliate-cvs', element: <AppRoutes.CandidateAffiliateCvsPage /> },
       { path: 'affiliate-cvs/:cvId', element: <AppRoutes.CandidateAffiliateCvDetailPage /> },
       { path: 'settings/email-identities', element: <AppRoutes.CandidateIdentityPage /> },
+      { path: 'notifications', element: <AppRoutes.CandidateNotificationsPage /> },
       { path: 'saved-jobs', element: <AppRoutes.CandidateSavedJobsPage /> },
       { path: 'profile', element: <AppRoutes.CandidateProfilePage /> },
       { path: 'interviews/:interviewId', element: <AppRoutes.CandidateInterviewDetailPage /> },

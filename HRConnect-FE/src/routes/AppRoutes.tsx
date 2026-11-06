@@ -52,6 +52,9 @@ const CVBuilder = React.lazy(() =>
 const CandidateProfilePage = React.lazy(() =>
   import('@/features/candidates/CandidateProfilePage').then((m: any) => ({ default: m.default || m.CandidateProfilePage }))
 );
+const CandidateNotificationsPage = React.lazy(() =>
+  import('@/features/portal/candidate/CandidateNotificationsPage').then((m) => ({ default: m.CandidateNotificationsPage }))
+);
 const CandidateSavedJobsPage = React.lazy(() =>
   import('@/features/candidates/CandidateSavedJobsPage').then((m: any) => ({ default: m.default || m.CandidateSavedJobsPage }))
 );
@@ -385,6 +388,7 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/candidate/affiliate-cvs': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/affiliate-cvs/:cvId': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/candidate/settings/email-identities': [UserRole.CANDIDATE, UserRole.ADMIN],
+  '/candidate/notifications': [UserRole.CANDIDATE, UserRole.ADMIN],
   '/affiliate/attributions': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/affiliate/profile': [UserRole.AFFILIATE, UserRole.ADMIN],
   '/jobs': [
@@ -447,6 +451,7 @@ export const AppRoutes = {
   CVBuilder,
   CandidateProfilePage,
   CandidateSavedJobsPage,
+  CandidateNotificationsPage,
   CandidateInterviewDetailPage,
   PlacementDetailPage,
   VerifyOtpPage,

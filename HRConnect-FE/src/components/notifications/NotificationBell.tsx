@@ -3,9 +3,10 @@
  * @description Enterprise Notification Bell with Popover dropdown for HR Connect consoles.
  * Features: Real backend API data source, unread badge, filter tabs (Tất cả / Chưa đọc),
  * mark single notification as read, mark all as read, and route navigation.
+ * Also supports variant="candidate" matching 100% Figma Page 23 & Page 34.
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Alert, Badge, Button, Empty, Popover, Segmented, Spin, Tooltip } from 'antd';
 import {
   BellOutlined,
@@ -24,11 +25,12 @@ import {
   SolutionOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationApi } from '@/services/api/notificationApi';
 import type { NotificationDto } from '@/types/api/notification';
 import { useAuthStore } from '@/stores/authStore';
+import { UserRole } from '@/types/roles';
 import { useNotificationSignalR } from '@/hooks/useNotificationSignalR';
 import { getNotificationRoute, portalRoute } from './notificationRoutes';
 
@@ -44,11 +46,52 @@ const formatTimeAgo = (isoString?: string | null): string => {
     if (diffSec < 60) return 'Vừa xong';
     if (diffMin < 60) return `${diffMin} phút trước`;
     if (diffHour < 24) return `${diffHour} giờ trước`;
+    if (diffDay === 1) return 'Hôm qua';
     if (diffDay < 7) return `${diffDay} ngày trước`;
     return new Date(isoString).toLocaleDateString('vi-VN');
   } catch {
     return 'Gần đây';
   }
+};
+
+export const getNotificationCategory = (item: NotificationDto): string => {
+  const normType = (item.notificationType || '').trim().toUpperCase();
+  const normEntity = (item.relatedEntityType || '').trim().toUpperCase();
+  const title = (item.title || '').toLowerCase();
+  const msg = (item.message || '').toLowerCase();
+
+  if (normEntity === 'INTERVIEW' || normType === 'INTERVIEW' || title.includes('phỏng vấn') || msg.includes('phỏng vấn')) {
+    return 'Phỏng vấn';
+  }
+  if (normEntity === 'OFFER' || normType === 'OFFER' || title.includes('offer') || title.includes('thư mời') || msg.includes('lời mời')) {
+    return 'Offer';
+  }
+  if (
+    normEntity === 'SUBMISSION' ||
+    normEntity === 'SUBMISSION_CONSENT' ||
+    normEntity === 'SUBMISSION_CONSENT_RESULT' ||
+    title.includes('giới thiệu') ||
+    msg.includes('giới thiệu')
+  ) {
+    return 'Giới thiệu';
+  }
+  if (normEntity === 'JOB_FIT' || normType === 'JOB_FIT' || title.includes('phù hợp') || title.includes('gợi ý') || msg.includes('việc làm phù hợp')) {
+    return 'Việc làm gợi ý';
+  }
+  if (normEntity === 'CV' || normEntity === 'AFFILIATE_CV' || title.includes('cv') || msg.includes('kho cv') || msg.includes('.pdf')) {
+    return 'CV';
+  }
+  if (
+    normEntity === 'APPLICATION' ||
+    normEntity === 'APPLICATION_STATUS' ||
+    normEntity === 'CANDIDATE_APPLICATION' ||
+    title.includes('ứng tuyển') ||
+    title.includes('hồ sơ') ||
+    msg.includes('ứng tuyển')
+  ) {
+    return 'Đơn ứng tuyển';
+  }
+  return 'Thông báo';
 };
 
 const renderNotificationIcon = (type?: string, entityType?: string | null) => {
@@ -114,24 +157,28 @@ const renderNotificationIcon = (type?: string, entityType?: string | null) => {
 export interface NotificationBellProps {
   className?: string;
   bellColor?: string;
+  variant?: 'default' | 'candidate';
 }
 
-export const NotificationBell: React.FC<NotificationBellProps> = ({ className, bellColor = '#475569' }) => {
+type CandidateTab = 'all' | 'unread' | 'applications' | 'matches';
+
+export const NotificationBell: React.FC<NotificationBellProps> = ({ className, bellColor = '#475569', variant }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const role = useAuthStore((s) => s.role);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated) || !!user;
 
+  const isCandidate = variant === 'candidate' || role === UserRole.CANDIDATE;
+
   // Realtime SignalR connection
   const { isConnected } = useNotificationSignalR();
 
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [candidateTab, setCandidateTab] = useState<CandidateTab>('all');
 
   // 1. Query: Số lượng thông báo chưa đọc
-  // Fallback: Khi SignalR kết nối thành công (State === Connected): tạm dừng polling định kỳ.
-  // Khi mất kết nối hoặc reconnecting: tự động kích hoạt polling định kỳ 60s làm dự phòng.
   const { data: unreadData, refetch: refetchUnreadCount } = useQuery({
     queryKey: ['notifications', 'unread-count'],
     queryFn: () => notificationApi.getUnreadCount(),
@@ -142,7 +189,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
 
   const unreadCount = unreadData?.unreadCount ?? 0;
 
-  // 2. Query: Danh sách thông báo theo filter (Tất cả / Chưa đọc)
+  // 2. Query: Danh sách thông báo theo filter
   const {
     data: pageData,
     isLoading,
@@ -150,12 +197,12 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
     error,
     refetch: refetchList,
   } = useQuery({
-    queryKey: ['notifications', 'list', filter],
+    queryKey: ['notifications', 'list', isCandidate ? 'candidate-popover' : filter],
     queryFn: () =>
       notificationApi.getNotifications({
         page: 1,
-        pageSize: 20,
-        isRead: filter === 'unread' ? false : undefined,
+        pageSize: isCandidate ? 50 : 20,
+        isRead: !isCandidate && filter === 'unread' ? false : undefined,
       }),
     enabled: isAuthenticated && open,
     staleTime: 10000,
@@ -201,7 +248,184 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
     }
   };
 
-  const popoverContent = (
+  // Filter cho Candidate view
+  const candidateFilteredItems = useMemo(() => {
+    if (!isCandidate) return items;
+    if (candidateTab === 'unread') {
+      return items.filter((item) => !item.isRead);
+    }
+    if (candidateTab === 'applications') {
+      return items.filter((item) => {
+        const cat = getNotificationCategory(item);
+        return ['Đơn ứng tuyển', 'Phỏng vấn', 'Offer', 'Giới thiệu', 'CV'].includes(cat);
+      });
+    }
+    if (candidateTab === 'matches') {
+      return items.filter((item) => {
+        const cat = getNotificationCategory(item);
+        return cat === 'Việc làm gợi ý';
+      });
+    }
+    return items;
+  }, [items, isCandidate, candidateTab]);
+
+  // ── CANDIDATE POPOVER CONTENT (Figma Trang 23 & Trang 34) ──
+  const candidatePopoverContent = (
+    <div style={{ width: 400, maxHeight: 520, display: 'flex', flexDirection: 'column' }} className="-m-3 bg-white rounded-2xl overflow-hidden font-sans">
+      {/* Header Trang 23: Thông báo & Đánh dấu tất cả đã đọc */}
+      <div className="flex items-center justify-between border-0 border-b border-solid border-slate-100 px-4 py-3 bg-white">
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-slate-900 text-[16px]">Thông báo</span>
+          {unreadCount > 0 && (
+            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-[#0C4A6E]">
+              {unreadCount} mới
+            </span>
+          )}
+        </div>
+        {unreadCount > 0 && (
+          <Button
+            type="default"
+            size="small"
+            loading={markAllReadMutation.isPending}
+            onClick={() => markAllReadMutation.mutate()}
+            className="!rounded-lg !border-slate-200 hover:!border-slate-300 text-slate-700 hover:text-slate-900 text-xs font-medium shadow-2xs"
+          >
+            Đánh dấu tất cả đã đọc
+          </Button>
+        )}
+      </div>
+
+      {/* 4 Tabs gạch chân ngang chuẩn Trang 23: Tất cả | Chưa đọc (x) | Đơn ứng tuyển | Việc làm gợi ý */}
+      <div className="flex items-center gap-5 px-4 border-0 border-b border-solid border-slate-100 bg-white overflow-x-auto">
+        {[
+          { key: 'all', label: 'Tất cả' },
+          { key: 'unread', label: unreadCount > 0 ? `Chưa đọc (${unreadCount})` : 'Chưa đọc' },
+          { key: 'applications', label: 'Đơn ứng tuyển' },
+          { key: 'matches', label: 'Việc làm gợi ý' },
+        ].map((tab) => {
+          const active = candidateTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setCandidateTab(tab.key as CandidateTab)}
+              className={`relative py-2.5 text-[13px] font-medium transition-colors border-0 bg-transparent cursor-pointer whitespace-nowrap ${
+                active ? 'text-[#0C4A6E] font-semibold' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              {tab.label}
+              {active && (
+                <span className="absolute bottom-0 inset-x-0 h-0.5 bg-[#0C4A6E] rounded-full" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Notification Content List */}
+      <div className="overflow-y-auto flex-1 max-h-[350px]" tabIndex={0} role="region" aria-label="Danh sách thông báo">
+        {isLoading ? (
+          <div className="py-12 text-center flex flex-col items-center justify-center gap-3">
+            <Spin size="default" />
+            <span className="text-xs text-slate-500">Đang tải thông báo...</span>
+          </div>
+        ) : isError ? (
+          <div className="p-4 text-center">
+            <Alert
+              type="error"
+              showIcon
+              message="Không thể tải thông báo"
+              description={error instanceof Error ? error.message : 'Đã có lỗi xảy ra khi kết nối máy chủ.'}
+              action={
+                <Button size="small" icon={<ReloadOutlined />} onClick={() => refetchList()} className="mt-2">
+                  Tải lại
+                </Button>
+              }
+            />
+          </div>
+        ) : candidateFilteredItems.length === 0 ? (
+          /* Empty State Trang 34 PDF */
+          <div className="py-12 px-6 text-center flex flex-col items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-2">
+              <BellOutlined style={{ fontSize: 18 }} />
+            </div>
+            <div className="font-semibold text-slate-800 text-sm">Chưa có thông báo</div>
+            <p className="text-xs text-slate-500 mt-1 max-w-[240px] leading-relaxed m-0">
+              Lịch phỏng vấn, offer và việc làm gợi ý sẽ xuất hiện ở đây.
+            </p>
+            <Link
+              to="/candidate/profile"
+              onClick={() => setOpen(false)}
+              className="mt-3 inline-flex items-center justify-center rounded-lg bg-[#0C4A6E] hover:bg-[#075985] text-white px-3 py-1.5 text-xs font-semibold shadow-xs transition no-underline"
+            >
+              Hoàn thiện hồ sơ
+            </Link>
+          </div>
+        ) : (
+          /* Danh sách item khớp chuẩn Trang 23 */
+          <div className="divide-y divide-slate-100">
+            {candidateFilteredItems.map((item) => {
+              const read = item.isRead;
+              const cat = getNotificationCategory(item);
+              return (
+                <div
+                  key={item.notificationId}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handleNotificationClick(item)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleNotificationClick(item);
+                    }
+                  }}
+                  className={`flex items-start gap-2.5 px-4 py-3 transition-colors cursor-pointer ${
+                    read ? 'bg-white hover:bg-slate-50/80' : 'bg-[#F0F7FF] hover:bg-[#E2F0FE]'
+                  }`}
+                >
+                  {/* Chấm tròn xanh unread chuẩn Trang 23 PDF */}
+                  <div className="w-2 shrink-0 pt-1.5 flex justify-center">
+                    {!read ? (
+                      <span className="h-2 w-2 rounded-full bg-[#0284C7] inline-block shadow-xs" />
+                    ) : (
+                      <span className="h-2 w-2 inline-block" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-[13px] font-semibold text-slate-900 leading-snug m-0 line-clamp-1">
+                      {item.title}
+                    </h4>
+                    <p className="text-[12px] text-slate-600 leading-relaxed m-0 mt-0.5 line-clamp-2">
+                      {item.message}
+                    </p>
+                    <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1 font-normal">
+                      <span className="font-medium text-slate-600">{cat}</span>
+                      <span>·</span>
+                      <span>{formatTimeAgo(item.createdAt)}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Footer link dẫn sang Trang Thông báo đầy đủ */}
+      <div className="border-0 border-t border-solid border-slate-100 bg-slate-50/70 px-4 py-2.5 text-center">
+        <Link
+          to="/candidate/notifications"
+          onClick={() => setOpen(false)}
+          className="text-xs font-semibold text-[#0C4A6E] hover:text-[#0369A1] transition inline-flex items-center gap-1 no-underline"
+        >
+          Xem tất cả thông báo <RightOutlined style={{ fontSize: 10 }} />
+        </Link>
+      </div>
+    </div>
+  );
+
+  // ── DEFAULT ENTERPRISE CONSOLE POPOVER CONTENT ──
+  const defaultPopoverContent = (
     <div style={{ width: 380, maxHeight: 520, display: 'flex', flexDirection: 'column' }} className="-m-3">
       {/* ── Header ── */}
       <div className="flex items-center justify-between border-0 border-b border-solid border-slate-100 px-4 py-3 bg-slate-50/70 rounded-t-lg">
@@ -344,13 +568,13 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
 
   return (
     <Popover
-      content={popoverContent}
+      content={isCandidate ? candidatePopoverContent : defaultPopoverContent}
       trigger="click"
       open={open}
       onOpenChange={handleOpenChange}
       placement="bottomRight"
       arrow={false}
-      overlayClassName="hrconnect-notification-popover"
+      overlayClassName={isCandidate ? 'hrconnect-candidate-notification-popover' : 'hrconnect-notification-popover'}
     >
       <Badge count={unreadCount} size="small" offset={[-2, 4]} overflowCount={99}>
         <button
@@ -366,3 +590,5 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
     </Popover>
   );
 };
+
+export default NotificationBell;
