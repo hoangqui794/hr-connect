@@ -94,7 +94,7 @@ export const ClientOverviewPage: React.FC = () => {
   const offerCount = n('OFFER_PENDING') + n('OFFER_ACCEPTED');
 
   return (
-    <div className={`${FONT} space-y-7 animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
+    <div className={`${FONT} space-y-7 max-w-full animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
       {/* ── 1. Executive Studio Hero Banner ──────────────────────────── */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0B1528] via-[#0C4A6E] to-[#0369A1] p-6 text-white shadow-[0_12px_32px_rgba(12,74,110,0.18)] sm:p-8">
         {/* Ambient background glow */}
@@ -102,7 +102,7 @@ export const ClientOverviewPage: React.FC = () => {
         <div className="pointer-events-none absolute -bottom-16 left-1/3 h-64 w-64 rounded-full bg-indigo-500/15 blur-3xl" />
 
         <div className="relative z-10 flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
-          <div className="max-w-2xl">
+          <div className="flex-1 min-w-0 max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold text-sky-200 backdrop-blur-md">
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
               <span>{dayjs().format('dddd, DD/MM/YYYY')}</span>
@@ -177,12 +177,12 @@ export const ClientOverviewPage: React.FC = () => {
 
       {/* ── 2. Action Priority Center (Trung tâm xử lý khẩn cấp) ──────── */}
       <section aria-labelledby="action-center-title">
-        <div className="mb-3.5 flex items-center justify-between">
+        <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <h2 id="action-center-title" className="m-0 text-base font-bold text-slate-900">
               Trung Tâm Xử Lý Khẩn Cấp
             </h2>
-            <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-bold text-rose-700 border border-rose-200/60">
+            <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-[11px] font-bold text-rose-700 border border-rose-200/60">
               Cần hành động
             </span>
           </div>
@@ -192,11 +192,11 @@ export const ClientOverviewPage: React.FC = () => {
         {jobs.isLoading || stagesLoading ? (
           <Skeleton active paragraph={{ rows: 2 }} />
         ) : (
-          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {/* Action Card 1: Review CVs */}
             <div
               onClick={() => navigate('/client/candidates?stage=review')}
-              className={`group flex cursor-pointer flex-col justify-between rounded-2xl border p-4.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+              className={`group flex cursor-pointer flex-col justify-between rounded-2xl border p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
                 pendingCVCount > 0
                   ? 'border-amber-200/90 bg-gradient-to-b from-amber-50/50 to-white shadow-2xs'
                   : 'border-slate-200/80 bg-white opacity-80'
@@ -208,22 +208,22 @@ export const ClientOverviewPage: React.FC = () => {
                     <InboxOutlined />
                   </span>
                   <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ${
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-bold tabular-nums ${
                       pendingCVCount > 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-500'
                     }`}
                   >
                     {pendingCVCount} hồ sơ
                   </span>
                 </div>
-                <h3 className="m-0 mt-3 text-[14px] font-bold text-slate-900 group-hover:text-[#0C4A6E] transition-colors">
-                  Duyệt hồ sơ mới nộp
+                <h3 className="m-0 mt-3.5 text-[15px] font-bold text-slate-900 group-hover:text-[#0C4A6E] transition-colors leading-snug">
+                  Duyệt hồ sơ mới
                 </h3>
-                <p className="m-0 mt-1 text-xs text-slate-500 leading-relaxed">
+                <p className="m-0 mt-1.5 text-xs text-slate-500 leading-relaxed">
                   Ứng viên vừa nộp hoặc do sourcing chuyển sang, cần xem và chọn lọc.
                 </p>
               </div>
-              <div className="mt-3.5 flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-2.5 text-xs font-bold text-[#0C4A6E]">
-                <span>Mở danh sách duyệt</span>
+              <div className="mt-4 flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-3 text-xs font-bold text-[#0C4A6E]">
+                <span>Xem danh sách</span>
                 <ArrowRightOutlined className="transition-transform group-hover:translate-x-1" />
               </div>
             </div>
@@ -231,7 +231,7 @@ export const ClientOverviewPage: React.FC = () => {
             {/* Action Card 2: Schedule Interviews */}
             <div
               onClick={() => navigate('/client/candidates?stage=shortlisted')}
-              className={`group flex cursor-pointer flex-col justify-between rounded-2xl border p-4.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+              className={`group flex cursor-pointer flex-col justify-between rounded-2xl border p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
                 shortlistedCount > 0
                   ? 'border-indigo-200/90 bg-gradient-to-b from-indigo-50/50 to-white shadow-2xs'
                   : 'border-slate-200/80 bg-white opacity-80'
@@ -243,22 +243,22 @@ export const ClientOverviewPage: React.FC = () => {
                     <CalendarOutlined />
                   </span>
                   <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ${
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-bold tabular-nums ${
                       shortlistedCount > 0 ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 text-slate-500'
                     }`}
                   >
                     {shortlistedCount} ứng viên
                   </span>
                 </div>
-                <h3 className="m-0 mt-3 text-[14px] font-bold text-slate-900 group-hover:text-[#0C4A6E] transition-colors">
+                <h3 className="m-0 mt-3.5 text-[15px] font-bold text-slate-900 group-hover:text-[#0C4A6E] transition-colors leading-snug">
                   Lên lịch phỏng vấn
                 </h3>
-                <p className="m-0 mt-1 text-xs text-slate-500 leading-relaxed">
+                <p className="m-0 mt-1.5 text-xs text-slate-500 leading-relaxed">
                   Các ứng viên đã chọn (Shortlisted) đang chờ bạn xếp lịch gặp mặt.
                 </p>
               </div>
-              <div className="mt-3.5 flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-2.5 text-xs font-bold text-[#0C4A6E]">
-                <span>Xếp lịch ngay</span>
+              <div className="mt-4 flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-3 text-xs font-bold text-[#0C4A6E]">
+                <span>Lên lịch ngay</span>
                 <ArrowRightOutlined className="transition-transform group-hover:translate-x-1" />
               </div>
             </div>
@@ -266,7 +266,7 @@ export const ClientOverviewPage: React.FC = () => {
             {/* Action Card 3: Offer & Result */}
             <div
               onClick={() => navigate('/client/candidates?stage=offer')}
-              className={`group flex cursor-pointer flex-col justify-between rounded-2xl border p-4.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+              className={`group flex cursor-pointer flex-col justify-between rounded-2xl border p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
                 offerCount > 0
                   ? 'border-emerald-200/90 bg-gradient-to-b from-emerald-50/50 to-white shadow-2xs'
                   : 'border-slate-200/80 bg-white opacity-80'
@@ -278,22 +278,22 @@ export const ClientOverviewPage: React.FC = () => {
                     <SolutionOutlined />
                   </span>
                   <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ${
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-bold tabular-nums ${
                       offerCount > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'
                     }`}
                   >
                     {offerCount} mục
                   </span>
                 </div>
-                <h3 className="m-0 mt-3 text-[14px] font-bold text-slate-900 group-hover:text-[#0C4A6E] transition-colors">
-                  Phát hành & Xác nhận Offer
+                <h3 className="m-0 mt-3.5 text-[15px] font-bold text-slate-900 group-hover:text-[#0C4A6E] transition-colors leading-snug">
+                  Phát hành Offer
                 </h3>
-                <p className="m-0 mt-1 text-xs text-slate-500 leading-relaxed">
+                <p className="m-0 mt-1.5 text-xs text-slate-500 leading-relaxed">
                   Ứng viên phỏng vấn đạt cần gửi đề nghị hoặc xác nhận ngày đi làm.
                 </p>
               </div>
-              <div className="mt-3.5 flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-2.5 text-xs font-bold text-[#0C4A6E]">
-                <span>Xem quy trình offer</span>
+              <div className="mt-4 flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-3 text-xs font-bold text-[#0C4A6E]">
+                <span>Xem offer</span>
                 <ArrowRightOutlined className="transition-transform group-hover:translate-x-1" />
               </div>
             </div>
@@ -307,7 +307,7 @@ export const ClientOverviewPage: React.FC = () => {
                   ? navigate('/client/jobs?status=DRAFT')
                   : navigate('/client/jobs')
               }
-              className={`group flex cursor-pointer flex-col justify-between rounded-2xl border p-4.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+              className={`group flex cursor-pointer flex-col justify-between rounded-2xl border p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
                 pendingAgreements > 0 || needFix > 0
                   ? 'border-rose-200/90 bg-gradient-to-b from-rose-50/50 to-white shadow-2xs'
                   : 'border-slate-200/80 bg-white opacity-80'
@@ -319,23 +319,23 @@ export const ClientOverviewPage: React.FC = () => {
                     <FileTextOutlined />
                   </span>
                   <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ${
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-bold tabular-nums ${
                       pendingAgreements > 0 || needFix > 0 ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-500'
                     }`}
                   >
                     {pendingAgreements + needFix} tin
                   </span>
                 </div>
-                <h3 className="m-0 mt-3 text-[14px] font-bold text-slate-900 group-hover:text-[#0C4A6E] transition-colors">
+                <h3 className="m-0 mt-3.5 text-[15px] font-bold text-slate-900 group-hover:text-[#0C4A6E] transition-colors leading-snug">
                   {pendingAgreements > 0 ? 'Ký thỏa thuận dịch vụ' : 'Tin nháp & hoàn thiện'}
                 </h3>
-                <p className="m-0 mt-1 text-xs text-slate-500 leading-relaxed">
+                <p className="m-0 mt-1.5 text-xs text-slate-500 leading-relaxed">
                   {pendingAgreements > 0
                     ? 'Có hợp đồng cần bạn kiểm tra và ký kết để mở tin tuyển dụng.'
                     : 'Các tin nháp hoặc tin bị yêu cầu sửa đổi cần gửi lại duyệt.'}
                 </p>
               </div>
-              <div className="mt-3.5 flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-2.5 text-xs font-bold text-[#0C4A6E]">
+              <div className="mt-4 flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-3 text-xs font-bold text-[#0C4A6E]">
                 <span>Xử lý ngay</span>
                 <ArrowRightOutlined className="transition-transform group-hover:translate-x-1" />
               </div>
@@ -349,7 +349,7 @@ export const ClientOverviewPage: React.FC = () => {
         <h2 id="kpi-title" className="sr-only">
           Chỉ số hiệu suất chính
         </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {/* KPI 1 */}
           <div
             onClick={() => navigate('/client/jobs?status=ACTIVE')}
