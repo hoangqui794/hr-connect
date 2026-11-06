@@ -145,7 +145,7 @@ public class CandidateSavedJobsTests
         };
 
         _candidateRepo.Setup(x => x.GetByUserIdAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(candidate);
-        _savedJobRepo.Setup(x => x.GetSavedJobsAsync(candidate.CandidateId, 1, 20, It.IsAny<CancellationToken>()))
+        _savedJobRepo.Setup(x => x.GetSavedJobsAsync(candidate.CandidateId, 1, 20, It.IsAny<CancellationToken>(), It.IsAny<string?>()))
             .ReturnsAsync(([savedJob], 1));
 
         var handler = new GetCandidateSavedJobsQueryHandler(_candidateRepo.Object, _savedJobRepo.Object);
@@ -156,5 +156,16 @@ public class CandidateSavedJobsTests
         result.Items[0].Job.Title.Should().Be("Frontend React Developer");
         result.Items[0].Job.CompanyName.Should().Be("Tech Corp");
         result.Items[0].Job.IsAcceptingApplications.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetCandidateSavedJobs_ShouldThrowBadRequest_WhenSortByIsInvalid()
+    {
+        var userId = Guid.NewGuid();
+        var handler = new GetCandidateSavedJobsQueryHandler(_candidateRepo.Object, _savedJobRepo.Object);
+
+        var action = () => handler.Handle(new GetCandidateSavedJobsQuery(userId, 1, 20, "INVALID_SORT"), CancellationToken.None);
+
+        await action.Should().ThrowAsync<BadRequestException>();
     }
 }

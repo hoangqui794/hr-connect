@@ -38,7 +38,8 @@ public class CandidateSavedJobRepository : ICandidateSavedJobRepository
         Guid candidateId,
         int page,
         int pageSize,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? sortBy = null)
     {
         var query = _context.CandidateSavedJobs.AsNoTracking()
             .Where(s => s.CandidateId == candidateId)
@@ -47,9 +48,30 @@ public class CandidateSavedJobRepository : ICandidateSavedJobRepository
 
         var totalCount = await query.CountAsync(cancellationToken);
 
-        var items = await query
-            .OrderByDescending(s => s.CreatedAt)
-            .ThenBy(s => s.CandidateSavedJobId)
+        var normalizedSort = sortBy?.Trim().ToUpperInvariant();
+        IOrderedQueryable<CandidateSavedJob> orderedQuery;
+
+        if (normalizedSort is "DEADLINE_ASC" or "DEADLINE")
+        {
+            var now = DateTime.UtcNow;
+            orderedQuery = query
+                .OrderBy(s =>
+                    s.Job.Status == "ACTIVE" && (s.Job.ApplicationDeadline == null || s.Job.ApplicationDeadline > now)
+                        ? 0
+                        : 1)
+                .ThenBy(s => s.Job.ApplicationDeadline == null ? 1 : 0)
+                .ThenBy(s => s.Job.ApplicationDeadline)
+                .ThenByDescending(s => s.CreatedAt)
+                .ThenBy(s => s.CandidateSavedJobId);
+        }
+        else
+        {
+            orderedQuery = query
+                .OrderByDescending(s => s.CreatedAt)
+                .ThenBy(s => s.CandidateSavedJobId);
+        }
+
+        var items = await orderedQuery
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);

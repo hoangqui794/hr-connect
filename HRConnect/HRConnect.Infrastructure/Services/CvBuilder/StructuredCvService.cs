@@ -124,7 +124,11 @@ public sealed class StructuredCvService : IStructuredCvService
     private async Task<(string Key, long Size)> RenderAndUploadAsync(
         Guid candidateId, Guid actorUserId, Guid cvId, long version, CvTemplate? template, StructuredCvContent content, CancellationToken cancellationToken)
     {
-        var avatarBytes = await LoadAvatarAsync(actorUserId, content.Presentation?.ShowAvatar == true, cancellationToken);
+        var avatarBytes = await LoadAvatarAsync(
+            actorUserId,
+            content.Presentation?.ShowAvatar == true,
+            content.Presentation?.AvatarDataUrl,
+            cancellationToken);
         var pdf = _renderer.Render(content, template?.TemplateConfig, avatarBytes);
         _validator.Validate(pdf); // same rules as an uploaded CV
         await using var stream = new MemoryStream(pdf, writable: false);
@@ -132,9 +136,28 @@ public sealed class StructuredCvService : IStructuredCvService
         return (key, pdf.LongLength);
     }
 
-    private async Task<byte[]?> LoadAvatarAsync(Guid actorUserId, bool showAvatar, CancellationToken cancellationToken)
+    private async Task<byte[]?> LoadAvatarAsync(Guid actorUserId, bool showAvatar, string? avatarDataUrl, CancellationToken cancellationToken)
     {
         if (!showAvatar) return null;
+        if (!string.IsNullOrWhiteSpace(avatarDataUrl))
+        {
+            var commaIndex = avatarDataUrl.IndexOf(',');
+            if (avatarDataUrl.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase) && commaIndex > 0)
+            {
+                try
+                {
+                    var base64 = avatarDataUrl[(commaIndex + 1)..].Trim();
+                    var bytes = Convert.FromBase64String(base64);
+                    if (bytes.Length is > 0 and <= 2 * 1024 * 1024)
+                    {
+                        return bytes;
+                    }
+                }
+                catch (FormatException)
+                {
+                }
+            }
+        }
 
         var user = await _users.GetByIdAsync(actorUserId, cancellationToken);
         var key = user?.AvatarObjectKey;

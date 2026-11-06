@@ -62,7 +62,10 @@ export interface SaveJobResponse {
   savedJobId?: string | null;
 }
 
+export type SavedJobSortBy = 'SAVED_AT_DESC' | 'DEADLINE_ASC' | 'SAVED' | 'DEADLINE';
+
 export interface SavedJobQueryParams {
   page?: number;
   pageSize?: number;
+  sortBy?: SavedJobSortBy | string;
 }

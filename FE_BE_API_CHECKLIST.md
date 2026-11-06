@@ -1,134 +1,114 @@
-# Báo cáo Rà soát & Đối chiếu API Backend – Frontend (Guest & Candidate)
+# Báo cáo Rà soát & Đối chiếu API Backend – Frontend (Guest & Candidate) & Phân loại theo MF
 
 Tài liệu này tổng hợp toàn bộ trạng thái kết nối API giữa **Backend (`HRConnect`)** và **Frontend (`HRConnect-FE`)** cho 25 màn hình Guest & Candidate theo thiết kế PDF *"HR Connect - Trang chủ Guest và Candidate.pdf"*:
-1. **Phần 1:** Các API Backend **vừa được gắn bổ sung / đồng bộ thêm vào FE** trong đợt rà soát này.
-2. **Phần 2:** Bảng tổng hợp đầy đủ các trang & tính năng Guest/Candidate **ĐÃ CÓ và ĐÃ GẮN API Backend**.
-3. **Phần 3:** Danh sách chi tiết các tính năng / nút bấm / trường dữ liệu trên FE **CHƯA CÓ API Backend** (hoặc thiếu trường trong DTO) cần đội Backend bổ sung.
+1. **Phần 1:** **Danh sách các API / Trường dữ liệu mà FE đang cần — Phân loại theo từng MF (`MF-01`, `MF-02`, `MF-04`, `SF-06 / BE-04`)** để hỏi đúng thành viên phụ trách Backend.
+2. **Phần 2:** Các API Backend **vừa được gắn bổ sung / đồng bộ thêm vào FE & BE** trong đợt rà soát này.
+3. **Phần 3:** Bảng tổng hợp đầy đủ 25 màn hình Guest/Candidate **ĐÃ CÓ và ĐÃ GẮN API Backend**.
 
 ---
 
-## Phần 1. Các API Backend vừa được gắn bổ sung vào Frontend
+## Phần 1. Danh sách API mà FE đang cần — Phân loại theo từng MF để hỏi đội Backend
 
-| # | Màn hình (PDF) | Endpoint Backend đã có | File Frontend vừa gắn | Nội dung tích hợp |
-| :--- | :--- | :--- | :--- | :--- |
-| **1** | **Hồ sơ đang đối chiếu danh tính** (Trang 31) | `GET /api/v1/candidates/me/duplicate-cases`<br/>`GET /api/v1/candidates/me/duplicate-cases/{caseId}` | - [`candidateIdentity.ts`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/types/api/mf02/candidateIdentity.ts)<br/>- [`candidateIdentityApi.ts`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/services/api/mf02/candidateIdentityApi.ts)<br/>- [`CandidateIdentityPage.tsx`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/features/portal/CandidateIdentityPage.tsx) | Bổ sung `listDuplicateCases` và `getDuplicateCaseDetail`, tự động gọi `useQuery` ở tab *"Hồ sơ đang đối chiếu"* để hiển thị danh sách case trùng thực tế từ BE (`title`, `guidance`, `status`, `evidenceTypes`, `job`), đồng bộ số lượng badge trên tab và tự động invalidate sau khi xác minh OTP. |
-| **2** | **Trình tạo CV – Chọn mẫu & Soạn thảo** (Trang 20, 24, 25) | `GET /api/v1/candidates/profile/me`<br/>`GET /api/v1/candidates/cv/{cvId}/download-url`<br/>`GET/POST/PUT /api/v1/candidates/cv/structured` | - [`CandidateCvBuilderPage.tsx`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/features/portal/candidate/cv-builder/CandidateCvBuilderPage.tsx)<br/>- [`cvBuilderApi.ts`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/services/api/cvBuilderApi.ts) | - Tự động gọi `mf04Api.getProfile()` khi tạo CV mới (`mode === 'create'`) để điền sẵn `fullName`, `headline` (`targetRole`/`currentJobTitle`), `email`, `phone`, `address`, `summary`, `skills` đúng mô tả *"Thông tin trong hồ sơ của bạn được điền sẵn vào mẫu"*.<br/>- Nút **Tải PDF** trên thanh công cụ ưu tiên lấy signed URL từ `GET /api/v1/candidates/cv/{cvId}/download-url` (PDF do BE render chuẩn ATS) trước khi fallback sang `window.print()`.<br/>- Chuẩn hóa mapping `content <-> structuredContent` trong `cvBuilderApi.ts` khớp với `StructuredCvDto.Content` của C#. |
-| **3** | **Dịch vụ tuyển dụng** (Trang 26) | `GET /api/v1/service-types?isActive=true` | - [`ServicesPage.tsx`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/features/services/ServicesPage.tsx) | Kết nối `GET /api/v1/service-types?isActive=true` để đồng bộ trạng thái hoạt động (`isActive`) của 3 gói dịch vụ (`CV_APPLICATION`, `HEADHUNT_COD`, `CV_SOURCING`) từ DB. |
-
----
-
-## Phần 2. Tổng hợp các Màn hình Guest & Candidate ĐÃ CÓ & ĐÃ GẮN API Backend
-
-| Trang PDF | Tên màn hình | Route FE | File FE chính | Endpoint Backend đang sử dụng | File Endpoint BE |
-| :---: | :--- | :--- | :--- | :--- | :--- |
-| **1, 28** | Trang chủ (Guest & Candidate) | `/` | `HomePage.tsx` | - `GET /api/v1/jobs`<br/>- `GET /api/v1/companies`<br/>- `GET /api/v1/candidates/me/saved-jobs` | `JobEndpoints.cs`<br/>`CompanyDirectoryEndpoints.cs`<br/>`CandidateSavedJobEndpoints.cs` |
-| **2, 12** | Tìm kiếm việc làm & Điểm phù hợp | `/jobs` | `JobListingPage.tsx` | - `GET /api/v1/jobs`<br/>- `POST /api/v1/candidates/me/job-matches`<br/>- `POST/DELETE /api/v1/candidates/me/saved-jobs/{jobId}` | `JobEndpoints.cs`<br/>`JobMatchEndpoints.cs`<br/>`CandidateSavedJobEndpoints.cs` |
-| **3, 13** | Chi tiết việc làm & Nộp hồ sơ ứng tuyển | `/jobs/:id` | `JobDetailPage.tsx` | - `GET /api/v1/jobs/{id}`<br/>- `GET /api/v1/candidates/me/job-matches/{jobId}`<br/>- `GET /api/v1/candidates/cv/my`<br/>- `POST /api/v1/candidates/jobs/{jobId}/apply`<br/>- `POST/DELETE /api/v1/candidates/me/saved-jobs/{jobId}` | `JobEndpoints.cs`<br/>`JobMatchEndpoints.cs`<br/>`CandidateEndpoints.cs`<br/>`CandidateSavedJobEndpoints.cs` |
-| **4, 29** | Danh sách công ty | `/companies` | `CompanyListingPage.tsx` | - `GET /api/v1/companies` | `CompanyDirectoryEndpoints.cs` |
-| **5, 30** | Chi tiết công ty | `/companies/:id` | `CompanyDetailPage.tsx` | - `GET /api/v1/companies/{companyId}`<br/>- `GET /api/v1/companies/{companyId}/jobs` | `CompanyDirectoryEndpoints.cs` |
-| **6, 23** | Đăng nhập & Quên mật khẩu | `/login`<br/>`/forgot-password`<br/>`/reset-password` | `LoginPage.tsx`<br/>`ForgotPasswordPage.tsx`<br/>`ResetPasswordPage.tsx` | - `POST /api/v1/auth/login`<br/>- `POST /api/v1/auth/google`<br/>- `POST /api/v1/auth/forgot-password`<br/>- `POST /api/v1/auth/reset-password` | `AuthEndpoints.cs` |
-| **7, 17** | Đăng ký ứng viên & Xác thực OTP | `/register`<br/>`/verify-otp` | `RegisterPage.tsx`<br/>`VerifyOtpPage.tsx` | - `POST /api/v1/auth/register`<br/>- `POST /api/v1/auth/verify-otp`<br/>- `POST /api/v1/auth/resend-otp` | `AuthEndpoints.cs` |
-| **8** | Bảng điều khiển / Đơn ứng tuyển của tôi | `/candidate/applications`<br/>`/candidate/dashboard` | `CandidateApplicationsPage.tsx`<br/>`CandidateDashboardPage.tsx` | - `GET /api/v1/candidates/applications/my`<br/>- `GET /api/v1/interviews`<br/>- `GET /api/v1/offers`<br/>- `GET /api/v1/notifications` | `CandidateEndpoints.cs`<br/>`InterviewEndpoints.cs`<br/>`OfferEndpoints.cs`<br/>`NotificationEndpoints.cs` |
-| **9, 10** | Chi tiết đơn ứng tuyển (Timeline & Rút đơn) | `/candidate/applications/:applicationId` | `CandidateApplicationDetailPage.tsx` | - `GET /api/v1/recruitment/applications/{id}`<br/>- `GET /api/v1/recruitment/applications/{id}/timeline`<br/>- `GET /api/v1/recruitment/applications/{id}/cv/download-url`<br/>- `POST /api/v1/recruitment/applications/{id}/withdraw` | `RecruitmentEndpoints.cs` |
-| **11** | Chi tiết lịch phỏng vấn | `/candidate/interviews/:interviewId` | `CandidateInterviewDetailPage.tsx`<br/>`CandidateInterviewDetailView.tsx` | - `GET /api/v1/interviews/{interviewId}`<br/>- `POST /api/v1/interviews/{interviewId}/candidate-confirm`<br/>- `GET /api/v1/recruitment/applications/{id}` | `InterviewEndpoints.cs`<br/>`RecruitmentEndpoints.cs` |
-| **12 (Offer)** | Xem & Phản hồi thư mời nhận việc (Offer) | `/candidate/offers/:offerId` | `CandidateOfferPage.tsx` | - `GET /api/v1/offers/{offerId}`<br/>- `GET /api/v1/offers/{offerId}/acceptance-impact`<br/>- `POST /api/v1/offers/{offerId}/response` | `OfferEndpoints.cs` |
-| **14** | Xác nhận lời giới thiệu (Đã đăng nhập) | `/candidate/submission-consents/:submissionId` | `CandidateSubmissionConsentPage.tsx` | - `GET /api/v1/candidates/me/submission-consents/{submissionId}`<br/>- `POST /api/v1/candidates/me/submission-consents/{submissionId}/approve`<br/>- `POST /api/v1/candidates/me/submission-consents/{submissionId}/reject` | `SubmissionConsentEndpoints.cs` |
-| **15** | Xác nhận lời giới thiệu qua Email Token (Guest) | `/submission-consent#token=...` | `PublicSubmissionConsentPage.tsx` | - `POST /api/v1/submission-consents/review`<br/>- `POST /api/v1/submission-consents/approve`<br/>- `POST /api/v1/submission-consents/reject` | `SubmissionConsentEndpoints.cs` |
-| **16** | Kho CV của tôi (Upload, Đặt CV chính, Xóa, Tải) | `/candidate/cvs` | `CandidateCvsPage.tsx` | - `GET /api/v1/candidates/cv/my`<br/>- `POST /api/v1/candidates/cv`<br/>- `PATCH /api/v1/candidates/cv/{cvId}/primary`<br/>- `DELETE /api/v1/candidates/cv/{cvId}`<br/>- `GET /api/v1/candidates/cv/{cvId}/download-url` | `CandidateEndpoints.cs` |
-| **18** | Hồ sơ cá nhân & Kỹ năng | `/candidate/profile` | `CandidateProfilePage.tsx` | - `GET /api/v1/candidates/profile/me`<br/>- `PUT /api/v1/candidates/profile/me`<br/>- `PATCH /api/v1/candidates/profile/me/visibility`<br/>- `GET/POST/PUT/DELETE /api/v1/candidates/profile/me/skills`<br/>- `POST /api/v1/users/me/avatar` | `CandidateEndpoints.cs`<br/>`CandidateSkillEndpoints.cs`<br/>`UserEndpoints.cs` |
-| **19** | Việc làm đã lưu | `/candidate/saved-jobs` | `CandidateSavedJobsPage.tsx` | - `GET /api/v1/candidates/me/saved-jobs`<br/>- `POST /api/v1/candidates/me/saved-jobs/{jobId}`<br/>- `DELETE /api/v1/candidates/me/saved-jobs/{jobId}` | `CandidateSavedJobEndpoints.cs` |
-| **20, 24, 25** | Tạo CV – Chọn mẫu, Soạn thảo & Xem trước A4 | `/candidate/cv-builder`<br/>`/candidate/cv-builder/:cvId` | `CandidateCvBuilderPage.tsx`<br/>`CvTemplateGalleryView.tsx` | - `GET /api/v1/cv-templates`<br/>- `POST /api/v1/candidates/cv/structured`<br/>- `GET /api/v1/candidates/cv/structured/{cvId}`<br/>- `PUT /api/v1/candidates/cv/structured/{cvId}`<br/>- `GET /api/v1/candidates/profile/me`<br/>- `GET /api/v1/candidates/cv/{cvId}/download-url`<br/>- `POST /api/v1/users/me/avatar` | `CvBuilderEndpoints.cs`<br/>`CandidateEndpoints.cs`<br/>`UserEndpoints.cs` |
-| **21, 32** | CV đối tác gửi kèm giới thiệu & Xem chi tiết PDF | `/candidate/affiliate-cvs`<br/>`/candidate/affiliate-cvs/:cvId` | `CandidateAffiliateCvsPage.tsx` | - `GET /api/v1/candidates/me/affiliate-cvs`<br/>- `GET /api/v1/candidates/me/affiliate-cvs/{cvId}`<br/>- `GET /api/v1/candidates/me/affiliate-cvs/{cvId}/usages`<br/>- `GET /api/v1/candidates/me/affiliate-cvs/{cvId}/download-url`<br/>- `POST /api/v1/candidates/me/affiliate-cvs/{cvId}/adopt` | `CandidateEndpoints.cs` |
-| **22, 31** | Cài đặt email đăng nhập & Hồ sơ đang đối chiếu | `/candidate/settings/email-identities` | `CandidateIdentityPage.tsx` | - `GET /api/v1/candidates/me/email-identities`<br/>- `POST /api/v1/candidates/me/email-identities/{id}/revoke`<br/>- `POST /api/v1/candidates/me/identity-claims`<br/>- `POST /api/v1/candidates/me/identity-claims/{claimId}/resend`<br/>- `POST /api/v1/candidates/me/identity-claims/{claimId}/verify`<br/>- `GET /api/v1/candidates/me/duplicate-cases` | `CandidateEndpoints.cs` |
-| **26** | Dịch vụ tuyển dụng của HR Connect | `/services` | `ServicesPage.tsx` | - `GET /api/v1/service-types?isActive=true` | `ServiceTypeEndpoints.cs` |
-| **27** | Liên hệ & Nhận tư vấn dịch vụ | `/contact` | `ContactPage.tsx`<br/>`ContactConsultationForm.tsx` | - `POST /api/v1/contact-requests` | `ContactRequestEndpoints.cs` |
+### ✅ Nhóm 1: Thuộc phạm vi **MF-01** *(Tạo, duyệt, công bố & khám phá Job — Lưu việc làm)* — **ĐÃ XỬ LÝ XONG**
+- **File BE & FE đã cập nhật:**
+  - [`CandidateSavedJobEndpoints.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Presentation/Endpoints/V1/Candidates/CandidateSavedJobEndpoints.cs)
+  - [`GetCandidateSavedJobsQuery.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Application/Features/Candidates/SavedJobs/Queries/GetCandidateSavedJobs/GetCandidateSavedJobsQuery.cs)
+  - [`ICandidateSavedJobRepository.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Application/Common/Interfaces/Repositories/ICandidateSavedJobRepository.cs) & [`CandidateSavedJobRepository.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Infrastructure/Repositories/CandidateSavedJobRepository.cs)
+  - [`CandidateSavedJobsTests.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.UnitTests/Features/Candidates/CandidateSavedJobsTests.cs)
+  - [`candidateSavedJobs.ts`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/types/api/candidateSavedJobs.ts) & [`CandidateSavedJobsPage.tsx`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/features/candidates/CandidateSavedJobsPage.tsx)
+- **Nội dung đã hoàn thành:**
+  - Đã bổ sung query param `sortBy` (`SAVED_AT_DESC` | `DEADLINE_ASC`) vào `GET /api/v1/candidates/me/saved-jobs` trên Backend (kèm kiểm tra whitelist `400 Bad Request` và sắp xếp tại DB ưu tiên việc làm đang mở sắp hết hạn ứng tuyển).
+  - Đã gắn `sortBy: 'DEADLINE_ASC'` vào `CandidateSavedJobsPage.tsx` khi ứng viên chọn sắp xếp **"Sắp hết hạn"**.
 
 ---
 
-## Phần 3. Danh sách các tính năng / trường dữ liệu trên FE CHƯA CÓ API Backend (Cần BE bổ sung)
+### 🟨 Nhóm 2: Thuộc phạm vi **MF-02** *(Tiếp nhận hồ sơ, Submission Consent, Email Identity, Đối chiếu trùng / Dedup)* — **CẦN HỎI DEV MF-02**
+- **File BE liên quan:**
+  - [`CandidateEndpoints.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Presentation/Endpoints/V1/Candidates/CandidateEndpoints.cs)
+  - [`CandidateDuplicateSelfServiceQueries.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Application/Features/CandidateDuplicates/Queries/CandidateDuplicateSelfServiceQueries.cs)
+  - [`SubmissionConsentEndpoints.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Presentation/Endpoints/V1/SubmissionConsents/SubmissionConsentEndpoints.cs)
+  - `SubmissionConsentDtos.cs`
+- **Vấn đề cần hỏi dev MF-02 (Gồm 3 mục):**
 
-Dưới đây là **7 điểm khuyết API hoặc thiếu trường DTO trên Backend** được phát hiện khi đối chiếu từng nút bấm và trường thông tin trên thiết kế PDF với source code Backend (`HRConnect`):
+  1. **[PDF Trang 31] Nút `"Đây không phải tôi"` cho ứng viên trong màn Hồ sơ đang đối chiếu (`/candidate/settings/email-identities?tab=reconciliation`):**
+     - **Hiện trạng:** MF-02 đã làm 2 API đọc `GET /api/v1/candidates/me/duplicate-cases` và `GET /api/v1/candidates/me/duplicate-cases/{caseId}`, nhưng các API xử lý (`dismiss`, `merge`) chỉ mới có cho `PLATFORM_ADMIN` (`/api/v1/admin/candidate-duplicates/...`). Chưa có API cho chính `CANDIDATE` bấm nút **"Đây không phải tôi"** khi `status = AWAITING_CANDIDATE`.
+     - **API đề xuất:** `POST /api/v1/candidates/me/duplicate-cases/{caseId:guid}/dismiss` (hoặc `/not-me`) với body `{ "reason": "Đây không phải hồ sơ của tôi" }`.
 
-### 1. Nút `"Đây không phải tôi"` trong màn Hồ sơ đang đối chiếu (PDF Trang 31)
-- **Màn hình FE:** `/candidate/settings/email-identities?tab=reconciliation` ([`CandidateIdentityPage.tsx`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/features/portal/CandidateIdentityPage.tsx))
-- **Hiện trạng BE:**
-  - BE đã có `GET /api/v1/candidates/me/duplicate-cases` và `GET /api/v1/candidates/me/duplicate-cases/{caseId}` (chỉ đọc).
-  - Các API xử lý duplicate case (`dismiss`, `merge`) hiện chỉ nằm ở `/api/v1/admin/candidate-duplicates/...` dành cho `PLATFORM_ADMIN`.
-  - **Chưa có API** để chính ứng viên bấm **"Đây không phải tôi"** nhằm từ chối hồ sơ nghi trùng ở trạng thái `AWAITING_CANDIDATE`.
-- **Xử lý tạm trên FE:** Đóng yêu cầu OTP tạm ở `sessionStorage` hoặc điều hướng sang `/contact?topic=DATA_PRIVACY` đối với duplicate case từ server.
-- **Đề xuất API BE cần thêm:**
-  - `POST /api/v1/candidates/me/duplicate-cases/{caseId:guid}/dismiss`
-  - **Body:** `{ "reason": "Ứng viên xác nhận không phải hồ sơ của mình", "concurrencyToken": "..." }`
-  - **Response:** Cập nhật trạng thái duplicate case sang `DISMISSED` (hoặc `UNDER_REVIEW` kèm cờ `candidateDenied = true` để Admin kiểm tra).
+  2. **[PDF Trang 22] Đổi Email phụ đã xác minh thành Email đăng nhập chính (`/candidate/settings/email-identities`):**
+     - **Hiện trạng:** Trong `CandidateEmailIdentityDto` đã có sẵn trường boolean `canMakePrimary`, nhưng trong `GetCandidateEmailIdentitiesQueryHandler` đang gán cứng `canMakePrimary: false` và trong `CandidateEndpoints.cs` mới chỉ có `/revoke`, chưa có endpoint `make-primary`.
+     - **API đề xuất:** `POST /api/v1/candidates/me/email-identities/{emailIdentityId:guid}/make-primary` với body `{ "concurrencyToken": "..." }`.
 
----
-
-### 2. Chuyển đổi Email phụ đã xác minh thành Email đăng nhập chính (PDF Trang 22)
-- **Màn hình FE:** `/candidate/settings/email-identities` ([`CandidateIdentityPage.tsx`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/features/portal/CandidateIdentityPage.tsx))
-- **Hiện trạng BE:**
-  - Trong `GetCandidateEmailIdentitiesQueryHandler`, trường `canMakePrimary` trong `CandidateEmailIdentityDto` luôn trả về `false`.
-  - Trong `CandidateEndpoints.cs` mới có `POST /api/v1/candidates/me/email-identities/{emailIdentityId:guid}/revoke`, **chưa có** endpoint đổi email phụ (`ALIAS` đã `VERIFIED`) thành `PRIMARY`.
-- **Đề xuất API BE cần thêm:**
-  - `POST /api/v1/candidates/me/email-identities/{emailIdentityId:guid}/make-primary`
-  - **Body:** `{ "concurrencyToken": "..." }`
+  3. **[PDF Trang 14 & 15] Bổ sung thông tin tóm tắt Job & Tên Affiliate vào DTO `SubmissionConsentReviewResponse` (`/candidate/submission-consents/:submissionId` & `/submission-consent#token=...`):**
+     - **Hiện trạng:** `GET /api/v1/candidates/me/submission-consents/{submissionId}` và `POST /api/v1/submission-consents/review` hiện chỉ trả về: `submissionId`, `jobId`, `jobTitle`, `companyName`, `candidateName`, `cvFileName`, `cvDownloadUrl`, `status`, `affiliateReuseStatus`, `expiresAt`.
+     - **Thiếu dữ liệu hiển thị trên thẻ Job của PDF Trang 14 & 15:**
+       - `affiliateDisplayName` (tên đối tác giới thiệu)
+       - `jobLocation` & `workMode` (ví dụ: `"Quận 1, TP. Hồ Chí Minh · Làm tại văn phòng"`)
+       - `salaryMin`, `salaryMax`, `currencyCode`, `salaryNegotiable` (ví dụ: `"30 – 45 triệu VND (Gross)"`)
+       - `experienceRequirement` (ví dụ: `"Yêu cầu 3+ năm .NET"`)
+     - *(Tùy chọn)* Thêm `POST /api/v1/submission-consents/report-unauthorized` cho link *"Không phải bạn? Báo cho HR Connect"* ở chân trang PDF 14–15 (hiện FE đang chuyển hướng sang `/contact?topic=DATA_PRIVACY`).
 
 ---
 
-### 3. Thiếu thông tin tóm tắt Job (`location`, `salary`, `experience`) & API báo cáo vi phạm dữ liệu trên trang Xác nhận lời giới thiệu (PDF Trang 14 & 15)
-- **Màn hình FE:**
-  - `/candidate/submission-consents/:submissionId` ([`CandidateSubmissionConsentPage.tsx`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/features/portal/CandidateSubmissionConsentPage.tsx))
-  - `/submission-consent#token=...` ([`PublicSubmissionConsentPage.tsx`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/features/portal/PublicSubmissionConsentPage.tsx))
-- **Hiện trạng BE:**
-  - DTO `SubmissionConsentReviewResponse` (`SubmissionConsentDtos.cs`) hiện chỉ trả về: `submissionId`, `jobId`, `jobTitle`, `companyName`, `candidateName`, `cvFileName`, `cvDownloadUrl`, `status`, `affiliateReuseStatus`, `expiresAt`, `respondedAt`, `decisionNote`.
-  - **Thiếu các trường hiển thị trên thẻ vị trí của PDF Trang 14–15:**
-    - `jobLocation` (ví dụ: `"Quận 1, TP. Hồ Chí Minh · Làm tại văn phòng"`)
-    - `salaryMin`, `salaryMax`, `currencyCode`, `salaryNegotiable` (ví dụ: `"30 – 45 triệu VND (Gross)"`)
-    - `experienceRequirement` (ví dụ: `"Yêu cầu 3+ năm .NET"`)
-    - `affiliateDisplayName` (tên đối tác tuyển dụng giới thiệu để hiển thị trên dòng *"một đối tác tuyển dụng trên HR Connect đã giới thiệu bạn..."*)
-  - Ngoài ra, nút/link ***"Không phải bạn? Báo cho HR Connect"*** ở chân trang PDF 14 & 15 hiện đang dẫn sang `/contact?topic=DATA_PRIVACY` vì BE chưa có endpoint report trực tiếp từ token.
-- **Đề xuất BE cần bổ sung:**
-  1. Bổ sung `jobLocation`, `workMode`, `salaryMin`, `salaryMax`, `currencyCode`, `salaryNegotiable`, `experienceRequirement`, `affiliateDisplayName` vào `SubmissionConsentReviewResponse`.
-  2. (Tùy chọn) Thêm `POST /api/v1/submission-consents/report-unauthorized` (`{ token, note }`) để tự động khóa token & tạo ticket vi phạm Nghị định 13/2023/NĐ-CP.
+### 🟩 Nhóm 3: Thuộc phạm vi **MF-04** *(Vòng đời Application, Lịch phỏng vấn, Offer, Hồ sơ cá nhân Candidate Profile)* — **CẦN HỎI DEV MF-04**
+- **File BE liên quan:**
+  - [`InterviewEndpoints.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Presentation/Endpoints/V1/Recruitment/InterviewEndpoints.cs)
+  - [`CandidateEndpoints.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Presentation/Endpoints/V1/Candidates/CandidateEndpoints.cs) (`/api/v1/candidates/profile/me`)
+- **Vấn đề cần hỏi dev MF-04 (Gồm 2 mục):**
+
+  1. **[PDF Trang 11] Ứng viên Báo bận / Đề xuất dời lịch phỏng vấn (`/candidate/interviews/:interviewId`):**
+     - **Hiện trạng:** `InterviewEndpoints.cs` mới chỉ có `POST /api/v1/interviews/{interviewId:guid}/candidate-confirm` (chỉ xác nhận tham gia `CONFIRMED`). Còn `PUT /reschedule` và `PATCH /cancel` chỉ cho phép `CLIENT_COMPANY_USER` (`interview.update`). Chưa có API cho `CANDIDATE` báo bận hoặc gửi yêu cầu xin đổi lịch phỏng vấn.
+     - **API đề xuất:** Mở rộng hoặc thêm `POST /api/v1/interviews/{interviewId:guid}/candidate-reschedule-request` với body `{ "reason": "...", "proposedTimes": ["..."], "concurrencyToken": "..." }`.
+
+  2. **[PDF Trang 18] Lưu danh sách nhiều mục Học vấn, Kinh nghiệm, Dự án, Chứng chỉ trong Hồ sơ cá nhân (`/candidate/profile`):**
+     - **Hiện trạng:** `GET/PUT /api/v1/candidates/profile/me` đã lưu đầy đủ thông tin cá nhân, 9 trường nghề nghiệp (`targetRole`, `currentLevel`, `expectedSalaryMin/Max`, `preferredLocations[]`, `preferredWorkModes[]`, ...) và bảng `skills[]` (`/candidates/profile/me/skills`). Tuy nhiên, học vấn chỉ có 1 trường chuỗi `highestEducation` và kinh nghiệm chỉ có 1 trường số `yearsOfExperience` — chưa có mảng `educations[]`, `experiences[]`, `projects[]`, `certificates[]` ở cấp Candidate Profile (các mảng này hiện chỉ lưu trong từng bản CV của CV Builder).
+     - **Câu hỏi chốt với dev MF-04:** Có cần mở rộng `GET/PUT /api/v1/candidates/profile/me` thêm JSONB/bảng con cho `educations[]`, `experiences[]`, `certificates[]` để đồng bộ với CV Builder không, hay giữ nguyên thiết kế hiện tại (Profile lưu tổng quan + Kỹ năng, còn chi tiết từng giai đoạn lưu trong CV Builder)?
 
 ---
 
-### 4. Ứng viên Báo bận / Đề xuất dời lịch phỏng vấn (PDF Trang 11)
-- **Màn hình FE:** `/candidate/interviews/:interviewId` ([`CandidateInterviewDetailView.tsx`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/features/portal/candidate/CandidateInterviewDetailView.tsx))
-- **Hiện trạng BE:**
-  - `InterviewEndpoints.cs` đã có `POST /api/v1/interviews/{interviewId:guid}/candidate-confirm` (`ConfirmInterviewAttendanceCommand` - chỉ nhận xác nhận tham gia `CONFIRMED`).
-  - Hai endpoint `PUT /api/v1/interviews/{interviewId:guid}/reschedule` và `PATCH /api/v1/interviews/{interviewId:guid}/cancel` hiện chỉ phân quyền cho `CLIENT_COMPANY_USER` (`interview.update`).
-  - **Chưa có API** cho phép `CANDIDATE` gửi phản hồi **xin dời lịch / báo không thể tham gia** kèm lý do và khung giờ đề xuất.
-- **Đề xuất API BE cần thêm:**
-  - `POST /api/v1/interviews/{interviewId:guid}/candidate-reschedule-request` (hoặc mở rộng `candidate-confirm` thành `candidate-response` nhận `response: "CONFIRMED" | "RESCHEDULE_REQUESTED" | "DECLINED"`, `reason`, `proposedTimes[]`, `concurrencyToken`).
+### ✅ Nhóm 4: Thuộc phạm vi **SF-06 / BE-04** *(Trình tạo CV có cấu trúc `CvBuilderFeatures` & SkiaSharp PDF Renderer)* — **ĐÃ XỬ LÝ XONG**
+- **File BE & Test đã cập nhật:**
+  - [`CvBuilderFeatures.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Application/Features/Candidates/CvBuilder/CvBuilderFeatures.cs)
+  - [`StructuredCvService.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Infrastructure/Services/CvBuilder/StructuredCvService.cs)
+  - [`CvBuilderTests.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.UnitTests/Features/Candidates/CvBuilderTests.cs)
+- **Nội dung đã hoàn thành:**
+  - Đã bổ sung trường `string? AvatarDataUrl = null` vào record `CvPresentation` trong `CvBuilderFeatures.cs` và cập nhật `CvBuilderHandlers.Validate()` để bảo toàn ảnh chân dung riêng của từng bản CV khi lưu/tải lại từ DB.
+  - Đã cập nhật `StructuredCvService.LoadAvatarAsync()` để giải mã trực tiếp `data:image/...;base64,...` từ `AvatarDataUrl` của bản CV và truyền `avatarBytes` sang `CvPdfRenderer.Render()` vẽ lên file PDF xuất bản (fallback sang ảnh tài khoản trên R2 nếu `AvatarDataUrl` trống).
 
 ---
 
-### 5. Lưu trữ ảnh chân dung riêng cho từng bản CV (`avatarUrl` / `avatarDataUrl`) & Render ảnh vào file PDF trên Server (PDF Trang 20 & 25)
-- **Màn hình FE:** `/candidate/cv-builder` & `/candidate/cv-builder/:cvId` ([`CandidateCvBuilderPage.tsx`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/features/portal/candidate/cv-builder/CandidateCvBuilderPage.tsx))
-- **Hiện trạng BE:**
-  - Trong [`CvBuilderFeatures.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Application/Features/Candidates/CvBuilder/CvBuilderFeatures.cs) (dòng 24–30), record `CvPresentation` chỉ có:
-    `AccentColor`, `Density`, `FontFamily`, `Layout`, `VisibleSections`, `ShowAvatar` (boolean).
-  - Khi `CvBuilderHandlers.Validate()` chạy trên BE, nó tạo lại `new CvPresentation(accent, density, font, layout, sections, value.ShowAvatar)` nên mọi trường mở rộng như `avatarDataUrl` hoặc `avatarUrl` riêng của từng CV bị lược bỏ khi lưu vào cột `structured_content`.
-  - Hiện tại khi người dùng bấm khung **"Thêm ảnh"** trên tờ CV A4, FE vừa lưu `avatarDataUrl` vào nháp trình duyệt vừa gọi `POST /api/v1/users/me/avatar` để cập nhật avatar tài khoản chung.
-- **Đề xuất BE cần bổ sung:**
-  - Thêm trường `string? AvatarUrl = null` vào record `CvPresentation` trong `CvBuilderFeatures.cs` (cho phép lưu URL ảnh hoặc DataURL nhỏ), đồng thời cập nhật `StructuredCvService` (QuestPDF renderer) để vẽ ảnh ứng viên lên góc trái Header khi `ShowAvatar == true`.
+## Phần 2. Các API Backend vừa được nâng cấp & gắn bổ sung vào Frontend
+
+| # | Màn hình (PDF) | Module | Endpoint Backend | File đã cập nhật | Nội dung tích hợp |
+| :--- | :--- | :---: | :--- | :--- | :--- |
+| **1** | **Việc làm đã lưu** (Trang 19) | **MF-01** | `GET /api/v1/candidates/me/saved-jobs?sortBy=SAVED_AT_DESC\|DEADLINE_ASC` | - [`CandidateSavedJobEndpoints.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Presentation/Endpoints/V1/Candidates/CandidateSavedJobEndpoints.cs)<br/>- [`GetCandidateSavedJobsQuery.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Application/Features/Candidates/SavedJobs/Queries/GetCandidateSavedJobs/GetCandidateSavedJobsQuery.cs)<br/>- [`CandidateSavedJobRepository.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Infrastructure/Repositories/CandidateSavedJobRepository.cs)<br/>- [`CandidateSavedJobsPage.tsx`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/features/candidates/CandidateSavedJobsPage.tsx) | Bổ sung `sortBy=SAVED_AT_DESC\|DEADLINE_ASC` trên cả Backend và Frontend để sắp xếp việc đã lưu theo hạn nộp ngay tại Database. |
+| **2** | **Trình tạo CV – Lưu ảnh chân dung & Render PDF** (Trang 20, 24, 25) | **SF-06 / BE-04** | `POST/PUT/GET /api/v1/candidates/cv/structured`<br/>`GET /api/v1/candidates/profile/me`<br/>`GET /api/v1/candidates/cv/{cvId}/download-url` | - [`CvBuilderFeatures.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Application/Features/Candidates/CvBuilder/CvBuilderFeatures.cs)<br/>- [`StructuredCvService.cs`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect/HRConnect.Infrastructure/Services/CvBuilder/StructuredCvService.cs)<br/>- [`CandidateCvBuilderPage.tsx`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/features/portal/candidate/cv-builder/CandidateCvBuilderPage.tsx)<br/>- [`cvBuilderApi.ts`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/services/api/cvBuilderApi.ts) | - Bổ sung `AvatarDataUrl` vào `CvPresentation` trên BE và decode base64 trong `StructuredCvService` để vẽ ảnh lên file PDF xuất bản.<br/>- Tự động gọi `mf04Api.getProfile()` điền sẵn hồ sơ vào CV mới.<br/>- Nút **Tải PDF** ưu tiên lấy signed URL từ `GET /api/v1/candidates/cv/{cvId}/download-url`. |
+| **3** | **Hồ sơ đang đối chiếu danh tính** (Trang 31) | **MF-02** | `GET /api/v1/candidates/me/duplicate-cases`<br/>`GET /api/v1/candidates/me/duplicate-cases/{caseId}` | - [`candidateIdentity.ts`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/types/api/mf02/candidateIdentity.ts)<br/>- [`candidateIdentityApi.ts`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/services/api/mf02/candidateIdentityApi.ts)<br/>- [`CandidateIdentityPage.tsx`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/features/portal/CandidateIdentityPage.tsx) | Bổ sung `listDuplicateCases` và `getDuplicateCaseDetail`, tự động gọi `useQuery` ở tab *"Hồ sơ đang đối chiếu"* để hiển thị danh sách case trùng thực tế từ BE (`title`, `guidance`, `status`, `evidenceTypes`, `job`). |
+| **4** | **Dịch vụ tuyển dụng** (Trang 26) | **MF-01** | `GET /api/v1/service-types?isActive=true` | - [`ServicesPage.tsx`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/features/services/ServicesPage.tsx) | Kết nối `GET /api/v1/service-types?isActive=true` để đồng bộ trạng thái hoạt động (`isActive`) của 3 gói dịch vụ (`CV_APPLICATION`, `HEADHUNT_COD`, `CV_SOURCING`). |
 
 ---
 
-### 6. Danh sách nhiều mục Học vấn, Kinh nghiệm, Dự án, Chứng chỉ trong Hồ sơ cá nhân (`/candidate/profile` - PDF Trang 18)
-- **Màn hình FE:** `/candidate/profile` ([`CandidateProfilePage.tsx`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/features/portal/CandidateProfilePage.tsx))
-- **Hiện trạng BE:**
-  - `GET/PUT /api/v1/candidates/profile/me` (`CandidateEndpoints.cs`) lưu bảng `candidates` với các trường đơn: `fullName`, `phone`, `dateOfBirth`, `gender`, `currentAddress`, `highestEducation` (1 chuỗi text), `yearsOfExperience` (số năm), `summary`, 9 trường nghề nghiệp (`currentJobTitle`, `currentLevel`, `targetRole`, `expectedSalaryMin/Max`, `availableFrom`, `preferredLocations[]`, `preferredWorkModes[]`) và bảng `candidate_skills` (`/api/v1/candidates/profile/me/skills`).
-  - **Chưa có bảng / API riêng** ở cấp Candidate Profile để lưu danh sách nhiều mục `educations[]`, `experiences[]`, `projects[]`, `certificates[]` độc lập với từng bản CV (hiện các danh sách nhiều mục này chỉ nằm trong `structured_content` của từng CV trong CV Builder).
-- **Đề xuất BE (nếu muốn đồng bộ 2 chiều giữa Hồ sơ cá nhân và Trình tạo CV):**
-  - Bổ sung JSONB hoặc bảng con `candidate_educations`, `candidate_experiences`, `candidate_certificates` trong `GET/PUT /api/v1/candidates/profile/me`.
+## Phần 3. Tổng hợp 25 Màn hình Guest & Candidate ĐÃ CÓ & ĐÃ GẮN API Backend
 
----
-
-### 7. Tham số sắp xếp (`sortBy`) trên API Việc làm đã lưu (`GET /api/v1/candidates/me/saved-jobs` - PDF Trang 19)
-- **Màn hình FE:** `/candidate/saved-jobs` ([`CandidateSavedJobsPage.tsx`](file:///c:/Users/truon/Documents/DA/hr-connect/HRConnect-FE/src/features/portal/CandidateSavedJobsPage.tsx))
-- **Hiện trạng BE:**
-  - `CandidateSavedJobEndpoints.cs` (`GET /api/v1/candidates/me/saved-jobs`) hiện chỉ nhận 2 query params `page` và `pageSize` (mặc định sắp xếp theo `savedAt DESC`).
-  - Trên giao diện PDF Trang 19 có bộ lọc sắp xếp **"Mới lưu gần đây"** và **"Sắp hết hạn ứng tuyển"**. Hiện FE đang lấy `pageSize = 100` và thực hiện sort theo `applicationDeadline` ở phía Client.
-- **Đề xuất BE cần bổ sung:**
-  - Thêm query param `[FromQuery] string? sortBy = "SAVED_AT_DESC"` (hỗ trợ `"SAVED_AT_DESC"` và `"DEADLINE_ASC"`) vào `GetSavedJobsQuery`.
+| Trang PDF | Tên màn hình | MF sở hữu | Route FE | File FE chính | Endpoint Backend đang sử dụng |
+| :---: | :--- | :---: | :--- | :--- | :--- |
+| **1, 28** | Trang chủ (Guest & Candidate) | **MF-01** | `/` | `HomePage.tsx` | - `GET /api/v1/jobs`<br/>- `GET /api/v1/companies`<br/>- `GET /api/v1/candidates/me/saved-jobs` |
+| **2, 12** | Tìm kiếm việc làm & Điểm phù hợp | **MF-01 / MF-03** | `/jobs` | `JobListingPage.tsx` | - `GET /api/v1/jobs`<br/>- `POST /api/v1/candidates/me/job-matches`<br/>- `POST/DELETE /api/v1/candidates/me/saved-jobs/{jobId}` |
+| **3, 13** | Chi tiết việc làm & Nộp hồ sơ ứng tuyển | **MF-01 / MF-02 / MF-03** | `/jobs/:id` | `JobDetailPage.tsx` | - `GET /api/v1/jobs/{id}`<br/>- `GET /api/v1/candidates/me/job-matches/{jobId}`<br/>- `GET /api/v1/candidates/cv/my`<br/>- `POST /api/v1/candidates/jobs/{jobId}/apply`<br/>- `POST/DELETE /api/v1/candidates/me/saved-jobs/{jobId}` |
+| **4, 29** | Danh sách công ty | **BE-02 / MF-01** | `/companies` | `CompanyListingPage.tsx` | - `GET /api/v1/companies` |
+| **5, 30** | Chi tiết công ty | **BE-02 / MF-01** | `/companies/:id` | `CompanyDetailPage.tsx` | - `GET /api/v1/companies/{companyId}`<br/>- `GET /api/v1/companies/{companyId}/jobs` |
+| **6, 23** | Đăng nhập & Quên mật khẩu | **Auth** | `/login`<br/>`/forgot-password`<br/>`/reset-password` | `LoginPage.tsx`<br/>`ForgotPasswordPage.tsx`<br/>`ResetPasswordPage.tsx` | - `POST /api/v1/auth/login`<br/>- `POST /api/v1/auth/google`<br/>- `POST /api/v1/auth/forgot-password`<br/>- `POST /api/v1/auth/reset-password` |
+| **7, 17** | Đăng ký ứng viên & Xác thực OTP | **Auth** | `/register`<br/>`/verify-otp` | `RegisterPage.tsx`<br/>`VerifyOtpPage.tsx` | - `POST /api/v1/auth/register`<br/>- `POST /api/v1/auth/verify-otp`<br/>- `POST /api/v1/auth/resend-otp` |
+| **8** | Bảng điều khiển / Đơn ứng tuyển của tôi | **MF-02 / MF-03 / MF-04** | `/candidate/applications`<br/>`/candidate/dashboard` | `CandidateApplicationsPage.tsx`<br/>`CandidateDashboardPage.tsx` | - `GET /api/v1/candidates/applications/my`<br/>- `GET /api/v1/interviews`<br/>- `GET /api/v1/offers`<br/>- `GET /api/v1/notifications` |
+| **9, 10** | Chi tiết đơn ứng tuyển (Timeline & Rút đơn) | **MF-04** | `/candidate/applications/:applicationId` | `CandidateApplicationDetailPage.tsx` | - `GET /api/v1/recruitment/applications/{id}`<br/>- `GET /api/v1/recruitment/applications/{id}/timeline`<br/>- `GET /api/v1/recruitment/applications/{id}/cv/download-url`<br/>- `POST /api/v1/recruitment/applications/{id}/withdraw` |
+| **11** | Chi tiết lịch phỏng vấn | **MF-04** | `/candidate/interviews/:interviewId` | `CandidateInterviewDetailPage.tsx`<br/>`CandidateInterviewDetailView.tsx` | - `GET /api/v1/interviews/{interviewId}`<br/>- `POST /api/v1/interviews/{interviewId}/candidate-confirm`<br/>- `GET /api/v1/recruitment/applications/{id}` |
+| **12 (Offer)** | Xem & Phản hồi thư mời nhận việc (Offer) | **MF-04** | `/candidate/offers/:offerId` | `CandidateOfferPage.tsx` | - `GET /api/v1/offers/{offerId}`<br/>- `GET /api/v1/offers/{offerId}/acceptance-impact`<br/>- `POST /api/v1/offers/{offerId}/response` |
+| **14** | Xác nhận lời giới thiệu (Đã đăng nhập) | **MF-02** | `/candidate/submission-consents/:submissionId` | `CandidateSubmissionConsentPage.tsx` | - `GET /api/v1/candidates/me/submission-consents/{submissionId}`<br/>- `POST /api/v1/candidates/me/submission-consents/{submissionId}/approve`<br/>- `POST /api/v1/candidates/me/submission-consents/{submissionId}/reject` |
+| **15** | Xác nhận lời giới thiệu qua Email Token (Guest) | **MF-02** | `/submission-consent#token=...` | `PublicSubmissionConsentPage.tsx` | - `POST /api/v1/submission-consents/review`<br/>- `POST /api/v1/submission-consents/approve`<br/>- `POST /api/v1/submission-consents/reject` |
+| **16** | Kho CV của tôi (Upload, Đặt CV chính, Xóa, Tải) | **MF-02** | `/candidate/cvs` | `CandidateCvsPage.tsx` | - `GET /api/v1/candidates/cv/my`<br/>- `POST /api/v1/candidates/cv`<br/>- `PATCH /api/v1/candidates/cv/{cvId}/primary`<br/>- `DELETE /api/v1/candidates/cv/{cvId}`<br/>- `GET /api/v1/candidates/cv/{cvId}/download-url` |
+| **18** | Hồ sơ cá nhân & Kỹ năng | **MF-04** | `/candidate/profile` | `CandidateProfilePage.tsx` | - `GET /api/v1/candidates/profile/me`<br/>- `PUT /api/v1/candidates/profile/me`<br/>- `PATCH /api/v1/candidates/profile/me/visibility`<br/>- `GET/POST/PUT/DELETE /api/v1/candidates/profile/me/skills`<br/>- `POST /api/v1/users/me/avatar` |
+| **19** | Việc làm đã lưu | **MF-01** | `/candidate/saved-jobs` | `CandidateSavedJobsPage.tsx` | - `GET /api/v1/candidates/me/saved-jobs?sortBy=SAVED_AT_DESC\|DEADLINE_ASC`<br/>- `POST /api/v1/candidates/me/saved-jobs/{jobId}`<br/>- `DELETE /api/v1/candidates/me/saved-jobs/{jobId}` |
+| **20, 24, 25** | Tạo CV – Chọn mẫu, Soạn thảo & Xem trước A4 | **SF-06 (BE-04)** | `/candidate/cv-builder`<br/>`/candidate/cv-builder/:cvId` | `CandidateCvBuilderPage.tsx`<br/>`CvTemplateGalleryView.tsx` | - `GET /api/v1/cv-templates`<br/>- `POST /api/v1/candidates/cv/structured`<br/>- `GET /api/v1/candidates/cv/structured/{cvId}`<br/>- `PUT /api/v1/candidates/cv/structured/{cvId}`<br/>- `GET /api/v1/candidates/profile/me`<br/>- `GET /api/v1/candidates/cv/{cvId}/download-url` |
+| **21, 32** | CV đối tác gửi kèm giới thiệu & Xem chi tiết PDF | **MF-02** | `/candidate/affiliate-cvs`<br/>`/candidate/affiliate-cvs/:cvId` | `CandidateAffiliateCvsPage.tsx` | - `GET /api/v1/candidates/me/affiliate-cvs`<br/>- `GET /api/v1/candidates/me/affiliate-cvs/{cvId}`<br/>- `GET /api/v1/candidates/me/affiliate-cvs/{cvId}/usages`<br/>- `GET /api/v1/candidates/me/affiliate-cvs/{cvId}/download-url`<br/>- `POST /api/v1/candidates/me/affiliate-cvs/{cvId}/adopt` |
+| **22, 31** | Cài đặt email đăng nhập & Hồ sơ đang đối chiếu | **MF-02** | `/candidate/settings/email-identities` | `CandidateIdentityPage.tsx` | - `GET /api/v1/candidates/me/email-identities`<br/>- `POST /api/v1/candidates/me/email-identities/{id}/revoke`<br/>- `POST /api/v1/candidates/me/identity-claims`<br/>- `POST /api/v1/candidates/me/identity-claims/{claimId}/resend`<br/>- `POST /api/v1/candidates/me/identity-claims/{claimId}/verify`<br/>- `GET /api/v1/candidates/me/duplicate-cases` |
+| **26** | Dịch vụ tuyển dụng của HR Connect | **MF-01** | `/services` | `ServicesPage.tsx` | - `GET /api/v1/service-types?isActive=true` |
+| **27** | Liên hệ & Nhận tư vấn dịch vụ | **SF-05 (BE-04)** | `/contact` | `ContactPage.tsx`<br/>`ContactConsultationForm.tsx` | - `POST /api/v1/contact-requests` |

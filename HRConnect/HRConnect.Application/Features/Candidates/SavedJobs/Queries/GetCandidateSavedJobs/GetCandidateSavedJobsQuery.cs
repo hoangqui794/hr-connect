@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,10 +15,19 @@ namespace HRConnect.Application.Features.Candidates.SavedJobs.Queries.GetCandida
 public sealed record GetCandidateSavedJobsQuery(
     Guid UserId,
     int Page = 1,
-    int PageSize = 20) : IRequest<SavedJobPageDto>;
+    int PageSize = 20,
+    string? SortBy = null) : IRequest<SavedJobPageDto>;
 
 public sealed class GetCandidateSavedJobsQueryHandler : IRequestHandler<GetCandidateSavedJobsQuery, SavedJobPageDto>
 {
+    private static readonly HashSet<string> AllowedSorts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "SAVED",
+        "SAVED_AT_DESC",
+        "DEADLINE",
+        "DEADLINE_ASC"
+    };
+
     private readonly ICandidateRepository _candidateRepository;
     private readonly ICandidateSavedJobRepository _savedJobRepository;
     private readonly ICompanyLogoUrlResolver? _logoUrlResolver;
@@ -34,6 +44,15 @@ public sealed class GetCandidateSavedJobsQueryHandler : IRequestHandler<GetCandi
 
     public async Task<SavedJobPageDto> Handle(GetCandidateSavedJobsQuery request, CancellationToken cancellationToken)
     {
+        var normalizedSort = string.IsNullOrWhiteSpace(request.SortBy)
+            ? "SAVED_AT_DESC"
+            : request.SortBy.Trim().ToUpperInvariant();
+
+        if (!AllowedSorts.Contains(normalizedSort))
+        {
+            throw new BadRequestException("Tham số sắp xếp không hợp lệ. Chỉ chấp nhận SAVED_AT_DESC hoặc DEADLINE_ASC.");
+        }
+
         var candidate = await _candidateRepository.GetByUserIdAsync(request.UserId, cancellationToken);
         if (candidate == null)
             throw new NotFoundException("Không tìm thấy thông tin hồ sơ ứng viên tương ứng với tài khoản.");
@@ -42,7 +61,7 @@ public sealed class GetCandidateSavedJobsQueryHandler : IRequestHandler<GetCandi
         var pageSize = Math.Clamp(request.PageSize, 1, 100);
 
         var (items, totalCount) = await _savedJobRepository.GetSavedJobsAsync(
-            candidate.CandidateId, page, pageSize, cancellationToken);
+            candidate.CandidateId, page, pageSize, cancellationToken, normalizedSort);
 
         var dtoList = items.Select(s => new SavedJobDto(
             s.CandidateSavedJobId,

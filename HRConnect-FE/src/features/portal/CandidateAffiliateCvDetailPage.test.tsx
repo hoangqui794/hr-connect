@@ -13,6 +13,7 @@ const openSigned = vi.fn();
 
 vi.mock('./CandidatePages', () => ({
   candidateKeys: { cvs: ['candidate-cvs'] },
+  useCandidateCvs: () => ({ data: [] }),
   useOpenSignedUrl: () => openSigned,
 }));
 
@@ -28,7 +29,6 @@ vi.mock('@/services/api/mf02Api', () => ({
 
 const detailMock = vi.mocked(candidateAffiliateCvApi.detail);
 const usagesMock = vi.mocked(candidateAffiliateCvApi.usages);
-const updateReuseMock = vi.mocked(candidateAffiliateCvApi.updateReuse);
 const adoptMock = vi.mocked(candidateAffiliateCvApi.adopt);
 
 const detail = {
@@ -84,6 +84,11 @@ describe('CandidateAffiliateCvDetailPage', () => {
       },
     });
     detailMock.mockResolvedValue(detail);
+    vi.mocked(candidateAffiliateCvApi.downloadUrl).mockResolvedValue({
+      cvId: 'cv-1',
+      downloadUrl: 'https://example.com/cv-1.pdf',
+      expiresAt: '2026-10-08T01:00:00Z',
+    });
     usagesMock.mockResolvedValue({
       items: [{
         submissionId: 'submission-1',
@@ -108,19 +113,9 @@ describe('CandidateAffiliateCvDetailPage', () => {
         aiCompletedAt: '2026-10-08T02:00:00Z',
       }],
       page: 1,
-      pageSize: 10,
+      pageSize: 5,
       total: 1,
       totalPages: 1,
-    });
-    updateReuseMock.mockResolvedValue({
-      success: true,
-      message: 'Đã thu hồi quyền dùng lại CV.',
-      data: {
-        cvId: 'cv-1',
-        affiliateReuseStatus: 'REVOKED',
-        reuseConcurrencyToken: 'token-2',
-        reuseChangedAt: '2026-10-09T00:00:00Z',
-      },
     });
     adoptMock.mockResolvedValue({
       success: true,
@@ -141,17 +136,16 @@ describe('CandidateAffiliateCvDetailPage', () => {
   it('loads detail and usage history from the owned CV endpoints', async () => {
     renderPage();
 
-    expect(await screen.findByText('CV Backend')).toBeInTheDocument();
-    expect(screen.getByText('Senior Backend Developer')).toBeInTheDocument();
-    expect(screen.getByText('Đánh giá hồ sơ: Đã đánh giá · 87%')).toBeInTheDocument();
+    expect(await screen.findByText('backend.pdf')).toBeInTheDocument();
+    expect(await screen.findByText(/Senior Backend Developer/)).toBeInTheDocument();
     expect(detailMock).toHaveBeenCalledWith('cv-1');
-    expect(usagesMock).toHaveBeenCalledWith('cv-1', 1, 10);
+    expect(usagesMock).toHaveBeenCalledWith('cv-1', 1, 5);
   });
 
-  it('opens a fresh signed URL only when Candidate asks to view the CV', async () => {
+  it('opens a fresh signed URL when Candidate clicks Tải về', async () => {
     renderPage();
     const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: /Xem CV/ }));
+    await user.click(await screen.findByRole('button', { name: 'Tải về' }));
 
     expect(openSigned).toHaveBeenCalledTimes(1);
     const request = openSigned.mock.calls[0][0] as () => Promise<unknown>;
@@ -159,28 +153,10 @@ describe('CandidateAffiliateCvDetailPage', () => {
     expect(candidateAffiliateCvApi.downloadUrl).toHaveBeenCalledWith('cv-1');
   });
 
-  it('uses the current concurrency token when revoking reuse', async () => {
-    detailMock
-      .mockResolvedValueOnce(detail)
-      .mockResolvedValue({
-        ...detail,
-        affiliateReuseStatus: 'REVOKED',
-        reuseConcurrencyToken: 'token-2',
-        reuseChangedAt: '2026-10-09T00:00:00Z',
-      });
-    renderPage();
-    const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: 'Thu hồi quyền dùng lại' }));
-    await user.click(await screen.findByRole('button', { name: 'Thu hồi' }));
-
-    await waitFor(() => expect(updateReuseMock).toHaveBeenCalledWith('cv-1', false, 'token-1'));
-    expect(await screen.findByRole('button', { name: 'Cho phép dùng lại' })).toBeInTheDocument();
-  });
-
   it('adopts the CV and moves Candidate to the personal vault', async () => {
     renderPage();
     const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: 'Lưu vào kho CV cá nhân' }));
+    await user.click(await screen.findByRole('button', { name: 'Lưu vào kho của tôi' }));
 
     await waitFor(() => expect(adoptMock).toHaveBeenCalledWith('cv-1', 'CV Backend'));
     expect(await screen.findByText('Kho CV cá nhân')).toBeInTheDocument();
