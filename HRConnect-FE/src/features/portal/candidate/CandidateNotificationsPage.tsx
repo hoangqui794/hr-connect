@@ -1,25 +1,27 @@
 /**
  * @file CandidateNotificationsPage.tsx
- * @description Trang Thông báo dành riêng cho Ứng viên (Candidate), thiết kế chuẩn 100% theo
- * Figma Trang 23 & Trang 34 (HR Connect - Trang chủ Guest và Candidate.pdf).
+ * @description Trang Thông báo dành riêng cho Ứng viên (Candidate), thiết kế chuẩn theo
+ * hệ thống giao diện Candidate (Figma Trang 23 & Trang 34).
  * Hỗ trợ 4 bộ lọc: Tất cả, Chưa đọc, Đơn ứng tuyển, Việc làm gợi ý; đánh dấu đã đọc; SignalR realtime.
  */
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Alert, Button, Spin } from 'antd';
-import {
-  BellOutlined,
-  CheckOutlined,
-  ReloadOutlined,
-} from '@ant-design/icons';
+import { Alert, Button, Skeleton } from 'antd';
+import { CheckOutlined, ReloadOutlined, RightOutlined } from '@ant-design/icons';
 import { notificationApi } from '@/services/api/notificationApi';
 import type { NotificationDto } from '@/types/api/notification';
 import { useAuthStore } from '@/stores/authStore';
 import { getNotificationRoute } from '@/components/notifications/notificationRoutes';
-import { getNotificationCategory } from '@/components/notifications/NotificationBell';
+import {
+  getCandidateCategoryVisual,
+  getNotificationCategory,
+} from '@/components/notifications/NotificationBell';
 
 type CandidateTab = 'all' | 'unread' | 'applications' | 'matches';
+
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+const CARD = 'rounded-xl border border-solid border-[#E5E7EB] bg-white overflow-hidden shadow-[0_1px_2px_rgba(15,23,42,0.03)]';
 
 const formatTimeAgo = (isoString?: string | null): string => {
   if (!isoString) return '';
@@ -121,147 +123,166 @@ export const CandidateNotificationsPage: React.FC = () => {
     return true;
   });
 
+  const tabs: { key: CandidateTab; label: string }[] = [
+    { key: 'all', label: 'Tất cả' },
+    { key: 'unread', label: unreadCount > 0 ? `Chưa đọc (${unreadCount})` : 'Chưa đọc' },
+    { key: 'applications', label: 'Đơn ứng tuyển' },
+    { key: 'matches', label: 'Việc làm gợi ý' },
+  ];
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] py-8 sm:py-10">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6">
-        {/* Main Card Container khớp 100% Trang 23 PDF */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white shadow-sm overflow-hidden">
-          {/* Header Trang 23: Thông báo & Đánh dấu tất cả đã đọc */}
-          <div className="flex items-center justify-between px-6 pt-6 pb-4">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 m-0">
-              Thông báo
-            </h1>
-            <Button
-              size="middle"
-              loading={markAllReadMutation.isPending}
-              disabled={unreadCount === 0 || markAllReadMutation.isPending}
-              icon={<CheckOutlined />}
-              onClick={() => markAllReadMutation.mutate()}
-              className="!rounded-lg !border-slate-200 hover:!border-slate-300 text-slate-700 hover:text-slate-900 text-xs font-medium shadow-2xs"
-            >
-              Đánh dấu tất cả đã đọc
-            </Button>
-          </div>
-
-          {/* 4 Tabs gạch chân ngang khớp Trang 23: Tất cả | Chưa đọc (x) | Đơn ứng tuyển | Việc làm gợi ý */}
-          <div className="flex items-center gap-7 px-6 border-b border-slate-200/80 bg-white">
-            {[
-              { key: 'all', label: 'Tất cả' },
-              { key: 'unread', label: unreadCount > 0 ? `Chưa đọc (${unreadCount})` : 'Chưa đọc' },
-              { key: 'applications', label: 'Đơn ứng tuyển' },
-              { key: 'matches', label: 'Việc làm gợi ý' },
-            ].map((tab) => {
-              const active = activeTab === tab.key;
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setActiveTab(tab.key as CandidateTab)}
-                  className={`relative py-3 text-[14px] font-medium transition-colors border-0 bg-transparent cursor-pointer whitespace-nowrap ${
-                    active ? 'text-[#0C4A6E] font-semibold' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {tab.label}
-                  {active && (
-                    <span className="absolute bottom-0 inset-x-0 h-0.5 bg-[#0C4A6E] rounded-full" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Content Area */}
-          <div>
-            {isLoading ? (
-              <div className="py-20 text-center flex flex-col items-center justify-center gap-3">
-                <Spin size="large" />
-                <span className="text-sm text-slate-500">Đang tải thông báo...</span>
-              </div>
-            ) : isError ? (
-              <div className="p-6 text-center">
-                <Alert
-                  type="error"
-                  showIcon
-                  message="Không thể tải danh sách thông báo"
-                  description={error instanceof Error ? error.message : 'Đã có lỗi xảy ra khi kết nối máy chủ.'}
-                  action={
-                    <Button size="small" icon={<ReloadOutlined />} onClick={() => refetch()} className="mt-2">
-                      Tải lại
-                    </Button>
-                  }
-                />
-              </div>
-            ) : filteredItems.length === 0 ? (
-              /* Empty State khớp chuẩn Trang 34 PDF: Thông báo trống */
-              <div className="py-16 px-6 text-center flex flex-col items-center justify-center">
-                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
-                  <BellOutlined style={{ fontSize: 22 }} />
-                </div>
-                <div className="font-semibold text-slate-800 text-base">Chưa có thông báo</div>
-                <p className="text-sm text-slate-500 mt-1 max-w-[320px] leading-relaxed m-0">
-                  Lịch phỏng vấn, offer và việc làm gợi ý sẽ xuất hiện ở đây.
-                </p>
-                <Link
-                  to="/candidate/profile"
-                  className="mt-4 inline-flex items-center justify-center rounded-lg bg-[#0C4A6E] hover:bg-[#075985] text-white px-4 py-2 text-xs font-semibold shadow-xs transition no-underline"
-                >
-                  Hoàn thiện hồ sơ
-                </Link>
-              </div>
-            ) : (
-              /* Danh sách item khớp chuẩn Trang 23 PDF */
-              <div className="divide-y divide-slate-100">
-                {filteredItems.map((item) => {
-                  const read = item.isRead;
-                  const cat = getNotificationCategory(item);
-                  return (
-                    <div
-                      key={item.notificationId}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => handleNotificationClick(item)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handleNotificationClick(item);
-                        }
-                      }}
-                      className={`flex items-start gap-3.5 px-6 py-4 transition-colors cursor-pointer ${
-                        read
-                          ? 'bg-white hover:bg-slate-50/80'
-                          : 'bg-[#F0F7FF] hover:bg-[#E2F0FE]'
-                      }`}
-                    >
-                      {/* Dấu chấm xanh unread chuẩn Trang 23 PDF */}
-                      <div className="w-2.5 shrink-0 pt-1.5 flex justify-center">
-                        {!read ? (
-                          <span className="h-2 w-2 rounded-full bg-[#0284C7] inline-block shadow-xs" />
-                        ) : (
-                          <span className="h-2 w-2 inline-block" />
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <h2 className="text-[14px] font-semibold text-slate-900 leading-snug m-0">
-                          {item.title}
-                        </h2>
-                        <p className="text-[13px] text-slate-600 leading-relaxed m-0 mt-1">
-                          {item.message}
-                        </p>
-                        <div className="text-[12px] text-slate-400 mt-1.5 flex items-center gap-1.5 font-normal">
-                          <span className="font-medium text-slate-600">{cat}</span>
-                          <span>·</span>
-                          <span>{formatTimeAgo(item.createdAt)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+    <div
+      className={`${FONT} mx-auto w-full max-w-[780px] py-2 text-[14px] text-[#1F2937] [line-height:normal] animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}
+    >
+      {/* Header Trang 23: Tiêu đề & nút Đánh dấu tất cả đã đọc nằm trực tiếp trên nền #F7F8FA */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <h1 className="m-0 text-[22px] font-bold tracking-tight text-[#111827]">
+            Thông báo
+          </h1>
+          {unreadCount > 0 && (
+            <span className="rounded-full bg-[#E0F2FE] px-2.5 py-0.5 text-[12px] font-semibold text-[#0369A1]">
+              {unreadCount} mới
+            </span>
+          )}
         </div>
+        <button
+          type="button"
+          disabled={unreadCount === 0 || markAllReadMutation.isPending}
+          onClick={() => markAllReadMutation.mutate()}
+          className={`${FONT} inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-solid border-[#D1D5DB] bg-white px-3.5 text-[13px] font-medium text-[#1F2937] transition-all duration-200 hover:bg-[#F9FAFB] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`}
+        >
+          <CheckOutlined style={{ fontSize: 12 }} />
+          <span>Đánh dấu tất cả đã đọc</span>
+        </button>
       </div>
+
+      {/* 4 Tabs gạch chân ngang chuẩn Trang 23: Tất cả | Chưa đọc (x) | Đơn ứng tuyển | Việc làm gợi ý */}
+      <div className="mt-4 mb-4 flex items-center gap-6 overflow-x-auto border-0 border-b border-solid border-[#E5E7EB] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {tabs.map((tab) => {
+          const active = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
+              className={`${FONT} relative cursor-pointer border-0 bg-transparent pb-2.5 pt-1 text-[14px] whitespace-nowrap transition-colors ${
+                active
+                  ? 'font-semibold text-[#0369A1]'
+                  : 'font-normal text-[#4B5563] hover:text-[#111827]'
+              }`}
+            >
+              {tab.label}
+              {active && (
+                <span className="absolute inset-x-0 bottom-0 h-[2px] bg-[#0369A1] rounded-full" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Khung danh sách thông báo */}
+      {isLoading ? (
+        <div className={`${CARD} p-5`}>
+          <Skeleton active paragraph={{ rows: 6 }} />
+        </div>
+      ) : isError ? (
+        <div className={`${CARD} p-6 text-center`}>
+          <Alert
+            type="error"
+            showIcon
+            message="Không thể tải danh sách thông báo"
+            description={error instanceof Error ? error.message : 'Đã có lỗi xảy ra khi kết nối máy chủ.'}
+            action={
+              <Button size="small" icon={<ReloadOutlined />} onClick={() => refetch()} className="mt-2">
+                Tải lại
+              </Button>
+            }
+          />
+        </div>
+      ) : filteredItems.length === 0 ? (
+        /* Empty State khớp chuẩn Trang 34 PDF: Thông báo trống */
+        <div className={`${CARD} px-6 py-12 text-center`}>
+          <div className="mx-auto mb-3.5 flex h-11 w-11 items-center justify-center rounded-xl bg-[#E0F2FE]">
+            <span className="h-2 w-2 rounded-full bg-[#0369A1]" />
+          </div>
+          <div className="text-[15px] font-bold text-[#111827]">Chưa có thông báo</div>
+          <p className="mx-auto mb-0 mt-1.5 max-w-[300px] text-[13px] leading-relaxed text-[#4B5563]">
+            Lịch phỏng vấn, offer và việc làm gợi ý sẽ xuất hiện ở đây.
+          </p>
+          <Link
+            to="/candidate/profile"
+            className="mt-4 inline-flex h-9 items-center justify-center rounded-md bg-[#0C4A6E] px-4 text-[13px] font-semibold text-white no-underline transition-colors hover:bg-[#075985]"
+          >
+            Hoàn thiện hồ sơ
+          </Link>
+        </div>
+      ) : (
+        /* Danh sách item trực quan, có icon phân loại, nhãn màu và nút Xem chi tiết */
+        <div className={CARD}>
+          {filteredItems.map((item) => {
+            const read = item.isRead;
+            const cat = getNotificationCategory(item);
+            const visual = getCandidateCategoryVisual(cat);
+            const hasRoute = Boolean(getNotificationRoute(item, role));
+            return (
+              <div
+                key={item.notificationId}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleNotificationClick(item)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleNotificationClick(item);
+                  }
+                }}
+                className={`group flex items-start gap-3.5 border-0 border-b border-solid border-[#F1F5F9] px-5 py-4 transition-colors duration-150 last:border-b-0 cursor-pointer ${
+                  read
+                    ? 'bg-white hover:bg-[#F8FAFC]'
+                    : 'bg-[#F0F9FF]/85 hover:bg-[#E0F2FE]/70'
+                }`}
+              >
+                {/* Icon phân loại trực quan */}
+                <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-solid ${visual.iconBg}`}>
+                  {visual.icon}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <h2 className={`m-0 text-[14.5px] leading-snug ${read ? 'font-semibold text-[#1F2937]' : 'font-bold text-[#111827]'}`}>
+                      {item.title}
+                    </h2>
+                    {!read && (
+                      <span
+                        aria-label="Chưa đọc"
+                        className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#0284C7]"
+                      />
+                    )}
+                  </div>
+                  <p className="m-0 mt-1 text-[13px] leading-relaxed text-[#4B5563]">
+                    {item.message}
+                  </p>
+                  <div className="mt-2 flex items-center justify-between text-[12px]">
+                    <div className="flex items-center gap-1.5 text-[#6B7280]">
+                      <span className={`inline-flex items-center rounded border border-solid px-1.5 py-0.5 text-[11px] font-semibold leading-none ${visual.badge}`}>
+                        {cat}
+                      </span>
+                      <span>·</span>
+                      <span>{formatTimeAgo(item.createdAt)}</span>
+                    </div>
+                    {hasRoute && (
+                      <span className="font-semibold text-[#0369A1] group-hover:text-[#075985] inline-flex items-center gap-1 text-[12.5px]">
+                        Xem chi tiết <RightOutlined style={{ fontSize: 10 }} />
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

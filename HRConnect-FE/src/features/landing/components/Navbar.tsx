@@ -52,7 +52,7 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <header className="bg-[#0C4A6E] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[14px] text-white [line-height:normal] [&_button]:[font-family:inherit]">
+    <header className="sticky top-0 z-40 bg-[#0C4A6E] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[14px] text-white shadow-[0_1px_3px_rgba(15,23,42,0.12)] [line-height:normal] [&_button]:[font-family:inherit]">
       <div className="mx-auto flex h-16 w-full max-w-[1520px] items-center gap-6 px-4 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-5 lg:gap-7">
           <Link to="/" className="flex shrink-0 items-center gap-2 whitespace-nowrap text-[18px] font-bold text-white no-underline hover:text-white">

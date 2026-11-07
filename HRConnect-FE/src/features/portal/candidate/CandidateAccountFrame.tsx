@@ -63,7 +63,7 @@ export const CandidateAccountFrame: React.FC<{ children: React.ReactNode }> = ({
       {/* Desktop left sidebar */}
       <nav
         aria-label="Tài khoản"
-        className="hidden w-[238.3px] shrink-0 rounded-lg border border-solid border-[#E5E7EB] bg-white p-2 shadow-[0_1px_2px_rgba(15,23,42,0.03)] lg:block"
+        className="hidden w-[238.3px] shrink-0 rounded-lg border border-solid border-[#E5E7EB] bg-white p-2 shadow-[0_1px_2px_rgba(15,23,42,0.03)] lg:sticky lg:top-[84px] lg:block"
       >
         {items.map((item) => {
           const current = isCurrent(item.to);

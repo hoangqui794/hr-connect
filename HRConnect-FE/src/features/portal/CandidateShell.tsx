@@ -90,7 +90,7 @@ export const CandidateShell: React.FC = () => {
   const isCvBuilder = location.pathname.startsWith('/candidate/cv-builder');
   // Pages rebuilt from the 03/11 mockup bring their own frame and use its page width.
   const usesAccountFrame =
-    ['/candidate/applications', '/candidate/cvs', '/candidate/affiliate-cvs', '/candidate/profile', '/candidate/saved-jobs', '/candidate/settings/email-identities'].includes(location.pathname) ||
+    ['/candidate/applications', '/candidate/cvs', '/candidate/affiliate-cvs', '/candidate/profile', '/candidate/saved-jobs', '/candidate/settings/email-identities', '/candidate/notifications'].includes(location.pathname) ||
     /^\/candidate\/applications\/[^/]+(\/offers\/[^/]+|\/interviews\/[^/]+)?$/.test(location.pathname) ||
     /^\/candidate\/interviews\/[^/]+$/.test(location.pathname) ||
     /^\/candidate\/submission-consents\/[^/]+$/.test(location.pathname) ||
