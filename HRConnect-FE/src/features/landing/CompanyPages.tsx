@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Pagination, Skeleton } from 'antd';
+import { DownOutlined, UpOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { companyDirectoryApi } from '@/services/api/companyDirectoryApi';
 import { getApiErrorMessage } from '@/services/apiClient';
@@ -115,6 +116,44 @@ export const CompaniesPage: React.FC = () => {
   );
 };
 
+const CompanyAboutCard: React.FC<{ description: string }> = ({ description }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const trimmed = description.trim();
+  const lineCount = trimmed.split('\n').length;
+  const isLong = trimmed.length > 280 || lineCount > 5;
+
+  return (
+    <aside aria-labelledby="co-about" className="min-w-0 flex-[1_1_300px] self-start rounded-lg border border-solid border-gray-200 bg-white p-5">
+      <h2 id="co-about" className="m-0 mb-2.5 text-[15px] font-bold text-gray-900">Giới thiệu công ty</h2>
+      <div className="relative">
+        <div
+          className={`whitespace-pre-line text-[14px] leading-relaxed text-gray-700 transition-all duration-200 ${
+            !isExpanded && isLong ? 'max-h-[220px] overflow-hidden' : ''
+          }`}
+        >
+          {trimmed}
+        </div>
+        {!isExpanded && isLong && (
+          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white via-white/85 to-transparent" />
+        )}
+      </div>
+      {isLong && (
+        <button
+          type="button"
+          onClick={() => setIsExpanded((prev) => !prev)}
+          className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-sky-700 hover:text-sky-900 border-0 bg-transparent p-0 cursor-pointer transition-colors"
+        >
+          {isExpanded ? (
+            <>Thu gọn <UpOutlined className="text-[11px]" /></>
+          ) : (
+            <>Xem thêm giới thiệu <DownOutlined className="text-[11px]" /></>
+          )}
+        </button>
+      )}
+    </aside>
+  );
+};
+
 export const CompanyDetailPage: React.FC = () => {
   const { companyId = '' } = useParams();
   const { isAuthenticated, role } = useAuthStore();
@@ -187,12 +226,7 @@ export const CompanyDetailPage: React.FC = () => {
                   </div>
                 )}
               </section>
-              {company.description && (
-                <aside aria-labelledby="co-about" className="min-w-0 flex-[1_1_300px] rounded-lg border border-solid border-gray-200 bg-white p-5">
-                  <h2 id="co-about" className="m-0 mb-2 text-[15px] font-bold text-gray-900">Giới thiệu công ty</h2>
-                  <p className="m-0 whitespace-pre-line leading-relaxed text-gray-700">{company.description}</p>
-                </aside>
-              )}
+              {company.description && <CompanyAboutCard description={company.description} />}
             </div>
           </div>
         )}
