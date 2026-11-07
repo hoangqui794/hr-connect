@@ -286,6 +286,10 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
             if (scheduledInterview == null)
             {
                 actions.Add("SCHEDULE_INTERVIEW");
+                if (latestInterview?.Status is InterviewStates.NoShow or InterviewStates.Cancelled)
+                {
+                    actions.Add("REJECT");
+                }
             }
             else
             {

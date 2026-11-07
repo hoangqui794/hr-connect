@@ -275,6 +275,72 @@ public sealed class UpdateApplicationScreeningStatusCommandHandlerTests
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Theory]
+    [InlineData("CV_APPLICATION", InterviewStates.NoShow)]
+    [InlineData("HEADHUNT_COD", InterviewStates.NoShow)]
+    [InlineData("CV_SOURCING", InterviewStates.Cancelled)]
+    public async Task Handle_WhenCompanyRejectsAfterInterviewNoShowOrCancelled_ShouldTransitionToRejected(
+        string serviceTypeCode,
+        string interviewStatus)
+    {
+        var companyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var application = SetupApplication(companyId, ApplicationStates.Interview, serviceTypeCode);
+        application.Interviews.Add(new Interview
+        {
+            InterviewId = Guid.NewGuid(),
+            ApplicationId = application.ApplicationId,
+            InterviewRound = 1,
+            Status = interviewStatus,
+            ScheduledAt = DateTime.UtcNow.AddDays(-1),
+            CreatedAt = DateTime.UtcNow.AddDays(-2)
+        });
+        SetupActiveCompanyUser(userId, companyId);
+
+        var response = await CreateHandler().Handle(Command(
+            application,
+            ApplicationStates.Rejected,
+            "Ứng viên vắng mặt phỏng vấn không báo trước.",
+            userId,
+            ScreeningActor.ClientCompany,
+            ApplicationReasonCodes.CandidateUnreachable), CancellationToken.None);
+
+        response.Data.PreviousStatus.Should().Be(ApplicationStates.Interview);
+        response.Data.CurrentStatus.Should().Be(ApplicationStates.Rejected);
+        application.Status.Should().Be(ApplicationStates.Rejected);
+        application.StatusReasonCode.Should().Be(ApplicationReasonCodes.CandidateUnreachable);
+    }
+
+    [Fact]
+    public async Task Handle_WhenCompanyRejectsInterviewApplicationWhileInterviewStillScheduled_ShouldThrowBadRequest()
+    {
+        var companyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var application = SetupApplication(companyId, ApplicationStates.Interview, "HEADHUNT_COD");
+        application.Interviews.Add(new Interview
+        {
+            InterviewId = Guid.NewGuid(),
+            ApplicationId = application.ApplicationId,
+            InterviewRound = 1,
+            Status = InterviewStates.Scheduled,
+            ScheduledAt = DateTime.UtcNow.AddHours(2),
+            CreatedAt = DateTime.UtcNow
+        });
+        SetupActiveCompanyUser(userId, companyId);
+
+        var act = () => CreateHandler().Handle(Command(
+            application,
+            ApplicationStates.Rejected,
+            "Loại",
+            userId,
+            ScreeningActor.ClientCompany,
+            ApplicationReasonCodes.CandidateUnreachable), CancellationToken.None);
+
+        await act.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*đang có lịch phỏng vấn chờ diễn ra*");
+        application.Status.Should().Be(ApplicationStates.Interview);
+    }
+
     private static UpdateApplicationScreeningStatusCommand Command(
         HRConnect.Domain.Entities.Application application,
         string targetStatus,
