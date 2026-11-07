@@ -1,12 +1,12 @@
 ---
-title: Warranty (MF-05)
+title: State Machine — Warranty (MF-05 HEADHUNT_COD)
 ---
 stateDiagram-v2
   direction LR
-  [*] --> ACTIVE : placement started (HEADHUNT_COD)
-  ACTIVE --> CLAIMED : Client reports resignation
-  CLAIMED --> ACTIVE : HR rejects claim
-  CLAIMED --> VOIDED : HR confirms resignation
-  ACTIVE --> PASSED : warranty period ends (worker)
+  [*] --> ACTIVE : Placement started (HEADHUNT_COD)
+  ACTIVE --> PASSED : Warranty period ends (worker)
+  ACTIVE --> CLAIMED : Client reports early resignation
+  CLAIMED --> ACTIVE : Internal HR rejects claim
+  CLAIMED --> VOIDED : Internal HR confirms resignation
   PASSED --> [*]
   VOIDED --> [*]

@@ -1,0 +1,20 @@
+@startuml sm-sourcing-delivery
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam state {
+  BackgroundColor #EFF6FF
+  BorderColor #1D4ED8
+  FontColor #0F172A
+}
+title State Machine — SourcingDelivery (MF-03 CV_SOURCING)
+left to right direction
+[*] --> DELIVERED : HR delivers CV to Client
+DELIVERED --> ACCEPTED : Client accepts CV
+DELIVERED --> AUTO_ACCEPTED : Review window expired (worker)
+DELIVERED --> REJECTED : Client rejects (reason code)
+REJECTED --> ACCEPTED : HR overrules OTHER reason
+REJECTED --> REPLACED : HR replaces with backup CV
+ACCEPTED --> [*]
+AUTO_ACCEPTED --> [*]
+REPLACED --> [*]
+@enduml

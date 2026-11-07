@@ -1,13 +1,13 @@
 ---
-title: Dispute (SF-04)
+title: State Machine — Attribution / Duplicate Dispute (SF-04)
 ---
 stateDiagram-v2
   direction LR
   [*] --> OPEN : Affiliate raises dispute
   OPEN --> UNDER_REVIEW : Admin starts review
   OPEN --> WITHDRAWN : Affiliate withdraws
-  UNDER_REVIEW --> UPHELD : Admin upholds, attribution transferred
-  UNDER_REVIEW --> REJECTED : Admin rejects
+  UNDER_REVIEW --> UPHELD : Admin upholds (transfer attribution)
+  UNDER_REVIEW --> REJECTED : Admin rejects claim
   UPHELD --> [*]
   REJECTED --> [*]
   WITHDRAWN --> [*]

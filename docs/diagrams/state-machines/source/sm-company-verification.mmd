@@ -1,11 +1,11 @@
 ---
-title: Company verification (SF-01)
+title: State Machine — Company Verification (SF-01)
 ---
 stateDiagram-v2
   direction LR
-  [*] --> PENDING : company registered
-  PENDING --> UNDER_REVIEW : verification request submitted
-  UNDER_REVIEW --> VERIFIED : Admin approves
-  UNDER_REVIEW --> REJECTED : Admin rejects (note)
-  REJECTED --> UNDER_REVIEW : Client resubmits
+  [*] --> PENDING : Company registered
+  PENDING --> UNDER_REVIEW : Verification docs submitted
+  UNDER_REVIEW --> VERIFIED : Platform Admin approves
+  UNDER_REVIEW --> REJECTED : Platform Admin rejects (note)
+  REJECTED --> UNDER_REVIEW : Client updates & resubmits
   VERIFIED --> [*]

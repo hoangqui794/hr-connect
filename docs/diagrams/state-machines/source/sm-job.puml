@@ -1,0 +1,28 @@
+@startuml sm-job
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam state {
+  BackgroundColor #EFF6FF
+  BorderColor #1D4ED8
+  FontColor #0F172A
+}
+title State Machine — Job Lifecycle (MF-01)
+left to right direction
+[*] --> DRAFT : Client creates job
+DRAFT --> PENDING_REVIEW : Client submits
+PENDING_REVIEW --> REJECTED : HR rejects (reason)
+REJECTED --> PENDING_REVIEW : Client edits & resubmits
+PENDING_REVIEW --> PENDING_PAYMENT : HR approves CV_APPLICATION (STANDARD)
+PENDING_REVIEW --> ACTIVE : HR approves CV_APPLICATION (FREE)
+PENDING_REVIEW --> PENDING_AGREEMENT : HR sends agreement (HEADHUNT / SOURCING)
+PENDING_AGREEMENT --> ACTIVE : Signed PDF uploaded & HR approves (HEADHUNT)
+PENDING_AGREEMENT --> PENDING_PAYMENT : HR approves CV_SOURCING (deposit required)
+PENDING_AGREEMENT --> REJECTED : HR rejects (terms not agreed)
+PENDING_PAYMENT --> ACTIVE : VNPay / Admin records fee or deposit
+ACTIVE --> PAUSED : Client pauses
+PAUSED --> ACTIVE : Client resumes
+ACTIVE --> CLOSED : Filled / expired / closed
+CLOSED --> ACTIVE : Reopened for replacement
+PAUSED --> CLOSED : Client closes
+CLOSED --> [*]
+@enduml

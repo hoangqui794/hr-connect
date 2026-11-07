@@ -1,0 +1,22 @@
+@startuml sm-offer
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam state {
+  BackgroundColor #EFF6FF
+  BorderColor #1D4ED8
+  FontColor #0F172A
+}
+title State Machine — Offer (MF-04)
+left to right direction
+[*] --> DRAFT : Client creates draft
+DRAFT --> DRAFT : Client edits draft
+DRAFT --> SENT : Client sends (salary checked)
+SENT --> ACCEPTED : Candidate accepts
+SENT --> DECLINED : Candidate declines
+SENT --> WITHDRAWN : Client withdraws (reason)
+SENT --> EXPIRED : Offer expiry worker
+ACCEPTED --> [*]
+DECLINED --> [*]
+WITHDRAWN --> [*]
+EXPIRED --> [*]
+@enduml

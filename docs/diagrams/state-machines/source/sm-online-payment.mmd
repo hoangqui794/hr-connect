@@ -1,16 +1,16 @@
 ---
-title: Online payment – VNPay (MF-05)
+title: State Machine — OnlinePayment / VNPay (MF-05)
 ---
 stateDiagram-v2
   direction LR
   [*] --> PENDING : Client clicks Pay with VNPay
-  PENDING --> PENDING : same fee clicked again in time (session reused)
-  PENDING --> FAILED : session expired before callback
-  PENDING --> PROCESSING : signed IPN / return claims the payment
-  PROCESSING --> FAILED : VNPay reports cancelled or failed
-  PROCESSING --> SUCCEEDED : fee recorded as PAID (VNPAY reference)
-  PROCESSING --> NEEDS_REVIEW : money received but fee no longer payable
-  PROCESSING --> PENDING : unexpected error, claim released for IPN retry
+  PENDING --> PENDING : Reused active session
+  PENDING --> PROCESSING : Signed IPN / Return claims payment
+  PENDING --> FAILED : Session expired before callback
+  PROCESSING --> PENDING : Error, claim released for retry
+  PROCESSING --> SUCCEEDED : Fee recorded as PAID (VNPay ref)
+  PROCESSING --> NEEDS_REVIEW : Paid at gateway but fee already settled
+  PROCESSING --> FAILED : VNPay reports cancelled / failed
   SUCCEEDED --> [*]
-  FAILED --> [*]
   NEEDS_REVIEW --> [*] : Platform Admin resolves
+  FAILED --> [*]

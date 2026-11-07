@@ -1,31 +1,33 @@
 ---
-title: MF-02 · Candidate applies to a job (self-service)
+title: sd MF-02a: Candidate Self-Application to Direct Job
 ---
 sequenceDiagram
   autonumber
   actor CA as Candidate
-  participant FE as Web App
+  participant FE as Web App (HRConnect-FE)
   participant API as JobEndpoints
   participant H as ApplyJobCommandHandler
-  participant R2 as Cloudflare R2
+  participant R2 as Cloudflare R2 Storage
   participant DB as PostgreSQL
   participant AI as Mf03ScoringTrigger
-  CA->>FE: Open a CV_APPLICATION job, choose a stored CV or upload a PDF
-  FE->>API: POST /api/v1/jobs/{id}/apply (JWT)
+  CA->>FE: Open active CV_APPLICATION job & select/upload CV
+  FE->>API: POST /api/v1/jobs/{id}/apply (ApplyJobCommand)
   API->>H: Send(ApplyJobCommand)
-  H->>DB: Check account ACTIVE, job ACTIVE, deadline, package limit, can_submit for Candidate
-  alt job not open, limit reached or role not allowed
-  API-->>FE: 400 / 403 with reason
-  else allowed
-  H->>R2: Upload new CV PDF (or use the selected CV)
-  H->>DB: Same candidate already applied to this job?
-  end
-  alt duplicate
-  H->>R2: Delete the newly uploaded CV (compensation)
-  H->>DB: Submission BLOCKED_DUPLICATE, AuditLog
-  API-->>FE: 409 already applied
-  else first application
-  H->>DB: Submission ACCEPTED (Source CANDIDATE) + Application SUBMITTED
-  H->>AI: Enqueue scoring (AiMatchResult PENDING)
-  API-->>FE: 201 Created, AI status PENDING
+  H->>DB: Verify Candidate & Job ACTIVE, deadline & package limit
+  alt Not eligible or application limit reached
+    H-->>API: Throw Forbidden / ConflictException
+    API-->>FE: 403 Forbidden / 409 Conflict
+  else Eligible to Apply
+    H->>R2: Upload new CV PDF (or validate existing CandidateCv)
+    H->>DB: Check existing Submission/Application for (CandidateId, JobId)
+    alt Duplicate Application Detected
+      H->>R2: Delete newly uploaded CV PDF (Compensating action)
+      H->>DB: Insert Submission (BLOCKED_DUPLICATE) & AuditLog
+      API-->>FE: 409 Conflict (Already applied to this Job)
+    else Unique Application
+      H->>DB: Insert Submission (ACCEPTED) & Application (SUBMITTED)
+      H->>AI: TriggerScoringAsync(applicationId) -> AiMatchResult PENDING
+      H-->>API: Return ApplicationCreatedDto
+      API-->>FE: 201 Created (Application SUBMITTED)
+    end
   end

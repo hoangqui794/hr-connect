@@ -1,12 +1,12 @@
 ---
-title: Payout (MF-05)
+title: State Machine — Affiliate Payout (MF-05)
 ---
 stateDiagram-v2
   direction LR
-  [*] --> PENDING : Admin starts payout
-  PENDING --> COMPLETED : transfer reference recorded
-  PENDING --> FAILED : transfer failed
-  FAILED --> PENDING : Admin retries (new attempt)
-  PENDING --> CANCELLED : Admin cancels
+  [*] --> PENDING : Admin initiates payout
+  PENDING --> COMPLETED : Bank transfer reference recorded
+  PENDING --> FAILED : Bank transfer failed
+  FAILED --> PENDING : Admin retries payout
+  PENDING --> CANCELLED : Admin cancels payout
   COMPLETED --> [*]
   CANCELLED --> [*]

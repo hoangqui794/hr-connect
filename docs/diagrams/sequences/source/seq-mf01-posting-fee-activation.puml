@@ -1,21 +1,24 @@
 @startuml seq-mf01-posting-fee-activation
+title sd MF-01c: Platform Admin Records Posting Fee or Sourcing Deposit Transfer
 autonumber
-skinparam sequenceMessageAlign center
-title MF-01 · Platform Admin records a posting fee or deposit
+hide footbox
 actor "Platform Admin" as AD
-boundary "Web App" as FE
-boundary "Job / Finance endpoints" as API
-control "RecordJobPostingFeePayment / RecordServiceFeePayment" as H
-database "PostgreSQL" as DB
+participant "Web App (HRConnect-FE)" as FE
+participant "Job / Finance Endpoints" as API
+participant "RecordFeePayment Handlers" as H
+participant "PostgreSQL" as DB
 actor "Client Company User" as CL
-AD -> FE : Finance › posting fees / deposits, enter bank reference
+AD -> FE : Open Billing Queue & enter bank transfer reference
 FE -> API : POST /jobs/{id}/posting-fee/pay or /admin/service-fees/{id}/record-payment
-alt no reference or caller is not Platform Admin
-API --> FE : 400 / 403
-else valid
-API -> H : Send command
-H -> DB : Fee PAID, Job PENDING_PAYMENT → ACTIVE, PostedAt, AuditLog
-H -> CL : Notification: job is live (after commit)
-API --> FE : 200 OK
+API -> H : Send(RecordPaymentCommand)
+alt Missing payment reference or Fee not PENDING
+H --> API : Throw BadRequest / ConflictException
+API --> FE : 400 Bad Request / 409 Conflict
+else Valid Payment Reference
+H -> DB : Mark Fee -> PAID (PaidAt, PaymentReference)
+H -> DB : Update Job PENDING_PAYMENT -> ACTIVE (PostedAt) & AuditLog
+H --> CL : Send Real-time Notification: Job is now ACTIVE
+H --> API : Return PaymentRecordedResponse
+API --> FE : 200 OK (Job Published)
 end
 @enduml

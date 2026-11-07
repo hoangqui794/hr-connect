@@ -1,23 +1,28 @@
 @startuml seq-mf04-schedule-interview
+title sd MF-04a: Client Schedules Candidate Interview
 autonumber
-skinparam sequenceMessageAlign center
-title MF-04 · Client schedules an interview
+hide footbox
 actor "Client Company User" as CL
-boundary "Web App" as FE
-boundary "Recruitment endpoints" as API
-control "ScheduleInterview handler" as H
-database "PostgreSQL" as DB
-control "SignalR hub" as HUB
+participant "Web App (HRConnect-FE)" as FE
+participant "InterviewEndpoints" as API
+participant "ScheduleInterviewHandler" as H
+participant "PostgreSQL" as DB
+participant "SignalR NotificationHub" as HUB
 actor "Candidate" as CA
-CL -> FE : Pick time, type, location / link
+CL -> FE : Select interview round, date/time, format & location/link
 FE -> API : POST /api/v1/recruitment/applications/{id}/interviews
 API -> H : Send(ScheduleInterviewCommand)
-alt caller is Internal HR or not a company member
-API --> FE : 403
-else allowed
-H -> DB : Interview SCHEDULED, Application INTERVIEW, AuditLog
-H -> HUB : Publish after commit
-HUB -> CA : Bell updates in real time; candidate confirms attendance
-API --> FE : 201 Created
+alt Caller is not an authorized Company Member
+H --> API : Throw ForbiddenException
+API --> FE : 403 Forbidden
+else Authorized & Valid Schedule
+H -> DB : Insert Interview (SCHEDULED), update Application -> INTERVIEW
+H -> HUB : Publish real-time interview notification
+HUB --> CA : Push notification to Candidate portal
+H --> API : Return InterviewDto
+API --> FE : 201 Created (InterviewDto)
+CA -> API : POST /api/v1/interviews/{id}/confirm-attendance
+API -> DB : Update Interview attendance confirmed & notify Client
+API --> CA : 200 OK
 end
 @enduml

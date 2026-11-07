@@ -1,25 +1,28 @@
 @startuml seq-mf01-create-submit-job
+title sd MF-01a: Client Creates and Submits a Job
 autonumber
-skinparam sequenceMessageAlign center
-title MF-01 · Client creates and submits a job
+hide footbox
 actor "Client Company User" as CL
-boundary "Web App" as FE
-boundary "JobEndpoints" as API
-control "CreateJob / SubmitJob handlers" as H
-database "PostgreSQL" as DB
-CL -> FE : Fill job form, MUST/SHOULD requirements, proposed terms
-FE -> API : POST /api/v1/jobs (JWT)
+participant "Web App (HRConnect-FE)" as FE
+participant "JobEndpoints" as API
+participant "CreateJob / SubmitJob Handlers" as H
+participant "PostgreSQL" as DB
+CL -> FE : Fill job form, MUST/SHOULD requirements & terms
+FE -> API : POST /api/v1/jobs (CreateJobCommand)
 API -> H : Send(CreateJobCommand)
-H -> DB : Check company VERIFIED and can_submit for the service type
-H -> DB : Insert Job (DRAFT) + JobRequirements, AuditLog
-API --> FE : 201 Created
-CL -> FE : Submit for review
+H -> DB : Verify Company is VERIFIED & ServiceType allowed
+H -> DB : Insert Job (DRAFT), JobRequirements & AuditLog
+H --> API : Return JobDetailDto
+API --> FE : 201 Created (JobDetailDto)
+CL -> FE : Click Submit Job for Review
 FE -> API : POST /api/v1/jobs/{id}/submit (ConcurrencyToken)
 API -> H : Send(SubmitJobCommand)
-alt no MUST_HAVE requirement or stale token
-API --> FE : 400 / 409 with error code
-else valid
-H -> DB : Job → PENDING_REVIEW, JobStatusHistory, AuditLog
-API --> FE : 200 OK
+alt Missing MUST_HAVE requirement or stale ConcurrencyToken
+H --> API : Throw BadRequest / ConflictException
+API --> FE : 400 Bad Request / 409 Conflict
+else Valid Job Data
+H -> DB : Update Job -> PENDING_REVIEW, insert StatusHistory & AuditLog
+H --> API : Return updated JobDetailDto
+API --> FE : 200 OK (Status: PENDING_REVIEW)
 end
 @enduml

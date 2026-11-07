@@ -1,24 +1,29 @@
 ---
-title: MF-03 · CV Sourcing delivery and Client decision
+title: sd MF-03c: CV Sourcing Delivery, Client Review & Auto-Accept
 ---
 sequenceDiagram
   autonumber
   actor HR as Internal HR
-  participant API as SourcingDelivery endpoints
-  participant H as Sourcing handlers
+  participant API as SourcingDeliveryEndpoints
+  participant H as SourcingDeliveryHandlers
   participant DB as PostgreSQL
   actor CL as Client Company User
-  participant W as SourcingAutoAcceptWorker
-  HR->>API: Deliver shortlisted CVs
-  API->>H: DeliverSourcingCvs
-  alt target reached
-  API-->>HR: 409 SOURCING_TARGET_REACHED
-  else within target
-  H->>DB: SourcingDelivery DELIVERED, ReviewDueAt
-  H->>CL: Notify: CVs to review
+  participant W as SourcingAutoAcceptService
+  HR->>API: POST /api/v1/jobs/{id}/sourcing-deliveries (ApplicationId)
+  API->>H: Send(DeliverSourcingCvCommand)
+  alt Sourcing Target Already Reached
+    H-->>API: Throw ConflictException (SOURCING_TARGET_REACHED)
+    API-->>HR: 409 Conflict
+  else Within Sourcing Target
+    H->>DB: Insert SourcingDelivery (DELIVERED, ReviewDueAt)
+    H-->>CL: Notify Client: New sourced CV ready for review
+    API-->>HR: 201 Created (SourcingDeliveryDto)
   end
-  CL->>API: Accept / Reject (reason)
-  H->>DB: ACCEPTED (commission per CV) or REJECTED
-  W->>DB: After review period: DELIVERED → AUTO_ACCEPTED
-  HR->>API: Replace rejected CV with a backup
-  H->>DB: Old REPLACED, new DELIVERED
+  alt Client Reviews Before Deadline
+    CL->>API: POST /api/v1/sourcing-deliveries/{id}/decision (ACCEPT / REJECT)
+    API->>H: Send(DecideSourcingDeliveryCommand)
+    H->>DB: Update Delivery -> ACCEPTED (unlocks per-CV commission) or REJECTED
+    API-->>CL: 200 OK
+  else Review Window Expires Without Client Response
+    W->>DB: Mark overdue DELIVERED -> AUTO_ACCEPTED & unlock Commission
+  end

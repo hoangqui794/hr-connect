@@ -1,0 +1,22 @@
+@startuml sm-online-payment
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam state {
+  BackgroundColor #EFF6FF
+  BorderColor #1D4ED8
+  FontColor #0F172A
+}
+title State Machine — OnlinePayment / VNPay (MF-05)
+left to right direction
+[*] --> PENDING : Client clicks Pay with VNPay
+PENDING --> PENDING : Reused active session
+PENDING --> PROCESSING : Signed IPN / Return claims payment
+PENDING --> FAILED : Session expired before callback
+PROCESSING --> PENDING : Error, claim released for retry
+PROCESSING --> SUCCEEDED : Fee recorded as PAID (VNPay ref)
+PROCESSING --> NEEDS_REVIEW : Paid at gateway but fee already settled
+PROCESSING --> FAILED : VNPay reports cancelled / failed
+SUCCEEDED --> [*]
+NEEDS_REVIEW --> [*] : Platform Admin resolves
+FAILED --> [*]
+@enduml

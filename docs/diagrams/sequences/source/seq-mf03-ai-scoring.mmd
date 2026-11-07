@@ -1,24 +1,27 @@
 ---
-title: MF-03 · Asynchronous AI scoring
+title: sd MF-03a: Asynchronous Hybrid AI CV Matching and Scoring
 ---
 sequenceDiagram
   autonumber
   participant W as Mf03ScoringDispatcher
-  participant AI as AI Matching Service v2
-  participant LLM as Google Gemini
-  participant API as AiIntegration endpoints
+  participant AI as AI Matching Service (FastAPI)
+  participant LLM as External LLM Provider
+  participant API as AiIntegrationEndpoints
   participant DB as PostgreSQL
-  actor HR as Internal HR
-  W->>DB: Load PENDING AiMatchResult → PROCESSING
-  W->>AI: POST /score (CV file, JD, requirements)
-  AI->>AI: Extract text, Sentence-BERT similarity
-  AI->>LLM: Assess each MUST/SHOULD requirement with evidence
-  LLM-->>AI: JSON assessment
-  AI->>AI: Verify quotes exist in CV, score 0–100 and tier
-  AI->>API: POST /internal/ai-results (callback)
-  alt success
-  API->>DB: AiMatchResult COMPLETED: score, tier, per-requirement results
-  API->>HR: Ranked list updates in real time
-  else error / retries exhausted
-  API->>DB: FAILED + FailureCode, HR can retry
+  actor HR as Internal HR / Client
+  W->>DB: Claim PENDING AiMatchResult -> PROCESSING
+  W->>AI: POST /score (ApplicationId, JobId, CV URL)
+  AI->>AI: Extract CV text (OCR if scanned) & compute Sentence-BERT similarity
+  AI->>LLM: Evaluate MUST_HAVE / SHOULD_HAVE requirements with verbatim quotes
+  LLM-->>AI: Return structured JSON requirement assessment
+  AI->>AI: Verify quotes in CV text & compute weighted score (cap 59 if missing MUST)
+  AI->>API: POST /api/v1/internal/ai-results (Score, Tier, Evidence)
+  alt Scoring Succeeded
+    API->>DB: Update AiMatchResult -> COMPLETED (MatchScore, MatchTier)
+    API-->>HR: Push SignalR event: application.scored
+    API-->>AI: 200 OK
+  else LLM Error or Max Retries Exhausted
+    API->>DB: Update AiMatchResult -> FAILED (FailureCode)
+    API-->>HR: Notify screener (Manual AI Retry available)
+    API-->>AI: 200 OK
   end

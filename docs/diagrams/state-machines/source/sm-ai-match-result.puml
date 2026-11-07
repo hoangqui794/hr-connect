@@ -1,0 +1,18 @@
+@startuml sm-ai-match-result
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam state {
+  BackgroundColor #EFF6FF
+  BorderColor #1D4ED8
+  FontColor #0F172A
+}
+title State Machine — AiMatchResult (MF-03)
+left to right direction
+[*] --> PENDING : Application created / HR retries
+PENDING --> PROCESSING : Worker dispatches CV to FastAPI AI
+PROCESSING --> COMPLETED : AI returns score & tier
+PROCESSING --> PENDING : Transient error (backoff retry)
+PROCESSING --> FAILED : Max retries / invalid CV
+COMPLETED --> [*]
+FAILED --> [*] : HR retry creates new attempt
+@enduml

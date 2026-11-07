@@ -1,0 +1,19 @@
+@startuml sm-dispute
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam state {
+  BackgroundColor #EFF6FF
+  BorderColor #1D4ED8
+  FontColor #0F172A
+}
+title State Machine — Attribution / Duplicate Dispute (SF-04)
+left to right direction
+[*] --> OPEN : Affiliate raises dispute
+OPEN --> UNDER_REVIEW : Admin starts review
+OPEN --> WITHDRAWN : Affiliate withdraws
+UNDER_REVIEW --> UPHELD : Admin upholds (transfer attribution)
+UNDER_REVIEW --> REJECTED : Admin rejects claim
+UPHELD --> [*]
+REJECTED --> [*]
+WITHDRAWN --> [*]
+@enduml

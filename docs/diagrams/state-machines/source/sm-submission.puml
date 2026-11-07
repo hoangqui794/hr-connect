@@ -1,0 +1,26 @@
+@startuml sm-submission
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam state {
+  BackgroundColor #EFF6FF
+  BorderColor #1D4ED8
+  FontColor #0F172A
+}
+title State Machine — Submission Intake & Attribution (MF-02)
+left to right direction
+[*] --> SUBMITTED : Candidate self-applies
+[*] --> PENDING_CONSENT : Affiliate refers candidate
+[*] --> BLOCKED_DUPLICATE : Duplicate candidate in job
+SUBMITTED --> ACCEPTED : Application created
+PENDING_CONSENT --> ACCEPTED : Candidate confirms consent
+PENDING_CONSENT --> PENDING_IDENTITY_REVIEW : Identity conflict detected
+PENDING_IDENTITY_REVIEW --> ACCEPTED : Internal HR resolves identity
+PENDING_CONSENT --> CONSENT_REJECTED : Candidate declines consent
+PENDING_CONSENT --> CONSENT_EXPIRED : Consent window expired
+PENDING_CONSENT --> BLOCKED_CLIENT_OWNED : Candidate owned by Client
+ACCEPTED --> [*]
+CONSENT_REJECTED --> [*]
+CONSENT_EXPIRED --> [*]
+BLOCKED_CLIENT_OWNED --> [*]
+BLOCKED_DUPLICATE --> [*]
+@enduml

@@ -1,34 +1,35 @@
 @startuml seq-mf04-offer-start-work
+title sd MF-04b: Offer Issuance, Candidate Acceptance & Start-Work Reconciliation
 autonumber
-skinparam sequenceMessageAlign center
-title MF-04 · Offer, acceptance and start work
+hide footbox
 actor "Client Company User" as CL
-control "Offer / StartWork handlers" as H
-database "PostgreSQL" as DB
 actor "Candidate" as CA
-control "PlacementFinanceService" as F
+participant "Offer / StartWork / Reconcile Handlers" as H
+participant "PlacementFinanceService" as F
+participant "PostgreSQL" as DB
 actor "Internal HR" as HR
 actor "Platform Admin" as AD
-CL -> H : Create draft and send offer
-alt HEADHUNT_COD and salary not gross monthly
-H --> CL : 400 HEADHUNT_REQUIRES_GROSS
-else valid
-H -> DB : Offer SENT, Application OFFER_PENDING
-H -> CA : Notify candidate
-end
-CA -> H : Accept offer
-H -> DB : Offer ACCEPTED, Application OFFER_ACCEPTED
-CL -> H : Confirm start work (actual date)
-H -> H : Date not in future and not before acceptance
-H -> DB : Placement STARTED, Application PLACED
+CL -> H : Create & Send Offer (Salary, StartDate, ExpiryDate)
+alt HEADHUNT_COD and Salary is not Gross Monthly
+H --> CL : 400 Bad Request (HEADHUNT_REQUIRES_GROSS)
+else Valid Offer Terms
+H -> DB : Save Offer (SENT) & update Application -> OFFER_PENDING
+H --> CA : Notify Candidate of new Job Offer
+CA -> H : RespondToOffer(ACCEPT)
+H -> DB : Update Offer -> ACCEPTED, Application -> OFFER_ACCEPTED
+CL -> H : ConfirmStartWork(actualStartDate)
+H -> H : Validate actualStartDate <= today and >= offer accepted date
+H -> DB : Insert Placement (STARTED) & update Application -> PLACED
 H -> F : InitializeAsync(placement)
-F -> DB : HEADHUNT_COD: ServiceFee PENDING (not yet due), Warranty ACTIVE, Commission IN_WARRANTY
-H -> DB : HEADHUNT_COD: PlacementReconciliation PENDING (claimed STARTED)
-HR -> H : Reconcile start-work outcome (CONFIRM / FLAG, contact channel, note)
-alt CONFIRM
-H -> DB : Reconciliation CONFIRMED, ServiceFee PENDING → DUE (or OVERDUE)
-else FLAG (note required)
-H -> DB : Reconciliation FLAGGED, ServiceFee stays PENDING
-H -> AD : Notify Platform Admin to resolve
+F -> DB : Insert ServiceFee (PENDING), Warranty (ACTIVE) & Commission (IN_WARRANTY)
+H -> DB : Insert PlacementReconciliation (PENDING, ClaimedOutcome: STARTED)
+HR -> H : ReconcilePlacement(CONFIRM or FLAG, contactChannel, note)
+alt Action == CONFIRM
+H -> DB : Update Reconciliation -> CONFIRMED & ServiceFee -> DUE
+H --> CL : 200 OK (Placement Confirmed & Fee Due)
+else Action == FLAG
+H -> DB : Update Reconciliation -> FLAGGED (ServiceFee remains PENDING)
+H --> AD : Notify Platform Admin to resolve flagged reconciliation
+end
 end
 @enduml

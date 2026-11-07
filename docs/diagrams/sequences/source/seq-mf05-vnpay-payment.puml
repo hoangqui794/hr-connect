@@ -1,0 +1,33 @@
+@startuml seq-mf05-vnpay-payment
+title sd MF-05a: Client Pays Service Fee or Posting Fee via VNPay Gateway
+autonumber
+hide footbox
+actor "Client Company User" as CL
+participant "Web App (Billing Page)" as FE
+participant "VnPayPaymentEndpoints" as API
+participant "VnPayPaymentCommandHandlers" as H
+participant "PostgreSQL" as DB
+participant "VNPay Sandbox Gateway" as VP
+actor "Platform Admin" as AD
+CL -> FE : Click Pay with VNPay on unpaid ServiceFee / PostingFee
+FE -> API : POST /api/v1/payments/vnpay (TargetType, TargetId)
+API -> H : Send(CreateVnPayPaymentCommand)
+H -> DB : Verify fee is payable & insert OnlinePayment (PENDING, TxnRef)
+H --> API : Return signed VNPay URL (HMAC-SHA512)
+API --> FE : 200 OK (PaymentUrl)
+FE -> VP : Redirect browser to VNPay Checkout & complete payment
+VP -> API : GET /api/v1/payments/vnpay/ipn (Signed callback query)
+API -> H : Send(ConfirmVnPayPaymentCommand)
+alt Invalid HMAC Signature / Order Not Found / Wrong Amount
+H --> VP : Return RspCode 97 / 01 / 04
+else Valid Callback & Payment Succeeded
+H -> DB : Claim OnlinePayment -> PROCESSING
+H -> DB : Record Fee -> PAID (Ref: VNPAY-TxnNo) & OnlinePayment -> SUCCEEDED
+H --> AD : Send real-time notification: VNPay payment received
+H --> VP : Return RspCode 00 (Confirm Success)
+end
+VP --> FE : Redirect browser to /client/billing/vnpay-return
+FE -> API : GET /api/v1/payments/vnpay/return (Idempotent verify)
+API --> FE : 200 OK (OnlinePaymentResultDto)
+FE --> CL : Display Payment Receipt
+@enduml

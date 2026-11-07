@@ -1,0 +1,25 @@
+@startuml sm-commission
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam state {
+  BackgroundColor #EFF6FF
+  BorderColor #1D4ED8
+  FontColor #0F172A
+}
+title State Machine — Commission (MF-05)
+left to right direction
+[*] --> IN_WARRANTY : HEADHUNT placement started
+[*] --> PENDING : CV_SOURCING delivered
+IN_WARRANTY --> EARNED : Warranty passed (30d)
+PENDING --> EARNED : CV accepted milestone
+IN_WARRANTY --> ON_HOLD : Resignation claim / dispute
+PENDING --> ON_HOLD : Affiliate account locked
+ON_HOLD --> IN_WARRANTY : Claim rejected / unlocked
+ON_HOLD --> CANCELLED : Resignation confirmed
+IN_WARRANTY --> CANCELLED : Admin cancels (reason)
+EARNED --> PAYABLE : Client fee paid & Admin approves
+EARNED --> CANCELLED : Admin cancels (reason)
+PAYABLE --> PAID : Payout completed
+PAID --> [*]
+CANCELLED --> [*]
+@enduml

@@ -1,0 +1,21 @@
+@startuml sm-replacement-slot
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam state {
+  BackgroundColor #EFF6FF
+  BorderColor #1D4ED8
+  FontColor #0F172A
+}
+title State Machine — ReplacementSlot (MF-05)
+left to right direction
+[*] --> OPEN : Resignation confirmed (fee already paid)
+[*] --> WAITING_PAYMENT : Resignation confirmed (fee unpaid)
+WAITING_PAYMENT --> OPEN : Client pays service fee
+WAITING_PAYMENT --> CANCELLED : Cancelled before payment
+OPEN --> FILLED : Replacement candidate placed (free)
+OPEN --> EXPIRED : Replacement window expired
+OPEN --> CANCELLED : Client / Admin cancels
+FILLED --> [*]
+EXPIRED --> [*]
+CANCELLED --> [*]
+@enduml

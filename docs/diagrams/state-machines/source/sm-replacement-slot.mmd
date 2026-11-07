@@ -1,15 +1,15 @@
 ---
-title: ReplacementSlot (MF-05)
+title: State Machine — ReplacementSlot (MF-05)
 ---
 stateDiagram-v2
   direction LR
-  [*] --> WAITING_PAYMENT : resignation confirmed, fee not yet paid
-  [*] --> OPEN : resignation confirmed, fee paid
+  [*] --> OPEN : Resignation confirmed (fee already paid)
+  [*] --> WAITING_PAYMENT : Resignation confirmed (fee unpaid)
   WAITING_PAYMENT --> OPEN : Client pays service fee
-  OPEN --> FILLED : replacement candidate placed (no new fee)
-  OPEN --> EXPIRED : fill window ended
+  WAITING_PAYMENT --> CANCELLED : Cancelled before payment
+  OPEN --> FILLED : Replacement candidate placed (free)
+  OPEN --> EXPIRED : Replacement window expired
   OPEN --> CANCELLED : Client / Admin cancels
-  WAITING_PAYMENT --> CANCELLED : cancelled
   FILLED --> [*]
   EXPIRED --> [*]
   CANCELLED --> [*]

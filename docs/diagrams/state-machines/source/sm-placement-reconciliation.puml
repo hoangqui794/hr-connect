@@ -1,0 +1,16 @@
+@startuml sm-placement-reconciliation
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam state {
+  BackgroundColor #EFF6FF
+  BorderColor #1D4ED8
+  FontColor #0F172A
+}
+title State Machine — PlacementReconciliation (MF-04 UC-41, HEADHUNT_COD)
+left to right direction
+[*] --> PENDING : Client reports STARTED / NOT_STARTED
+PENDING --> CONFIRMED : Internal HR confirms (fee -> DUE)
+PENDING --> FLAGGED : Internal HR flags mismatch (note)
+FLAGGED --> CONFIRMED : Platform Admin resolves / reopens
+CONFIRMED --> [*]
+@enduml

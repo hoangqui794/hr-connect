@@ -1,33 +1,33 @@
 ---
-title: Application (MF-03, MF-04)
+title: State Machine — Application Lifecycle (MF-03 & MF-04)
 ---
 stateDiagram-v2
   direction TB
-  [*] --> SUBMITTED : submission accepted
+  [*] --> SUBMITTED : Submission accepted
   SUBMITTED --> SCREENING : HR opens (HEADHUNT / SOURCING)
-  SUBMITTED --> SHORTLISTED : Client selects (CV_APPLICATION)
+  SUBMITTED --> SHORTLISTED : Client shortlists (CV_APPLICATION)
+  SUBMITTED --> WITHDRAWN : Candidate withdraws
+  SUBMITTED --> REJECTED : Client rejects (CV_APPLICATION)
   SCREENING --> SHORTLISTED : HR shortlists / CV accepted
   SCREENING --> BACKUP : HR keeps as backup
-  SCREENING --> REJECTED : rejected with reason code
-  SUBMITTED --> REJECTED : Client rejects (CV_APPLICATION)
-  BACKUP --> SHORTLISTED : promoted from backup
+  SCREENING --> REJECTED : Rejected (reason code)
+  SHORTLISTED --> WITHDRAWN : Candidate withdraws
   SHORTLISTED --> INTERVIEW : Client schedules interview
-  INTERVIEW --> OFFER_PENDING : result PASS
-  INTERVIEW --> INTERVIEW_FAILED : result FAIL / no-show
-  INTERVIEW --> BACKUP : result BACKUP
+  BACKUP --> SHORTLISTED : Promoted from backup
   BACKUP --> OFFER_PENDING : Client selects backup
-  BACKUP --> BACKUP_NOT_SELECTED : another candidate chosen
-  OFFER_PENDING --> OFFER_ACCEPTED : candidate accepts offer
-  OFFER_PENDING --> OFFER_DECLINED : candidate declines
+  BACKUP --> BACKUP_NOT_SELECTED : Another candidate chosen
+  INTERVIEW --> BACKUP : Result BACKUP
+  INTERVIEW --> OFFER_PENDING : Result PASS
+  INTERVIEW --> INTERVIEW_FAILED : Result FAIL / no-show
+  OFFER_PENDING --> OFFER_ACCEPTED : Candidate accepts offer
+  OFFER_PENDING --> OFFER_DECLINED : Candidate declines
   OFFER_ACCEPTED --> PLACED : Client confirms start work
-  OFFER_ACCEPTED --> NOT_STARTED : candidate did not start
-  SUBMITTED --> WITHDRAWN : candidate withdraws
-  SHORTLISTED --> WITHDRAWN : candidate withdraws
-  PLACED --> CLOSED : warranty finished
+  OFFER_ACCEPTED --> NOT_STARTED : Candidate did not start
+  PLACED --> CLOSED : Warranty finished
+  WITHDRAWN --> [*]
   REJECTED --> [*]
-  INTERVIEW_FAILED --> [*]
   BACKUP_NOT_SELECTED --> [*]
+  INTERVIEW_FAILED --> [*]
   OFFER_DECLINED --> [*]
   NOT_STARTED --> [*]
-  WITHDRAWN --> [*]
   CLOSED --> [*]

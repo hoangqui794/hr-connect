@@ -1,25 +1,27 @@
 @startuml seq-mf05-warranty-fee-commission
+title sd MF-05c: Warranty Completion, Commission Approval & Affiliate Payout
 autonumber
-skinparam sequenceMessageAlign center
-title MF-05 · Warranty passes, fee is paid and commission is paid out
-control "WarrantyProgressWorker" as W
-control "PlacementFinanceService" as F
-database "PostgreSQL" as DB
+hide footbox
+participant "WarrantyProgressWorker" as W
+participant "WarrantyProgressService" as S
+participant "PostgreSQL" as DB
 actor "Platform Admin" as AD
-control "Finance handlers" as H
+participant "SettlementCommandHandlers" as H
 actor "Affiliate" as AF
-W -> F : Daily: due fees and finished warranties
-F -> DB : ServiceFee PENDING → DUE only after PlacementReconciliation CONFIRMED (notify Client), DUE → OVERDUE
-F -> DB : Warranty PASSED, Commission IN_WARRANTY → EARNED
-AD -> H : Record service fee payment (reference)
-H -> DB : ServiceFee PAID
-AD -> H : Approve commission
-alt fee unpaid or open dispute
-H --> AD : 409 COMMISSION_UNDER_DISPUTE / fee not paid
-else allowed
-H -> DB : Commission PAYABLE
-AD -> H : Record payout (transaction reference)
-H -> DB : Payout COMPLETED (or FAILED → retry), Commission PAID
-H -> AF : Notify payout
+W -> S : Execute daily warranty & fee progress check
+S -> DB : Mark reconciled ServiceFee PENDING -> DUE (or OVERDUE)
+S -> DB : Mark expired Warranty -> PASSED & Commission IN_WARRANTY -> EARNED
+AD -> H : Send(RecordServiceFeePaymentCommand) (if paid via bank transfer)
+H -> DB : Update ServiceFee -> PAID (PaidAt, PaymentReference)
+AD -> H : Send(ApproveCommissionCommand)
+alt ServiceFee not PAID or Active Dispute exists
+H --> AD : 409 Conflict (SERVICE_FEE_NOT_PAID / COMMISSION_UNDER_DISPUTE)
+else Fee PAID & No Active Dispute
+H -> DB : Update Commission -> PAYABLE (ApprovedAt, ApprovedBy)
+H --> AF : Notify Affiliate: Commission approved for payout
+AD -> H : Send(RecordPayoutCommand) (Method, TransactionReference, EvidenceUrl)
+H -> DB : Insert Payout (COMPLETED) & update Commission -> PAID
+H --> AF : Notify Affiliate: Commission payout completed
+H --> AD : 200 OK (PayoutResponse)
 end
 @enduml

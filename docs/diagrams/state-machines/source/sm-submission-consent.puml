@@ -1,0 +1,19 @@
+@startuml sm-submission-consent
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam state {
+  BackgroundColor #EFF6FF
+  BorderColor #1D4ED8
+  FontColor #0F172A
+}
+title State Machine — SubmissionConsent (MF-02)
+left to right direction
+[*] --> PENDING : Consent email sent
+PENDING --> PENDING : Affiliate resends (cooldown & max count)
+PENDING --> CONFIRMED : Candidate confirms consent
+PENDING --> DECLINED : Candidate declines
+PENDING --> EXPIRED : Consent window expired (worker)
+CONFIRMED --> [*]
+DECLINED --> [*]
+EXPIRED --> [*]
+@enduml

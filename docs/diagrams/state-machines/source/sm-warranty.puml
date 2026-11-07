@@ -1,0 +1,18 @@
+@startuml sm-warranty
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam state {
+  BackgroundColor #EFF6FF
+  BorderColor #1D4ED8
+  FontColor #0F172A
+}
+title State Machine — Warranty (MF-05 HEADHUNT_COD)
+left to right direction
+[*] --> ACTIVE : Placement started (HEADHUNT_COD)
+ACTIVE --> PASSED : Warranty period ends (worker)
+ACTIVE --> CLAIMED : Client reports early resignation
+CLAIMED --> ACTIVE : Internal HR rejects claim
+CLAIMED --> VOIDED : Internal HR confirms resignation
+PASSED --> [*]
+VOIDED --> [*]
+@enduml

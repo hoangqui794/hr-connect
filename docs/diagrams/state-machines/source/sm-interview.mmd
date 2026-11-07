@@ -1,13 +1,13 @@
 ---
-title: Interview (MF-04)
+title: State Machine — Interview (MF-04)
 ---
 stateDiagram-v2
   direction LR
-  [*] --> SCHEDULED : Client schedules
+  [*] --> SCHEDULED : Client schedules interview
   SCHEDULED --> SCHEDULED : Client updates / reschedules
+  SCHEDULED --> COMPLETED : Client records PASS / FAIL / BACKUP
   SCHEDULED --> CANCELLED : Client cancels (reason)
-  SCHEDULED --> COMPLETED : Client records result PASS / FAIL / BACKUP
-  SCHEDULED --> NO_SHOW : candidate absent
-  CANCELLED --> [*]
+  SCHEDULED --> NO_SHOW : Candidate absent
   COMPLETED --> [*]
+  CANCELLED --> [*]
   NO_SHOW --> [*]

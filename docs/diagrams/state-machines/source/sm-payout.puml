@@ -1,0 +1,18 @@
+@startuml sm-payout
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam state {
+  BackgroundColor #EFF6FF
+  BorderColor #1D4ED8
+  FontColor #0F172A
+}
+title State Machine — Affiliate Payout (MF-05)
+left to right direction
+[*] --> PENDING : Admin initiates payout
+PENDING --> COMPLETED : Bank transfer reference recorded
+PENDING --> FAILED : Bank transfer failed
+FAILED --> PENDING : Admin retries payout
+PENDING --> CANCELLED : Admin cancels payout
+COMPLETED --> [*]
+CANCELLED --> [*]
+@enduml

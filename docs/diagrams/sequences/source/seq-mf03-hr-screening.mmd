@@ -1,23 +1,27 @@
 ---
-title: MF-03 · Internal HR screens a Headhunt application
+title: sd MF-03b: Internal HR Screens Application (Shortlist, Backup or Reject)
 ---
 sequenceDiagram
   autonumber
   actor HR as Internal HR
-  participant FE as Web App
-  participant API as Recruitment endpoints
-  participant H as UpdateApplicationScreeningStatus handler
+  participant FE as Web App (HRConnect-FE)
+  participant API as RecruitmentEndpoints
+  participant H as UpdateScreeningStatusHandler
   participant DB as PostgreSQL
   actor CL as Client Company User
-  HR->>FE: Open application
-  FE->>API: POST /jobs/{jid}/applications/{aid}/start-screening
-  API->>DB: Application SUBMITTED → SCREENING
-  HR->>FE: Shortlist / Backup / Reject (+ reason code)
+  HR->>FE: Open candidate application & inspect AI Match evidence
+  FE->>API: POST /api/v1/jobs/{jid}/applications/{aid}/start-screening
+  API->>DB: Update Application SUBMITTED -> SCREENING
+  API-->>FE: 200 OK (Status: SCREENING)
+  HR->>FE: Select decision: SHORTLISTED, BACKUP, or REJECTED (+ reason)
   FE->>API: PATCH /api/v1/jobs/{jid}/applications/{aid}/status (ConcurrencyToken)
-  API->>H: Send command
-  alt reject without reason or stale token
-  API-->>FE: 400 / 409
-  else valid
-  H->>DB: Status + ApplicationStatusHistory + AuditLog
-  H->>CL: New shortlisted candidate (contact masked)
+  API->>H: Send(UpdateApplicationScreeningStatusCommand)
+  alt Missing rejection reason or stale ConcurrencyToken
+    H-->>API: Throw BadRequest / ConflictException
+    API-->>FE: 400 Bad Request / 409 Conflict
+  else Valid Screening Decision
+    H->>DB: Update Application status, insert StatusHistory & AuditLog
+    H-->>CL: Notify Client of newly SHORTLISTED candidate (masked CV)
+    H-->>API: Return ApplicationStatusDto
+    API-->>FE: 200 OK
   end

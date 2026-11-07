@@ -1,0 +1,21 @@
+@startuml sm-service-agreement
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam state {
+  BackgroundColor #EFF6FF
+  BorderColor #1D4ED8
+  FontColor #0F172A
+}
+title State Machine — ServiceAgreement (MF-01)
+left to right direction
+[*] --> DRAFT : HR prepares draft
+DRAFT --> SENT_TO_CLIENT : HR sends PDF to Client
+SENT_TO_CLIENT --> CHANGE_REQUESTED : Client requests changes
+CHANGE_REQUESTED --> VOID : HR issues new version (v+1)
+SENT_TO_CLIENT --> ACCEPTED : Client accepts terms
+ACCEPTED --> SIGNED : Signed file uploaded & HR approves
+SENT_TO_CLIENT --> SIGNED : Direct signed PDF upload & HR approves
+SENT_TO_CLIENT --> VOID : Superseded or job rejected
+VOID --> [*]
+SIGNED --> [*]
+@enduml

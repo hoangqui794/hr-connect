@@ -1,0 +1,19 @@
+@startuml sm-interview
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam state {
+  BackgroundColor #EFF6FF
+  BorderColor #1D4ED8
+  FontColor #0F172A
+}
+title State Machine — Interview (MF-04)
+left to right direction
+[*] --> SCHEDULED : Client schedules interview
+SCHEDULED --> SCHEDULED : Client updates / reschedules
+SCHEDULED --> COMPLETED : Client records PASS / FAIL / BACKUP
+SCHEDULED --> CANCELLED : Client cancels (reason)
+SCHEDULED --> NO_SHOW : Candidate absent
+COMPLETED --> [*]
+CANCELLED --> [*]
+NO_SHOW --> [*]
+@enduml

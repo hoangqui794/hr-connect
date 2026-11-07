@@ -1,16 +1,15 @@
 ---
-title: ServiceAgreement (MF-01)
+title: State Machine — ServiceAgreement (MF-01)
 ---
 stateDiagram-v2
   direction LR
-  [*] --> DRAFT : HR prepares agreement version
-  DRAFT --> SENT_TO_CLIENT : HR sends to Client
+  [*] --> DRAFT : HR prepares draft
+  DRAFT --> SENT_TO_CLIENT : HR sends PDF to Client
   SENT_TO_CLIENT --> CHANGE_REQUESTED : Client requests changes
-  CHANGE_REQUESTED --> VOID : HR issues a new version
+  CHANGE_REQUESTED --> VOID : HR issues new version (v+1)
   SENT_TO_CLIENT --> ACCEPTED : Client accepts terms
-  ACCEPTED --> AWAITING_SIGNATURE : primary contact requests signing OTP
-  AWAITING_SIGNATURE --> SIGNED : correct OTP entered, PDF stored in R2
-  AWAITING_SIGNATURE --> AWAITING_SIGNATURE : wrong / expired OTP, resend
-  SENT_TO_CLIENT --> VOID : superseded or job rejected
-  SIGNED --> [*]
+  ACCEPTED --> SIGNED : Signed file uploaded & HR approves
+  SENT_TO_CLIENT --> SIGNED : Direct signed PDF upload & HR approves
+  SENT_TO_CLIENT --> VOID : Superseded or job rejected
   VOID --> [*]
+  SIGNED --> [*]

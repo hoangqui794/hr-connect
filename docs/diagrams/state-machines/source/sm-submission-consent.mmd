@@ -1,13 +1,13 @@
 ---
-title: SubmissionConsent (MF-02)
+title: State Machine — SubmissionConsent (MF-02)
 ---
 stateDiagram-v2
   direction LR
-  [*] --> PENDING : consent e-mail sent
-  PENDING --> PENDING : Affiliate resends (cool-down, max count)
-  PENDING --> CONFIRMED : candidate accepts
-  PENDING --> DECLINED : candidate declines
-  PENDING --> EXPIRED : expiry worker (consent window)
+  [*] --> PENDING : Consent email sent
+  PENDING --> PENDING : Affiliate resends (cooldown & max count)
+  PENDING --> CONFIRMED : Candidate confirms consent
+  PENDING --> DECLINED : Candidate declines
+  PENDING --> EXPIRED : Consent window expired (worker)
   CONFIRMED --> [*]
   DECLINED --> [*]
   EXPIRED --> [*]

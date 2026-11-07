@@ -1,23 +1,27 @@
 @startuml seq-mf03-hr-screening
+title sd MF-03b: Internal HR Screens Application (Shortlist, Backup or Reject)
 autonumber
-skinparam sequenceMessageAlign center
-title MF-03 · Internal HR screens a Headhunt application
+hide footbox
 actor "Internal HR" as HR
-boundary "Web App" as FE
-boundary "Recruitment endpoints" as API
-control "UpdateApplicationScreeningStatus handler" as H
-database "PostgreSQL" as DB
+participant "Web App (HRConnect-FE)" as FE
+participant "RecruitmentEndpoints" as API
+participant "UpdateScreeningStatusHandler" as H
+participant "PostgreSQL" as DB
 actor "Client Company User" as CL
-HR -> FE : Open application
-FE -> API : POST /jobs/{jid}/applications/{aid}/start-screening
-API -> DB : Application SUBMITTED → SCREENING
-HR -> FE : Shortlist / Backup / Reject (+ reason code)
+HR -> FE : Open candidate application & inspect AI Match evidence
+FE -> API : POST /api/v1/jobs/{jid}/applications/{aid}/start-screening
+API -> DB : Update Application SUBMITTED -> SCREENING
+API --> FE : 200 OK (Status: SCREENING)
+HR -> FE : Select decision: SHORTLISTED, BACKUP, or REJECTED (+ reason)
 FE -> API : PATCH /api/v1/jobs/{jid}/applications/{aid}/status (ConcurrencyToken)
-API -> H : Send command
-alt reject without reason or stale token
-API --> FE : 400 / 409
-else valid
-H -> DB : Status + ApplicationStatusHistory + AuditLog
-H -> CL : New shortlisted candidate (contact masked)
+API -> H : Send(UpdateApplicationScreeningStatusCommand)
+alt Missing rejection reason or stale ConcurrencyToken
+H --> API : Throw BadRequest / ConflictException
+API --> FE : 400 Bad Request / 409 Conflict
+else Valid Screening Decision
+H -> DB : Update Application status, insert StatusHistory & AuditLog
+H --> CL : Notify Client of newly SHORTLISTED candidate (masked CV)
+H --> API : Return ApplicationStatusDto
+API --> FE : 200 OK
 end
 @enduml

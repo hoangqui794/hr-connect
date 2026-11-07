@@ -1,0 +1,38 @@
+@startuml sm-application
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam state {
+  BackgroundColor #EFF6FF
+  BorderColor #1D4ED8
+  FontColor #0F172A
+}
+title State Machine — Application Lifecycle (MF-03 & MF-04)
+[*] --> SUBMITTED : Submission accepted
+SUBMITTED --> SCREENING : HR opens (HEADHUNT / SOURCING)
+SUBMITTED --> SHORTLISTED : Client shortlists (CV_APPLICATION)
+SUBMITTED --> WITHDRAWN : Candidate withdraws
+SUBMITTED --> REJECTED : Client rejects (CV_APPLICATION)
+SCREENING --> SHORTLISTED : HR shortlists / CV accepted
+SCREENING --> BACKUP : HR keeps as backup
+SCREENING --> REJECTED : Rejected (reason code)
+SHORTLISTED --> WITHDRAWN : Candidate withdraws
+SHORTLISTED --> INTERVIEW : Client schedules interview
+BACKUP --> SHORTLISTED : Promoted from backup
+BACKUP --> OFFER_PENDING : Client selects backup
+BACKUP --> BACKUP_NOT_SELECTED : Another candidate chosen
+INTERVIEW --> BACKUP : Result BACKUP
+INTERVIEW --> OFFER_PENDING : Result PASS
+INTERVIEW --> INTERVIEW_FAILED : Result FAIL / no-show
+OFFER_PENDING --> OFFER_ACCEPTED : Candidate accepts offer
+OFFER_PENDING --> OFFER_DECLINED : Candidate declines
+OFFER_ACCEPTED --> PLACED : Client confirms start work
+OFFER_ACCEPTED --> NOT_STARTED : Candidate did not start
+PLACED --> CLOSED : Warranty finished
+WITHDRAWN --> [*]
+REJECTED --> [*]
+BACKUP_NOT_SELECTED --> [*]
+INTERVIEW_FAILED --> [*]
+OFFER_DECLINED --> [*]
+NOT_STARTED --> [*]
+CLOSED --> [*]
+@enduml

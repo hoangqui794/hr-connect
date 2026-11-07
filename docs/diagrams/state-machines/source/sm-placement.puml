@@ -1,0 +1,16 @@
+@startuml sm-placement
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam state {
+  BackgroundColor #EFF6FF
+  BorderColor #1D4ED8
+  FontColor #0F172A
+}
+title State Machine — Placement (MF-04 & MF-05)
+left to right direction
+[*] --> STARTED : Client confirms start work
+STARTED --> STARTED : HR corrects start date (<= 7d)
+STARTED --> [*] : Warranty period passed
+STARTED --> LEFT_DURING_WARRANTY : HR confirms early resignation
+LEFT_DURING_WARRANTY --> [*]
+@enduml

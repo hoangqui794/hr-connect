@@ -1,15 +1,15 @@
 ---
-title: Offer (MF-04)
+title: State Machine — Offer (MF-04)
 ---
 stateDiagram-v2
   direction LR
   [*] --> DRAFT : Client creates draft
   DRAFT --> DRAFT : Client edits draft
-  DRAFT --> SENT : Client sends (salary policy checked)
-  SENT --> ACCEPTED : candidate accepts
-  SENT --> DECLINED : candidate declines
+  DRAFT --> SENT : Client sends (salary checked)
+  SENT --> ACCEPTED : Candidate accepts
+  SENT --> DECLINED : Candidate declines
   SENT --> WITHDRAWN : Client withdraws (reason)
-  SENT --> EXPIRED : expiry worker
+  SENT --> EXPIRED : Offer expiry worker
   ACCEPTED --> [*]
   DECLINED --> [*]
   WITHDRAWN --> [*]

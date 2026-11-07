@@ -1,24 +1,28 @@
 ---
-title: MF-05 · Resignation during warranty and replacement slot
+title: sd MF-05b: Early Resignation Claim During Warranty & Free Replacement Slot
 ---
 sequenceDiagram
   autonumber
   actor CL as Client Company User
-  participant API as Finance endpoints
-  participant H as Report / Resolve resignation
+  participant API as FinanceEndpoints
+  participant H as Report / Resolve Resignation Handlers
   participant DB as PostgreSQL
   actor HR as Internal HR
   actor AF as Affiliate
-  CL->>API: POST /placements/{id}/resignation
-  API->>H: ReportResignation
-  H->>DB: Warranty CLAIMED, Commission ON_HOLD
-  HR->>API: POST /placements/{id}/resignation/resolve
-  alt HR confirms
-  H->>DB: Warranty VOIDED, Placement LEFT_DURING_WARRANTY, Commission CANCELLED
-  H->>DB: ReplacementSlot OPEN (WAITING_PAYMENT if fee unpaid)
-  else HR rejects
-  H->>DB: Warranty ACTIVE, Commission back to IN_WARRANTY
+  CL->>API: POST /api/v1/placements/{id}/resignation (LastWorkingDate, Reason)
+  API->>H: Send(ReportResignationCommand)
+  H->>DB: Update Warranty -> CLAIMED & Commission -> ON_HOLD
+  H-->>HR: Notify Internal HR to verify resignation claim
+  API-->>CL: 200 OK (Warranty Claim Recorded)
+  HR->>API: POST /api/v1/placements/{id}/resignation/resolve (Confirmed, Note)
+  API->>H: Send(ResolveResignationCommand)
+  alt Confirmed == true (Candidate Left During Warranty)
+    H->>DB: Update Warranty -> VOIDED, Placement -> LEFT_DURING_WARRANTY
+    H->>DB: Update Commission -> CANCELLED & open ReplacementSlot (OPEN / WAITING_PAYMENT)
+    H-->>AF: Notify Affiliate: Commission cancelled due to early resignation
+    API-->>HR: 200 OK (Replacement Slot Opened)
+  else Confirmed == false (Claim Rejected)
+    H->>DB: Restore Warranty -> ACTIVE & Commission -> IN_WARRANTY
+    H-->>AF: Notify Affiliate: Warranty restored
+    API-->>HR: 200 OK (Warranty Restored)
   end
-  H->>AF: Notify result
-  CL->>API: Fill slot with a new placement
-  H->>DB: Slot FILLED, no new service fee

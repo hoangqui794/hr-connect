@@ -1,0 +1,20 @@
+@startuml sm-service-fee
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Helvetica
+skinparam state {
+  BackgroundColor #EFF6FF
+  BorderColor #1D4ED8
+  FontColor #0F172A
+}
+title State Machine — ServiceFee (MF-05)
+left to right direction
+[*] --> PENDING : Placement / deposit / settlement created
+PENDING --> DUE : Due reminder window (worker)
+DUE --> OVERDUE : Payment deadline passed
+PENDING --> PAID : VNPay / Admin records payment
+DUE --> PAID : VNPay / Admin records payment
+OVERDUE --> PAID : VNPay / Admin records payment
+PENDING --> CANCELLED : Candidate not started / voided
+PAID --> [*]
+CANCELLED --> [*]
+@enduml
