@@ -10,6 +10,7 @@ import dayjs from 'dayjs';
 import { resolveApiAssetUrl } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
+import { ALL_VIETNAM_PROVINCES, removeDiacritics } from '@/features/jobs-mf01/PublicJobSplitDiscovery';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
 import { BrandMark } from '@/components/common/BrandMark';
 import { CompanyLogo } from './CompanyLogo';
@@ -122,7 +123,31 @@ export const SearchForm: React.FC<{ defaultKeyword?: string; defaultLocation?: s
   const [keyword, setKeyword] = useState(defaultKeyword);
   const [location, setLocation] = useState(defaultLocation);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [locFilter, setLocFilter] = useState('');
   const candidate = isAuthenticated && role === UserRole.CANDIDATE;
+
+  const popularLocations = [
+    { value: '', label: 'Tất cả địa điểm', region: 'Toàn quốc', isAll: true },
+    { value: 'Hồ Chí Minh', label: 'Hồ Chí Minh', region: 'Miền Nam' },
+    { value: 'Hà Nội', label: 'Hà Nội', region: 'Miền Bắc' },
+    { value: 'Đà Nẵng', label: 'Đà Nẵng', region: 'Miền Trung' },
+    { value: 'Bình Dương', label: 'Bình Dương', region: 'Đông Nam Bộ' },
+    { value: 'Hải Phòng', label: 'Hải Phòng', region: 'Miền Bắc' },
+    { value: 'Đồng Nai', label: 'Đồng Nai', region: 'Đông Nam Bộ' },
+    { value: 'Cần Thơ', label: 'Cần Thơ', region: 'Tây Nam Bộ' },
+  ];
+
+  const visibleLocationOptions = React.useMemo(() => {
+    if (!locFilter.trim()) {
+      return popularLocations;
+    }
+    const norm = removeDiacritics(locFilter).toLowerCase();
+    const all = [
+      { value: '', label: 'Tất cả địa điểm', region: 'Toàn quốc', isAll: true },
+      ...ALL_VIETNAM_PROVINCES.map((p) => ({ value: p, label: p, region: 'Việt Nam', isAll: false })),
+    ];
+    return all.filter((opt) => removeDiacritics(opt.label).toLowerCase().includes(norm));
+  }, [locFilter]);
 
   return (
     <form
@@ -162,16 +187,26 @@ export const SearchForm: React.FC<{ defaultKeyword?: string; defaultLocation?: s
             <div
               role="listbox"
               aria-label="Chọn địa điểm làm việc"
-              className="w-[290px] overflow-hidden rounded-2xl border border-solid border-slate-200 bg-white p-2 shadow-2xl shadow-slate-900/15 ring-1 ring-black/5"
+              className="w-[300px] overflow-hidden rounded-2xl border border-solid border-slate-200 bg-white p-2 shadow-2xl shadow-slate-900/15 ring-1 ring-black/5"
             >
               <div className="flex items-center justify-between border-b border-solid border-slate-100 px-3 pb-2 pt-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                 <span>Địa điểm làm việc</span>
                 <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
-                  {LOCATION_OPTIONS.length} khu vực
+                  {visibleLocationOptions.length} khu vực
                 </span>
               </div>
-              <div className="mt-1.5 space-y-1">
-                {LOCATION_OPTIONS.map((loc) => {
+              <div className="px-2 pt-2 pb-1">
+                <input
+                  type="text"
+                  value={locFilter}
+                  onChange={(e) => setLocFilter(e.target.value)}
+                  placeholder="Nhập tỉnh thành tìm kiếm..."
+                  className="w-full rounded-lg border border-solid border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[13px] outline-none focus:border-sky-500 focus:bg-white"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+              <div className="mt-1 max-h-[240px] overflow-y-auto space-y-1">
+                {visibleLocationOptions.map((loc) => {
                   const isSelected = location === loc.value;
                   return (
                     <button

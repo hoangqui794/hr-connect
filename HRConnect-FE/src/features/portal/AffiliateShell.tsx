@@ -199,7 +199,7 @@ export const AffiliateShell: React.FC = () => {
       </aside>
 
       {/* ── Main ────────────────────────────────────────────────────────── */}
-      <div className="min-w-0 max-w-full transition-[padding] duration-200" style={{ paddingLeft: compact ? 0 : width }}>
+      <div className="min-w-0 max-w-full overflow-x-hidden transition-[padding] duration-200" style={{ paddingLeft: compact ? 0 : width }}>
         <header className="affiliate-topbar sticky top-0 z-20 flex h-16 items-center justify-between border-0 border-b border-solid px-4 lg:px-6">
           <div className="flex min-w-0 items-center gap-2">
             {compact && (
@@ -251,7 +251,7 @@ export const AffiliateShell: React.FC = () => {
         </header>
 
         <AdminTopProgress offsetLeft={compact ? 0 : width} />
-        <main className="affiliate-main min-w-0 max-w-full mx-auto px-4 py-5 pb-24 md:pb-5 lg:px-6 lg:py-6">
+        <main className="affiliate-main min-w-0 max-w-full overflow-x-hidden mx-auto px-4 py-5 pb-24 md:pb-5 lg:px-6 lg:py-6">
           <AdminPageEnter pathKey={location.pathname}>
             <Suspense fallback={<AdminPageSkeleton />}>
               <Outlet />

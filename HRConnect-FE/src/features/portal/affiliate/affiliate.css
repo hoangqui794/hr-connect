@@ -67,6 +67,7 @@
 .affiliate-console .affiliate-main {
   width: min(100%, 1280px);
   max-width: 100%;
+  overflow-x: hidden;
   box-sizing: border-box;
 }
 

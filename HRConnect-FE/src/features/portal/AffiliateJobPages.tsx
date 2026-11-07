@@ -242,8 +242,8 @@ export const AffiliateJobDetailPage: React.FC = () => {
       ) : detail.isLoading || !job ? (
         <Skeleton active paragraph={{ rows: 12 }} />
       ) : (
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="min-w-0 space-y-4">
+        <div className="grid grid-cols-1 gap-5 w-full max-w-full min-w-0 overflow-hidden xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="w-full min-w-0 max-w-full space-y-4">
             <section className="flex flex-wrap gap-4 rounded-lg border border-solid border-gray-200 bg-white p-5">
               <CompanyLogo job={job} size={72} />
               <div className="min-w-0 flex-[1_1_300px]">
@@ -277,7 +277,7 @@ export const AffiliateJobDetailPage: React.FC = () => {
               <LongText title="Thời gian làm việc" value={job.workingTime} />
             </article>
           </div>
-          <aside className="min-w-0 space-y-4 xl:sticky xl:top-24 xl:self-start">
+          <aside className="w-full min-w-0 max-w-full space-y-4 xl:sticky xl:top-24 xl:self-start">
             <CommissionEstimateCard jobId={job.jobId} />
             <Button type="primary" size="large" block className="affiliate-cta" onClick={() => navigate(`/affiliate/submit-candidate?job=${job.jobId}`)}>
               Giới thiệu ứng viên
