@@ -138,7 +138,7 @@ describe('sourcingUtils', () => {
       expect(getRejectReasonLabel('FALSE_INFORMATION')).toBe('Thông tin ứng viên sai sự thật');
       expect(getRejectReasonLabel('UNREACHABLE')).toBe('Không liên lạc được / hết nhu cầu');
       expect(getRejectReasonLabel('WRONG_JOB')).toBe('Không đúng job hoặc tiêu chí cơ bản');
-      expect(getRejectReasonLabel('OTHER')).toBe('Lý do khác (bắt buộc ghi chú)');
+      expect(getRejectReasonLabel('OTHER')).toBe('Lý do khác');
     });
 
     it('returns raw code for unrecognized codes', () => {
