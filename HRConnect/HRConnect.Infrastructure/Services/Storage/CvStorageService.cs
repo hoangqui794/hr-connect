@@ -284,6 +284,8 @@ public class CvStorageService : ICvStorageService
                     currentPrimary.IsPrimary = false;
                     currentPrimary.UpdatedAt = now;
                     _candidateCvRepository.Update(currentPrimary);
+                    // Lưu hạ cờ CV chính cũ trước khi thêm mới để không đụng unique index uq_candidate_primary_cv
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
                 }
             }
 

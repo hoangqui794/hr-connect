@@ -73,6 +73,22 @@ describe('CandidateApplicationsPage', () => {
     expect(screen.queryByText('Job a')).not.toBeInTheDocument();
   });
 
+  it('shows hired applications in the "Đang làm việc" tab separate from ended ones', async () => {
+    listApplications([
+      application('h1', 'HIRED', 'Đang làm việc', 'Booking KOL/KOC'),
+      application('e1', 'WITHDRAWN', 'Đã rút', 'Frontend Developer'),
+    ]);
+    renderPage();
+
+    expect(await screen.findByRole('tab', { name: 'Đang làm việc (1)' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Đã kết thúc (1)' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Đang làm việc (1)' }));
+    expect(screen.getByText('Booking KOL/KOC')).toBeInTheDocument();
+    expect(screen.getAllByText('Đang làm việc').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Frontend Developer')).not.toBeInTheDocument();
+  });
+
   it('asks the backend for the chosen source', async () => {
     renderPage();
     fireEvent.mouseDown(await screen.findByRole('combobox', { name: 'Nguồn' }));

@@ -47,7 +47,7 @@ export const candidateDisplayStage = (
     SELECTED: { step: 2, label: 'Được chọn phỏng vấn', tone: 'success', closed: false },
     INTERVIEW: { step: 3, label: 'Phỏng vấn', tone: 'info', closed: false },
     OFFER: { step: 5, label: 'Đã nhận lời mời', tone: 'success', closed: false },
-    HIRED: { step: 6, label: 'Đã tuyển', tone: 'success', closed: true },
+    HIRED: { step: 6, label: 'Đang làm việc', tone: 'success', closed: true },
     NOT_SELECTED: {
       step: 1,
       label: 'Chưa phù hợp lần này',

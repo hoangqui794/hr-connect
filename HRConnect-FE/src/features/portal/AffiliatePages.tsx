@@ -197,6 +197,11 @@ export const AffiliateHomePage: React.FC = () => {
 
   return (
     <div className="affiliate-dashboard space-y-5">
+      <AffiliatePageHeader
+        title="Tổng quan"
+        description="Chào mừng bạn trở lại! Cùng tạo thêm nhiều cơ hội việc làm chất lượng nhé."
+      />
+
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {kpis.map((k) => (
           <section key={k.label} className="rounded-lg border border-solid border-gray-200 bg-white p-4">

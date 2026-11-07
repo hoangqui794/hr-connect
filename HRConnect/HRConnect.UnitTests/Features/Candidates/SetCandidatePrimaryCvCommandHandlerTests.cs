@@ -100,7 +100,9 @@ public class SetCandidatePrimaryCvCommandHandlerTests
 
         _candidateCvRepositoryMock.Verify(r => r.Update(previousPrimaryCv), Times.Once);
         _candidateCvRepositoryMock.Verify(r => r.Update(targetCv), Times.Once);
-        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(u => u.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        _unitOfWorkMock.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
         _auditLogServiceMock.Verify(a => a.AddAsync(
             It.Is<AuditEntry>(entry => entry.Action == AuditActions.CvPrimarySet && entry.EntityId == targetCvId),
             It.IsAny<CancellationToken>()), Times.Once);

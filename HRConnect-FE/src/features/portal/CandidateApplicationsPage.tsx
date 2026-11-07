@@ -25,7 +25,7 @@ const STEP_COUNT = 5;
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
 
-type Tab = 'ALL' | 'PROCESSING' | 'INTERVIEW' | 'OFFER' | 'ENDED';
+type Tab = 'ALL' | 'PROCESSING' | 'INTERVIEW' | 'OFFER' | 'HIRED' | 'ENDED';
 type Group = CandidateApplicationDisplayGroup;
 
 const TABS: { key: Tab; label: string; groups?: Group[] }[] = [
@@ -33,7 +33,8 @@ const TABS: { key: Tab; label: string; groups?: Group[] }[] = [
   { key: 'PROCESSING', label: 'Đang xử lý', groups: ['SUBMITTED', 'IN_REVIEW', 'SELECTED'] },
   { key: 'INTERVIEW', label: 'Phỏng vấn', groups: ['INTERVIEW'] },
   { key: 'OFFER', label: 'Offer', groups: ['OFFER'] },
-  { key: 'ENDED', label: 'Đã kết thúc', groups: ['HIRED', 'NOT_SELECTED', 'WITHDRAWN'] },
+  { key: 'HIRED', label: 'Đang làm việc', groups: ['HIRED'] },
+  { key: 'ENDED', label: 'Đã kết thúc', groups: ['NOT_SELECTED', 'WITHDRAWN'] },
 ];
 
 /** Older links pass one status group in `status`; it opens the tab holding that group. */
@@ -126,7 +127,9 @@ const ApplicationRow: React.FC<{ application: CandidateApplication }> = ({ appli
               {a.companyName} · Nộp {dayjs(a.appliedAt).format('DD/MM/YYYY')} · {a.submissionSource === 'AFFILIATE' ? 'Được Affiliate giới thiệu' : 'Tự ứng tuyển'}
             </div>
           </div>
-          <span className="self-start rounded px-2 py-[3px] text-[12px] font-semibold" style={{ color: view.color.text, background: view.color.background }}>{stage.label}</span>
+          <span className="self-start rounded px-2 py-[3px] text-[12px] font-semibold" style={{ color: view.color.text, background: view.color.background }}>
+            {a.displayGroup === 'HIRED' ? 'Đang làm việc' : stage.label}
+          </span>
         </div>
         <div role="img" aria-label={`Tiến độ: ${stage.label}`} className="mt-3 flex gap-1">
           {Array.from({ length: STEP_COUNT }, (_, index) => (
