@@ -72,7 +72,7 @@ export const SOURCING_REJECT_REASONS: { value: SourcingRejectReasonCode; label: 
   },
   {
     value: 'OTHER',
-    label: 'Lý do khác (bắt buộc ghi chú)',
+    label: 'Lý do khác',
     description: 'Lý do khác cần ghi chú cụ thể để Internal HR xác minh.',
   },
 ];

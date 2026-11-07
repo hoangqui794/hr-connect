@@ -62,7 +62,7 @@ export const REJECTION_REASONS: { value: string; label: string }[] = [
   { value: 'LANGUAGE_REQUIREMENT', label: 'Không đạt yêu cầu ngoại ngữ' },
   { value: 'CANDIDATE_UNREACHABLE', label: 'Không liên hệ được ứng viên' },
   { value: 'POSITION_FILLED', label: 'Vị trí đã tuyển đủ' },
-  { value: 'OTHER', label: 'Lý do khác (cần ghi chú)' },
+  { value: 'OTHER', label: 'Lý do khác' },
 ];
 
 export const reasonLabel = (code?: string | null) =>
