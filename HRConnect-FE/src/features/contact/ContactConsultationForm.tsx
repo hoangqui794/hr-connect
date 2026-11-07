@@ -19,22 +19,22 @@ const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 const SERVICE_INTEREST_OPTIONS: { value: ContactServiceInterest; label: string; desc: string }[] = [
   {
     value: 'HEADHUNT_COD',
-    label: 'Tuyển qua Affiliate – trả phí khi tuyển được',
+    label: 'Tuyển trọn gói (Thành công mới thanh toán)',
     desc: 'Phí thành công, bảo hành và đồng hành trọn quy trình',
   },
   {
     value: 'CV_SOURCING',
-    label: 'Mua CV theo số lượng',
+    label: 'Cung cấp hồ sơ ứng viên theo yêu cầu',
     desc: 'Bàn giao danh sách hồ sơ đã qua sàng lọc chuyên sâu',
   },
   {
     value: 'CV_APPLICATION',
-    label: 'Đăng tin tuyển dụng',
+    label: 'Đăng tin tuyển dụng nhận hồ sơ',
     desc: 'Tiếp cận hàng nghìn ứng viên chủ động trên nền tảng',
   },
   {
     value: 'OTHER',
-    label: 'Tư vấn giải pháp khác',
+    label: 'Tư vấn giải pháp tuyển dụng khác',
     desc: 'Trao đổi nhu cầu tuyển dụng riêng biệt theo yêu cầu',
   },
 ];
@@ -338,16 +338,13 @@ export const ContactConsultationForm: React.FC<ContactConsultationFormProps> = (
           }
           name="serviceInterest"
           rules={[{ required: true, message: 'Vui lòng chọn dịch vụ bạn cần tư vấn' }]}
-          extra={
-            currentServiceInfo?.desc ? (
-              <span className="mt-1 block text-[12px] text-[#6B7280]">{currentServiceInfo.desc}</span>
-            ) : null
-          }
+          className="!mb-2"
         >
           <Select
             size="large"
-            className="w-full"
+            className="w-full [&_.ant-select-selector]:!min-h-[44px] [&_.ant-select-selector]:!rounded-md [&_.ant-select-selector]:!border-[#D1D5DB]"
             placeholder="Chọn mô hình dịch vụ"
+            popupClassName="bg-white shadow-lg rounded-lg border border-slate-200"
             options={SERVICE_INTEREST_OPTIONS.map((item) => ({
               value: item.value,
               label: item.label,
@@ -364,6 +361,11 @@ export const ContactConsultationForm: React.FC<ContactConsultationFormProps> = (
             }}
           />
         </Form.Item>
+        {currentServiceInfo?.desc && (
+          <p className="-mt-1 mb-4 text-[12.5px] leading-relaxed text-[#6B7280] pl-0.5">
+            {currentServiceInfo.desc}
+          </p>
+        )}
 
         {/* Message */}
         <Form.Item

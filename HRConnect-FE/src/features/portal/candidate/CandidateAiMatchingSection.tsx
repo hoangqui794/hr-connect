@@ -87,10 +87,10 @@ export const CandidateAiMatchingSection: React.FC<CandidateAiMatchingSectionProp
           company: item.companyName,
           companyId: item.jobId,
           location: item.location || 'Toàn quốc',
-          salaryText: item.salaryNegotiable
-            ? 'Thỏa thuận'
-            : item.salaryMin && item.salaryMax
-              ? `${(item.salaryMin / 1000000).toFixed(0)} - ${(item.salaryMax / 1000000).toFixed(0)} Triệu VND`
+          salaryText: item.salaryMin && item.salaryMax
+            ? `${(item.salaryMin / 1000000).toFixed(0)} - ${(item.salaryMax / 1000000).toFixed(0)} Triệu VND${item.salaryNegotiable ? ' (Thương lượng)' : ''}`
+            : item.salaryNegotiable
+              ? 'Thỏa thuận'
               : 'Mức lương hấp dẫn',
           matchScore: score,
           matchedSkills: reasons.length > 0 ? reasons.slice(0, 4) : ['Kỹ năng phù hợp', 'Kinh nghiệm tương thích'],

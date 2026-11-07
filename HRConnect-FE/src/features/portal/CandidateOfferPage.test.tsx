@@ -115,6 +115,7 @@ describe('CandidateOfferPage', () => {
     renderPage();
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Công ty hiện tại');
+    expect(screen.getByRole('link', { name: 'Liên hệ hỗ trợ' })).toHaveAttribute('href', '/contact?service=OTHER');
     expect(screen.getByRole('button', { name: 'Gửi trả lời' })).toBeDisabled();
 
     fireEvent.click(screen.getByRole('radio', { name: /Từ chối offer/ }));

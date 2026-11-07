@@ -165,10 +165,27 @@ const JobContent: React.FC<{ job: Job }> = ({ job }) => {
   const companyLegalName = company?.companyName ?? job.companyName;
   const logoUrl = company?.logoUrl ?? job.companyLogoUrl;
   const website = company?.website ? websiteHref(company.website) : null;
-  const workAddress = company?.address ?? job.location;
-  const facts = [
+  const locations = job.location
+    ? job.location.split(/;\s*|\n+/).map((s) => s.trim()).filter(Boolean)
+    : [];
+
+  const locationValue: React.ReactNode =
+    locations.length > 1 ? (
+      <div className="space-y-1">
+        {locations.map((loc, idx) => (
+          <div key={idx} className="flex items-start gap-1.5 leading-snug">
+            <span className="text-[#9CA3AF] select-none shrink-0">•</span>
+            <span>{loc}</span>
+          </div>
+        ))}
+      </div>
+    ) : (
+      locations[0] ?? '—'
+    );
+
+  const facts: { label: string; value: React.ReactNode; accent?: boolean }[] = [
     { label: 'Mức lương', value: salaryText(job), accent: true },
-    { label: 'Địa điểm', value: job.location ?? '—' },
+    { label: 'Địa điểm', value: locationValue },
     { label: 'Kinh nghiệm', value: experienceText(job.minExperienceYears, job.maxExperienceYears) },
     { label: 'Loại hình làm việc', value: job.employmentType ? EMPLOYMENT_TYPE_LABEL[job.employmentType] : '—' },
     { label: 'Hình thức làm việc', value: WORK_MODE_LABEL[detectWorkMode(job)] ?? 'Tại văn phòng (On-site)' },
@@ -199,7 +216,11 @@ const JobContent: React.FC<{ job: Job }> = ({ job }) => {
         <div className="min-w-0 flex-[1_1_420px]">
           <h1 id="jobtitle" className="m-0 text-[22px] font-bold text-[#111827]">{job.title}</h1>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <Link to={`/companies/${job.companyId}`} className={`font-medium ${LINK}`}>{companyName}</Link>
+            {job.companyId ? (
+              <Link to={`/companies/${job.companyId}`} className={`font-medium ${LINK}`}>{companyName}</Link>
+            ) : (
+              <span className="font-medium text-[#1F2937]">{companyName}</span>
+            )}
             {company?.isVerified && <span className="rounded bg-[#DCFCE7] px-1.5 py-px text-[12px] text-[#166534]">Đã xác minh</span>}
           </div>
           <dl className="m-0 mt-[14px] grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
@@ -249,10 +270,10 @@ const JobContent: React.FC<{ job: Job }> = ({ job }) => {
             </>
           )}
           <BulletSection title="Quyền lợi" items={toLines(job.benefits)} />
-          {(job.workingTime || workAddress) && (
+          {job.workingTime && (
             <>
-              <h2 className={H2}>Thời gian và địa điểm làm việc</h2>
-              <p className="m-0 whitespace-pre-line">{[job.workingTime, workAddress].filter(Boolean).join('\n')}</p>
+              <h2 className={H2}>Thời gian làm việc</h2>
+              <p className="m-0 whitespace-pre-line">{job.workingTime}</p>
             </>
           )}
           {(applyAction || (daysLeft !== null && daysLeft > 0)) && (
@@ -297,9 +318,11 @@ const JobContent: React.FC<{ job: Job }> = ({ job }) => {
                 ))}
               </dl>
             )}
-            <Link to={`/companies/${job.companyId}`} className="mt-[14px] block rounded-md border border-solid border-[#D1D5DB] p-[9px] text-center font-medium text-[#1F2937] no-underline hover:bg-[#F9FAFB] hover:text-[#1F2937]">
-              Xem trang công ty
-            </Link>
+            {job.companyId && (
+              <Link to={`/companies/${job.companyId}`} className="mt-[14px] block rounded-md border border-solid border-[#D1D5DB] p-[9px] text-center font-medium text-[#1F2937] no-underline hover:bg-[#F9FAFB] hover:text-[#1F2937]">
+                Xem trang công ty
+              </Link>
+            )}
           </section>
           <SimilarJobs job={job} />
         </aside>
