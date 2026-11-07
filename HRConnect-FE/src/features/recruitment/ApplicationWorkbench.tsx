@@ -381,6 +381,12 @@ export const ApplicationWorkbench: React.FC<{
       });
     } else if (kind === 'offer') form.setFieldsValue({ currencyCode: 'VND', salaryBasis: 'GROSS', salaryPeriod: 'MONTHLY' });
     if (kind === 'schedule') form.setFieldsValue({ durationMinutes: 60, interviewType: 'OFFLINE' });
+    if (kind === 'reject' && d?.status === 'INTERVIEW') {
+      const latestRound = [...(d.interviews ?? [])].sort((a, b) => b.interviewRound - a.interviewRound)[0];
+      if (latestRound?.status === 'NO_SHOW') {
+        form.setFieldsValue({ reasonCode: 'CANDIDATE_UNREACHABLE' });
+      }
+    }
     if (kind === 'editInterview' && interview)
       form.setFieldsValue({
         durationMinutes: interview.durationMinutes ?? 60,

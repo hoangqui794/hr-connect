@@ -442,6 +442,38 @@ public class GetRecruitmentApplicationDetailQueryHandlerTests
         result.Data.Placement!.IsReplacement.Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData(InterviewStates.NoShow)]
+    [InlineData(InterviewStates.Cancelled)]
+    public async Task Handle_WhenInterviewNoShowOrCancelledAndNoScheduledInterview_ShouldExposeScheduleAndRejectActions(string interviewStatus)
+    {
+        var appId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var app = CreateSampleApplication(appId, companyId, ApplicationStates.Interview, ServiceTypeCodes.HeadhuntCod);
+        app.Interviews.Add(new Interview
+        {
+            InterviewId = Guid.NewGuid(),
+            ApplicationId = appId,
+            InterviewRound = 1,
+            Status = interviewStatus,
+            ScheduledAt = DateTime.UtcNow.AddDays(-1),
+            CreatedAt = DateTime.UtcNow.AddDays(-2)
+        });
+
+        _applicationRepositoryMock
+            .Setup(r => r.GetRecruitmentApplicationDetailAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
+
+        var result = await CreateHandler().Handle(new GetRecruitmentApplicationDetailQuery(
+            appId, userId, IsClientCompanyUser: true, IsInternalHrOrAdmin: false), CancellationToken.None);
+
+        result.Data.AllowedActions.Should().BeEquivalentTo(["SCHEDULE_INTERVIEW", "REJECT"]);
+    }
+
     private static Domain.Entities.Application CreateSampleApplication(
         Guid applicationId,
         Guid companyId,
