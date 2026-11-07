@@ -33,6 +33,10 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
             {
                 ApplicationStates.Shortlisted,
                 ApplicationStates.BackupNotSelected
+            },
+            [ApplicationStates.Interview] = new HashSet<string>(StringComparer.Ordinal)
+            {
+                ApplicationStates.Rejected
             }
         };
 
@@ -103,7 +107,13 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
             serviceTypeCode = (await _serviceTypeRepository.GetByIdAsync(application.Job.ServiceTypeId, cancellationToken))?.Code;
         }
 
-        if (!ScreeningPolicy.CanScreen(request.Actor, serviceTypeCode))
+        var currentStatus = application.Status.Trim().ToUpperInvariant();
+        var isClientInterviewStageRejection =
+            request.Actor == ScreeningActor.ClientCompany
+            && currentStatus == ApplicationStates.Interview
+            && targetStatus == ApplicationStates.Rejected;
+
+        if (!isClientInterviewStageRejection && !ScreeningPolicy.CanScreen(request.Actor, serviceTypeCode))
         {
             var responsible = ScreeningPolicy.GetResponsibleActor(serviceTypeCode) switch
             {
@@ -115,8 +125,6 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
                 ? $"Loại dịch vụ {serviceTypeCode ?? "(không xác định)"} chưa hỗ trợ sàng lọc."
                 : $"Hồ sơ thuộc loại dịch vụ {serviceTypeCode} do {responsible} sàng lọc.");
         }
-
-        var currentStatus = application.Status.Trim().ToUpperInvariant();
 
         // Internal HR performs only the initial pre-screen for agency services.
         // Building or deciding the backup pool remains a Client Company decision.
@@ -137,6 +145,24 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
         {
             throw new BadRequestException(
                 $"Không thể chuyển hồ sơ từ {currentStatus} sang {targetStatus} trong bước sàng lọc.");
+        }
+
+        if (currentStatus == ApplicationStates.Interview)
+        {
+            if (application.Interviews?.Any(i => i.Status == InterviewStates.Scheduled) == true)
+            {
+                throw new BadRequestException("Không thể loại hồ sơ khi đang có lịch phỏng vấn chờ diễn ra.");
+            }
+
+            var latestInterview = application.Interviews?
+                .OrderByDescending(i => i.InterviewRound)
+                .ThenByDescending(i => i.CreatedAt)
+                .FirstOrDefault();
+
+            if (latestInterview == null || latestInterview.Status is not (InterviewStates.NoShow or InterviewStates.Cancelled))
+            {
+                throw new BadRequestException("Chỉ có thể loại hồ sơ ở bước phỏng vấn sau khi buổi phỏng vấn ghi nhận vắng mặt hoặc đã hủy.");
+            }
         }
 
         var reason = string.IsNullOrWhiteSpace(request.Reason) ? null : request.Reason.Trim();
