@@ -1,0 +1,361 @@
+---
+title: HR Connect – Core Logical ERD (35 Entities)
+config:
+  layout: elk
+---
+erDiagram
+  AppUser {
+    PK UserId
+    Attribute Email
+    Attribute DisplayName
+    Attribute Phone
+    Attribute Status
+  }
+  Role {
+    PK RoleId
+    Attribute Code
+    Attribute Name
+    Attribute IsSystem
+  }
+  UserRole {
+    PK_FK UserId
+    PK_FK RoleId
+    Attribute AssignmentSource
+    Attribute Status
+  }
+  Company {
+    PK CompanyId
+    Attribute CompanyName
+    Attribute TaxCode
+    Attribute VerificationStatus
+  }
+  CompanyUser {
+    PK CompanyUserId
+    FK CompanyId
+    FK UserId
+    Attribute RoleInCompany
+    Attribute IsPrimaryContact
+  }
+  AffiliateProfile {
+    PK AffiliateId
+    FK UserId
+    Attribute BankName
+    Attribute BankAccountNumber
+    Attribute Status
+  }
+  Candidate {
+    PK CandidateId
+    FK UserId
+    FK MergedIntoCandidateId
+    Attribute FullName
+    Attribute NormalizedEmail
+    Attribute NormalizedPhone
+    Attribute Status
+  }
+  CandidateCv {
+    PK CvId
+    FK CandidateId
+    FK UploadedByUserId
+    Attribute FileName
+    Attribute SourceType
+    Attribute AllowAffiliateReuse
+    Attribute Status
+  }
+  CandidateIdentityClaim {
+    PK ClaimId
+    FK RequesterUserId
+    FK TargetCandidateId
+    FK ReviewedBy
+    Attribute EvidenceUrl
+    Attribute Status
+  }
+  CandidateDuplicateCase {
+    PK DuplicateCaseId
+    FK CandidateAId
+    FK CandidateBId
+    FK CanonicalCandidateId
+    FK SubmissionId
+    Attribute ConfidenceScore
+    Attribute Status
+  }
+  ServiceType {
+    PK ServiceTypeId
+    Attribute Code
+    Attribute Name
+  }
+  Job {
+    PK JobId
+    FK CompanyId
+    FK ServiceTypeId
+    FK CreatedBy
+    FK CurrentServiceAgreementId
+    Attribute Title
+    Attribute Quantity
+    Attribute FeeMultiplier
+    Attribute WarrantyDays
+    Attribute SourcingTarget
+    Attribute Status
+  }
+  JobRequirement {
+    PK RequirementId
+    FK JobId
+    Attribute RequirementType
+    Attribute CriteriaText
+    Attribute Weight
+  }
+  ServiceAgreement {
+    PK ServiceAgreementId
+    FK JobId
+    FK CompanyId
+    FK CreatedByUserId
+    FK SignerUserId
+    Attribute Version
+    Attribute VerificationCode
+    Attribute SignedPdfObjectKey
+    Attribute Status
+  }
+  JobPostingPackage {
+    PK PackageId
+    Attribute Code
+    Attribute Name
+    Attribute Price
+    Attribute MaxApplications
+  }
+  JobPostingFee {
+    PK PostingFeeId
+    FK JobId
+    FK PackageId
+    FK CompanyId
+    Attribute Amount
+    Attribute PaymentReference
+    Attribute Status
+  }
+  Submission {
+    PK SubmissionId
+    FK CandidateId
+    FK CvId
+    FK JobId
+    FK SubmittedBy
+    FK ReplacementSlotId
+    Attribute Source
+    Attribute Status
+  }
+  SubmissionConsent {
+    PK ConsentId
+    FK SubmissionId
+    Attribute ConsentTokenHash
+    Attribute RespondedAt
+    Attribute ExpiresAt
+    Attribute Status
+  }
+  Application {
+    PK ApplicationId
+    FK JobId
+    FK CandidateId
+    FK AcceptedSubmissionId
+    FK ReplacementSlotId
+    Attribute CurrentStage
+    Attribute Status
+  }
+  ApplicationStatusHistory {
+    PK ApplicationStatusHistoryId
+    FK ApplicationId
+    FK ChangedBy
+    Attribute OldStatus
+    Attribute NewStatus
+    Attribute ReasonCode
+  }
+  Attribution {
+    PK AttributionId
+    FK ApplicationId
+    FK AffiliateId
+    FK WinningSubmissionId
+    Attribute RuleApplied
+    Attribute Status
+  }
+  AiMatchResult {
+    PK MatchResultId
+    FK ApplicationId
+    Attribute MatchScore
+    Attribute MatchTier
+    Attribute KnockedOut
+    Attribute Status
+  }
+  SourcingDelivery {
+    PK DeliveryId
+    FK JobId
+    FK ApplicationId
+    Attribute ReviewDueAt
+    Attribute Status
+  }
+  Interview {
+    PK InterviewId
+    FK ApplicationId
+    FK CreatedBy
+    Attribute RoundNumber
+    Attribute ScheduledAt
+    Attribute CandidateConfirmed
+    Attribute Result
+    Attribute Status
+  }
+  Offer {
+    PK OfferId
+    FK ApplicationId
+    FK CreatedBy
+    Attribute BaseSalary
+    Attribute ProposedStartDate
+    Attribute Status
+  }
+  Placement {
+    PK PlacementId
+    FK ApplicationId
+    FK OfferId
+    FK ReplacementSlotId
+    FK ConfirmedBy
+    Attribute ActualStartDate
+    Attribute Status
+  }
+  PlacementReconciliation {
+    PK ReconciliationId
+    FK ApplicationId
+    FK PlacementId
+    FK ReviewedBy
+    Attribute ClaimedOutcome
+    Attribute ResolutionAction
+    Attribute Status
+  }
+  Warranty {
+    PK WarrantyId
+    FK PlacementId
+    Attribute StartDate
+    Attribute EndDate
+    Attribute ResignationReason
+    Attribute Status
+  }
+  ServiceFee {
+    PK ServiceFeeId
+    FK PlacementId
+    FK JobId
+    FK CompanyId
+    Attribute Kind
+    Attribute Amount
+    Attribute DueDate
+    Attribute PaymentReference
+    Attribute Status
+  }
+  OnlinePayment {
+    PK OnlinePaymentId
+    FK CompanyId
+    FK CreatedBy
+    Attribute Provider
+    Attribute TargetType
+    Attribute TargetId
+    Attribute TxnRef
+    Attribute Amount
+    Attribute ProviderTransactionNo
+    Attribute Status
+  }
+  ReplacementSlot {
+    PK ReplacementSlotId
+    FK JobId
+    FK OriginalPlacementId
+    FK ServiceFeeId
+    FK FilledByPlacementId
+    Attribute ExpiresAt
+    Attribute Status
+  }
+  CommissionRule {
+    PK CommissionRuleId
+    FK ServiceTypeId
+    Attribute MilestoneType
+    Attribute RateType
+    Attribute RateValue
+    Attribute WarrantyRequired
+  }
+  Commission {
+    PK CommissionId
+    FK AttributionId
+    FK PlacementId
+    FK SourcingDeliveryId
+    FK CommissionRuleId
+    Attribute MilestoneType
+    Attribute Amount
+    Attribute Status
+  }
+  Payout {
+    PK PayoutId
+    FK CommissionId
+    FK RecordedBy
+    Attribute Amount
+    Attribute TransactionReference
+    Attribute Status
+  }
+  Dispute {
+    PK DisputeId
+    FK SubmissionId
+    FK AttributionId
+    FK CommissionId
+    FK CandidateDuplicateCaseId
+    FK RaisedBy
+    Attribute DisputeType
+    Attribute Resolution
+    Attribute Status
+  }
+
+  AppUser ||--|{ UserRole : "has"
+  Role ||--|{ UserRole : "assigned to"
+  Company ||--|{ CompanyUser : "employs"
+  AppUser ||--o{ CompanyUser : "represents"
+  AppUser ||--o| AffiliateProfile : "owns"
+  AppUser |o--o| Candidate : "linked to"
+  Candidate ||--|{ CandidateCv : "owns"
+  Candidate ||--o{ CandidateIdentityClaim : "claimed via"
+  Candidate ||--o{ CandidateDuplicateCase : "evaluated in"
+  Company ||--o{ Job : "publishes"
+  ServiceType ||--o{ Job : "classifies"
+  Job ||--|{ JobRequirement : "defines"
+  Job ||--o{ ServiceAgreement : "governed by"
+  Company ||--o{ ServiceAgreement : "signs"
+  Job ||--o{ JobPostingFee : "incurs"
+  JobPostingPackage ||--o{ JobPostingFee : "prices"
+  Company ||--o{ JobPostingFee : "pays"
+  Candidate ||--o{ Submission : "submitted in"
+  CandidateCv ||--o{ Submission : "attached to"
+  Job ||--o{ Submission : "receives"
+  Submission ||--o| SubmissionConsent : "requires"
+  Job ||--o{ Application : "tracks"
+  Candidate ||--o{ Application : "applies via"
+  Submission |o--o| Application : "promotes to"
+  Application ||--|{ ApplicationStatusHistory : "logs"
+  Application ||--o| Attribution : "attributed by"
+  AffiliateProfile ||--o{ Attribution : "earns"
+  Application ||--o{ AiMatchResult : "evaluated by"
+  Job ||--o{ SourcingDelivery : "delivers"
+  Application ||--o{ SourcingDelivery : "packaged in"
+  Application ||--o{ Interview : "schedules"
+  Application ||--o{ Offer : "extends"
+  Application ||--o| Placement : "results in"
+  Offer |o--o| Placement : "confirmed as"
+  Application ||--o{ PlacementReconciliation : "reconciles"
+  Placement |o--o{ PlacementReconciliation : "audits"
+  Placement ||--o| Warranty : "activates"
+  Placement |o--o{ ServiceFee : "bills"
+  Job ||--o{ ServiceFee : "charges"
+  Company ||--o{ ServiceFee : "owes"
+  Company ||--o{ OnlinePayment : "initiates"
+  ServiceFee |o--o{ OnlinePayment : "settled via"
+  JobPostingFee |o--o{ OnlinePayment : "settled via"
+  Job ||--o{ ReplacementSlot : "opens"
+  Placement ||--o| ReplacementSlot : "triggers"
+  ServiceFee |o--o{ ReplacementSlot : "covers"
+  ReplacementSlot |o--o{ Application : "filled by"
+  ServiceType ||--o{ CommissionRule : "configures"
+  Attribution ||--o{ Commission : "generates"
+  Placement |o--o{ Commission : "unlocks"
+  SourcingDelivery |o--o{ Commission : "unlocks"
+  CommissionRule ||--o{ Commission : "calculates"
+  Commission ||--o{ Payout : "disburses"
+  Submission |o--o{ Dispute : "disputed in"
+  Attribution |o--o{ Dispute : "contested in"
+  Commission |o--o{ Dispute : "challenged in"
+  CandidateDuplicateCase |o--o{ Dispute : "escalates to"

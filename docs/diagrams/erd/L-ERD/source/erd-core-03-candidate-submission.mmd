@@ -1,0 +1,122 @@
+---
+title: Logical ERD 03 – Candidate, Submission, Dedup & Attribution (MF-02)
+config:
+  layout: elk
+---
+erDiagram
+  Candidate {
+    PK CandidateId
+    FK UserId
+    FK MergedIntoCandidateId
+    Attribute FullName
+    Attribute NormalizedEmail
+    Attribute NormalizedPhone
+    Attribute Status
+  }
+  CandidateCv {
+    PK CvId
+    FK CandidateId
+    FK UploadedByUserId
+    Attribute FileName
+    Attribute SourceType
+    Attribute AllowAffiliateReuse
+    Attribute Status
+  }
+  CandidateIdentityClaim {
+    PK ClaimId
+    FK RequesterUserId
+    FK TargetCandidateId
+    FK ReviewedBy
+    Attribute EvidenceUrl
+    Attribute Status
+  }
+  CandidateDuplicateCase {
+    PK DuplicateCaseId
+    FK CandidateAId
+    FK CandidateBId
+    FK CanonicalCandidateId
+    FK SubmissionId
+    Attribute ConfidenceScore
+    Attribute Status
+  }
+  Job {
+    PK JobId
+    FK CompanyId
+    FK ServiceTypeId
+    FK CreatedBy
+    FK CurrentServiceAgreementId
+    Attribute Title
+    Attribute Quantity
+    Attribute FeeMultiplier
+    Attribute WarrantyDays
+    Attribute SourcingTarget
+    Attribute Status
+  }
+  Submission {
+    PK SubmissionId
+    FK CandidateId
+    FK CvId
+    FK JobId
+    FK SubmittedBy
+    FK ReplacementSlotId
+    Attribute Source
+    Attribute Status
+  }
+  SubmissionConsent {
+    PK ConsentId
+    FK SubmissionId
+    Attribute ConsentTokenHash
+    Attribute RespondedAt
+    Attribute ExpiresAt
+    Attribute Status
+  }
+  Application {
+    PK ApplicationId
+    FK JobId
+    FK CandidateId
+    FK AcceptedSubmissionId
+    FK ReplacementSlotId
+    Attribute CurrentStage
+    Attribute Status
+  }
+  Attribution {
+    PK AttributionId
+    FK ApplicationId
+    FK AffiliateId
+    FK WinningSubmissionId
+    Attribute RuleApplied
+    Attribute Status
+  }
+  AffiliateProfile {
+    PK AffiliateId
+    FK UserId
+    Attribute BankName
+    Attribute BankAccountNumber
+    Attribute Status
+  }
+  Dispute {
+    PK DisputeId
+    FK SubmissionId
+    FK AttributionId
+    FK CommissionId
+    FK CandidateDuplicateCaseId
+    FK RaisedBy
+    Attribute DisputeType
+    Attribute Resolution
+    Attribute Status
+  }
+  Candidate ||--|{ CandidateCv : "owns"
+  Candidate ||--o{ CandidateIdentityClaim : "claimed via"
+  Candidate ||--o{ CandidateDuplicateCase : "evaluated in"
+  Candidate ||--o{ Submission : "submitted in"
+  CandidateCv ||--o{ Submission : "attached to"
+  Job ||--o{ Submission : "receives"
+  Submission ||--o| SubmissionConsent : "requires"
+  Job ||--o{ Application : "tracks"
+  Candidate ||--o{ Application : "applies via"
+  Submission |o--o| Application : "promotes to"
+  Application ||--o| Attribution : "attributed by"
+  AffiliateProfile ||--o{ Attribution : "earns"
+  Submission |o--o{ Dispute : "disputed in"
+  Attribution |o--o{ Dispute : "contested in"
+  CandidateDuplicateCase |o--o{ Dispute : "escalates to"

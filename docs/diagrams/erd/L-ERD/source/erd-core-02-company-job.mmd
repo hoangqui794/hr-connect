@@ -1,0 +1,112 @@
+---
+title: Logical ERD – MF-01: Company Verification, Job Publishing & Service Agreement (Core)
+config:
+  layout: elk
+---
+erDiagram
+  Company {
+    PK CompanyId
+    Attribute CompanyName
+    Attribute TaxCode
+    Attribute Industry
+    Attribute CompanySize
+    Attribute VerificationStatus
+  }
+  CompanyUser {
+    PK CompanyUserId
+    FK CompanyId
+    FK UserId
+    Attribute RoleInCompany
+    Attribute IsPrimaryContact
+    Attribute Status
+  }
+  AppUser {
+    PK UserId
+    Attribute Email
+    Attribute DisplayName
+    Attribute Phone
+    Attribute Status
+  }
+  ServiceType {
+    PK ServiceTypeId
+    Attribute Code
+    Attribute Name
+    Attribute IsActive
+  }
+  Job {
+    PK JobId
+    FK CompanyId
+    FK ServiceTypeId
+    FK CreatedBy
+    FK PostingPackageId
+    FK CurrentServiceAgreementId
+    Attribute Title
+    Attribute Quantity
+    Attribute FeeMultiplier
+    Attribute WarrantyDays
+    Attribute SourcingTarget
+    Attribute SourcingPricePerCv
+    Attribute DepositPercent
+    Attribute Status
+  }
+  JobRequirement {
+    PK RequirementId
+    FK JobId
+    Attribute RequirementType
+    Attribute Category
+    Attribute Content
+    Attribute Weight
+  }
+  ServiceAgreement {
+    PK ServiceAgreementId
+    FK JobId
+    FK CompanyId
+    FK CreatedByUserId
+    FK SignerUserId
+    Attribute Version
+    Attribute ServiceTypeCode
+    Attribute IsCurrent
+    Attribute FeeMultiplier
+    Attribute WarrantyDays
+    Attribute PricePerQualifiedCv
+    Attribute SourcingTarget
+    Attribute UnsignedDocumentStorageKey
+    Attribute SignedDocumentStorageKey
+    Attribute VerificationCode
+    Attribute Status
+  }
+  JobPostingPackage {
+    PK PackageId
+    Attribute Code
+    Attribute Name
+    Attribute Price
+    Attribute DurationDays
+    Attribute MaxApplications
+    Attribute IsActive
+  }
+  JobPostingFee {
+    PK PostingFeeId
+    FK JobId
+    FK PackageId
+    FK CompanyId
+    FK RecordedBy
+    Attribute Amount
+    Attribute PaymentReference
+    Attribute PaidAt
+    Attribute ExpiresAt
+    Attribute Status
+  }
+
+  Company ||--|{ CompanyUser : "employs"
+  AppUser ||--o{ CompanyUser : "represents"
+  Company ||--o{ Job : "publishes"
+  ServiceType ||--o{ Job : "classifies"
+  AppUser ||--o{ Job : "creates"
+  Job ||--|{ JobRequirement : "defines"
+  Job ||--o{ ServiceAgreement : "negotiates"
+  ServiceAgreement |o--o| Job : "active for"
+  Company ||--o{ ServiceAgreement : "signs"
+  JobPostingPackage |o--o{ Job : "selected for"
+  Job ||--o{ JobPostingFee : "incurs"
+  JobPostingPackage ||--o{ JobPostingFee : "prices"
+  Company ||--o{ JobPostingFee : "pays"

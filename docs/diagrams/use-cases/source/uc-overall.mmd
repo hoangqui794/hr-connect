@@ -19,37 +19,37 @@ flowchart LR
     UC13(["UC-13: Raise Duplicate / Attribution Dispute"]):::uc
     UC38(["UC-38: Respond to Submission Consent"]):::uc
     UC40(["UC-40: Withdraw Application"]):::uc
-    UC46(["UC-46: Build CV and View Job Suggestions"]):::uc
-    UC21(["UC-21: View Interview Schedule"]):::uc
+    UC46(["UC-46: Build CV & View Job Suggestions"]):::uc
+    UC21(["UC-21: View & Confirm Interview"]):::uc
     UC24(["UC-24: Respond to Offer"]):::uc
     UC31(["UC-31: View Commission & Payout"]):::uc
-    UC28(["UC-28: Manage Affiliate Profile"]):::uc
-    UC29(["UC-29: Track Own Submission"]):::uc
+    UC28(["UC-28: Manage Affiliate Profile & Bank"]):::uc
+    UC29(["UC-29: Track Own Submissions"]):::uc
     UC30(["UC-30: View Affiliate Performance"]):::uc
     UC20(["UC-20: Participate in Interview"]):::uc
     UC04(["UC-04: Manage Company Profile"]):::uc
     UC05(["UC-05: Review Company Verification"]):::uc
     UC06(["UC-06: Manage Job"]):::uc
     UC07(["UC-07: Review Job"]):::uc
-    UC44(["UC-44: Agree and Sign Service Agreement"]):::uc
-    UC14(["UC-14: Resolve Duplicate / Attribution Dispute"]):::uc
+    UC44(["UC-44: Agree & Upload Signed Service Agreement"]):::uc
+    UC14(["UC-14: Resolve Dispute & Identity Claim"]):::uc
     UC15(["UC-15: View AI Matching Result"]):::uc
-    UC16(["UC-16: Screen Candidate"]):::uc
-    UC17(["UC-17: Review Candidate"]):::uc
+    UC16(["UC-16: Screen & Curate Candidate"]):::uc
+    UC17(["UC-17: Review Shortlisted Candidate"]):::uc
     UC45(["UC-45: Review Delivered CVs (CV Sourcing)"]):::uc
     UC19(["UC-19: Manage Interview"]):::uc
     UC22(["UC-22: Record Interview Result"]):::uc
     UC23(["UC-23: Manage Offer"]):::uc
     UC25(["UC-25: Confirm Start Work / Placement"]):::uc
     UC41(["UC-41: Reconcile Placement"]):::uc
-    UC27(["UC-27: Track Warranty"]):::uc
-    UC32(["UC-32: Manage Commission / Payout"]):::uc
-    UC43(["UC-43: Record Service Fee Payment"]):::uc
+    UC27(["UC-27: Track Warranty & Resignation"]):::uc
+    UC32(["UC-32: Manage Commission & Payout"]):::uc
+    UC43(["UC-43: Pay / Record Service Fee Payment"]):::uc
     UC39(["UC-39: Review Affiliate Application"]):::uc
     UC33(["UC-33: Manage Users"]):::uc
     UC34(["UC-34: Manage Roles & Permissions"]):::uc
-    UC35(["UC-35: Manage System Configuration"]):::uc
-    UC36(["UC-36: View Reports / Dashboard"]):::uc
+    UC35(["UC-35: Manage System Settings & Packages"]):::uc
+    UC36(["UC-36: View Reports & Dashboard"]):::uc
     UC42(["UC-42: View Audit Log"]):::uc
   end
   CL(["👤 Client Company User"]):::actor
@@ -80,6 +80,7 @@ flowchart LR
   UC04 --- CL
   UC06 --- CL
   UC44 --- CL
+  UC43 --- CL
   UC15 --- CL
   UC16 --- CL
   UC17 --- CL
@@ -112,3 +113,4 @@ flowchart LR
   classDef uc fill:#EAF2FB,stroke:#1B365D,color:#1F2A3C
   classDef planned fill:#FFFFFF,stroke:#1B365D,stroke-dasharray:5 4,color:#555
   style SYS fill:#FAFBFD,stroke:#1B365D
+

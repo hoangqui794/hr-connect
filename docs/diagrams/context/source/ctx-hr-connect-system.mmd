@@ -1,23 +1,52 @@
-%% HR Connect - Context Diagram (Level 0). Includes the MF-01 Service Agreement flow (implemented 22/10/2026).
 flowchart LR
-  SYS(("0<br/>HR Connect System<br/>Web App + Backend API<br/>+ AI Matching Service"))
-  G[Guest]; C[Candidate]; A[Affiliate]; HR[Internal HR]; AD[Platform Admin]; CL[Client Company User]
-  EM[(Email Service - Resend)]; R2[(Object Storage - Cloudflare R2)]; LLM[(LLM Provider - Google Gemini)]
-  G -->|Job search criteria, registration data, consent decision via email link| SYS
-  SYS -->|Public jobs and job details, registration result| G
-  C -->|Profile, CVs, applications, consent decision, offer response, CV Builder data| SYS
-  SYS -->|Job list and suggestions, application status, interviews, offers, notifications| C
-  A -->|Candidate referrals with CVs, consent resend, disputes, bank account| SYS
-  SYS -->|Partner jobs, commission estimate, referral status, attribution, commissions, payouts| A
-  HR -->|Job review and screening decisions, Sourcing deliveries, resignation verification, Service Agreement proposals| SYS
-  SYS -->|Job review queue, AI matching results, screening workspace, warranty tracking| HR
-  AD -->|Approvals, users, roles, service types, commission rules, settings, fee and payout records, dispute decisions| SYS
-  SYS -->|Approval queues, finance records, disputes, reports, audit trail| AD
-  CL -->|Company profile, jobs and proposed terms, CV decisions, interviews, offers, start work, resignations, agreement response and OTP signature| SYS
-  SYS -->|Candidates, AI scores, Sourcing CVs, service fees, warranty, notifications, Service Agreement and signed PDF| CL
-  SYS -->|OTP, password reset, consent requests, notifications, signing OTP| EM
-  EM -->|Delivery status| SYS
-  SYS -->|CV files and images, agreement PDFs| R2
-  R2 -->|Stored files, signed URLs| SYS
-  SYS -->|CV content and job requirements| LLM
-  LLM -->|CV assessment per requirement with evidence quotes| SYS
+  subgraph Actors["Human Actors"]
+    G["<b>Guest</b>"]
+    C["<b>Candidate</b>"]
+    AF["<b>Affiliate Collaborator</b>"]
+    CL["<b>Client Company User</b>"]
+    HR["<b>Internal HR</b>"]
+    AD["<b>Platform Admin</b>"]
+  end
+
+  SYS(("<b>0<br/>HR-Connect System</b><br/>Web App + Backend API<br/>+ AI Matching Service"))
+
+  subgraph External_Systems["External Systems"]
+    GGL[("<b>Google OAuth 2.0</b>")]
+    MAIL[("<b>Email Service</b><br/>(SMTP / Resend)")]
+    R2[("<b>Object Storage</b><br/>(Cloudflare R2)")]
+    LLM[("<b>LLM Providers</b><br/>(Gemini / OpenAI / Anthropic)")]
+    PAY[("<b>Payment Gateway</b><br/>(VNPay)")]
+  end
+
+  G -->|Public job search, registration, contact request, identity claim, agreement verify| SYS
+  SYS -->|Public job catalog, verification result, claim & onboarding guidance| G
+
+  C -->|Profile, CV/skills, saved jobs, applications, interview confirmation, offer response, CV visibility| SYS
+  SYS -->|Job recommendations, application status, interview schedules, offers, notifications| C
+
+  AF -->|Candidate referrals, CV submission, consent resend, disputes, bank account| SYS
+  SYS -->|Partner jobs, referral status, duplicate warnings, commissions & payouts| AF
+
+  CL -->|Company profile, job requests, agreement response & signed PDF upload, interview/offer decisions, payments| SYS
+  SYS -->|Draft & signed agreements, curated shortlist, AI scores, warranty & payment receipts| CL
+
+  HR -->|Job review, agreement drafting & signed PDF approval, CV curation, interviews, offers, placement & warranty| SYS
+  SYS -->|Review & screening queues, AI matching results, SLA/warranty alerts, billing & commission tasks| HR
+
+  AD -->|Company & Affiliate approvals, user/role governance, packages, identity claim & duplicate merge, dispute decisions| SYS
+  SYS -->|Approval & claim queues, finance records, disputes, system metrics & audit trail| AD
+
+  SYS -->|OAuth token verification request| GGL
+  GGL -->|Verified user identity claims| SYS
+
+  SYS -->|Verification OTP, password reset, consent requests, interview/offer/agreement emails| MAIL
+  MAIL -->|Delivery status| SYS
+
+  SYS -->|Upload/retrieve CV PDFs, signed agreements, claim evidence, avatars & logos| R2
+  R2 -->|Stored files & presigned URLs| SYS
+
+  SYS -->|CV content, structured parsing & job-candidate semantic scoring prompts| LLM
+  LLM -->|Parsed candidate profile JSON & requirement assessments with evidence| SYS
+
+  SYS -->|Signed payment URL & checkout request| PAY
+  PAY -->|Signed IPN / return callback & payment result| SYS

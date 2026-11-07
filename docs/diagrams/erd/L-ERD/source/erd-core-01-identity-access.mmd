@@ -1,0 +1,60 @@
+---
+title: Logical ERD 01 – Identity & Access Management
+config:
+  layout: elk
+---
+erDiagram
+  Role {
+    PK RoleId
+    Attribute Code
+    Attribute Name
+    Attribute IsSystem
+  }
+  UserRole {
+    PK_FK UserId
+    PK_FK RoleId
+    Attribute AssignmentSource
+    Attribute Status
+  }
+  AppUser {
+    PK UserId
+    Attribute Email
+    Attribute DisplayName
+    Attribute Phone
+    Attribute Status
+  }
+  Company {
+    PK CompanyId
+    Attribute CompanyName
+    Attribute TaxCode
+    Attribute VerificationStatus
+  }
+  CompanyUser {
+    PK CompanyUserId
+    FK CompanyId
+    FK UserId
+    Attribute RoleInCompany
+    Attribute IsPrimaryContact
+  }
+  AffiliateProfile {
+    PK AffiliateId
+    FK UserId
+    Attribute BankName
+    Attribute BankAccountNumber
+    Attribute Status
+  }
+  Candidate {
+    PK CandidateId
+    FK UserId
+    FK MergedIntoCandidateId
+    Attribute FullName
+    Attribute NormalizedEmail
+    Attribute NormalizedPhone
+    Attribute Status
+  }
+  Role ||--|{ UserRole : "assigned to"
+  AppUser ||--|{ UserRole : "has"
+  Company ||--|{ CompanyUser : "employs"
+  AppUser ||--o{ CompanyUser : "represents"
+  AppUser ||--o| AffiliateProfile : "owns"
+  AppUser |o--o| Candidate : "linked to"

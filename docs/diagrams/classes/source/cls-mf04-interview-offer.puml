@@ -1,97 +1,132 @@
 @startuml cls-mf04-interview-offer
-title MF-04 · Interview, offer and start work
+title cls MF-04: Interview, Offer and Placement
 left to right direction
-hide empty members
+skinparam classAttributeIconSize 0
 class InterviewEndpoints <<endpoint>> {
-  +POST /recruitment/applications/{id}/interviews
-  +PUT /interviews/{id} · result · no-show · cancel
+  + MapInterviewEndpoints(app) : void
+  + ScheduleInterview(appId, cmd) : Task<IResult>
+  + RecordResult(id, cmd, sender) : Task<IResult>
 }
 class RecruitmentEndpoints <<endpoint>> {
-  +POST /applications/{id}/offers
-  +POST /applications/{id}/start-work
-  +POST /internal/placement-reconciliations/{id}
+  + MapRecruitmentEndpoints(app) : void
+  + ManageOffer(appId, cmd) : Task<IResult>
+  + ConfirmStartWork(appId, cmd) : Task<IResult>
+  + ReconcilePlacement(id, cmd) : Task<IResult>
 }
 class ScheduleInterviewCommandHandler <<handler>> {
-  +Handle()
+  - _interviews : IInterviewRepository
+  - _participantPolicy : InterviewParticipantPolicy
+  --
+  + Handle(cmd, ct) : Task<InterviewDto>
 }
 class RecordInterviewResultCommandHandler <<handler>> {
-  +Handle(PASS | FAIL | BACKUP | NO_SHOW)
+  - _interviews : IInterviewRepository
+  - _applications : IApplicationRepository
+  --
+  + Handle(cmd, ct) : Task<InterviewDto>
 }
-class OfferHandlers <<handler>> {
-  CreateOfferDraft · UpdateOfferDraft · SendOffer
-  RespondToOffer · WithdrawOffer
+class SendOfferCommandHandler <<handler>> {
+  - _offers : IOfferRepository
+  - _salaryPolicy : OfferSalaryPolicy
+  --
+  + Handle(cmd, ct) : Task<OfferDto>
+}
+class RespondToOfferCommandHandler <<handler>> {
+  - _offers : IOfferRepository
+  - _applications : IApplicationRepository
+  --
+  + Handle(cmd, ct) : Task<OfferDto>
 }
 class ConfirmStartWorkCommandHandler <<handler>> {
-  +Handle(actualStartDate)
+  - _placements : IPlacementRepository
+  - _financeService : IPlacementFinanceService
+  --
+  + Handle(cmd, ct) : Task<PlacementDto>
 }
-class MarkNotStartedCommandHandler <<handler>> {
-  +Handle(reason)
-  +HEADHUNT_COD: Reconciliation PENDING (NOT_STARTED)
+class ReconcilePlacementCommandHandler <<handler>> {
+  - _reconciliations : IPlacementReconciliationRepository
+  - _finance : IFinanceRepository
+  --
+  + Handle(cmd, ct) : Task<ReconciliationDto>
 }
-class CorrectPlacementStartDateCommandHandler <<handler>> {
-  +Handle() HR/Admin, 7 days
-}
-class OfferSalaryPolicy <<policy>> {
-  +EnsureReadyForSending()
-  +CalculateMonthlyGrossSalary()
+class ResolveFlaggedReconciliationCommandHandler <<handler>> {
+  - _reconciliations : IPlacementReconciliationRepository
+  --
+  + Handle(cmd, ct) : Task<ReconciliationDto>
 }
 class InterviewParticipantPolicy <<policy>> {
-  company members only
+  + EnsureCompanyMembersAsync(ids, cid) : Task
+}
+class OfferSalaryPolicy <<policy>> {
+  + EnsureReadyForSending(offer, job) : void
+  + CalculateMonthlyGrossSalary(offer) : decimal
 }
 class OfferExpiryService <<service>> {
-  +ExpireAsync()
+  - _offers : IOfferRepository
+  --
+  + ExpireOverdueOffersAsync(ct) : Task<int>
 }
 interface IPlacementFinanceService <<interface>> {
-  +InitializeAsync(placement, context)
+  + InitializeAsync(placement, ctx, ct) : Task
 }
 class Interview <<entity>> {
-  +InterviewRound · ScheduledAt
-  +Status · Result
-}
-class Offer <<entity>> {
-  +OfferVersion · Salary
-  +SalaryBasis · SalaryPeriod
-  +ExpiryDate · Status
-}
-class Placement <<entity>> {
-  +ActualStartDate · Status
-  +ReplacementSlotId
+  + InterviewId : Guid
+  + ApplicationId : Guid
+  + InterviewRound : int
+  + ScheduledAt : DateTime
+  + Status : string
+  + Result : string?
 }
 class Application <<entity>> {
-  +Status · PlannedStartDate
+  + ApplicationId : Guid
+  + JobId : Guid
+  + Status : string
+  + PlannedStartDate : DateOnly?
+  + ConcurrencyToken : Guid
+}
+class Offer <<entity>> {
+  + OfferId : Guid
+  + ApplicationId : Guid
+  + OfferVersion : int
+  + Salary : decimal
+  + SalaryBasis : string
+  + ExpiryDate : DateOnly
+  + Status : string
+}
+class Placement <<entity>> {
+  + PlacementId : Guid
+  + ApplicationId : Guid
+  + ActualStartDate : DateOnly
+  + Status : string
+  + ReplacementSlotId : Guid?
+}
+class PlacementReconciliation <<entity>> {
+  + ReconciliationId : Guid
+  + PlacementId : Guid?
+  + ClaimedOutcome : string
+  + Status : string
+  + ResolutionAction : string?
 }
 InterviewEndpoints ..> ScheduleInterviewCommandHandler : sends
 InterviewEndpoints ..> RecordInterviewResultCommandHandler : sends
-RecruitmentEndpoints ..> OfferHandlers : sends
+RecruitmentEndpoints ..> SendOfferCommandHandler : sends
+RecruitmentEndpoints ..> RespondToOfferCommandHandler : sends
 RecruitmentEndpoints ..> ConfirmStartWorkCommandHandler : sends
-ScheduleInterviewCommandHandler ..> InterviewParticipantPolicy
+RecruitmentEndpoints ..> ReconcilePlacementCommandHandler : sends
+ScheduleInterviewCommandHandler ..> InterviewParticipantPolicy : validates
 ScheduleInterviewCommandHandler --> Interview : creates
 RecordInterviewResultCommandHandler --> Interview : updates
-OfferHandlers ..> OfferSalaryPolicy
-OfferHandlers --> Offer
-OfferExpiryService --> Offer : EXPIRED
+SendOfferCommandHandler ..> OfferSalaryPolicy : validates
+SendOfferCommandHandler --> Offer : sends
+RespondToOfferCommandHandler --> Offer : updates
+OfferExpiryService --> Offer : expires
+ConfirmStartWorkCommandHandler ..> IPlacementFinanceService : initializes
 ConfirmStartWorkCommandHandler --> Placement : creates
-ConfirmStartWorkCommandHandler ..> IPlacementFinanceService
-MarkNotStartedCommandHandler --> Application : NOT_STARTED
-CorrectPlacementStartDateCommandHandler --> Placement : updates
+ConfirmStartWorkCommandHandler --> PlacementReconciliation : opens pending
+ReconcilePlacementCommandHandler --> PlacementReconciliation : verifies
+ResolveFlaggedReconciliationCommandHandler --> PlacementReconciliation : resolves
 Application *-- Interview : 0..*
 Application *-- Offer : 0..*
 Application --> Placement : 0..1
-class PlacementReconciliation <<entity>> {
-  +ClaimedOutcome (STARTED | NOT_STARTED)
-  +Status (PENDING | CONFIRMED | FLAGGED)
-  +ContactChannel · Note · ResolutionAction
-}
-class ReconcilePlacementCommandHandler <<handler>> {
-  +Handle(CONFIRM | FLAG) — Internal HR
-  +CONFIRMED → ServiceFee DUE / OVERDUE
-}
-class ResolveFlaggedReconciliationCommandHandler <<handler>> {
-  +Handle(CONFIRM_REPORTED_OUTCOME | REOPEN_FOR_CLIENT_CONFIRMATION) — Admin
-}
-RecruitmentEndpoints ..> ReconcilePlacementCommandHandler : sends
-ConfirmStartWorkCommandHandler --> PlacementReconciliation : creates PENDING (HEADHUNT_COD)
 PlacementReconciliation --> Placement : 0..1
-ReconcilePlacementCommandHandler --> PlacementReconciliation : CONFIRMED / FLAGGED
-ResolveFlaggedReconciliationCommandHandler --> PlacementReconciliation : resolves FLAGGED
 @enduml

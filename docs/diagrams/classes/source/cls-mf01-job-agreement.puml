@@ -1,99 +1,141 @@
 @startuml cls-mf01-job-agreement
-title MF-01 · Job, review and service agreement
+title cls MF-01: Job, Review and Service Agreement
 left to right direction
-hide empty members
+skinparam classAttributeIconSize 0
 class JobEndpoints <<endpoint>> {
-  +POST /api/v1/jobs
-  +POST /jobs/{id}/submit · pause · resume · close
-  +POST /internal/jobs/{id}/approve · reject
-  +POST /jobs/{id}/posting-fee/pay
+  + MapJobEndpoints(app) : IEndpointRouteBuilder
+  + CreateJob(cmd, sender) : Task<IResult>
+  + SubmitJob(jobId, sender) : Task<IResult>
+  + ApproveOrRejectJob(jobId, sender) : Task<IResult>
 }
 class ServiceAgreementEndpoints <<endpoint>> {
-  +POST /internal/jobs/{id}/service-agreements
-  +POST /client/jobs/{id}/service-agreements/{aid}/…
-  +GET /public/service-agreements/verify/{code}
+  + MapServiceAgreementEndpoints(app) : IEndpointRouteBuilder
+  + CreateProposal(jobId, cmd) : Task<IResult>
+  + RespondToAgreement(jobId, aid, body) : Task<IResult>
+  + UploadSignedCopy(jobId, aid, file) : Task<IResult>
+}
+class VnPayPaymentEndpoints <<endpoint>> {
+  + MapVnPayEndpoints(app) : IEndpointRouteBuilder
+  + CreatePaymentUrl(cmd, sender) : Task<IResult>
+  + HandleVnPayCallback(query, sender) : Task<IResult>
 }
 class CreateJobCommandHandler <<handler>> {
-  +Handle(CreateJobCommand) JobDetailDto
+  - _jobs : IJobRepository
+  - _accessPolicy : JobAccessPolicy
+  --
+  + Handle(cmd, ct) : Task<JobDetailDto>
 }
-class ApproveJobCommand <<handler>> {
-  +Handle() moves to PENDING_AGREEMENT / PENDING_PAYMENT / ACTIVE
+class ApproveJobCommandHandler <<handler>> {
+  - _jobs : IJobRepository
+  - _sourcingFinance : ISourcingFinanceService
+  --
+  + Handle(cmd, ct) : Task<JobDetailDto>
 }
 class CreateServiceAgreementProposalCommandHandler <<handler>> {
-  +Handle() SENT_TO_CLIENT
+  - _agreements : IServiceAgreementRepository
+  - _pdfRenderer : IAgreementPdfRenderer
+  --
+  + Handle(cmd, ct) : Task<ServiceAgreementDto>
 }
 class RespondToServiceAgreementCommandHandler <<handler>> {
-  +Handle(ACCEPT | REQUEST_CHANGES)
+  - _agreements : IServiceAgreementRepository
+  - _jobs : IJobRepository
+  --
+  + Handle(cmd, ct) : Task<ServiceAgreementDto>
 }
-class CreateSignatureChallengeCommandHandler <<handler>> {
-  +Handle() sends signing OTP
+class UploadSignedServiceAgreementCommandHandler <<handler>> {
+  - _agreements : IServiceAgreementRepository
+  - _storage : IFileStorageService
+  --
+  + Handle(cmd, ct) : Task<ServiceAgreementDto>
 }
-class SignServiceAgreementCommandHandler <<handler>> {
-  +Handle(otp) SIGNED, PDF to R2, job status
+class VnPayPaymentCommandHandlers <<handler>> {
+  - _gateway : IVnPayGateway
+  - _payments : IOnlinePaymentRepository
+  --
+  + Handle(createCmd, ct) : Task<VnPayPaymentLinkResponse>
+  + Handle(confirmCmd, ct) : Task<VnPayConfirmResult>
 }
 class JobAccessPolicy <<policy>> {
-  +CanViewDetail()
-  +CanCandidateApply()
-  +CanAffiliateSubmit()
-  +CanManageJob()
-}
-interface IOtpService <<interface>> {
-  +GenerateNumericOtp()
-  +HashOtp()
-  +VerifyOtp()
-}
-interface IAgreementPdfRenderer <<interface>> {
-  +RenderAgreementPdf(agreement, job, company, isSigned)
-}
-interface IFileStorageService <<interface>> {
-  +UploadAsync()
-  +signed download URL
+  + CanViewDetail(role, job) : bool
+  + CanCandidateApply(job) : bool
+  + CanAffiliateSubmit(job) : bool
+  + CanManageJob(user, job) : bool
 }
 class SourcingFinanceService <<service>> {
-  +EnsureDepositAsync(job)
+  - _finance : IFinanceRepository
+  --
+  + EnsureDepositAsync(job, ct) : Task<ServiceFee>
+  + SettleAsync(job, userId, ct) : Task<ServiceFee>
+}
+interface IAgreementPdfRenderer <<interface>> {
+  + RenderAgreementPdf(agr, job, isSigned) : byte[]
+}
+interface IFileStorageService <<interface>> {
+  + UploadAsync(stream, key, type, ct) : Task
+  + GetPresignedUrlAsync(key, expiry) : Task<string>
+}
+interface IVnPayGateway <<interface>> {
+  + IsEnabled : bool
+  --
+  + CreatePaymentUrl(request) : string
+  + ReadCallback(query) : VnPayCallbackData
 }
 class Job <<entity>> {
-  +JobId
-  +CompanyId · ServiceTypeId
-  +Status · Quantity
-  +FeeMultiplier · WarrantyDays
-  +SourcingTarget · SourcingPricePerCv
-  +CurrentServiceAgreementId
-  +ConcurrencyToken
+  + JobId : Guid
+  + CompanyId : Guid
+  + ServiceTypeId : Guid
+  + Status : string
+  + Quantity : int
+  + FeeMultiplier : decimal?
+  + WarrantyDays : int?
+  + SourcingTarget : int?
+  + CurrentServiceAgreementId : Guid?
+  + ConcurrencyToken : Guid
+  --
+  + ChangeStatus(newStatus, actorId, reason) : void
 }
 class JobRequirement <<entity>> {
-  +RequirementType (MUST_HAVE/SHOULD_HAVE)
-  +Content · Weight
+  + JobRequirementId : Guid
+  + JobId : Guid
+  + RequirementType : string
+  + Content : string
+  + Weight : decimal
 }
 class ServiceAgreement <<entity>> {
-  +Version · Status
-  +FeeMultiplier · WarrantyDays
-  +SignedDocumentStorageKey
-  +DocumentSha256Hash
-}
-class ServiceAgreementSignatureChallenge <<entity>> {
-  +OtpHash · ExpiresAt
-  +AttemptCount · MaxAttempts
+  + ServiceAgreementId : Guid
+  + JobId : Guid
+  + Version : int
+  + Status : string
+  + FeeMultiplier : decimal?
+  + SignedDocumentStorageKey : string?
+  + DocumentSha256Hash : string
 }
 class JobPostingFee <<entity>> {
-  +Amount · Status
-  +PaymentReference
+  + JobPostingFeeId : Guid
+  + JobId : Guid
+  + Amount : decimal
+  + Status : string
+  + PaymentReference : string?
 }
 JobEndpoints ..> CreateJobCommandHandler : sends
-JobEndpoints ..> ApproveJobCommand : sends
-ServiceAgreementEndpoints ..> CreateServiceAgreementProposalCommandHandler
-ServiceAgreementEndpoints ..> RespondToServiceAgreementCommandHandler
-ServiceAgreementEndpoints ..> CreateSignatureChallengeCommandHandler
-ServiceAgreementEndpoints ..> SignServiceAgreementCommandHandler
-CreateJobCommandHandler ..> JobAccessPolicy : checks
+JobEndpoints ..> ApproveJobCommandHandler : sends
+ServiceAgreementEndpoints ..> CreateServiceAgreementProposalCommandHandler : sends
+ServiceAgreementEndpoints ..> RespondToServiceAgreementCommandHandler : sends
+ServiceAgreementEndpoints ..> UploadSignedServiceAgreementCommandHandler : sends
+VnPayPaymentEndpoints ..> VnPayPaymentCommandHandlers : sends
+CreateJobCommandHandler ..> JobAccessPolicy : validates
 CreateJobCommandHandler --> Job : creates
+ApproveJobCommandHandler ..> SourcingFinanceService : uses
+ApproveJobCommandHandler --> Job : updates
+CreateServiceAgreementProposalCommandHandler ..> IAgreementPdfRenderer : renders
+CreateServiceAgreementProposalCommandHandler --> ServiceAgreement : creates
+RespondToServiceAgreementCommandHandler --> ServiceAgreement : updates
+UploadSignedServiceAgreementCommandHandler ..> IFileStorageService : uploads
+UploadSignedServiceAgreementCommandHandler --> ServiceAgreement : attaches copy
+VnPayPaymentCommandHandlers ..> IVnPayGateway : verifies
+VnPayPaymentCommandHandlers --> JobPostingFee : marks paid
 Job *-- JobRequirement : 1..*
-Job --> ServiceAgreement : current
-Job --> JobPostingFee : 0..*
-ServiceAgreement *-- ServiceAgreementSignatureChallenge : 0..*
-CreateSignatureChallengeCommandHandler ..> IOtpService
-SignServiceAgreementCommandHandler ..> IOtpService
-SignServiceAgreementCommandHandler ..> IAgreementPdfRenderer
-SignServiceAgreementCommandHandler ..> IFileStorageService
-SignServiceAgreementCommandHandler ..> SourcingFinanceService : Sourcing deposit
+Job --> ServiceAgreement : 0..* agreements
+Job --> JobPostingFee : 0..* fees
 @enduml

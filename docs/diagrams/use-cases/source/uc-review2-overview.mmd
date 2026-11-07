@@ -1,0 +1,126 @@
+flowchart LR
+  G(["👤 Guest"]):::actor
+  C(["👤 Candidate"]):::actor
+  AF(["👤 Affiliate"]):::actor
+
+  subgraph SYS["HR Connect System"]
+    direction TB
+    UC01(["Register Account"]):::uc
+    UC02(["Log In"]):::uc
+    UC37(["Verify Email / Recover Password"]):::uc
+    UC03(["Search & View Jobs"]):::uc
+
+    UC08(["Manage Profile & CV"]):::uc
+    UC46(["Build CV & View Job Suggestions"]):::uc
+    UC10(["Apply to Job"]):::uc
+    UC38(["Respond to Submission Consent"]):::uc
+    UC40(["Withdraw Application"]):::uc
+    UC21(["View & Confirm Interview"]):::uc
+    UC24(["Respond to Offer"]):::uc
+
+    UC28(["Manage Affiliate Profile & Bank"]):::uc
+    UC11(["Refer Candidate & Submit CV"]):::uc
+    UC29(["Track Own Submissions"]):::uc
+    UC13(["Raise Duplicate / Attribution Dispute"]):::uc
+    UC31(["View Commission & Payout"]):::uc
+    UC30(["View Affiliate Performance"]):::uc
+
+    UC04(["Manage Company Profile"]):::uc
+    UC06(["Manage Job"]):::uc
+    UC44(["Agree & Upload Signed Agreement"]):::uc
+    UC43(["Pay / Record Service Fee Payment"]):::uc
+    UC15(["View AI Matching Result"]):::uc
+    UC16(["Screen & Curate Candidate"]):::uc
+    UC17(["Review Shortlisted Candidates"]):::uc
+    UC45(["Review Delivered CVs (Sourcing)"]):::uc
+    UC19(["Manage Interview"]):::uc
+    UC22(["Record Interview Result"]):::uc
+    UC23(["Manage Offer"]):::uc
+    UC25(["Confirm Start Work / Placement"]):::uc
+    UC27(["Track Warranty & Resignation"]):::uc
+
+    UC07(["Review Job"]):::uc
+    UC41(["Reconcile Placement"]):::uc
+    UC39b(["Verify Resignation"]):::uc
+
+    UC05(["Verify Company"]):::uc
+    UC39(["Review Affiliate Application"]):::uc
+    UC14(["Resolve Dispute & Identity Claim"]):::uc
+    UC32(["Manage Commission & Payout"]):::uc
+    UC33(["Manage Users"]):::uc
+    UC34(["Manage Roles & Permissions"]):::uc
+    UC35(["Manage System Settings & Packages"]):::uc
+    UC42(["View Audit Log"]):::uc
+    UC36(["View Reports & Dashboard"]):::uc
+  end
+
+  CL(["👤 Client Company User"]):::actor
+  HR(["👤 Internal HR"]):::actor
+  AD(["👤 Platform Admin"]):::actor
+
+  %% Left Actors -> System
+  G --- UC01
+  G --- UC02
+  G --- UC37
+  G --- UC03
+
+  C --- UC02
+  C --- UC03
+  C --- UC08
+  C --- UC46
+  C --- UC10
+  C --- UC38
+  C --- UC40
+  C --- UC21
+  C --- UC24
+
+  AF --- UC02
+  AF --- UC03
+  AF --- UC28
+  AF --- UC11
+  AF --- UC29
+  AF --- UC13
+  AF --- UC31
+  AF --- UC30
+
+  %% System -> Right Actors
+  UC02 --- CL
+  UC04 --- CL
+  UC06 --- CL
+  UC44 --- CL
+  UC43 --- CL
+  UC15 --- CL
+  UC17 --- CL
+  UC45 --- CL
+  UC19 --- CL
+  UC22 --- CL
+  UC23 --- CL
+  UC25 --- CL
+  UC27 --- CL
+  UC36 --- CL
+
+  UC02 --- HR
+  UC07 --- HR
+  UC44 --- HR
+  UC15 --- HR
+  UC16 --- HR
+  UC41 --- HR
+  UC27 --- HR
+  UC39b --- HR
+  UC36 --- HR
+
+  UC02 --- AD
+  UC05 --- AD
+  UC39 --- AD
+  UC14 --- AD
+  UC43 --- AD
+  UC32 --- AD
+  UC33 --- AD
+  UC34 --- AD
+  UC35 --- AD
+  UC42 --- AD
+  UC36 --- AD
+
+  classDef actor fill:#FFF4E5,stroke:#B7791F,color:#7B4B0A,font-weight:bold
+  classDef uc fill:#EAF2FB,stroke:#1B365D,color:#1F2A3C
+  style SYS fill:#FFFFFF,stroke:#1F2937,stroke-width:2px

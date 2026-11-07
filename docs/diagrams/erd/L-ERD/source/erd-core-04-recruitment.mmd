@@ -1,0 +1,108 @@
+---
+title: Logical ERD 04 – AI Screening, Interview, Offer & Placement (MF-03 & MF-04)
+config:
+  layout: elk
+---
+erDiagram
+  Job {
+    PK JobId
+    FK CompanyId
+    FK ServiceTypeId
+    FK CreatedBy
+    FK CurrentServiceAgreementId
+    Attribute Title
+    Attribute Quantity
+    Attribute FeeMultiplier
+    Attribute WarrantyDays
+    Attribute SourcingTarget
+    Attribute Status
+  }
+  Candidate {
+    PK CandidateId
+    FK UserId
+    FK MergedIntoCandidateId
+    Attribute FullName
+    Attribute NormalizedEmail
+    Attribute NormalizedPhone
+    Attribute Status
+  }
+  Application {
+    PK ApplicationId
+    FK JobId
+    FK CandidateId
+    FK AcceptedSubmissionId
+    FK ReplacementSlotId
+    Attribute CurrentStage
+    Attribute Status
+  }
+  ApplicationStatusHistory {
+    PK ApplicationStatusHistoryId
+    FK ApplicationId
+    FK ChangedBy
+    Attribute OldStatus
+    Attribute NewStatus
+    Attribute ReasonCode
+  }
+  AiMatchResult {
+    PK MatchResultId
+    FK ApplicationId
+    Attribute MatchScore
+    Attribute MatchTier
+    Attribute KnockedOut
+    Attribute Status
+  }
+  SourcingDelivery {
+    PK DeliveryId
+    FK JobId
+    FK ApplicationId
+    Attribute ReviewDueAt
+    Attribute Status
+  }
+  Interview {
+    PK InterviewId
+    FK ApplicationId
+    FK CreatedBy
+    Attribute RoundNumber
+    Attribute ScheduledAt
+    Attribute CandidateConfirmed
+    Attribute Result
+    Attribute Status
+  }
+  Offer {
+    PK OfferId
+    FK ApplicationId
+    FK CreatedBy
+    Attribute BaseSalary
+    Attribute ProposedStartDate
+    Attribute Status
+  }
+  Placement {
+    PK PlacementId
+    FK ApplicationId
+    FK OfferId
+    FK ReplacementSlotId
+    FK ConfirmedBy
+    Attribute ActualStartDate
+    Attribute Status
+  }
+  PlacementReconciliation {
+    PK ReconciliationId
+    FK ApplicationId
+    FK PlacementId
+    FK ReviewedBy
+    Attribute ClaimedOutcome
+    Attribute ResolutionAction
+    Attribute Status
+  }
+  Job ||--o{ Application : "tracks"
+  Candidate ||--o{ Application : "applies via"
+  Application ||--|{ ApplicationStatusHistory : "logs"
+  Application ||--o{ AiMatchResult : "evaluated by"
+  Job ||--o{ SourcingDelivery : "delivers"
+  Application ||--o{ SourcingDelivery : "packaged in"
+  Application ||--o{ Interview : "schedules"
+  Application ||--o{ Offer : "extends"
+  Application ||--o| Placement : "results in"
+  Offer |o--o| Placement : "confirmed as"
+  Application ||--o{ PlacementReconciliation : "reconciles"
+  Placement |o--o{ PlacementReconciliation : "audits"

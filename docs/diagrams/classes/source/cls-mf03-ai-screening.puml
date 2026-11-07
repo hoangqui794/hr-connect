@@ -1,77 +1,115 @@
 @startuml cls-mf03-ai-screening
-title MF-03 · AI matching and screening
+title cls MF-03: AI Matching and Screening
 left to right direction
-hide empty members
+skinparam classAttributeIconSize 0
 class AiIntegrationEndpoints <<endpoint>> {
-  +POST /internal/ai-results
-  +GET /internal/jobs/{id}/jd
+  + MapAiIntegrationEndpoints(app) : void
+  + ReceiveAiResult(dto, sender) : Task<IResult>
+  + GetJobDescription(jobId, sender) : Task<IResult>
 }
 class RecruitmentEndpoints <<endpoint>> {
-  +POST /jobs/{jid}/applications/{aid}/start-screening
-  +PATCH /jobs/{jid}/applications/{aid}/status
+  + MapRecruitmentEndpoints(app) : void
+  + StartScreening(jobId, appId) : Task<IResult>
+  + UpdateScreeningStatus(jobId, appId, cmd) : Task<IResult>
 }
-class Mf03ScoringTrigger <<service>> {
-  +TriggerScoringAsync()
+class SourcingDeliveryEndpoints <<endpoint>> {
+  + MapSourcingDeliveryEndpoints(app) : void
+  + DeliverCvToClient(jobId, cmd) : Task<IResult>
+  + DecideDeliveredCv(id, cmd) : Task<IResult>
 }
-class Mf03ScoringDispatcher <<worker>> {
-  +DispatchBatchAsync()
-  retry with exponential back-off
-}
-class HRConnectClient <<service>> {
-  calls AI service /score
-}
-class RetryAiScoringCommand <<handler>> {
-  +Handle(applicationId)
+class RetryAiScoringCommandHandler <<handler>> {
+  - _scoringTrigger : IMf03ScoringTrigger
+  - _applications : IApplicationRepository
+  --
+  + Handle(cmd, ct) : Task<AiMatchResultDto>
 }
 class UpdateApplicationScreeningStatusCommandHandler <<handler>> {
-  +Handle(SHORTLISTED | BACKUP | REJECTED)
+  - _applications : IApplicationRepository
+  - _screeningPolicy : ScreeningPolicy
+  - _concurrencyGuard : Mf04ConcurrencyGuard
+  --
+  + Handle(cmd, ct) : Task<ApplicationStatusDto>
 }
-class ScreeningPolicy <<policy>> {
-  +CanScreen(role, serviceType)
-}
-class Mf04ConcurrencyGuard <<policy>> {
-  +EnsureMatches(token)
-}
-class SourcingDeliveryHandlers <<handler>> {
-  Deliver · Decide · Replace · ReviewRejection
-}
-class SourcingAutoAcceptService <<service>> {
-  +AutoAcceptAsync()
-}
-class AiMatchResult <<entity>> {
-  +AttemptNo · Status
-  +MatchScore · MatchTier
-  +MustHaveResult · ShouldHaveResult
-  +FailureCode
-}
-class MatchTierConfig <<entity>> {
-  +TierCode · MinScore · MaxScore
-  +ColorCode
-}
-class Application <<entity>> {
-  +Status · StatusReasonCode
-  +ConcurrencyToken
-}
-class SourcingDelivery <<entity>> {
-  +Status · ReviewDueAt
-  +RejectReasonCode · ReplacedByDeliveryId
+class SourcingDeliveryCommandHandlers <<handler>> {
+  - _deliveries : ISourcingDeliveryRepository
+  - _sourcingFinance : ISourcingFinanceService
+  --
+  + Handle(deliverCmd, ct) : Task<SourcingDeliveryDto>
+  + Handle(decideCmd, ct) : Task<SourcingDeliveryDto>
+  + Handle(replaceCmd, ct) : Task<SourcingDeliveryDto>
 }
 interface IMf03ScoringTrigger <<interface>> {
-  +TriggerScoringAsync()
+  + TriggerScoringAsync(applicationId, ct) : Task
 }
+class Mf03ScoringTrigger <<service>> {
+  - _aiResults : IAiMatchResultRepository
+  --
+  + TriggerScoringAsync(applicationId, ct) : Task
+}
+class Mf03ScoringDispatcher <<worker>> {
+  - _aiClient : IHrConnectAiClient
+  - _aiResults : IAiMatchResultRepository
+  --
+  + DispatchBatchAsync(ct) : Task<int>
+}
+class ScreeningPolicy <<policy>> {
+  + CanScreen(role, serviceTypeCode) : bool
+  + ValidateTransition(from, to) : void
+}
+class Mf04ConcurrencyGuard <<policy>> {
+  + EnsureMatches(expected, actual) : void
+}
+class SourcingAutoAcceptService <<service>> {
+  - _deliveries : ISourcingDeliveryRepository
+  --
+  + AutoAcceptOverdueAsync(ct) : Task<int>
+}
+class AiMatchResult <<entity>> {
+  + AiMatchResultId : Guid
+  + ApplicationId : Guid
+  + AttemptNo : int
+  + Status : string
+  + MatchScore : decimal?
+  + MatchTier : string?
+  + MustHaveResult : string?
+  + FailureCode : string?
+}
+class MatchTierConfig <<entity>> {
+  + MatchTierConfigId : Guid
+  + TierCode : string
+  + MinScore : decimal
+  + MaxScore : decimal
+  + ColorCode : string
+}
+class Application <<entity>> {
+  + ApplicationId : Guid
+  + JobId : Guid
+  + Status : string
+  + StatusReasonCode : string?
+  + ConcurrencyToken : Guid
+}
+class SourcingDelivery <<entity>> {
+  + SourcingDeliveryId : Guid
+  + JobId : Guid
+  + ApplicationId : Guid
+  + Status : string
+  + ReviewDueAt : DateTime
+  + RejectReasonCode : string?
+}
+AiIntegrationEndpoints --> AiMatchResult : completes callback
+RecruitmentEndpoints ..> RetryAiScoringCommandHandler : sends
+RecruitmentEndpoints ..> UpdateApplicationScreeningStatusCommandHandler : sends
+SourcingDeliveryEndpoints ..> SourcingDeliveryCommandHandlers : sends
+RetryAiScoringCommandHandler ..> IMf03ScoringTrigger : triggers
 Mf03ScoringTrigger ..|> IMf03ScoringTrigger
 Mf03ScoringTrigger --> AiMatchResult : creates PENDING
-Mf03ScoringDispatcher ..> HRConnectClient
-Mf03ScoringDispatcher --> AiMatchResult : PROCESSING / FAILED
-AiIntegrationEndpoints --> AiMatchResult : COMPLETED
-RetryAiScoringCommand ..> Mf03ScoringTrigger
-AiMatchResult ..> MatchTierConfig : tier by score
-RecruitmentEndpoints ..> UpdateApplicationScreeningStatusCommandHandler : sends
-UpdateApplicationScreeningStatusCommandHandler ..> ScreeningPolicy
-UpdateApplicationScreeningStatusCommandHandler ..> Mf04ConcurrencyGuard
-UpdateApplicationScreeningStatusCommandHandler --> Application : updates
-Application --> AiMatchResult : 0..*
-SourcingDeliveryHandlers --> SourcingDelivery
-SourcingAutoAcceptService --> SourcingDelivery : AUTO_ACCEPTED
+Mf03ScoringDispatcher --> AiMatchResult : dispatches
+AiMatchResult ..> MatchTierConfig : resolves tier
+UpdateApplicationScreeningStatusCommandHandler ..> ScreeningPolicy : checks
+UpdateApplicationScreeningStatusCommandHandler ..> Mf04ConcurrencyGuard : guards
+UpdateApplicationScreeningStatusCommandHandler --> Application : updates status
+Application *-- AiMatchResult : 0..*
 Application --> SourcingDelivery : 0..*
+SourcingDeliveryCommandHandlers --> SourcingDelivery : manages
+SourcingAutoAcceptService --> SourcingDelivery : auto-accepts
 @enduml

@@ -1,5 +1,5 @@
 ---
-title: MF-05 · Warranty, service fee, commission and payout
+title: cls MF-05: Warranty, Service Fee, Commission and Payout
 config:
   layout: elk
 ---
@@ -7,117 +7,169 @@ classDiagram
   direction LR
   class FinanceEndpoints {
     <<endpoint>>
-    +POST /placements/‹id›/resignation · /resolve
-    +POST /admin/service-fees/‹id›/record-payment
-    +POST /admin/commissions/‹id›/approve · /payouts
+    + MapFinanceEndpoints(app) : void
+    + RecordServiceFeePayment(id, cmd) : Task<IResult>
+    + ApproveCommission(id, cmd) : Task<IResult>
+    + RecordPayout(id, cmd) : Task<IResult>
   }
-  class PlacementFinanceService {
-    <<service>>
-    +InitializeAsync(placement, context)
-    +CalculateCommission(rule, fee)
-  }
-  class WarrantyProgressService {
-    <<service>>
-    +CompleteWarrantyAsync()
-    +MarkServiceFeeDueAsync()
-    +MarkServiceFeeOverdueAsync()
-    +ExpireReplacementSlotAsync()
+  class WarrantyEndpoints {
+    <<endpoint>>
+    + MapWarrantyEndpoints(app) : void
+    + ReportResignation(id, cmd) : Task<IResult>
+    + ResolveResignation(id, cmd) : Task<IResult>
   }
   class WarrantyProgressWorker {
     <<worker>>
-    +daily run
+    - _progressService : WarrantyProgressService
+    # ExecuteAsync(stoppingToken) : Task
   }
-  class SourcingFinanceService {
-    <<service>>
-    +EnsureDepositAsync()
-    +OnDeliveryCountedAsync()
-    +SettleAsync()
-  }
-  class AffiliateCommissionHoldService {
-    <<service>>
-    +holds commissions of a locked affiliate
-  }
-  class FinanceCommands {
+  class SettlementCommandHandlers {
     <<handler>>
-    +RecordServiceFeePayment · ApproveCommission
-    +AdjustCommission · CancelCommission
-    +RecordPayout · SettleSourcingJob
+    - _finance : IFinanceRepository
+    - _sourcingFinance : ISourcingFinanceService
+    + Handle(recordFeeCmd, ct) : Task<ServiceFeePaymentResponse>
+    + Handle(approveCommCmd, ct) : Task<CommissionActionResponse>
+    + Handle(adjustCommCmd, ct) : Task<CommissionActionResponse>
+    + Handle(recordPayoutCmd, ct) : Task<PayoutResponse>
   }
-  class ResignationHandlers {
+  class ReportResignationCommandHandler {
     <<handler>>
-    +ReportResignation · ResolveResignation
+    - _finance : IFinanceRepository
+    - _companyUsers : ICompanyUserRepository
+    + Handle(cmd, ct) : Task<WarrantyClaimResponse>
   }
-  class Warranty {
-    <<entity>>
-    +StartDate · EndDate
-    +Status
+  class ResolveResignationCommandHandler {
+    <<handler>>
+    - _finance : IFinanceRepository
+    - _settings : IAdminBusinessSettings
+    + Handle(cmd, ct) : Task<WarrantyClaimResponse>
   }
-  class ServiceFee {
-    <<entity>>
-    +Kind · BaseSalary · FeeMultiplier
-    +Amount · DueDate · Status
-  }
-  class ReplacementSlot {
-    <<entity>>
-    +Status · ExpiresAt
-    +FilledByPlacementId
-  }
-  class CommissionRule {
-    <<entity>>
-    +RateType · RateValue
-    +MilestoneType · WarrantyRequired
-  }
-  class Commission {
-    <<entity>>
-    +BaseAmount · Amount · Status
-    +RuleSnapshot · CalculationSnapshot
-  }
-  class CommissionAdjustment {
-    <<entity>>
-    +OldAmount · NewAmount · Reason
-  }
-  class Payout {
-    <<entity>>
-    +Amount · TransactionReference
-    +Status · AttemptNo
+  class WarrantyProgressService {
+    <<service>>
+    - _finance : IFinanceRepository
+    + CompleteWarrantyAsync(ct) : Task<int>
+    + MarkServiceFeeDueAsync(ct) : Task<int>
+    + MarkServiceFeeOverdueAsync(ct) : Task<int>
+    + ExpireReplacementSlotAsync(ct) : Task<int>
   }
   class IPlacementFinanceService {
     <<interface>>
-    +InitializeAsync()
+    + InitializeAsync(placement, ctx, ct) : Task
   }
+  class PlacementFinanceService {
+    <<service>>
+    - _finance : IFinanceRepository
+    - _rules : ICommissionRuleRepository
+    + InitializeAsync(placement, ctx, ct) : Task
+    + CalculateCommission(rule, fee) : decimal
+  }
+  class SourcingFinanceService {
+    <<service>>
+    - _finance : IFinanceRepository
+    + EnsureDepositAsync(job, ct) : Task<ServiceFee>
+    + OnDeliveryCountedAsync(delivery, ct) : Task
+    + SettleAsync(job, actorId, ct) : Task<ServiceFee>
+  }
+  class AffiliateCommissionHoldService {
+    <<service>>
+    - _finance : IFinanceRepository
+    + HoldUnpaidForLockedAffiliateAsync(id, ct) : Task
+  }
+  class CommissionRule {
+    <<entity>>
+    + CommissionRuleId : Guid
+    + ServiceTypeId : Guid
+    + RateType : string
+    + RateValue : decimal
+    + WarrantyRequired : bool
+  }
+  class ServiceFee {
+    <<entity>>
+    + ServiceFeeId : Guid
+    + PlacementId : Guid?
+    + Kind : string
+    + Amount : decimal
+    + DueDate : DateOnly
+    + Status : string
+  }
+  class ReplacementSlot {
+    <<entity>>
+    + ReplacementSlotId : Guid
+    + OriginalPlacementId : Guid
+    + ServiceFeeId : Guid
+    + Status : string
+    + ExpiresAt : DateTime?
+  }
+  class Warranty {
+    <<entity>>
+    + WarrantyId : Guid
+    + PlacementId : Guid
+    + StartDate : DateOnly
+    + EndDate : DateOnly
+    + Status : string
+  }
+  class Commission {
+    <<entity>>
+    + CommissionId : Guid
+    + AttributionId : Guid
+    + BaseAmount : decimal
+    + Amount : decimal
+    + Status : string
+  }
+  class CommissionAdjustment {
+    <<entity>>
+    + CommissionAdjustmentId : Guid
+    + CommissionId : Guid
+    + OldAmount : decimal
+    + NewAmount : decimal
+    + Reason : string
+  }
+  class Payout {
+    <<entity>>
+    + PayoutId : Guid
+    + CommissionId : Guid
+    + Amount : decimal
+    + TransactionReference : string?
+    + Status : string
+    + AttemptNo : int
+  }
+  FinanceEndpoints ..> SettlementCommandHandlers : sends
+  WarrantyEndpoints ..> ReportResignationCommandHandler : sends
+  WarrantyEndpoints ..> ResolveResignationCommandHandler : sends
+  WarrantyProgressWorker ..> WarrantyProgressService : runs daily
   PlacementFinanceService ..|> IPlacementFinanceService
-  PlacementFinanceService --> Warranty : creates
   PlacementFinanceService --> ServiceFee : creates
+  PlacementFinanceService --> Warranty : creates
   PlacementFinanceService --> Commission : creates
   PlacementFinanceService ..> CommissionRule : reads
-  WarrantyProgressWorker ..> WarrantyProgressService
-  WarrantyProgressService --> Warranty : PASSED
-  WarrantyProgressService --> ServiceFee : DUE / OVERDUE
-  WarrantyProgressService --> ReplacementSlot : EXPIRED
-  FinanceEndpoints ..> FinanceCommands : sends
-  FinanceEndpoints ..> ResignationHandlers : sends
-  ResignationHandlers --> Warranty : CLAIMED / VOIDED
-  ResignationHandlers --> ReplacementSlot : opens
-  FinanceCommands --> Commission : approves
-  FinanceCommands --> Payout : records
-  AffiliateCommissionHoldService --> Commission : ON_HOLD
   SourcingFinanceService --> ServiceFee : deposit / settlement
+  AffiliateCommissionHoldService --> Commission : holds
+  SettlementCommandHandlers --> ServiceFee : marks paid
+  SettlementCommandHandlers --> Commission : approves / adjusts
+  SettlementCommandHandlers --> Payout : records
+  ReportResignationCommandHandler --> Warranty : marks claimed
+  ResolveResignationCommandHandler --> Warranty : voids / restores
+  ResolveResignationCommandHandler --> ReplacementSlot : opens slot
+  WarrantyProgressService --> Warranty : completes
+  WarrantyProgressService --> ServiceFee : marks due/overdue
+  ServiceFee --> ReplacementSlot : 0..*
   Commission *-- CommissionAdjustment : 0..*
   Commission *-- Payout : 0..*
-  ServiceFee --> ReplacementSlot : 0..*
   style FinanceEndpoints fill:#FFF4E5,stroke:#1B365D
-  style PlacementFinanceService fill:#EEF5EC,stroke:#1B365D
-  style WarrantyProgressService fill:#EEF5EC,stroke:#1B365D
+  style WarrantyEndpoints fill:#FFF4E5,stroke:#1B365D
   style WarrantyProgressWorker fill:#EEF5EC,stroke:#1B365D
+  style SettlementCommandHandlers fill:#EAF2FB,stroke:#1B365D
+  style ReportResignationCommandHandler fill:#EAF2FB,stroke:#1B365D
+  style ResolveResignationCommandHandler fill:#EAF2FB,stroke:#1B365D
+  style WarrantyProgressService fill:#EEF5EC,stroke:#1B365D
+  style IPlacementFinanceService fill:#F3E8FF,stroke:#1B365D
+  style PlacementFinanceService fill:#EEF5EC,stroke:#1B365D
   style SourcingFinanceService fill:#EEF5EC,stroke:#1B365D
   style AffiliateCommissionHoldService fill:#EEF5EC,stroke:#1B365D
-  style FinanceCommands fill:#EAF2FB,stroke:#1B365D
-  style ResignationHandlers fill:#EAF2FB,stroke:#1B365D
-  style Warranty fill:#FFFFFF,stroke:#1B365D
+  style CommissionRule fill:#FFFFFF,stroke:#1B365D
   style ServiceFee fill:#FFFFFF,stroke:#1B365D
   style ReplacementSlot fill:#FFFFFF,stroke:#1B365D
-  style CommissionRule fill:#FFFFFF,stroke:#1B365D
+  style Warranty fill:#FFFFFF,stroke:#1B365D
   style Commission fill:#FFFFFF,stroke:#1B365D
   style CommissionAdjustment fill:#FFFFFF,stroke:#1B365D
   style Payout fill:#FFFFFF,stroke:#1B365D
-  style IPlacementFinanceService fill:#F3E8FF,stroke:#1B365D

@@ -1,0 +1,140 @@
+---
+title: Logical ERD 05 – Warranty, Billing, VNPay, Commission & Payout (MF-05)
+config:
+  layout: elk
+---
+erDiagram
+  Company {
+    PK CompanyId
+    Attribute CompanyName
+    Attribute TaxCode
+    Attribute VerificationStatus
+  }
+  Job {
+    PK JobId
+    FK CompanyId
+    FK ServiceTypeId
+    FK CreatedBy
+    FK CurrentServiceAgreementId
+    Attribute Title
+    Attribute Quantity
+    Attribute FeeMultiplier
+    Attribute WarrantyDays
+    Attribute SourcingTarget
+    Attribute Status
+  }
+  Placement {
+    PK PlacementId
+    FK ApplicationId
+    FK OfferId
+    FK ReplacementSlotId
+    FK ConfirmedBy
+    Attribute ActualStartDate
+    Attribute Status
+  }
+  Warranty {
+    PK WarrantyId
+    FK PlacementId
+    Attribute StartDate
+    Attribute EndDate
+    Attribute ResignationReason
+    Attribute Status
+  }
+  ReplacementSlot {
+    PK ReplacementSlotId
+    FK JobId
+    FK OriginalPlacementId
+    FK ServiceFeeId
+    FK FilledByPlacementId
+    Attribute ExpiresAt
+    Attribute Status
+  }
+  ServiceFee {
+    PK ServiceFeeId
+    FK PlacementId
+    FK JobId
+    FK CompanyId
+    Attribute Kind
+    Attribute Amount
+    Attribute DueDate
+    Attribute PaymentReference
+    Attribute Status
+  }
+  OnlinePayment {
+    PK OnlinePaymentId
+    FK CompanyId
+    FK CreatedBy
+    Attribute Provider
+    Attribute TargetType
+    Attribute TargetId
+    Attribute TxnRef
+    Attribute Amount
+    Attribute ProviderTransactionNo
+    Attribute Status
+  }
+  ServiceType {
+    PK ServiceTypeId
+    Attribute Code
+    Attribute Name
+  }
+  CommissionRule {
+    PK CommissionRuleId
+    FK ServiceTypeId
+    Attribute MilestoneType
+    Attribute RateType
+    Attribute RateValue
+    Attribute WarrantyRequired
+  }
+  Attribution {
+    PK AttributionId
+    FK ApplicationId
+    FK AffiliateId
+    FK WinningSubmissionId
+    Attribute RuleApplied
+    Attribute Status
+  }
+  Commission {
+    PK CommissionId
+    FK AttributionId
+    FK PlacementId
+    FK SourcingDeliveryId
+    FK CommissionRuleId
+    Attribute MilestoneType
+    Attribute Amount
+    Attribute Status
+  }
+  Payout {
+    PK PayoutId
+    FK CommissionId
+    FK RecordedBy
+    Attribute Amount
+    Attribute TransactionReference
+    Attribute Status
+  }
+  Dispute {
+    PK DisputeId
+    FK SubmissionId
+    FK AttributionId
+    FK CommissionId
+    FK CandidateDuplicateCaseId
+    FK RaisedBy
+    Attribute DisputeType
+    Attribute Resolution
+    Attribute Status
+  }
+  Placement ||--o| Warranty : "activates"
+  Placement |o--o{ ServiceFee : "bills"
+  Job ||--o{ ServiceFee : "charges"
+  Company ||--o{ ServiceFee : "owes"
+  Company ||--o{ OnlinePayment : "initiates"
+  ServiceFee |o--o{ OnlinePayment : "settled via"
+  Job ||--o{ ReplacementSlot : "opens"
+  Placement ||--o| ReplacementSlot : "triggers"
+  ServiceFee |o--o{ ReplacementSlot : "covers"
+  ServiceType ||--o{ CommissionRule : "configures"
+  Attribution ||--o{ Commission : "generates"
+  Placement |o--o{ Commission : "unlocks"
+  CommissionRule ||--o{ Commission : "calculates"
+  Commission ||--o{ Payout : "disburses"
+  Commission |o--o{ Dispute : "challenged in"
+  Attribution |o--o{ Dispute : "contested in"
