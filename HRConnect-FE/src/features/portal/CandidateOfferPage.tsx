@@ -237,9 +237,17 @@ export const CandidateOfferPage: React.FC = () => {
             </p>
           )}
           {!declining && conflict?.activeFullTimePlacement && (
-            <p role="alert" className="m-0 mt-3 rounded-md border border-solid border-[#FECACA] bg-[#FEF2F2] p-3 text-[13px] text-[#991B1B]">
-              Bạn đang có công việc toàn thời gian: <b>{conflict.activeFullTimePlacement.jobTitle}</b> tại <b>{conflict.activeFullTimePlacement.companyName}</b>. Vui lòng liên hệ bộ phận hỗ trợ nếu thông tin này không còn chính xác.
-            </p>
+            <div role="alert" className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-solid border-[#FECACA] bg-[#FEF2F2] p-3.5 text-[13px] text-[#991B1B]">
+              <div className="min-w-0 flex-1 leading-relaxed">
+                Bạn đang có công việc toàn thời gian: <b>{conflict.activeFullTimePlacement.jobTitle}</b> tại <b>{conflict.activeFullTimePlacement.companyName}</b>. Vui lòng liên hệ bộ phận hỗ trợ nếu thông tin này không còn chính xác.
+              </div>
+              <Link
+                to="/contact?service=OTHER"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-solid border-[#DC2626] bg-white px-3.5 py-1.5 text-[13px] font-semibold text-[#DC2626] no-underline shadow-xs transition-colors hover:bg-[#FEF2F2]"
+              >
+                Liên hệ hỗ trợ
+              </Link>
+            </div>
           )}
           {!declining && replacesAccepted && conflict?.acceptedFullTimeOffer && (
             <p className="m-0 mt-3 rounded-md border border-solid border-[#FED7AA] bg-[#FFF7ED] p-3 text-[13px] text-[#9A3412]">
