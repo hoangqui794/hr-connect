@@ -94,6 +94,48 @@ export const getNotificationCategory = (item: NotificationDto): string => {
   return 'Thông báo';
 };
 
+export const getCandidateCategoryVisual = (cat: string) => {
+  switch (cat) {
+    case 'Phỏng vấn':
+      return {
+        icon: <CalendarOutlined style={{ fontSize: 16, color: '#6366F1' }} />,
+        iconBg: 'bg-indigo-50 border-indigo-100',
+        badge: 'bg-indigo-50 text-indigo-700 border-indigo-200/70',
+      };
+    case 'Offer':
+      return {
+        icon: <CheckCircleFilled style={{ fontSize: 16, color: '#10B981' }} />,
+        iconBg: 'bg-emerald-50 border-emerald-100',
+        badge: 'bg-emerald-50 text-emerald-700 border-emerald-200/70',
+      };
+    case 'Giới thiệu':
+      return {
+        icon: <SolutionOutlined style={{ fontSize: 16, color: '#0284C7' }} />,
+        iconBg: 'bg-sky-50 border-sky-100',
+        badge: 'bg-sky-50 text-[#0369A1] border-sky-200/70',
+      };
+    case 'Việc làm gợi ý':
+      return {
+        icon: <ThunderboltOutlined style={{ fontSize: 16, color: '#D97706' }} />,
+        iconBg: 'bg-amber-50 border-amber-100',
+        badge: 'bg-amber-50 text-amber-700 border-amber-200/70',
+      };
+    case 'CV':
+    case 'Đơn ứng tuyển':
+      return {
+        icon: <FileTextOutlined style={{ fontSize: 16, color: '#0369A1' }} />,
+        iconBg: 'bg-sky-50 border-sky-100',
+        badge: 'bg-slate-100 text-slate-700 border-slate-200/80',
+      };
+    default:
+      return {
+        icon: <BellOutlined style={{ fontSize: 16, color: '#0369A1' }} />,
+        iconBg: 'bg-slate-100 border-slate-200/80',
+        badge: 'bg-slate-100 text-slate-700 border-slate-200/80',
+      };
+  }
+};
+
 const renderNotificationIcon = (type?: string, entityType?: string | null) => {
   const normType = (type || '').trim().toUpperCase();
   const normEntity = (entityType || '').trim().toUpperCase();
@@ -271,32 +313,41 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
 
   // ── CANDIDATE POPOVER CONTENT (Figma Trang 23 & Trang 34) ──
   const candidatePopoverContent = (
-    <div style={{ width: 400, maxHeight: 520, display: 'flex', flexDirection: 'column' }} className="-m-3 bg-white rounded-2xl overflow-hidden font-sans">
+    <div style={{ width: 416, maxHeight: 540, display: 'flex', flexDirection: 'column' }} className="-m-3 bg-white rounded-2xl overflow-hidden font-['Be_Vietnam_Pro',system-ui,sans-serif]">
       {/* Header Trang 23: Thông báo & Đánh dấu tất cả đã đọc */}
       <div className="flex items-center justify-between border-0 border-b border-solid border-slate-100 px-4 py-3 bg-white">
         <div className="flex items-center gap-2">
-          <span className="font-bold text-slate-900 text-[16px]">Thông báo</span>
+          <span className="font-bold text-[#111827] text-[16px]">Thông báo</span>
           {unreadCount > 0 && (
-            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-[#0C4A6E]">
+            <span className="rounded-full bg-[#E0F2FE] px-2 py-0.5 text-[11px] font-semibold text-[#0369A1]">
               {unreadCount} mới
             </span>
           )}
+          <Tooltip title={isConnected ? 'Realtime SignalR: Đang kết nối' : 'Dự phòng: Polling định kỳ'}>
+            <span
+              className={`inline-block h-2 w-2 rounded-full transition-colors ${
+                isConnected ? 'bg-emerald-500 shadow-xs' : 'bg-slate-300'
+              }`}
+              aria-label={isConnected ? 'SignalR realtime active' : 'Polling fallback active'}
+            />
+          </Tooltip>
         </div>
         {unreadCount > 0 && (
           <Button
-            type="default"
+            type="text"
             size="small"
+            icon={<CheckOutlined />}
             loading={markAllReadMutation.isPending}
             onClick={() => markAllReadMutation.mutate()}
-            className="!rounded-lg !border-slate-200 hover:!border-slate-300 text-slate-700 hover:text-slate-900 text-xs font-medium shadow-2xs"
+            className="!rounded-md !text-xs !font-medium !text-[#0369A1] hover:!bg-[#F0F9FF] hover:!text-[#075985]"
           >
             Đánh dấu tất cả đã đọc
           </Button>
         )}
       </div>
 
-      {/* 4 Tabs gạch chân ngang chuẩn Trang 23: Tất cả | Chưa đọc (x) | Đơn ứng tuyển | Việc làm gợi ý */}
-      <div className="flex items-center gap-5 px-4 border-0 border-b border-solid border-slate-100 bg-white overflow-x-auto">
+      {/* 4 Tabs gạch chân ngang chuẩn Trang 23: Không bao giờ hiện thanh cuộn ngang */}
+      <div className="flex items-center justify-between px-3.5 border-0 border-b border-solid border-slate-100 bg-white overflow-x-hidden">
         {[
           { key: 'all', label: 'Tất cả' },
           { key: 'unread', label: unreadCount > 0 ? `Chưa đọc (${unreadCount})` : 'Chưa đọc' },
@@ -309,13 +360,13 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
               key={tab.key}
               type="button"
               onClick={() => setCandidateTab(tab.key as CandidateTab)}
-              className={`relative py-2.5 text-[13px] font-medium transition-colors border-0 bg-transparent cursor-pointer whitespace-nowrap ${
-                active ? 'text-[#0C4A6E] font-semibold' : 'text-slate-500 hover:text-slate-800'
+              className={`relative px-1.5 py-2.5 text-[12.5px] transition-colors border-0 bg-transparent cursor-pointer whitespace-nowrap ${
+                active ? 'text-[#0369A1] font-semibold' : 'text-[#4B5563] hover:text-[#111827] font-medium'
               }`}
             >
               {tab.label}
               {active && (
-                <span className="absolute bottom-0 inset-x-0 h-0.5 bg-[#0C4A6E] rounded-full" />
+                <span className="absolute bottom-0 inset-x-0 h-[2px] bg-[#0369A1] rounded-full" />
               )}
             </button>
           );
@@ -323,7 +374,12 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
       </div>
 
       {/* Notification Content List */}
-      <div className="overflow-y-auto flex-1 max-h-[350px]" tabIndex={0} role="region" aria-label="Danh sách thông báo">
+      <div
+        className="overflow-y-auto flex-1 max-h-[370px] p-2.5 bg-[#F8FAFC]/60 [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-track]:bg-transparent"
+        tabIndex={0}
+        role="region"
+        aria-label="Danh sách thông báo"
+      >
         {isLoading ? (
           <div className="py-12 text-center flex flex-col items-center justify-center gap-3">
             <Spin size="default" />
@@ -345,28 +401,30 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
           </div>
         ) : candidateFilteredItems.length === 0 ? (
           /* Empty State Trang 34 PDF */
-          <div className="py-12 px-6 text-center flex flex-col items-center justify-center">
-            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-2">
-              <BellOutlined style={{ fontSize: 18 }} />
+          <div className="py-12 px-6 text-center flex flex-col items-center justify-center bg-white rounded-xl border border-solid border-slate-100">
+            <div className="w-10 h-10 rounded-xl bg-[#E0F2FE] flex items-center justify-center mb-3">
+              <span className="h-2 w-2 rounded-full bg-[#0369A1]" />
             </div>
-            <div className="font-semibold text-slate-800 text-sm">Chưa có thông báo</div>
-            <p className="text-xs text-slate-500 mt-1 max-w-[240px] leading-relaxed m-0">
+            <div className="font-bold text-[#111827] text-sm">Chưa có thông báo</div>
+            <p className="text-xs text-[#4B5563] mt-1 max-w-[240px] leading-relaxed m-0">
               Lịch phỏng vấn, offer và việc làm gợi ý sẽ xuất hiện ở đây.
             </p>
             <Link
               to="/candidate/profile"
               onClick={() => setOpen(false)}
-              className="mt-3 inline-flex items-center justify-center rounded-lg bg-[#0C4A6E] hover:bg-[#075985] text-white px-3 py-1.5 text-xs font-semibold shadow-xs transition no-underline"
+              className="mt-3.5 inline-flex items-center justify-center rounded-md bg-[#0C4A6E] hover:bg-[#075985] text-white px-3.5 py-2 text-xs font-semibold transition no-underline"
             >
               Hoàn thiện hồ sơ
             </Link>
           </div>
         ) : (
-          /* Danh sách item khớp chuẩn Trang 23 */
-          <div className="divide-y divide-slate-100">
+          /* Danh sách thẻ thông báo trực quan */
+          <div className="space-y-2">
             {candidateFilteredItems.map((item) => {
               const read = item.isRead;
               const cat = getNotificationCategory(item);
+              const visual = getCandidateCategoryVisual(cat);
+              const hasRoute = Boolean(getNotificationRoute(item, role));
               return (
                 <div
                   key={item.notificationId}
@@ -379,29 +437,41 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
                       handleNotificationClick(item);
                     }
                   }}
-                  className={`flex items-start gap-2.5 px-4 py-3 transition-colors cursor-pointer ${
-                    read ? 'bg-white hover:bg-slate-50/80' : 'bg-[#F0F7FF] hover:bg-[#E2F0FE]'
+                  className={`group relative flex items-start gap-3 rounded-xl border border-solid p-3 transition-all duration-150 cursor-pointer ${
+                    read
+                      ? 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/70'
+                      : 'border-[#BAE6FD] bg-[#F0F9FF]/90 hover:bg-[#E0F2FE]/80 shadow-2xs'
                   }`}
                 >
-                  {/* Chấm tròn xanh unread chuẩn Trang 23 PDF */}
-                  <div className="w-2 shrink-0 pt-1.5 flex justify-center">
-                    {!read ? (
-                      <span className="h-2 w-2 rounded-full bg-[#0284C7] inline-block shadow-xs" />
-                    ) : (
-                      <span className="h-2 w-2 inline-block" />
-                    )}
+                  {/* Icon phân loại trực quan */}
+                  <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-solid ${visual.iconBg}`}>
+                    {visual.icon}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-[13px] font-semibold text-slate-900 leading-snug m-0 line-clamp-1">
-                      {item.title}
-                    </h4>
-                    <p className="text-[12px] text-slate-600 leading-relaxed m-0 mt-0.5 line-clamp-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className={`text-[13px] leading-snug m-0 line-clamp-1 ${read ? 'font-semibold text-[#1F2937]' : 'font-bold text-[#111827]'}`}>
+                        {item.title}
+                      </h4>
+                      {!read && (
+                        <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#0284C7] inline-block" />
+                      )}
+                    </div>
+                    <p className="text-[12px] text-[#4B5563] leading-relaxed m-0 mt-1 line-clamp-2">
                       {item.message}
                     </p>
-                    <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1 font-normal">
-                      <span className="font-medium text-slate-600">{cat}</span>
-                      <span>·</span>
-                      <span>{formatTimeAgo(item.createdAt)}</span>
+                    <div className="mt-2 flex items-center justify-between text-[11px]">
+                      <div className="flex items-center gap-1.5 text-[#6B7280]">
+                        <span className={`inline-flex items-center rounded border border-solid px-1.5 py-0.5 text-[10.5px] font-semibold leading-none ${visual.badge}`}>
+                          {cat}
+                        </span>
+                        <span>·</span>
+                        <span>{formatTimeAgo(item.createdAt)}</span>
+                      </div>
+                      {hasRoute && (
+                        <span className="font-semibold text-[#0369A1] group-hover:text-[#075985] inline-flex items-center gap-0.5">
+                          Xem chi tiết <RightOutlined style={{ fontSize: 9 }} />
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -412,7 +482,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
       </div>
 
       {/* Footer link dẫn sang Trang Thông báo đầy đủ */}
-      <div className="border-0 border-t border-solid border-slate-100 bg-slate-50/70 px-4 py-2.5 text-center">
+      <div className="border-0 border-t border-solid border-slate-100 bg-white px-4 py-2.5 text-center">
         <Link
           to="/candidate/notifications"
           onClick={() => setOpen(false)}
@@ -580,9 +650,11 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
         <button
           type="button"
           aria-label="Thông báo hệ thống"
-          className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-solid border-slate-200 bg-white text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 ${
-            className || ''
-          }`}
+          className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-solid border-slate-200 bg-white text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50 ${
+            isCandidate
+              ? `hover:!bg-white/10 focus:!outline-none focus-visible:!outline-white/40 ${open ? '!bg-white/15' : ''}`
+              : 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600'
+          } ${className || ''}`}
         >
           <BellOutlined style={{ fontSize: 17, color: bellColor }} />
         </button>
