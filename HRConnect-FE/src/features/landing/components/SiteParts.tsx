@@ -123,6 +123,16 @@ const LOCATION_OPTIONS = [
 ];
 
 /** Standalone job search panel below the site header. Goes to the job list of the current role. */
+const POPULAR_SEARCH_LOCATIONS = [
+  { value: '', label: 'Tất cả địa điểm', region: 'Toàn quốc', isAll: true },
+  { value: 'Hồ Chí Minh', label: 'Hồ Chí Minh', region: 'Miền Nam' },
+  { value: 'Hà Nội', label: 'Hà Nội', region: 'Miền Bắc' },
+  { value: 'Đà Nẵng', label: 'Đà Nẵng', region: 'Miền Trung' },
+  { value: 'Bình Dương', label: 'Bình Dương', region: 'Đông Nam Bộ' },
+  { value: 'Hải Phòng', label: 'Hải Phòng', region: 'Miền Bắc' },
+  { value: 'Đồng Nai', label: 'Đồng Nai', region: 'Đông Nam Bộ' },
+  { value: 'Cần Thơ', label: 'Cần Thơ', region: 'Tây Nam Bộ' },
+];
 export const SearchForm: React.FC<{ defaultKeyword?: string; defaultLocation?: string }> = ({ defaultKeyword = '', defaultLocation = '' }) => {
   const navigate = useNavigate();
   const { isAuthenticated, role } = useAuthStore();
@@ -132,20 +142,11 @@ export const SearchForm: React.FC<{ defaultKeyword?: string; defaultLocation?: s
   const [locFilter, setLocFilter] = useState('');
   const candidate = isAuthenticated && role === UserRole.CANDIDATE;
 
-  const popularLocations = [
-    { value: '', label: 'Tất cả địa điểm', region: 'Toàn quốc', isAll: true },
-    { value: 'Hồ Chí Minh', label: 'Hồ Chí Minh', region: 'Miền Nam' },
-    { value: 'Hà Nội', label: 'Hà Nội', region: 'Miền Bắc' },
-    { value: 'Đà Nẵng', label: 'Đà Nẵng', region: 'Miền Trung' },
-    { value: 'Bình Dương', label: 'Bình Dương', region: 'Đông Nam Bộ' },
-    { value: 'Hải Phòng', label: 'Hải Phòng', region: 'Miền Bắc' },
-    { value: 'Đồng Nai', label: 'Đồng Nai', region: 'Đông Nam Bộ' },
-    { value: 'Cần Thơ', label: 'Cần Thơ', region: 'Tây Nam Bộ' },
-  ];
+  
 
   const visibleLocationOptions = React.useMemo(() => {
     if (!locFilter.trim()) {
-      return popularLocations;
+      return POPULAR_SEARCH_LOCATIONS;
     }
     const norm = removeDiacritics(locFilter).toLowerCase();
     const all = [

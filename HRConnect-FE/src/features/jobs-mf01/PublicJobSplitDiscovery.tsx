@@ -218,18 +218,18 @@ export const PublicJobSplitDiscovery: React.FC = () => {
   };
   const results = usePublicJobSearch(query);
   const allActiveJobsQuery = usePublicJobSearch({ page: 1, pageSize: 100 });
-  const allActiveJobs = allActiveJobsQuery.data?.items ?? [];
 
   const activeLocationCounts = useMemo(() => {
+    const items = allActiveJobsQuery.data?.items ?? [];
     const counts: Record<string, number> = {};
     for (const prov of ALL_VIETNAM_PROVINCES) {
-      const matchCount = allActiveJobs.filter((j) => j.location && matchProvince(j.location, prov)).length;
+      const matchCount = items.filter((j) => j.location && matchProvince(j.location, prov)).length;
       if (matchCount > 0) {
         counts[prov] = matchCount;
       }
     }
     return counts;
-  }, [allActiveJobs]);
+  }, [allActiveJobsQuery.data?.items]);
 
   const activeProvinces = useMemo(
     () => ALL_VIETNAM_PROVINCES.filter((p) => (activeLocationCounts[p] ?? 0) > 0),
