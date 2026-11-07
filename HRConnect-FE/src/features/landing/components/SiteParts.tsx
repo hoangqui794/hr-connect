@@ -35,11 +35,17 @@ export const CompanyMark: React.FC<{ name?: string | null; logoUrl?: string | nu
 /** "25 – 35 triệu" for VND, the raw numbers otherwise. */
 export const salaryText = (job: { salaryMin?: number | null; salaryMax?: number | null; salaryNegotiable?: boolean; currencyCode?: string | null }) => {
   const { salaryMin: min, salaryMax: max, currencyCode } = job;
-  if (job.salaryNegotiable || (!min && !max)) return 'Thương lượng';
-  if (currencyCode && currencyCode !== 'VND') return [min, max].filter(Boolean).map((v) => v!.toLocaleString('vi-VN')).join(' – ') + ` ${currencyCode}`;
+  if (!min && !max) return job.salaryNegotiable ? 'Thương lượng' : 'Thỏa thuận';
+  if (currencyCode && currencyCode !== 'VND') {
+    const raw = [min, max].filter(Boolean).map((v) => v!.toLocaleString('vi-VN')).join(' – ') + ` ${currencyCode}`;
+    return job.salaryNegotiable ? `${raw} (Thương lượng)` : raw;
+  }
   const m = (v: number) => (v / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 });
-  if (min && max) return min === max ? `${m(min)} triệu` : `${m(min)} – ${m(max)} triệu`;
-  return min ? `Từ ${m(min)} triệu` : `Đến ${m(max!)} triệu`;
+  let range = '';
+  if (min && max) range = min === max ? `${m(min)} triệu` : `${m(min)} – ${m(max)} triệu`;
+  else if (min) range = `Từ ${m(min)} triệu`;
+  else range = `Đến ${m(max!)} triệu`;
+  return job.salaryNegotiable ? `${range} (Thương lượng)` : range;
 };
 
 export const postedText = (date?: string | null) => {

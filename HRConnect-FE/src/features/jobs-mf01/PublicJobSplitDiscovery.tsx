@@ -276,7 +276,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
 
   const jobs = (results.data?.items ?? []).filter((job) => {
     if (!needsLocalFilter) return true;
-    if (excludeNegotiable && (job.salaryNegotiable || (!job.salaryMin && !job.salaryMax))) return false;
+    if (excludeNegotiable && !job.salaryMin && !job.salaryMax) return false;
     if (types.length === 0) return true;
     return types.some((type) => (type === REMOTE ? isRemote(job) : job.employmentType === type));
   });

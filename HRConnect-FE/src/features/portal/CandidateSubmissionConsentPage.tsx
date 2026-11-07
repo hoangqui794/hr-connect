@@ -175,7 +175,7 @@ export const CandidateSubmissionConsentPage: React.FC = () => {
               <div className="mt-0.5 break-words text-[13px] text-[#4B5563]">
                 {[
                   consent.salaryMin != null && consent.salaryMax != null
-                    ? `${Math.round(consent.salaryMin / 1_000_000)} – ${Math.round(consent.salaryMax / 1_000_000)} triệu ${consent.currencyCode || 'VND'}`
+                    ? `${Math.round(consent.salaryMin / 1_000_000)} – ${Math.round(consent.salaryMax / 1_000_000)} triệu ${consent.currencyCode || 'VND'}${consent.salaryNegotiable ? ' (Thương lượng)' : ''}`
                     : consent.salaryNegotiable
                       ? 'Thỏa thuận'
                       : null,
