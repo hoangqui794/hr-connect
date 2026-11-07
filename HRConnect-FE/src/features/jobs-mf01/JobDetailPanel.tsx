@@ -693,7 +693,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           {
             label: 'Địa điểm',
             value: job.location ? (
-              job.location.includes('; ') || job.location.includes('\n') ? (
+              job.location.includes(';') || job.location.includes('\n') ? (
                 <div className="space-y-1">
                   {job.location.split(/;\s*|\n+/).filter(Boolean).map((loc, idx) => (
                     <div key={idx} className="inline-flex items-start gap-1.5 leading-snug">

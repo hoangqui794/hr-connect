@@ -165,10 +165,27 @@ const JobContent: React.FC<{ job: Job }> = ({ job }) => {
   const companyLegalName = company?.companyName ?? job.companyName;
   const logoUrl = company?.logoUrl ?? job.companyLogoUrl;
   const website = company?.website ? websiteHref(company.website) : null;
-  const workAddress = company?.address ?? job.location;
-  const facts = [
+  const locations = job.location
+    ? job.location.split(/;\s*|\n+/).map((s) => s.trim()).filter(Boolean)
+    : [];
+
+  const locationValue: React.ReactNode =
+    locations.length > 1 ? (
+      <div className="space-y-1">
+        {locations.map((loc, idx) => (
+          <div key={idx} className="flex items-start gap-1.5 leading-snug">
+            <span className="text-[#9CA3AF] select-none shrink-0">•</span>
+            <span>{loc}</span>
+          </div>
+        ))}
+      </div>
+    ) : (
+      locations[0] ?? '—'
+    );
+
+  const facts: { label: string; value: React.ReactNode; accent?: boolean }[] = [
     { label: 'Mức lương', value: salaryText(job), accent: true },
-    { label: 'Địa điểm', value: job.location ?? '—' },
+    { label: 'Địa điểm', value: locationValue },
     { label: 'Kinh nghiệm', value: experienceText(job.minExperienceYears, job.maxExperienceYears) },
     { label: 'Loại hình làm việc', value: job.employmentType ? EMPLOYMENT_TYPE_LABEL[job.employmentType] : '—' },
     { label: 'Hình thức làm việc', value: WORK_MODE_LABEL[detectWorkMode(job)] ?? 'Tại văn phòng (On-site)' },
@@ -253,10 +270,10 @@ const JobContent: React.FC<{ job: Job }> = ({ job }) => {
             </>
           )}
           <BulletSection title="Quyền lợi" items={toLines(job.benefits)} />
-          {(job.workingTime || workAddress) && (
+          {job.workingTime && (
             <>
-              <h2 className={H2}>Thời gian và địa điểm làm việc</h2>
-              <p className="m-0 whitespace-pre-line">{[job.workingTime, workAddress].filter(Boolean).join('\n')}</p>
+              <h2 className={H2}>Thời gian làm việc</h2>
+              <p className="m-0 whitespace-pre-line">{job.workingTime}</p>
             </>
           )}
           {(applyAction || (daysLeft !== null && daysLeft > 0)) && (
