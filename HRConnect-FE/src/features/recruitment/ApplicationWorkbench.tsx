@@ -1284,77 +1284,81 @@ export const ApplicationWorkbench: React.FC<{
 
           {open === 'offer' && (
             <>
-              <div className="grid gap-x-4 sm:grid-cols-[1fr_110px]">
-                <Form.Item name="salary" label="Mức lương" rules={[{ required: true, message: 'Nhập mức lương.' }, { type: 'number', min: 0, message: 'Không được âm.' }]}>
-                  <InputNumber min={0} className="w-full" formatter={(v) => `${v ?? ''}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')} parser={(v) => Number(String(v).replace(/\./g, '')) as 0} />
-                </Form.Item>
-                <Form.Item name="currencyCode" label="Tiền tệ" rules={[{ max: 3, message: 'Tối đa 3 ký tự.' }]}>
-                  <Input maxLength={3} />
-                </Form.Item>
+              <p className="mt-0 text-sm text-slate-600">
+                Nhập mức lương và các mốc thời gian để gửi thư mời nhận việc (Offer) tới ứng viên <b>{d?.candidateFullName}</b>.
+              </p>
+
+              {/* Mức lương chính - Luôn theo tháng */}
+              <div className="mb-4">
+                <div className="grid gap-x-4 sm:grid-cols-[1fr_110px]">
+                  <Form.Item
+                    name="salary"
+                    label={isHeadhuntCod ? 'Mức lương Gross mỗi tháng' : 'Mức lương mỗi tháng'}
+                    extra={isHeadhuntCod ? 'Lương trước thuế mỗi tháng theo quy định tin tuyển dụng.' : 'Mặc định chi trả theo tháng.'}
+                    rules={[{ required: true, message: 'Nhập mức lương.' }, { type: 'number', min: 0, message: 'Không được âm.' }]}
+                  >
+                    <InputNumber
+                      min={0}
+                      className="w-full"
+                      placeholder="VD: 25.000.000"
+                      formatter={(v) => `${v ?? ''}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
+                      parser={(v) => Number(String(v).replace(/\./g, '')) as 0}
+                    />
+                  </Form.Item>
+                  <Form.Item name="currencyCode" label="Tiền tệ" rules={[{ max: 3, message: 'Tối đa 3 ký tự.' }]}>
+                    <Input maxLength={3} />
+                  </Form.Item>
+                </div>
               </div>
-              <div className="grid gap-x-4 sm:grid-cols-2">
-                <Form.Item
-                  name="salaryBasis"
-                  label="Loại lương"
-                  extra={
-                    isHeadhuntCod
-                      ? 'Headhunt bắt buộc dùng Gross để tính phí.'
-                      : (
-                        <span className="block leading-5">
-                          <span className="block"><b>Gross</b> — Lương trước thuế và các khoản khấu trừ.</span>
-                          <span className="block"><b>Net</b> — Lương thực nhận sau khấu trừ.</span>
-                        </span>
-                      )
-                  }
-                  rules={[
-                    { required: true, message: 'Chọn Gross hoặc Net.' },
-                    {
-                      validator: (_, value: 'GROSS' | 'NET' | undefined) =>
-                        !isHeadhuntCod || value === 'GROSS'
-                          ? Promise.resolve()
-                          : Promise.reject(new Error('Tin Headhunt chỉ nhận offer lương Gross.')),
-                    },
-                  ]}
-                >
-                  <Radio.Group
-                    options={SALARY_BASIS_OPTIONS.map((option) => ({
-                      ...option,
-                      disabled: isHeadhuntCod && option.value === 'NET',
-                    }))}
-                    optionType="button"
-                    buttonStyle="solid"
-                  />
+
+              {/* Luôn ngầm định kỳ lương là MONTHLY cho tất cả dịch vụ */}
+              <Form.Item name="salaryPeriod" hidden initialValue="MONTHLY">
+                <Input />
+              </Form.Item>
+
+              {/* Chọn Gross / Net: Headhunt cố định Gross; AP và SS cho chọn với card trực quan */}
+              {isHeadhuntCod ? (
+                <Form.Item name="salaryBasis" hidden initialValue="GROSS">
+                  <Input />
                 </Form.Item>
-                <Form.Item name="salaryPeriod" label="Kỳ lương" rules={[{ required: true, message: 'Chọn kỳ lương.' }]}>
-                  <Radio.Group options={SALARY_PERIOD_OPTIONS} optionType="button" buttonStyle="solid" />
-                </Form.Item>
-              </div>
-              {isHeadhuntCod && (
-                <Alert
-                  className="mb-4"
-                  type="info"
-                  showIcon
-                  message="Tin Headhunt tính phí theo lương Gross tháng"
-                  description="Chọn Gross. Nếu offer ghi theo năm, hệ thống tự quy đổi về mức Gross theo tháng để tính phí."
-                />
-              )}
-              {monthlyGrossPreview != null && (
-                <div className="mb-4 rounded-lg bg-sky-50 px-3 py-2 text-[13px] text-sky-950">
-                  Gross theo tháng dùng để tính phí: <b>{money(monthlyGrossPreview, watchedCurrencyCode || 'VND')}</b>
+              ) : (
+                <div className="mb-4">
+                  <Form.Item
+                    name="salaryBasis"
+                    label="Hình thức nhận lương"
+                    rules={[{ required: true, message: 'Chọn Gross hoặc Net.' }]}
+                  >
+                    <Radio.Group className="w-full grid grid-cols-2 gap-3" buttonStyle="solid">
+                      <Radio.Button value="GROSS" className="!h-auto !py-2.5 !px-3 !rounded-xl !border !border-slate-200 text-left">
+                        <div className="font-semibold text-slate-900 leading-tight">Lương Gross</div>
+                        <div className="text-[12px] text-slate-500 font-normal mt-0.5 leading-snug">Trước thuế & các khoản bảo hiểm</div>
+                      </Radio.Button>
+                      <Radio.Button value="NET" className="!h-auto !py-2.5 !px-3 !rounded-xl !border !border-slate-200 text-left">
+                        <div className="font-semibold text-slate-900 leading-tight">Lương Net</div>
+                        <div className="text-[12px] text-slate-500 font-normal mt-0.5 leading-snug">Thực nhận về tay mỗi tháng</div>
+                      </Radio.Button>
+                    </Radio.Group>
+                  </Form.Item>
                 </div>
               )}
+
+              {/* Dòng xem trước tóm tắt cho ứng viên */}
+              {typeof watchedSalary === 'number' && watchedSalary > 0 && (
+                <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-2.5 text-[13px] text-emerald-950 flex items-center justify-between">
+                  <div>
+                    <span className="text-emerald-800 text-xs block">Ứng viên sẽ thấy trong Offer:</span>
+                    <span className="font-bold">
+                      {money(watchedSalary, watchedCurrencyCode || 'VND')} {watchedSalaryBasis === 'NET' ? 'Net' : 'Gross'} / tháng
+                    </span>
+                  </div>
+                  <span className="text-base">✉️</span>
+                </div>
+              )}
+
               <div className="grid gap-x-4 sm:grid-cols-2">
                 <Form.Item
-                  name="expiryDate"
-                  label="Hạn phản hồi Offer"
-                  extra="Ngày cuối cùng ứng viên có thể chấp nhận hoặc từ chối Offer."
-                  rules={[{ required: true, message: 'Chọn hạn phản hồi Offer.' }]}
-                >
-                  <DatePicker format="DD/MM/YYYY" disabledDate={notPast} className="w-full" />
-                </Form.Item>
-                <Form.Item
                   name="startDate"
-                  label="Ngày bắt đầu"
+                  label="Ngày bắt đầu làm việc"
                   dependencies={['expiryDate']}
                   rules={[
                     { required: true, message: 'Chọn ngày bắt đầu.' },
@@ -1366,17 +1370,21 @@ export const ApplicationWorkbench: React.FC<{
                     }),
                   ]}
                 >
-                  <DatePicker format="DD/MM/YYYY" disabledDate={notPast} className="w-full" />
+                  <DatePicker format="DD/MM/YYYY" disabledDate={notPast} className="w-full" placeholder="Chọn ngày đi làm" />
+                </Form.Item>
+                <Form.Item
+                  name="expiryDate"
+                  label="Hạn phản hồi Offer"
+                  extra="Hạn cuối để ứng viên đồng ý hoặc từ chối."
+                  rules={[{ required: true, message: 'Chọn hạn phản hồi Offer.' }]}
+                >
+                  <DatePicker format="DD/MM/YYYY" disabledDate={notPast} className="w-full" placeholder="Chọn ngày hết hạn" />
                 </Form.Item>
               </div>
+
               <Form.Item
                 name="offerDocumentUrl"
-                label="Tài liệu Offer (không bắt buộc)"
-                extra={
-                  has('UPDATE_OFFER')
-                    ? 'Dán đường dẫn bảo mật tới thư mời hoặc PDF Offer. Để trống rồi lưu để gỡ link hiện có.'
-                    : 'Dán đường dẫn bảo mật tới thư mời hoặc PDF Offer.'
-                }
+                label="Đính kèm link thư mời / hợp đồng (không bắt buộc)"
                 rules={[
                   { type: 'url', message: 'Link tài liệu không hợp lệ.' },
                   { max: 2048, message: 'Link tối đa 2048 ký tự.' },
