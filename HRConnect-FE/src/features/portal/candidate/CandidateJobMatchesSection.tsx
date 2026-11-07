@@ -57,9 +57,11 @@ const formatSalary = (min?: number | null, max?: number | null, negotiable?: boo
   if (min == null && max == null) return 'Chưa công bố mức lương';
   const formatter = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 });
   const symbol = currency === 'VND' ? '₫' : currency;
-  if (min != null && max != null) return `${formatter.format(min)} – ${formatter.format(max)} ${symbol}`;
-  if (min != null) return `Từ ${formatter.format(min)} ${symbol}`;
-  return `Đến ${formatter.format(max!)} ${symbol}`;
+  let text = '';
+  if (min != null && max != null) text = `${formatter.format(min)} – ${formatter.format(max)} ${symbol}`;
+  else if (min != null) text = `Từ ${formatter.format(min)} ${symbol}`;
+  else text = `Đến ${formatter.format(max!)} ${symbol}`;
+  return negotiable ? `${text} (Thương lượng)` : text;
 };
 
 export const CandidateJobMatchesSection: React.FC<CandidateJobMatchesSectionProps> = ({ limit, showHeader = true, className = '', viewAllLink }) => {

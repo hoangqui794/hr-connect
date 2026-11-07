@@ -70,11 +70,11 @@ export const AffiliateJobDetailPage: React.FC = () => {
       ) : detail.isLoading || !detail.data ? (
         <Skeleton active paragraph={{ rows: 12 }} />
       ) : (
-        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-          <div className="min-w-0 rounded-2xl border border-solid border-slate-200 bg-white p-5 sm:p-6">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 w-full max-w-full min-w-0 overflow-hidden xl:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-solid border-slate-200 bg-white p-5 sm:p-6">
             <JobDetailPanel job={detail.data} isApplicantView />
           </div>
-          <aside className="min-w-0 space-y-3 xl:sticky xl:top-24 xl:self-start">
+          <aside className="w-full min-w-0 max-w-full space-y-3 xl:sticky xl:top-24 xl:self-start">
             <CommissionEstimateCard jobId={detail.data.jobId} />
             <div className="flex flex-col items-stretch">
               <JobApplyActions job={detail.data} />

@@ -4,7 +4,7 @@
  *  The API takes one employment type and always includes negotiable salaries; anything beyond that is filtered here
  *  over the first 100 results (see needsLocalFilter).
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Select, Skeleton } from 'antd';
@@ -46,7 +46,35 @@ const WORK_TYPES = [
   { key: REMOTE, label: 'Làm từ xa' },
 ];
 
-const LOCATIONS = ['Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng', 'Bình Dương', 'Cần Thơ'];
+export const ALL_VIETNAM_PROVINCES = [
+  'Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng', 'Bình Dương', 'Đồng Nai',
+  'Hải Phòng', 'Cần Thơ', 'Bà Rịa - Vũng Tàu', 'Bắc Ninh', 'Quảng Ninh',
+  'Khánh Hòa', 'Thừa Thiên Huế', 'Lâm Đồng', 'An Giang', 'Bắc Giang',
+  'Bắc Kạn', 'Bạc Liêu', 'Bến Tre', 'Bình Định', 'Bình Phước',
+  'Bình Thuận', 'Cà Mau', 'Cao Bằng', 'Đắk Lắk', 'Đắk Nông',
+  'Điện Biên', 'Đồng Tháp', 'Gia Lai', 'Hà Giang', 'Hà Nam',
+  'Hà Tĩnh', 'Hải Dương', 'Hậu Giang', 'Hòa Bình', 'Hưng Yên',
+  'Kiên Giang', 'Kon Tum', 'Lai Châu', 'Lạng Sơn', 'Lào Cai',
+  'Long An', 'Nam Định', 'Nghệ An', 'Ninh Bình', 'Ninh Thuận',
+  'Phú Thọ', 'Phú Yên', 'Quảng Bình', 'Quảng Nam', 'Quảng Ngãi',
+  'Quảng Trị', 'Sóc Trăng', 'Sơn La', 'Tây Ninh', 'Thái Bình',
+  'Thái Nguyên', 'Thanh Hóa', 'Tiền Giang', 'Trà Vinh', 'Tuyên Quang',
+  'Vĩnh Long', 'Vĩnh Phúc', 'Yên Bái',
+];
+
+export const removeDiacritics = (str: string) =>
+  str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd');
+
+export const matchProvince = (jobLocation: string, province: string): boolean => {
+  const normLoc = removeDiacritics(jobLocation).toLowerCase();
+  const normProv = removeDiacritics(province).toLowerCase();
+  if (normLoc.includes(normProv)) return true;
+  if (normProv === 'ho chi minh' && (normLoc.includes('hcm') || normLoc.includes('sai gon') || normLoc.includes('thu duc'))) return true;
+  if (normProv === 'ha noi' && normLoc.includes('hn')) return true;
+  if (normProv === 'ba ria - vung tau' && (normLoc.includes('vung tau') || normLoc.includes('ba ria'))) return true;
+  if (normProv === 'thua thien hue' && normLoc.includes('hue')) return true;
+  return false;
+};
 
 const SORTS = [
   { value: 'FIT', label: 'Phù hợp nhất', candidateOnly: true },
@@ -189,6 +217,54 @@ export const PublicJobSplitDiscovery: React.FC = () => {
     pageSize: needsLocalFilter ? LOCAL_FILTER_SIZE : PAGE_SIZE,
   };
   const results = usePublicJobSearch(query);
+  const allActiveJobsQuery = usePublicJobSearch({ page: 1, pageSize: 100 });
+  const allActiveJobs = allActiveJobsQuery.data?.items ?? [];
+
+  const activeLocationCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const prov of ALL_VIETNAM_PROVINCES) {
+      const matchCount = allActiveJobs.filter((j) => j.location && matchProvince(j.location, prov)).length;
+      if (matchCount > 0) {
+        counts[prov] = matchCount;
+      }
+    }
+    return counts;
+  }, [allActiveJobs]);
+
+  const activeProvinces = useMemo(
+    () => ALL_VIETNAM_PROVINCES.filter((p) => (activeLocationCounts[p] ?? 0) > 0),
+    [activeLocationCounts]
+  );
+  const otherProvinces = useMemo(
+    () => ALL_VIETNAM_PROVINCES.filter((p) => !(activeLocationCounts[p] ?? 0)),
+    [activeLocationCounts]
+  );
+
+  const locationOptions = useMemo(() => {
+    const options: any[] = [{ value: '', label: 'Tất cả địa điểm' }];
+
+    if (activeProvinces.length > 0) {
+      options.push({
+        label: 'Địa điểm có việc tuyển dụng',
+        title: 'Địa điểm có việc tuyển dụng',
+        options: activeProvinces.map((name) => ({
+          value: name,
+          label: `${name} (${activeLocationCounts[name]} việc)`,
+        })),
+      });
+    }
+
+    options.push({
+      label: 'Tất cả tỉnh thành khác',
+      title: 'Tất cả tỉnh thành khác',
+      options: otherProvinces.map((name) => ({
+        value: name,
+        label: name,
+      })),
+    });
+
+    return options;
+  }, [activeProvinces, otherProvinces, activeLocationCounts]);
 
   const matches = useQuery({
     queryKey: ['candidate-job-matches'],
@@ -200,7 +276,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
 
   const jobs = (results.data?.items ?? []).filter((job) => {
     if (!needsLocalFilter) return true;
-    if (excludeNegotiable && (job.salaryNegotiable || (!job.salaryMin && !job.salaryMax))) return false;
+    if (excludeNegotiable && !job.salaryMin && !job.salaryMax) return false;
     if (types.length === 0) return true;
     return types.some((type) => (type === REMOTE ? isRemote(job) : job.employmentType === type));
   });
@@ -287,10 +363,20 @@ export const PublicJobSplitDiscovery: React.FC = () => {
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>
               <Select
                 aria-label="Địa điểm"
+                showSearch
+                allowClear
                 variant="borderless"
-                value={locationDraft}
-                onChange={setLocationDraft}
-                options={[{ value: '', label: 'Tất cả địa điểm' }, ...LOCATIONS.map((name) => ({ value: name, label: name }))]}
+                value={locationDraft || undefined}
+                placeholder="Tất cả địa điểm"
+                onChange={(val) => setLocationDraft(val || '')}
+                filterOption={(input, option) => {
+                  if (!input) return true;
+                  const label = String(option?.label ?? option?.value ?? '');
+                  const normInput = removeDiacritics(input).toLowerCase();
+                  const normLabel = removeDiacritics(label).toLowerCase();
+                  return normLabel.includes(normInput);
+                }}
+                options={locationOptions}
                 className={`${SELECT_TEXT} h-[42px] min-w-0 flex-1 [&_.ant-select-selector]:!px-0 [&_.ant-select-selection-item]:!text-[15px]`}
                 popupMatchSelectWidth={false}
               />

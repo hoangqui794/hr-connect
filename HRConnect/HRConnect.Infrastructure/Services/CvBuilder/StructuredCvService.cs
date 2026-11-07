@@ -55,6 +55,8 @@ public sealed class StructuredCvService : IStructuredCvService
                     current.IsPrimary = false;
                     current.UpdatedAt = now;
                     _cvs.Update(current);
+                    // Lưu hạ cờ CV chính cũ trước khi thêm mới để không đụng unique index uq_candidate_primary_cv
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
                 }
             }
 

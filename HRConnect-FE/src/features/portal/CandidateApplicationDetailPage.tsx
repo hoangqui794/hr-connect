@@ -323,7 +323,9 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                 ['Địa điểm', overview.location],
                 ['Hình thức', overview.employmentType],
                 ['Thời gian làm việc', overview.workingTime],
-                ['Mức lương', overview.salaryNegotiable ? 'Thương lượng' : overview.salaryMin != null || overview.salaryMax != null ? `${overview.salaryMin?.toLocaleString('vi-VN') ?? '0'} – ${overview.salaryMax?.toLocaleString('vi-VN') ?? 'Không giới hạn'} ${overview.currencyCode || 'VND'}` : null],
+                ['Mức lương', overview.salaryMin != null || overview.salaryMax != null
+                  ? `${overview.salaryMin?.toLocaleString('vi-VN') ?? '0'} – ${overview.salaryMax?.toLocaleString('vi-VN') ?? 'Không giới hạn'} ${overview.currencyCode || 'VND'}${overview.salaryNegotiable ? ' (Thương lượng)' : ''}`
+                  : overview.salaryNegotiable ? 'Thương lượng' : null],
               ].filter(([, value]) => value).map(([label, value]) => (
                 <div key={label}><dt className="text-[12px] text-[#6B7280]">{label}</dt><dd className="m-0 font-medium">{value}</dd></div>
               ))}

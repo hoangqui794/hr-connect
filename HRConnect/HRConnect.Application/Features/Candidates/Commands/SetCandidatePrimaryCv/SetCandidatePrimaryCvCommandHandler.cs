@@ -73,26 +73,40 @@ public class SetCandidatePrimaryCvCommandHandler : IRequestHandler<SetCandidateP
 
         var now = DateTime.UtcNow;
         var currentPrimary = await _candidateCvRepository.GetPrimaryByCandidateIdAsync(candidate.CandidateId, cancellationToken);
-        if (currentPrimary != null && currentPrimary.CvId != targetCv.CvId)
-        {
-            currentPrimary.IsPrimary = false;
-            currentPrimary.UpdatedAt = now;
-            _candidateCvRepository.Update(currentPrimary);
-        }
 
-        targetCv.IsPrimary = true;
-        targetCv.UpdatedAt = now;
-        _candidateCvRepository.Update(targetCv);
-        await _auditLogService.AddAsync(new AuditEntry
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        try
         {
-            Action = AuditActions.CvPrimarySet,
-            EntityType = "CANDIDATE_CV",
-            EntityId = targetCv.CvId,
-            ActorUserId = request.UserId,
-            OldValues = new { previousPrimaryCvId = currentPrimary?.CvId },
-            NewValues = new { primaryCvId = targetCv.CvId }
-        }, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+            if (currentPrimary != null && currentPrimary.CvId != targetCv.CvId)
+            {
+                currentPrimary.IsPrimary = false;
+                currentPrimary.UpdatedAt = now;
+                _candidateCvRepository.Update(currentPrimary);
+                // Lưu hạ cờ CV chính cũ trước để tránh xung đột unique index uq_candidate_primary_cv
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+
+            targetCv.IsPrimary = true;
+            targetCv.UpdatedAt = now;
+            _candidateCvRepository.Update(targetCv);
+            await _auditLogService.AddAsync(new AuditEntry
+            {
+                Action = AuditActions.CvPrimarySet,
+                EntityType = "CANDIDATE_CV",
+                EntityId = targetCv.CvId,
+                ActorUserId = request.UserId,
+                OldValues = new { previousPrimaryCvId = currentPrimary?.CvId },
+                NewValues = new { primaryCvId = targetCv.CvId }
+            }, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            throw;
+        }
 
         _logger.LogInformation("Ứng viên {CandidateId} đã thiết lập CV {CvId} làm CV chính.", candidate.CandidateId, targetCv.CvId);
 

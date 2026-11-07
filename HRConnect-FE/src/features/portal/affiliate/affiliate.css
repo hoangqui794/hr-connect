@@ -67,6 +67,7 @@
 .affiliate-console .affiliate-main {
   width: min(100%, 1280px);
   max-width: 100%;
+  overflow-x: hidden;
   box-sizing: border-box;
 }
 
@@ -159,9 +160,6 @@
 }
 
 .affiliate-stat-card__icon {
-  position: absolute;
-  left: 18px;
-  top: 18px;
   display: inline-flex;
   width: 36px;
   height: 36px;
@@ -171,6 +169,12 @@
   background: var(--stat-soft, #e0f2fe);
   color: var(--stat-color, #0369a1);
   font-size: 18px;
+}
+
+.affiliate-stat-card > .affiliate-stat-card__icon {
+  position: absolute;
+  left: 18px;
+  top: 18px;
 }
 
 .affiliate-stat-card__label {
@@ -764,10 +768,17 @@
 }
 
 .affiliate-action-panel {
+  position: relative;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   background: #f8fafc;
   padding: 22px;
+}
+
+.affiliate-action-panel .affiliate-stat-card__icon {
+  position: static !important;
+  display: inline-flex !important;
+  flex-shrink: 0;
 }
 
 .affiliate-stepper {

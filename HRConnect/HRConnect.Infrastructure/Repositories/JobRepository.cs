@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Entities;
@@ -211,8 +213,36 @@ public class JobRepository : IJobRepository
 
         if (!string.IsNullOrWhiteSpace(location))
         {
-            var pattern = $"%{location.Trim()}%";
-            query = query.Where(job => job.Location != null && EF.Functions.ILike(job.Location, pattern));
+            var patterns = GetLocationPatterns(location.Trim());
+            if (patterns.Length == 1)
+            {
+                var p0 = patterns[0];
+                query = query.Where(job => job.Location != null && EF.Functions.ILike(job.Location, p0));
+            }
+            else if (patterns.Length == 2)
+            {
+                var p0 = patterns[0];
+                var p1 = patterns[1];
+                query = query.Where(job => job.Location != null &&
+                    (EF.Functions.ILike(job.Location, p0) || EF.Functions.ILike(job.Location, p1)));
+            }
+            else if (patterns.Length == 3)
+            {
+                var p0 = patterns[0];
+                var p1 = patterns[1];
+                var p2 = patterns[2];
+                query = query.Where(job => job.Location != null &&
+                    (EF.Functions.ILike(job.Location, p0) || EF.Functions.ILike(job.Location, p1) || EF.Functions.ILike(job.Location, p2)));
+            }
+            else
+            {
+                var p0 = patterns[0];
+                var p1 = patterns[1];
+                var p2 = patterns[2];
+                var p3 = patterns[3];
+                query = query.Where(job => job.Location != null &&
+                    (EF.Functions.ILike(job.Location, p0) || EF.Functions.ILike(job.Location, p1) || EF.Functions.ILike(job.Location, p2) || EF.Functions.ILike(job.Location, p3)));
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(employmentType))
@@ -397,4 +427,87 @@ public class JobRepository : IJobRepository
     }
 
     public void Update(Job job) => _context.Jobs.Update(job);
+
+    private static readonly Dictionary<string, string[]> LocationAliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Da Nang"] = new[] { "Đà Nẵng" },
+        ["Đà Nẵng"] = new[] { "Da Nang" },
+        ["Ha Noi"] = new[] { "Hà Nội", "HN" },
+        ["Hà Nội"] = new[] { "Ha Noi", "HN" },
+        ["HN"] = new[] { "Hà Nội", "Ha Noi" },
+        ["Ho Chi Minh"] = new[] { "Hồ Chí Minh", "TP.HCM", "TP. Hồ Chí Minh", "HCM" },
+        ["Hồ Chí Minh"] = new[] { "Ho Chi Minh", "TP.HCM", "TP. Hồ Chí Minh", "HCM" },
+        ["TP.HCM"] = new[] { "Hồ Chí Minh", "Ho Chi Minh", "TP. Hồ Chí Minh", "HCM" },
+        ["HCM"] = new[] { "Hồ Chí Minh", "Ho Chi Minh", "TP.HCM", "TP. Hồ Chí Minh" },
+        ["Can Tho"] = new[] { "Cần Thơ" },
+        ["Cần Thơ"] = new[] { "Can Tho" },
+        ["Binh Duong"] = new[] { "Bình Dương" },
+        ["Bình Dương"] = new[] { "Binh Duong" },
+        ["Dong Nai"] = new[] { "Đồng Nai" },
+        ["Đồng Nai"] = new[] { "Dong Nai" },
+        ["Hai Phong"] = new[] { "Hải Phòng" },
+        ["Hải Phòng"] = new[] { "Hai Phong" },
+        ["Ba Ria Vung Tau"] = new[] { "Bà Rịa - Vũng Tàu", "Vũng Tàu" },
+        ["Bà Rịa - Vũng Tàu"] = new[] { "Ba Ria Vung Tau", "Vũng Tàu" },
+        ["Vung Tau"] = new[] { "Vũng Tàu", "Bà Rịa - Vũng Tàu" },
+        ["Vũng Tàu"] = new[] { "Vung Tau", "Bà Rịa - Vũng Tàu" },
+        ["Bac Ninh"] = new[] { "Bắc Ninh" },
+        ["Bắc Ninh"] = new[] { "Bac Ninh" },
+        ["Hue"] = new[] { "Huế", "Thừa Thiên Huế" },
+        ["Huế"] = new[] { "Hue", "Thừa Thiên Huế" },
+        ["Khanh Hoa"] = new[] { "Khánh Hòa", "Nha Trang" },
+        ["Khánh Hòa"] = new[] { "Khanh Hoa", "Nha Trang" },
+        ["Nha Trang"] = new[] { "Khánh Hòa" },
+    };
+
+    private static string[] GetLocationPatterns(string location)
+    {
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { location };
+        var unaccented = RemoveDiacritics(location);
+        if (!string.IsNullOrWhiteSpace(unaccented))
+        {
+            set.Add(unaccented);
+        }
+
+        if (LocationAliases.TryGetValue(location, out var aliases))
+        {
+            foreach (var alias in aliases)
+            {
+                set.Add(alias);
+                var unaccentedAlias = RemoveDiacritics(alias);
+                if (!string.IsNullOrWhiteSpace(unaccentedAlias)) set.Add(unaccentedAlias);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(unaccented) && LocationAliases.TryGetValue(unaccented, out var unaccentedAliases))
+        {
+            foreach (var alias in unaccentedAliases)
+            {
+                set.Add(alias);
+            }
+        }
+
+        return set.Take(4).Select(s => $"%{s}%").ToArray();
+    }
+
+    private static string RemoveDiacritics(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return text;
+        var normalizedString = text.Normalize(NormalizationForm.FormD);
+        var stringBuilder = new StringBuilder(capacity: normalizedString.Length);
+
+        for (int i = 0; i < normalizedString.Length; i++)
+        {
+            char c = normalizedString[i];
+            var unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(c);
+            if (unicodeCategory != UnicodeCategory.NonSpacingMark)
+            {
+                if (c == 'đ') stringBuilder.Append('d');
+                else if (c == 'Đ') stringBuilder.Append('D');
+                else stringBuilder.Append(c);
+            }
+        }
+
+        return stringBuilder.ToString().Normalize(NormalizationForm.FormC);
+    }
 }
