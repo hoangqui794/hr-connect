@@ -192,7 +192,8 @@ public static class CompanyEndpoints
         .WithName("GetCompanyLogo")
         .WithSummary("Lấy logo công khai của doanh nghiệp")
         .Produces(StatusCodes.Status302Found)
-        .Produces(StatusCodes.Status404NotFound);
+        .Produces(StatusCodes.Status404NotFound)
+        .AllowAnonymous();
 
         return app;
     }

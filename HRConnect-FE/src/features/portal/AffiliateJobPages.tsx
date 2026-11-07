@@ -204,10 +204,10 @@ export const AffiliateJobsPage: React.FC = () => {
 
 const RequirementList: React.FC<{ title: string; items: Job['requirements'] }> = ({ title, items }) =>
   items.length === 0 ? null : (
-    <section>
+    <section className="min-w-0 max-w-full">
       <h2 className="m-0 mb-2 text-base font-bold text-gray-900">{title}</h2>
       <ul className="m-0 space-y-1 pl-5">
-        {items.map((r) => <li key={r.requirementId} className="whitespace-pre-line">{r.content}</li>)}
+        {items.map((r) => <li key={r.requirementId} className="whitespace-pre-line break-words">{r.content}</li>)}
       </ul>
     </section>
   );
@@ -259,7 +259,7 @@ export const AffiliateJobDetailPage: React.FC = () => {
                 </dl>
               </div>
             </section>
-            <article className="space-y-5 rounded-lg border border-solid border-gray-200 bg-white p-5 leading-relaxed sm:p-6">
+            <article className="min-w-0 max-w-full space-y-5 overflow-hidden rounded-lg border border-solid border-gray-200 bg-white p-5 leading-relaxed sm:p-6">
               <RequirementList title="Yêu cầu bắt buộc" items={job.requirements.filter((r) => r.requirementType === 'MUST_HAVE')} />
               <RequirementList title="Ưu tiên" items={job.requirements.filter((r) => r.requirementType === 'SHOULD_HAVE')} />
               {job.skills.length > 0 && (

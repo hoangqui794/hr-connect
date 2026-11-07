@@ -177,9 +177,14 @@ const safeWebsiteUrl = (website: string | null) => {
   }
 };
 
-export const JobCompanyCard: React.FC<{ company: PublicJobCompany; companyId?: string }> = ({ company, companyId }) => {
-  const targetCompanyId = companyId || company.companyId;
+export const JobCompanyCard: React.FC<{
+  company: PublicJobCompany;
+  companyId?: string;
+  fallbackLogoUrl?: string | null;
+}> = ({ company, companyId, fallbackLogoUrl }) => {
+  const targetCompanyId = companyId || company.companyId || (company as any)?.id || (company as any)?.company_id;
   const companyProfileUrl = targetCompanyId ? `/companies/${targetCompanyId}` : undefined;
+  const effectiveLogoUrl = company.logoUrl || fallbackLogoUrl;
   const websiteUrl = safeWebsiteUrl(company.website);
   const facts = [
     company.industry ? { icon: <BankOutlined aria-hidden />, label: 'Lĩnh vực', value: company.industry } : null,
@@ -203,7 +208,7 @@ export const JobCompanyCard: React.FC<{ company: PublicJobCompany; companyId?: s
               >
                 <CompanyLogo
                   companyName={company.companyName}
-                  logoUrl={company.logoUrl ?? undefined}
+                  logoUrl={effectiveLogoUrl ?? undefined}
                   size="lg"
                   className="!h-14 !w-14 !rounded-2xl shrink-0"
                 />
@@ -211,7 +216,7 @@ export const JobCompanyCard: React.FC<{ company: PublicJobCompany; companyId?: s
             ) : (
               <CompanyLogo
                 companyName={company.companyName}
-                logoUrl={company.logoUrl ?? undefined}
+                logoUrl={effectiveLogoUrl ?? undefined}
                 size="lg"
                 className="!h-14 !w-14 !rounded-2xl shrink-0"
               />
@@ -731,7 +736,13 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         ))}
       </dl>
 
-      {isApplicant && job.company && <JobCompanyCard company={job.company} companyId={job.companyId} />}
+      {isApplicant && job.company && (
+        <JobCompanyCard
+          company={job.company}
+          companyId={job.companyId}
+          fallbackLogoUrl={job.companyLogoUrl}
+        />
+      )}
 
       {/* ── Thông tin dịch vụ & Phí đăng tin (CHỈ hiển thị cho Doanh nghiệp, KHÔNG hiển thị khi Internal HR duyệt hay cho Ứng viên) ── */}
       {!isApplicant && !isInternalReview && job.serviceTypeCode === 'CV_APPLICATION' && (

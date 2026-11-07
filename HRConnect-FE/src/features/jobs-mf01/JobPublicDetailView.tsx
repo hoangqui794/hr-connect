@@ -199,7 +199,11 @@ const JobContent: React.FC<{ job: Job }> = ({ job }) => {
         <div className="min-w-0 flex-[1_1_420px]">
           <h1 id="jobtitle" className="m-0 text-[22px] font-bold text-[#111827]">{job.title}</h1>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <Link to={`/companies/${job.companyId}`} className={`font-medium ${LINK}`}>{companyName}</Link>
+            {job.companyId ? (
+              <Link to={`/companies/${job.companyId}`} className={`font-medium ${LINK}`}>{companyName}</Link>
+            ) : (
+              <span className="font-medium text-[#1F2937]">{companyName}</span>
+            )}
             {company?.isVerified && <span className="rounded bg-[#DCFCE7] px-1.5 py-px text-[12px] text-[#166534]">Đã xác minh</span>}
           </div>
           <dl className="m-0 mt-[14px] grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
@@ -297,9 +301,11 @@ const JobContent: React.FC<{ job: Job }> = ({ job }) => {
                 ))}
               </dl>
             )}
-            <Link to={`/companies/${job.companyId}`} className="mt-[14px] block rounded-md border border-solid border-[#D1D5DB] p-[9px] text-center font-medium text-[#1F2937] no-underline hover:bg-[#F9FAFB] hover:text-[#1F2937]">
-              Xem trang công ty
-            </Link>
+            {job.companyId && (
+              <Link to={`/companies/${job.companyId}`} className="mt-[14px] block rounded-md border border-solid border-[#D1D5DB] p-[9px] text-center font-medium text-[#1F2937] no-underline hover:bg-[#F9FAFB] hover:text-[#1F2937]">
+                Xem trang công ty
+              </Link>
+            )}
           </section>
           <SimilarJobs job={job} />
         </aside>
