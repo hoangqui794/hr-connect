@@ -1,8 +1,0 @@
-.venv
-.env
-.pytest_cache
-**/__pycache__
-tmp
-tests
-tools
-*.md
