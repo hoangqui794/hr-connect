@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+Allow: /jobs
+Allow: /about
+
+# Disallow private dashboards and portals for web crawlers
+Disallow: /admin
+Disallow: /hr
+Disallow: /client
+Disallow: /affiliate
+Disallow: /candidate
+Disallow: /auth/callback
+
+# Crawl delay to prevent overloading
+Crawl-delay: 1
+
+Sitemap: https://www.hrconnectvn.online/sitemap.xml
+
