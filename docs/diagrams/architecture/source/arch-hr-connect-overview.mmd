@@ -1,84 +1,45 @@
 ---
-title: HR Connect — System Architecture Overview (Clean Architecture & Hybrid AI Pipeline)
-config:
-  layout: elk
+title: HR Connect — System Architecture Overview
 ---
 flowchart LR
-  subgraph CLIENT["CLIENT TIER — HRConnect-FE (React 19 + TypeScript + Vite)"]
+  subgraph ACTORS["1. USERS & ROLES"]
     direction TB
-    FE_PORTAL["Role-Based Web Portals (Guest, Candidate, Affiliate, Client, HR, Admin)"]
-    FE_ROUTER["React Router v7 + Role Guards + Ant Design 5 / Tailwind CSS"]
-    FE_STATE["Zustand State Stores + i18next (VI/EN)"]
-    FE_HTTP["Axios HTTP Client (JWT Interceptor)"]
-    FE_WS["SignalR WebSocket Client"]
-    FE_PORTAL --> FE_ROUTER --> FE_STATE --> FE_HTTP
+    A_EXT["👤 Candidate & Guest<br/>(Job Search, Self-Apply, Consent)"]
+    A_PART["🤝 Client & Affiliate<br/>(Job Request, Referral, Fee & Payout)"]
+    A_INT["🛡️ Internal HR & Admin<br/>(Review, Screening, Finance & Audit)"]
   end
 
-  subgraph BACKEND["APPLICATION TIER — HRConnect Backend (.NET 8 Clean Architecture)"]
+  subgraph CLIENT["2. PRESENTATION TIER (Frontend SPA)"]
     direction TB
-    subgraph PRES["HRConnect.Presentation"]
-      PRES_API["Minimal API Endpoints (/api/v1/*)"]
-      PRES_INT["Internal AI Callback Endpoints (/api/v1/internal/*)"]
-      PRES_HUB["SignalR NotificationHub (/hubs/notifications)"]
-      PRES_MW["JWT Auth, RBAC Policies, RateLimiting & Exception Middleware"]
-    end
-
-    subgraph APP["HRConnect.Application (MediatR CQRS)"]
-      APP_PIPE["MediatR CQRS Dispatcher & Pipeline Behaviors"]
-      APP_CMD["Command Handlers (Write Side — State Mutations)"]
-      APP_QRY["Query Handlers (Read Side — DTO Projections)"]
-      APP_VAL["FluentValidation Validators"]
-      APP_POL["Domain Access & Workflow Policies"]
-      APP_PORTS["Application Outbound Ports (IRepositories, IUnitOfWork, IServices)"]
-      APP_PIPE --> APP_CMD & APP_QRY
-      APP_CMD & APP_QRY --> APP_PORTS
-    end
-
-    subgraph DOM["HRConnect.Domain"]
-      DOM_ENT["Aggregate Roots & Core Domain Entities"]
-      DOM_CONST["State Machines, Constants & Business Invariants"]
-    end
-
-    subgraph INF["HRConnect.Infrastructure"]
-      INF_EF["EF Core 8 ApplicationDbContext, Repositories & UnitOfWork"]
-      INF_AUTH["JWT Provider, BCrypt & Google OAuth Validator"]
-      INF_EXT["Adapters: Cloudflare R2, Resend Email, VNPay Gateway, QuestPDF"]
-      INF_AI["Async AI Scoring Dispatcher & HTTP Client"]
-      INF_BG["Hosted Background Workers (IHostedService)"]
-    end
+    FE_SPA["💻 HRConnect Web App<br/>(React 19 + TypeScript + Vite)<br/>Ant Design 5 · Tailwind · Zustand"]
+    FE_COMM["🔌 Client Communication<br/>Axios REST + SignalR WebSocket"]
+    FE_SPA --> FE_COMM
   end
 
-  subgraph AI["AI MICROSERVICE — ai-service-v2 (Python FastAPI)"]
+  subgraph BACKEND["3. APPLICATION & AI TIER (Core Services)"]
     direction TB
-    AI_API["FastAPI Scoring Endpoint (/score)"]
-    AI_DOC["Document Parser & Scanned CV OCR"]
-    AI_LLM["LLM Requirement Judge & Verbatim Quote Verifier"]
-    AI_SBERT["Sentence-BERT Semantic Similarity & Score Formula"]
-    AI_CB["HRConnect Callback Client"]
-    AI_API --> AI_DOC --> AI_LLM --> AI_SBERT --> AI_CB
+    BE_API["⚙️ HRConnect Backend API (.NET 8)<br/>Clean Architecture + MediatR CQRS<br/>Minimal APIs · SignalR Hub · EF Core 8"]
+    BE_WK["⏱️ Background Workers (IHostedService)<br/>AI Dispatcher · Warranty & Expiry Jobs"]
+    AI_SVC["🤖 AI Matching Service (Python FastAPI)<br/>PDF/OCR Parser · LLM Judge · Sentence-BERT"]
+    BE_API --> BE_WK
+    BE_WK -->|"Async POST /score"| AI_SVC
+    AI_SVC -.->|"Webhook /internal/ai-results"| BE_API
   end
 
-  subgraph DATA["DATA & EXTERNAL SERVICES TIER"]
+  subgraph DATA["4. DATA & EXTERNAL SERVICES TIER"]
     direction TB
-    DB[("PostgreSQL 16 Database")]
-    R2["Cloudflare R2 Object Storage"]
-    VNPAY["VNPay Payment Gateway"]
-    EMAIL["Resend Email API & Google OAuth 2.0"]
-    LLM_API["External LLM Provider API"]
+    DB[("🗄️ PostgreSQL 16 Database")]
+    R2["☁️ Cloudflare R2 Storage"]
+    VNPAY["💳 VNPay Payment Gateway"]
+    AUTH["✉️ Resend Email & Google OAuth 2.0"]
+    LLM["🧠 External LLM Providers"]
   end
 
-  FE_HTTP -->|"HTTPS REST (JSON)"| PRES_API
-  PRES_HUB -.->|"WebSocket Real-time Push"| FE_WS
-  PRES_API -->|"MediatR ISender"| APP_PIPE
-  PRES_INT -->|"AI Callback"| APP_CMD
-  APP_PORTS -->|"Uses"| DOM_ENT
-  INF_EF -.->|"Implements"| APP_PORTS
-  INF_EXT -.->|"Implements"| APP_PORTS
-  INF_EF -->|"Maps"| DOM_ENT
-  INF_AI -->|"POST /score"| AI_API
-  AI_CB -.->|"POST /internal/ai-results"| PRES_INT
-  AI_LLM -.->|"HTTPS"| LLM_API
-  INF_EF -->|"Npgsql"| DB
-  INF_EXT -->|"S3 API"| R2
-  INF_EXT -->|"Redirect / IPN"| VNPAY
-  INF_EXT -->|"HTTPS"| EMAIL
+  A_EXT & A_PART & A_INT -->|"HTTPS"| FE_SPA
+  FE_COMM -->|"REST API (JSON / JWT)"| BE_API
+  BE_API -.->|"SignalR Real-time Push"| FE_COMM
+  BE_API -->|"EF Core / Npgsql"| DB
+  BE_API -->|"S3 API"| R2
+  BE_API -->|"Redirect & IPN"| VNPAY
+  BE_API -->|"HTTPS / OAuth"| AUTH
+  AI_SVC -->|"LLM Prompt & OCR"| LLM
