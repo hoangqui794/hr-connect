@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { message, Modal, Spin, Result, Button, Alert } from 'antd';
+import { App, Modal, Spin, Result, Button, Alert } from 'antd';
 import { FilePdfOutlined, CheckCircleFilled, FolderOpenOutlined } from '@ant-design/icons';
 import { CvTopbar } from './CvTopbar';
 import { CvSidebarTools, type SectionVisibility } from './CvSidebarTools';
@@ -103,6 +103,7 @@ const inferTemplateLayout = (code?: string): CvLayoutStyle => {
 };
 
 export const CandidateCvBuilderPage: React.FC = () => {
+  const { message } = App.useApp();
   const { cvId } = useParams<{ cvId?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -407,7 +408,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
       setDraftStatus('error');
       message.error('Không thể lưu bản nháp trên trình duyệt này.');
     }
-  }, [currentDraftPayload, draftKey]);
+  }, [currentDraftPayload, draftKey, message]);
 
   useEffect(() => {
     if (!draftReady || availableDraft) return;

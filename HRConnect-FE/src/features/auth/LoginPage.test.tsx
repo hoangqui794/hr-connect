@@ -1,3 +1,4 @@
+import { App as AntApp } from 'antd';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, AxiosHeaders } from 'axios';
@@ -16,12 +17,14 @@ const Probe = () => {
 
 const renderPage = (entry: Parameters<typeof MemoryRouter>[0]['initialEntries'] = ['/login']) =>
   render(
-    <MemoryRouter initialEntries={entry}>
+    <AntApp>
+      <MemoryRouter initialEntries={entry}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="*" element={<Probe />} />
       </Routes>
     </MemoryRouter>
+    </AntApp>
   );
 
 const failure = (status: number, text: string) =>

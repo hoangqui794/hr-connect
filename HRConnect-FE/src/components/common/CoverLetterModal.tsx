@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Button, Radio, Input, message, Tag, Space } from 'antd';
+import { App, Modal, Button, Radio, Input, Tag, Space } from 'antd';
 import {
   FileTextOutlined,
   CopyOutlined,
@@ -92,6 +92,7 @@ export const CoverLetterModal: React.FC<CoverLetterModalProps> = ({
   onClose,
   initialType = 'standard',
 }) => {
+  const { message } = App.useApp();
   const currentUser = useAuthStore((s) => s.user);
   const [selectedKey, setSelectedKey] = useState<keyof typeof TEMPLATES>(initialType);
   const [companyName, setCompanyName] = useState<string>('Doanh nghiệp Tuyển dụng');

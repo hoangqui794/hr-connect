@@ -14,7 +14,7 @@ import {
   Sparkles,
   Zap,
 } from 'lucide-react';
-import { Tooltip, message, Dropdown } from 'antd';
+import { App, Tooltip, Dropdown } from 'antd';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { candidateCvApi } from '@/services/api/mf02Api';
 import { mf04Api } from '@/services/api/mf04Api';
@@ -32,6 +32,7 @@ export const JobHuntingModeWidget: React.FC<JobHuntingModeWidgetProps> = ({
   initialIsHunting = true,
   className = '',
 }) => {
+  const { message } = App.useApp();
   const queryClient = useQueryClient();
 
   // Query CVs if not provided as prop

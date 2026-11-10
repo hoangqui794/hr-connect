@@ -4,7 +4,7 @@
  * the main links, then sign-in actions for guests or the account menu for signed-in users.
  */
 import React, { useState } from 'react';
-import { Dropdown, Drawer, message } from 'antd';
+import { App, Dropdown, Drawer } from 'antd';
 import { DashboardOutlined, LogoutOutlined, MenuOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
@@ -17,6 +17,7 @@ import { ROLE_DASHBOARD_ROUTES } from '@/routes/routeHelpers';
 import { BrandMark } from '@/components/common/BrandMark';
 
 export const Navbar: React.FC = () => {
+  const { message } = App.useApp();
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, role, user, logout } = useAuthStore();
