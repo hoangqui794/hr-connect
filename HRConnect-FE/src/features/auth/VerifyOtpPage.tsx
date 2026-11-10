@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { message } from 'antd';
+import { App } from 'antd';
 import { CheckCircleFilled, ClockCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { BrandMark } from '@/components/common/BrandMark';
@@ -26,6 +26,7 @@ const INPUT = `${FONT} box-border h-[44px] w-full rounded-md border border-solid
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 
 export const VerifyOtpPage: React.FC = () => {
+  const { message } = App.useApp();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();

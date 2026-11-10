@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { App } from 'antd';
 import { PlacementDetailPage } from './PlacementDetailPage';
 import { PlacementDetailView } from './PlacementDetailView';
 import { placementApi } from '@/services/api/placementApi';
@@ -25,16 +26,18 @@ const renderWithProviders = (ui: React.ReactElement, initialRoute = '/client/pla
   });
 
   return render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialRoute]}>
-        <Routes>
-          <Route path="/client/placements/:placementId" element={ui} />
-          <Route path="/hr/placements/:placementId" element={ui} />
-          <Route path="/placements/:placementId" element={ui} />
-          <Route path="*" element={ui} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>
+    <App>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[initialRoute]}>
+          <Routes>
+            <Route path="/client/placements/:placementId" element={ui} />
+            <Route path="/hr/placements/:placementId" element={ui} />
+            <Route path="/placements/:placementId" element={ui} />
+            <Route path="*" element={ui} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    </App>
   );
 };
 

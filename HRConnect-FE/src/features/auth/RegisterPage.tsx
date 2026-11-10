@@ -10,7 +10,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { message } from 'antd';
+import { App } from 'antd';
 import {
   CheckCircleFilled,
   EyeInvisibleOutlined,
@@ -135,6 +135,7 @@ const TextField: React.FC<{
 };
 
 export const RegisterPage: React.FC = () => {
+  const { message } = App.useApp();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const candidateReturnTo = getSafeCandidateReturnPath(searchParams.get('returnTo'));

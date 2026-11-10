@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { App } from 'antd';
 import { CandidateInterviewDetailPage } from './CandidateInterviewDetailPage';
 import { CandidateInterviewDetailView } from './CandidateInterviewDetailView';
 import { candidateInterviewApi } from '@/services/api/candidateInterviewApi';
@@ -27,15 +28,17 @@ const renderWithProviders = (ui: React.ReactElement, initialRoute = '/candidate/
   });
 
   return render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialRoute]}>
-        <Routes>
-          <Route path="/candidate/interviews/:interviewId" element={ui} />
-          <Route path="/candidate/applications/:applicationId/interviews/:interviewId" element={ui} />
-          <Route path="*" element={ui} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>
+    <App>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[initialRoute]}>
+          <Routes>
+            <Route path="/candidate/interviews/:interviewId" element={ui} />
+            <Route path="/candidate/applications/:applicationId/interviews/:interviewId" element={ui} />
+            <Route path="*" element={ui} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    </App>
   );
 };
 

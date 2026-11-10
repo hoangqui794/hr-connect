@@ -20,7 +20,7 @@ import {
   Check,
   Briefcase,
 } from 'lucide-react';
-import { message, Modal } from 'antd';
+import { App, Modal } from 'antd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { candidateJobMatchApi } from '@/services/api/candidateJobMatchApi';
 import { candidateCvApi } from '@/services/api/mf02Api';
@@ -55,6 +55,7 @@ export const CandidateAiMatchingSection: React.FC<CandidateAiMatchingSectionProp
   className = '',
   viewAllLink = '/candidate/jobs',
 }) => {
+  const { message } = App.useApp();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 

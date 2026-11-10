@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { message } from 'antd';
+import { App } from 'antd';
 import {
   CheckCircleFilled,
   EyeInvisibleOutlined,
@@ -48,6 +48,7 @@ const belongsToRoleWorkspace = (role: UserRole, path: string): boolean => {
 };
 
 export const LoginPage: React.FC = () => {
+  const { message } = App.useApp();
   const navigate = useNavigate();
   const location = useLocation();
   const { login, setAuthSession } = useAuthStore();

@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { Alert, Skeleton, message } from 'antd';
+import { App, Alert, Skeleton, message as staticMessage } from 'antd';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import 'dayjs/locale/vi';
@@ -65,6 +65,8 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
   showBackAction = false,
   onClose,
 }) => {
+  const antdApp = App.useApp();
+  const message = 'error' in antdApp.message ? antdApp.message : staticMessage;
   const { interview: fetchedInterview, isLoading, isError, error, refetch, isRefetching } = useCandidateInterviewDetail(interviewId);
   const queryClient = useQueryClient();
   const interview = fetchedInterview || initialData;

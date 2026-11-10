@@ -1,3 +1,4 @@
+import { App as AntApp } from 'antd';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, AxiosHeaders } from 'axios';
@@ -13,12 +14,14 @@ const Probe = () => {
 
 const renderPage = (entry = '/register') =>
   render(
-    <MemoryRouter initialEntries={[entry]}>
+    <AntApp>
+      <MemoryRouter initialEntries={[entry]}>
       <Routes>
         <Route path="/register" element={<RegisterPage />} />
         <Route path="*" element={<Probe />} />
       </Routes>
     </MemoryRouter>
+    </AntApp>
   );
 
 const fillPerson = async (user: ReturnType<typeof userEvent.setup>, name = 'Họ và tên', email = 'Email') => {
