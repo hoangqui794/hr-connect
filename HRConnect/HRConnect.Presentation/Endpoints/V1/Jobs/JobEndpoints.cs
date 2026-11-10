@@ -39,15 +39,15 @@ public static class JobEndpoints
 
         publicJobs.MapGet("", async (string? search, string? location, string? employmentType,
             Guid? serviceTypeId, decimal? salaryMin, decimal? salaryMax, int? page, int? pageSize,
-            string? sortBy, string? sortDirection, decimal? experienceYears,
+            string? sortBy, string? sortDirection, decimal? experienceYears, Guid? industryId,
             ISender sender, CancellationToken ct) =>
             await Run(async () => Results.Ok(await sender.Send(new GetPublicJobsQuery(
                 [JobAccessPolicy.CandidateRole], false, search, location, employmentType, serviceTypeId,
                 salaryMin, salaryMax, page is > 0 ? page.Value : 1, pageSize is > 0 ? pageSize.Value : 20,
-                sortBy, sortDirection, experienceYears), ct))))
+                sortBy, sortDirection, experienceYears, industryId), ct))))
         .WithName("GetGuestCandidateJobs")
         .WithSummary("Guest tìm Job Candidate được phép xem")
-        .WithDescription("Không cần đăng nhập. API cố định phạm vi CANDIDATE: chỉ trả Job ACTIVE thuộc Service Type có can_view cho role CANDIDATE (cấu hình trong service_type_allowed_role). Hỗ trợ sắp xếp sortBy=POSTED_AT|SALARY và sortDirection=DESC|ASC. experienceYears (0-60): chỉ lấy job có khoảng kinh nghiệm chứa số năm này; job không ghi kinh nghiệm luôn được lấy.")
+        .WithDescription("Không cần đăng nhập. API cố định phạm vi CANDIDATE: chỉ trả Job ACTIVE thuộc Service Type có can_view cho role CANDIDATE (cấu hình trong service_type_allowed_role). Hỗ trợ sắp xếp sortBy=POSTED_AT|SALARY và sortDirection=DESC|ASC. experienceYears (0-60): chỉ lấy job có khoảng kinh nghiệm chứa số năm này; job không ghi kinh nghiệm luôn được lấy. industryId: chỉ lấy job của doanh nghiệp thuộc ngành này hoặc ngành con.")
         .RequireRateLimiting("public-read")
         .Produces<JobPageDto>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
@@ -176,14 +176,14 @@ public static class JobEndpoints
         ).WithName("GetMyJobs").WithSummary("Lấy danh sách Job của doanh nghiệp hiện tại");
         jobs.MapGet("", async (ClaimsPrincipal user, string? search, string? location, string? employmentType,
             Guid? serviceTypeId, decimal? salaryMin, decimal? salaryMax, int? page, int? pageSize,
-            string? sortBy, string? sortDirection, decimal? experienceYears, ISender sender, CancellationToken ct) =>
+            string? sortBy, string? sortDirection, decimal? experienceYears, Guid? industryId, ISender sender, CancellationToken ct) =>
         {
             if (!user.HasClaim("permission", "job.view")) return Forbidden();
             var internalAccess = ReviewerCan(user, "job.review");
             return await Run(async () => Results.Ok(await sender.Send(new GetPublicJobsQuery(
                 RoleCodes(user), internalAccess, search, location, employmentType, serviceTypeId, salaryMin, salaryMax,
                 page is > 0 ? page.Value : 1, pageSize is > 0 ? pageSize.Value : 20,
-                sortBy, sortDirection, experienceYears), ct)));
+                sortBy, sortDirection, experienceYears, industryId), ct)));
         }).WithName("GetPublicJobs").WithSummary("Tìm Job đang hoạt động theo quyền xem của Service Type")
         .WithDescription("Yêu cầu đăng nhập và permission job.view. Kết quả được lọc theo role thật và Service Type. Hỗ trợ search, location, employmentType, serviceTypeId, salaryMin, salaryMax, experienceYears (0-60, job không ghi kinh nghiệm luôn được lấy); sortBy=POSTED_AT|SALARY; sortDirection=DESC|ASC; page mặc định 1, pageSize mặc định 20 và tối đa 100.")
         .Produces<JobPageDto>(StatusCodes.Status200OK)

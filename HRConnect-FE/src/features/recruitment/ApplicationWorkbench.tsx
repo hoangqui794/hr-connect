@@ -27,7 +27,8 @@ import {
   Tag,
   Tooltip,
 } from 'antd';
-import { CheckCircleOutlined, CheckOutlined, CloseOutlined, EditOutlined, ExperimentOutlined, FileOutlined, HistoryOutlined, LoadingOutlined, LockOutlined, SendOutlined, WarningOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, CheckOutlined, CloseOutlined, EditOutlined, ExperimentOutlined, FileOutlined, HeartFilled, HistoryOutlined, LoadingOutlined, LockOutlined, SendOutlined, WarningOutlined } from '@ant-design/icons';
+import { MATCH_TIER_STYLE, matchTierOf } from '@/features/screening/matchTierStyle';
 import dayjs, { type Dayjs } from 'dayjs';
 import { clientActionsApi, interviewHistoryApi, screeningApi, type ConfirmStartWorkInput } from '@/services/api/hrApi';
 import { sourcingApi } from '@/services/api/sourcingApi';
@@ -970,11 +971,17 @@ export const ApplicationWorkbench: React.FC<{
                       {d.aiMatch.matchScore != null ? Math.round(d.aiMatch.matchScore) : '—'}
                     </span>
                     <span className="mt-1.5 text-xs font-medium text-slate-500">điểm phù hợp / 100</span>
-                    {d.aiMatch.matchTier && (
-                      <span className="mt-2 inline-flex items-center rounded-full bg-sky-100/80 px-3 py-0.5 text-xs font-bold text-[#0C4A6E] border border-sky-200/60">
-                        Tier {d.aiMatch.matchTier}
-                      </span>
-                    )}
+                    {(() => {
+                      const code = matchTierOf(d.aiMatch.matchScore, d.aiMatch.matchTier);
+                      if (!code) return null;
+                      const t = MATCH_TIER_STYLE[code];
+                      return (
+                        <span className={`mt-2 inline-flex items-center gap-1 rounded-full border px-3 py-0.5 text-xs font-bold ${t.badge}`}>
+                          {t.heart && <HeartFilled aria-hidden="true" />}
+                          {t.label}
+                        </span>
+                      );
+                    })()}
                     {d.aiMatch.requiresManualReview && (
                       <span className="mt-2 inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800 border border-amber-200/80">
                         Cần xem tay

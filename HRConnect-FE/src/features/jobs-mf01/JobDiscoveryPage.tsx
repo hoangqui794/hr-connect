@@ -14,6 +14,7 @@ import { useCandidateAppliedJobs } from '@/features/portal/candidate/useCandidat
 import { BookmarkButton } from '@/components/common/BookmarkButton';
 import { CompanyLogo } from '@/components/common/CompanyLogo';
 import { useJobSearch, usePublicJobSearch, useServiceTypes } from './useJobQueries';
+import { useIndustryOptions } from './useIndustryOptions';
 import { EMPLOYMENT_TYPE_LABEL, SERVICE_TYPE_LABEL, formatDate, formatExperience, formatSalary } from './jobDisplay';
 
 const { Title, Text } = Typography;
@@ -122,6 +123,7 @@ interface JobDiscoveryPageProps {
 export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePath = '/jobs', publicAccess = false }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const serviceTypes = useServiceTypes();
+  const industries = useIndustryOptions();
   const { isApplied } = useCandidateAppliedJobs();
 
   const parseOptionalNumber = (value: string | null) => {
@@ -139,6 +141,7 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
       salaryMin: parseOptionalNumber(searchParams.get('salaryMin')),
       salaryMax: parseOptionalNumber(searchParams.get('salaryMax')),
       experienceYears: parseOptionalNumber(searchParams.get('experience')),
+      industryId: searchParams.get('industry') ?? undefined,
       sortBy: (searchParams.get('sortBy') as JobSearchParams['sortBy']) ?? 'POSTED_AT',
       sortDirection: (searchParams.get('sortDirection') as JobSearchParams['sortDirection']) ?? 'DESC',
       page: Number(searchParams.get('page')) || 1,
@@ -153,7 +156,7 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
 
   const [keywordDraft, setKeywordDraft] = useState(params.search ?? '');
   const [locationDraft, setLocationDraft] = useState(params.location ?? '');
-  const [filtersOpen, setFiltersOpen] = useState(Boolean(params.employmentType || params.serviceTypeId || params.salaryMin || params.salaryMax || params.experienceYears));
+  const [filtersOpen, setFiltersOpen] = useState(Boolean(params.employmentType || params.serviceTypeId || params.salaryMin || params.salaryMax || params.experienceYears || params.industryId));
 
   useEffect(() => {
     setKeywordDraft(params.search ?? '');
@@ -186,7 +189,7 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
     });
   };
 
-  const activeFilterCount = [params.employmentType, params.serviceTypeId, params.salaryMin, params.salaryMax, params.experienceYears]
+  const activeFilterCount = [params.employmentType, params.serviceTypeId, params.salaryMin, params.salaryMax, params.experienceYears, params.industryId]
     .filter((value) => value !== undefined && value !== null && value !== '').length;
   const hasAnyFilter = Boolean(params.search || params.location || activeFilterCount);
   const sortValue = `${params.sortBy ?? 'POSTED_AT'}_${params.sortDirection ?? 'DESC'}`;
@@ -289,6 +292,21 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
               />
             </label>
             <label className="job-filter-field">
+              <span>Ngành nghề</span>
+              <Select
+                size="large"
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                value={params.industryId}
+                placeholder="Tất cả ngành nghề"
+                loading={industries.isLoading}
+                onChange={(v) => setParam('industry', v)}
+                options={industries.options}
+                aria-label="Ngành nghề"
+              />
+            </label>
+            <label className="job-filter-field">
               <span>Loại dịch vụ tuyển dụng</span>
               <Select
                 size="large"
@@ -314,6 +332,7 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
             {params.salaryMin !== undefined && <Tag closable onClose={() => setParam('salaryMin', undefined)}>Lương từ {params.salaryMin / 1_000_000} triệu</Tag>}
             {params.salaryMax !== undefined && <Tag closable onClose={() => setParam('salaryMax', undefined)}>Lương đến {params.salaryMax / 1_000_000} triệu</Tag>}
             {params.serviceTypeId && <Tag closable onClose={() => setParam('service', undefined)}>Dịch vụ tuyển dụng</Tag>}
+            {params.industryId && <Tag closable onClose={() => setParam('industry', undefined)}>Ngành: {industries.labelOf(params.industryId) ?? '…'}</Tag>}
           </div>
         )}
       </section>

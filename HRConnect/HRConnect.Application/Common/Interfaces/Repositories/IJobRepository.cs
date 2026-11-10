@@ -37,9 +37,12 @@ public interface IJobRepository
         int pageSize,
         string? sortBy = null,
         string? sortDirection = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        Guid? industryId = null);
 
     /// <summary>
+    /// <paramref name="industryId"/> (both methods) keeps jobs whose company is in that industry or one of its
+    /// sub-industries (LinkedIn L1/L2/L3 tree).
     /// Same as <see cref="GetVisibleJobsAsync"/> plus BE-02 C: keeps jobs whose experience range contains
     /// <paramref name="experienceYears"/> (an empty bound matches).
     /// </summary>
@@ -57,7 +60,8 @@ public interface IJobRepository
         int pageSize,
         string? sortBy = null,
         string? sortDirection = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        Guid? industryId = null);
 
     Task<bool> CanAnyRoleViewJobAsync(
         Guid serviceTypeId,

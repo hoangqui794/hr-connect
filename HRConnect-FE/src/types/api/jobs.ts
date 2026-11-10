@@ -306,6 +306,8 @@ export interface JobSearchParams {
   salaryMin?: number;
   salaryMax?: number;
   experienceYears?: number;
+  /** Industry of the job's company; a level-1 industry includes its sub-industries. */
+  industryId?: string;
   sortBy?: 'POSTED_AT' | 'SALARY';
   sortDirection?: 'ASC' | 'DESC';
   page: number;

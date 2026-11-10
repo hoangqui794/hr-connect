@@ -78,7 +78,8 @@ public class JobManagementQueryHandlerTests
                 It.Is<IReadOnlyCollection<string>>(roles => roles.Count == 2),
                 false, "dotnet", null, null, null, null, null, 1, 20,
                 null, null,
-                It.IsAny<CancellationToken>()))
+                It.IsAny<CancellationToken>(),
+                It.IsAny<Guid?>()))
             .ReturnsAsync(([visibleJob], 1));
 
         var result = await new GetPublicJobsQueryHandler(_jobs.Object).Handle(
@@ -98,7 +99,8 @@ public class JobManagementQueryHandlerTests
                     roles.Count == 1 && roles.Contains(JobAccessPolicy.CandidateRole)),
                 false, null, null, null, null, null, null, 1, 12,
                 null, null,
-                It.IsAny<CancellationToken>()))
+                It.IsAny<CancellationToken>(),
+                It.IsAny<Guid?>()))
             .ReturnsAsync(([visibleJob], 1));
 
         var result = await new GetPublicJobsQueryHandler(_jobs.Object).Handle(
