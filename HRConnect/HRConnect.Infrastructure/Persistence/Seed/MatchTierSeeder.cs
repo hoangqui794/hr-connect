@@ -13,16 +13,38 @@ public static class MatchTierSeeder
 {
     public static readonly (string Code, string Name, decimal Min, decimal Max, string Color, int Order)[] Tiers =
     [
-        ("HIGH", "Rất phù hợp", 80m, 100m, "#16A34A", 1),
-        ("MEDIUM_HIGH", "Khá phù hợp", 70m, 79.99m, "#0EA5E9", 2),
-        ("MEDIUM", "Phù hợp một phần", 60m, 69.99m, "#F59E0B", 3),
+        // Topic form: >=80 red heart, 70-79 teal, 60-69 light green, <60 grey.
+        ("HIGH", "Rất phù hợp", 80m, 100m, "#E11D48", 1),
+        ("MEDIUM_HIGH", "Khá phù hợp", 70m, 79.99m, "#0D9488", 2),
+        ("MEDIUM", "Phù hợp một phần", 60m, 69.99m, "#84CC16", 3),
         ("LOW", "Ít phù hợp", 0m, 59.99m, "#94A3B8", 4),
     ];
+
+    /// <summary>Colours this seeder used before the topic-form palette; rows still on them are recoloured.</summary>
+    private static readonly Dictionary<string, string> OldDefaultColors = new()
+    {
+        ["HIGH"] = "#16A34A",
+        ["MEDIUM_HIGH"] = "#0EA5E9",
+        ["MEDIUM"] = "#F59E0B",
+    };
 
     public static async Task SeedAsync(ApplicationDbContext context, ILogger? logger = null, CancellationToken cancellationToken = default)
     {
         var existing = await context.MatchTierConfigs.Select(t => t.TierCode).ToListAsync(cancellationToken);
         var now = DateTime.UtcNow;
+
+        // A colour an Admin picked is kept; only a row still on the old default moves to the new palette.
+        var stale = await context.MatchTierConfigs
+            .Where(t => OldDefaultColors.Keys.Contains(t.TierCode))
+            .ToListAsync(cancellationToken);
+        foreach (var row in stale)
+        {
+            if (string.Equals(row.ColorCode, OldDefaultColors[row.TierCode], StringComparison.OrdinalIgnoreCase))
+            {
+                row.ColorCode = Tiers.First(t => t.Code == row.TierCode).Color;
+                row.UpdatedAt = now;
+            }
+        }
         foreach (var (code, name, min, max, color, order) in Tiers.Where(t => !existing.Contains(t.Code)))
         {
             context.MatchTierConfigs.Add(new MatchTierConfig

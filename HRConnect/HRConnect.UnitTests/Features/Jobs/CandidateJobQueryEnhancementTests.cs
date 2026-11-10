@@ -84,7 +84,8 @@ public class CandidateJobQueryEnhancementTests
                 20,
                 "SALARY",
                 "DESC",
-                It.IsAny<CancellationToken>()))
+                It.IsAny<CancellationToken>(),
+                It.IsAny<Guid?>()))
             .ReturnsAsync(([visibleJob], 1));
 
         var query = new GetPublicJobsQuery(

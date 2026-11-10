@@ -19,6 +19,7 @@ import { UserRole } from '@/types/roles';
 import type { EmploymentType, Job, JobSearchParams } from '@/types/api/jobs';
 import { EMPLOYMENT_TYPE_LABEL, experienceText } from './jobDisplay';
 import { usePublicJobSearch } from './useJobQueries';
+import { useIndustryOptions } from './useIndustryOptions';
 
 const PAGE_SIZE = 10;
 /** The API's largest page; local filters run over this many results. */
@@ -175,6 +176,8 @@ export const PublicJobSplitDiscovery: React.FC = () => {
   const salaryMax = positive(params.get('salaryMax'));
   const negotiable = params.get('negotiable') === 'true';
   const expKey = params.get('exp') || '';
+  const industry = params.get('industry') || '';
+  const industries = useIndustryOptions();
   const types = (params.get('modes') || '').split(',').filter(Boolean);
   const experience = EXPERIENCE.find((level) => level.key === expKey);
 
@@ -185,6 +188,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
   const [maxDraft, setMaxDraft] = useState(salaryMax);
   const [negotiableDraft, setNegotiableDraft] = useState(negotiable);
   const [expDraft, setExpDraft] = useState(expKey);
+  const [industryDraft, setIndustryDraft] = useState(industry);
   const [typesDraft, setTypesDraft] = useState(types);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const typesKey = types.join(',');
@@ -196,8 +200,9 @@ export const PublicJobSplitDiscovery: React.FC = () => {
     setMaxDraft(salaryMax);
     setNegotiableDraft(negotiable);
     setExpDraft(expKey);
+    setIndustryDraft(industry);
     setTypesDraft(typesKey ? typesKey.split(',') : []);
-  }, [keyword, location, salaryMin, salaryMax, negotiable, expKey, typesKey]);
+  }, [keyword, location, salaryMin, salaryMax, negotiable, expKey, industry, typesKey]);
 
   const hasSalaryRange = Boolean(salaryMin || salaryMax);
   const excludeNegotiable = hasSalaryRange && !negotiable;
@@ -211,6 +216,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
     salaryMin: salaryMin ? Number(salaryMin) * 1_000_000 : undefined,
     salaryMax: salaryMax ? Number(salaryMax) * 1_000_000 : undefined,
     experienceYears: experience?.years,
+    industryId: industry || undefined,
     sortBy: sort === 'SALARY' ? 'SALARY' : 'POSTED_AT',
     sortDirection: 'DESC',
     page: needsLocalFilter ? 1 : page,
@@ -309,11 +315,12 @@ export const PublicJobSplitDiscovery: React.FC = () => {
       setOrDelete(next, 'salaryMax', positive(maxDraft));
       setOrDelete(next, 'negotiable', negotiableDraft ? 'true' : '');
       setOrDelete(next, 'exp', expDraft);
+      setOrDelete(next, 'industry', industryDraft);
       setOrDelete(next, 'modes', typesDraft.join(','));
     });
     setFiltersOpen(false);
   };
-  const clearFilters = () => update((next) => ['salaryMin', 'salaryMax', 'negotiable', 'exp', 'modes'].forEach((key) => next.delete(key)));
+  const clearFilters = () => update((next) => ['salaryMin', 'salaryMax', 'negotiable', 'exp', 'industry', 'modes'].forEach((key) => next.delete(key)));
   const goToPage = (target: number) => {
     update((next) => {
       next.set('page', String(target));
@@ -326,6 +333,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
   const chips = [
     ...(hasSalaryRange ? [{ label: salaryChip, aria: 'mức lương', remove: () => update((next) => { next.delete('salaryMin'); next.delete('salaryMax'); }) }] : []),
     ...(experience ? [{ label: experience.label, aria: 'kinh nghiệm', remove: () => update((next) => next.delete('exp')) }] : []),
+    ...(industry ? [{ label: industries.labelOf(industry) ?? 'Ngành nghề', aria: 'ngành nghề', remove: () => update((next) => next.delete('industry')) }] : []),
     ...types.flatMap((type) => {
       const work = WORK_TYPES.find((item) => item.key === type);
       return work ? [{ label: work.label, aria: 'hình thức', remove: () => update((next) => setOrDelete(next, 'modes', types.filter((t) => t !== type).join(','))) }] : [];
@@ -430,6 +438,22 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                   <Checkbox type="radio" name="exp" checked={expDraft === level.key} onChange={() => setExpDraft(level.key)} /> {level.label}
                 </label>
               ))}
+            </fieldset>
+            <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
+              <legend id="industry-label" className="mb-2 px-0.5 font-semibold">Ngành nghề</legend>
+              <Select
+                aria-labelledby="industry-label"
+                showSearch
+                allowClear
+                value={industryDraft || undefined}
+                placeholder="Tất cả ngành nghề"
+                loading={industries.isLoading}
+                onChange={(value) => setIndustryDraft(value || '')}
+                optionFilterProp="label"
+                options={industries.options}
+                className={`${SELECT_TEXT} h-[38px] w-full [&_.ant-select-selector]:!rounded-md [&_.ant-select-selector]:!border-[#D1D5DB]`}
+                popupMatchSelectWidth={false}
+              />
             </fieldset>
             <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
               <legend className="mb-2 px-0.5 font-semibold">Hình thức làm việc</legend>

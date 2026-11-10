@@ -9,6 +9,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueries, useQuery } from '@tanstack/react-query';
+import { MATCH_TIER_STYLE, matchTierOf } from '@/features/screening/matchTierStyle';
 import { Alert, Button, Input, Select, Skeleton, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -18,6 +19,7 @@ import {
   CheckCircleOutlined,
   ClearOutlined,
   FileTextOutlined,
+  HeartFilled,
   ReloadOutlined,
   SearchOutlined,
   ThunderboltOutlined,
@@ -87,14 +89,6 @@ const BOARD: { code: string; label: string; dot: string }[] = [
 ];
 const BOARD_LIMIT = 20;
 
-/** Tier labels follow match_tier_config (HIGH ≥ 80, MEDIUM_HIGH 70–79, MEDIUM 60–69, LOW < 60). */
-const TIER: Record<string, { label: string; cls: string }> = {
-  HIGH: { label: 'Rất phù hợp', cls: 'bg-emerald-50 text-emerald-800 border-emerald-200/80' },
-  MEDIUM_HIGH: { label: 'Khá phù hợp', cls: 'bg-sky-50 text-sky-800 border-sky-200/80' },
-  MEDIUM: { label: 'Phù hợp một phần', cls: 'bg-amber-50 text-amber-800 border-amber-200/80' },
-  LOW: { label: 'Ít phù hợp', cls: 'bg-slate-100 text-slate-600 border-slate-200/80' },
-};
-
 /** AI score rendered as a sleek mini progress bar with percentage. */
 export const AiScore: React.FC<{ score: number | null; tier?: string | null; status?: string | null; compact?: boolean }> = ({
   score,
@@ -108,17 +102,10 @@ export const AiScore: React.FC<{ score: number | null; tier?: string | null; sta
     return <span className="text-xs text-slate-400 font-medium">Chưa có điểm</span>;
   }
   const rounded = Math.round(score);
-  const t = tier ? TIER[tier.toUpperCase()] : undefined;
-  const barColor =
-    rounded >= 80
-      ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
-      : rounded >= 60
-      ? 'bg-gradient-to-r from-blue-500 to-sky-500'
-      : rounded >= 40
-      ? 'bg-gradient-to-r from-amber-500 to-orange-400'
-      : 'bg-slate-400';
-  const textColor =
-    rounded >= 80 ? 'text-emerald-700' : rounded >= 60 ? 'text-blue-700' : rounded >= 40 ? 'text-amber-700' : 'text-slate-600';
+  // Tier colours from the topic form: red heart / teal / light green / grey.
+  const t = MATCH_TIER_STYLE[matchTierOf(score, tier)!];
+  const barColor = t.bar;
+  const textColor = t.text;
 
   return (
     <div
@@ -135,7 +122,8 @@ export const AiScore: React.FC<{ score: number | null; tier?: string | null; sta
         <span className={`text-xs font-bold tabular-nums min-w-[32px] ${textColor}`}>{rounded}%</span>
       </div>
       {t && (
-        <span className={`inline-block text-[10.5px] font-semibold px-1.5 py-0.5 rounded border leading-none w-fit ${t.cls}`}>
+        <span className={`inline-flex items-center gap-1 text-[10.5px] font-semibold px-1.5 py-0.5 rounded border leading-none w-fit ${t.badge}`}>
+          {t.heart && <HeartFilled aria-hidden="true" />}
           {t.label}
         </span>
       )}

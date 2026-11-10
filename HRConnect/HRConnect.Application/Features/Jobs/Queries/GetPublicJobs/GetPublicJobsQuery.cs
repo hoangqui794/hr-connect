@@ -18,7 +18,8 @@ public sealed record GetPublicJobsQuery(
     int PageSize = 20,
     string? SortBy = null,
     string? SortDirection = null,
-    decimal? ExperienceYears = null) : IRequest<JobPageDto>;
+    decimal? ExperienceYears = null,
+    Guid? IndustryId = null) : IRequest<JobPageDto>;
 
 public sealed record JobPageDto(
     IReadOnlyList<JobDto> Items,
@@ -70,7 +71,7 @@ public sealed class GetPublicJobsQueryHandler : IRequestHandler<GetPublicJobsQue
             ? await _jobs.GetVisibleJobsWithExperienceAsync(
                 roleCodes, request.HasInternalAccess, request.Search, request.Location, request.EmploymentType,
                 request.ServiceTypeId, request.SalaryMin, request.SalaryMax, request.ExperienceYears.Value,
-                page, pageSize, sortBy, sortDirection, cancellationToken)
+                page, pageSize, sortBy, sortDirection, cancellationToken, request.IndustryId)
             : await _jobs.GetVisibleJobsAsync(
             roleCodes,
             request.HasInternalAccess,
@@ -84,7 +85,8 @@ public sealed class GetPublicJobsQueryHandler : IRequestHandler<GetPublicJobsQue
             pageSize,
             sortBy,
             sortDirection,
-            cancellationToken);
+            cancellationToken,
+            request.IndustryId);
 
         return new JobPageDto(
             items.Select(job => JobDto.From(job, logoUrlResolver: _logoUrlResolver)).ToList(),

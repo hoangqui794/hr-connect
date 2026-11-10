@@ -30,4 +30,23 @@ public class MatchTierSeederTests
         _context.AiMatchResults.AsEnumerable().OrderBy(r => r.MatchScore).Select(r => r.MatchTier)
             .Should().Equal("LOW", "MEDIUM", "HIGH");
     }
+
+    // Topic form palette: >=80 red heart, 70-79 teal, 60-69 light green, <60 grey. An Admin-picked colour stays.
+    [Fact]
+    public async Task Seed_ShouldMoveOldDefaultColours_ToTheTopicFormPalette_AndKeepAdminColours()
+    {
+        var now = DateTime.UtcNow;
+        _context.MatchTierConfigs.AddRange(
+            new MatchTierConfig { TierCode = "HIGH", DisplayName = "Rất phù hợp", MinScore = 80m, MaxScore = 100m, ColorCode = "#16A34A", DisplayOrder = 1, IsActive = true, CreatedAt = now, UpdatedAt = now },
+            new MatchTierConfig { TierCode = "MEDIUM_HIGH", DisplayName = "Khá phù hợp", MinScore = 70m, MaxScore = 79.99m, ColorCode = "#123456", DisplayOrder = 2, IsActive = true, CreatedAt = now, UpdatedAt = now });
+        _context.SaveChanges();
+
+        await MatchTierSeeder.SeedAsync(_context);
+
+        var colours = _context.MatchTierConfigs.AsEnumerable().ToDictionary(t => t.TierCode, t => t.ColorCode);
+        colours["HIGH"].Should().Be("#E11D48");
+        colours["MEDIUM_HIGH"].Should().Be("#123456");
+        colours["MEDIUM"].Should().Be("#84CC16");
+        colours["LOW"].Should().Be("#94A3B8");
+    }
 }

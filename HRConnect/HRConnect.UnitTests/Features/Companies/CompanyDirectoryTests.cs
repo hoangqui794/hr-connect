@@ -200,4 +200,28 @@ public class CompanyDirectoryTests
         total.Should().Be(expected);
         items.Should().HaveCount(expected);
     }
+
+    // Topic form: job listings filter by industry; an L1 industry includes its sub-industries.
+    [Fact]
+    public async Task IndustryFilter_ShouldKeepJobsOfCompaniesInTheIndustryOrItsSubIndustries()
+    {
+        await CompanyTaxonomySeeder.SeedAsync(_context);
+        var (visible, _) = SeedServiceTypes();
+        SeedJob(SeedCompany("A", industryCode: "tech-software"), visible);
+        SeedJob(SeedCompany("B", industryCode: "tech-cloud"), visible);
+        SeedJob(SeedCompany("D", industryCode: "finance"), visible);
+        SeedJob(SeedCompany("E"), visible);
+        var repo = new JobRepository(_context);
+
+        var (tech, techTotal) = await repo.GetVisibleJobsAsync(
+            ["CANDIDATE"], false, null, null, null, null, null, null, 1, 20, industryId: Industry("technology").IndustryId);
+        var (cloud, _) = await repo.GetVisibleJobsWithExperienceAsync(
+            ["CANDIDATE"], false, null, null, null, null, null, null, 3, 1, 20, industryId: Industry("tech-cloud").IndustryId);
+        var (all, allTotal) = await repo.GetVisibleJobsAsync(["CANDIDATE"], false, null, null, null, null, null, null, 1, 20);
+
+        techTotal.Should().Be(2);
+        tech.Select(j => j.Company!.CompanyName).Should().BeEquivalentTo(["A", "B"]);
+        cloud.Select(j => j.Company!.CompanyName).Should().BeEquivalentTo(["B"]);
+        allTotal.Should().Be(4);
+    }
 }

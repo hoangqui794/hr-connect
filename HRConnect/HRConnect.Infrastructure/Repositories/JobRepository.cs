@@ -151,9 +151,10 @@ public class JobRepository : IJobRepository
         int pageSize,
         string? sortBy = null,
         string? sortDirection = null,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken = default,
+        Guid? industryId = null) =>
         QueryVisibleJobsAsync(roleCodes, bypassServiceTypeRoleCheck, search, location, employmentType, serviceTypeId,
-            salaryMin, salaryMax, null, page, pageSize, sortBy, sortDirection, cancellationToken);
+            salaryMin, salaryMax, null, page, pageSize, sortBy, sortDirection, cancellationToken, industryId);
 
     public Task<(IReadOnlyList<Job> Items, int TotalCount)> GetVisibleJobsWithExperienceAsync(
         IReadOnlyCollection<string> roleCodes,
@@ -169,9 +170,10 @@ public class JobRepository : IJobRepository
         int pageSize,
         string? sortBy = null,
         string? sortDirection = null,
-        CancellationToken cancellationToken = default) =>
+        CancellationToken cancellationToken = default,
+        Guid? industryId = null) =>
         QueryVisibleJobsAsync(roleCodes, bypassServiceTypeRoleCheck, search, location, employmentType, serviceTypeId,
-            salaryMin, salaryMax, experienceYears, page, pageSize, sortBy, sortDirection, cancellationToken);
+            salaryMin, salaryMax, experienceYears, page, pageSize, sortBy, sortDirection, cancellationToken, industryId);
 
     private async Task<(IReadOnlyList<Job> Items, int TotalCount)> QueryVisibleJobsAsync(
         IReadOnlyCollection<string> roleCodes,
@@ -187,7 +189,8 @@ public class JobRepository : IJobRepository
         int pageSize,
         string? sortBy,
         string? sortDirection,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? industryId = null)
     {
         var allowedServiceTypeIds = _context.ServiceTypeAllowedRoles.AsNoTracking()
             .Where(mapping => mapping.CanView && mapping.Role.IsActive && roleCodes.Contains(mapping.Role.Code))
@@ -259,6 +262,16 @@ public class JobRepository : IJobRepository
 
         if (salaryMax.HasValue)
             query = query.Where(job => job.SalaryMin == null || job.SalaryMin <= salaryMax.Value);
+
+        if (industryId.HasValue)
+        {
+            // An L1/L2 industry also matches the companies filed under its sub-industries (up to L3).
+            var id = industryId.Value;
+            var industryIds = _context.Industries.AsNoTracking()
+                .Where(i => i.IndustryId == id || i.ParentId == id || (i.Parent != null && i.Parent.ParentId == id))
+                .Select(i => i.IndustryId);
+            query = query.Where(job => job.Company != null && job.Company.IndustryId != null && industryIds.Contains(job.Company.IndustryId.Value));
+        }
 
         if (experienceYears.HasValue)
         {
