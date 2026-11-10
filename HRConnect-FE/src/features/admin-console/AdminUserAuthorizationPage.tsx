@@ -765,7 +765,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
         confirmLoading={assignRoleMutation.isPending}
         onCancel={() => setAssignModalOpen(false)}
         onOk={() => assignForm.submit()}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form
           form={assignForm}
@@ -822,7 +822,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
         confirmLoading={revokeRoleMutation.isPending}
         onCancel={() => setRevokeRole(null)}
         onOk={() => revokeForm.submit()}
-        destroyOnClose
+        destroyOnHidden
       >
         {revokeRole && (
           <Form
@@ -870,7 +870,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
         confirmLoading={reactivateRoleMutation.isPending}
         onCancel={() => setReactivateRole(null)}
         onOk={() => reactivateForm.submit()}
-        destroyOnClose
+        destroyOnHidden
       >
         {reactivateRole && (
           <Form

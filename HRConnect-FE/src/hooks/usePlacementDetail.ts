@@ -4,7 +4,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { message } from 'antd';
+import { App } from 'antd';
 import { placementApi } from '@/services/api/placementApi';
 import type { PlacementDetailDto } from '@/types/api/placement';
 
@@ -14,6 +14,7 @@ export const placementKeys = {
 };
 
 export const usePlacementDetail = (placementId?: string) => {
+  const { message } = App.useApp();
   const queryClient = useQueryClient();
 
   const query = useQuery<PlacementDetailDto, Error>({

@@ -249,7 +249,7 @@ export const AdminDisputesPage: React.FC = () => {
         onClose={() => setSelectedDisputeId(null)}
         width="min(720px, 100vw)"
         title="Chi tiết khiếu nại"
-        destroyOnClose
+        destroyOnHidden
         styles={{ body: { background: '#F8FAFC', padding: 24 } }}
       >
         {detailQuery.isLoading ? (

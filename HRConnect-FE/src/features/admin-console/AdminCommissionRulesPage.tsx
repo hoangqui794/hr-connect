@@ -391,7 +391,7 @@ export const AdminCommissionRulesPage: React.FC = () => {
         width="min(520px, 100vw)"
         onClose={() => setEditing(null)}
         title={isNew ? 'Thêm quy tắc hoa hồng' : 'Sửa quy tắc hoa hồng'}
-        destroyOnClose
+        destroyOnHidden
         footer={
           <div className="flex justify-end gap-2">
             <Button onClick={() => setEditing(null)}>Hủy</Button>

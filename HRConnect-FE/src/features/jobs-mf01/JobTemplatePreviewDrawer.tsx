@@ -68,7 +68,7 @@ export const JobTemplatePreviewDrawer: React.FC<JobTemplatePreviewDrawerProps> =
       width={620}
       open={open}
       onClose={onClose}
-      destroyOnClose
+      destroyOnHidden
       footer={footer}
     >
       {isLoading ? (

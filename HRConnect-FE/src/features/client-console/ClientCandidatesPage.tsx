@@ -7,6 +7,7 @@
  * Follows Vercel Web Interface Guidelines and Anthropic Frontend Design principles.
  */
 import React, { useState } from 'react';
+import { a11yItemRender } from '@/components/common/paginationA11y';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { MATCH_TIER_STYLE, matchTierOf } from '@/features/screening/matchTierStyle';
@@ -344,7 +345,7 @@ export const ClientCandidatesPage: React.FC = () => {
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="m-0 text-2xl font-black tracking-tight text-slate-900 sm:text-[26px]">
-              Hồ Sơ Ứng Viên
+              Hồ sơ ứng viên
             </h1>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-[#0C4A6E] border border-sky-200/80 shadow-2xs">
               <span className="h-1.5 w-1.5 rounded-full bg-[#0C4A6E] animate-pulse" />
@@ -407,7 +408,7 @@ export const ClientCandidatesPage: React.FC = () => {
                 allowClear
                 defaultValue={q}
                 prefix={<SearchOutlined className="text-slate-400" />}
-                placeholder="Tìm ứng viên theo tên, email... (Enter)"
+                placeholder="Tìm tên hoặc email ứng viên"
                 onPressEnter={(e) => setParam('q', (e.target as HTMLInputElement).value.trim() || undefined)}
                 onChange={(e) => !e.target.value && q && setParam('q', undefined)}
                 aria-label="Tìm theo tên ứng viên"
@@ -627,7 +628,7 @@ export const ClientCandidatesPage: React.FC = () => {
               tabIndex: 0,
               className: 'cursor-pointer hover:bg-sky-50/40 transition-colors',
             })}
-            pagination={{
+            pagination={{ itemRender: a11yItemRender,
               current: page,
               pageSize: PAGE_SIZE,
               total: list.data?.total ?? 0,

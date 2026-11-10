@@ -401,7 +401,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="m-0 text-2xl font-black tracking-tight text-slate-900 sm:text-[26px]">
-              Thỏa Thuận Dịch Vụ Tuyển Dụng
+              Thỏa thuận dịch vụ tuyển dụng
             </h1>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-[#0C4A6E] border border-sky-200/80 shadow-2xs">
               <span className="h-1.5 w-1.5 rounded-full bg-[#0C4A6E] animate-pulse" />
@@ -1202,7 +1202,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
         confirmLoading={submittingRevision}
         okText="Gửi yêu cầu điều chỉnh"
         cancelText="Đóng"
-        destroyOnClose
+        destroyOnHidden
         className={FONT}
         okButtonProps={{ className: '!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 rounded-xl font-bold h-9' }}
         cancelButtonProps={{ className: '!rounded-xl font-semibold h-9' }}
@@ -1232,7 +1232,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
         onCancel={() => setPreview(null)}
         width={960}
         centered
-        destroyOnClose
+        destroyOnHidden
         className={FONT}
         footer={[
           <Button
@@ -1273,7 +1273,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
         confirmLoading={uploading}
         okText="Xác nhận tải lên"
         cancelText="Hủy"
-        destroyOnClose
+        destroyOnHidden
         className={FONT}
         okButtonProps={{ className: '!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 rounded-xl font-bold h-9' }}
         cancelButtonProps={{ className: '!rounded-xl font-semibold h-9' }}

@@ -153,7 +153,7 @@ const ExperienceSelectInput: React.FC<ExperienceSelectInputProps> = ({ value, on
             disabled={disabled}
             className="w-full"
             placeholder="Nhập số năm kinh nghiệm (VD: 0.5, 1.5, 2.5, 4...)"
-            addonAfter="năm"
+            suffix="năm"
             value={value ?? undefined}
             onChange={(val) => onChange?.(val != null ? Number(val) : null)}
           />
@@ -1563,7 +1563,7 @@ export const JobFormPage: React.FC = () => {
                     label="Số lượng"
                     rules={[{ required: true, type: 'number', min: 1, max: 1000, message: 'Từ 1 đến 1000 người.' }]}
                   >
-                    <InputNumber size="large" min={1} max={1000} className="w-full" addonAfter="người" />
+                    <InputNumber size="large" min={1} max={1000} className="w-full" suffix="người" />
                   </Form.Item>
 
                   <Form.Item
@@ -2149,7 +2149,7 @@ export const JobFormPage: React.FC = () => {
                         max={1000}
                         className="w-full max-w-xs"
                         placeholder="Ví dụ: 10"
-                        addonAfter="hồ sơ"
+                        suffix="hồ sơ"
                       />
                     </Form.Item>
                   </div>
@@ -2170,7 +2170,7 @@ export const JobFormPage: React.FC = () => {
                           size="large"
                           {...moneyInputProps}
                           placeholder="Ví dụ: 500.000"
-                          addonAfter="₫ / hồ sơ"
+                          suffix="₫ / hồ sơ"
                         />
                       </Form.Item>
 

@@ -52,7 +52,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ open, 
       confirmLoading={loading}
       okText="Lưu mật khẩu mới"
       cancelText="Hủy"
-      destroyOnClose
+      destroyOnHidden
     >
       <div className="mb-4 text-xs text-slate-500">
         Để bảo vệ tài khoản của bạn, vui lòng nhập mật khẩu hiện tại và tạo mật khẩu mới có ít nhất 8 ký tự.

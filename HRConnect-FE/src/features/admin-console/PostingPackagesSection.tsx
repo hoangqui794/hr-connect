@@ -125,7 +125,7 @@ export const PostingPackagesSection: React.FC = () => {
         confirmLoading={save.isPending}
         onOk={() => form.submit()}
         onCancel={() => setEditing(null)}
-        destroyOnClose
+        destroyOnHidden
       >
         {editing && (
         <Form form={form} layout="vertical" onFinish={submit} requiredMark="optional" className="pt-2" initialValues={initialValues(editing)} key={editing.packageId}>

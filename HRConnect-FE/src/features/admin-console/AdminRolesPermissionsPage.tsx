@@ -917,7 +917,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
         confirmLoading={createRoleMutation.isPending}
         onCancel={() => setCreateRoleOpen(false)}
         onOk={() => createRoleForm.submit()}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form
           form={createRoleForm}
@@ -1011,7 +1011,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
             'Chi tiết vai trò'
           )
         }
-        destroyOnClose
+        destroyOnHidden
         styles={{ body: { padding: 0, background: '#F8FAFC' } }}
       >
         {roleDetailQuery.isLoading ? (
@@ -1349,7 +1349,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
         confirmLoading={replacePermissionsMutation.isPending}
         onCancel={() => setMatrixReasonModalOpen(false)}
         onOk={() => matrixReasonForm.submit()}
-        destroyOnClose
+        destroyOnHidden
       >
         <Typography.Paragraph className="text-slate-600">
           Mọi thay đổi quyền hạn sẽ có hiệu lực ngay từ request tiếp theo của người dùng được gán vai trò này.
@@ -1392,7 +1392,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
         confirmLoading={updatePermissionMutation.isPending}
         onCancel={() => setEditingPermission(null)}
         onOk={() => editPermForm.submit()}
-        destroyOnClose
+        destroyOnHidden
       >
         {editingPermission && (
           <Form

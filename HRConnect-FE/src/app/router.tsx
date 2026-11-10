@@ -53,7 +53,7 @@ const PageLoader: React.FC = () => (
       minHeight: '60vh',
     }}
   >
-    <Spin size="large" tip="Loading…" />
+    <Spin size="large" aria-label="Đang tải" />
   </div>
 );
 

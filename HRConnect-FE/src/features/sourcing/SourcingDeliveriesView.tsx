@@ -549,7 +549,7 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
             body: { decision: 'ACCEPTED' },
           });
         }}
-        destroyOnClose
+        destroyOnHidden
       >
         <p className="text-sm text-slate-700 mb-2">
           Bạn có chắc chắn muốn chấp nhận hồ sơ ứng viên{' '}
@@ -577,7 +577,7 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
           rejectForm.resetFields();
         }}
         onOk={() => rejectForm.submit()}
-        destroyOnClose
+        destroyOnHidden
       >
         <p className="text-xs text-slate-600 mb-4">
           Theo quy định dịch vụ CV Sourcing, việc từ chối cần chọn đúng lý do hợp lệ. Hồ sơ bị từ chối hợp lệ sẽ
@@ -647,7 +647,7 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
           reviewForm.resetFields();
         }}
         onOk={() => reviewForm.submit()}
-        destroyOnClose
+        destroyOnHidden
       >
         <div className="rounded-lg bg-amber-50 p-3 mb-4 text-xs text-amber-900">
           <div>
@@ -699,7 +699,7 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
           replaceForm.resetFields();
         }}
         onOk={() => replaceForm.submit()}
-        destroyOnClose
+        destroyOnHidden
       >
         <p className="text-xs text-slate-600 mb-3">
           Nhập mã hồ sơ ứng viên (Application ID) đạt yêu cầu dự phòng để bàn giao thay thế cho ứng viên{' '}

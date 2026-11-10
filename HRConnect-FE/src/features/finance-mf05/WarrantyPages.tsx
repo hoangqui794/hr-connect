@@ -4,6 +4,7 @@
  * - Internal HR › Theo dõi bảo hành: every warranty, reported resignations first, confirm or reject.
  */
 import React, { useEffect, useState } from 'react';
+import { a11yItemRender } from '@/components/common/paginationA11y';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App, Button, DatePicker, Form, Input, Modal, Radio, Space, Table, Tooltip } from 'antd';
@@ -229,7 +230,7 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
           dataSource={list.data?.items}
           loading={list.isFetching}
           scroll={{ x: 760 }}
-          pagination={{ current: page, pageSize: PAGE_SIZE, total: list.data?.totalCount ?? 0, onChange: setPage, showSizeChanger: false }}
+          pagination={{ itemRender: a11yItemRender, current: page, pageSize: PAGE_SIZE, total: list.data?.totalCount ?? 0, onChange: setPage, showSizeChanger: false }}
           locale={{ emptyText: mode === 'hr' && status === 'CLAIMED' ? 'Không có báo nghỉ nào chờ xác minh.' : 'Chưa có bảo hành nào.' }}
         />
       </Surface>
@@ -243,7 +244,7 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
         confirmLoading={submit.isPending}
         onOk={() => submit.mutate()}
         onCancel={() => { setTarget(null); form.resetFields(); }}
-        destroyOnClose
+        destroyOnHidden
       >
         {target && (
           <Form form={form} layout="vertical" preserve={false}>
@@ -363,7 +364,7 @@ const ClientFees: React.FC = () => {
         dataSource={fees.data?.items}
         loading={fees.isFetching}
         scroll={{ x: 600 }}
-        pagination={{ current: page, pageSize: PAGE_SIZE, total: fees.data?.totalCount ?? 0, onChange: setPage, showSizeChanger: false }}
+        pagination={{ itemRender: a11yItemRender, current: page, pageSize: PAGE_SIZE, total: fees.data?.totalCount ?? 0, onChange: setPage, showSizeChanger: false }}
         locale={{ emptyText: 'Chưa có khoản phí nào.' }}
       />
     </Surface>
@@ -377,7 +378,7 @@ export const ClientWarrantyPage: React.FC = () => (
       <div>
         <div className="flex items-center gap-2.5">
           <h1 className="m-0 text-2xl font-black tracking-tight text-slate-900 sm:text-[26px]">
-            Chính Sách & Quản Lý Bảo Hành
+            Chính sách & quản lý bảo hành
           </h1>
           <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0C4A6E] border border-sky-100">
             Tuyển dụng theo kết quả

@@ -657,7 +657,7 @@ export const JobTemplatesAdminPage: React.FC = () => {
         open={isFormOpen}
         onClose={() => setIsFormOpen(false)}
         width={760}
-        destroyOnClose
+        destroyOnHidden
         extra={
           <Space>
             <Button icon={<EyeOutlined />} onClick={handlePreviewFormDraft}>

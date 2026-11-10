@@ -253,7 +253,7 @@ export const AdminUsersPage: React.FC = () => {
         onClose={() => setSelectedId(undefined)}
         title={null}
         closable
-        destroyOnClose
+        destroyOnHidden
         styles={{ body: { padding: 0, background: '#F4F6FA' } }}
       >
         {detail.isLoading ? (
@@ -357,7 +357,7 @@ export const AdminUsersPage: React.FC = () => {
         okButtonProps={{ danger: true, loading: changeStatus.isPending }}
         onCancel={() => setSuspendOpen(false)}
         onOk={() => form.submit()}
-        destroyOnClose
+        destroyOnHidden
       >
         <Typography.Paragraph className="text-slate-600">
           Mọi phiên đăng nhập của người dùng bị thu hồi (phiên đang mở hết hiệu lực khi token hết hạn) và họ không đăng

@@ -116,7 +116,7 @@ export const ClientCompanyPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="m-0 text-2xl font-black tracking-tight text-slate-900 sm:text-[26px]">
-              Hồ Sơ Doanh Nghiệp
+              Hồ sơ doanh nghiệp
             </h1>
             <span
               className={`rounded-full px-2.5 py-0.5 text-xs font-bold border ${

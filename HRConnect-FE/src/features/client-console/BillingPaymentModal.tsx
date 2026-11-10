@@ -72,7 +72,7 @@ export const BillingPaymentModal: React.FC<{ row: BillingRow | null; onClose: ()
       }
       width={460}
       centered
-      destroyOnClose
+      destroyOnHidden
       className={FONT}
     >
       {row && (
