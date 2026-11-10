@@ -139,6 +139,7 @@ export const StatTile: React.FC<{
 };
 
 /** Pill tabs with counts; keyboard-friendly radio-like buttons. */
+/** Status filter. Each pill is at least 44px tall on phones and 36px on wider screens (C-08). */
 export function FilterPills<T extends string>({
   value,
   onChange,
@@ -151,7 +152,7 @@ export function FilterPills<T extends string>({
   label: string;
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex flex-wrap gap-1 rounded-full bg-slate-100 p-1">
+    <div role="radiogroup" aria-label={label} className="inline-flex flex-wrap gap-2 rounded-3xl bg-slate-100 p-1 sm:gap-1 sm:rounded-full">
       {options.map((o) => {
         const active = o.value === value;
         return (
@@ -161,7 +162,7 @@ export function FilterPills<T extends string>({
             role="radio"
             aria-checked={active}
             onClick={() => onChange(o.value)}
-            className={`cursor-pointer rounded-full border-0 px-3.5 py-1.5 text-[13px] font-medium transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
+            className={`inline-flex min-h-11 cursor-pointer items-center rounded-full border-0 px-3.5 py-1.5 text-[13px] sm:min-h-9 font-medium transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
               active ? 'bg-white text-slate-900 shadow-sm' : 'bg-transparent text-slate-600 hover:text-slate-900'
             }`}
           >

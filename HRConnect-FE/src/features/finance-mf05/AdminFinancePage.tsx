@@ -494,7 +494,7 @@ export const AdminFinancePage: React.FC = () => {
         confirmLoading={action.isPending}
         onOk={submitDialog}
         onCancel={() => { setDialog(null); form.resetFields(); }}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" preserve={false}>
           {dialog?.kind === 'payout' && (

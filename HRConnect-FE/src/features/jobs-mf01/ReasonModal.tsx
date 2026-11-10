@@ -57,7 +57,7 @@ export const ReasonModal: React.FC<ReasonModalProps> = ({
       cancelButtonProps={{ disabled: loading }}
       onCancel={onCancel}
       onOk={() => form.submit()}
-      destroyOnClose
+      destroyOnHidden
       className={FONT}
     >
       <Typography.Paragraph type="secondary">{description}</Typography.Paragraph>

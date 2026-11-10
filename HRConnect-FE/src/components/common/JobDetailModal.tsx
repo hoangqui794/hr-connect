@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Modal, Tabs, Tag, Button, Tooltip, message } from 'antd';
+import { App, Modal, Tabs, Tag, Button, Tooltip } from 'antd';
 import {
   EnvironmentOutlined,
   DollarOutlined,
@@ -42,6 +42,7 @@ export const JobDetailModal: React.FC<JobDetailModalProps> = ({
   isSaved = false,
   onToggleSave,
 }) => {
+  const { message } = App.useApp();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('jd');
   const uniqueTags = useMemo(() => deduplicateTags(job?.tags ?? []), [job?.tags]);
@@ -85,7 +86,7 @@ export const JobDetailModal: React.FC<JobDetailModalProps> = ({
       footer={null}
       width={780}
       centered
-      destroyOnClose
+      destroyOnHidden
       maskClosable
       className="modern-job-detail-modal"
       styles={{

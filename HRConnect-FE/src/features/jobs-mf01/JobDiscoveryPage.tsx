@@ -262,7 +262,7 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
                 max={60}
                 value={params.experienceYears}
                 placeholder="Không yêu cầu"
-                addonAfter="năm"
+                suffix="năm"
                 onChange={(value) => setParam('experience', value === null ? undefined : String(value))}
                 aria-label="Số năm kinh nghiệm tối thiểu"
               />
@@ -274,7 +274,7 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
                 min={0}
                 value={params.salaryMin ? params.salaryMin / 1_000_000 : undefined}
                 placeholder="0"
-                addonAfter="triệu"
+                suffix="triệu"
                 onChange={(value) => setParam('salaryMin', value === null ? undefined : String(Number(value) * 1_000_000))}
                 aria-label="Mức lương tối thiểu"
               />
@@ -286,7 +286,7 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
                 min={0}
                 value={params.salaryMax ? params.salaryMax / 1_000_000 : undefined}
                 placeholder="Không giới hạn"
-                addonAfter="triệu"
+                suffix="triệu"
                 onChange={(value) => setParam('salaryMax', value === null ? undefined : String(Number(value) * 1_000_000))}
                 aria-label="Mức lương tối đa"
               />

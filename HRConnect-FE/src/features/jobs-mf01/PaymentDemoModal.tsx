@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Modal, Tag, message, Spin } from 'antd';
+import { App, Button, Modal, Tag, Spin } from 'antd';
 import {
   CheckCircleOutlined,
   CreditCardOutlined,
@@ -43,6 +43,7 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
   isDeposit,
   onClose,
 }) => {
+  const { message } = App.useApp();
   const navigate = useNavigate();
   const isOpen = Boolean(open ?? visible);
   const fee = usePostingFee(jobId, isOpen && !isDeposit);

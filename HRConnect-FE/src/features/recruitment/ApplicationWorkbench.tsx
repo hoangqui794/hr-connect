@@ -720,7 +720,7 @@ export const ApplicationWorkbench: React.FC<{
           <span className="font-bold text-slate-900">Hồ sơ ứng tuyển</span>
         </div>
       }
-      destroyOnClose
+      destroyOnHidden
       rootClassName={FONT}
       styles={{
         wrapper: { maxWidth: '100vw' },
@@ -1120,7 +1120,7 @@ export const ApplicationWorkbench: React.FC<{
           }
           form.submit();
         }}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" requiredMark={false} onFinish={submitModal}>
           {open === 'reject' && (
@@ -1450,7 +1450,7 @@ export const ApplicationWorkbench: React.FC<{
         title="Lịch sử phỏng vấn"
         width="min(520px, 100vw)"
         onClose={() => setHistoryInterviewId(null)}
-        destroyOnClose
+        destroyOnHidden
       >
         {interviewHistory.isLoading ? (
           <Skeleton active paragraph={{ rows: 5 }} />

@@ -330,7 +330,7 @@ export const AdminApprovalsPage: React.FC<{ presetType?: 'AFFILIATE' | 'CLIENT' 
         width="min(540px, 100vw)"
         onClose={() => setSelected(null)}
         title="Hồ sơ đăng ký"
-        destroyOnClose
+        destroyOnHidden
         styles={{ body: { background: '#F4F6FA', padding: 20 } }}
         extra={
           selected &&
@@ -366,7 +366,7 @@ export const AdminApprovalsPage: React.FC<{ presetType?: 'AFFILIATE' | 'CLIENT' 
         }}
         onCancel={() => setDecision(null)}
         onOk={() => form.submit()}
-        destroyOnClose
+        destroyOnHidden
       >
         <Typography.Paragraph style={{ color: adminTokens.textMuted }}>
           {decision === 'approve'

@@ -6,7 +6,7 @@
  * Every number, default and allowed range comes from the backend; nothing is hard-coded here.
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Form, Input, InputNumber, Modal, Skeleton, Tag, Tooltip, Upload, message } from 'antd';
+import { Alert, Button, Form, Input, InputNumber, Modal, Skeleton, Tag, Tooltip, Upload, App } from 'antd';
 import { CheckCircleFilled, EditOutlined, FilePdfOutlined, InfoCircleOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
 import type { CommercialTermsInput, ApproveJobInput, Job, ServiceAgreementDto } from '@/types/api/jobs';
 import { getApiErrorMessage } from '@/services/apiClient';
@@ -90,6 +90,7 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({
   onCancel,
   onApprove,
 }) => {
+  const { message } = App.useApp();
   const [form] = Form.useForm<CommercialTermsInput & { agreementReference?: string; note?: string }>();
   const defaults = useCommercialTermsDefaults(job.jobId, open);
   const [serverError, setServerError] = useState<string>();
@@ -201,7 +202,7 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({
       }}
       onCancel={onCancel}
       onOk={submit}
-      destroyOnClose
+      destroyOnHidden
     >
       <div className="space-y-4 pt-1 max-h-[75vh] overflow-y-auto pr-1">
         <div className="rounded-xl border border-solid border-slate-200 bg-slate-50 px-4 py-3">
@@ -294,7 +295,7 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({
                             min={range?.min}
                             max={range?.max}
                             step={f.step}
-                            addonAfter={f.unit}
+                            suffix={f.unit}
                             formatter={f.unit === 'đ' ? (v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.') : undefined}
                             parser={f.unit === 'đ' ? (v) => Number((v ?? '').replace(/\./g, '')) : undefined}
                           />

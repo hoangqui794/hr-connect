@@ -63,8 +63,9 @@ export const ClientJobSourcingDeliveriesPage: React.FC = () => {
       <Surface>
         <div className="p-6">
           {isLoading && !job ? (
-            <div className="flex justify-center p-12">
-              <Spin size="large" tip="Đang tải thông tin tin tuyển dụng..." />
+            <div className="flex flex-col items-center gap-3 p-12">
+              <Spin size="large" />
+              <span className="text-sm text-slate-500">Đang tải thông tin tin tuyển dụng...</span>
             </div>
           ) : (
             <SourcingDeliveriesView

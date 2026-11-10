@@ -230,7 +230,7 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
         onClose={onClose}
         width="min(680px, 100vw)"
         title="Chi tiết buổi phỏng vấn"
-        destroyOnClose
+        destroyOnHidden
         rootClassName={FONT}
         styles={{ body: { background: '#F8FAFC', padding: 20 } }}
         footer={
@@ -537,7 +537,7 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
         onCancel={() => setEditModalOpen(false)}
         onOk={() => editForm.submit()}
         confirmLoading={updateMutation.isPending}
-        destroyOnClose
+        destroyOnHidden
       >
         <p className="text-xs text-slate-500">
           Chỉnh sửa thời lượng, hình thức, địa điểm và link họp trực tuyến. Để đổi giờ hẹn, vui lòng dùng chức năng "Dời lịch".
@@ -590,7 +590,7 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
         onCancel={() => setRescheduleModalOpen(false)}
         onOk={() => rescheduleForm.submit()}
         confirmLoading={rescheduleMutation.isPending}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={rescheduleForm} layout="vertical" onFinish={(v) => rescheduleMutation.mutate(v)}>
           <Form.Item
@@ -651,7 +651,7 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
           resultForm.submit();
         }}
         confirmLoading={resultMutation.isPending}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form
           form={resultForm}
@@ -710,7 +710,7 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
         onCancel={() => setCancelModalOpen(false)}
         onOk={() => cancelForm.submit()}
         confirmLoading={cancelMutation.isPending}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={cancelForm} layout="vertical" onFinish={(v) => cancelMutation.mutate(v)}>
           <p className="text-sm text-red-600">

@@ -4,6 +4,7 @@
  * Backed by GET /api/v1/jobs/{jobId}/replacement-slots and POST /api/v1/internal/replacement-slots/{id}/cancel.
  */
 import React, { useMemo, useState } from 'react';
+import { a11yItemRender } from '@/components/common/paginationA11y';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -441,6 +442,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
             <Input
               prefix={<SearchOutlined className="text-slate-400" />}
               placeholder="Tìm theo ứng viên, vị trí, mã..."
+              aria-label="Tìm theo ứng viên, vị trí hoặc mã"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               allowClear
@@ -508,7 +510,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
             rowKey="replacementSlotId"
             columns={columns}
             dataSource={filteredSlots}
-            pagination={{ pageSize: 10, showSizeChanger: false }}
+            pagination={{ itemRender: a11yItemRender, pageSize: 10, showSizeChanger: false }}
             scroll={{ x: 800 }}
           />
         </Surface>
@@ -531,7 +533,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
           setCancelTarget(null);
           cancelForm.resetFields();
         }}
-        destroyOnClose
+        destroyOnHidden
       >
         {cancelTarget && (
           <div className="space-y-3">

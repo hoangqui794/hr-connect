@@ -9,6 +9,7 @@
  * transfer details, which Platform Admin still records by hand.
  */
 import React, { useMemo, useState } from 'react';
+import { a11yItemRender } from '@/components/common/paginationA11y';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -331,7 +332,7 @@ export const ClientBillingPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="m-0 text-2xl font-black tracking-tight text-slate-900 sm:text-[26px]">
-              Công Nợ & Phí Dịch Vụ
+              Công nợ & phí dịch vụ
             </h1>
             <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0C4A6E] border border-sky-100">
               {rows.length} khoản phí
@@ -402,7 +403,7 @@ export const ClientBillingPage: React.FC = () => {
             dataSource={visible}
             loading={loading}
             scroll={{ x: 1040 }}
-            pagination={{ current: page, pageSize: PAGE_SIZE, total: visible.length, onChange: setPage, showSizeChanger: false, hideOnSinglePage: true }}
+            pagination={{ itemRender: a11yItemRender, current: page, pageSize: PAGE_SIZE, total: visible.length, onChange: setPage, showSizeChanger: false, hideOnSinglePage: true }}
             locale={{
               emptyText: (
                 <div className="py-10 text-slate-600">

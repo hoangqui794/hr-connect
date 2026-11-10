@@ -290,10 +290,11 @@ export const ClientProfilePage: React.FC = () => {
                   </Form.Item>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-800 mb-2">
+                    <label htmlFor="client-profile-email" className="block text-xs font-bold text-slate-800 mb-2">
                       Địa chỉ email đăng nhập
                     </label>
                     <Input
+                      id="client-profile-email"
                       prefix={<MailOutlined className="text-slate-400" />}
                       value={userData.email ?? ''}
                       disabled

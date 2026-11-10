@@ -249,7 +249,7 @@ export const AdminServiceTypesPage: React.FC = () => {
         width="min(560px, 100vw)"
         onClose={() => setEditing(null)}
         title={editing === 'new' ? 'Thêm loại dịch vụ' : `Sửa: ${current?.name ?? ''}`}
-        destroyOnClose
+        destroyOnHidden
         extra={
           current && (
             <Button danger icon={<DeleteOutlined />} onClick={() => remove(current)}>

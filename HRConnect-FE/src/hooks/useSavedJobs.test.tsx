@@ -3,7 +3,7 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { message } from 'antd';
+import { App, message } from 'antd';
 import { useSavedJobs, SAVED_JOBS_QUERY_KEY } from './useSavedJobs';
 import { useAuthStore } from '@/stores/authStore';
 import { candidateSavedJobApi } from '@/services/api/candidateSavedJobApi';
@@ -41,6 +41,8 @@ describe('useSavedJobs hook', () => {
     vi.spyOn(message, 'info').mockImplementation((() => undefined) as any);
     vi.spyOn(message, 'success').mockImplementation((() => undefined) as any);
     vi.spyOn(message, 'error').mockImplementation((() => undefined) as any);
+    // The hook takes message from App.useApp() (themed); hand it the spied static one.
+    vi.spyOn(App, 'useApp').mockReturnValue({ message } as any);
     useAuthStore.setState({
       user: null,
       role: undefined,

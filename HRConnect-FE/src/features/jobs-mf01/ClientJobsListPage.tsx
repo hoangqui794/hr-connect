@@ -5,6 +5,7 @@
  * resume (PAUSED), close (ACTIVE/PAUSED). Every write sends the job's latest concurrencyToken.
  */
 import React, { useMemo, useState } from 'react';
+import { a11yItemRender } from '@/components/common/paginationA11y';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -70,7 +71,7 @@ const ServiceTypeTag: React.FC<{ code?: string | null }> = ({ code }) => {
   const color = code === 'HEADHUNT_COD' ? 'blue' : code === 'CV_SOURCING' ? 'purple' : 'cyan';
   return (
     <Tag color={color} className="m-0 text-[11px] font-medium border-0">
-      {info.short} · {info.label}
+      {info.label}
     </Tag>
   );
 };
@@ -418,7 +419,7 @@ export const ClientJobsListPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="m-0 text-2xl font-black tracking-tight text-slate-900 sm:text-[26px]">
-              Chiến Dịch Tuyển Dụng
+              Chiến dịch tuyển dụng
             </h1>
             <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0C4A6E] border border-sky-100">
               {jobs.length} tin tổng cộng
@@ -493,7 +494,7 @@ export const ClientJobsListPage: React.FC = () => {
                       aria-checked={view === v}
                       aria-label={label}
                       onClick={() => setView(v)}
-                      className={`flex h-8 w-9 cursor-pointer items-center justify-center rounded-full border-0 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${view === v ? 'bg-white text-[color:var(--console-accent-strong)] shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-800'
+                      className={`flex h-9 w-10 cursor-pointer items-center justify-center rounded-full border-0 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${view === v ? 'bg-white text-[color:var(--console-accent-strong)] shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-800'
                         }`}
                     >
                       {icon}
@@ -612,7 +613,7 @@ export const ClientJobsListPage: React.FC = () => {
                             <Button
                               type="primary"
                               size="small"
-                              className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm font-semibold !text-xs !h-7 whitespace-nowrap ml-2"
+                              className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm font-semibold !text-xs !h-9 whitespace-nowrap ml-2"
                               onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
                             >
                               Xem hợp đồng
@@ -624,7 +625,7 @@ export const ClientJobsListPage: React.FC = () => {
                             <Button
                               type="primary"
                               size="small"
-                              className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm font-semibold !text-xs !h-7 whitespace-nowrap ml-2"
+                              className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm font-semibold !text-xs !h-9 whitespace-nowrap ml-2"
                               onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
                             >
                               Ký hợp đồng
@@ -644,7 +645,7 @@ export const ClientJobsListPage: React.FC = () => {
                             <Button
                               type="primary"
                               size="small"
-                              className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm font-bold !text-xs !h-7"
+                              className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm font-bold !text-xs !h-9"
                               onClick={() =>
                                 setPaymentModalJob({
                                   jobId: job.jobId,
@@ -658,7 +659,7 @@ export const ClientJobsListPage: React.FC = () => {
                             </Button>
                             <Button
                               size="small"
-                              className="!text-xs !h-7 border-amber-300 text-amber-900 hover:text-amber-700 rounded-lg font-medium"
+                              className="!text-xs !h-9 border-amber-300 text-amber-900 hover:text-amber-700 rounded-lg font-medium"
                               onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
                             >
                               Hợp đồng cọc
@@ -705,7 +706,7 @@ export const ClientJobsListPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => navigate(`/client/candidates?job=${job.jobId}`)}
-                          className="flex cursor-pointer items-center gap-1.5 rounded-xl border border-sky-200/70 bg-sky-50 px-3 py-1.5 text-xs font-bold text-[#0C4A6E] hover:bg-sky-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E] shrink-0 whitespace-nowrap transition-colors"
+                          className="flex min-h-11 sm:min-h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-sky-200/70 bg-sky-50 px-3 py-1.5 text-xs font-bold text-[#0C4A6E] hover:bg-sky-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E] shrink-0 whitespace-nowrap transition-colors"
                         >
                           <TeamOutlined aria-hidden className="text-[#0C4A6E]" />
                           <span>Xem {totalApps} ứng viên</span>
@@ -736,7 +737,7 @@ export const ClientJobsListPage: React.FC = () => {
                 id: `job-card-${record.jobId}`,
               })}
               scroll={{ x: 1080 }}
-              pagination={{ pageSize: 10, hideOnSinglePage: true, showSizeChanger: false }}
+              pagination={{ itemRender: a11yItemRender, pageSize: 10, hideOnSinglePage: true, showSizeChanger: false }}
             />
           )}
         </Surface>
@@ -747,7 +748,7 @@ export const ClientJobsListPage: React.FC = () => {
         onClose={() => setDetailJobId(undefined)}
         width="min(640px, 100vw)"
         title="Chi tiết tin tuyển dụng"
-        destroyOnClose
+        destroyOnHidden
       >
         {detail.isLoading ? (
           <Skeleton active paragraph={{ rows: 10 }} />

@@ -284,7 +284,7 @@ export const AdminSettingsPage: React.FC = () => {
         okButtonProps={{ disabled: draft === null || draft === editing?.value }}
         onOk={() => editing && draft !== null && save.mutate({ key: editing.key, value: draft })}
         onCancel={() => setEditing(null)}
-        destroyOnClose
+        destroyOnHidden
       >
         {editing && (
           <div className="space-y-3">

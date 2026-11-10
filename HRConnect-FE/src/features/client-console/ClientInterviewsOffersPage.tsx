@@ -9,6 +9,7 @@
  *  - Seamless integration with ClientInterviewDetailDrawer and ApplicationWorkbench
  */
 import React, { useEffect, useMemo, useState } from 'react';
+import { a11yItemRender } from '@/components/common/paginationA11y';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Empty, Input, Select, Skeleton, Table, Tag, Tooltip } from 'antd';
@@ -406,7 +407,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
               setOpen(r.applicationId);
             }}
           >
-            Xem & Gửi Offer
+            Xem & gửi Offer
           </Button>
         ),
       },
@@ -507,7 +508,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="m-0 text-2xl font-black tracking-tight text-slate-900 sm:text-[26px]">
-              Điều Hành Phỏng Vấn & Đề Nghị Việc Làm
+              Điều hành phỏng vấn & đề nghị việc làm
             </h1>
             <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0C4A6E] border border-sky-100">
               Quy trình tuyển dụng
@@ -574,7 +575,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             </span>
           </div>
           <div className="my-3">
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Lịch Đã Lên Hẹn</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Lịch đã lên hẹn</div>
             <div className="mt-1 text-3xl font-black tracking-tight text-slate-900 tabular-nums">
               {interviewScheduledCountQ.isLoading ? (
                 <Skeleton.Input active size="small" />
@@ -620,7 +621,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             </span>
           </div>
           <div className="my-3">
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Thư Mời Nhận Việc</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Thư mời nhận việc</div>
             <div className="mt-1 text-3xl font-black tracking-tight text-slate-900 tabular-nums">
               {offerCountQ.isLoading ? <Skeleton.Input active size="small" /> : offerCountQ.data ?? 0}
             </div>
@@ -660,7 +661,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             </span>
           </div>
           <div className="my-3">
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Ứng Viên Đã Đi Làm</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Ứng viên đã đi làm</div>
             <div className="mt-1 text-3xl font-black tracking-tight text-slate-900 tabular-nums">
               {placementCountQ.isLoading ? <Skeleton.Input active size="small" /> : placementCountQ.data ?? 0}
             </div>
@@ -682,6 +683,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             <Input
               size="large"
               placeholder="Tìm theo tên ứng viên hoặc vị trí..."
+              aria-label="Tìm theo tên ứng viên hoặc vị trí"
               prefix={<SearchOutlined className="text-slate-400" />}
               allowClear
               value={searchKeyword}
@@ -858,7 +860,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             dataSource={filteredItems}
             loading={listQ.isFetching}
             scroll={{ x: 1000 }}
-            pagination={{
+            pagination={{ itemRender: a11yItemRender,
               current: page,
               pageSize: PAGE_SIZE,
               total: listQ.data?.total ?? filteredItems.length,
@@ -878,7 +880,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             dataSource={filteredItems}
             loading={listQ.isFetching}
             scroll={{ x: 1000 }}
-            pagination={{
+            pagination={{ itemRender: a11yItemRender,
               current: page,
               pageSize: PAGE_SIZE,
               total: listQ.data?.total ?? filteredItems.length,
@@ -898,7 +900,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             dataSource={filteredItems}
             loading={listQ.isFetching}
             scroll={{ x: 1000 }}
-            pagination={{
+            pagination={{ itemRender: a11yItemRender,
               current: page,
               pageSize: PAGE_SIZE,
               total: listQ.data?.total ?? filteredItems.length,

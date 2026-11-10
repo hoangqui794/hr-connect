@@ -255,7 +255,7 @@ export const AdminAuditLogPage: React.FC = () => {
         )}
       </Surface>
 
-      <Drawer open={selectedId !== undefined} width="min(640px, 100vw)" onClose={() => setSelectedId(undefined)} title="Chi tiết sự kiện" destroyOnClose>
+      <Drawer open={selectedId !== undefined} width="min(640px, 100vw)" onClose={() => setSelectedId(undefined)} title="Chi tiết sự kiện" destroyOnHidden>
         {detail.isLoading ? (
           <Skeleton active paragraph={{ rows: 10 }} />
         ) : detail.isError || !log ? (

@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { message } from 'antd';
+import { App } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/authStore';
@@ -95,6 +95,7 @@ export const savedJobDtoToJobItem = (item: SavedJobDto): JobItem => {
  * Custom Hook useSavedJobs - Single Source of Truth for Candidate Bookmarked Jobs.
  */
 export const useSavedJobs = () => {
+  const { message } = App.useApp();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, hasAnyRole } = useAuthStore();
@@ -219,7 +220,7 @@ export const useSavedJobs = () => {
         return alreadySaved;
       }
     },
-    [user, isCandidate, localSavedIds, navigate, queryClient]
+    [user, isCandidate, localSavedIds, navigate, queryClient, message]
   );
 
   const toggleSave = useCallback(

@@ -88,7 +88,7 @@ export const PostingFeePaymentsPanel: React.FC<{ enabled: boolean }> = ({ enable
         confirmLoading={record.isPending}
         onOk={async () => record.mutate((await form.validateFields()).paymentReference.trim())}
         onCancel={() => { setSelected(null); form.resetFields(); }}
-        destroyOnClose
+        destroyOnHidden
       >
         {fee.isLoading ? (
           <Skeleton active paragraph={{ rows: 1 }} />

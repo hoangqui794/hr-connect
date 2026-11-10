@@ -895,7 +895,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         width="min(800px, 100vw)"
         onClose={() => setShowSourcingDrawer(false)}
         title={`Hồ sơ được tìm kiếm · ${job.title}`}
-        destroyOnClose
+        destroyOnHidden
       >
         <SourcingDeliveriesView
           jobId={job.jobId}
