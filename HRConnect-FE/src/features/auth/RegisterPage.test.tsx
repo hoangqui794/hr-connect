@@ -82,13 +82,19 @@ describe('RegisterPage', () => {
     await waitFor(() => expect(register).toHaveBeenCalledWith(expect.objectContaining({ companyName: 'Công ty A', taxCode: '0312345678', phone: '0912345678' })));
   });
 
-  it('opens the Affiliate page when Affiliate is chosen', async () => {
+  it('registers an affiliate directly on the page and goes to verify OTP', async () => {
+    const register = vi.spyOn(authService, 'registerAffiliate').mockResolvedValue({ success: true, message: 'ok' } as never);
     const user = userEvent.setup();
     renderPage();
 
     await user.click(screen.getByRole('radio', { name: /^Affiliate/ }));
+    await fillPerson(user);
 
-    expect(await screen.findByTestId('probe')).toHaveTextContent('/register/affiliate');
+    await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }));
+
+    await waitFor(() => expect(register).toHaveBeenCalledWith(expect.objectContaining({ fullName: 'Nguyễn An', email: 'an@example.com' })));
+    const target = (await screen.findByTestId('probe')).textContent!;
+    expect(target).toContain('/verify-otp?email=an%40example.com');
   });
 
   it('shows the server error and keeps the form', async () => {
