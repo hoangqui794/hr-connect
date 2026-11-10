@@ -384,4 +384,47 @@ public class SourcingDeliveryTests
         total.Should().Be(2);
         items.Select(a => a.ApplicationId).Should().BeEquivalentTo(new[] { sourcingApp.ApplicationId, headhuntApp.ApplicationId });
     }
+
+    // C-07: counts use the list's own filter, so a Client never counts what it cannot see.
+    [Fact]
+    public async Task Counts_ByJob_FollowTheClientVisibilityOfTheList()
+    {
+        _context.Add(new Company { CompanyId = _companyId, CompanyName = "Tech Corp", TaxCode = "0123456789", VerificationStatus = "VERIFIED" });
+        var sourcing = SeedJob(serviceType: "CV_SOURCING");
+        var delivered = SeedApplication(sourcing);
+        SeedApplication(sourcing); // shortlisted but not delivered: hidden from the Client
+        await DeliverOneAsync(sourcing, delivered);
+        var direct = SeedJob(serviceType: "CV_APPLICATION");
+        SeedApplication(direct, ApplicationStates.Submitted);
+        SeedApplication(direct, ApplicationStates.Submitted);
+        var repository = new ApplicationRepository(_context);
+
+        var client = await repository.CountRecruitmentApplicationsAsync(_companyId, null, null, null, null, RecruitmentCountGroup.Job);
+        var hr = await repository.CountRecruitmentApplicationsAsync(null, null, null, null, null, RecruitmentCountGroup.Job);
+        var (_, clientListTotal) = await repository.GetRecruitmentApplicationsAsync(_companyId, sourcing.JobId, null, null, null, null, 1, 20);
+
+        client[sourcing.JobId.ToString()].Should().Be(1).And.Be(clientListTotal);
+        client[direct.JobId.ToString()].Should().Be(2);
+        hr[sourcing.JobId.ToString()].Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Counts_ByStatus_ApplyTheJobAndServiceFilters()
+    {
+        _context.Add(new Company { CompanyId = _companyId, CompanyName = "Tech Corp", TaxCode = "0123456789", VerificationStatus = "VERIFIED" });
+        var job = SeedJob(serviceType: "CV_APPLICATION");
+        SeedApplication(job, ApplicationStates.Submitted);
+        SeedApplication(job, ApplicationStates.Submitted);
+        SeedApplication(job, ApplicationStates.Rejected);
+        SeedApplication(SeedJob(serviceType: "CV_APPLICATION"), ApplicationStates.Submitted);
+        var repository = new ApplicationRepository(_context);
+
+        var counts = await repository.CountRecruitmentApplicationsAsync(_companyId, job.JobId, null, null, "cv_application", RecruitmentCountGroup.Status);
+
+        counts.Should().BeEquivalentTo(new Dictionary<string, int>
+        {
+            [ApplicationStates.Submitted] = 2,
+            [ApplicationStates.Rejected] = 1,
+        });
+    }
 }

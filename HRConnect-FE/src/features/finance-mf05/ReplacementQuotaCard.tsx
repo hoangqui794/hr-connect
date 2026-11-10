@@ -82,14 +82,28 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
     queryKey: ['mf05-replacement-slots', mode, selectedJobId],
     queryFn: async (): Promise<ReplacementSlotWithMeta[]> => {
       const jobMetaMap = new Map<string, { jobTitle: string; companyName?: string }>();
+      // Jobs that can have a slot; null means "unknown, ask every job" (the old behaviour).
+      let jobsWithSlots: Set<string> | null = null;
 
       if (selectedJobId) {
         jobMetaMap.set(selectedJobId, { jobTitle: selectedJobId });
       } else {
-        const [placementsRes, clientJobsRes] = await Promise.all([
+        const [placementsRes, clientJobsRes, voidedRes] = await Promise.all([
           financeApi.getPlacements({ pageSize: 100 }).catch(() => ({ items: [], totalCount: 0 })),
           mode === 'client' ? jobsApi.getMine().catch(() => []) : Promise.resolve([]),
+          financeApi.warranties({ status: 'VOIDED', page: 1, pageSize: 100 }).catch(() => null),
         ]);
+
+        // A slot is opened only when Internal HR confirms a resignation, which voids the warranty
+        // (main-flows MF-05). So only jobs of placements with a VOIDED warranty need asking. If any
+        // voided warranty cannot be matched to a loaded placement, fall back to asking every job.
+        if (voidedRes && voidedRes.totalCount <= voidedRes.items.length) {
+          const voidedPlacements = new Set(voidedRes.items.map((w) => w.placementId));
+          const matched = (placementsRes?.items ?? []).filter((p) => voidedPlacements.has(p.placementId) && p.job?.jobId);
+          if (matched.length === voidedPlacements.size) {
+            jobsWithSlots = new Set(matched.map((p) => p.job.jobId));
+          }
+        }
 
         if (Array.isArray(clientJobsRes)) {
           clientJobsRes.forEach((j) => {
@@ -111,7 +125,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
         }
       }
 
-      const jobIds = Array.from(jobMetaMap.keys());
+      const jobIds = Array.from(jobMetaMap.keys()).filter((jid) => !jobsWithSlots || jobsWithSlots.has(jid));
       if (jobIds.length === 0) return [];
 
       // Query replacement slots for all relevant jobs in parallel
@@ -393,7 +407,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
                 )}
               </div>
               <p className="mt-1 text-sm text-slate-600 max-w-3xl leading-relaxed">
-                Áp dụng cho dịch vụ <strong>HH · Tuyển dụng theo kết quả</strong>. Khi ứng viên nghỉ việc trong thời gian bảo hành và
+                Áp dụng cho dịch vụ <strong>Tuyển dụng theo kết quả</strong>. Khi ứng viên nghỉ việc trong thời gian bảo hành và
                 HR Connect xác nhận, bạn được một suất tuyển thay thế <strong>miễn phí</strong>. Suất dùng được ngay nếu phí dịch vụ đã
                 thanh toán, hoặc ở trạng thái chờ cho đến khi bạn thanh toán. Mỗi suất có hạn sử dụng, xem ở cột Thời hạn sử dụng.
               </p>
@@ -467,7 +481,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
                 <div className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
                   {allSlots.length > 0
                     ? 'Không tìm thấy suất nào phù hợp với bộ lọc hiện tại.'
-                    : 'Khi ứng viên nghỉ việc trong thời gian bảo hành của tin Headhunt, suất thay thế sẽ tự động được cấp phát tại đây.'}
+                    : 'Khi ứng viên nghỉ việc trong thời gian bảo hành của tin Tuyển dụng theo kết quả, suất thay thế sẽ tự động được cấp phát tại đây.'}
                 </div>
               </div>
             }
@@ -528,7 +542,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
                 <div>
                   Hủy suất thay thế cho ứng viên <strong>{cancelTarget.originalCandidateName || '—'}</strong> ({cancelTarget.jobTitle || 'Vị trí'}).
                   <div className="text-xs text-slate-600 mt-0.5">
-                    Lưu ý: theo thỏa thuận dịch vụ HH · Tuyển dụng theo kết quả, hủy suất thay thế không hoàn lại phí dịch vụ đã thu.
+                    Lưu ý: theo thỏa thuận dịch vụ Tuyển dụng theo kết quả, hủy suất thay thế không hoàn lại phí dịch vụ đã thu.
                   </div>
                 </div>
               }

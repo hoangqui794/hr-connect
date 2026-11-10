@@ -65,6 +65,20 @@ describe('ClientBillingPage', () => {
     expect(screen.getByText('1 khoản quá hạn')).toBeTruthy();
   });
 
+  // C-07: GET /jobs/mine carries the posting fee, so no request per job.
+  it('reads the posting fee from the job list without asking each job', async () => {
+    vi.mocked(jobsApi.getMine).mockResolvedValue([
+      {
+        jobId: 'j-ap', title: 'Lập trình viên .NET', serviceTypeCode: 'CV_APPLICATION', postingFeeStatus: 'PAID', postingPackageCode: 'STANDARD',
+        postingFee: { postingFeeId: 'pf', amount: 1_500_000, currencyCode: 'VND', status: 'PAID', paidAt: '2026-10-05', paymentReference: 'VNP-1', packageName: 'Gói tiêu chuẩn' },
+      },
+    ] as never);
+    renderPage();
+
+    expect(await screen.findByText('Lập trình viên .NET')).toBeTruthy();
+    expect(jobsApi.getPostingFee).not.toHaveBeenCalled();
+  });
+
   it('shows a replacement refund as money back, never as something to pay', async () => {
     vi.mocked(financeApi.serviceFees).mockResolvedValue({
       items: [fee({ serviceFeeId: 'rf', kind: 'REPLACEMENT_REFUND', jobTitle: 'QA Lead', amount: 9_000_000, status: 'PENDING' })],
@@ -78,11 +92,13 @@ describe('ClientBillingPage', () => {
     expect(screen.queryByRole('button', { name: /^Thanh toán/ })).not.toBeInTheDocument();
   });
 
-  it('filters by service code', async () => {
+  it('filters by service, named in Vietnamese instead of HH / SS / AP', async () => {
     renderPage();
     await screen.findByText('Lập trình viên .NET');
 
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Lọc theo dịch vụ' })).getByRole('radio', { name: /^SS/ }));
+    const services = within(screen.getByRole('radiogroup', { name: 'Lọc theo dịch vụ' }));
+    expect(services.queryByRole('radio', { name: /^(HH|SS|AP)\b/ })).toBeNull();
+    fireEvent.click(services.getByRole('radio', { name: /^Tìm hồ sơ phù hợp/ }));
 
     expect(screen.getByText('Kế toán tổng hợp')).toBeTruthy();
     expect(screen.queryByText('Backend .NET')).toBeNull();
@@ -128,7 +144,7 @@ describe('ClientBillingPage', () => {
     renderPage();
     await screen.findByText('Backend .NET');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Thanh toán: Phí Headhunt · Backend .NET' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Thanh toán: Phí tuyển dụng theo kết quả · Backend .NET' }));
     // The VNPay button waits for the "is VNPay on" query; CI runners are slow, so allow more than the 1s default.
     fireEvent.click(await screen.findByRole('button', { name: /Thanh toán qua VNPay/ }, { timeout: 5000 }));
 

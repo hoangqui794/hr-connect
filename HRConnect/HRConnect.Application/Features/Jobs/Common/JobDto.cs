@@ -152,6 +152,9 @@ public sealed record JobDto(
 {
     public string? CompanyLogoUrl { get; init; }
 
+    /// <summary>The job's latest posting fee, so the Client billing page needs no request per job (C-07).</summary>
+    public JobPostingFeeSummaryDto? PostingFee { get; init; }
+
     public static JobDto From(Job job, bool includeStatusHistories = false, bool isReviewer = false,
         ICompanyLogoUrlResolver? logoUrlResolver = null)
     {
@@ -223,9 +226,25 @@ public sealed record JobDto(
             (job.CurrentServiceAgreement ?? job.ServiceAgreements?.FirstOrDefault(x => x.IsCurrent))?.ChangeRequestReason,
             job.Status == JobStatuses.Active || (job.StatusReason != null && (job.StatusReason.Contains("DEPOSIT_SUBMITTED") || job.StatusReason.Contains("Đã nộp cọc"))))
         {
-            CompanyLogoUrl = job.Company is null ? null : logoUrlResolver?.Resolve(job.Company) ?? job.Company.LogoUrl
+            CompanyLogoUrl = job.Company is null ? null : logoUrlResolver?.Resolve(job.Company) ?? job.Company.LogoUrl,
+            PostingFee = JobPostingFeeSummaryDto.From(job.JobPostingFees?.OrderByDescending(x => x.CreatedAt).FirstOrDefault(), job.PostingPackage?.Name),
         };
     }
+}
+
+public sealed record JobPostingFeeSummaryDto(
+    Guid PostingFeeId,
+    decimal Amount,
+    string CurrencyCode,
+    string Status,
+    DateTime? PaidAt,
+    string? PaymentReference,
+    string? PackageName)
+{
+    public static JobPostingFeeSummaryDto? From(JobPostingFee? fee, string? packageName) =>
+        fee is null
+            ? null
+            : new(fee.PostingFeeId, fee.Amount, fee.CurrencyCode, fee.Status, fee.PaidAt, fee.PaymentReference, fee.Package?.Name ?? packageName);
 }
 
 public sealed record JobDetailDto(

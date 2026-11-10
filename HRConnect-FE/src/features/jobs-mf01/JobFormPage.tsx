@@ -479,11 +479,11 @@ const SERVICE_META: Record<ServiceTypeCode, ServiceMeta> = {
     tag: 'HH · Tuyển dụng theo kết quả',
     color: 'gold',
     icon: <AimOutlined />,
-    defaultTitle: 'Headhunt COD',
+    defaultTitle: 'Tuyển dụng theo kết quả',
     defaultSummary: 'HR Connect tìm, sàng lọc và đề xuất ứng viên; bạn chỉ phỏng vấn và chọn người phù hợp.',
     bestFor: 'Vị trí quan trọng, khó tuyển hoặc cấp quản lý.',
     includes: [
-      'Headhunter tìm và tiếp cận ứng viên theo yêu cầu',
+      'Mạng lưới Affiliate tìm và tiếp cận ứng viên theo yêu cầu',
       'HR Connect sàng lọc, chỉ gửi danh sách đã chọn',
       'Bảo hành, tuyển thay thế miễn phí nếu ứng viên nghỉ sớm',
     ],
@@ -1421,7 +1421,8 @@ export const JobFormPage: React.FC = () => {
                                 {meta.tag}
                               </div>
                               <h3 className="m-0 mt-1 text-[18px] font-bold leading-snug text-slate-900">
-                                {st.name || meta.defaultTitle}
+                                {/* FE wording first: the API name of HEADHUNT_COD is "Headhunt COD", which the UI no longer shows. */}
+                                {meta.defaultTitle || st.name}
                               </h3>
                               <p className="m-0 mt-2 text-[13.5px] leading-relaxed text-slate-600">{meta.defaultSummary}</p>
 

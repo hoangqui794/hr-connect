@@ -11,7 +11,7 @@
  */
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Button, Skeleton, Tooltip } from 'antd';
 import {
   ArrowRightOutlined,
@@ -56,14 +56,12 @@ export const ClientOverviewPage: React.FC = () => {
   const user = useAuthStore((s) => s.user);
   const jobs = useMyJobs();
 
-  const stageQueries = useQueries({
-    queries: FUNNEL.map((f) => ({
-      queryKey: ['client-overview', 'stage', f.code],
-      queryFn: async () => (await screeningApi.list({ status: f.code, page: 1, pageSize: 1 })).total,
-    })),
+  // Funnel: one request grouped by status (C-07) instead of one per stage.
+  const stageCounts = useQuery({
+    queryKey: ['client-overview', 'stages'],
+    queryFn: () => screeningApi.counts('status', {}, FUNNEL.map((f) => f.code)),
   });
-  const stage = (code: (typeof FUNNEL)[number]['code']) => stageQueries[FUNNEL.findIndex((f) => f.code === code)];
-  const stagesLoading = stageQueries.some((q) => q.isLoading);
+  const stagesLoading = stageCounts.isLoading;
 
   const list = jobs.data ?? [];
   const activeJobs = list.filter((j) => j.status === 'ACTIVE');
@@ -71,19 +69,20 @@ export const ClientOverviewPage: React.FC = () => {
   const pendingReview = list.filter((j) => j.status === 'PENDING_REVIEW').length;
   const pendingAgreements = list.filter((j) => j.status === 'PENDING_AGREEMENT').length;
 
-  const perJob = useQueries({
-    queries: activeJobs.slice(0, 6).map((j) => ({
-      queryKey: ['client-overview', 'job-applications', j.jobId],
-      queryFn: async () => (await screeningApi.list({ jobId: j.jobId, page: 1, pageSize: 1 })).total,
-    })),
+  const shownJobIds = activeJobs.slice(0, 6).map((j) => j.jobId);
+  const jobCounts = useQuery({
+    queryKey: ['client-overview', 'job-applications', shownJobIds.join(',')],
+    queryFn: () => screeningApi.counts('job', {}, shownJobIds),
+    enabled: shownJobIds.length > 0,
   });
+  const perJob = shownJobIds.map((id) => ({ data: jobCounts.data?.[id] ?? 0, isLoading: jobCounts.isLoading }));
 
   const interviews = useQuery({
     queryKey: ['client-overview', 'interviews'],
     queryFn: async () => (await pipelineApi.interviews({ status: 'SCHEDULED', page: 1, pageSize: 4 })).items,
   });
 
-  const n = (code: (typeof FUNNEL)[number]['code']) => stage(code)?.data ?? 0;
+  const n = (code: (typeof FUNNEL)[number]['code']) => stageCounts.data?.[code] ?? 0;
   const totalCandidates = FUNNEL.reduce((acc, f) => acc + n(f.code), 0);
   const funnelMax = Math.max(1, ...FUNNEL.map((f) => n(f.code)));
   const firstName = (user?.name || 'Quý đối tác').trim().split(/\s+/).slice(-1)[0];
@@ -624,7 +623,7 @@ export const ClientOverviewPage: React.FC = () => {
             </div>
             <h3 className="m-0 text-base font-bold text-slate-900">Chưa có vị trí tuyển dụng nào đang mở</h3>
             <p className="m-0 mt-1.5 text-xs text-slate-500 max-w-sm mx-auto">
-              Đăng tin tuyển dụng mới để tiếp cận mạng lưới ứng viên chất lượng cao cùng các gói headhunting chuyên sâu.
+              Đăng tin tuyển dụng mới để tiếp cận mạng lưới ứng viên chất lượng cao cùng dịch vụ tuyển dụng theo kết quả chuyên sâu.
             </p>
             <Button
               type="primary"

@@ -172,6 +172,59 @@ public class ApplicationRepository : IApplicationRepository
         string? sortDirection = null,
         string? serviceTypeCode = null)
     {
+        var query = FilterRecruitmentApplications(companyId, jobId, status, candidateName, fromDate, toDate, serviceTypeCode);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var scoreDescending = !string.Equals(sortDirection?.Trim(), "ASC", StringComparison.OrdinalIgnoreCase);
+        var orderedQuery = string.Equals(sortBy?.Trim(), "AI_MATCH_SCORE", StringComparison.OrdinalIgnoreCase)
+            ? scoreDescending
+                ? query.OrderByDescending(a => a.AiMatchResults
+                    .OrderByDescending(result => result.AttemptNo)
+                    .Select(result => result.MatchScore)
+                    .FirstOrDefault())
+                    .ThenByDescending(a => a.AppliedAt)
+                : query.OrderBy(a => a.AiMatchResults
+                    .OrderByDescending(result => result.AttemptNo)
+                    .Select(result => result.MatchScore)
+                    .FirstOrDefault())
+                    .ThenByDescending(a => a.AppliedAt)
+            : query.OrderByDescending(a => a.AppliedAt);
+
+        var items = await orderedQuery
+            .Include(a => a.Job)
+                .ThenInclude(j => j.Company)
+            .Include(a => a.Job)
+                .ThenInclude(j => j.ServiceType)
+            .Include(a => a.ReplacementSlot)
+            .Include(a => a.Candidate)
+            .Include(a => a.Interviews)
+            .Include(a => a.Offers)
+            .Include(a => a.AiMatchResults)
+            .Include(a => a.Submission)
+                .ThenInclude(s => s!.CandidateCv)
+            .Include(a => a.SourcingDeliveries)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .AsSplitQuery()
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
+    /// <summary>
+    /// The one filter behind the recruitment list and its counts, so a count never includes an
+    /// application the same caller could not see in the list (Client visibility, MF-03).
+    /// </summary>
+    private IQueryable<JobApplication> FilterRecruitmentApplications(
+        Guid? companyId,
+        Guid? jobId,
+        string? status,
+        string? candidateName,
+        DateTime? fromDate,
+        DateTime? toDate,
+        string? serviceTypeCode)
+    {
         var query = _context.Applications.AsNoTracking();
 
         if (companyId.HasValue && companyId.Value != Guid.Empty)
@@ -230,42 +283,29 @@ public class ApplicationRepository : IApplicationRepository
             query = query.Where(a => a.AppliedAt <= toDate.Value);
         }
 
-        var totalCount = await query.CountAsync(cancellationToken);
+        return query;
+    }
 
-        var scoreDescending = !string.Equals(sortDirection?.Trim(), "ASC", StringComparison.OrdinalIgnoreCase);
-        var orderedQuery = string.Equals(sortBy?.Trim(), "AI_MATCH_SCORE", StringComparison.OrdinalIgnoreCase)
-            ? scoreDescending
-                ? query.OrderByDescending(a => a.AiMatchResults
-                    .OrderByDescending(result => result.AttemptNo)
-                    .Select(result => result.MatchScore)
-                    .FirstOrDefault())
-                    .ThenByDescending(a => a.AppliedAt)
-                : query.OrderBy(a => a.AiMatchResults
-                    .OrderByDescending(result => result.AttemptNo)
-                    .Select(result => result.MatchScore)
-                    .FirstOrDefault())
-                    .ThenByDescending(a => a.AppliedAt)
-            : query.OrderByDescending(a => a.AppliedAt);
+    public async Task<IReadOnlyDictionary<string, int>> CountRecruitmentApplicationsAsync(
+        Guid? companyId,
+        Guid? jobId,
+        string? status,
+        string? candidateName,
+        string? serviceTypeCode,
+        RecruitmentCountGroup groupBy,
+        CancellationToken cancellationToken = default)
+    {
+        var query = FilterRecruitmentApplications(companyId, jobId, status, candidateName, null, null, serviceTypeCode);
 
-        var items = await orderedQuery
-            .Include(a => a.Job)
-                .ThenInclude(j => j.Company)
-            .Include(a => a.Job)
-                .ThenInclude(j => j.ServiceType)
-            .Include(a => a.ReplacementSlot)
-            .Include(a => a.Candidate)
-            .Include(a => a.Interviews)
-            .Include(a => a.Offers)
-            .Include(a => a.AiMatchResults)
-            .Include(a => a.Submission)
-                .ThenInclude(s => s!.CandidateCv)
-            .Include(a => a.SourcingDeliveries)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .AsSplitQuery()
-            .ToListAsync(cancellationToken);
+        var rows = groupBy == RecruitmentCountGroup.Job
+            ? await query.GroupBy(a => a.JobId)
+                .Select(g => new { Key = g.Key.ToString(), Count = g.Count() })
+                .ToListAsync(cancellationToken)
+            : await query.GroupBy(a => a.Status)
+                .Select(g => new { Key = g.Key, Count = g.Count() })
+                .ToListAsync(cancellationToken);
 
-        return (items, totalCount);
+        return rows.ToDictionary(r => r.Key, r => r.Count);
     }
 
     public async Task<JobApplication?> GetRecruitmentApplicationDetailAsync(Guid applicationId, CancellationToken cancellationToken = default)
