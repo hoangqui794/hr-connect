@@ -409,7 +409,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
             </span>
           </div>
           <p className="m-0 text-sm text-slate-500 max-w-2xl">
-            Thẩm định điều khoản thương mại, ký kết hợp đồng dịch vụ (Headhunt / CV Sourcing) và quản lý tiến trình thanh toán.
+            Thẩm định điều khoản thương mại, ký kết hợp đồng dịch vụ (Tuyển dụng theo kết quả / Tìm hồ sơ phù hợp) và quản lý tiến trình thanh toán.
           </p>
         </div>
 
@@ -499,7 +499,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                   Chưa có thỏa thuận dịch vụ nào
                 </Text>
                 <p className="text-sm text-slate-500 max-w-md mx-auto">
-                  Các vị trí tuyển dụng theo dịch vụ <strong>Tuyển dụng theo kết quả (Headhunt)</strong>{' '}
+                  Các vị trí tuyển dụng theo dịch vụ <strong>Tuyển dụng theo kết quả</strong>{' '}
                   hoặc <strong>Tìm hồ sơ phù hợp (CV Sourcing)</strong> sẽ xuất hiện tại đây sau khi được
                   HR Connect lập dự thảo thỏa thuận thương mại.
                 </p>

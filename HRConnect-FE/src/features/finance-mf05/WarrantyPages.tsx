@@ -380,7 +380,7 @@ export const ClientWarrantyPage: React.FC = () => (
             Chính Sách & Quản Lý Bảo Hành
           </h1>
           <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0C4A6E] border border-sky-100">
-            Dịch vụ Headhunt
+            Tuyển dụng theo kết quả
           </span>
         </div>
         <p className="m-0 mt-1 text-sm text-slate-500">

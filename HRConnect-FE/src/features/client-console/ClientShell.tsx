@@ -1,7 +1,8 @@
 /**
  * @file ClientShell.tsx
  * @description Client Company workspace shell: enterprise top navigation (no sidebar), indigo/navy accent.
- * Desktop shows the links in the header; below lg they open in an off-canvas menu. The page area is
+ * From 1280px the links sit in the header on one line; below 1280px they open in an off-canvas menu.
+ * Between 1280px and 1440px the brand subtitle, badge and account details are hidden to make room. The page area is
  * wide and airy, with the same loading feedback (progress bar, skeleton, enter motion) as the
  * other consoles.
  */
@@ -20,6 +21,10 @@ import '@/features/admin-console/admin-console.css';
 import { BrandMark } from '@/components/common/BrandMark';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+/** The seven header links need about 1280px; below that the menu moves into the drawer. */
+const COMPACT_QUERY = '(max-width: 1279px)';
+/** Extra header details (brand subtitle, badge, account name) only fit above 1440px. */
+const WIDE = 'min-[1441px]';
 
 const NAV = [
   { to: '/client/dashboard', label: 'Tổng quan' },
@@ -43,7 +48,7 @@ const linkClass = (active: boolean, compact?: boolean) => {
   }
   return [
     FONT,
-    'relative inline-flex items-center gap-1.5 px-3 py-1.5 text-[13.5px] rounded-lg no-underline transition-all duration-150',
+    `relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2.5 py-1.5 text-[13.5px] rounded-lg no-underline transition-all duration-150 ${WIDE}:px-3`,
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0C4A6E]/30',
     active
       ? 'bg-slate-100 text-[#0C4A6E] font-bold shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)]'
@@ -54,7 +59,7 @@ const linkClass = (active: boolean, compact?: boolean) => {
 export const ClientShell: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const compact = useCompactLayout();
+  const compact = useCompactLayout(COMPACT_QUERY);
   const { user, logout } = useAuthStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -101,17 +106,17 @@ export const ClientShell: React.FC = () => {
               <div className="leading-tight">
                 <div className="flex items-center gap-2">
                   <span className="text-[15px] font-bold text-slate-900 group-hover:text-[#0C4A6E] transition-colors">HR Connect</span>
-                  <span className="hidden sm:inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-[#0C4A6E] border border-sky-200/60">
+                  <span className={`hidden ${WIDE}:inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-[#0C4A6E] border border-sky-200/60`}>
                     Doanh nghiệp
                   </span>
                 </div>
-                <span className="hidden text-[11px] font-medium text-slate-500 sm:block">Trung tâm quản lý tuyển dụng</span>
+                <span className={`hidden text-[11px] font-medium text-slate-500 ${WIDE}:block`}>Trung tâm quản lý tuyển dụng</span>
               </div>
             </NavLink>
           </div>
 
           {!compact && (
-            <nav aria-label="Điều hướng chính" className="flex items-center gap-1">
+            <nav aria-label="Điều hướng chính" className="flex min-w-0 items-center gap-0.5">
               {NAV.map((n) => {
                 const active = isActive(n.to);
                 return (
@@ -158,7 +163,7 @@ export const ClientShell: React.FC = () => {
                 className="flex cursor-pointer items-center gap-2.5 rounded-full border border-slate-200/80 bg-white/80 py-1 pl-1 pr-2.5 shadow-2xs transition-all hover:border-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E]"
               >
                 <AccountAvatar name={name} avatar={user?.avatar} size={30} />
-                <span className="hidden text-left leading-tight md:block">
+                <span className={`hidden text-left leading-tight ${WIDE}:block`}>
                   <span className="block max-w-[140px] truncate text-xs font-bold text-slate-900">{name}</span>
                   <span className="block max-w-[140px] truncate text-[11px] text-slate-500">{user?.email}</span>
                 </span>

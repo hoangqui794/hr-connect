@@ -8,7 +8,7 @@ import { ClientCandidatesPage, nextStepOf } from './ClientCandidatesPage';
 import { screeningApi } from '@/services/api/hrApi';
 import type { RecruitmentApplicationItem } from '@/types/api/hr';
 
-vi.mock('@/services/api/hrApi', () => ({ screeningApi: { list: vi.fn() } }));
+vi.mock('@/services/api/hrApi', () => ({ screeningApi: { list: vi.fn(), counts: vi.fn() } }));
 vi.mock('@/features/jobs-mf01/useJobQueries', () => ({
   useMyJobs: () => ({
     isLoading: false,
@@ -46,10 +46,13 @@ const renderPage = (url = '/client/candidates') =>
   );
 
 const listMock = vi.mocked(screeningApi.list);
+const countsMock = vi.mocked(screeningApi.counts);
 
 describe('Client › Hồ sơ ứng viên', () => {
   beforeEach(() => {
     listMock.mockReset();
+    countsMock.mockReset();
+    countsMock.mockResolvedValue({ SUBMITTED: 2, SCREENING: 1, SHORTLISTED: 1, REJECTED: 4 });
     listMock.mockImplementation(async (p) => {
       if (p.pageSize === 1) return { items: [], total: p.status === 'SUBMITTED,SCREENING' ? 3 : 1, page: 1, pageSize: 1 } as never;
       return {
@@ -91,6 +94,18 @@ describe('Client › Hồ sơ ứng viên', () => {
     const review = await screen.findByRole('radio', { name: /Cần xem/ });
     await waitFor(() => expect(within(review).getByText('3')).toBeInTheDocument());
     expect(within(review).getByLabelText('cần xử lý')).toBeInTheDocument();
+  });
+
+  // C-07: one request grouped by status feeds every cell, instead of one list request per cell.
+  it('counts every cell from one grouped request', async () => {
+    renderPage('/client/candidates?service=CV_SOURCING');
+
+    const all = await screen.findByRole('radio', { name: /Tất cả/ });
+    await waitFor(() => expect(within(all).getByText('8')).toBeInTheDocument());
+    expect(within(screen.getByRole('radio', { name: /Kết thúc/ })).getByText('4')).toBeInTheDocument();
+    expect(countsMock).toHaveBeenCalledTimes(1);
+    expect(countsMock).toHaveBeenCalledWith('status', expect.objectContaining({ serviceTypeCode: 'CV_SOURCING' }), expect.any(Array));
+    expect(listMock).not.toHaveBeenCalledWith(expect.objectContaining({ pageSize: 1 }));
   });
 
   it('filters by service from the URL and keeps old ?status= links working', async () => {

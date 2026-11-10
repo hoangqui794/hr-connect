@@ -27,6 +27,7 @@ vi.mock('@/services/api/financeApi', () => ({
     getPlacements: vi.fn(),
     getReplacementSlots: vi.fn(),
     cancelReplacementSlot: vi.fn(),
+    warranties: vi.fn(),
   },
 }));
 
@@ -129,6 +130,51 @@ const renderComponent = (props: { mode?: 'client' | 'hr'; selectedJobId?: string
 describe('ReplacementQuotaCard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: the warranty list is unavailable, so the card asks every job (the old behaviour).
+    vi.mocked(financeApi.warranties).mockRejectedValue(new Error('not loaded'));
+  });
+
+  const warrantyPage = (items: Array<{ placementId: string; status: string }>) =>
+    ({ items, totalCount: items.length, page: 1, pageSize: 100 }) as never;
+
+  it('asks for slots only on jobs whose warranty was voided by a confirmed resignation', async () => {
+    vi.mocked(financeApi.getPlacements).mockResolvedValue({ items: mockPlacements, totalCount: mockPlacements.length });
+    vi.mocked(jobsApi.getMine).mockResolvedValue([
+      { jobId: 'job-101', title: 'Senior Java Engineer', serviceTypeCode: 'HEADHUNT_COD' },
+      { jobId: 'job-other', title: 'Tin khác', serviceTypeCode: 'HEADHUNT_COD' },
+    ] as never);
+    vi.mocked(financeApi.warranties).mockResolvedValue(warrantyPage([{ placementId: 'pl-1', status: 'VOIDED' }]));
+    vi.mocked(financeApi.getReplacementSlots).mockResolvedValue([mockSlots[0]]);
+
+    renderComponent({ mode: 'client' });
+
+    expect(await screen.findByText('Trần Văn An', {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(financeApi.getReplacementSlots).toHaveBeenCalledTimes(1);
+    expect(financeApi.getReplacementSlots).toHaveBeenCalledWith('job-101');
+  });
+
+  it('asks no job when no warranty was voided', async () => {
+    vi.mocked(financeApi.getPlacements).mockResolvedValue({ items: mockPlacements, totalCount: mockPlacements.length });
+    vi.mocked(jobsApi.getMine).mockResolvedValue([{ jobId: 'job-other', title: 'Tin khác', serviceTypeCode: 'HEADHUNT_COD' }] as never);
+    vi.mocked(financeApi.warranties).mockResolvedValue(warrantyPage([]));
+
+    renderComponent({ mode: 'client' });
+
+    expect(await screen.findByText('Chưa có suất tuyển thay thế nào', {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(financeApi.getReplacementSlots).not.toHaveBeenCalled();
+  });
+
+  it('falls back to every job when a voided warranty cannot be matched to a loaded placement', async () => {
+    vi.mocked(financeApi.getPlacements).mockResolvedValue({ items: mockPlacements, totalCount: mockPlacements.length });
+    vi.mocked(jobsApi.getMine).mockResolvedValue([{ jobId: 'job-other', title: 'Tin khác', serviceTypeCode: 'HEADHUNT_COD' }] as never);
+    vi.mocked(financeApi.warranties).mockResolvedValue(warrantyPage([{ placementId: 'pl-unknown', status: 'VOIDED' }]));
+    vi.mocked(financeApi.getReplacementSlots).mockResolvedValue([]);
+
+    renderComponent({ mode: 'client' });
+
+    await screen.findByText('Chưa có suất tuyển thay thế nào', {}, { timeout: 10000 });
+    expect(financeApi.getReplacementSlots).toHaveBeenCalledWith('job-other');
+    expect(financeApi.getReplacementSlots).toHaveBeenCalledWith('job-101');
   });
 
   it('renders loading skeleton when fetching data', () => {

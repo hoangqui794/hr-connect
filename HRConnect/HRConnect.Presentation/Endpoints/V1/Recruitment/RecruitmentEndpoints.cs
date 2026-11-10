@@ -13,6 +13,7 @@ using HRConnect.Application.Features.Recruitment.Commands.UpdateApplicationScree
 using HRConnect.Application.Features.Recruitment.Commands.WithdrawApplication;
 using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplications;
+using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationCounts;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationDetail;
 using HRConnect.Application.Features.Recruitment.Queries.GetApplicationCvDownloadUrl;
 using HRConnect.Application.Features.Recruitment.Queries.GetApplicationMaskedCv;
@@ -160,6 +161,53 @@ public static class RecruitmentEndpoints
         .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status409Conflict);
+
+        // C-07: GET /api/v1/recruitment/applications/counts — one call instead of one list request per job or status.
+        group.MapGet("/applications/counts", async (
+            [FromQuery] string groupBy,
+            [FromQuery] Guid? jobId,
+            [FromQuery] string? status,
+            [FromQuery] string? candidateName,
+            [FromQuery] string? serviceTypeCode,
+            [FromServices] ISender sender,
+            ClaimsPrincipal user,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserIdFromClaims(user);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var isClient = user.IsInRole("CLIENT_COMPANY_USER")
+                && PermissionAuthorization.HasPermission(user, ViewCompanyPermission);
+            var isInternal = user.IsInRole("INTERNAL_HR")
+                && PermissionAuthorization.HasPermission(user, ViewAllPermission);
+            var isAdmin = user.IsInRole("PLATFORM_ADMIN");
+
+            if (!isClient && !isInternal && !isAdmin)
+            {
+                return PermissionAuthorization.Forbidden(ViewAllPermission);
+            }
+
+            var response = await sender.Send(new GetRecruitmentApplicationCountsQuery(
+                userId.Value,
+                IsClientCompanyUser: isClient && !isInternal && !isAdmin,
+                IsInternalHrOrAdmin: isInternal || isAdmin,
+                GroupBy: groupBy,
+                JobId: jobId,
+                Status: status,
+                CandidateName: candidateName,
+                ServiceTypeCode: serviceTypeCode), cancellationToken);
+            return Results.Ok(response);
+        })
+        .WithName("GetRecruitmentApplicationCounts")
+        .WithSummary("Đếm hồ sơ tuyển dụng theo tin hoặc theo trạng thái")
+        .WithDescription("groupBy = job | status. Cùng phạm vi và bộ lọc với GET /recruitment/applications (Client chỉ thấy hồ sơ được phép xem).")
+        .Produces<RecruitmentApplicationCountsResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden);
 
         // A01: GET /api/v1/recruitment/applications
         group.MapGet("/applications", async (

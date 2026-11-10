@@ -3,7 +3,8 @@
  * @description Client "Công nợ" page (HR feedback 28/10): every fee the company owes HR Connect across the
  * three services, so the warranty page can stay Headhunt only.
  * - HH (HEADHUNT_COD) placement fees and SS (CV_SOURCING) deposits, settlements and credits: GET /service-fees.
- * - AP (CV_APPLICATION) paid posting packages: GET /jobs/{id}/posting-fee for each paid-package job.
+ * - AP (CV_APPLICATION) paid posting packages: the `postingFee` that GET /jobs/mine carries per job (C-07); only a
+ *   backend without that field is asked GET /jobs/{id}/posting-fee per paid-package job.
  * "Thanh toán" pays one fee through VNPay (the fee turns paid by itself on VNPay's confirmation) or shows the bank
  * transfer details, which Platform Admin still records by hand.
  */
@@ -94,21 +95,31 @@ const useBillingRows = () => {
   const fees = useQuery({
     queryKey: ['client-billing', 'service-fees'],
     queryFn: () => financeApi.serviceFees({ page: 1, pageSize: 100 }),
+    staleTime: 60_000,
   });
   const postingFees = useQuery({
     queryKey: ['client-billing', 'posting-fees'],
+    // GET /jobs/mine already carries each job's posting fee (C-07). Paid fees feed the "Đã thanh toán"
+    // total, so every paid-package job is kept; only an older backend without the field is asked per job.
+    staleTime: 60_000,
     queryFn: async () => {
       const jobs = await jobsApi.getMine();
       const paidPackageJobs = jobs.filter(
         (j) => j.serviceTypeCode === 'CV_APPLICATION' && j.postingFeeStatus && j.postingPackageCode !== 'FREE'
       );
-      const fees: Array<{ job: (typeof paidPackageJobs)[number]; fee: Awaited<ReturnType<typeof jobsApi.getPostingFee>> }> = [];
-      for (let i = 0; i < paidPackageJobs.length; i += 4) {
-        const batch = paidPackageJobs.slice(i, i + 4);
-        const batchFees = await Promise.all(batch.map((j) => jobsApi.getPostingFee(j.jobId).then((fee) => ({ job: j, fee }))));
-        fees.push(...batchFees);
+      type Fee = { postingFeeId: string; amount: number; currencyCode: string; status: 'PENDING' | 'PAID' | 'CANCELLED'; paidAt: string | null; paymentReference: string | null; packageName: string | null };
+      const fees: Array<{ job: (typeof paidPackageJobs)[number]; fee: Fee | null | undefined }> = paidPackageJobs.map(
+        (j) => ({ job: j, fee: j.postingFee })
+      );
+      const missing = fees.filter((f) => f.fee === undefined);
+      for (let i = 0; i < missing.length; i += 4) {
+        await Promise.all(
+          missing.slice(i, i + 4).map(async (f) => {
+            f.fee = await jobsApi.getPostingFee(f.job.jobId);
+          })
+        );
       }
-      return fees.filter((f) => f.fee && f.fee.amount > 0);
+      return fees.filter((f): f is { job: (typeof paidPackageJobs)[number]; fee: Fee } => !!f.fee && f.fee.amount > 0);
     },
   });
 
@@ -222,11 +233,10 @@ export const ClientBillingPage: React.FC = () => {
             className="m-0 font-bold rounded-md px-1.5 py-0.5 text-[11px] border-0 shrink-0 mt-0.5"
             color={r.service === 'HEADHUNT_COD' ? 'blue' : r.service === 'CV_SOURCING' ? 'purple' : 'cyan'}
           >
-            {SERVICE_TYPE_LABEL[r.service].short}
+            {SERVICE_TYPE_LABEL[r.service].label}
           </Tag>
           <div className="min-w-0">
             <div className="text-[13.5px] font-semibold text-slate-900 leading-snug">{r.item}</div>
-            <div className="text-xs text-slate-500 mt-0.5">{SERVICE_TYPE_LABEL[r.service].label}</div>
           </div>
         </div>
       ),
@@ -360,9 +370,9 @@ export const ClientBillingPage: React.FC = () => {
             }}
             options={[
               { value: 'all', label: 'Tất cả', count: rows.length },
-              { value: 'HEADHUNT_COD', label: SERVICE_TYPE_LABEL.HEADHUNT_COD.short, count: count('HEADHUNT_COD') },
-              { value: 'CV_SOURCING', label: SERVICE_TYPE_LABEL.CV_SOURCING.short, count: count('CV_SOURCING') },
-              { value: 'CV_APPLICATION', label: SERVICE_TYPE_LABEL.CV_APPLICATION.short, count: count('CV_APPLICATION') },
+              { value: 'HEADHUNT_COD', label: SERVICE_TYPE_LABEL.HEADHUNT_COD.label, count: count('HEADHUNT_COD') },
+              { value: 'CV_SOURCING', label: SERVICE_TYPE_LABEL.CV_SOURCING.label, count: count('CV_SOURCING') },
+              { value: 'CV_APPLICATION', label: SERVICE_TYPE_LABEL.CV_APPLICATION.label, count: count('CV_APPLICATION') },
             ]}
           />
           <FilterPills<StatusFilter>

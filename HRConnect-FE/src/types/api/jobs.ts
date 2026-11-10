@@ -173,6 +173,8 @@ export interface Job {
   postingPackageCode?: 'FREE' | 'STANDARD' | null;
   postingPackageName?: string | null;
   postingFeeStatus?: 'PENDING' | 'PAID' | 'CANCELLED' | null;
+  /** Latest posting fee (C-07). Undefined when the backend predates the field; null when the job has none. */
+  postingFee?: JobPostingFeeSummary | null;
   expiresAt?: string | null;
   maxApplications?: number | null;
   requirements: JobRequirement[];
@@ -207,6 +209,16 @@ export interface JobPostingPackage {
   durationDays: number;
   maxApplications?: number | null;
   isActive: boolean;
+}
+
+export interface JobPostingFeeSummary {
+  postingFeeId: string;
+  amount: number;
+  currencyCode: string;
+  status: 'PENDING' | 'PAID' | 'CANCELLED';
+  paidAt: string | null;
+  paymentReference: string | null;
+  packageName: string | null;
 }
 
 export interface JobPostingFee {

@@ -61,6 +61,8 @@ type GroupKey = (typeof GROUPS)[number]['key'];
 
 /** Cells that ask the Client to act; they are tinted when not empty. */
 const ACTION_GROUPS: GroupKey[] = ['review', 'shortlisted', 'offer'];
+const ALL_GROUP_STATUSES = GROUPS.flatMap((g) => g.statuses);
+
 const statusParam = (key: GroupKey) => {
   const g = GROUPS.find((x) => x.key === key)!;
   return g.statuses.length ? g.statuses.join(',') : undefined;
@@ -207,11 +209,19 @@ export const ClientCandidatesPage: React.FC = () => {
 
   const scope = { jobId, serviceTypeCode: service };
 
-  const counts = useQueries({
-    queries: GROUPS.map((g) => ({
-      queryKey: ['client-candidates', 'count', g.key, jobId ?? '', service ?? ''],
-      queryFn: async () => (await screeningApi.list({ ...scope, status: statusParam(g.key), page: 1, pageSize: 1 })).total,
-    })),
+  // Group counts from one request grouped by status (C-07), summed per group; "Tất cả" is every status.
+  const statusCounts = useQuery({
+    queryKey: ['client-candidates', 'status-counts', jobId ?? '', service ?? ''],
+    queryFn: () => screeningApi.counts('status', scope, ALL_GROUP_STATUSES),
+  });
+  const counts = GROUPS.map((g) => {
+    const byStatus = statusCounts.data;
+    const data = !byStatus
+      ? undefined
+      : g.statuses.length
+        ? g.statuses.reduce((sum, s) => sum + (byStatus[s] ?? 0), 0)
+        : Object.values(byStatus).reduce((sum, v) => sum + v, 0);
+    return { data, isLoading: statusCounts.isLoading };
   });
 
   const jobOptions = (jobs.data ?? [])

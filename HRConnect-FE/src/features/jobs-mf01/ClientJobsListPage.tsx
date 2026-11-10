@@ -5,7 +5,7 @@
  * resume (PAUSED), close (ACTIVE/PAUSED). Every write sends the job's latest concurrencyToken.
  */
 import React, { useMemo, useState } from 'react';
-import { useQueries } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Alert,
@@ -192,17 +192,18 @@ export const ClientJobsListPage: React.FC = () => {
 
   // Application count per published job (jobs never published cannot have applications).
   const countable = visibleJobs.filter((j) => j.status === 'ACTIVE' || j.status === 'PAUSED' || j.status === 'CLOSED');
-  const countQueries = useQueries({
-    queries: countable.map((j) => ({
-      queryKey: ['client-candidates', 'job-count', j.jobId],
-      queryFn: async () => (await screeningApi.list({ jobId: j.jobId, page: 1, pageSize: 1 })).total,
-      staleTime: 60_000,
-    })),
+  // One grouped request for every job (C-07), instead of one list request per job.
+  const countableIds = countable.map((j) => j.jobId);
+  const jobCounts = useQuery({
+    queryKey: ['client-candidates', 'job-counts', countableIds.join(',')],
+    queryFn: () => screeningApi.counts('job', {}, countableIds),
+    enabled: countableIds.length > 0,
+    staleTime: 60_000,
   });
-  const applicationsOf = (jobId: string) => {
-    const i = countable.findIndex((j) => j.jobId === jobId);
-    return i < 0 ? undefined : countQueries[i];
-  };
+  const applicationsOf = (jobId: string) =>
+    countableIds.includes(jobId)
+      ? { data: jobCounts.data?.[jobId] ?? (jobCounts.data ? 0 : undefined), isLoading: jobCounts.isLoading }
+      : undefined;
 
   const confirmSubmit = (job: Job) =>
     modal.confirm({

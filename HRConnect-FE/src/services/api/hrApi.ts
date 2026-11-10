@@ -32,7 +32,48 @@ const cleanParams = <T extends object>(params: T): Partial<T> =>
 /** Service types Internal HR screens (MF-03). CV_APPLICATION is screened by the Client itself. */
 export const HR_SCREENED_SERVICE_TYPES = 'HEADHUNT_COD,CV_SOURCING';
 
+export type RecruitmentCountGroupBy = 'job' | 'status';
+export interface RecruitmentCountParams {
+  jobId?: string;
+  status?: string;
+  candidateName?: string;
+  serviceTypeCode?: string;
+}
+
 export const screeningApi = {
+  /**
+   * GET /recruitment/applications/counts — application counts grouped by job or status in one call, under the
+   * same scope as the list (C-07). `keys` are the job ids or statuses the page shows: while a backend without
+   * this endpoint answers 404, they are counted one list request each, as before.
+   */
+  async counts(
+    groupBy: RecruitmentCountGroupBy,
+    params: RecruitmentCountParams,
+    keys: readonly string[]
+  ): Promise<Record<string, number>> {
+    try {
+      const res = await apiClient.get<ApiEnvelope<{ groupBy: string; total: number; counts: Record<string, number> }>>(
+        '/recruitment/applications/counts',
+        { params: cleanParams({ ...params, groupBy }) }
+      );
+      return res.data.data.counts ?? {};
+    } catch (err) {
+      if ((err as { response?: { status?: number } })?.response?.status !== 404) throw err;
+      const entries = await Promise.all(
+        keys.map(async (k) => {
+          const page = await screeningApi.list({
+            ...params,
+            ...(groupBy === 'job' ? { jobId: k } : { status: k }),
+            page: 1,
+            pageSize: 1,
+          });
+          return [k, page.total] as const;
+        })
+      );
+      return Object.fromEntries(entries);
+    }
+  },
+
   /** GET /recruitment/applications — scoped by the backend to what the caller may see. */
   async list(params: RecruitmentApplicationSearchParams): Promise<PagedItems<RecruitmentApplicationItem>> {
     const res = await apiClient.get<ApiEnvelope<PagedItems<RecruitmentApplicationItem>>>('/recruitment/applications', {

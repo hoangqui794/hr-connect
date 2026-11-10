@@ -35,7 +35,7 @@ export const SERVICE_FEE_STATUS: Record<ServiceFeeStatus, StatusLabel> = {
 };
 
 export const SERVICE_FEE_KIND: Record<ServiceFeeKind, StatusLabel> = {
-  PLACEMENT: { label: 'Phí Headhunt', tone: 'neutral' },
+  PLACEMENT: { label: 'Phí tuyển dụng theo kết quả', tone: 'neutral' },
   DEPOSIT: { label: 'Cọc CV Sourcing', tone: 'info', hint: 'Số CV × giá mỗi CV × tỷ lệ cọc, thu khi job được duyệt.' },
   SETTLEMENT: { label: 'Quyết toán CV Sourcing', tone: 'info', hint: 'Số CV được chấp nhận × giá mỗi CV − tiền cọc.' },
   CREDIT: { label: 'Hoàn cọc cho Client', tone: 'warning', hint: 'Giao thiếu: phần cọc dư được hoàn hoặc trừ vào lần sau.' },

@@ -39,6 +39,16 @@ public interface IApplicationRepository
         string? sortDirection = null,
         string? serviceTypeCode = null);
 
+    /// <summary>Application counts under the same filter as <see cref="GetRecruitmentApplicationsAsync"/>, grouped by job or status.</summary>
+    Task<IReadOnlyDictionary<string, int>> CountRecruitmentApplicationsAsync(
+        Guid? companyId,
+        Guid? jobId,
+        string? status,
+        string? candidateName,
+        string? serviceTypeCode,
+        RecruitmentCountGroup groupBy,
+        CancellationToken cancellationToken = default);
+
     Task<JobApplication?> GetRecruitmentApplicationDetailAsync(Guid applicationId, CancellationToken cancellationToken = default);
 
     Task<JobApplication?> GetApplicationTimelineDataAsync(Guid applicationId, CancellationToken cancellationToken = default);
