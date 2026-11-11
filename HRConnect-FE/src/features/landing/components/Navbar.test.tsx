@@ -69,3 +69,4 @@ describe('Navbar Component', () => {
     expect(screen.getByRole('link', { name: 'Tạo CV' })).toBeInTheDocument();
   });
 });
+

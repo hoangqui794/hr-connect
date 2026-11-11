@@ -7,6 +7,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App as AntApp, Input, Modal, Popconfirm, Skeleton } from 'antd';
+import { FilePdfOutlined, FileTextOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { candidateAffiliateCvApi, candidateCvApi } from '@/services/api/mf02Api';
 import { getApiErrorMessage } from '@/services/apiClient';
@@ -187,7 +188,36 @@ export const CandidateCvsPage: React.FC = () => {
             const size = fileSize(cv.fileSizeBytes);
             return (
               <article key={id} className="flex flex-wrap items-center gap-[14px] border-0 border-b border-solid border-[#F1F5F9] p-4">
-                <span aria-hidden className="flex h-14 w-11 shrink-0 items-end justify-center rounded border border-solid border-[#CBD5E1] pb-1.5 text-[10px] font-bold text-[#475569]">{built ? 'CV' : 'PDF'}</span>
+                <div
+                  aria-hidden="true"
+                  className={`relative flex h-14 w-11 shrink-0 flex-col items-center justify-between rounded-md border p-1 shadow-xs select-none ${
+                    built
+                      ? 'border-sky-200 bg-sky-50/80 text-sky-700'
+                      : 'border-rose-200 bg-rose-50/80 text-rose-700'
+                  }`}
+                >
+                  <span
+                    className={`absolute right-0 top-0 h-2.5 w-2.5 rounded-bl border-b border-l bg-white ${
+                      built ? 'border-sky-200' : 'border-rose-200'
+                    }`}
+                  />
+                  <div className="mt-1 flex flex-1 items-center justify-center">
+                    {built ? (
+                      <FileTextOutlined className="text-[20px] text-sky-600" />
+                    ) : (
+                      <FilePdfOutlined className="text-[20px] text-rose-600" />
+                    )}
+                  </div>
+                  <span
+                    className={`w-full rounded-[3px] py-0.5 text-center text-[9px] font-extrabold uppercase tracking-wider ${
+                      built
+                        ? 'bg-sky-100 text-sky-800'
+                        : 'bg-rose-100 text-rose-800'
+                    }`}
+                  >
+                    {built ? 'CV' : 'PDF'}
+                  </span>
+                </div>
                 <div className="min-w-0 flex-[1_1_300px]">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-[15px] font-semibold">{title}</span>

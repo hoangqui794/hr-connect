@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App as AntApp, Pagination, Skeleton } from 'antd';
+import { FilePdfOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { candidateAffiliateCvApi } from '@/services/api/mf02Api';
@@ -58,12 +59,18 @@ const PartnerCvRow: React.FC<{
 
   return (
     <article className="flex flex-wrap items-center gap-[14px] border-0 border-b border-solid border-[#F1F5F9] p-4 transition-colors duration-200 last:border-b-0 hover:bg-[#F8FAFC]/60">
-      <span
-        aria-hidden
-        className="flex h-14 w-11 shrink-0 items-end justify-center rounded border border-solid border-[#CBD5E1] bg-white pb-1.5 text-[10px] font-bold text-[#475569]"
+      <div
+        aria-hidden="true"
+        className="relative flex h-14 w-11 shrink-0 flex-col items-center justify-between rounded-md border border-rose-200 bg-rose-50/80 p-1 shadow-xs select-none"
       >
-        PDF
-      </span>
+        <span className="absolute right-0 top-0 h-2.5 w-2.5 rounded-bl border-b border-l border-rose-200 bg-white" />
+        <div className="mt-1 flex flex-1 items-center justify-center">
+          <FilePdfOutlined className="text-[20px] text-rose-600" />
+        </div>
+        <span className="w-full rounded-[3px] bg-rose-100 py-0.5 text-center text-[9px] font-extrabold uppercase tracking-wider text-rose-800">
+          PDF
+        </span>
+      </div>
       <div className="min-w-0 flex-[1_1_200px]">
         <div className="flex flex-wrap items-center gap-2">
           <Link
