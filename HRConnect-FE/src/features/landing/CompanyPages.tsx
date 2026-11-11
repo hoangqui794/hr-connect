@@ -84,7 +84,7 @@ export const CompaniesPage: React.FC = () => {
                 popupMatchSelectWidth={false}
               />
             </div>
-            <button type="submit" className="h-11 cursor-pointer border-0 bg-[#C2410C] px-[22px] text-[14px] font-bold text-white transition-colors hover:bg-[#9A3412] active:bg-[#7C2D12] max-sm:w-full">Tìm công ty</button>
+            <button type="submit" className="h-11 cursor-pointer border-0 bg-gradient-to-r from-[#0284C7] to-[#2563EB] px-[24px] text-[14px] font-bold text-white transition-all hover:from-[#0369A1] hover:to-[#1D4ED8] hover:shadow-md hover:shadow-sky-500/25 active:scale-[0.98] max-sm:w-full">Tìm công ty</button>
           </form>
         </div>
       </section>
@@ -98,7 +98,7 @@ export const CompaniesPage: React.FC = () => {
                   <CompanyMark name={c.companyName} logoUrl={c.logoUrl} />
                   <b className="mt-1 line-clamp-2">{c.companyName}</b>
                   {c.industry?.name && <span className="text-[13px] text-gray-600">{c.industry.name}</span>}
-                  <span className="text-[13px] font-semibold text-[#C2410C]">{c.activeJobCount} việc làm đang mở</span>
+                  <span className="text-[13px] font-semibold text-[#0284C7]">{c.activeJobCount} việc làm đang mở</span>
                 </Link>
               ))}
             </div>
@@ -165,10 +165,10 @@ export const CompaniesPage: React.FC = () => {
                     </p>
                   )}
                   <div className="mt-auto flex items-center justify-between border-0 border-t border-solid border-[#F1F5F9] pt-3.5">
-                    <span className={`text-[14px] font-bold ${c.activeJobCount > 0 ? 'text-[#C2410C]' : 'text-[#64748B]'}`}>
+                    <span className={`text-[14px] font-bold ${c.activeJobCount > 0 ? 'text-[#0284C7]' : 'text-[#64748B]'}`}>
                       {c.activeJobCount > 0 ? `${c.activeJobCount} việc làm đang mở` : 'Chưa có việc làm'}
                     </span>
-                    <Link to={`/companies/${c.companyId}`} className="inline-flex min-h-[44px] items-center rounded-lg border border-solid border-[#CBD5E1] px-3.5 text-[14px] font-semibold text-[#0C4A6E] no-underline transition-colors hover:border-[#0C4A6E] hover:bg-[#F0F9FF]">
+                    <Link to={`/companies/${c.companyId}`} className="inline-flex min-h-[44px] items-center rounded-lg border border-solid border-[#CBD5E1] px-3.5 text-[14px] font-semibold text-[#0369A1] no-underline transition-colors hover:border-[#0369A1] hover:bg-[#F0F9FF]">
                       Xem công ty
                     </Link>
                   </div>

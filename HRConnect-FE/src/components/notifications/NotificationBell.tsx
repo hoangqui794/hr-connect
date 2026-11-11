@@ -210,7 +210,7 @@ const CANDIDATE_ACTION_CATEGORIES = ['Phỏng vấn', 'Offer', 'Giới thiệu']
 const CANDIDATE_CATEGORY_COLOR: Record<string, string> = {
   'Phỏng vấn': '#6D28D9',
   Offer: '#047857',
-  'Giới thiệu': '#C2410C',
+  'Giới thiệu': '#0284C7',
   'Việc làm gợi ý': '#B45309',
   'Đơn ứng tuyển': '#0369A1',
   CV: '#0369A1',

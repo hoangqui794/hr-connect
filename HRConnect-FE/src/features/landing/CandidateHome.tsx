@@ -50,13 +50,13 @@ const MatchCard: React.FC<{ match: CandidateJobMatchDto; onDismiss: () => void; 
           <SaveJobButton jobId={m.jobId} title={m.jobTitle} />
         </div>
         <div className="mt-0.5 truncate text-[13px] text-gray-600">{m.companyName}</div>
-        <div className="mt-1 font-semibold text-[#C2410C] text-[14px]">{salaryText(m)}</div>
+        <div className="mt-1 font-semibold text-[#059669] text-[14px]">{salaryText(m)}</div>
 
         {/* Match breakdown & Criteria badges */}
         <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px]">
           <Popover
             trigger="click"
-            title={<span className="font-bold text-[#0C4A6E]">Mức độ phù hợp: {Math.round(m.matchScore)}%</span>}
+            title={<span className="font-bold text-[#0369A1]">Mức độ phù hợp: {Math.round(m.matchScore)}%</span>}
             content={
               <div className="max-w-[280px] text-[13px] space-y-2">
                 {(m.matchingReasons ?? []).length > 0 && (
@@ -172,7 +172,7 @@ export const CandidateHome: React.FC = () => {
                 <span>
                   <b>Phỏng vấn sắp tới:</b> {interviewApp.jobTitle} tại {interviewApp.companyName}, {interviewWhen(nextInterview.scheduledAt)}, {candidateInterviewType(nextInterview.interviewType).toLowerCase()}
                 </span>
-                <Link to={`/candidate/interviews/${nextInterview.interviewId}`} className="ml-auto font-bold text-[#C2410C] no-underline hover:underline">
+                <Link to={`/candidate/interviews/${nextInterview.interviewId}`} className="ml-auto font-bold text-[#0284C7] no-underline hover:text-[#0369A1] hover:underline">
                   Xem lịch phỏng vấn
                 </Link>
               </div>
@@ -181,7 +181,7 @@ export const CandidateHome: React.FC = () => {
               <div className="flex flex-wrap items-center gap-3 text-[14px]">
                 <AlertIcon />
                 <span><b>Cần bạn xác nhận:</b> {pendingConsents} lời giới thiệu từ Affiliate</span>
-                <Link to="/candidate/applications?tab=consents" className="ml-auto font-bold text-[#C2410C] no-underline hover:underline">
+                <Link to="/candidate/applications?tab=consents" className="ml-auto font-bold text-[#0284C7] no-underline hover:text-[#0369A1] hover:underline">
                   Xem và xác nhận
                 </Link>
               </div>

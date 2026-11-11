@@ -165,14 +165,14 @@ const JobRow: React.FC<{ job: Job; fit?: number; canSave: boolean; saved: boolea
               onClick={onSave}
               className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl border border-solid border-[#CBD5E1] bg-white text-[#475569] transition-colors hover:bg-[#F8FAFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E]"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill={saved ? '#C2410C' : 'none'} stroke={saved ? '#C2410C' : 'currentColor'} strokeWidth="1.8" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill={saved ? '#E11D48' : 'none'} stroke={saved ? '#E11D48' : 'currentColor'} strokeWidth="1.8" aria-hidden="true">
                 <path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z" />
               </svg>
             </button>
           )}
           <Link
             to={href}
-            className={`flex h-11 items-center rounded-xl px-5 font-bold no-underline transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E] ${applied ? 'border border-solid border-[#86EFAC] bg-[#F0FDF4] text-[#166534] hover:bg-[#DCFCE7] hover:text-[#166534]' : 'bg-[#C2410C] text-white hover:bg-[#9A3412] hover:text-white'}`}
+            className={`flex h-11 items-center rounded-xl px-5 font-bold no-underline transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0369A1] ${applied ? 'border border-solid border-[#86EFAC] bg-[#F0FDF4] text-[#166534] hover:bg-[#DCFCE7] hover:text-[#166534]' : 'bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white hover:from-[#0369A1] hover:to-[#1D4ED8] hover:text-white shadow-xs hover:shadow-md hover:shadow-sky-500/20 active:scale-[0.98]'}`}
           >
             {action}
           </Link>
@@ -431,7 +431,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                 popupMatchSelectWidth={false}
               />
             </div>
-            <button type="submit" className={`${FONT} h-[44px] cursor-pointer border-0 bg-[#C2410C] px-[22px] text-[14px] font-bold text-white transition-colors hover:bg-[#9A3412] active:bg-[#7C2D12] max-sm:w-full`}>Tìm việc</button>
+            <button type="submit" className={`${FONT} h-[44px] cursor-pointer border-0 bg-gradient-to-r from-[#0284C7] to-[#2563EB] px-[24px] text-[14px] font-bold text-white transition-all hover:from-[#0369A1] hover:to-[#1D4ED8] hover:shadow-md hover:shadow-sky-500/25 active:scale-[0.98] max-sm:w-full`}>Tìm việc</button>
           </form>
           {popularSkills.length > 0 && (
             <p className="m-0 mt-2.5 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[13px] leading-none text-[#475569]">

@@ -2,11 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── CSS Custom Properties (High-End Modern Light SaaS - Emerald Tech) ─── */
+/* ─── CSS Custom Properties (High-End Modern Light SaaS - Sapphire & Azure) ─── */
 :root {
-  --brand-primary: #2563eb;
-  --brand-primary-dark: #1d4ed8;
-  --brand-primary-light: #3b82f6;
+  --brand-primary: #0284c7;
+  --brand-primary-dark: #0369a1;
+  --brand-primary-light: #0ea5e9;
   --sidebar-bg: #ffffff;
   --sidebar-width: 240px;
   --sidebar-collapsed-width: 64px;

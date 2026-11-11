@@ -234,7 +234,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                 <ol className="m-0 list-none p-0">
                   {events.map((event, index) => {
                     const copy = candidateTimelineEventCopy(event);
-                    const dot = index === 0 && events.length > 1 ? '#C2410C' : index === events.length - 1 ? '#9CA3AF' : '#0369A1';
+                    const dot = index === 0 && events.length > 1 ? '#0284C7' : index === events.length - 1 ? '#9CA3AF' : '#0369A1';
                     return (
                       <li key={`${event.eventType}-${event.timestamp}-${index}`} className="flex gap-3 pb-4">
                         <span aria-hidden className="mt-[5px] h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: dot }} />

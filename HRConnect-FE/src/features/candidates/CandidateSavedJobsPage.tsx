@@ -145,7 +145,7 @@ export const CandidateSavedJobsPage: React.FC = () => {
                     <Link to={jobHref(jobId)} className="text-[15px] font-semibold text-[#111827] no-underline hover:text-[#075985] hover:underline">{title}</Link>
                     <div className="text-[13px] text-[#4B5563]">{[job.companyName, job.location].filter(Boolean).join(' · ')}</div>
                     <div className="mt-1 flex flex-wrap gap-[14px] text-[13px]">
-                      <span className="font-semibold text-[#C2410C]">{salaryText(job)}</span>
+                      <span className="font-semibold text-[#059669]">{salaryText(job)}</span>
                       {note && <span style={{ color: note.color }}>{note.text}</span>}
                     </div>
                   </div>
@@ -156,7 +156,7 @@ export const CandidateSavedJobsPage: React.FC = () => {
                     {isApplied(jobId) ? (
                       <Link to={applicationId ? `/candidate/applications/${applicationId}` : '/candidate/applications'} className={`${ACTION} border border-solid border-[#86EFAC] bg-[#F0FDF4] text-[#166534] hover:bg-[#DCFCE7] hover:text-[#166534]`}>Xem đơn</Link>
                     ) : isOpen(job) ? (
-                      <button type="button" aria-label={`Ứng tuyển ${title}`} onClick={() => setApplying(job)} className={`${ACTION} ${FONT} cursor-pointer border-0 bg-[#C2410C] text-white hover:bg-[#9A3412]`}>Ứng tuyển</button>
+                      <button type="button" aria-label={`Ứng tuyển ${title}`} onClick={() => setApplying(job)} className={`${ACTION} ${FONT} cursor-pointer border-0 bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white transition-all hover:from-[#0369A1] hover:to-[#1D4ED8] shadow-xs hover:shadow-md hover:shadow-sky-500/20 active:scale-[0.98]`}>Ứng tuyển</button>
                     ) : null}
                   </div>
                 </article>

@@ -72,9 +72,9 @@ export const SaveJobButton: React.FC<{ jobId: string; title: string }> = ({ jobI
         if (!isAuthenticated) navigate('/login', { state: { from: window.location.pathname } });
         else if (role === UserRole.CANDIDATE) void toggleSaveJob(jobId);
       }}
-      className="-mr-1.5 -mt-1.5 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center self-start rounded-md border-0 bg-transparent text-gray-400 transition-colors duration-150 hover:text-[#C2410C] focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-600"
+      className="-mr-1.5 -mt-1.5 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center self-start rounded-md border-0 bg-transparent text-gray-400 transition-colors duration-150 hover:text-[#E11D48] focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-600"
     >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill={saved ? '#C2410C' : 'none'} stroke={saved ? '#C2410C' : 'currentColor'} strokeWidth="1.8" aria-hidden="true">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill={saved ? '#E11D48' : 'none'} stroke={saved ? '#E11D48' : 'currentColor'} strokeWidth="1.8" aria-hidden="true">
         <path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z" />
       </svg>
     </button>
@@ -105,7 +105,7 @@ export const JobCard: React.FC<{ job: JobCardData; saveable?: boolean }> = ({ jo
           {job.title}
         </Link>
         <div className="mt-0.5 truncate text-[13px] text-gray-600">{job.companyName || 'Doanh nghiệp tuyển dụng'}</div>
-        <div className="mt-1 font-semibold text-[#C2410C] text-[14px]">{salaryText(job)}</div>
+        <div className="mt-1 font-semibold text-[#059669] text-[14px]">{salaryText(job)}</div>
         <div className="mt-1 truncate text-[12px] text-gray-500">{[job.location, postedText(job.postedAt)].filter(Boolean).join(' · ')}</div>
       </div>
       {canSave && <SaveJobButton jobId={job.jobId} title={job.title} />}
@@ -337,7 +337,7 @@ export const SearchForm: React.FC<{ defaultKeyword?: string; defaultLocation?: s
         </Dropdown>
       </div>
 
-      <button type="submit" className="h-11 flex-none cursor-pointer rounded-md border-0 bg-[#C2410C] px-7 text-[15px] font-semibold text-white transition-colors duration-150 hover:bg-[#9A3412] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 max-sm:w-full">
+      <button type="submit" className="h-11 flex-none cursor-pointer rounded-xl border-0 bg-gradient-to-r from-[#0284C7] to-[#2563EB] px-7 text-[15px] font-bold text-white transition-all hover:from-[#0369A1] hover:to-[#1D4ED8] hover:shadow-md hover:shadow-sky-500/25 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 max-sm:w-full">
         Tìm việc
       </button>
     </form>

@@ -63,7 +63,7 @@ export const CommissionEstimateCard: React.FC<{ jobId: string }> = ({ jobId }) =
   return (
     <section aria-label="Hoa hồng ước tính" className="w-full max-w-full min-w-0 overflow-hidden break-words rounded-lg border border-solid border-gray-200 bg-white p-4">
       <h2 className="m-0 text-[15px] font-bold text-gray-900">Hoa hồng ước tính</h2>
-      <div className="mt-1.5 text-xl font-bold leading-snug tabular-nums break-words text-[color:var(--affiliate-cta,#C2410C)]">{headline ?? 'Không áp dụng'}</div>
+      <div className="mt-1.5 text-xl font-bold leading-snug tabular-nums break-words text-[color:var(--affiliate-cta,#059669)]">{headline ?? 'Không áp dụng'}</div>
       <dl className="m-0 mt-3 space-y-2 text-[13px] break-words">
         {estimate.data.feeMultiplier != null && (
           <div className="flex justify-between gap-2"><dt className="text-gray-600">Phí dịch vụ của doanh nghiệp</dt><dd className="m-0 text-right">{estimate.data.feeMultiplier} × lương tháng</dd></div>

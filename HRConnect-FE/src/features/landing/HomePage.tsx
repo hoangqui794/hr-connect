@@ -274,7 +274,7 @@ const GuestHome: React.FC = () => {
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <Link
               to="/candidate/cv-builder"
-              className="inline-flex items-center gap-2 rounded-xl bg-[#C2410C] px-6 py-3 text-[14.5px] font-bold text-white no-underline shadow-sm transition-all hover:bg-[#9A3412] hover:text-white active:scale-98"
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#0284C7] to-[#2563EB] px-6 py-3 text-[14.5px] font-bold text-white no-underline shadow-md shadow-sky-500/20 transition-all hover:from-[#0369A1] hover:to-[#1D4ED8] hover:shadow-lg hover:shadow-sky-500/30 hover:text-white active:scale-98"
             >
               <span>Tạo CV ngay</span>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
