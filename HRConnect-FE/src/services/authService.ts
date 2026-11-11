@@ -396,6 +396,43 @@ export class AuthService {
     }
   }
 
+  /**
+   * POST /api/v1/auth/request-split-otp
+   * Requests OTP to unlink/split alias email into an independent account.
+   */
+  public async requestSplitOtp(email: string): Promise<{ success: boolean; message: string }> {
+    const response = await apiClient.post<{ success: boolean; message: string }>(
+      '/auth/request-split-otp',
+      { email: email.trim().toLowerCase() }
+    );
+    return response.data;
+  }
+
+  /**
+   * POST /api/v1/auth/confirm-split-register
+   * Verifies OTP and completes splitting alias email into a new account.
+   */
+  public async confirmSplitRegister(payload: {
+    email: string;
+    password: string;
+    fullName: string;
+    phone?: string;
+    otp: string;
+  }): Promise<{ success: boolean; message: string; data?: { userId: string; email: string; status: string } }> {
+    const response = await apiClient.post<{
+      success: boolean;
+      message: string;
+      data?: { userId: string; email: string; status: string };
+    }>('/auth/confirm-split-register', {
+      email: payload.email.trim().toLowerCase(),
+      password: payload.password,
+      fullName: payload.fullName.trim(),
+      phone: payload.phone?.trim(),
+      otp: payload.otp.trim(),
+    });
+    return response.data;
+  }
+
   // ─── 2. OTP VERIFICATION ENDPOINTS ─────────────────────────────────────────
 
   /**

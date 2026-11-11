@@ -10,7 +10,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { App } from 'antd';
+import { App, Modal } from 'antd';
 import {
   CheckCircleFilled,
   EyeInvisibleOutlined,
@@ -161,6 +161,23 @@ export const RegisterPage: React.FC = () => {
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [splitModal, setSplitModal] = useState<{
+    visible: boolean;
+    email: string;
+    maskedPrimaryEmail: string;
+    otpSent: boolean;
+    otp: string;
+    loading: boolean;
+    error: string | null;
+  }>({
+    visible: false,
+    email: '',
+    maskedPrimaryEmail: '',
+    otpSent: false,
+    otp: '',
+    loading: false,
+    error: null,
+  });
 
   const isClient = role === UserRole.CLIENT;
   const isAffiliate = role === UserRole.AFFILIATE;
@@ -251,9 +268,66 @@ export const RegisterPage: React.FC = () => {
         }
       );
     } catch (error) {
+      const errorData = (error as any)?.response?.data;
+      if (errorData?.code === 'EMAIL_ALREADY_LINKED_AS_ALIAS' || errorData?.details?.CanSplit) {
+        setSplitModal({
+          visible: true,
+          email: values.email.trim(),
+          maskedPrimaryEmail: errorData?.details?.MaskedPrimaryEmail || '',
+          otpSent: false,
+          otp: '',
+          loading: false,
+          error: null,
+        });
+      }
       setFormError(getApiErrorMessage(error, 'Không thể hoàn tất đăng ký. Vui lòng kiểm tra lại thông tin!'));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleRequestSplitOtp = async () => {
+    setSplitModal(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const res = await authService.requestSplitOtp(splitModal.email);
+      message.success(res.message || 'Mã xác thực đã được gửi về email của bạn!');
+      setSplitModal(prev => ({ ...prev, loading: false, otpSent: true, error: null }));
+    } catch (err: any) {
+      setSplitModal(prev => ({
+        ...prev,
+        loading: false,
+        error: getApiErrorMessage(err, 'Không thể gửi mã OTP. Vui lòng thử lại sau!'),
+      }));
+    }
+  };
+
+  const handleConfirmSplitRegister = async () => {
+    if (!splitModal.otp.trim()) {
+      setSplitModal(prev => ({ ...prev, error: 'Vui lòng nhập mã OTP 6 chữ số.' }));
+      return;
+    }
+    setSplitModal(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const res = await authService.confirmSplitRegister({
+        email: splitModal.email,
+        password: values.password,
+        fullName: values.fullName,
+        phone: values.phone,
+        otp: splitModal.otp.trim(),
+      });
+      message.success({
+        content: res.message || 'Tách tài khoản thành công! Bạn có thể đăng nhập ngay.',
+        icon: <CheckCircleFilled style={{ color: '#10b981' }} />,
+        duration: 5,
+      });
+      setSplitModal(prev => ({ ...prev, visible: false }));
+      navigate(`/login?email=${encodeURIComponent(splitModal.email)}&verified=true`, { replace: true });
+    } catch (err: any) {
+      setSplitModal(prev => ({
+        ...prev,
+        loading: false,
+        error: getApiErrorMessage(err, 'Mã OTP không chính xác hoặc đã hết hạn.'),
+      }));
     }
   };
 
@@ -527,6 +601,107 @@ export const RegisterPage: React.FC = () => {
           </Link>
         </div>
       </main>
+
+      {/* Modal Tách tài khoản riêng bằng OTP */}
+      <Modal
+        open={splitModal.visible}
+        onCancel={() => setSplitModal(prev => ({ ...prev, visible: false }))}
+        footer={null}
+        centered
+        destroyOnClose
+      >
+        <div className="p-2 text-slate-800">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-sky-100 text-sky-700">
+            <TeamOutlined className="text-2xl" />
+          </div>
+
+          <h3 className="mt-4 text-center text-lg font-bold text-slate-900">
+            {splitModal.otpSent ? 'Xác thực để tách tài khoản' : 'Email đã được liên kết tài khoản'}
+          </h3>
+
+          {!splitModal.otpSent ? (
+            <div className="mt-3 text-center text-sm text-slate-600 space-y-3">
+              <p>
+                Email <span className="font-semibold text-slate-800">{splitModal.email}</span> hiện đang là email phụ của tài khoản{' '}
+                <span className="font-semibold text-sky-800">{splitModal.maskedPrimaryEmail || 'khác'}</span>.
+              </p>
+              <p className="text-xs text-slate-500">
+                Bạn có thể đăng nhập ngay bằng email này với mật khẩu của bạn, hoặc tách ra để tạo tài khoản riêng độc lập.
+              </p>
+
+              {splitModal.error && (
+                <div className="rounded-lg bg-rose-50 p-2.5 text-xs text-rose-700 font-medium">
+                  {splitModal.error}
+                </div>
+              )}
+
+              <div className="mt-6 flex flex-col gap-2.5 pt-2">
+                <button
+                  type="button"
+                  disabled={splitModal.loading}
+                  onClick={handleRequestSplitOtp}
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0C4A6E] px-4 text-sm font-semibold text-white hover:bg-[#075985] transition-all disabled:opacity-60 cursor-pointer"
+                >
+                  {splitModal.loading ? 'Đang gửi mã...' : 'Tách thành tài khoản riêng (Gửi OTP)'}
+                </button>
+
+                <Link
+                  to={`/login?email=${encodeURIComponent(splitModal.email)}`}
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all"
+                >
+                  Đăng nhập với email này
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3 text-sm text-slate-600 space-y-3">
+              <p className="text-center">
+                Mã OTP 6 số đã được gửi tới <span className="font-semibold text-slate-800">{splitModal.email}</span>. Vui lòng kiểm tra hộp thư.
+              </p>
+
+              <div className="mt-4">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Mã OTP (6 chữ số)
+                </label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  placeholder="Ví dụ: 123456"
+                  value={splitModal.otp}
+                  onChange={e => setSplitModal(prev => ({ ...prev, otp: e.target.value.replace(/\D/g, '') }))}
+                  className="h-11 w-full rounded-lg border border-slate-300 px-3.5 text-center text-lg font-mono tracking-widest text-slate-900 focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-600/20"
+                />
+              </div>
+
+              {splitModal.error && (
+                <div className="rounded-lg bg-rose-50 p-2.5 text-xs text-rose-700 font-medium">
+                  {splitModal.error}
+                </div>
+              )}
+
+              <div className="mt-5 flex flex-col gap-2.5">
+                <button
+                  type="button"
+                  disabled={splitModal.loading || splitModal.otp.length < 6}
+                  onClick={handleConfirmSplitRegister}
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0C4A6E] px-4 text-sm font-semibold text-white hover:bg-[#075985] transition-all disabled:opacity-60 cursor-pointer"
+                >
+                  {splitModal.loading ? 'Đang xác thực...' : 'Xác nhận & Tạo tài khoản'}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={splitModal.loading}
+                  onClick={handleRequestSplitOtp}
+                  className="text-xs text-sky-700 hover:text-sky-800 underline text-center cursor-pointer py-1"
+                >
+                  Gửi lại mã OTP
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };

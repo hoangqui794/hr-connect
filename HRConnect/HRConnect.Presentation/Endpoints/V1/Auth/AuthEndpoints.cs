@@ -11,6 +11,7 @@ using HRConnect.Application.Features.Auth.Commands.RefreshToken;
 using HRConnect.Application.Features.Auth.Commands.RegisterAffiliate;
 using HRConnect.Application.Features.Auth.Commands.RegisterCandidate;
 using HRConnect.Application.Features.Auth.Commands.RegisterClient;
+using HRConnect.Application.Features.Auth.Commands.SplitAccount;
 using HRConnect.Application.Features.Auth.Commands.ResendPasswordResetOtp;
 using HRConnect.Application.Features.Auth.Commands.ResendRegistrationOtp;
 using HRConnect.Application.Features.Auth.Commands.ResetPassword;
@@ -61,7 +62,8 @@ public static class AuthEndpoints
                 {
                     success = false,
                     code = ex.ErrorCode,
-                    message = ex.Message
+                    message = ex.Message,
+                    details = ex.Details
                 });
             }
             catch (BadRequestException ex)
@@ -115,7 +117,8 @@ public static class AuthEndpoints
                 {
                     success = false,
                     code = ex.ErrorCode,
-                    message = ex.Message
+                    message = ex.Message,
+                    details = ex.Details
                 });
             }
             catch (BadRequestException ex)
@@ -169,7 +172,8 @@ public static class AuthEndpoints
                 {
                     success = false,
                     code = ex.ErrorCode,
-                    message = ex.Message
+                    message = ex.Message,
+                    details = ex.Details
                 });
             }
             catch (BadRequestException ex)
@@ -793,6 +797,52 @@ public static class AuthEndpoints
         .WithTags("Auth")
         .WithName("GetCurrentUserLegacy")
         .ExcludeFromDescription();
+
+        // 13. Yêu cầu mã OTP để tách email phụ thành tài khoản riêng
+        group.MapPost("/request-split-otp", async (
+            [FromBody] RequestSplitOtpCommand command,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                var result = await sender.Send(command, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("RequestSplitOtp")
+        .WithSummary("Gửi mã OTP để tách email phụ thành tài khoản riêng")
+        .Produces<RequestSplitOtpResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest);
+
+        // 14. Xác thực OTP và hoàn tất tách tài khoản + đăng ký tài khoản mới
+        group.MapPost("/confirm-split-register", async (
+            [FromBody] ConfirmSplitRegisterCommand command,
+            [FromServices] ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                var result = await sender.Send(command, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (ConflictException ex)
+            {
+                return Results.Conflict(new { success = false, message = ex.Message });
+            }
+        })
+        .WithName("ConfirmSplitRegister")
+        .WithSummary("Xác thực OTP và tách email phụ thành tài khoản mới")
+        .Produces<ConfirmSplitRegisterResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest);
 
         return app;
     }
