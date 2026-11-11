@@ -57,18 +57,24 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({ 
       trigger={['click']}
       placement="bottomRight"
       popupRender={() => (
-        <div role="menu" aria-label="Tài khoản" className="w-[242px] rounded-lg border border-solid border-gray-200 bg-white py-1.5 text-[14px] shadow-[0_8px_24px_rgba(15,23,42,0.12)] [line-height:normal]">
-          <div className="border-0 border-b border-solid border-slate-100 px-3.5 pb-2.5 pt-2">
-            <div className="truncate font-semibold text-gray-800">{name}</div>
-            <div className="truncate text-[12px] text-gray-500">{user?.email}</div>
+        <div role="menu" aria-label="Tài khoản" className="w-[248px] rounded-xl border border-solid border-slate-200 bg-white py-1.5 text-[14px] shadow-[0_12px_32px_rgba(15,23,42,0.14)] [line-height:normal]">
+          <div className="border-0 border-b border-solid border-slate-100 px-4 pb-3 pt-2.5">
+            <div className="truncate font-bold text-slate-900">{name}</div>
+            <div className="truncate text-[12px] text-slate-500">{user?.email}</div>
           </div>
-          {items.map((item) => (
-            <Link key={item.to} role="menuitem" to={item.to} onClick={() => setOpen(false)} className={itemClass}>
-              {item.label}
-              {Boolean(item.count) && <span className="text-gray-500">{item.count}</span>}
-            </Link>
-          ))}
-          <button type="button" role="menuitem" onClick={() => void signOut()} className={`${itemClass} !border-t !border-solid !border-slate-100 !text-red-700`}>Đăng xuất</button>
+          <div className="py-1">
+            {items.map((item) => (
+              <Link key={item.to} role="menuitem" to={item.to} onClick={() => setOpen(false)} className="flex w-full cursor-pointer items-center justify-between gap-3 border-0 bg-transparent px-4 py-2 text-left text-[13.5px] font-medium text-slate-700 no-underline transition-colors hover:bg-sky-50 hover:text-sky-700">
+                <span>{item.label}</span>
+                {Boolean(item.count) && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11.5px] font-semibold text-slate-600">{item.count}</span>}
+              </Link>
+            ))}
+          </div>
+          <div className="border-0 border-t border-solid border-slate-100 pt-1">
+            <button type="button" role="menuitem" onClick={() => void signOut()} className="flex w-full cursor-pointer items-center justify-between gap-3 border-0 bg-transparent px-4 py-2 text-left text-[13.5px] font-semibold text-rose-600 transition-colors hover:bg-rose-50">
+              Đăng xuất
+            </button>
+          </div>
         </div>
       )}
     >
@@ -76,15 +82,15 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({ 
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
-        className={`flex h-11 cursor-pointer items-center gap-2 border-0 bg-transparent px-2 text-[14px] text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${className}`}
+        className={`flex h-10 cursor-pointer items-center gap-2.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[13.5px] font-medium text-white transition-all hover:bg-white/20 hover:border-white/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${className}`}
       >
         {getAvatarImageUrl(user?.avatar) ? (
-          <AccountAvatar name={name} avatar={user?.avatar} size={30} />
+          <AccountAvatar name={name} avatar={user?.avatar} size={28} />
         ) : (
-          <span aria-hidden className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-sky-100 text-[12px] font-bold text-[#0C4A6E]">{getInitials(name)}</span>
+          <span aria-hidden className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-[12px] font-bold text-[#0369A1] shadow-xs">{getInitials(name)}</span>
         )}
         <span className="hidden max-w-[170px] truncate sm:block">{name}</span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="hidden sm:block"><path d="M6 9l6 6 6-6" /></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="hidden text-sky-200 sm:block"><path d="M6 9l6 6 6-6" /></svg>
       </button>
     </Dropdown>
   );

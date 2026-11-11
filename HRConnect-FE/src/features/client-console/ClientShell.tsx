@@ -133,7 +133,7 @@ export const ClientShell: React.FC = () => {
               type="primary"
               icon={<PlusOutlined />}
               onClick={() => navigate('/client/jobs/create')}
-              className="hidden sm:inline-flex !bg-[#C2410C] hover:!bg-[#9A3412] !text-white !rounded-lg !border-0 !shadow-none font-bold transition-[background-color,transform] duration-150 active:scale-[0.97] !h-10 !px-4"
+              className="hidden sm:inline-flex !bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !text-white !rounded-lg !border-0 !shadow-sm hover:!shadow-md hover:!shadow-sky-500/25 font-bold transition-all duration-150 active:scale-[0.97] !h-10 !px-4"
             >
               Đăng tin
             </Button>

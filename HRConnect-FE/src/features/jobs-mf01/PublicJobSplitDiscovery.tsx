@@ -149,32 +149,45 @@ const JobRow: React.FC<{ job: Job; fit?: number; canSave: boolean; saved: boolea
           </div>
         )}
       </div>
-      <div className="flex w-full flex-col items-start gap-2 sm:w-[180px] sm:flex-none sm:items-end sm:text-right">
+      <div className="flex w-full flex-col items-start gap-2 sm:w-[210px] sm:flex-none sm:items-end sm:text-right">
         {fit !== undefined && (
-          <span className="rounded border border-solid border-[#CBD5E1] bg-[#F8FAFC] px-2 py-0.5 text-[12px] font-semibold text-[#1E293B]">Phù hợp {Math.round(fit)}%</span>
+          <span className="rounded-md border border-solid border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[12px] font-semibold text-sky-800">Phù hợp {Math.round(fit)}%</span>
         )}
-        <span className="text-[12px] text-[#6B7280]">
+        <span className="text-[12px] text-slate-500">
           {postedText(job.postedAt)}{deadline ? ` · Hạn ${dayjs(deadline).format('DD/MM')}` : ''}
         </span>
-        <div className="flex gap-1.5 sm:mt-auto">
+        <div className="flex items-center gap-2 sm:mt-auto">
           {canSave && (
             <button
               type="button"
               aria-label={saved ? `Bỏ lưu ${job.title}` : `Lưu ${job.title}`}
               aria-pressed={saved}
               onClick={onSave}
-              className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl border border-solid border-[#CBD5E1] bg-white text-[#475569] transition-colors hover:bg-[#F8FAFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E]"
+              className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-solid border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:border-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill={saved ? '#C2410C' : 'none'} stroke={saved ? '#C2410C' : 'currentColor'} strokeWidth="1.8" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill={saved ? '#E11D48' : 'none'} stroke={saved ? '#E11D48' : 'currentColor'} strokeWidth="1.8" aria-hidden="true">
                 <path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z" />
               </svg>
             </button>
           )}
           <Link
             to={href}
-            className={`flex h-11 items-center rounded-xl px-5 font-bold no-underline transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E] ${applied ? 'border border-solid border-[#86EFAC] bg-[#F0FDF4] text-[#166534] hover:bg-[#DCFCE7] hover:text-[#166534]' : 'bg-[#C2410C] text-white hover:bg-[#9A3412] hover:text-white'}`}
+            className={`inline-flex h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-xl px-4 text-[13.5px] font-bold no-underline transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 ${
+              applied
+                ? 'border border-solid border-emerald-200 bg-emerald-50 text-emerald-700 shadow-2xs hover:bg-emerald-100 hover:text-emerald-800'
+                : 'bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-sm shadow-blue-500/20 hover:from-sky-400 hover:to-blue-500 hover:shadow-md hover:shadow-blue-500/30 hover:text-white active:scale-[0.98]'
+            }`}
           >
-            {action}
+            {applied ? (
+              <span className="flex items-center gap-1.5 whitespace-nowrap font-semibold">
+                <svg className="h-4 w-4 shrink-0 text-emerald-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                Đã ứng tuyển
+              </span>
+            ) : (
+              action
+            )}
           </Link>
         </div>
       </div>
@@ -397,7 +410,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
       <Navbar />
       <section aria-label="Tìm kiếm việc làm" className="border-0 border-b border-solid border-[#E2E8F0] bg-white">
         <div className="mx-auto max-w-[928px] px-4 py-4 sm:px-6">
-          <form role="search" onSubmit={submitSearch} className="flex flex-wrap overflow-hidden rounded-lg border border-solid border-[#CBD5E1] bg-white transition-colors focus-within:border-[#0C4A6E]">
+          <form role="search" onSubmit={submitSearch} className="flex flex-wrap overflow-hidden rounded-lg border border-solid border-[#CBD5E1] bg-white transition-colors focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-100">
             <label className="relative box-content flex flex-[3_1_320px] items-center gap-2.5 px-3 text-[#6B7280]">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
               <span className={SR_ONLY}>Từ khóa</span>
@@ -431,7 +444,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                 popupMatchSelectWidth={false}
               />
             </div>
-            <button type="submit" className={`${FONT} h-[44px] cursor-pointer border-0 bg-[#C2410C] px-[22px] text-[14px] font-bold text-white transition-colors hover:bg-[#9A3412] active:bg-[#7C2D12] max-sm:w-full`}>Tìm việc</button>
+            <button type="submit" className={`${FONT} h-[44px] cursor-pointer border-0 bg-gradient-to-r from-sky-500 to-blue-600 px-[24px] text-[14px] font-bold text-white shadow-sm shadow-blue-500/20 transition-all hover:from-sky-400 hover:to-blue-500 hover:shadow-md hover:shadow-blue-500/30 active:scale-[0.98] max-sm:w-full`}>Tìm việc</button>
           </form>
           {popularSkills.length > 0 && (
             <p className="m-0 mt-2.5 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[13px] leading-none text-[#475569]">
@@ -506,7 +519,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                       role="radio"
                       aria-checked={on}
                       onClick={() => setExpDraft(on ? '' : level.key)}
-                      className={`${FONT} min-h-[36px] cursor-pointer rounded-full border border-solid px-3 text-[13px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E] max-lg:min-h-[44px] ${on ? 'border-[#0C4A6E] bg-[#E0F2FE] text-[#0C4A6E]' : 'border-[#CBD5E1] bg-white text-[#334155] hover:border-[#94A3B8]'}`}
+                      className={`${FONT} min-h-[36px] cursor-pointer rounded-full border border-solid px-3 text-[13px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 max-lg:min-h-[44px] ${on ? 'border-sky-500 bg-sky-50 text-sky-700 font-semibold' : 'border-[#CBD5E1] bg-white text-[#334155] hover:border-[#94A3B8]'}`}
                     >
                       {level.label}
                     </button>
@@ -545,7 +558,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                 </label>
               ))}
             </fieldset>
-            <button type="button" onClick={applyFilters} className={`${FONT} h-11 cursor-pointer rounded-xl border-0 bg-[#0C4A6E] text-[14px] font-bold text-white transition-colors hover:bg-[#075985] active:bg-[#0B3A57]`}>Áp dụng</button>
+            <button type="button" onClick={applyFilters} className={`${FONT} h-11 cursor-pointer rounded-xl border-0 bg-gradient-to-r from-sky-500 to-blue-600 px-5 text-[14px] font-bold text-white shadow-sm shadow-blue-500/25 transition-all hover:from-sky-400 hover:to-blue-500 hover:shadow-md hover:shadow-blue-500/35 active:scale-[0.98]`}>Áp dụng</button>
           </aside>
 
           <section aria-labelledby="results" className="w-full min-w-0 flex-1">
@@ -610,7 +623,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                       type="button"
                       aria-current={p === page ? 'page' : undefined}
                       onClick={() => goToPage(p)}
-                      className={`${FONT} ${p === page ? `${PAGE_BUTTON} h-10 w-10 cursor-pointer border-0 bg-[#0C4A6E] font-semibold text-white` : PAGE_OTHER}`}
+                      className={`${FONT} ${p === page ? `${PAGE_BUTTON} h-10 w-10 cursor-pointer border-0 bg-gradient-to-r from-sky-500 to-blue-600 font-bold text-white shadow-xs` : PAGE_OTHER}`}
                     >
                       {p}
                     </button>

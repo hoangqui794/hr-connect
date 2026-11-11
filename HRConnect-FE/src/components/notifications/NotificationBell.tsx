@@ -210,7 +210,7 @@ const CANDIDATE_ACTION_CATEGORIES = ['Phỏng vấn', 'Offer', 'Giới thiệu']
 const CANDIDATE_CATEGORY_COLOR: Record<string, string> = {
   'Phỏng vấn': '#6D28D9',
   Offer: '#047857',
-  'Giới thiệu': '#C2410C',
+  'Giới thiệu': '#0284C7',
   'Việc làm gợi ý': '#B45309',
   'Đơn ứng tuyển': '#0369A1',
   CV: '#0369A1',
@@ -331,7 +331,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
             type="button"
             disabled={markAllReadMutation.isPending}
             onClick={() => markAllReadMutation.mutate()}
-            className="min-h-[32px] cursor-pointer border-0 bg-transparent p-0 text-[13px] font-semibold text-[#0C4A6E] hover:underline disabled:opacity-60"
+            className="min-h-[32px] cursor-pointer border-0 bg-transparent p-0 text-[13px] font-semibold text-sky-600 hover:text-sky-700 hover:underline disabled:opacity-60"
           >
             Đánh dấu đã đọc hết
           </button>
@@ -353,7 +353,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
               aria-selected={active}
               onClick={() => setCandidateTab(tab.key as CandidateTab)}
               className={`min-h-[40px] cursor-pointer border-0 border-b-2 border-solid bg-transparent p-0 text-[13px] transition-colors ${
-                active ? 'border-[#0C4A6E] font-bold text-[#0F172A]' : 'border-transparent font-medium text-[#475569] hover:text-[#0F172A]'
+                active ? 'border-sky-600 font-bold text-sky-700' : 'border-transparent font-medium text-[#475569] hover:text-[#0F172A]'
               }`}
             >
               {tab.label}
@@ -409,7 +409,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
                 </span>
                 <span className="mt-0.5 line-clamp-2 block text-[13px] leading-relaxed text-[#475569]">{item.message}</span>
                 {hasRoute && (
-                  <span className="mt-1.5 inline-block text-[13px] font-semibold text-[#0C4A6E] underline underline-offset-[3px]">Xem chi tiết</span>
+                  <span className="mt-1.5 inline-block text-[13px] font-semibold text-sky-600 underline underline-offset-[3px]">Xem chi tiết</span>
                 )}
               </button>
             );
@@ -418,7 +418,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
       </div>
 
       {isCandidate && <div className="flex items-center justify-between border-0 border-t border-solid border-[#E2E8F0] px-4">
-        <Link to="/candidate/notifications" onClick={() => setOpen(false)} className="inline-flex min-h-[44px] items-center text-[13px] font-semibold text-[#0C4A6E] no-underline hover:underline">
+        <Link to="/candidate/notifications" onClick={() => setOpen(false)} className="inline-flex min-h-[44px] items-center text-[13px] font-semibold text-sky-600 no-underline hover:text-sky-700 hover:underline">
           Xem tất cả thông báo
         </Link>
         <Link to="/candidate/profile" onClick={() => setOpen(false)} className="inline-flex min-h-[44px] items-center text-[13px] text-[#475569] no-underline hover:underline">

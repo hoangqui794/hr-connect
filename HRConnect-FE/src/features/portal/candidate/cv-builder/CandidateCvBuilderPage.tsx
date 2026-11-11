@@ -43,7 +43,7 @@ import {
 import './cv-builder.css';
 
 const DEFAULT_PRESENTATION: CvPresentationConfig = {
-  accentColor: '#0C4A6E',
+  accentColor: '#0284C7',
   density: 'normal',
   fontFamily: 'BE_VIETNAM_PRO',
   layout: 'ats',
@@ -640,7 +640,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
 
   // ── STEP 2: TRÌNH SOẠN THẢO CV (PDF Page 20) ──
   return (
-    <div className="candidate-cv-builder-page flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#EEF2F6] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[#0F172A]">
+    <div className="candidate-cv-builder-page flex min-h-screen w-full flex-1 flex-col bg-[#EEF2F6] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[#0F172A]">
       {/* 1. TOPBAR + FORMATTING SUB-BAR */}
       <CvTopbar
         title={title}
@@ -696,7 +696,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
       )}
 
       {/* 2. MAIN WORKSPACE: LEFT SECTION CARD + LIVE A4 PAPER */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="flex-1 w-full">
         <div className="mx-auto flex w-full max-w-[1440px] flex-col items-start gap-6 px-4 py-5 pb-24 sm:px-6 lg:flex-row lg:gap-10">
           {/* Left Floating Card: "Các mục trong CV" */}
           <CvSidebarTools
@@ -799,7 +799,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 block
-                className="!h-10 !rounded-xl !bg-[#0C4A6E] font-semibold hover:!bg-[#075985]"
+                className="!h-10 !rounded-xl !border-0 !bg-gradient-to-r !from-sky-500 !to-blue-600 font-semibold hover:!from-sky-600 hover:!to-blue-700 shadow-sm"
               >
                 Mở xem file PDF vừa tạo
               </Button>

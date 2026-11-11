@@ -32,9 +32,9 @@ const EVIDENCE_LABEL: Record<string, string> = {
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 const CARD = 'rounded-lg border border-solid border-[#E5E7EB] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition-all duration-200';
-const LINK = 'text-[#0369A1] no-underline transition-colors duration-200 hover:text-[#075985] hover:underline';
-const PRIMARY_BTN = `${FONT} inline-flex h-10 cursor-pointer items-center justify-center rounded-md border-0 bg-[#0C4A6E] px-4 text-[14px] font-semibold text-white transition-all duration-200 hover:bg-[#075985] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`;
-const OUTLINE_NAVY_BTN = `${FONT} inline-flex h-10 shrink-0 cursor-pointer items-center justify-center rounded-md border border-solid border-[#0C4A6E] bg-white px-4 text-[14px] font-semibold text-[#0C4A6E] transition-all duration-200 hover:bg-[#F0F9FF] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`;
+const LINK = 'text-sky-600 no-underline transition-colors duration-200 hover:text-sky-700 hover:underline font-semibold';
+const PRIMARY_BTN = `${FONT} inline-flex h-10 cursor-pointer items-center justify-center rounded-xl border-0 bg-gradient-to-r from-sky-500 to-blue-600 px-4 text-[14px] font-bold text-white shadow-sm shadow-blue-500/20 transition-all duration-200 hover:from-sky-400 hover:to-blue-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`;
+const OUTLINE_NAVY_BTN = `${FONT} inline-flex h-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-solid border-sky-600 bg-white px-4 text-[14px] font-semibold text-sky-700 transition-all duration-200 hover:bg-sky-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`;
 const OUTLINE_DANGER_BTN = `${FONT} inline-flex h-9 shrink-0 cursor-pointer items-center justify-center rounded-md border border-solid border-[#FCA5A5] bg-white px-3.5 text-[13px] font-medium text-[#B91C1C] transition-all duration-200 hover:bg-[#FEF2F2] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`;
 const SECONDARY_BTN = `${FONT} inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-solid border-[#D1D5DB] bg-white px-4 text-[14px] font-medium text-[#1F2937] transition-all duration-200 hover:bg-[#F9FAFB] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`;
 const INPUT = `${FONT} h-10 w-full rounded-md border border-solid border-[#D1D5DB] bg-white px-3.5 text-[14px] text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-all duration-200 focus:border-[#0369A1] focus:ring-2 focus:ring-[#0369A1]/15`;
@@ -439,7 +439,7 @@ export const CandidateIdentityPage: React.FC = () => {
                                 type="button"
                                 disabled={makePrimary.isPending && makePrimary.variables?.emailIdentityId === identity.emailIdentityId}
                                 aria-label={`Đặt ${identity.email} làm email chính`}
-                                className={`${FONT} inline-flex h-9 shrink-0 cursor-pointer items-center justify-center rounded-md border border-solid border-[#0C4A6E] bg-white px-3.5 text-[13px] font-medium text-[#0C4A6E] transition-all duration-200 hover:bg-[#F0F9FF] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`}
+                                className={`${FONT} inline-flex h-9 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-solid border-sky-600 bg-white px-3.5 text-[13px] font-semibold text-sky-700 transition-all duration-200 hover:bg-sky-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`}
                               >
                                 {makePrimary.isPending && makePrimary.variables?.emailIdentityId === identity.emailIdentityId
                                   ? 'Đang đổi…'

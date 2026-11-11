@@ -32,7 +32,7 @@ export interface CvTopbarProps {
 }
 
 const COLOR_SWATCHES = [
-  { name: 'Xanh đậm', value: '#0C4A6E' },
+  { name: 'Xanh Azure', value: '#0284C7' },
   { name: 'Xanh lá', value: '#166534' },
   { name: 'Đỏ mận', value: '#9F1239' },
   { name: 'Xám than', value: '#334155' },
@@ -81,7 +81,7 @@ export const CvTopbar: React.FC<CvTopbarProps> = ({
   onBack,
   templateName = 'Tiêu chuẩn',
   onOpenTemplateGallery,
-  accentColor = '#0C4A6E',
+  accentColor = '#0284C7',
   onAccentColorChange,
   fontFamily = 'BE_VIETNAM_PRO',
   onFontFamilyChange,
@@ -147,7 +147,7 @@ export const CvTopbar: React.FC<CvTopbarProps> = ({
     FONT_OPTIONS.find((opt) => opt.value === fontFamily) || FONT_OPTIONS[0];
 
   return (
-    <header className="w-full shrink-0 select-none bg-white font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[#0F172A] z-30">
+    <header className="sticky top-0 z-30 w-full shrink-0 select-none bg-white font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[#0F172A] shadow-xs backdrop-blur-md">
       {/* ── ROW 1: Document Title + Auto-save Status + Action Buttons (PDF Page 20) ── */}
       <div className="border-0 border-b border-solid border-[#E2E8F0]">
         <div className="mx-auto flex h-[54px] w-full max-w-[1440px] items-center justify-between gap-3 px-4 sm:px-6">
@@ -236,7 +236,7 @@ export const CvTopbar: React.FC<CvTopbarProps> = ({
             <button
               type="button"
               onClick={onDownloadPdf || onPreview}
-              className="hidden h-[34px] cursor-pointer rounded-[7px] border border-solid border-[#0C4A6E] bg-white px-3.5 font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[13px] font-semibold text-[#0C4A6E] transition-colors duration-150 hover:bg-[#F0F9FF] sm:inline-flex sm:items-center"
+              className="hidden h-[34px] cursor-pointer rounded-[7px] border border-solid border-sky-600 bg-white px-3.5 font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[13px] font-semibold text-sky-700 transition-colors duration-150 hover:bg-sky-50 sm:inline-flex sm:items-center"
             >
               Tải PDF
             </button>
@@ -245,7 +245,7 @@ export const CvTopbar: React.FC<CvTopbarProps> = ({
               type="button"
               disabled={isSaving}
               onClick={onSave}
-              className="h-[34px] cursor-pointer rounded-[7px] border-0 bg-[#0C4A6E] px-3.5 font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[13px] font-semibold text-white transition-colors duration-150 hover:bg-[#075985] disabled:cursor-not-allowed disabled:opacity-60"
+              className="h-[34px] cursor-pointer rounded-[7px] border-0 bg-gradient-to-r from-sky-500 to-blue-600 px-3.5 font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[13px] font-semibold text-white shadow-xs transition-all duration-150 hover:from-sky-600 hover:to-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSaving ? 'Đang lưu…' : 'Lưu vào Kho CV'}
             </button>

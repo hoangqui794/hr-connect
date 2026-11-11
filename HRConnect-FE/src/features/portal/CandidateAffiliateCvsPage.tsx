@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App as AntApp, Pagination, Skeleton } from 'antd';
+import { FilePdfOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { candidateAffiliateCvApi } from '@/services/api/mf02Api';
@@ -17,10 +18,10 @@ import { candidateKeys, useCandidateCvs, useOpenSignedUrl } from './CandidatePag
 import { CandidateAccountFrame } from './candidate/CandidateAccountFrame';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
-const LINK = 'text-[#0369A1] no-underline transition-colors duration-200 hover:text-[#075985] hover:underline';
+const LINK = 'text-sky-600 no-underline transition-colors duration-200 hover:text-sky-700 hover:underline font-semibold';
 const ACTION = `${FONT} inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-solid border-[#D1D5DB] bg-white px-3.5 text-[14px] text-[#1F2937] no-underline transition-all duration-200 hover:bg-[#F9FAFB] hover:text-[#111827] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`;
-const PRIMARY_ROW_BTN = `${FONT} inline-flex h-10 cursor-pointer items-center justify-center rounded-md border-0 bg-[#0C4A6E] px-4 text-[14px] font-semibold text-white no-underline transition-all duration-200 hover:bg-[#075985] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`;
-const PRIMARY_BTN = `${FONT} inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-md border-0 bg-[#0C4A6E] px-4 text-[14px] font-semibold text-white transition-all duration-200 hover:bg-[#075985] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`;
+const PRIMARY_ROW_BTN = `${FONT} inline-flex h-10 cursor-pointer items-center justify-center rounded-xl border-0 bg-gradient-to-r from-sky-500 to-blue-600 px-4 text-[14px] font-bold text-white shadow-sm shadow-blue-500/20 no-underline transition-all duration-200 hover:from-sky-400 hover:to-blue-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`;
+const PRIMARY_BTN = `${FONT} inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-xl border-0 bg-gradient-to-r from-sky-500 to-blue-600 px-4 text-[14px] font-bold text-white shadow-sm shadow-blue-500/20 transition-all duration-200 hover:from-sky-400 hover:to-blue-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`;
 const SECONDARY_BTN = `${FONT} inline-flex h-11 w-full cursor-pointer items-center justify-center rounded-md border border-solid border-[#D1D5DB] bg-white px-4 text-[14px] font-medium text-[#1F2937] transition-all duration-200 hover:bg-[#F9FAFB] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`;
 const CARD = 'rounded-lg border border-solid border-[#E5E7EB] bg-white';
 
@@ -58,12 +59,18 @@ const PartnerCvRow: React.FC<{
 
   return (
     <article className="flex flex-wrap items-center gap-[14px] border-0 border-b border-solid border-[#F1F5F9] p-4 transition-colors duration-200 last:border-b-0 hover:bg-[#F8FAFC]/60">
-      <span
-        aria-hidden
-        className="flex h-14 w-11 shrink-0 items-end justify-center rounded border border-solid border-[#CBD5E1] bg-white pb-1.5 text-[10px] font-bold text-[#475569]"
+      <div
+        aria-hidden="true"
+        className="relative flex h-14 w-11 shrink-0 flex-col items-center justify-between rounded-md border border-rose-200 bg-rose-50/80 p-1 shadow-xs select-none"
       >
-        PDF
-      </span>
+        <span className="absolute right-0 top-0 h-2.5 w-2.5 rounded-bl border-b border-l border-rose-200 bg-white" />
+        <div className="mt-1 flex flex-1 items-center justify-center">
+          <FilePdfOutlined className="text-[20px] text-rose-600" />
+        </div>
+        <span className="w-full rounded-[3px] bg-rose-100 py-0.5 text-center text-[9px] font-extrabold uppercase tracking-wider text-rose-800">
+          PDF
+        </span>
+      </div>
       <div className="min-w-0 flex-[1_1_200px]">
         <div className="flex flex-wrap items-center gap-2">
           <Link
@@ -170,7 +177,7 @@ export const CandidateAffiliateCvsPage: React.FC = () => {
       <nav aria-label="Loại CV" className="mb-3 flex flex-wrap gap-1 border-0 border-b border-solid border-[#E5E7EB]">
         <Link
           to="/candidate/cvs"
-          className="relative -mb-px flex h-11 items-center border-0 border-b-2 border-solid border-transparent px-3 text-[#4B5563] no-underline transition-colors duration-200 hover:text-[#075985]"
+          className="relative -mb-px flex h-11 items-center border-0 border-b-2 border-solid border-transparent px-3 text-[#4B5563] no-underline transition-colors duration-200 hover:text-sky-700"
         >
           <span className="relative inline-flex flex-col items-center">
             <span aria-hidden="true" className="invisible select-none font-semibold">
@@ -183,7 +190,7 @@ export const CandidateAffiliateCvsPage: React.FC = () => {
         </Link>
         <span
           aria-current="page"
-          className="relative -mb-px flex h-11 items-center border-0 border-b-2 border-solid border-[#0369A1] px-3 font-semibold text-[#075985]"
+          className="relative -mb-px flex h-11 items-center border-0 border-b-2 border-solid border-sky-600 px-3 font-bold text-sky-700"
         >
           CV đối tác gửi kèm giới thiệu ({totalCount})
         </span>

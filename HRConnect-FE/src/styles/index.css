@@ -2,11 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── CSS Custom Properties (High-End Modern Light SaaS - Emerald Tech) ─── */
+/* ─── CSS Custom Properties (High-End Modern Light SaaS - Sapphire & Azure) ─── */
 :root {
-  --brand-primary: #2563eb;
-  --brand-primary-dark: #1d4ed8;
-  --brand-primary-light: #3b82f6;
+  --brand-primary: #0284c7;
+  --brand-primary-dark: #0369a1;
+  --brand-primary-light: #0ea5e9;
   --sidebar-bg: #ffffff;
   --sidebar-width: 240px;
   --sidebar-collapsed-width: 64px;
@@ -551,16 +551,9 @@ body {
   .hrc-bell, .hrc-bell-ring .anticon, .hrconnect-candidate-notification-popover button.block { animation: none !important; transition: none !important; }
 }
 
-/* Page change from the candidate header: the header stays put, the page fades and rises a little.
- * Uses the View Transitions API (react-router `viewTransition`); browsers without it just switch. */
-.hrc-site-header { view-transition-name: hrc-site-header; }
-::view-transition-old(root) { animation: hrc-page-out 140ms ease-in both; }
-::view-transition-new(root) { animation: hrc-page-in 240ms ease-out both; }
-::view-transition-group(hrc-site-header) { animation: none; }
-@keyframes hrc-page-out { to { opacity: 0; } }
-@keyframes hrc-page-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+/* Page change transitions disabled to prevent layout morph / horizontal shift between pages */
+::view-transition-old(root), ::view-transition-new(root), ::view-transition-group(root) {
+  animation: none !important;
 }
 
 /* ---------------------------------------------------------------------------

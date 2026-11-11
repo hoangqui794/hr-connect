@@ -25,7 +25,7 @@ const MAX_SAVED = 100;
 const SOON_DAYS = 7;
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
-const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
+const LINK = 'text-sky-600 no-underline hover:text-sky-700 hover:underline font-semibold';
 const ACTION = 'flex h-10 items-center rounded-md px-[14px] text-[14px] font-semibold no-underline';
 
 const idOf = (item: SavedJobDto) => item.job?.jobId || item.jobId || item.savedJobId;
@@ -142,10 +142,10 @@ export const CandidateSavedJobsPage: React.FC = () => {
                 <article key={item.savedJobId || jobId} className="flex flex-wrap items-center gap-[14px] border-0 border-b border-solid border-[#F1F5F9] p-4">
                   <CompanyMark name={job.companyName} logoUrl={job.company?.logoUrl} size={58} />
                   <div className="min-w-0 flex-[1_1_320px]">
-                    <Link to={jobHref(jobId)} className="text-[15px] font-semibold text-[#111827] no-underline hover:text-[#075985] hover:underline">{title}</Link>
+                    <Link to={jobHref(jobId)} className="text-[15px] font-semibold text-[#111827] no-underline hover:text-sky-600 hover:underline">{title}</Link>
                     <div className="text-[13px] text-[#4B5563]">{[job.companyName, job.location].filter(Boolean).join(' · ')}</div>
                     <div className="mt-1 flex flex-wrap gap-[14px] text-[13px]">
-                      <span className="font-semibold text-[#C2410C]">{salaryText(job)}</span>
+                      <span className="font-semibold text-[#059669]">{salaryText(job)}</span>
                       {note && <span style={{ color: note.color }}>{note.text}</span>}
                     </div>
                   </div>
@@ -154,9 +154,9 @@ export const CandidateSavedJobsPage: React.FC = () => {
                       <button type="button" aria-label={`Bỏ lưu ${title}`} disabled={removing === jobId} className={`${FONT} h-10 cursor-pointer rounded-md border border-solid border-[#D1D5DB] bg-white px-3 text-[14px] text-[#1F2937] hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:opacity-60`}>Bỏ lưu</button>
                     </Popconfirm>
                     {isApplied(jobId) ? (
-                      <Link to={applicationId ? `/candidate/applications/${applicationId}` : '/candidate/applications'} className={`${ACTION} border border-solid border-[#86EFAC] bg-[#F0FDF4] text-[#166534] hover:bg-[#DCFCE7] hover:text-[#166534]`}>Xem đơn</Link>
+                      <Link to={applicationId ? `/candidate/applications/${applicationId}` : '/candidate/applications'} className={`${ACTION} whitespace-nowrap border border-solid border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800`}>Xem đơn</Link>
                     ) : isOpen(job) ? (
-                      <button type="button" aria-label={`Ứng tuyển ${title}`} onClick={() => setApplying(job)} className={`${ACTION} ${FONT} cursor-pointer border-0 bg-[#C2410C] text-white hover:bg-[#9A3412]`}>Ứng tuyển</button>
+                      <button type="button" aria-label={`Ứng tuyển ${title}`} onClick={() => setApplying(job)} className={`${ACTION} ${FONT} whitespace-nowrap cursor-pointer border-0 bg-gradient-to-r from-sky-500 to-blue-600 text-white transition-all hover:from-sky-400 hover:to-blue-500 shadow-sm shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/30 active:scale-[0.98]`}>Ứng tuyển</button>
                     ) : null}
                   </div>
                 </article>

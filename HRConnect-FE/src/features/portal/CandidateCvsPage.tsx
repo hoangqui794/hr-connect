@@ -7,6 +7,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App as AntApp, Input, Modal, Popconfirm, Skeleton } from 'antd';
+import { FilePdfOutlined, FileTextOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { candidateAffiliateCvApi, candidateCvApi } from '@/services/api/mf02Api';
 import { getApiErrorMessage } from '@/services/apiClient';
@@ -143,10 +144,10 @@ export const CandidateCvsPage: React.FC = () => {
         </div>
         {canCreate && (
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => navigate('/candidate/cv-builder')} className={`${FONT} h-[42px] cursor-pointer rounded-md border border-solid border-[#0C4A6E] bg-white px-4 text-[14px] font-semibold text-[#0C4A6E] hover:bg-[#F0F9FF]`}>
+            <button type="button" onClick={() => navigate('/candidate/cv-builder')} className={`${FONT} h-[42px] cursor-pointer rounded-xl border border-solid border-sky-600 bg-white px-4 text-[14px] font-semibold text-sky-700 transition-all hover:bg-sky-50 active:scale-[0.98]`}>
               Tạo CV với CV Builder
             </button>
-            <button type="button" disabled={upload.isPending} onClick={() => fileInput.current?.click()} className={`${FONT} h-[42px] cursor-pointer rounded-md border-0 bg-[#0C4A6E] px-4 text-[14px] font-semibold text-white hover:bg-[#075985] disabled:cursor-not-allowed disabled:opacity-60`}>
+            <button type="button" disabled={upload.isPending} onClick={() => fileInput.current?.click()} className={`${FONT} h-[42px] cursor-pointer rounded-xl border-0 bg-gradient-to-r from-sky-500 to-blue-600 px-4 text-[14px] font-bold text-white shadow-sm shadow-blue-500/20 transition-all hover:from-sky-400 hover:to-blue-500 hover:shadow-md hover:shadow-blue-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`}>
               {upload.isPending ? 'Đang tải lên…' : 'Tải CV lên'}
             </button>
           </div>
@@ -156,8 +157,8 @@ export const CandidateCvsPage: React.FC = () => {
       {!canView && <Alert className="!mb-3" type="error" showIcon message="Bạn không có quyền xem kho CV cá nhân." />}
 
       <nav aria-label="Loại CV" className="mb-3 flex flex-wrap gap-1 border-0 border-b border-solid border-[#E5E7EB]">
-        <span aria-current="page" className="relative -mb-px flex h-11 items-center border-0 border-b-2 border-solid border-[#0369A1] px-3 font-semibold text-[#075985]">CV của tôi ({list.length})</span>
-        <Link to="/candidate/affiliate-cvs" className="relative -mb-px flex h-11 items-center border-0 border-b-2 border-solid border-transparent px-3 text-[#4B5563] no-underline transition-colors duration-200 hover:text-[#075985]">
+        <span aria-current="page" className="relative -mb-px flex h-11 items-center border-0 border-b-2 border-solid border-sky-600 px-3 font-bold text-sky-700">CV của tôi ({list.length})</span>
+        <Link to="/candidate/affiliate-cvs" className="relative -mb-px flex h-11 items-center border-0 border-b-2 border-solid border-transparent px-3 text-[#4B5563] no-underline transition-colors duration-200 hover:text-sky-700">
           <span className="relative inline-flex flex-col items-center">
             <span aria-hidden="true" className="invisible select-none font-semibold">
               CV đối tác gửi kèm giới thiệu{partnerCvs.data !== undefined ? ` (${partnerCvs.data})` : ''}
@@ -187,11 +188,40 @@ export const CandidateCvsPage: React.FC = () => {
             const size = fileSize(cv.fileSizeBytes);
             return (
               <article key={id} className="flex flex-wrap items-center gap-[14px] border-0 border-b border-solid border-[#F1F5F9] p-4">
-                <span aria-hidden className="flex h-14 w-11 shrink-0 items-end justify-center rounded border border-solid border-[#CBD5E1] pb-1.5 text-[10px] font-bold text-[#475569]">{built ? 'CV' : 'PDF'}</span>
+                <div
+                  aria-hidden="true"
+                  className={`relative flex h-14 w-11 shrink-0 flex-col items-center justify-between rounded-md border p-1 shadow-xs select-none ${
+                    built
+                      ? 'border-sky-200 bg-sky-50/80 text-sky-700'
+                      : 'border-rose-200 bg-rose-50/80 text-rose-700'
+                  }`}
+                >
+                  <span
+                    className={`absolute right-0 top-0 h-2.5 w-2.5 rounded-bl border-b border-l bg-white ${
+                      built ? 'border-sky-200' : 'border-rose-200'
+                    }`}
+                  />
+                  <div className="mt-1 flex flex-1 items-center justify-center">
+                    {built ? (
+                      <FileTextOutlined className="text-[20px] text-sky-600" />
+                    ) : (
+                      <FilePdfOutlined className="text-[20px] text-rose-600" />
+                    )}
+                  </div>
+                  <span
+                    className={`w-full rounded-[3px] py-0.5 text-center text-[9px] font-extrabold uppercase tracking-wider ${
+                      built
+                        ? 'bg-sky-100 text-sky-800'
+                        : 'bg-rose-100 text-rose-800'
+                    }`}
+                  >
+                    {built ? 'CV' : 'PDF'}
+                  </span>
+                </div>
                 <div className="min-w-0 flex-[1_1_300px]">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-[15px] font-semibold">{title}</span>
-                    {cv.isPrimary && <span className="rounded bg-[#E0F2FE] px-2 py-0.5 text-[12px] font-semibold text-[#075985]">CV chính</span>}
+                    {cv.isPrimary && <span className="rounded-md bg-sky-50 border border-sky-200 px-2 py-0.5 text-[12px] font-bold text-sky-700">CV chính</span>}
                     {canUpdate && (
                       <button type="button" aria-label={`Đổi tên ${title}`} title="Đổi tên" onClick={() => setEditing({ cvId: id, title })} className="-my-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded border-0 bg-transparent p-0 text-[#6B7280] hover:bg-[#F3F4F6] hover:text-[#1F2937]">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4" /></svg>

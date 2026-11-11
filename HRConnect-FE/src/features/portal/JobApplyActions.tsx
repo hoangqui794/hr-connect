@@ -27,7 +27,7 @@ type Source = { kind: 'vault'; cvId: string } | { kind: 'file'; file: File };
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
 const SECONDARY = `${FONT} h-11 cursor-pointer rounded-md border border-solid border-[#D1D5DB] bg-white px-[18px] text-[14px] font-medium text-[#1F2937] hover:bg-[#F9FAFB]`;
-const PRIMARY = `${FONT} h-11 cursor-pointer rounded-md border-0 bg-[#C2410C] px-[22px] text-[14px] font-semibold text-white hover:bg-[#9A3412] disabled:cursor-not-allowed disabled:bg-[#9CA3AF]`;
+const PRIMARY = `${FONT} h-11 cursor-pointer rounded-xl border-0 bg-gradient-to-r from-sky-500 to-blue-600 px-[22px] text-[14px] font-bold text-white transition-all hover:from-sky-400 hover:to-blue-500 shadow-sm hover:shadow-md hover:shadow-blue-500/25 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-none disabled:bg-[#9CA3AF] disabled:shadow-none`;
 
 /** Contact details come from the profile; the apply API takes only a CV, so they are shown, not edited, here. */
 const ContactField: React.FC<{ label: string; value?: string | null; type?: string; wide?: boolean }> = ({ label, value, type = 'text', wide }) => (

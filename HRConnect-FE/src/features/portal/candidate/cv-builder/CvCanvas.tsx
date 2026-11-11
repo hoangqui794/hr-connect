@@ -401,7 +401,7 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
           >
             {/* Dark Navy Floating Section Action Pill (PDF Page 20: ↑ ↓ + Thêm kinh nghiệm ×) */}
             {isExperiencesActive && (
-              <div className="no-print absolute -top-[30px] right-2 z-20 flex items-center gap-2.5 rounded-[6px] bg-[#0C4A6E] px-3 py-1 text-[11.5px] font-medium text-white shadow-md">
+              <div className="no-print absolute -top-[30px] right-2 z-20 flex items-center gap-2.5 rounded-[6px] bg-slate-800 px-3 py-1 text-[11.5px] font-medium text-white shadow-md">
                 <button
                   type="button"
                   title="Di chuyển lên"

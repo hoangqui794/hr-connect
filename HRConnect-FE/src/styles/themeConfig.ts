@@ -6,12 +6,12 @@
 import { theme, type ThemeConfig } from 'antd';
 
 export const primaryBrand = {
-  primary: '#2563eb',        // Primary Action Blue (blue-600)
-  primaryHover: '#1d4ed8',   // Darker Blue for hover states (blue-700)
-  primaryActive: '#1e40af',  // Deep Blue for active states (blue-800)
-  primaryBg: '#eff6ff',      // blue-50 tint
-  primaryBorder: '#bfdbfe',  // blue-200 border
-  secondary: '#3b82f6',      // blue-500
+  primary: '#0284c7',        // Electric Azure (sky-600)
+  primaryHover: '#0369a1',   // Sapphire Deep for hover states (sky-700)
+  primaryActive: '#075985',  // Deep Ocean for active states (sky-800)
+  primaryBg: '#f0f9ff',      // sky-50 tint
+  primaryBorder: '#bae6fd',  // sky-200 border
+  secondary: '#0ea5e9',      // sky-500
   accentRuby: '#e11d48',     // Red Heart Tier (>=80%)
   accentTeal: '#0d9488',     // Strong Tier (70-79%)
   accentGreen: '#16a34a',    // Moderate Tier (60-69%)

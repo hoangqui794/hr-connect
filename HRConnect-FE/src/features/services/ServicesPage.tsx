@@ -217,7 +217,7 @@ export const ServicesPage: React.FC = () => {
               Tự đăng tin khi cần nhiều ứng viên, mua CV đã sàng lọc khi cần nguồn nhanh, hoặc để mạng lưới Affiliate tìm người cho vị trí khó và chỉ trả phí khi ứng viên đi làm.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <a href="#svc-compare" className="svc-btn inline-flex min-h-[48px] items-center rounded-lg bg-[#C2410C] px-6 font-bold text-white no-underline hover:bg-[#9A3412] hover:text-white">
+              <a href="#svc-compare" className="svc-btn inline-flex min-h-[48px] items-center rounded-lg bg-gradient-to-r from-[#0284C7] to-[#2563EB] px-6 font-bold text-white no-underline shadow-md shadow-sky-500/25 hover:from-[#0369A1] hover:to-[#1D4ED8] hover:text-white">
                 So sánh 3 dịch vụ
               </a>
               <Link to="/contact" className="svc-btn inline-flex min-h-[48px] items-center rounded-lg border border-solid border-white/50 px-6 font-semibold text-white no-underline hover:bg-white/10 hover:text-white">
@@ -228,7 +228,7 @@ export const ServicesPage: React.FC = () => {
           <div className="svc-hero-media relative aspect-[3/2] w-full max-w-[520px] flex-[1_1_380px]" aria-hidden="true">
             {/* Product illustration of the three services (no photo, no invented numbers). */}
             <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#0E5A85] to-[#0B3A57] ring-1 ring-white/10" />
-            <div className="absolute -right-6 -top-6 h-40 w-40 rounded-full bg-[#C2410C]/25 blur-2xl" />
+            <div className="absolute -right-6 -top-6 h-40 w-40 rounded-full bg-[#0284C7]/25 blur-2xl" />
             <div className="absolute -bottom-8 left-6 h-36 w-36 rounded-full bg-[#38BDF8]/20 blur-2xl" />
 
             <div className="svc-float-a absolute left-[7%] top-[10%] w-[52%] rounded-xl bg-white p-4 text-[#0F172A] shadow-[0_18px_40px_rgba(2,22,40,0.35)]">
@@ -249,9 +249,9 @@ export const ServicesPage: React.FC = () => {
             </div>
 
             <div className="svc-float-b absolute right-[6%] top-[30%] w-[54%] rounded-xl bg-[#0C4A6E] p-4 text-white shadow-[0_22px_48px_rgba(2,22,40,0.45)] ring-1 ring-white/15">
-              <span className="absolute inset-x-0 top-0 h-1 rounded-t-xl bg-[#C2410C]" />
+              <span className="absolute inset-x-0 top-0 h-1 rounded-t-xl bg-gradient-to-r from-[#0284C7] to-[#2563EB]" />
               <div className="flex items-center gap-2.5">
-                <span className="grid h-9 w-9 place-items-center rounded-lg bg-[#C2410C] text-white">
+                <span className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0113 0" /><path d="M17 11l2 2 3.5-4" /></svg>
                 </span>
                 <div>
@@ -310,10 +310,10 @@ export const ServicesPage: React.FC = () => {
               key={p.code}
               className={`svc-card relative flex flex-col gap-5 overflow-hidden rounded-xl p-7 ${p.featured ? 'bg-[#0C4A6E] text-white' : 'border border-solid border-[#E2E8F0] bg-white'}`}
             >
-              {p.featured && <span aria-hidden="true" className="svc-bar absolute inset-x-0 top-0 h-1 bg-[#C2410C]" />}
+              {p.featured && <span aria-hidden="true" className="svc-bar absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#0284C7] to-[#2563EB]" />}
               <div className="flex items-baseline justify-between gap-3">
                 <span className={`text-[40px] font-extrabold leading-none ${p.featured ? 'text-[#7DD3FC]' : 'text-[#CBD5E1]'}`}>{p.num}</span>
-                <span className={`rounded-full px-2.5 py-1 text-[12px] font-bold ${p.featured ? 'bg-[#C2410C] text-white' : 'bg-[#F1F5F9] text-[#334155]'}`}>{p.tag}</span>
+                <span className={`rounded-full px-2.5 py-1 text-[12px] font-bold ${p.featured ? 'bg-[#0284C7] text-white' : 'bg-[#F1F5F9] text-[#334155]'}`}>{p.tag}</span>
               </div>
               <div>
                 <h3 className="m-0 text-[22px] font-extrabold leading-snug">{p.title}</h3>
@@ -331,7 +331,7 @@ export const ServicesPage: React.FC = () => {
               </ul>
               <Link
                 to={p.href}
-                className={`svc-btn mt-auto flex min-h-[48px] items-center justify-center rounded-lg font-bold no-underline ${p.featured ? 'bg-[#C2410C] text-white hover:bg-[#9A3412] hover:text-white' : 'border border-solid border-[#0C4A6E] text-[#0C4A6E] hover:bg-[#F0F9FF]'}`}
+                className={`svc-btn mt-auto flex min-h-[48px] items-center justify-center rounded-lg font-bold no-underline ${p.featured ? 'bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white hover:from-[#0369A1] hover:to-[#1D4ED8] hover:text-white shadow-md shadow-sky-500/25' : 'border border-solid border-[#0C4A6E] text-[#0C4A6E] hover:bg-[#F0F9FF]'}`}
               >
                 {p.cta}
               </Link>
@@ -415,7 +415,7 @@ export const ServicesPage: React.FC = () => {
             <p className="m-0 mt-2 text-[15px] text-[#E0F2FE]">Gửi vị trí bạn cần tuyển, chúng tôi đề xuất dịch vụ và mức phí phù hợp.</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link to="/contact" className="svc-btn inline-flex min-h-[48px] items-center rounded-lg bg-[#C2410C] px-6 font-bold text-white no-underline hover:bg-[#9A3412] hover:text-white">Nhận tư vấn</Link>
+            <Link to="/contact" className="svc-btn inline-flex min-h-[48px] items-center rounded-lg bg-gradient-to-r from-[#0284C7] to-[#2563EB] px-6 font-bold text-white no-underline shadow-md shadow-sky-500/25 hover:from-[#0369A1] hover:to-[#1D4ED8] hover:text-white">Nhận tư vấn</Link>
             <Link to="/client/jobs/create" className="svc-btn inline-flex min-h-[48px] items-center rounded-lg border border-solid border-white/50 px-6 font-semibold text-white no-underline hover:bg-white/10 hover:text-white">Đăng tin ngay</Link>
           </div>
         </div>

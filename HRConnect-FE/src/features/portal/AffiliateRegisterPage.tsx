@@ -50,7 +50,7 @@ export const AffiliateRegisterPage: React.FC = () => {
   };
 
   return (
-    <ConfigProvider theme={{ token: { colorPrimary: '#C2410C', colorPrimaryHover: '#9A3412', colorLink: '#0369A1', borderRadius: 6, colorTextPlaceholder: '#6B7280', colorTextDescription: '#6B7280', fontFamily: "'Be Vietnam Pro', system-ui, sans-serif" } }}>
+    <ConfigProvider theme={{ token: { colorPrimary: '#0284C7', colorPrimaryHover: '#0369A1', colorLink: '#0369A1', borderRadius: 8, colorTextPlaceholder: '#6B7280', colorTextDescription: '#6B7280', fontFamily: "'Be Vietnam Pro', system-ui, sans-serif" } }}>
       <div className="flex min-h-screen flex-col bg-[#F7F8FA] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-gray-800">
         <header className="flex h-16 items-center bg-[#0C4A6E] px-4 sm:px-8">
           <Link to="/" className="flex items-center gap-2 text-[17px] font-bold text-white no-underline hover:text-white">

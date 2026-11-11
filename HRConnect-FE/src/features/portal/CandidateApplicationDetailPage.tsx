@@ -24,7 +24,7 @@ import { candidateKeys, useOpenSignedUrl } from './CandidatePages';
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
 const CARD = 'rounded-lg border border-solid border-[#E5E7EB] bg-white';
-const PRIMARY = `${FONT} block h-[42px] w-full cursor-pointer rounded-md border-0 bg-[#0C4A6E] px-3 text-center text-[14px] font-semibold leading-[42px] text-white no-underline hover:bg-[#075985] hover:text-white`;
+const PRIMARY = `${FONT} block h-[42px] w-full cursor-pointer rounded-xl border-0 bg-gradient-to-r from-sky-500 to-blue-600 px-3 text-center text-[14px] font-bold leading-[42px] text-white no-underline shadow-sm shadow-blue-500/20 hover:from-sky-400 hover:to-blue-500 hover:text-white active:scale-[0.98]`;
 
 /** Steps shown to the candidate, and which one each internal stage (0–6) reaches. */
 const STEPS = ['Đã nộp', 'Sàng lọc', 'Phỏng vấn', 'Offer', 'Nhận việc'];
@@ -234,7 +234,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                 <ol className="m-0 list-none p-0">
                   {events.map((event, index) => {
                     const copy = candidateTimelineEventCopy(event);
-                    const dot = index === 0 && events.length > 1 ? '#C2410C' : index === events.length - 1 ? '#9CA3AF' : '#0369A1';
+                    const dot = index === 0 && events.length > 1 ? '#0284C7' : index === events.length - 1 ? '#9CA3AF' : '#0369A1';
                     return (
                       <li key={`${event.eventType}-${event.timestamp}-${index}`} className="flex gap-3 pb-4">
                         <span aria-hidden className="mt-[5px] h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: dot }} />

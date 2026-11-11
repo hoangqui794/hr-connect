@@ -47,8 +47,8 @@ export const BUILTIN_CV_TEMPLATES: BuiltInCvTemplate[] = [
     category: 'ats',
     tags: ['ATS', 'Đơn giản', 'Mọi ngành'],
     layout: 'ats',
-    defaultColor: '#0C4A6E',
-    colors: ['#0C4A6E', '#166534', '#9F1239', '#334155'],
+    defaultColor: '#0284C7',
+    colors: ['#0284C7', '#166534', '#9F1239', '#334155'],
     hasPhoto: true,
     sample: {
       fullName: 'Trần Bảo Ngọc',
@@ -83,8 +83,8 @@ export const BUILTIN_CV_TEMPLATES: BuiltInCvTemplate[] = [
     category: 'modern',
     tags: ['Hai cột', 'Có ảnh', 'Hiện đại'],
     layout: 'modern',
-    defaultColor: '#0C4A6E',
-    colors: ['#0C4A6E', '#166534', '#9F1239', '#334155'],
+    defaultColor: '#0284C7',
+    colors: ['#0284C7', '#166534', '#9F1239', '#334155'],
     hasPhoto: true,
     sample: {
       fullName: 'Lê Hoàng Phúc',
@@ -118,8 +118,8 @@ export const BUILTIN_CV_TEMPLATES: BuiltInCvTemplate[] = [
     category: 'junior',
     tags: ['Ít kinh nghiệm', 'Có ảnh'],
     layout: 'minimal',
-    defaultColor: '#0C4A6E',
-    colors: ['#0C4A6E', '#166534', '#9F1239', '#334155'],
+    defaultColor: '#0284C7',
+    colors: ['#0284C7', '#166534', '#9F1239', '#334155'],
     hasPhoto: true,
     sample: {
       fullName: 'Phạm Thu Hà',
@@ -138,8 +138,8 @@ export const BUILTIN_CV_TEMPLATES: BuiltInCvTemplate[] = [
     category: 'ats',
     tags: ['ATS', 'Không ảnh', 'Trang trọng'],
     layout: 'classic',
-    defaultColor: '#0C4A6E',
-    colors: ['#0C4A6E', '#166534', '#9F1239', '#334155'],
+    defaultColor: '#0284C7',
+    colors: ['#0284C7', '#166534', '#9F1239', '#334155'],
     hasPhoto: false,
     sample: {
       fullName: 'Đỗ Minh Quân',
@@ -164,8 +164,8 @@ export const BUILTIN_CV_TEMPLATES: BuiltInCvTemplate[] = [
     category: 'modern',
     tags: ['Có ảnh', 'Nổi bật'],
     layout: 'executive',
-    defaultColor: '#0C4A6E',
-    colors: ['#0C4A6E', '#166534', '#9F1239', '#334155'],
+    defaultColor: '#0284C7',
+    colors: ['#0284C7', '#166534', '#9F1239', '#334155'],
     hasPhoto: true,
     sample: {
       fullName: 'Vũ Thanh Tâm',
@@ -194,8 +194,8 @@ export const BUILTIN_CV_TEMPLATES: BuiltInCvTemplate[] = [
     category: 'ats',
     tags: ['ATS', 'Nhiều kinh nghiệm'],
     layout: 'compact',
-    defaultColor: '#0C4A6E',
-    colors: ['#0C4A6E', '#166534', '#9F1239', '#334155'],
+    defaultColor: '#0284C7',
+    colors: ['#0284C7', '#166534', '#9F1239', '#334155'],
     hasPhoto: false,
     sample: {
       fullName: 'Nguyễn Gia Huy',
@@ -568,7 +568,7 @@ export const CvTemplateGalleryView: React.FC<CvTemplateGalleryViewProps> = ({
   const [category, setCategory] = useState<'all' | 'ats' | 'modern' | 'junior'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [cardColors, setCardColors] = useState<Record<string, string>>({
-    'tpl-standard': selectedColor || '#0C4A6E',
+    'tpl-standard': selectedColor || '#0284C7',
   });
   const [previewTemplate, setPreviewTemplate] = useState<BuiltInCvTemplate | null>(null);
 
@@ -594,12 +594,12 @@ export const CvTemplateGalleryView: React.FC<CvTemplateGalleryViewProps> = ({
   ];
 
   return (
-    <div className="min-h-full w-full flex-1 overflow-y-auto bg-[#F7F8FA] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[#0F172A]">
-      <div className="mx-auto max-w-[1248px] animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both] px-4 py-6 pb-24 sm:px-6 lg:px-8 lg:py-7">
+    <div className="min-h-full w-full flex-1 bg-[#F7F8FA] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[#0F172A]">
+      <div className="mx-auto max-w-[1248px] px-4 py-6 pb-24 sm:px-6 lg:px-8 lg:py-7">
         {/* Stepper (1 Chọn mẫu — 2 Điền nội dung — 3 Tải PDF hoặc lưu vào Kho CV) */}
         <div className="mb-5 flex flex-wrap items-center gap-2.5 text-[13px]">
-          <div className="flex items-center gap-2 font-semibold text-[#0C4A6E]">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#0C4A6E] text-[12px] font-bold text-white">
+          <div className="flex items-center gap-2 font-semibold text-sky-700">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-blue-600 text-[12px] font-bold text-white shadow-xs">
               1
             </span>
             <span>Chọn mẫu</span>
@@ -608,7 +608,7 @@ export const CvTemplateGalleryView: React.FC<CvTemplateGalleryViewProps> = ({
           <button
             type="button"
             onClick={onJumpToEditor}
-            className="flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-[13px] font-normal text-[#475569] transition-colors duration-200 hover:text-[#0C4A6E]"
+            className="flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-[13px] font-normal text-[#475569] transition-colors duration-200 hover:text-sky-700"
           >
             <span className="flex h-6 w-6 items-center justify-center rounded-full border border-solid border-[#CBD5E1] bg-white text-[12px] font-semibold text-[#475569]">
               2
@@ -671,7 +671,7 @@ export const CvTemplateGalleryView: React.FC<CvTemplateGalleryViewProps> = ({
                 onClick={() => setCategory(cat.key)}
                 className={`h-[36px] cursor-pointer rounded-[8px] px-4 font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[13px] font-medium transition-all duration-200 focus:outline-none ${
                   active
-                    ? 'border border-solid border-[#0C4A6E] bg-[#0C4A6E] font-semibold text-white shadow-xs'
+                    ? 'border border-solid border-sky-600 bg-gradient-to-r from-sky-500 to-blue-600 font-semibold text-white shadow-xs'
                     : 'border border-solid border-[#CBD5E1] bg-white text-[#334155] hover:border-[#94A3B8] hover:bg-[#F8FAFC]'
                 }`}
               >
@@ -713,7 +713,7 @@ export const CvTemplateGalleryView: React.FC<CvTemplateGalleryViewProps> = ({
                         onClick={() => setCardColors((prev) => ({ ...prev, [tpl.id]: color }))}
                         className={`h-5 w-5 cursor-pointer rounded-full border-0 p-0 transition-transform duration-150 ${
                           activeColor
-                            ? 'ring-2 ring-[#0C4A6E] ring-offset-2'
+                            ? 'ring-2 ring-sky-600 ring-offset-2'
                             : 'hover:scale-110'
                         }`}
                         style={{ backgroundColor: color }}
@@ -749,7 +749,7 @@ export const CvTemplateGalleryView: React.FC<CvTemplateGalleryViewProps> = ({
                   <button
                     type="button"
                     onClick={() => onSelectTemplateAndContinue(tpl, currentColor)}
-                    className="h-[38px] cursor-pointer rounded-[8px] border-0 bg-[#0C4A6E] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[13px] font-semibold text-white transition-all duration-200 hover:bg-[#075985] active:scale-[0.99]"
+                    className="h-[38px] cursor-pointer rounded-[8px] border-0 bg-gradient-to-r from-sky-500 to-blue-600 font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[13px] font-semibold text-white shadow-sm shadow-sky-500/20 transition-all duration-200 hover:from-sky-600 hover:to-blue-700 active:scale-[0.99]"
                   >
                     Dùng mẫu này
                   </button>
@@ -785,7 +785,7 @@ export const CvTemplateGalleryView: React.FC<CvTemplateGalleryViewProps> = ({
                   setPreviewTemplate(null);
                   onSelectTemplateAndContinue(chosen, chosenColor);
                 }}
-                className="h-9 cursor-pointer rounded-[8px] border-0 bg-[#0C4A6E] px-4 font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[13px] font-semibold text-white hover:bg-[#075985]"
+                className="h-9 cursor-pointer rounded-[8px] border-0 bg-gradient-to-r from-sky-500 to-blue-600 px-4 font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[13px] font-semibold text-white shadow-sm hover:from-sky-600 hover:to-blue-700"
               >
                 Dùng mẫu này
               </button>

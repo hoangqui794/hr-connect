@@ -55,7 +55,7 @@ const BulletSection: React.FC<{ title: string; items: string[] }> = ({ title, it
   );
 
 const Heart: React.FC<{ filled: boolean }> = ({ filled }) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? '#C2410C' : 'none'} stroke={filled ? '#C2410C' : 'currentColor'} strokeWidth="1.8" aria-hidden="true">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? '#E11D48' : 'none'} stroke={filled ? '#E11D48' : 'currentColor'} strokeWidth="1.8" aria-hidden="true">
     <path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z" />
   </svg>
 );
@@ -95,7 +95,7 @@ const SimilarJobs: React.FC<{ job: Job }> = ({ job }) => {
           <span className="min-w-0">
             <span className="block truncate font-semibold">{other.title}</span>
             <span className="block text-[13px] text-[#6B7280]">{other.companyName}</span>
-            <span className="block text-[13px] font-semibold text-[#C2410C]">{salaryText(other)}</span>
+            <span className="block text-[13px] font-semibold text-[#059669]">{salaryText(other)}</span>
           </span>
         </Link>
       ))}
@@ -152,8 +152,10 @@ const JobContent: React.FC<{ job: Job }> = ({ job }) => {
   })();
 
   const applyClass = (size: string) =>
-    `${size} ${FONT} cursor-pointer rounded-md border-0 font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#9CA3AF] ` +
-    (applyAction?.applied ? 'bg-[#166534] hover:bg-[#14532D]' : 'bg-[#C2410C] hover:bg-[#9A3412]');
+    `${size} ${FONT} inline-flex items-center justify-center whitespace-nowrap cursor-pointer rounded-xl font-bold transition-all disabled:cursor-not-allowed disabled:bg-[#9CA3AF] disabled:text-white ` +
+    (applyAction?.applied
+      ? 'border border-solid border-emerald-200 bg-emerald-50 text-emerald-700 shadow-2xs hover:bg-emerald-100 hover:text-emerald-800'
+      : 'border-0 bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md shadow-blue-500/25 hover:from-sky-400 hover:to-blue-500 hover:shadow-lg hover:shadow-blue-500/35 active:scale-[0.98]');
 
   const saved = isCandidate && isSaved(job.jobId);
   const canSave = !isAuthenticated || isCandidate;
@@ -227,7 +229,7 @@ const JobContent: React.FC<{ job: Job }> = ({ job }) => {
             {facts.map((fact) => (
               <div key={fact.label}>
                 <dt className="text-[12px] text-[#6B7280]">{fact.label}</dt>
-                <dd className={`m-0 mt-0.5 ${fact.accent ? 'font-bold text-[#C2410C]' : 'font-medium'}`}>{fact.value}</dd>
+                <dd className={`m-0 mt-0.5 ${fact.accent ? 'font-bold text-[#059669]' : 'font-medium'}`}>{fact.value}</dd>
               </div>
             ))}
           </dl>

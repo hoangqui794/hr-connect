@@ -171,7 +171,7 @@ export const CandidateOfferPage: React.FC = () => {
         <dl className="m-0 mt-[22px] grid grid-cols-1 gap-x-6 gap-y-4 rounded-md border border-solid border-[#E2E8F0] bg-[#F8FAFC] p-[18px] sm:grid-cols-2">
           <div>
             <dt className="text-[12px] text-[#6B7280]">Mức lương</dt>
-            <dd className="m-0 mt-0.5 text-[20px] font-bold text-[#C2410C]">{money(offer.salary, offer.currencyCode)}</dd>
+            <dd className="m-0 mt-0.5 text-[20px] font-bold text-[#059669]">{money(offer.salary, offer.currencyCode)}</dd>
             {terms && <dd className="m-0 text-[13px] text-[#4B5563]">{terms}</dd>}
           </div>
           <div>
@@ -271,7 +271,7 @@ export const CandidateOfferPage: React.FC = () => {
             </fieldset>
           )}
           <div className="mt-[18px] flex justify-end">
-            <button type="button" disabled={respond.isPending || acceptBlocked} onClick={submit} className={`${FONT} h-11 cursor-pointer rounded-md border-0 bg-[#C2410C] px-[22px] text-[14px] font-semibold text-white hover:bg-[#9A3412] disabled:cursor-not-allowed disabled:bg-[#9CA3AF]`}>
+            <button type="button" disabled={respond.isPending || acceptBlocked} onClick={submit} className={`${FONT} h-11 cursor-pointer rounded-xl border-0 bg-gradient-to-r from-[#0284C7] to-[#2563EB] px-[22px] text-[14px] font-bold text-white transition-all hover:from-[#0369A1] hover:to-[#1D4ED8] shadow-md shadow-sky-500/25 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-none disabled:bg-[#9CA3AF] disabled:shadow-none`}>
               {respond.isPending ? 'Đang gửi…' : 'Gửi trả lời'}
             </button>
           </div>

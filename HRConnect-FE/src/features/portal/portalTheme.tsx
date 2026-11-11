@@ -37,5 +37,5 @@ const scope = (primary: string, hover: string, bg: string, fontFamily?: string) 
     );
   };
 
-export const CandidateScope = scope('#0369A1', '#075985', '#E0F2FE', "'Be Vietnam Pro', system-ui, sans-serif");
-export const AffiliateScope = scope('#0369A1', '#075985', '#E0F2FE', "'Be Vietnam Pro', system-ui, sans-serif");
+export const CandidateScope = scope('#0284C7', '#0369A1', '#F0F9FF', "'Be Vietnam Pro', system-ui, sans-serif");
+export const AffiliateScope = scope('#0284C7', '#0369A1', '#F0F9FF', "'Be Vietnam Pro', system-ui, sans-serif");
