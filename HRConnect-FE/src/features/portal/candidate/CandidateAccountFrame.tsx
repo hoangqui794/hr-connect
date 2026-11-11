@@ -22,7 +22,6 @@ export const CandidateAccountFrame: React.FC<{ children: React.ReactNode }> = ({
     { to: '/candidate/applications', label: 'Đơn ứng tuyển', count: applications.data },
     { to: '/candidate/saved-jobs', label: 'Việc đã lưu', count: savedJobsCount },
     { to: '/candidate/cvs', label: 'Kho CV' },
-    { to: '/candidate/cv-builder', label: 'CV Builder' },
     { to: '/candidate/settings/email-identities', label: 'Cài đặt email đăng nhập' },
   ];
 
