@@ -39,8 +39,8 @@ public class GetCandidateApplicationDetailQueryHandler : IRequestHandler<GetCand
             throw new NotFoundException("Không tìm thấy thông tin đơn ứng tuyển.");
         }
 
-        // Enforce ownership: Candidate must own the Application
-        if (application.CandidateId != candidate.CandidateId)
+        // Enforce ownership: Candidate must own the Application (directly or through merged candidate)
+        if (application.CandidateId != candidate.CandidateId && application.Candidate?.MergedIntoCandidateId != candidate.CandidateId)
         {
             throw new ForbiddenException("Bạn không có quyền truy cập thông tin ứng tuyển này.");
         }

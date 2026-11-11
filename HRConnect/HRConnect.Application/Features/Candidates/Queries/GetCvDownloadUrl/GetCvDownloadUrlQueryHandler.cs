@@ -45,7 +45,7 @@ public class GetCvDownloadUrlQueryHandler : IRequestHandler<GetCvDownloadUrlQuer
         if (request.UserId.HasValue && request.UserId.Value != Guid.Empty)
         {
             var candidate = await _candidateRepository.GetByUserIdAsync(request.UserId.Value, cancellationToken);
-            if (candidate == null || candidate.CandidateId != cv.CandidateId)
+            if (candidate == null || (candidate.CandidateId != cv.CandidateId && cv.Candidate?.MergedIntoCandidateId != candidate.CandidateId))
             {
                 _logger.LogWarning("UserId {UserId} cố gắng truy cập CV {CvId} không thuộc sở hữu.", request.UserId, request.CvId);
                 throw new ForbiddenException("Bạn không có quyền truy cập CV này.");

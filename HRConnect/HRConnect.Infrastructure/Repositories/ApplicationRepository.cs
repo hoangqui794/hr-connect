@@ -22,7 +22,7 @@ public class ApplicationRepository : IApplicationRepository
         return await _context.Applications
             .Include(a => a.Attribution)
             .Include(a => a.Submission)
-            .FirstOrDefaultAsync(a => a.CandidateId == candidateId && a.JobId == jobId, cancellationToken);
+            .FirstOrDefaultAsync(a => (a.CandidateId == candidateId || a.Candidate.MergedIntoCandidateId == candidateId) && a.JobId == jobId, cancellationToken);
     }
 
     public async Task<JobApplication?> GetByIdAsync(Guid applicationId, CancellationToken cancellationToken = default)
@@ -90,7 +90,7 @@ public class ApplicationRepository : IApplicationRepository
     {
         var query = _context.Applications
             .AsNoTracking()
-            .Where(a => a.CandidateId == candidateId);
+            .Where(a => a.CandidateId == candidateId || a.Candidate.MergedIntoCandidateId == candidateId);
 
         if (!string.IsNullOrWhiteSpace(status))
         {
@@ -378,7 +378,7 @@ public class ApplicationRepository : IApplicationRepository
     public async Task<bool> ExistsAsync(Guid candidateId, Guid jobId, CancellationToken cancellationToken = default)
     {
         return await _context.Applications
-            .AnyAsync(a => a.CandidateId == candidateId && a.JobId == jobId, cancellationToken);
+            .AnyAsync(a => (a.CandidateId == candidateId || a.Candidate.MergedIntoCandidateId == candidateId) && a.JobId == jobId, cancellationToken);
     }
 
     public Task<bool> ExistsForCandidateAndCompanySinceAsync(
@@ -390,7 +390,7 @@ public class ApplicationRepository : IApplicationRepository
         return _context.Applications
             .AsNoTracking()
             .AnyAsync(application =>
-                    application.CandidateId == candidateId &&
+                    (application.CandidateId == candidateId || application.Candidate.MergedIntoCandidateId == candidateId) &&
                     application.Job.CompanyId == companyId &&
                     application.AppliedAt >= sinceUtc,
                 cancellationToken);

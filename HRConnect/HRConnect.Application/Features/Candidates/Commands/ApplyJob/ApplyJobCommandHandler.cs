@@ -157,7 +157,7 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
         else if (request.CvId.HasValue && request.CvId.Value != Guid.Empty)
         {
             var cv = await _candidateCvRepository.GetByIdAsync(request.CvId.Value, cancellationToken);
-            if (cv == null || cv.CandidateId != candidate.CandidateId)
+            if (cv == null || (cv.CandidateId != candidate.CandidateId && cv.Candidate?.MergedIntoCandidateId != candidate.CandidateId))
             {
                 throw new BadRequestException("CV được chọn không hợp lệ hoặc không thuộc sở hữu của bạn.");
             }

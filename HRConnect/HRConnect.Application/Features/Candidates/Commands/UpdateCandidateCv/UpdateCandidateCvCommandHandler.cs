@@ -47,7 +47,7 @@ public class UpdateCandidateCvCommandHandler : IRequestHandler<UpdateCandidateCv
             throw new NotFoundException($"Không tìm thấy CV với mã {request.CvId}.");
         }
 
-        if (cv.CandidateId != candidate.CandidateId)
+        if (cv.CandidateId != candidate.CandidateId && cv.Candidate?.MergedIntoCandidateId != candidate.CandidateId)
         {
             _logger.LogWarning("UserId {UserId} cố gắng cập nhật CV {CvId} thuộc về ứng viên khác {OwnerId}.",
                 request.UserId, request.CvId, cv.CandidateId);

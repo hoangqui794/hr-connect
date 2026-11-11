@@ -629,6 +629,10 @@ export const RegisterPage: React.FC = () => {
                 Bạn có thể đăng nhập ngay bằng email này với mật khẩu của bạn, hoặc tách ra để tạo tài khoản riêng độc lập.
               </p>
 
+              <div className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-800 text-left border border-amber-200">
+                <span className="font-semibold">Lưu ý về dữ liệu:</span> Khi tách thành tài khoản riêng, bạn sẽ bắt đầu với hồ sơ mới. Lịch sử ứng tuyển và CV trước đây thuộc về tài khoản cũ sẽ không được chuyển sang tài khoản mới nhằm đảm bảo tính bảo mật và toàn vẹn dữ liệu.
+              </div>
+
               {splitModal.error && (
                 <div className="rounded-lg bg-rose-50 p-2.5 text-xs text-rose-700 font-medium">
                   {splitModal.error}

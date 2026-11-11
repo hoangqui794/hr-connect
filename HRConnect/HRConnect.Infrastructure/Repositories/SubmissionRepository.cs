@@ -323,7 +323,7 @@ public class SubmissionRepository : ISubmissionRepository
             from cv in _context.CandidateCvs.AsNoTracking()
             join affiliateUser in _context.AppUsers.AsNoTracking()
                 on cv.UploadedByUserId equals affiliateUser.UserId
-            where cv.CandidateId == candidateId &&
+            where (cv.CandidateId == candidateId || cv.Candidate.MergedIntoCandidateId == candidateId) &&
                   cv.CreationMethod == "AFFILIATE_UPLOAD" &&
                   cv.Status != "DELETED" &&
                   cv.Submissions.Any()
@@ -509,7 +509,7 @@ public class SubmissionRepository : ISubmissionRepository
     {
         var query = _context.SubmissionConsents
             .AsNoTracking()
-            .Where(consent => consent.Submission.CandidateId == candidateId && consent.Status == status);
+            .Where(consent => (consent.Submission.CandidateId == candidateId || consent.Submission.Candidate.MergedIntoCandidateId == candidateId) && consent.Status == status);
 
         var totalCount = await query.CountAsync(cancellationToken);
         var ordered = status == "PENDING"

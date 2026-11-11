@@ -47,7 +47,7 @@ public class SetCandidatePrimaryCvCommandHandler : IRequestHandler<SetCandidateP
             throw new NotFoundException($"Không tìm thấy CV với mã {request.CvId}.");
         }
 
-        if (targetCv.CandidateId != candidate.CandidateId)
+        if (targetCv.CandidateId != candidate.CandidateId && targetCv.Candidate?.MergedIntoCandidateId != candidate.CandidateId)
         {
             _logger.LogWarning("UserId {UserId} cố gắng thiết lập CV {CvId} thuộc ứng viên khác {OwnerId} làm CV chính.",
                 request.UserId, request.CvId, targetCv.CandidateId);

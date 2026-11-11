@@ -26,20 +26,20 @@ public class CandidateCvRepository : ICandidateCvRepository
     public async Task<CandidateCv?> GetByCandidateIdAndCvIdAsync(Guid candidateId, Guid cvId, CancellationToken cancellationToken = default)
     {
         return await _context.CandidateCvs
-            .FirstOrDefaultAsync(c => c.CandidateId == candidateId && c.CvId == cvId, cancellationToken);
+            .FirstOrDefaultAsync(c => (c.CandidateId == candidateId || c.Candidate.MergedIntoCandidateId == candidateId) && c.CvId == cvId, cancellationToken);
     }
 
     public async Task<CandidateCv?> GetPrimaryByCandidateIdAsync(Guid candidateId, CancellationToken cancellationToken = default)
     {
         return await _context.CandidateCvs
-            .FirstOrDefaultAsync(c => c.CandidateId == candidateId && c.IsPrimary && c.Status == "ACTIVE", cancellationToken);
+            .FirstOrDefaultAsync(c => (c.CandidateId == candidateId || c.Candidate.MergedIntoCandidateId == candidateId) && c.IsPrimary && c.Status == "ACTIVE", cancellationToken);
     }
 
     public async Task<List<CandidateCv>> GetByCandidateIdAsync(Guid candidateId, CancellationToken cancellationToken = default)
     {
         return await _context.CandidateCvs
             .AsNoTracking()
-            .Where(c => c.CandidateId == candidateId &&
+            .Where(c => (c.CandidateId == candidateId || c.Candidate.MergedIntoCandidateId == candidateId) &&
                         c.Status == "ACTIVE" &&
                         c.CreationMethod != "AFFILIATE_UPLOAD")
             .OrderByDescending(c => c.IsPrimary)
@@ -53,7 +53,7 @@ public class CandidateCvRepository : ICandidateCvRepository
     {
         return await _context.CandidateCvs
             .AsNoTracking()
-            .Where(cv => cv.CandidateId == candidateId &&
+            .Where(cv => (cv.CandidateId == candidateId || cv.Candidate.MergedIntoCandidateId == candidateId) &&
                          cv.Status == "ACTIVE" &&
                          cv.CreationMethod != "AFFILIATE_UPLOAD")
             .OrderByDescending(cv => cv.IsPrimary)
@@ -73,7 +73,7 @@ public class CandidateCvRepository : ICandidateCvRepository
         CancellationToken cancellationToken = default)
     {
         return _context.CandidateCvs.FirstOrDefaultAsync(
-            cv => cv.CandidateId == candidateId &&
+            cv => (cv.CandidateId == candidateId || cv.Candidate.MergedIntoCandidateId == candidateId) &&
                   cv.AdoptedFromCvId == sourceCvId &&
                   cv.Status != "DELETED",
             cancellationToken);
