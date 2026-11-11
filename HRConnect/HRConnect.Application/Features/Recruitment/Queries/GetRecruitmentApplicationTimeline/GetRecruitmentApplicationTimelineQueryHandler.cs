@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.Json;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Candidates.Common;
 using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Constants;
@@ -18,15 +20,18 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
     private readonly IApplicationRepository _applicationRepository;
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly ILogger<GetRecruitmentApplicationTimelineQueryHandler> _logger;
+    private readonly IAuditLogRepository? _auditLogRepository;
 
     public GetRecruitmentApplicationTimelineQueryHandler(
         IApplicationRepository applicationRepository,
         ICompanyUserRepository companyUserRepository,
-        ILogger<GetRecruitmentApplicationTimelineQueryHandler> logger)
+        ILogger<GetRecruitmentApplicationTimelineQueryHandler> logger,
+        IAuditLogRepository? auditLogRepository = null)
     {
         _applicationRepository = applicationRepository;
         _companyUserRepository = companyUserRepository;
         _logger = logger;
+        _auditLogRepository = auditLogRepository;
     }
 
     public async Task<RecruitmentApplicationTimelineResponse> Handle(GetRecruitmentApplicationTimelineQuery request, CancellationToken cancellationToken)
@@ -133,6 +138,46 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
                     ActorName = request.IsCandidate ? null : (h.ChangedByNavigation?.DisplayName ?? h.ChangedByNavigation?.Email),
                     Status = request.IsCandidate ? candidateDisplayStatus.Group : h.NewStatus,
                     ReasonCode = request.IsCandidate ? null : h.ReasonCode
+                });
+            }
+        }
+
+        // Planned start-date changes do not change the Application status. They are
+        // stored as append-only audit events and projected into the business timeline.
+        if (_auditLogRepository != null)
+        {
+            var (startDateLogs, _) = await _auditLogRepository.GetListAsync(
+                actorUserId: null,
+                actorType: null,
+                action: AuditActions.ApplicationPlannedStartDateUpdated,
+                source: null,
+                serviceName: null,
+                entityType: "APPLICATION",
+                entityId: app.ApplicationId,
+                correlationId: null,
+                fromUtc: null,
+                toUtc: null,
+                page: 1,
+                pageSize: 100,
+                cancellationToken: cancellationToken);
+
+            foreach (var log in startDateLogs)
+            {
+                var oldDate = ReadAuditDate(log.OldValues, "plannedStartDate");
+                var newDate = ReadAuditDate(log.NewValues, "plannedStartDate");
+                var reason = ReadAuditString(log.NewValues, "reason");
+                var description = $"Ngày nhận việc đổi từ {FormatDate(oldDate)} sang {FormatDate(newDate)}.";
+                if (!string.IsNullOrWhiteSpace(reason)) description += $" Lý do: {reason}";
+
+                events.Add(new ApplicationTimelineEventDto
+                {
+                    EventType = "PLANNED_START_DATE_CHANGED",
+                    Title = "Ngày nhận việc đã thay đổi",
+                    Description = description,
+                    Timestamp = log.CreatedAt,
+                    ActorUserId = request.IsCandidate ? null : log.ActorUserId,
+                    ActorName = request.IsCandidate ? null : (log.ActorUser?.DisplayName ?? log.ActorUser?.Email),
+                    Status = request.IsCandidate ? "HIRED" : app.Status
                 });
             }
         }
@@ -351,4 +396,28 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
     };
 
     private static string VietnamTime(DateTime utc) => utc.AddHours(7).ToString("HH:mm dd/MM/yyyy");
+
+    private static DateOnly? ReadAuditDate(string? json, string propertyName)
+    {
+        var value = ReadAuditString(json, propertyName);
+        return DateOnly.TryParse(value, out var parsed) ? parsed : null;
+    }
+
+    private static string? ReadAuditString(string? json, string propertyName)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            return document.RootElement.TryGetProperty(propertyName, out var value) && value.ValueKind != JsonValueKind.Null
+                ? value.GetString()
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static string FormatDate(DateOnly? value) => value?.ToString("dd/MM/yyyy") ?? "chưa xác định";
 }

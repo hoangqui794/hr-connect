@@ -9,5 +9,6 @@ public record MarkNotStartedCommand(
     Guid? ConcurrencyToken,
     Guid CurrentUserId,
     bool IsClientCompanyUser = false,
-    bool IsInternalHrOrAdmin = false
+    bool IsInternalHrOrAdmin = false,
+    string? ReasonCode = null
 ) : IRequest<MarkNotStartedResponse>;

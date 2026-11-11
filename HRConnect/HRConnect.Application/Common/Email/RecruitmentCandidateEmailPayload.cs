@@ -18,7 +18,9 @@ public sealed record RecruitmentCandidateEmailPayload(
     string? MeetingLink = null,
     DateOnly? ExpiryDate = null,
     string? Reason = null,
-    bool HasLinkedAccount = false);
+    bool HasLinkedAccount = false,
+    DateOnly? OldPlannedStartDate = null,
+    DateOnly? NewPlannedStartDate = null);
 
 public static class RecruitmentCandidateEmailTemplates
 {
@@ -31,6 +33,7 @@ public static class RecruitmentCandidateEmailTemplates
     public const string OfferExpired = "CANDIDATE_OFFER_EXPIRED";
     public const string ApplicationNotStartedReported = "CANDIDATE_NOT_STARTED_REPORTED";
     public const string ApplicationStartedConfirmed = "CANDIDATE_STARTED_CONFIRMED";
+    public const string PlannedStartDateChanged = "CANDIDATE_PLANNED_START_DATE_CHANGED";
 
     public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.Ordinal)
     {
@@ -42,6 +45,7 @@ public static class RecruitmentCandidateEmailTemplates
         OfferWithdrawn,
         OfferExpired,
         ApplicationNotStartedReported,
-        ApplicationStartedConfirmed
+        ApplicationStartedConfirmed,
+        PlannedStartDateChanged
     };
 }

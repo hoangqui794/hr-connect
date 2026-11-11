@@ -849,6 +849,7 @@ public static class RecruitmentEndpoints
                 var command = new MarkNotStartedCommand(
                     ApplicationId: applicationId,
                     Reason: request.Reason,
+                    ReasonCode: request.ReasonCode,
                     ConcurrencyToken: request.ExpectedApplicationVersion ?? request.ConcurrencyToken,
                     CurrentUserId: userId.Value,
                     IsClientCompanyUser: true,
@@ -980,6 +981,7 @@ public class ConfirmStartWorkRequest
 public class MarkNotStartedRequest
 {
     public string Reason { get; set; } = string.Empty;
+    public string? ReasonCode { get; set; }
     public Guid? ExpectedApplicationVersion { get; set; }
     public Guid? ConcurrencyToken { get; set; }
 }

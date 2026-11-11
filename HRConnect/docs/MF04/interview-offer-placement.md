@@ -454,3 +454,30 @@ trên:
   tiết lộ ghi chú vận hành nội bộ.
 - Giao diện giải thích `Gross` là lương trước thuế/khấu trừ và `Net` là lương
   thực nhận; `HEADHUNT_COD` tiếp tục chỉ dùng Gross để tính phí.
+
+## Bổ sung triển khai ngày 11/11/2026 — sau khi Candidate nhận Offer
+
+Phần này chỉ bổ sung quy tắc vận hành trên mô hình dữ liệu hiện có; không tạo
+bảng hoặc migration mới:
+
+- Ngày nhận việc lấy từ Offer đã được Candidate chấp nhận. Nếu hai bên thương
+  lượng lại ngoài hệ thống, Client dùng chức năng **Dời ngày đi làm**, nhập ngày
+  mới và lý do bắt buộc. Mỗi Application được dời tối đa 3 lần và ngày mới không
+  muộn quá 60 ngày so với ngày trong Offer đã chấp nhận.
+- Mỗi lần dời ngày được ghi thành audit event
+  `APPLICATION_PLANNED_START_DATE_UPDATED`. Timeline chiếu các event này thành
+  lịch sử riêng, vì vậy không ghi đè lý do của lần trước và không cần bảng lịch
+  sử ngày nhận việc mới.
+- Sau khi Client lưu ngày mới, Candidate nhận notification trong ứng dụng và
+  email có ngày cũ, ngày mới và lý do. Trang Candidate hướng dẫn liên hệ trực
+  tiếp Company nếu muốn thương lượng thay đổi tiếp.
+- Khi quá ngày nhận việc mà Application vẫn là `OFFER_ACCEPTED`, giao diện Client
+  cảnh báo và yêu cầu chọn một trong ba kết quả: xác nhận đã đi làm, dời ngày,
+  hoặc ghi nhận không bắt đầu làm việc.
+- `NOT_STARTED` dùng mã lý do có cấu trúc: đã nhận việc nơi khác; lý do cá
+  nhân/sức khỏe/gia đình; không đến và không liên lạc được; hoặc lý do khác.
+  Ghi chú chỉ bắt buộc với “Khác”. Lý do “không đến” chỉ hợp lệ từ ngày nhận
+  việc dự kiến trở đi và được kiểm tra ở cả API lẫn giao diện.
+- Client không tự hoàn tác xác nhận đã đi làm hoặc `NOT_STARTED`. Sai sót được
+  xử lý qua luồng đối soát hiện có; phí và bảo hành vẫn lấy ngày đi làm thực tế,
+  không lấy ngày dự kiến.

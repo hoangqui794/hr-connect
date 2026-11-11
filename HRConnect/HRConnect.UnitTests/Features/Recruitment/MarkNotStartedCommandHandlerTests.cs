@@ -59,7 +59,7 @@ public class MarkNotStartedCommandHandlerTests
 
         // Assert
         await act.Should().ThrowAsync<BadRequestException>()
-            .WithMessage("*bắt buộc*");
+            .WithMessage("*ghi rõ lý do*");
     }
 
     [Fact]
@@ -84,6 +84,54 @@ public class MarkNotStartedCommandHandlerTests
 
         // Assert
         await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task Handle_WhenCandidatePersonalReasonHasNoNote_ShouldUseStructuredReasonLabel()
+    {
+        var appId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var application = new Domain.Entities.Application
+        {
+            ApplicationId = appId,
+            Status = ApplicationStates.OfferAccepted,
+            PlannedStartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+            ConcurrencyToken = Guid.NewGuid(),
+            Job = new Job { CompanyId = companyId }
+        };
+        _applicationRepositoryMock.Setup(r => r.GetByIdAsync(appId, It.IsAny<CancellationToken>())).ReturnsAsync(application);
+        _companyUserRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
+        _placementRepositoryMock.Setup(r => r.GetByApplicationIdAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Placement?)null);
+
+        var result = await CreateHandler().Handle(new MarkNotStartedCommand(
+            appId, null!, application.ConcurrencyToken, userId, IsClientCompanyUser: true,
+            ReasonCode: ApplicationReasonCodes.CandidatePersonalReason), default);
+
+        result.Reason.Should().Contain("cá nhân");
+        application.StatusReasonCode.Should().Be(ApplicationReasonCodes.CandidatePersonalReason);
+    }
+
+    [Fact]
+    public async Task Handle_WhenNoShowIsReportedBeforePlannedDate_ShouldReject()
+    {
+        var appId = Guid.NewGuid();
+        var application = new Domain.Entities.Application
+        {
+            ApplicationId = appId,
+            Status = ApplicationStates.OfferAccepted,
+            PlannedStartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)),
+            ConcurrencyToken = Guid.NewGuid()
+        };
+        _applicationRepositoryMock.Setup(r => r.GetByIdAsync(appId, It.IsAny<CancellationToken>())).ReturnsAsync(application);
+
+        Func<Task> act = () => CreateHandler().Handle(new MarkNotStartedCommand(
+            appId, null!, application.ConcurrencyToken, Guid.NewGuid(), IsClientCompanyUser: true,
+            ReasonCode: ApplicationReasonCodes.CandidateNoShow), default);
+
+        await act.Should().ThrowAsync<BadRequestException>().WithMessage("*từ ngày nhận việc dự kiến*");
     }
 
     [Fact]

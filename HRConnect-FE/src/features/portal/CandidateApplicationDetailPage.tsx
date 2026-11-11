@@ -194,7 +194,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
               <div className="mt-2 flex flex-wrap gap-[18px] text-[13px] text-[#4B5563]">
                 <span>Nộp ngày {dayjs(application.appliedAt).format('DD/MM/YYYY')}</span>
                 {application.submissionSource && <span>Nguồn: {application.submissionSource === 'AFFILIATE' ? 'Affiliate giới thiệu' : 'Tự ứng tuyển'}</span>}
-                {application.plannedStartDate && <span>Nhận việc dự kiến: {dayjs(application.plannedStartDate).format('DD/MM/YYYY')}</span>}
+                {application.plannedStartDate && <span>Ngày nhận việc: {dayjs(application.plannedStartDate).format('DD/MM/YYYY')}</span>}
                 {cvName && (
                   <span>
                     CV:{' '}
@@ -203,6 +203,15 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                 )}
               </div>
             </div>
+            {application.status === 'OFFER_ACCEPTED' && application.plannedStartDate && (
+              <Alert
+                className="mt-4"
+                type="info"
+                showIcon
+                message="Muốn thay đổi ngày nhận việc?"
+                description="Vui lòng liên hệ trực tiếp doanh nghiệp để thỏa thuận. Ngày mới sẽ được cập nhật và thông báo trên HR Connect."
+              />
+            )}
             <span role="status" className="rounded px-2.5 py-1 text-[13px] font-semibold" style={{ color: color.text, background: color.background }}>{stage.label}</span>
           </div>
           <ol aria-label={`Tiến trình: ${stage.label}`} className="m-0 mt-5 grid list-none grid-cols-5 gap-1.5 p-0">

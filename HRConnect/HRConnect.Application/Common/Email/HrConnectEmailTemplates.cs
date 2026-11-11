@@ -297,6 +297,25 @@ public static class HrConnectEmailTemplates
                 $"Bạn đã được xác nhận bắt đầu làm việc cho vị trí {payload.JobTitle}."));
     }
 
+    public static HrConnectEmail PlannedStartDateChanged(RecruitmentCandidateEmailPayload payload)
+    {
+        var oldDate = payload.OldPlannedStartDate?.ToString("dd/MM/yyyy") ?? "chưa xác định";
+        var newDate = payload.NewPlannedStartDate?.ToString("dd/MM/yyyy") ?? "chưa xác định";
+        var reason = string.IsNullOrWhiteSpace(payload.Reason)
+            ? string.Empty
+            : $"<p style=\"margin:0 0 16px\"><strong>Lý do:</strong> {E(payload.Reason.Trim())}</p>";
+        return new HrConnectEmail(
+            SubjectText($"Ngày nhận việc cho vị trí {payload.JobTitle} đã thay đổi"),
+            Render(
+                "Ngày nhận việc đã thay đổi",
+                Greeting(payload.CandidateName) +
+                $"<p style=\"margin:0 0 16px\">Doanh nghiệp đã cập nhật ngày nhận việc cho vị trí <strong>{E(payload.JobTitle)}</strong> từ <strong>{oldDate}</strong> sang <strong>{newDate}</strong>.</p>" +
+                reason +
+                "<p style=\"margin:0 0 18px\">Nếu thông tin chưa đúng với thỏa thuận, vui lòng liên hệ trực tiếp doanh nghiệp.</p>" +
+                Button("Xem hồ sơ ứng tuyển", payload.PortalUrl),
+                $"Ngày nhận việc mới: {newDate}."));
+    }
+
     private static HrConnectEmail InterviewNotice(
         RecruitmentCandidateEmailPayload payload,
         string heading,

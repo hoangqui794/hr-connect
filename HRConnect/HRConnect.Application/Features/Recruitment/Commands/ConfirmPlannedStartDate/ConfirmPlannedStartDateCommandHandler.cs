@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Linq;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
@@ -19,24 +20,33 @@ public class ConfirmPlannedStartDateCommandHandler : IRequestHandler<ConfirmPlan
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ConfirmPlannedStartDateCommandHandler> _logger;
     private readonly IAuditLogService _auditLogService;
+    private readonly IAuditLogRepository? _auditLogRepository;
+    private readonly ICandidateRecruitmentDeliveryService? _candidateDeliveryService;
+
+    private const int MaxChanges = 3;
+    private const int MaxDelayDays = 60;
 
     public ConfirmPlannedStartDateCommandHandler(
         IApplicationRepository applicationRepository,
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
         ILogger<ConfirmPlannedStartDateCommandHandler> logger,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        IAuditLogRepository? auditLogRepository = null,
+        ICandidateRecruitmentDeliveryService? candidateDeliveryService = null)
     {
         _applicationRepository = applicationRepository;
         _companyUserRepository = companyUserRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
         _auditLogService = auditLogService;
+        _auditLogRepository = auditLogRepository;
+        _candidateDeliveryService = candidateDeliveryService;
     }
 
     public async Task<ConfirmPlannedStartDateResponse> Handle(ConfirmPlannedStartDateCommand request, CancellationToken cancellationToken)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
         if (request.PlannedStartDate < today)
         {
             throw new BadRequestException("Ngày dự kiến nhận việc không được ở quá khứ.");
@@ -80,13 +90,57 @@ public class ConfirmPlannedStartDateCommandHandler : IRequestHandler<ConfirmPlan
             throw new ForbiddenException("Bạn không có quyền cập nhật ngày nhận việc.");
         }
 
+        var reason = request.Reason?.Trim();
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new BadRequestException("Lý do dời ngày nhận việc là bắt buộc.");
+        }
+        if (reason.Length > 1000)
+        {
+            throw new BadRequestException("Lý do dời ngày nhận việc tối đa 1000 ký tự.");
+        }
+        if (application.PlannedStartDate == request.PlannedStartDate)
+        {
+            throw new BadRequestException("Ngày nhận việc mới phải khác ngày hiện tại.");
+        }
+
+        var changeCount = 0;
+        if (_auditLogRepository != null)
+        {
+            (_, changeCount) = await _auditLogRepository.GetListAsync(
+                actorUserId: null,
+                actorType: null,
+                action: AuditActions.ApplicationPlannedStartDateUpdated,
+                source: null,
+                serviceName: null,
+                entityType: "APPLICATION",
+                entityId: application.ApplicationId,
+                correlationId: null,
+                fromUtc: null,
+                toUtc: null,
+                page: 1,
+                pageSize: 1,
+                cancellationToken: cancellationToken);
+            if (changeCount >= MaxChanges)
+            {
+                throw new BadRequestException("Đã dời ngày nhận việc tối đa 3 lần. Vui lòng xác nhận đi làm hoặc báo không bắt đầu làm việc.");
+            }
+        }
+
+        var agreedOfferDate = application.Offers
+            .Where(o => string.Equals(o.Status, OfferStates.Accepted, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(o => o.RespondedAt ?? o.UpdatedAt)
+            .Select(o => o.StartDate)
+            .FirstOrDefault(date => date.HasValue)
+            ?? application.PlannedStartDate;
+        if (agreedOfferDate.HasValue && request.PlannedStartDate > agreedOfferDate.Value.AddDays(MaxDelayDays))
+        {
+            throw new BadRequestException($"Ngày nhận việc mới không được muộn quá {MaxDelayDays} ngày so với ngày đã thỏa thuận trong offer.");
+        }
+
         var now = DateTime.UtcNow;
         var oldPlannedStartDate = application.PlannedStartDate;
         application.PlannedStartDate = request.PlannedStartDate;
-        if (!string.IsNullOrWhiteSpace(request.Reason))
-        {
-            application.StatusReason = request.Reason.Trim();
-        }
         application.UpdatedAt = now;
         application.ConcurrencyToken = Guid.NewGuid();
 
@@ -98,8 +152,18 @@ public class ConfirmPlannedStartDateCommandHandler : IRequestHandler<ConfirmPlan
             EntityId = application.ApplicationId,
             ActorUserId = request.CurrentUserId,
             OldValues = new { plannedStartDate = oldPlannedStartDate },
-            NewValues = new { plannedStartDate = application.PlannedStartDate, status = application.Status, hasReason = !string.IsNullOrWhiteSpace(request.Reason) }
+            NewValues = new { plannedStartDate = application.PlannedStartDate, status = application.Status, reason }
         }, cancellationToken);
+        if (_candidateDeliveryService != null)
+        {
+            await _candidateDeliveryService.DeliverPlannedStartDateChangedAsync(
+                application,
+                oldPlannedStartDate,
+                request.PlannedStartDate,
+                reason,
+                now,
+                cancellationToken);
+        }
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Đã cập nhật ngày nhận việc cho hồ sơ {ApplicationId} thành {PlannedStartDate}.",
@@ -111,7 +175,8 @@ public class ConfirmPlannedStartDateCommandHandler : IRequestHandler<ConfirmPlan
             application.Status,
             application.StatusReason,
             application.ConcurrencyToken,
-            application.UpdatedAt
+            application.UpdatedAt,
+            changeCount + 1
         );
     }
 }
