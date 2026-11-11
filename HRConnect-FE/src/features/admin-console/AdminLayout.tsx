@@ -11,10 +11,9 @@ import {
   AppstoreOutlined,
   AuditOutlined,
   BankOutlined,
-  BookOutlined,
+  BarChartOutlined,
   DashboardOutlined,
   DollarOutlined,
-  FileTextOutlined,
   KeyOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
@@ -28,7 +27,6 @@ import {
   UserOutlined,
   UserSwitchOutlined,
   CustomerServiceOutlined,
-  BarChartOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/authStore';
 import { authService } from '@/services/authService';
@@ -50,11 +48,9 @@ const NAV: { group: string; items: NavItem[] }[] = [
   {
     group: 'Vận hành',
     items: [
-      { to: '/admin/jobs', label: 'Duyệt tin tuyển dụng', icon: <FileTextOutlined /> },
       { to: '/admin/approvals', label: 'Phê duyệt tài khoản', icon: <SafetyCertificateOutlined /> },
       { to: '/admin/candidate-identity-claims', label: 'Danh tính Candidate', icon: <LinkOutlined /> },
       { to: '/admin/disputes', label: 'Tranh chấp & Khiếu nại', icon: <SolutionOutlined /> },
-      { to: '/admin/placement-reconciliations', label: 'Đối soát nhận việc', icon: <SafetyCertificateOutlined /> },
       { to: '/admin/users', label: 'Người dùng', icon: <TeamOutlined /> },
       { to: '/admin/contact-requests', label: 'Yêu cầu tư vấn', icon: <CustomerServiceOutlined /> },
       { to: '/admin/user-authorization', label: 'Quyền truy cập người dùng', icon: <UserSwitchOutlined /> },
@@ -99,30 +95,7 @@ export const AdminLayout: React.FC = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, [menuOpen]);
 
-  const canManageTemplates = useAuthStore((s) => s.hasPermission('job_template.manage'));
-
-  const navGroups = useMemo(() => {
-    return NAV.map((group) => {
-      if (group.group === 'Vận hành') {
-        const items = [...group.items];
-        if (canManageTemplates) {
-          const jobIndex = items.findIndex((i) => i.to === '/admin/jobs');
-          const templateItem: NavItem = {
-            to: '/admin/job-templates',
-            label: 'Mẫu tuyển dụng',
-            icon: <BookOutlined />,
-          };
-          if (jobIndex >= 0) {
-            items.splice(jobIndex + 1, 0, templateItem);
-          } else {
-            items.push(templateItem);
-          }
-        }
-        return { ...group, items };
-      }
-      return group;
-    });
-  }, [canManageTemplates]);
+  const navGroups = useMemo(() => NAV, []);
 
   const allItems = useMemo(
     () => navGroups.flatMap((g) => g.items.map((i) => ({ ...i, group: g.group }))),

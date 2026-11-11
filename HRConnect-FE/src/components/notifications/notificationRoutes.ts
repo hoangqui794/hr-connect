@@ -14,9 +14,8 @@ export function jobRouteForRole(jobId: string, role: UserRole | string | null | 
     case 'AFFILIATE':
       return `/affiliate/jobs/${jobId}`;
     case 'INTERNAL_HR':
-      return '/hr/jobs';
     case 'ADMIN':
-      return '/admin/jobs';
+      return '/hr/jobs';
     default:
       return `/jobs/${jobId}`;
   }
@@ -28,11 +27,8 @@ export function jobRouteForRole(jobId: string, role: UserRole | string | null | 
  */
 export function portalRoute(route: string, role: UserRole | string | null | undefined): string {
   let cleanRoute = route;
-  const normRole = (typeof role === 'string' ? role : (role as any)?.code || '').toUpperCase();
   if (cleanRoute.startsWith('/internal/jobs/review')) {
-    cleanRoute = cleanRoute.replace('/internal/jobs/review', normRole === 'ADMIN' ? '/admin/jobs' : '/hr/jobs');
-  } else if (normRole === 'ADMIN' && cleanRoute.startsWith('/hr/jobs')) {
-    cleanRoute = cleanRoute.replace('/hr/jobs', '/admin/jobs');
+    cleanRoute = cleanRoute.replace('/internal/jobs/review', '/hr/jobs');
   }
   const match = PUBLIC_JOB_ROUTE.exec(cleanRoute);
   return match ? jobRouteForRole(decodeURIComponent(match[1]), role) : cleanRoute;
@@ -86,7 +82,7 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
     (quoteMatch ? quoteMatch[1] : undefined);
 
   if (isInternalHr) {
-    const jobsBasePath = normRole === 'ADMIN' ? '/admin/jobs' : '/hr/jobs';
+    const jobsBasePath = '/hr/jobs';
 
     // 1. Yêu cầu tư vấn / Liên hệ (SF-05)
     if (
@@ -99,7 +95,7 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       return contactId ? `${basePath}?highlight=${encodeURIComponent(contactId)}` : basePath;
     }
 
-    // 2. Đối soát nhận việc (MF-04 UC-41)
+    // 2. Đối soát nhận việc (MF-04 UC-41) -> Chuyển về Internal HR phụ trách vận hành
     if (
       entityType === 'PLACEMENT_RECONCILIATION' ||
       titleLower.includes('đối soát') ||
@@ -112,7 +108,7 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
         meta?.ReconciliationId ||
         meta?.entityId ||
         item.relatedEntityId;
-      const basePath = normRole === 'ADMIN' ? '/admin/placement-reconciliations' : '/hr/placement-reconciliations';
+      const basePath = '/hr/placement-reconciliations';
       return targetId ? `${basePath}?highlight=${encodeURIComponent(targetId)}` : basePath;
     }
 
@@ -247,7 +243,7 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
     // 8G. Chung cho JOB
     if (entityType === 'JOB') {
       if (route && (route.startsWith('/hr/jobs') || route.startsWith('/admin/jobs')) && route.includes('?')) {
-        return normRole === 'ADMIN' ? route.replace('/hr/jobs', '/admin/jobs') : route;
+        return route.replace('/admin/jobs', '/hr/jobs');
       }
       const statusParam = meta?.status ? `status=${encodeURIComponent(meta.status)}` : '';
       const highlightParam = targetHighlight ? `highlight=${encodeURIComponent(targetHighlight)}` : '';

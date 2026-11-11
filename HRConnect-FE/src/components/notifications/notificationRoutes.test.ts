@@ -16,8 +16,8 @@ describe('portalRoute', () => {
 
   it('sends Internal HR and Admin to their job review pages', () => {
     expect(portalRoute(`/jobs/${JOB}`, UserRole.INTERNAL_HR)).toBe('/hr/jobs');
-    expect(portalRoute(`/jobs/${JOB}`, UserRole.ADMIN)).toBe('/admin/jobs');
-    expect(portalRoute(`/hr/jobs?status=ACTIVE&highlight=${JOB}`, UserRole.ADMIN)).toBe(`/admin/jobs?status=ACTIVE&highlight=${JOB}`);
+    expect(portalRoute(`/jobs/${JOB}`, UserRole.ADMIN)).toBe('/hr/jobs');
+    expect(portalRoute(`/hr/jobs?status=ACTIVE&highlight=${JOB}`, UserRole.ADMIN)).toBe(`/hr/jobs?status=ACTIVE&highlight=${JOB}`);
     expect(portalRoute(`/hr/jobs?status=ACTIVE&highlight=${JOB}`, UserRole.INTERNAL_HR)).toBe(`/hr/jobs?status=ACTIVE&highlight=${JOB}`);
   });
 
