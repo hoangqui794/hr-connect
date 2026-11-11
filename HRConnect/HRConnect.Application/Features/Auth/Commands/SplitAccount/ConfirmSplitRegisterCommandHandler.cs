@@ -104,11 +104,15 @@ public class ConfirmSplitRegisterCommandHandler : IRequestHandler<ConfirmSplitRe
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
         try
         {
-            // 1. Thu hồi liên kết email phụ cũ
+            // 1. Thu hồi liên kết email phụ cũ và lưu ngay để thỏa mãn ràng buộc database
+            // (ck_user_email_identity_revoked_at yêu cầu revoked_at IS NOT NULL,
+            // và uq_user_email_identity_active_email loại trừ các bản ghi status = 'REVOKED')
             activeIdentity.Status = "REVOKED";
+            activeIdentity.RevokedAt = now;
             activeIdentity.UpdatedAt = now;
             activeIdentity.ConcurrencyToken = Guid.NewGuid();
             _userEmailIdentityRepository.Update(activeIdentity);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             // 2. Tạo AppUser mới độc lập (ACTIVE ngay vì đã xác thực OTP)
             var newUser = new AppUser
@@ -117,8 +121,8 @@ public class ConfirmSplitRegisterCommandHandler : IRequestHandler<ConfirmSplitRe
                 Email = request.Email.Trim(),
                 PasswordHash = _passwordHasher.Hash(request.Password),
                 DisplayName = request.FullName.Trim(),
-                Phone = request.Phone?.Trim(),
-                NormalizedPhone = normalizedPhone,
+                Phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim(),
+                NormalizedPhone = string.IsNullOrWhiteSpace(request.Phone) ? null : normalizedPhone,
                 Status = "ACTIVE",
                 EmailVerifiedAt = now,
                 CreatedAt = now,
@@ -182,9 +186,9 @@ public class ConfirmSplitRegisterCommandHandler : IRequestHandler<ConfirmSplitRe
                     UserId = newUser.UserId,
                     FullName = request.FullName.Trim(),
                     Email = request.Email.Trim(),
-                    Phone = request.Phone?.Trim(),
+                    Phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim(),
                     NormalizedEmail = normalizedEmail,
-                    NormalizedPhone = normalizedPhone,
+                    NormalizedPhone = string.IsNullOrWhiteSpace(request.Phone) ? null : normalizedPhone,
                     ProfileVisibility = "PRIVATE",
                     Status = "ACTIVE",
                     CreatedAt = now,
@@ -218,8 +222,9 @@ public class ConfirmSplitRegisterCommandHandler : IRequestHandler<ConfirmSplitRe
                 }
             };
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Lỗi khi hoàn tất tách tài khoản cho email {Email}", normalizedEmail);
             await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
             throw;
         }

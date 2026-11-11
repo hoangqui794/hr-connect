@@ -158,8 +158,9 @@ public class SplitAccountCommandHandlersTests
         result.Data!.Email.Should().Be(email);
         result.Data.Status.Should().Be("ACTIVE");
 
-        // Old identity must be revoked
+        // Old identity must be revoked with RevokedAt timestamp set
         activeIdentity.Status.Should().Be("REVOKED");
+        activeIdentity.RevokedAt.Should().NotBeNull();
 
         // Archived candidate profile must be restored to ACTIVE and unmerged
         archivedCandidate.Status.Should().Be("ACTIVE");
@@ -167,6 +168,7 @@ public class SplitAccountCommandHandlersTests
         archivedCandidate.UserId.Should().Be(result.Data.UserId);
 
         _userRepositoryMock.Verify(x => x.AddAsync(It.Is<AppUser>(u => u.Email == email && u.Status == "ACTIVE"), It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
         _unitOfWorkMock.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }
