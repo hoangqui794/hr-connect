@@ -142,7 +142,7 @@ export const CandidateSavedJobsPage: React.FC = () => {
                 <article key={item.savedJobId || jobId} className="flex flex-wrap items-center gap-[14px] border-0 border-b border-solid border-[#F1F5F9] p-4">
                   <CompanyMark name={job.companyName} logoUrl={job.company?.logoUrl} size={58} />
                   <div className="min-w-0 flex-[1_1_320px]">
-                    <Link to={jobHref(jobId)} className="text-[15px] font-semibold text-[#111827] no-underline hover:text-[#075985] hover:underline">{title}</Link>
+                    <Link to={jobHref(jobId)} className="text-[15px] font-semibold text-[#111827] no-underline hover:text-sky-600 hover:underline">{title}</Link>
                     <div className="text-[13px] text-[#4B5563]">{[job.companyName, job.location].filter(Boolean).join(' · ')}</div>
                     <div className="mt-1 flex flex-wrap gap-[14px] text-[13px]">
                       <span className="font-semibold text-[#059669]">{salaryText(job)}</span>

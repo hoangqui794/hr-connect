@@ -55,7 +55,7 @@ export const CompaniesPage: React.FC = () => {
         <div className="mx-auto max-w-[928px] px-4 py-4 sm:px-6">
           <form
             role="search"
-            className="flex flex-wrap overflow-hidden rounded-lg border border-solid border-[#CBD5E1] bg-white transition-colors focus-within:border-[#0C4A6E]"
+            className="flex flex-wrap overflow-hidden rounded-lg border border-solid border-[#CBD5E1] bg-white transition-colors focus-within:border-sky-500"
             onSubmit={(e) => {
               e.preventDefault();
               setPage(1);
@@ -119,7 +119,7 @@ export const CompaniesPage: React.FC = () => {
                   role="radio"
                   aria-checked={filter === key}
                   onClick={() => setFilter(key)}
-                  className={`min-h-[40px] cursor-pointer rounded-full border border-solid px-4 text-[14px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E] max-sm:min-h-[44px] ${filter === key ? 'border-[#0C4A6E] bg-[#E0F2FE] text-[#0C4A6E]' : 'border-[#CBD5E1] bg-white text-[#334155] hover:border-[#94A3B8]'}`}
+                  className={`min-h-[40px] cursor-pointer rounded-full border border-solid px-4 text-[14px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 max-sm:min-h-[44px] ${filter === key ? 'border-sky-600 bg-sky-50 text-sky-700 shadow-xs' : 'border-[#CBD5E1] bg-white text-[#334155] hover:border-[#94A3B8]'}`}
                 >
                   {label}
                 </button>
@@ -148,7 +148,7 @@ export const CompaniesPage: React.FC = () => {
                     <CompanyMark name={c.companyName} logoUrl={c.logoUrl} size={60} />
                     <div className="min-w-0">
                       <h3 className="m-0 text-[16px] font-bold leading-snug">
-                        <Link to={`/companies/${c.companyId}`} className="text-[#0F172A] no-underline hover:text-[#075985] hover:underline">{c.companyName}</Link>
+                        <Link to={`/companies/${c.companyId}`} className="text-[#0F172A] no-underline hover:text-sky-600 hover:underline">{c.companyName}</Link>
                       </h3>
                       <div className="mt-1.5 flex flex-wrap gap-1.5">
                         <span className="rounded-full bg-[#ECFDF5] px-2.5 py-0.5 text-[12px] font-semibold text-[#047857]">Đã xác minh</span>
@@ -168,7 +168,7 @@ export const CompaniesPage: React.FC = () => {
                     <span className={`text-[14px] font-bold ${c.activeJobCount > 0 ? 'text-[#0284C7]' : 'text-[#64748B]'}`}>
                       {c.activeJobCount > 0 ? `${c.activeJobCount} việc làm đang mở` : 'Chưa có việc làm'}
                     </span>
-                    <Link to={`/companies/${c.companyId}`} className="inline-flex min-h-[44px] items-center rounded-lg border border-solid border-[#CBD5E1] px-3.5 text-[14px] font-semibold text-[#0369A1] no-underline transition-colors hover:border-[#0369A1] hover:bg-[#F0F9FF]">
+                    <Link to={`/companies/${c.companyId}`} className="inline-flex min-h-[44px] items-center rounded-lg border border-solid border-sky-200 bg-sky-50 px-3.5 text-[14px] font-semibold text-sky-700 no-underline transition-colors hover:border-sky-400 hover:bg-sky-100">
                       Xem công ty
                     </Link>
                   </div>
@@ -212,7 +212,7 @@ const CompanyAboutCard: React.FC<{ description: string }> = ({ description }) =>
         <button
           type="button"
           onClick={() => setIsExpanded((prev) => !prev)}
-          className="mt-3 inline-flex min-h-[40px] items-center gap-1.5 text-[14px] font-bold text-[#0C4A6E] hover:text-[#075985] border-0 bg-transparent p-0 cursor-pointer transition-colors"
+          className="mt-3 inline-flex min-h-[40px] items-center gap-1.5 text-[14px] font-bold text-sky-700 hover:text-sky-800 border-0 bg-transparent p-0 cursor-pointer transition-colors"
         >
           {isExpanded ? (
             <>Thu gọn <UpOutlined className="text-[11px]" /></>
@@ -264,7 +264,7 @@ export const CompanyDetailPage: React.FC = () => {
           <section aria-labelledby="co-name" className="hrc-fade-up border-0 border-b border-solid border-[#E2E8F0] bg-white">
             <div className="mx-auto max-w-[1248px] px-4 pt-4 sm:px-6">
               <nav aria-label="Đường dẫn" className="mb-5 text-[13px] text-[#64748B]">
-                <Link to="/" className="text-[#0C4A6E] no-underline hover:underline">Trang chủ</Link> › <Link to="/companies" className="text-[#0C4A6E] no-underline hover:underline">Công ty</Link> › {company.companyName}
+                <Link to="/" className="text-sky-600 no-underline hover:text-sky-700 hover:underline">Trang chủ</Link> › <Link to="/companies" className="text-sky-600 no-underline hover:text-sky-700 hover:underline">Công ty</Link> › {company.companyName}
               </nav>
               <div className="flex flex-wrap items-center gap-5">
                 <span className="overflow-hidden rounded-lg border border-solid border-[#E2E8F0]">
@@ -275,13 +275,13 @@ export const CompanyDetailPage: React.FC = () => {
                   <p className="m-0 text-[14px] leading-relaxed text-[#475569]">
                     {[company.industry?.name, company.companySize?.label, city].filter(Boolean).join(' · ')}
                     {website && (
-                      <> · <a href={company.website!} target="_blank" rel="noreferrer" className="text-[#0C4A6E]">{website}</a></>
+                      <> · <a href={company.website!} target="_blank" rel="noreferrer" className="font-medium text-sky-600 hover:text-sky-700 hover:underline">{website}</a></>
                     )}
                     {' · '}<span className="font-semibold text-[#047857]">Đã xác minh</span>
                   </p>
                 </div>
                 {company.website && (
-                  <a href={company.website} target="_blank" rel="noreferrer" className="inline-flex min-h-[44px] items-center rounded-lg bg-[#0C4A6E] px-[18px] font-semibold text-white no-underline transition-colors hover:bg-[#075985] hover:text-white">
+                  <a href={company.website} target="_blank" rel="noreferrer" className="inline-flex min-h-[44px] items-center rounded-lg bg-gradient-to-r from-sky-500 to-blue-600 px-[18px] font-semibold text-white no-underline shadow-sm shadow-sky-500/20 transition-all hover:from-sky-600 hover:to-blue-700 hover:text-white active:scale-[0.98]">
                     Xem trang web
                   </a>
                 )}
@@ -293,7 +293,7 @@ export const CompanyDetailPage: React.FC = () => {
                     href={t.href}
                     onClick={() => setTab(t.href)}
                     aria-current={tab === t.href ? 'true' : undefined}
-                    className={`whitespace-nowrap border-0 border-b-2 border-solid py-3 no-underline transition-colors ${tab === t.href ? 'border-[#0C4A6E] font-semibold text-[#0F172A]' : 'border-transparent text-[#475569] hover:text-[#0F172A]'}`}
+                    className={`whitespace-nowrap border-0 border-b-2 border-solid py-3 no-underline transition-colors ${tab === t.href ? 'border-sky-600 font-semibold text-sky-700' : 'border-transparent text-[#475569] hover:text-[#0F172A]'}`}
                   >
                     {t.href === '#co-jobs' ? `${t.label} (${jobs.length})` : t.label}
                   </a>
@@ -310,16 +310,16 @@ export const CompanyDetailPage: React.FC = () => {
                   <div className="flex flex-col items-center gap-2.5 rounded-xl border border-dashed border-[#CBD5E1] bg-white px-6 py-10 text-center">
                     <h3 className="m-0 text-[16px] font-bold text-[#0F172A]">Công ty chưa có việc làm đang mở</h3>
                     <p className="m-0 max-w-[420px] text-[14px] text-[#64748B]">Quay lại sau để xem tin mới, hoặc xem các việc làm khác đang tuyển.</p>
-                    <Link to="/jobs" className="mt-1.5 inline-flex min-h-[44px] items-center rounded-lg border border-solid border-[#CBD5E1] px-[18px] font-semibold text-[#0C4A6E] no-underline transition-colors hover:border-[#0C4A6E] hover:bg-[#F0F9FF]">Xem việc làm khác</Link>
+                    <Link to="/jobs" className="mt-1.5 inline-flex min-h-[44px] items-center rounded-lg border border-solid border-sky-200 bg-sky-50 px-[18px] font-semibold text-sky-700 no-underline transition-colors hover:border-sky-400 hover:bg-sky-100">Xem việc làm khác</Link>
                   </div>
                 ) : (
                   <div className="hrc-stagger flex flex-col gap-3">
                     {jobs.map((j) => (
                       <article key={j.jobId} className="hrc-card flex gap-3 rounded-xl border border-solid border-[#E2E8F0] bg-white p-4">
                         <div className="min-w-0 flex-1">
-                          <Link to={jobHref(j.jobId, role, isAuthenticated)} className="text-[16px] font-bold text-[#0F172A] no-underline hover:text-[#075985] hover:underline">{j.title}</Link>
+                          <Link to={jobHref(j.jobId, role, isAuthenticated)} className="text-[16px] font-bold text-[#0F172A] no-underline hover:text-sky-600 hover:underline">{j.title}</Link>
                           <div className="mt-2 flex flex-wrap gap-2 text-[13px]">
-                            <span className="rounded-lg bg-[#FFF7ED] px-2.5 py-1 font-bold text-[#9A3412]">{salaryText(j)}</span>
+                            <span className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 font-bold text-emerald-700">{salaryText(j)}</span>
                             {j.location && <span className="max-w-[260px] truncate rounded-lg bg-[#F1F5F9] px-2.5 py-1 text-[#334155]">{j.location}</span>}
                             {j.minExperienceYears != null && <span className="rounded-lg bg-[#F1F5F9] px-2.5 py-1 text-[#334155]">{j.maxExperienceYears != null ? `${j.minExperienceYears} – ${j.maxExperienceYears} năm` : `Từ ${j.minExperienceYears} năm`}</span>}
                             {j.applicationDeadline && <span className="rounded-lg bg-[#F1F5F9] px-2.5 py-1 text-[#334155]">Hạn {dayjs(j.applicationDeadline).format('DD/MM')}</span>}
@@ -341,7 +341,7 @@ export const CompanyDetailPage: React.FC = () => {
                       href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(company.address)}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="mt-2 inline-flex min-h-[40px] items-center text-[14px] font-bold text-[#0C4A6E] no-underline hover:underline"
+                      className="mt-2 inline-flex min-h-[40px] items-center text-[14px] font-bold text-sky-600 no-underline hover:text-sky-700 hover:underline"
                     >
                       Xem trên bản đồ
                     </a>
