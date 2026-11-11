@@ -224,6 +224,9 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated) || !!user;
 
   const isCandidate = variant === 'candidate' || role === UserRole.CANDIDATE;
+  const isClient = !isCandidate && role === UserRole.CLIENT;
+  /** Candidate and Client share the newer panel (tabs, no icons, hidden scrollbar); HR/Admin/Affiliate keep the console panel. */
+  const usesNewPanel = isCandidate || isClient;
 
   // Realtime SignalR connection
   const { isConnected } = useNotificationSignalR();
@@ -244,12 +247,12 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
   const unreadCount = unreadData?.unreadCount ?? 0;
 
   // 2. Query: Danh sách thông báo theo filter
-  const listKey = ['notifications', 'list', isCandidate ? 'candidate-popover' : filter];
+  const listKey = ['notifications', 'list', usesNewPanel ? 'candidate-popover' : filter];
   const listFn = () =>
     notificationApi.getNotifications({
       page: 1,
-      pageSize: isCandidate ? 50 : 20,
-      isRead: !isCandidate && filter === 'unread' ? false : undefined,
+      pageSize: usesNewPanel ? 50 : 20,
+      isRead: !usesNewPanel && filter === 'unread' ? false : undefined,
     });
   // Load the list as soon as the pointer or focus reaches the bell, so the panel opens already filled.
   const prefetchList = () => {
@@ -310,13 +313,13 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
 
   // Candidate panel (canvas 10/11): no icons; the list scrolls with the wheel, scrollbar hidden.
   const candidateFilteredItems = useMemo(() => {
-    if (!isCandidate) return items;
+    if (!usesNewPanel) return items;
     if (candidateTab === 'unread') return items.filter((item) => !item.isRead);
     if (candidateTab === 'action') {
       return items.filter((item) => !item.isRead && CANDIDATE_ACTION_CATEGORIES.includes(getNotificationCategory(item)));
     }
     return items;
-  }, [items, isCandidate, candidateTab]);
+  }, [items, usesNewPanel, candidateTab]);
   const candidateShown = candidateFilteredItems;
 
   const candidatePopoverContent = (
@@ -414,14 +417,14 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
         )}
       </div>
 
-      <div className="flex items-center justify-between border-0 border-t border-solid border-[#E2E8F0] px-4">
+      {isCandidate && <div className="flex items-center justify-between border-0 border-t border-solid border-[#E2E8F0] px-4">
         <Link to="/candidate/notifications" onClick={() => setOpen(false)} className="inline-flex min-h-[44px] items-center text-[13px] font-semibold text-[#0C4A6E] no-underline hover:underline">
           Xem tất cả thông báo
         </Link>
         <Link to="/candidate/profile" onClick={() => setOpen(false)} className="inline-flex min-h-[44px] items-center text-[13px] text-[#475569] no-underline hover:underline">
           Cài đặt thông báo
         </Link>
-      </div>
+      </div>}
     </div>
   );
 
@@ -569,13 +572,13 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
 
   return (
     <Popover
-      content={isCandidate ? candidatePopoverContent : defaultPopoverContent}
+      content={usesNewPanel ? candidatePopoverContent : defaultPopoverContent}
       trigger="click"
       open={open}
       onOpenChange={handleOpenChange}
       placement="bottomRight"
       arrow={false}
-      overlayClassName={isCandidate ? 'hrconnect-candidate-notification-popover' : 'hrconnect-notification-popover'}
+      overlayClassName={usesNewPanel ?'hrconnect-candidate-notification-popover' : 'hrconnect-notification-popover'}
     >
       <Badge count={unreadCount} size="small" offset={[-2, 4]} overflowCount={99}>
         <button
@@ -583,7 +586,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
           aria-label="Thông báo hệ thống"
           onMouseEnter={prefetchList}
           onFocus={prefetchList}
-          className={`hrc-bell flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-solid border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 ${isCandidate && open ? 'hrc-bell-ring' : ''} ${
+          className={`hrc-bell flex ${isClient ? 'h-11 w-11' : 'h-9 w-9'} cursor-pointer items-center justify-center rounded-full border border-solid border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 ${usesNewPanel && open ? 'hrc-bell-ring' : ''} ${
             isCandidate
               ? `hover:!bg-white/10 focus:!outline-none focus-visible:!outline-white/40 ${open ? '!bg-white/15' : ''}`
               : 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600'

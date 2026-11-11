@@ -21,10 +21,8 @@ import '@/features/admin-console/admin-console.css';
 import { BrandMark } from '@/components/common/BrandMark';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
-/** The seven header links need about 1280px; below that the menu moves into the drawer. */
-const COMPACT_QUERY = '(max-width: 1279px)';
-/** Extra header details (brand subtitle, badge, account name) only fit above 1440px. */
-const WIDE = 'min-[1441px]';
+/** The eight header links need about 1360px; below that the menu moves into the drawer. */
+const COMPACT_QUERY = '(max-width: 1359px)';
 
 const NAV = [
   { to: '/client/dashboard', label: 'Tổng quan' },
@@ -49,7 +47,7 @@ const linkClass = (active: boolean, compact?: boolean) => {
   }
   return [
     FONT,
-    `group relative inline-flex h-16 shrink-0 items-center whitespace-nowrap px-2.5 text-[14px] no-underline transition-colors duration-200 ease-out ${WIDE}:px-3`,
+    `group relative inline-flex h-16 shrink-0 items-center whitespace-nowrap px-2 text-[14px] no-underline transition-colors duration-200 ease-out 2xl:px-3`,
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0C4A6E]/30',
     active ? 'font-bold text-[#0C4A6E]' : 'font-medium text-slate-700 hover:text-[#0C4A6E]',
   ].join(' ');
@@ -105,7 +103,7 @@ export const ClientShell: React.FC = () => {
               <div className="leading-tight">
                 <div className="flex items-center gap-2">
                   <span className="text-[17px] font-extrabold text-[#0C4A6E]">HR Connect</span>
-                  <span className={`hidden ${WIDE}:inline-flex items-center rounded border border-solid border-slate-300 px-1.5 py-0.5 text-[12px] font-semibold text-slate-600`}>
+                  <span className={`hidden min-[1440px]:inline-flex items-center rounded border border-solid border-slate-300 px-1.5 py-0.5 text-[12px] font-semibold text-slate-600`}>
                     Doanh nghiệp
                   </span>
                 </div>
@@ -122,7 +120,7 @@ export const ClientShell: React.FC = () => {
                     {n.label}
                     <span
                       aria-hidden
-                      className={`absolute inset-x-2.5 bottom-0 h-0.5 origin-center rounded-full bg-[#0C4A6E] transition-transform duration-200 ease-out motion-reduce:transition-none ${active ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`}
+                      className={`absolute inset-x-2 bottom-0 h-0.5 origin-center rounded-full bg-[#0C4A6E] transition-transform duration-200 ease-out motion-reduce:transition-none ${active ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`}
                     />
                   </NavLink>
                 );
@@ -161,10 +159,10 @@ export const ClientShell: React.FC = () => {
               <button
                 type="button"
                 aria-label="Tài khoản"
-                className="flex cursor-pointer items-center gap-2.5 rounded-full border border-slate-200/80 bg-white/80 py-1 pl-1 pr-2.5 shadow-2xs transition-all hover:border-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E]"
+                className="flex min-h-[44px] cursor-pointer items-center gap-2.5 rounded-full border border-slate-200/80 bg-white/80 py-1 pl-1 pr-2.5 shadow-2xs transition-all hover:border-slate-300 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E]"
               >
                 <AccountAvatar name={name} avatar={user?.avatar} size={30} />
-                <span className={`hidden text-left leading-tight ${WIDE}:block`}>
+                <span className={`hidden text-left leading-tight 2xl:block`}>
                   <span className="block max-w-[140px] truncate text-xs font-bold text-slate-900">{name}</span>
                   <span className="block max-w-[140px] truncate text-[11px] text-slate-500">{user?.email}</span>
                 </span>

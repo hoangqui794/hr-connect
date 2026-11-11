@@ -731,7 +731,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
                     aria-checked={isActive}
                     onClick={() => handleStatusChange(opt.value)}
                     title={opt.desc}
-                    className={`cursor-pointer rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all border ${
+                    className={`min-h-[36px] cursor-pointer rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all border ${
                       isActive
                         ? 'bg-sky-50 text-[#0C4A6E] border-sky-300 font-bold shadow-2xs ring-1 ring-sky-300/40'
                         : 'bg-white text-slate-600 border-slate-200/90 hover:bg-slate-50 hover:text-slate-900'
@@ -762,7 +762,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
                     role="radio"
                     aria-checked={isActive}
                     onClick={() => handleStatusChange(opt.value)}
-                    className={`cursor-pointer rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all border ${
+                    className={`min-h-[36px] cursor-pointer rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all border ${
                       isActive
                         ? 'bg-purple-50 text-purple-700 border-purple-300 font-bold shadow-2xs ring-1 ring-purple-300/40'
                         : 'bg-white text-slate-600 border-slate-200/90 hover:bg-slate-50 hover:text-slate-900'
@@ -789,7 +789,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
                     role="radio"
                     aria-checked={isActive}
                     onClick={() => handleStatusChange(opt.value)}
-                    className={`cursor-pointer rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all border ${
+                    className={`min-h-[36px] cursor-pointer rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all border ${
                       isActive
                         ? 'bg-emerald-50 text-emerald-700 border-emerald-300 font-bold shadow-2xs ring-1 ring-emerald-300/40'
                         : 'bg-white text-slate-600 border-slate-200/90 hover:bg-slate-50 hover:text-slate-900'
