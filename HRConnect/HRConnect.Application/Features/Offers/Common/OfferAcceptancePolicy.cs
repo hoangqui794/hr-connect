@@ -7,12 +7,14 @@ public static class OfferAcceptanceActions
     public const string KeepOtherPendingOffers = "KEEP_OTHER_PENDING_OFFERS";
     public const string WithdrawOtherPendingFullTimeOffers = "WITHDRAW_OTHER_PENDING_FULL_TIME_OFFERS";
     public const string ReplaceAcceptedFullTimeOffer = "REPLACE_ACCEPTED_FULL_TIME_OFFER";
+    public const string TransitionFromActivePlacement = "TRANSITION_FROM_ACTIVE_PLACEMENT";
 
     public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         KeepOtherPendingOffers,
         WithdrawOtherPendingFullTimeOffers,
-        ReplaceAcceptedFullTimeOffer
+        ReplaceAcceptedFullTimeOffer,
+        TransitionFromActivePlacement
     };
 }
 

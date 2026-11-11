@@ -203,15 +203,12 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
                         cancellationToken);
                     if (activeFullTimePlacement != null)
                     {
-                        throw new ConflictException(
-                            "Ứng viên đã có một vị trí toàn thời gian đang hoạt động. Không thể xác nhận thêm một placement toàn thời gian.",
-                            OfferAcceptanceErrorCodes.ActiveFullTimePlacementConflict,
-                            new Dictionary<string, object?>
-                            {
-                                ["applicationId"] = activeFullTimePlacement.ApplicationId,
-                                ["jobTitle"] = activeFullTimePlacement.Application?.Job?.Title,
-                                ["companyName"] = activeFullTimePlacement.Application?.Job?.Company?.CompanyName
-                            });
+                        _logger.LogInformation(
+                            "Ứng viên {CandidateId} có vị trí toàn thời gian trước đó ({OldPlacementId} tại {OldCompany}). Chuyển tiếp sang placement mới cho Application {ApplicationId}.",
+                            application.CandidateId,
+                            activeFullTimePlacement.PlacementId,
+                            activeFullTimePlacement.Application?.Job?.Company?.CompanyName,
+                            application.ApplicationId);
                     }
                 }
             }

@@ -73,6 +73,10 @@ public sealed class GetOfferAcceptanceImpactQueryHandler
         {
             allowedActions.Add(OfferAcceptanceActions.ReplaceAcceptedFullTimeOffer);
         }
+        if (isFullTime && activePlacement != null)
+        {
+            allowedActions.Add(OfferAcceptanceActions.TransitionFromActivePlacement);
+        }
 
         return new GetOfferAcceptanceImpactResponse(
             target.OfferId,

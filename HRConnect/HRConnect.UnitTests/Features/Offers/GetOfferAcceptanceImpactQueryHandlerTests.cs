@@ -78,6 +78,7 @@ public class GetOfferAcceptanceImpactQueryHandlerTests
         result.AllowedActions.Should().Contain(OfferAcceptanceActions.KeepOtherPendingOffers);
         result.AllowedActions.Should().Contain(OfferAcceptanceActions.WithdrawOtherPendingFullTimeOffers);
         result.AllowedActions.Should().NotContain(OfferAcceptanceActions.ReplaceAcceptedFullTimeOffer);
+        result.AllowedActions.Should().Contain(OfferAcceptanceActions.TransitionFromActivePlacement);
     }
 
     [Fact]

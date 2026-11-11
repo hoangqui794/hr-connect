@@ -1342,30 +1342,37 @@ export const ApplicationWorkbench: React.FC<{
                     label="Hình thức nhận lương"
                     rules={[{ required: true, message: 'Chọn Gross hoặc Net.' }]}
                   >
-                    <Radio.Group className="w-full grid grid-cols-2 gap-3" buttonStyle="solid">
-                      <Radio.Button value="GROSS" className="!h-auto !py-2.5 !px-3 !rounded-xl !border !border-slate-200 text-left">
-                        <div className="font-semibold text-slate-900 leading-tight">Lương Gross</div>
-                        <div className="text-[12px] text-slate-500 font-normal mt-0.5 leading-snug">Trước thuế & các khoản bảo hiểm</div>
-                      </Radio.Button>
-                      <Radio.Button value="NET" className="!h-auto !py-2.5 !px-3 !rounded-xl !border !border-slate-200 text-left">
-                        <div className="font-semibold text-slate-900 leading-tight">Lương Net</div>
-                        <div className="text-[12px] text-slate-500 font-normal mt-0.5 leading-snug">Thực nhận về tay mỗi tháng</div>
-                      </Radio.Button>
+                    <Radio.Group className="w-full grid grid-cols-2 gap-3">
+                      <div
+                        onClick={() => form.setFieldValue('salaryBasis', 'GROSS')}
+                        className={`cursor-pointer rounded-xl p-3 border transition-all flex items-start gap-2.5 ${
+                          watchedSalaryBasis === 'GROSS'
+                            ? 'border-2 border-[#0284C7] bg-[#F0F9FF] shadow-2xs'
+                            : 'border-slate-200 bg-white hover:border-slate-300'
+                        }`}
+                      >
+                        <Radio value="GROSS" className="mt-0.5" />
+                        <div className="min-w-0 flex-1">
+                          <div className={`text-[13.5px] leading-tight ${watchedSalaryBasis === 'GROSS' ? 'font-bold text-[#0C4A6E]' : 'font-semibold text-slate-900'}`}>Lương Gross</div>
+                          <div className={`text-[12px] mt-0.5 leading-snug ${watchedSalaryBasis === 'GROSS' ? 'text-[#0369A1]' : 'text-slate-500'}`}>Trước thuế & các khoản bảo hiểm</div>
+                        </div>
+                      </div>
+                      <div
+                        onClick={() => form.setFieldValue('salaryBasis', 'NET')}
+                        className={`cursor-pointer rounded-xl p-3 border transition-all flex items-start gap-2.5 ${
+                          watchedSalaryBasis === 'NET'
+                            ? 'border-2 border-[#0284C7] bg-[#F0F9FF] shadow-2xs'
+                            : 'border-slate-200 bg-white hover:border-slate-300'
+                        }`}
+                      >
+                        <Radio value="NET" className="mt-0.5" />
+                        <div className="min-w-0 flex-1">
+                          <div className={`text-[13.5px] leading-tight ${watchedSalaryBasis === 'NET' ? 'font-bold text-[#0C4A6E]' : 'font-semibold text-slate-900'}`}>Lương Net</div>
+                          <div className={`text-[12px] mt-0.5 leading-snug ${watchedSalaryBasis === 'NET' ? 'text-[#0369A1]' : 'text-slate-500'}`}>Thực nhận về tay mỗi tháng</div>
+                        </div>
+                      </div>
                     </Radio.Group>
                   </Form.Item>
-                </div>
-              )}
-
-              {/* Dòng xem trước tóm tắt cho ứng viên */}
-              {typeof watchedSalary === 'number' && watchedSalary > 0 && (
-                <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-2.5 text-[13px] text-emerald-950 flex items-center justify-between">
-                  <div>
-                    <span className="text-emerald-800 text-xs block">Ứng viên sẽ thấy trong Offer:</span>
-                    <span className="font-bold">
-                      {money(watchedSalary, watchedCurrencyCode || 'VND')} {watchedSalaryBasis === 'NET' ? 'Net' : 'Gross'} / tháng
-                    </span>
-                  </div>
-                  <span className="text-base">✉️</span>
                 </div>
               )}
 
