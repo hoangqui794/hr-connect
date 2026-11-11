@@ -154,9 +154,9 @@ export const CandidateSavedJobsPage: React.FC = () => {
                       <button type="button" aria-label={`Bỏ lưu ${title}`} disabled={removing === jobId} className={`${FONT} h-10 cursor-pointer rounded-md border border-solid border-[#D1D5DB] bg-white px-3 text-[14px] text-[#1F2937] hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:opacity-60`}>Bỏ lưu</button>
                     </Popconfirm>
                     {isApplied(jobId) ? (
-                      <Link to={applicationId ? `/candidate/applications/${applicationId}` : '/candidate/applications'} className={`${ACTION} border border-solid border-[#86EFAC] bg-[#F0FDF4] text-[#166534] hover:bg-[#DCFCE7] hover:text-[#166534]`}>Xem đơn</Link>
+                      <Link to={applicationId ? `/candidate/applications/${applicationId}` : '/candidate/applications'} className={`${ACTION} whitespace-nowrap border border-solid border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800`}>Xem đơn</Link>
                     ) : isOpen(job) ? (
-                      <button type="button" aria-label={`Ứng tuyển ${title}`} onClick={() => setApplying(job)} className={`${ACTION} ${FONT} cursor-pointer border-0 bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white transition-all hover:from-[#0369A1] hover:to-[#1D4ED8] shadow-xs hover:shadow-md hover:shadow-sky-500/20 active:scale-[0.98]`}>Ứng tuyển</button>
+                      <button type="button" aria-label={`Ứng tuyển ${title}`} onClick={() => setApplying(job)} className={`${ACTION} ${FONT} whitespace-nowrap cursor-pointer border-0 bg-gradient-to-r from-sky-500 to-blue-600 text-white transition-all hover:from-sky-400 hover:to-blue-500 shadow-sm shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/30 active:scale-[0.98]`}>Ứng tuyển</button>
                     ) : null}
                   </div>
                 </article>
