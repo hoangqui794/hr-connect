@@ -16,7 +16,7 @@ export interface ColorPreset {
 }
 
 export const ACCENT_COLOR_PRESETS: ColorPreset[] = [
-  { name: 'Xanh Navy', value: '#0C4A6E' },
+  { name: 'Xanh Azure', value: '#0284C7' },
   { name: 'Xanh Rêu', value: '#166534' },
   { name: 'Đỏ Mận', value: '#9F1239' },
   { name: 'Đen Xám', value: '#334155' },

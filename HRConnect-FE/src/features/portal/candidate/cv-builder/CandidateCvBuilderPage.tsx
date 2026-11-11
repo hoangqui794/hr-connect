@@ -43,7 +43,7 @@ import {
 import './cv-builder.css';
 
 const DEFAULT_PRESENTATION: CvPresentationConfig = {
-  accentColor: '#0C4A6E',
+  accentColor: '#0284C7',
   density: 'normal',
   fontFamily: 'BE_VIETNAM_PRO',
   layout: 'ats',
@@ -799,7 +799,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 block
-                className="!h-10 !rounded-xl !bg-[#0C4A6E] font-semibold hover:!bg-[#075985]"
+                className="!h-10 !rounded-xl !border-0 !bg-gradient-to-r !from-sky-500 !to-blue-600 font-semibold hover:!from-sky-600 hover:!to-blue-700 shadow-sm"
               >
                 Mở xem file PDF vừa tạo
               </Button>
