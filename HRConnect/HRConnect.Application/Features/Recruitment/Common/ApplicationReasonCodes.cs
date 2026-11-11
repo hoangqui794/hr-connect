@@ -14,6 +14,11 @@ public static class ApplicationReasonCodes
     public const string CandidateUnreachable = "CANDIDATE_UNREACHABLE";
     public const string PositionFilled = "POSITION_FILLED";
     public const string Other = "OTHER";
+    public const string CandidateAcceptedOtherJob = "CANDIDATE_ACCEPTED_OTHER_JOB";
+    public const string CandidatePersonalReason = "CANDIDATE_PERSONAL_REASON";
+    public const string CandidateNoShow = "CANDIDATE_NO_SHOW";
+    public const string CandidateOther = "CANDIDATE_OTHER";
+    public const string EmployerCancelled = "EMPLOYER_CANCELLED";
 
     public static readonly string[] ScreeningRejectionCodes =
     [
@@ -28,6 +33,26 @@ public static class ApplicationReasonCodes
     ];
 
     public const int MaxNoteLength = 2000;
+
+    public static readonly string[] NotStartedCodes =
+    [
+        CandidateAcceptedOtherJob,
+        CandidatePersonalReason,
+        CandidateNoShow,
+        CandidateUnreachable,
+        EmployerCancelled,
+        CandidateOther
+    ];
+
+    public static string GetNotStartedLabel(string reasonCode) => reasonCode switch
+    {
+        CandidateAcceptedOtherJob => "Ứng viên báo đã nhận việc ở nơi khác.",
+        CandidatePersonalReason => "Ứng viên báo lý do cá nhân, sức khỏe hoặc gia đình.",
+        CandidateNoShow => "Ứng viên không đến vào ngày hẹn.",
+        CandidateUnreachable => "Không liên hệ được ứng viên.",
+        EmployerCancelled => "Doanh nghiệp dừng tiếp nhận vị trí này.",
+        _ => "Ứng viên không nhận việc."
+    };
 
     public static string? Normalize(string? code) =>
         string.IsNullOrWhiteSpace(code) ? null : code.Trim().ToUpperInvariant();

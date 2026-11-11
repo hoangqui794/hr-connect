@@ -34,6 +34,14 @@ public interface ICandidateRecruitmentDeliveryService
         DateTime occurredAt,
         CandidateRecruitmentDeliveryDecision? decision = null,
         CancellationToken cancellationToken = default);
+
+    Task<CandidateRecruitmentDeliveryOutcome> DeliverPlannedStartDateChangedAsync(
+        JobApplication application,
+        DateOnly? oldDate,
+        DateOnly newDate,
+        string reason,
+        DateTime occurredAt,
+        CancellationToken cancellationToken = default);
 }
 
 public enum InterviewCandidateDeliveryEvent
@@ -253,6 +261,73 @@ public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentD
                     ? RecruitmentCandidateEmailTemplates.ApplicationStartedConfirmed
                     : RecruitmentCandidateEmailTemplates.ApplicationNotStartedReported,
                 Subject = null,
+                Payload = JsonSerializer.Serialize(payload),
+                Status = "PENDING",
+                RetryCount = 0,
+                CreatedAt = occurredAt
+            }, cancellationToken);
+            queuedEmail = true;
+        }
+
+        return new CandidateRecruitmentDeliveryOutcome(ResolveOutcomeChannel(deliveredInApp, queuedEmail));
+    }
+
+    public async Task<CandidateRecruitmentDeliveryOutcome> DeliverPlannedStartDateChangedAsync(
+        JobApplication application,
+        DateOnly? oldDate,
+        DateOnly newDate,
+        string reason,
+        DateTime occurredAt,
+        CancellationToken cancellationToken = default)
+    {
+        var resolved = CandidateRecruitmentDeliveryPolicy.Resolve(application.Candidate);
+        if (resolved.Channel == CandidateRecruitmentDeliveryChannel.Unavailable)
+            return CandidateRecruitmentDeliveryOutcome.Unavailable;
+
+        var deliveredInApp = false;
+        var queuedEmail = false;
+        if (resolved.UserId is { } userId)
+        {
+            await _notifications.AddAsync(new Notification
+            {
+                NotificationId = Guid.NewGuid(),
+                UserId = userId,
+                NotificationType = "APPLICATION_STATUS",
+                Title = "Ngày nhận việc đã thay đổi",
+                Message = $"Ngày nhận việc được đổi từ {oldDate:dd/MM/yyyy} sang {newDate:dd/MM/yyyy}. Lý do: {reason}",
+                RelatedEntityType = "APPLICATION",
+                RelatedEntityId = application.ApplicationId,
+                Metadata = JsonSerializer.Serialize(new
+                {
+                    applicationId = application.ApplicationId,
+                    eventType = "PLANNED_START_DATE_CHANGED",
+                    oldDate,
+                    newDate,
+                    routeHint = $"/candidate/applications/{application.ApplicationId}"
+                }),
+                IsRead = false,
+                CreatedAt = occurredAt
+            }, cancellationToken);
+            deliveredInApp = true;
+        }
+
+        if (resolved.RecipientEmail is { } recipientEmail)
+        {
+            var payload = new RecruitmentCandidateEmailPayload(
+                application.Candidate?.FullName ?? "bạn",
+                application.Job?.Title ?? "vị trí ứng tuyển",
+                application.Job?.Company?.CompanyName,
+                resolved.UserId.HasValue ? BuildCandidateApplicationUrl(application.ApplicationId) : BuildCandidatePortalUrl(),
+                Reason: reason,
+                HasLinkedAccount: resolved.UserId.HasValue,
+                OldPlannedStartDate: oldDate,
+                NewPlannedStartDate: newDate);
+            await _emailOutboxes.AddAsync(new EmailOutbox
+            {
+                EmailOutboxId = Guid.NewGuid(),
+                UserId = resolved.UserId,
+                RecipientEmail = recipientEmail,
+                TemplateCode = RecruitmentCandidateEmailTemplates.PlannedStartDateChanged,
                 Payload = JsonSerializer.Serialize(payload),
                 Status = "PENDING",
                 RetryCount = 0,

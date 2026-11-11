@@ -8,5 +8,6 @@ public record ConfirmPlannedStartDateResponse(
     string Status,
     string? StatusReason,
     Guid ConcurrencyToken,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    int ChangeCount = 0
 );

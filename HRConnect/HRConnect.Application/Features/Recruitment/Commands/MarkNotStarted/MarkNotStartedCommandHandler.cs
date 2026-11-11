@@ -50,9 +50,17 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
 
     public async Task<MarkNotStartedResponse> Handle(MarkNotStartedCommand request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Reason))
+        var reasonCode = ApplicationReasonCodes.Normalize(request.ReasonCode)
+            ?? ApplicationReasonCodes.CandidateOther;
+        if (!ApplicationReasonCodes.NotStartedCodes.Contains(reasonCode))
         {
-            throw new BadRequestException("Lý do không đến nhận việc là bắt buộc.");
+            throw new BadRequestException("Mã lý do không bắt đầu làm việc không hợp lệ.");
+        }
+
+        var providedReason = request.Reason?.Trim();
+        if ((reasonCode == ApplicationReasonCodes.CandidateOther || reasonCode == ApplicationReasonCodes.EmployerCancelled) && string.IsNullOrWhiteSpace(providedReason))
+        {
+            throw new BadRequestException("Vui lòng ghi rõ lý do khi chọn tình huống này.");
         }
 
         var application = await _applicationRepository.GetByIdAsync(request.ApplicationId, cancellationToken);
@@ -77,10 +85,19 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
             throw new BadRequestException($"Chỉ có thể đánh dấu không nhận việc sau khi ứng viên chấp nhận offer ({ApplicationStates.OfferAccepted}). Trạng thái hiện tại: {application.Status}.");
         }
 
+        var vietnamToday = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        if (reasonCode == ApplicationReasonCodes.CandidateNoShow &&
+            (!application.PlannedStartDate.HasValue || vietnamToday < application.PlannedStartDate.Value))
+        {
+            throw new BadRequestException("Chỉ có thể chọn lý do không đến nhận việc từ ngày nhận việc dự kiến trở đi.");
+        }
+
         var now = DateTime.UtcNow;
         var oldStatus = application.Status;
         var newConcurrencyToken = Guid.NewGuid();
-        var trimmedReason = request.Reason.Trim();
+        var effectiveReason = string.IsNullOrWhiteSpace(providedReason)
+            ? ApplicationReasonCodes.GetNotStartedLabel(reasonCode)
+            : providedReason;
 
         var placement = await _placementRepository.GetByApplicationIdAsync(request.ApplicationId, cancellationToken);
         if (placement != null)
@@ -111,7 +128,8 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
         }
 
         application.Status = ApplicationStates.NotStarted;
-        application.StatusReason = trimmedReason;
+        application.StatusReason = effectiveReason;
+        application.StatusReasonCode = reasonCode;
         application.UpdatedAt = now;
         application.ConcurrencyToken = newConcurrencyToken;
 
@@ -123,7 +141,8 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
             NewStatus = ApplicationStates.NotStarted,
             ChangedBy = request.CurrentUserId,
             ChangedAt = now,
-            Reason = trimmedReason
+            Reason = effectiveReason,
+            ReasonCode = reasonCode
         });
 
         _applicationRepository.Update(application);
@@ -192,7 +211,7 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
             EntityId = application.ApplicationId,
             ActorUserId = request.CurrentUserId,
             OldValues = new { status = oldStatus },
-            NewValues = new { status = application.Status, hasReason = true }
+            NewValues = new { status = application.Status, reasonCode, hasReason = true }
         }, cancellationToken);
         await _auditLogService.AddAsync(new AuditEntry
         {
@@ -210,14 +229,14 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
             deliveryOutcome = await _candidateDeliveryService.DeliverApplicationOutcomeAsync(
                 application,
                 ApplicationCandidateDeliveryEvent.NotStartedReported,
-                trimmedReason,
+                effectiveReason,
                 now,
                 cancellationToken: cancellationToken);
         }
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Đã đánh dấu hồ sơ {ApplicationId} thành NOT_STARTED. Lý do: {Reason}",
-            application.ApplicationId, trimmedReason);
+            application.ApplicationId, effectiveReason);
 
         return new MarkNotStartedResponse(
             application.ApplicationId,

@@ -6,6 +6,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Recruitment.Commands.ConfirmPlannedStartDate;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -20,6 +21,8 @@ public class ConfirmPlannedStartDateCommandHandlerTests
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly Mock<ILogger<ConfirmPlannedStartDateCommandHandler>> _loggerMock = new();
     private readonly Mock<IAuditLogService> _auditLogServiceMock = new();
+    private readonly Mock<IAuditLogRepository> _auditLogRepositoryMock = new();
+    private readonly Mock<ICandidateRecruitmentDeliveryService> _deliveryServiceMock = new();
 
     private ConfirmPlannedStartDateCommandHandler CreateHandler() =>
         new(
@@ -27,7 +30,9 @@ public class ConfirmPlannedStartDateCommandHandlerTests
             _companyUserRepositoryMock.Object,
             _unitOfWorkMock.Object,
             _loggerMock.Object,
-            _auditLogServiceMock.Object);
+            _auditLogServiceMock.Object,
+            _auditLogRepositoryMock.Object,
+            _deliveryServiceMock.Object);
 
     [Fact]
     public async Task Handle_WhenPlannedStartDateIsInPast_ShouldThrowBadRequestException()
@@ -275,10 +280,42 @@ public class ConfirmPlannedStartDateCommandHandlerTests
         result.ApplicationId.Should().Be(appId);
         result.PlannedStartDate.Should().Be(futureDate);
         result.Status.Should().Be("OFFER_ACCEPTED");
-        result.StatusReason.Should().Be("Chốt ngày đi làm chính thức");
+        result.StatusReason.Should().BeNull("dời ngày không được ghi đè lý do trạng thái của hồ sơ");
         result.ConcurrencyToken.Should().NotBe(initialToken);
 
         _applicationRepositoryMock.Verify(r => r.Update(application), Times.Once);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenApplicationWasRescheduledThreeTimes_ShouldRejectAnotherChange()
+    {
+        var appId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var application = new Domain.Entities.Application
+        {
+            ApplicationId = appId,
+            Status = "OFFER_ACCEPTED",
+            PlannedStartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7)),
+            ConcurrencyToken = Guid.NewGuid(),
+            Job = new Job { CompanyId = companyId }
+        };
+        _applicationRepositoryMock.Setup(r => r.GetByIdAsync(appId, It.IsAny<CancellationToken>())).ReturnsAsync(application);
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
+        _auditLogRepositoryMock.Setup(r => r.GetListAsync(
+                null, null, It.IsAny<string>(), null, null, "APPLICATION", appId, null,
+                null, null, 1, 1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Array.Empty<AuditLog>(), 3));
+
+        var command = new ConfirmPlannedStartDateCommand(
+            appId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(8)), "Hai bên đã thống nhất",
+            application.ConcurrencyToken, userId, IsClientCompanyUser: true);
+
+        Func<Task> act = () => CreateHandler().Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<BadRequestException>().WithMessage("*tối đa 3 lần*");
     }
 }

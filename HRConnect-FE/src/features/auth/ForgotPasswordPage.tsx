@@ -6,6 +6,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { EyeInvisibleOutlined, EyeOutlined } from '@ant-design/icons';
 import { BrandMark } from '@/components/common/BrandMark';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import { authService } from '@/services/authService';
@@ -40,6 +41,8 @@ export const ForgotPasswordPage: React.FC = () => {
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -94,6 +97,10 @@ export const ForgotPasswordPage: React.FC = () => {
   const useOtherEmail = () => {
     setStep('EMAIL');
     setOtp('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
     setErrors({});
     setFormError(null);
     setNotice(null);
@@ -182,31 +189,55 @@ export const ForgotPasswordPage: React.FC = () => {
                 </div>
                 <div className={FIELD}>
                   <label htmlFor="forgot-password" className={LABEL}>Mật khẩu mới</label>
-                  <input
-                    id="forgot-password"
-                    type="password"
-                    autoComplete="new-password"
-                    value={newPassword}
-                    aria-invalid={Boolean(errors.newPassword)}
-                    aria-describedby={errors.newPassword ? 'forgot-password-error forgot-password-rule' : 'forgot-password-rule'}
-                    onChange={(event) => { setNewPassword(event.target.value); clearError('newPassword'); }}
-                    className={`${INPUT} ${borderOf(errors.newPassword)}`}
-                  />
+                  <div className="relative">
+                    <input
+                      id="forgot-password"
+                      type={showNewPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      value={newPassword}
+                      aria-invalid={Boolean(errors.newPassword)}
+                      aria-describedby={errors.newPassword ? 'forgot-password-error forgot-password-rule' : 'forgot-password-rule'}
+                      onChange={(event) => { setNewPassword(event.target.value); clearError('newPassword'); }}
+                      className={`${INPUT} pr-11 ${borderOf(errors.newPassword)}`}
+                    />
+                    <button
+                      type="button"
+                      aria-label={showNewPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                      onClick={() => setShowNewPassword((shown) => !shown)}
+                      className="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-[#9CA3AF] transition-colors hover:text-[#4B5563] focus:outline-none shadow-none"
+                    >
+                      <span aria-hidden="true" className="flex items-center justify-center">
+                        {showNewPassword ? <EyeOutlined className="text-base" /> : <EyeInvisibleOutlined className="text-base" />}
+                      </span>
+                    </button>
+                  </div>
                   <FieldError id="forgot-password-error" message={errors.newPassword} />
                   <span id="forgot-password-rule" className="text-[12px] text-[#6B7280]">Ít nhất 8 ký tự, gồm chữ hoa, chữ thường, chữ số và ký tự đặc biệt.</span>
                 </div>
                 <div className={FIELD}>
                   <label htmlFor="forgot-confirm" className={LABEL}>Nhập lại mật khẩu mới</label>
-                  <input
-                    id="forgot-confirm"
-                    type="password"
-                    autoComplete="new-password"
-                    value={confirmPassword}
-                    aria-invalid={Boolean(errors.confirmPassword)}
-                    aria-describedby={errors.confirmPassword ? 'forgot-confirm-error' : undefined}
-                    onChange={(event) => { setConfirmPassword(event.target.value); clearError('confirmPassword'); }}
-                    className={`${INPUT} ${borderOf(errors.confirmPassword)}`}
-                  />
+                  <div className="relative">
+                    <input
+                      id="forgot-confirm"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      value={confirmPassword}
+                      aria-invalid={Boolean(errors.confirmPassword)}
+                      aria-describedby={errors.confirmPassword ? 'forgot-confirm-error' : undefined}
+                      onChange={(event) => { setConfirmPassword(event.target.value); clearError('confirmPassword'); }}
+                      className={`${INPUT} pr-11 ${borderOf(errors.confirmPassword)}`}
+                    />
+                    <button
+                      type="button"
+                      aria-label={showConfirmPassword ? 'Ẩn mật khẩu nhập lại' : 'Hiện mật khẩu nhập lại'}
+                      onClick={() => setShowConfirmPassword((shown) => !shown)}
+                      className="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-[#9CA3AF] transition-colors hover:text-[#4B5563] focus:outline-none shadow-none"
+                    >
+                      <span aria-hidden="true" className="flex items-center justify-center">
+                        {showConfirmPassword ? <EyeOutlined className="text-base" /> : <EyeInvisibleOutlined className="text-base" />}
+                      </span>
+                    </button>
+                  </div>
                   <FieldError id="forgot-confirm-error" message={errors.confirmPassword} />
                 </div>
                 {alert}
