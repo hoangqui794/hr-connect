@@ -375,7 +375,7 @@ export const HomePage: React.FC = () => {
       ) : (
         <GuestHome />
       )}
-      {candidate ? <CompactFooter /> : <SiteFooter />}
+      <SiteFooter />
     </div>
   );
 };

@@ -361,23 +361,107 @@ export const CompactFooter: React.FC = () => (
 
 export const SiteFooter: React.FC = () => {
   const columns: { title: string; links: [string, string][] }[] = [
-    { title: 'Người tìm việc', links: [['Tìm việc làm', '/jobs'], ['Tạo CV', '/candidate/cv-builder'], ['Danh sách công ty', '/companies']] },
-    { title: 'Nhà tuyển dụng', links: [['Đăng tin tuyển dụng', '/register?role=CLIENT'], ['Tuyển qua Affiliate', '/contact?service=HEADHUNT_COD'], ['Mua CV theo số lượng', '/contact?service=CV_SOURCING']] },
-    { title: 'Hỗ trợ', links: [['Liên hệ', '/contact'], ['Điều khoản sử dụng', '/contact'], ['Chính sách bảo mật', '/contact']] },
+    {
+      title: 'Dành cho ứng viên',
+      links: [
+        ['Tìm việc làm', '/jobs'],
+        ['Tạo CV chuẩn ATS', '/candidate/cv-builder'],
+        ['Danh sách công ty', '/companies'],
+        ['Việc làm đã lưu', '/candidate/saved-jobs'],
+      ],
+    },
+    {
+      title: 'Dành cho doanh nghiệp',
+      links: [
+        ['Đăng tin tuyển dụng', '/register?role=CLIENT'],
+        ['Tuyển qua Affiliate', '/contact?service=HEADHUNT_COD'],
+        ['Giải pháp Sourcing CV', '/contact?service=CV_SOURCING'],
+        ['Bảng giá dịch vụ', '/services'],
+      ],
+    },
+    {
+      title: 'Về HR Connect',
+      links: [
+        ['Giới thiệu nền tảng', '/services'],
+        ['Liên hệ hỗ trợ', '/contact'],
+        ['Điều khoản sử dụng', '/contact'],
+        ['Chính sách bảo mật', '/contact'],
+      ],
+    },
   ];
+
   return (
-    <footer className="border-0 border-t border-solid border-gray-200 bg-white">
-      <div className="mx-auto grid max-w-[1248px] grid-cols-2 gap-8 px-4 py-10 text-[13px] text-gray-600 sm:px-6 lg:grid-cols-4">
-        <div className="col-span-2 lg:col-span-1">
-          <div className="flex items-center gap-2.5 text-[17px] font-bold text-[#0C4A6E]"><BrandMark size={28} /> HR Connect</div>
-          <p className="m-0 mt-3 text-gray-600 leading-relaxed">Nền tảng tuyển dụng kết nối doanh nghiệp, ứng viên và Affiliate tại Việt Nam.</p>
-        </div>
-        {columns.map((c) => (
-          <div key={c.title} className="flex flex-col gap-2.5">
-            <b className="text-gray-900 text-[14px]">{c.title}</b>
-            {c.links.map(([label, to]) => <Link key={label} to={to} className="text-gray-600 no-underline hover:text-sky-800 hover:underline transition-colors">{label}</Link>)}
+    <footer className="border-0 border-t border-solid border-slate-200 bg-white font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[13.5px] text-slate-600">
+      <div className="mx-auto max-w-[1248px] px-4 py-12 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-5">
+          {/* Brand Info */}
+          <div className="lg:col-span-2">
+            <Link to="/" className="inline-flex items-center gap-2.5 text-[19px] font-extrabold tracking-tight text-slate-900 no-underline transition-opacity hover:opacity-95">
+              <div className="relative flex items-center justify-center">
+                <BrandMark size={32} />
+              </div>
+              <span className="bg-gradient-to-r from-sky-600 to-blue-700 bg-clip-text text-transparent font-extrabold">
+                HR Connect
+              </span>
+            </Link>
+            <p className="mt-3.5 max-w-[360px] text-[14px] leading-relaxed text-slate-600">
+              Nền tảng công nghệ tuyển dụng kết nối thông minh giữa Doanh nghiệp, Ứng viên và Mạng lưới Cộng tác viên (Affiliate) hàng đầu tại Việt Nam.
+            </p>
+            <div className="mt-4 flex flex-col gap-2 text-[13px] text-slate-500">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-slate-700">Email:</span>
+                <a href="mailto:support@hrconnectvn.online" className="text-sky-600 no-underline hover:underline">support@hrconnectvn.online</a>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-slate-700">Hotline:</span>
+                <span className="text-slate-800 font-medium">1900 6868 (8:00 - 18:00)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-slate-700">Trụ sở:</span>
+                <span>Khu Công nghệ cao, TP. Thủ Đức, TP. Hồ Chí Minh</span>
+              </div>
+            </div>
           </div>
-        ))}
+
+          {/* Links Columns */}
+          {columns.map((c) => (
+            <div key={c.title} className="flex flex-col gap-3">
+              <h3 className="m-0 text-[14.5px] font-bold text-slate-900 tracking-tight">{c.title}</h3>
+              <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
+                {c.links.map(([label, to]) => (
+                  <li key={label}>
+                    <Link
+                      to={to}
+                      className="text-slate-600 no-underline transition-colors hover:text-sky-600 hover:underline"
+                    >
+                      {label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom Copyright Bar */}
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-0 border-t border-solid border-slate-100 pt-6 text-[12.5px] text-slate-500">
+          <div>
+            © 2026 HR Connect Platform. Bản quyền thuộc về Công ty Cổ phần Công nghệ Tuyển dụng HR Connect.
+          </div>
+          <div className="flex items-center gap-4">
+            <Link to="/contact" className="text-slate-500 no-underline hover:text-sky-600 hover:underline">
+              Quy chế hoạt động
+            </Link>
+            <span>·</span>
+            <Link to="/contact" className="text-slate-500 no-underline hover:text-sky-600 hover:underline">
+              Bảo mật dữ liệu
+            </Link>
+            <span>·</span>
+            <Link to="/contact" className="text-slate-500 no-underline hover:text-sky-600 hover:underline">
+              Giải quyết khiếu nại
+            </Link>
+          </div>
+        </div>
       </div>
     </footer>
   );
