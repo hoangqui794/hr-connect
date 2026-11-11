@@ -103,85 +103,15 @@ builder.Services.AddRateLimiter(options =>
 
     static string ClientKey(HttpContext context) => RateLimitIdentity.Ip(context);
 
-    options.AddPolicy("auth-login", context => RateLimitPartition.GetFixedWindowLimiter(
-        ClientKey(context),
-        _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 10,
-            Window = TimeSpan.FromMinutes(1),
-            QueueLimit = 0,
-            AutoReplenishment = true
-        }));
-
-    options.AddPolicy("public-read", context => RateLimitPartition.GetFixedWindowLimiter(
-        ClientKey(context),
-        _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 120,
-            Window = TimeSpan.FromMinutes(1),
-            QueueLimit = 0,
-            AutoReplenishment = true
-        }));
-
-    options.AddPolicy("auth-sensitive", context => RateLimitPartition.GetFixedWindowLimiter(
-        ClientKey(context),
-        _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 5,
-            Window = TimeSpan.FromMinutes(10),
-            QueueLimit = 0,
-            AutoReplenishment = true
-        }));
-
-    options.AddPolicy("auth-registration", context => RateLimitPartition.GetFixedWindowLimiter(
-        ClientKey(context),
-        _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 5,
-            Window = TimeSpan.FromHours(1),
-            QueueLimit = 0,
-            AutoReplenishment = true
-        }));
-
-    options.AddPolicy("submission-consent", context => RateLimitPartition.GetFixedWindowLimiter(
-        $"{ClientKey(context)}:{context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous"}",
-        _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 10,
-            Window = TimeSpan.FromHours(1),
-            QueueLimit = 0,
-            AutoReplenishment = true
-        }));
-
-    options.AddPolicy("submission-consent-public", context => RateLimitPartition.GetFixedWindowLimiter(
-        ClientKey(context),
-        _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 20,
-            Window = TimeSpan.FromMinutes(15),
-            QueueLimit = 0,
-            AutoReplenishment = true
-        }));
-
-    options.AddPolicy("candidate-application", context => RateLimitPartition.GetFixedWindowLimiter(
-        RateLimitIdentity.UserAndIp(context),
-        _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 10,
-            Window = TimeSpan.FromHours(1),
-            QueueLimit = 0,
-            AutoReplenishment = true
-        }));
-
-    options.AddPolicy("candidate-identity", context => RateLimitPartition.GetFixedWindowLimiter(
-        RateLimitIdentity.UserAndIp(context),
-        _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 5,
-            Window = TimeSpan.FromHours(1),
-            QueueLimit = 0,
-            AutoReplenishment = true
-        }));
+    // Gỡ bỏ rate limiting cho toàn bộ endpoint phục vụ môi trường Demo
+    options.AddPolicy("auth-login", context => RateLimitPartition.GetNoLimiter(ClientKey(context)));
+    options.AddPolicy("public-read", context => RateLimitPartition.GetNoLimiter(ClientKey(context)));
+    options.AddPolicy("auth-sensitive", context => RateLimitPartition.GetNoLimiter(ClientKey(context)));
+    options.AddPolicy("auth-registration", context => RateLimitPartition.GetNoLimiter(ClientKey(context)));
+    options.AddPolicy("submission-consent", context => RateLimitPartition.GetNoLimiter(ClientKey(context)));
+    options.AddPolicy("submission-consent-public", context => RateLimitPartition.GetNoLimiter(ClientKey(context)));
+    options.AddPolicy("candidate-application", context => RateLimitPartition.GetNoLimiter(ClientKey(context)));
+    options.AddPolicy("candidate-identity", context => RateLimitPartition.GetNoLimiter(ClientKey(context)));
 });
 
 // Chỉ cho phép các frontend đã khai báo gọi API kèm cookie xác thực.
