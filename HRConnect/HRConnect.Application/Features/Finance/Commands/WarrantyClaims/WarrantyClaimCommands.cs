@@ -80,7 +80,8 @@ public sealed class ReportResignationCommandHandler : IRequestHandler<ReportResi
         warranty.UpdatedBy = request.CurrentUserId;
         warranty.UpdatedAt = now;
         // Hold the commission while Internal HR verifies the resignation (PENDING kept for rows created before IN_WARRANTY).
-        foreach (var commission in placement.Commissions.Where(c => c.Status is CommissionStates.InWarranty or CommissionStates.Pending))
+        var heldNow = placement.Commissions.Where(c => c.Status is CommissionStates.InWarranty or CommissionStates.Pending).ToList();
+        foreach (var commission in heldNow)
         {
             commission.Status = CommissionStates.OnHold;
             commission.UpdatedAt = now;
@@ -103,6 +104,14 @@ public sealed class ReportResignationCommandHandler : IRequestHandler<ReportResi
                 "Doanh nghiệp báo ứng viên nghỉ việc",
                 $"Vị trí \"{placement.Application.Job.Title}\": ứng viên nghỉ ngày {request.LastWorkingDate:dd/MM/yyyy}. Vui lòng xác minh trong mục Bảo hành.",
                 "WARRANTY", warranty.WarrantyId, "/hr/warranty-tracking"), cancellationToken);
+
+            // The Affiliate who referred the candidate sees the hold right away instead of finding it later.
+            await AffiliateCommissionNotice.SendAsync(_financeRepository, _notifier, heldNow, new AppNotice(
+                "COMMISSION",
+                "Hoa hồng đang tạm giữ",
+                $"Doanh nghiệp báo ứng viên bạn giới thiệu cho vị trí \"{placement.Application.Job.Title}\" đã nghỉ ngày {request.LastWorkingDate:dd/MM/yyyy}. " +
+                "Hoa hồng tạm giữ trong lúc HR Connect xác minh.",
+                "WARRANTY", warranty.WarrantyId, "/affiliate/commissions"), cancellationToken);
         }
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -117,16 +126,18 @@ public sealed class ResolveResignationCommandHandler : IRequestHandler<ResolveRe
     private readonly IAuditLogService _auditLogService;
     private readonly IAdminBusinessSettings _settings;
     private readonly INotificationRepository? _notificationRepository;
+    private readonly IAppNotifier? _notifier;
 
     public ResolveResignationCommandHandler(
         IFinanceRepository financeRepository, IUnitOfWork unitOfWork, IAuditLogService auditLogService,
-        IAdminBusinessSettings settings, INotificationRepository? notificationRepository = null)
+        IAdminBusinessSettings settings, INotificationRepository? notificationRepository = null, IAppNotifier? notifier = null)
     {
         _financeRepository = financeRepository;
         _unitOfWork = unitOfWork;
         _auditLogService = auditLogService;
         _settings = settings;
         _notificationRepository = notificationRepository;
+        _notifier = notifier;
     }
 
     public async Task<WarrantyClaimResponse> Handle(ResolveResignationCommand request, CancellationToken cancellationToken)
@@ -188,6 +199,19 @@ public sealed class ResolveResignationCommandHandler : IRequestHandler<ResolveRe
             OldValues = new { status = WarrantyStates.Claimed },
             NewValues = new { status = warranty.Status, confirmed = request.Confirmed, note, commissions = held.Select(c => new { c.CommissionId, c.Status }) },
         }, cancellationToken);
+
+        var jobTitle = placement.Application.Job.Title;
+        await AffiliateCommissionNotice.SendAsync(_financeRepository, _notifier, held, request.Confirmed
+            ? new AppNotice(
+                "COMMISSION",
+                "Hoa hồng đã bị hủy",
+                $"HR Connect xác nhận ứng viên bạn giới thiệu cho vị trí \"{jobTitle}\" đã nghỉ trong thời gian bảo hành, nên hoa hồng của lượt này bị hủy.",
+                "WARRANTY", warranty.WarrantyId, "/affiliate/commissions")
+            : new AppNotice(
+                "COMMISSION",
+                "Hoa hồng tiếp tục được bảo hành",
+                $"HR Connect xác nhận ứng viên bạn giới thiệu cho vị trí \"{jobTitle}\" vẫn đi làm. Hoa hồng trở lại trạng thái trong bảo hành.",
+                "WARRANTY", warranty.WarrantyId, "/affiliate/commissions"), cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return WarrantyClaimMapping.ToResponse(placement) with
@@ -254,6 +278,34 @@ public sealed class ResolveResignationCommandHandler : IRequestHandler<ResolveRe
             NewValues = new { slot.Status, slot.JobId, slot.OriginalPlacementId, slot.ServiceFeeId, slot.FillWindowDays, slot.ExpiresAt },
         }, cancellationToken);
         return slot;
+    }
+}
+
+/// <summary>Sends one notice to each Affiliate whose commission a resignation changed (held, cancelled or restored).</summary>
+internal static class AffiliateCommissionNotice
+{
+    public static async Task SendAsync(
+        IFinanceRepository financeRepository, IAppNotifier? notifier, IEnumerable<Commission> commissions, AppNotice notice,
+        CancellationToken cancellationToken)
+    {
+        if (notifier == null)
+        {
+            return;
+        }
+
+        var userIds = new HashSet<Guid>();
+        foreach (var attributionId in commissions.Select(c => c.AttributionId).Distinct())
+        {
+            if (await financeRepository.GetAffiliateUserIdAsync(attributionId, cancellationToken) is Guid userId)
+            {
+                userIds.Add(userId);
+            }
+        }
+
+        if (userIds.Count > 0)
+        {
+            await notifier.NotifyUsersAsync(userIds, notice, cancellationToken);
+        }
     }
 }
 

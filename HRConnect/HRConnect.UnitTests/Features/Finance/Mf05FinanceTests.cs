@@ -487,6 +487,41 @@ public class Mf05FinanceTests
     }
 
     [Fact]
+    public async Task Affiliate_is_told_when_the_commission_is_held_then_cancelled()
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        var attribution = await _context.Attributions.SingleAsync();
+        var affiliateUser = new AppUser { UserId = Guid.NewGuid(), Email = "aff@example.com", PasswordHash = "x", Status = "ACTIVE", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+        _context.Add(affiliateUser);
+        _context.Add(new AffiliateProfile
+        {
+            AffiliateId = attribution.AffiliateId, UserId = affiliateUser.UserId, AffiliateType = "STANDARD", Status = "ACTIVE",
+            CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+        });
+        await _context.SaveChangesAsync();
+        await InitializeAsync(placement, offer);
+
+        var notifier = new Mock<IAppNotifier>();
+        var companyUsers = new Mock<ICompanyUserRepository>();
+        companyUsers.Setup(r => r.GetByUserIdAsync(_actor, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { CompanyId = _companyId, UserId = _actor, Status = "ACTIVE" });
+        await new ReportResignationCommandHandler(Repository, companyUsers.Object, UnitOfWork, _audit.Object, notifier.Object)
+            .Handle(new ReportResignationCommand(placement.PlacementId, Start.AddDays(10), "Ứng viên xin nghỉ", _actor), default);
+        await new ResolveResignationCommandHandler(
+                Repository, UnitOfWork, _audit.Object, new BusinessSettingsService(new SystemSettingRepository(_context)), notifier: notifier.Object)
+            .Handle(new ResolveResignationCommand(placement.PlacementId, true, "Đã xác minh", _actor), default);
+
+        notifier.Verify(n => n.NotifyUsersAsync(
+            It.Is<IEnumerable<Guid>>(ids => ids.Single() == affiliateUser.UserId),
+            It.Is<AppNotice>(a => a.Title == "Hoa hồng đang tạm giữ" && a.RouteHint == "/affiliate/commissions"),
+            It.IsAny<CancellationToken>()), Times.Once);
+        notifier.Verify(n => n.NotifyUsersAsync(
+            It.Is<IEnumerable<Guid>>(ids => ids.Single() == affiliateUser.UserId),
+            It.Is<AppNotice>(a => a.Title == "Hoa hồng đã bị hủy"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task Rejected_report_restores_the_warranty_and_commission()
     {
         var (placement, offer) = await SeedPlacementAsync();

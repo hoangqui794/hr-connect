@@ -28,7 +28,6 @@ import {
   CloseCircleOutlined,
   ExclamationCircleOutlined,
   EyeOutlined,
-  PlusOutlined,
   ReloadOutlined,
   SearchOutlined,
   SwapOutlined,
@@ -219,10 +218,11 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
     });
   }, [allSlots, activeTab, searchQuery]);
 
-  // Handle client clicking "Sử dụng suất thay thế"
-  const handleUseQuota = (slot: ReplacementSlotWithMeta) => {
-    navigate(`/client/post-job?jobId=${slot.jobId}&replacementSlotId=${slot.replacementSlotId}&serviceType=HEADHUNT_COD`);
-  };
+  // The Client never "uses" a slot by hand: once OPEN, the backend reopens the job and links every Affiliate
+  // submission to it, and the slot is filled when the Client confirms the new hire started (MF-05).
+  // So the Client only gets links to follow the job and its replacement candidates.
+  const openJob = (slot: ReplacementSlotWithMeta) => navigate(`/client/jobs?highlight=${slot.jobId}&openDetail=true`);
+  const openCandidates = (slot: ReplacementSlotWithMeta) => navigate(`/client/candidates?job=${slot.jobId}`);
 
   // Table columns
   const columns: ColumnsType<ReplacementSlotWithMeta> = [
@@ -322,7 +322,17 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
           );
         }
         if (slot.status === 'OPEN') {
-          return <span className="text-xs text-amber-700 font-medium">Đang tìm ứng viên...</span>;
+          return mode === 'client' ? (
+            <div className="text-xs leading-snug">
+              <div className="font-semibold text-amber-700">Affiliate đang tìm người thay</div>
+              <div className="text-slate-500">Bạn không cần làm gì, hồ sơ mới sẽ vào tin này</div>
+            </div>
+          ) : (
+            <span className="text-xs text-amber-700 font-medium">Đang tìm ứng viên...</span>
+          );
+        }
+        if (slot.status === 'WAITING_PAYMENT' && mode === 'client') {
+          return <span className="text-xs font-semibold text-amber-700">Mở sau khi bạn thanh toán phí tuyển</span>;
         }
         return <span className="text-slate-400">—</span>;
       },
@@ -333,15 +343,15 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
       align: 'right',
       render: (_, slot) => (
         <div className="flex items-center justify-end gap-2">
-          {mode === 'client' && slot.status === 'OPEN' && (
+          {mode === 'client' && (
             <Button
-              type="primary"
               size="small"
-              icon={<PlusOutlined />}
-              className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm font-semibold !h-8 px-3 transition-all active:scale-[0.98]"
-              onClick={() => handleUseQuota(slot)}
+              icon={<EyeOutlined />}
+              aria-label={`Xem tin ${slot.jobTitle ?? ''}`}
+              className="!h-9 px-3 rounded-lg border-slate-200 text-[#0C4A6E] hover:border-slate-300 font-semibold"
+              onClick={() => openJob(slot)}
             >
-              Sử dụng suất
+              Xem tin
             </Button>
           )}
 
@@ -349,10 +359,11 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
             <Button
               size="small"
               icon={<UserOutlined />}
-              className="!h-8 px-2.5 rounded-lg border-slate-200 text-slate-700 hover:border-slate-300 font-medium"
-              onClick={() => navigate(`/client/candidates?jobId=${slot.jobId}`)}
+              aria-label={`Hồ sơ người thay cho ${slot.jobTitle ?? 'tin này'}`}
+              className="!h-9 px-3 rounded-lg border-slate-200 text-slate-700 hover:border-slate-300 font-medium"
+              onClick={() => openCandidates(slot)}
             >
-              Hồ sơ
+              Hồ sơ người thay
             </Button>
           )}
 

@@ -14,9 +14,8 @@ export function jobRouteForRole(jobId: string, role: UserRole | string | null | 
     case 'AFFILIATE':
       return `/affiliate/jobs/${jobId}`;
     case 'INTERNAL_HR':
-      return '/hr/jobs';
     case 'ADMIN':
-      return '/admin/jobs';
+      return '/hr/jobs';
     default:
       return `/jobs/${jobId}`;
   }
@@ -83,6 +82,8 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
     (quoteMatch ? quoteMatch[1] : undefined);
 
   if (isInternalHr) {
+    const jobsBasePath = '/hr/jobs';
+
     // 1. Yêu cầu tư vấn / Liên hệ (SF-05)
     if (
       entityType === 'CONTACT_REQUEST' ||
@@ -94,7 +95,7 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       return contactId ? `${basePath}?highlight=${encodeURIComponent(contactId)}` : basePath;
     }
 
-    // 2. Đối soát nhận việc (MF-04 UC-41)
+    // 2. Đối soát nhận việc (MF-04 UC-41) -> Chuyển về Internal HR phụ trách vận hành
     if (
       entityType === 'PLACEMENT_RECONCILIATION' ||
       titleLower.includes('đối soát') ||
@@ -107,7 +108,7 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
         meta?.ReconciliationId ||
         meta?.entityId ||
         item.relatedEntityId;
-      const basePath = normRole === 'ADMIN' ? '/admin/placement-reconciliations' : '/hr/placement-reconciliations';
+      const basePath = '/hr/placement-reconciliations';
       return targetId ? `${basePath}?highlight=${encodeURIComponent(targetId)}` : basePath;
     }
 
@@ -183,7 +184,7 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       meta?.status === 'CHANGE_REQUESTED'
     ) {
       const sep = targetHighlight ? `&highlight=${encodeURIComponent(targetHighlight)}` : '';
-      return `/hr/jobs?status=CHANGE_REQUESTED${sep}`;
+      return `${jobsBasePath}?status=CHANGE_REQUESTED${sep}`;
     }
 
     // 8B. Thỏa thuận dịch vụ đã được ký điện tử (tin đã chuyển sang ACTIVE hoặc PENDING_PAYMENT)
@@ -191,7 +192,7 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       const signedJobStatus =
         meta?.jobStatus || (meta?.status && meta.status !== 'SIGNED' ? meta.status : 'ALL');
       const sep = targetHighlight ? `&highlight=${encodeURIComponent(targetHighlight)}` : '';
-      return `/hr/jobs?status=${encodeURIComponent(signedJobStatus)}${sep}`;
+      return `${jobsBasePath}?status=${encodeURIComponent(signedJobStatus)}${sep}`;
     }
 
     // 8C. Thỏa thuận dịch vụ / hợp đồng đang chờ (Client đồng ý dự thảo hoặc tải lên file ký)
@@ -201,7 +202,7 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       entityType === 'SERVICE_AGREEMENT'
     ) {
       const sep = targetHighlight ? `&highlight=${encodeURIComponent(targetHighlight)}` : '';
-      return `/hr/jobs?status=PENDING_AGREEMENT${sep}`;
+      return `${jobsBasePath}?status=PENDING_AGREEMENT${sep}`;
     }
 
     // 8D. Doanh nghiệp nộp cọc / chờ cọc
@@ -214,7 +215,7 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       meta?.status === 'PENDING_PAYMENT'
     ) {
       const sep = targetHighlight ? `&highlight=${encodeURIComponent(targetHighlight)}` : '';
-      return `/hr/jobs?status=PENDING_PAYMENT${sep}`;
+      return `${jobsBasePath}?status=PENDING_PAYMENT${sep}`;
     }
 
     // 8E. Đã thanh toán phí đăng tin / Đang tuyển
@@ -225,7 +226,7 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       meta?.status === 'ACTIVE'
     ) {
       const sep = targetHighlight ? `&highlight=${encodeURIComponent(targetHighlight)}` : '';
-      return `/hr/jobs?status=ACTIVE${sep}`;
+      return `${jobsBasePath}?status=ACTIVE${sep}`;
     }
 
     // 8F. Tin mới chờ duyệt
@@ -236,18 +237,18 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       meta?.status === 'PENDING_REVIEW'
     ) {
       const sep = targetHighlight ? `&highlight=${encodeURIComponent(targetHighlight)}` : '';
-      return `/hr/jobs?status=PENDING_REVIEW${sep}`;
+      return `${jobsBasePath}?status=PENDING_REVIEW${sep}`;
     }
 
     // 8G. Chung cho JOB
     if (entityType === 'JOB') {
-      if (route && route.startsWith('/hr/jobs') && route.includes('?')) {
-        return route;
+      if (route && (route.startsWith('/hr/jobs') || route.startsWith('/admin/jobs')) && route.includes('?')) {
+        return route.replace('/admin/jobs', '/hr/jobs');
       }
       const statusParam = meta?.status ? `status=${encodeURIComponent(meta.status)}` : '';
       const highlightParam = targetHighlight ? `highlight=${encodeURIComponent(targetHighlight)}` : '';
       const query = [statusParam, highlightParam].filter(Boolean).join('&');
-      return query ? `/hr/jobs?${query}` : '/hr/jobs';
+      return query ? `${jobsBasePath}?${query}` : jobsBasePath;
     }
   }
 

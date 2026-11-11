@@ -190,9 +190,10 @@ export const router = createBrowserRouter([
       // Old entry points open the unified queue pre-filtered by type.
       { path: 'companies', element: <AppRoutes.ConsoleApprovalsPage presetType="CLIENT" /> },
       { path: 'affiliates', element: <AppRoutes.ConsoleApprovalsPage presetType="AFFILIATE" /> },
-      // Admin can review jobs just like Internal HR (MF-01).
-      { path: 'jobs', element: <AppRoutes.Mf01JobReviewPage /> },
-      { path: 'job-templates', element: <AppRoutes.Mf01JobTemplatesAdminPage /> },
+      // Redirect job review and placement reconciliation to Internal HR workspace
+      { path: 'jobs', element: <Navigate to="/hr/jobs" replace /> },
+      { path: 'job-templates', element: <Navigate to="/hr/job-templates" replace /> },
+      { path: 'placement-reconciliations', element: <Navigate to="/hr/placement-reconciliations" replace /> },
       { path: 'users', element: <AppRoutes.ConsoleUsersPage /> },
       { path: 'contact-requests', element: <AppRoutes.AdminContactRequestsPage /> },
       { path: 'service-types', element: <AppRoutes.ConsoleServiceTypesPage /> },
@@ -201,7 +202,6 @@ export const router = createBrowserRouter([
       { path: 'user-authorization', element: <AppRoutes.ConsoleUserAuthorizationPage /> },
       { path: 'audit-trail', element: <AppRoutes.ConsoleAuditLogPage /> },
       { path: 'reports', element: <AppRoutes.AdminReportsPage /> },
-      { path: 'placement-reconciliations', element: <AppRoutes.AdminPlacementReconciliationPage /> },
       { path: 'profile', element: <AppRoutes.ConsoleProfilePage /> },
       // No backend API yet: explicit empty state, no mock numbers.
       { path: 'disputes', element: <AppRoutes.ConsoleDisputesPlaceholder /> },

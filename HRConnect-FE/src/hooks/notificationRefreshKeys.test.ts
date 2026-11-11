@@ -7,6 +7,8 @@ describe('refreshKeysFor', () => {
     expect(refreshKeysFor('SOURCING_DELIVERY')).toContainEqual(['sourcing-deliveries']);
     expect(refreshKeysFor('COMMISSION')).toContainEqual(['mf05-my-commissions']);
     expect(refreshKeysFor('WARRANTY')).toContainEqual(['mf05-warranties']);
+    expect(refreshKeysFor('CONTACT_REQUEST')).toContainEqual(['admin-contact-requests']);
+    expect(refreshKeysFor('PLACEMENT_RECONCILIATION')).toContainEqual(['placement-reconciliations']);
   });
 
   it('returns nothing for unknown or missing types', () => {

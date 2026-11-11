@@ -690,6 +690,8 @@ const REFERRAL_PROGRESS: Record<string, string> = {
   OFFER: 'Offer',
   BACKUP: 'Dự phòng',
   PLACED: 'Đã đi làm',
+  LEFT_REPORTED: 'Báo nghỉ, chờ xác minh',
+  LEFT_IN_WARRANTY: 'Nghỉ trong bảo hành',
   CLOSED: 'Đã kết thúc',
 };
 
@@ -713,6 +715,8 @@ const PROGRESS_STEP_INDEX: Record<string, number> = {
   INTERVIEW: 2,
   OFFER: 3,
   PLACED: 4,
+  LEFT_REPORTED: 4,
+  LEFT_IN_WARRANTY: 4,
 };
 
 type ReferralGroup = 'all' | 'PENDING_CONSENT' | 'processing' | 'placed' | 'stopped';
@@ -729,7 +733,8 @@ const WAITING_STATUSES = ['RECEIVED', 'PENDING_CONSENT', 'PENDING_IDENTITY_REVIE
 
 const referralGroupOf = (status: string, code?: string): Exclude<ReferralGroup, 'all'> => {
   if (WAITING_STATUSES.includes(status)) return 'PENDING_CONSENT';
-  if (status !== 'ACCEPTED' || code === 'CLOSED') return 'stopped';
+  if (status !== 'ACCEPTED' || code === 'CLOSED' || code === 'LEFT_IN_WARRANTY') return 'stopped';
+  if (code === 'LEFT_REPORTED') return 'placed';
   return code === 'PLACED' ? 'placed' : 'processing';
 };
 
@@ -741,6 +746,8 @@ const PROGRESS_HINT: Record<string, string> = {
   INTERVIEW: 'Doanh nghiệp đang phỏng vấn ứng viên.',
   OFFER: 'Doanh nghiệp đang chuẩn bị đề nghị nhận việc.',
   PLACED: 'Ứng viên đã đi làm. Hoa hồng hiện ở mục Hoa hồng và chi trả.',
+  LEFT_REPORTED: 'Doanh nghiệp báo ứng viên đã nghỉ. Hoa hồng tạm giữ trong lúc HR Connect xác minh.',
+  LEFT_IN_WARRANTY: 'Ứng viên nghỉ trong thời gian bảo hành nên hoa hồng của lượt này đã bị hủy.',
 };
 
 /** The list API filters by one status and the page groups several, so it reads every page and groups here. */
@@ -792,7 +799,9 @@ export const AffiliateSubmissionsPage: React.FC = () => {
     const rowGroup = referralGroupOf(r.status, code);
     const st = submissionStatus(r.status);
     const tone =
-      rowGroup === 'PENDING_CONSENT' ? 'warning'
+      code === 'LEFT_IN_WARRANTY' ? 'danger'
+      : code === 'LEFT_REPORTED' ? 'warning'
+      : rowGroup === 'PENDING_CONSENT' ? 'warning'
       : rowGroup === 'placed' ? 'success'
       : rowGroup === 'processing' ? 'info'
       : r.status.startsWith('BLOCKED') ? 'danger'

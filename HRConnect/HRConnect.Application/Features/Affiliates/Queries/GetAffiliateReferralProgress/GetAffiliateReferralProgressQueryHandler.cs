@@ -67,6 +67,11 @@ public sealed class GetAffiliateReferralProgressQueryHandler : IRequestHandler<G
             ApplicationStates.Interview => "INTERVIEW",
             ApplicationStates.OfferPending or ApplicationStates.OfferAccepted => "OFFER",
             ApplicationStates.Backup => "BACKUP",
+            // A placed candidate who left during the warranty must not keep showing as "Đã đi làm" to the Affiliate:
+            // reported = commission on hold while HR Connect verifies, confirmed = commission cancelled.
+            ApplicationStates.Placed when application.Placement?.Status == PlacementStates.LeftDuringWarranty
+                || application.Placement?.Warranty?.Status == WarrantyStates.Voided => "LEFT_IN_WARRANTY",
+            ApplicationStates.Placed when application.Placement?.Warranty?.Status == WarrantyStates.Claimed => "LEFT_REPORTED",
             ApplicationStates.Placed => "PLACED",
             ApplicationStates.Rejected or ApplicationStates.BackupNotSelected or ApplicationStates.InterviewFailed or
                 ApplicationStates.OfferDeclined or ApplicationStates.NotStarted or ApplicationStates.Withdrawn or
