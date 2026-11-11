@@ -14,8 +14,9 @@ export function jobRouteForRole(jobId: string, role: UserRole | string | null | 
     case 'AFFILIATE':
       return `/affiliate/jobs/${jobId}`;
     case 'INTERNAL_HR':
-    case 'ADMIN':
       return '/hr/jobs';
+    case 'ADMIN':
+      return '/admin/dashboard';
     default:
       return `/jobs/${jobId}`;
   }
@@ -67,11 +68,74 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
   }
 
   const normRole = (typeof role === 'string' ? role : (role as any)?.code || '').toUpperCase();
-  const isInternalHr = normRole === 'INTERNAL_HR' || normRole === 'ADMIN';
 
   const titleLower = (item.title || '').toLowerCase();
   const messageLower = (item.message || '').toLowerCase();
   const entityType = (item.relatedEntityType || item.notificationType || '').toUpperCase();
+
+  // 1. Phân quyền Platform Admin: Giữ trọn vẹn trong Admin Console (/admin/*)
+  if (normRole === 'ADMIN') {
+    // 1A. Giao dịch thanh toán / VNPay / Payouts / Tài chính
+    if (
+      entityType === 'ONLINE_PAYMENT' ||
+      entityType === 'PAYMENT' ||
+      entityType === 'FINANCE' ||
+      entityType === 'PAYOUT' ||
+      titleLower.includes('vnpay') ||
+      titleLower.includes('thanh toán')
+    ) {
+      return '/admin/payouts';
+    }
+
+    // 1B. Phê duyệt tài khoản Doanh nghiệp / Affiliate
+    if (
+      entityType === 'APPROVAL' ||
+      entityType === 'ACCOUNT_APPROVAL' ||
+      titleLower.includes('phê duyệt') ||
+      titleLower.includes('đăng ký tài khoản')
+    ) {
+      return '/admin/approvals';
+    }
+
+    // 1C. Nghi trùng danh tính Candidate / Claim
+    if (
+      entityType === 'CANDIDATE_DUPLICATE_CASE' ||
+      entityType === 'IDENTITY_CLAIM' ||
+      titleLower.includes('danh tính') ||
+      titleLower.includes('nghi trùng')
+    ) {
+      return '/admin/candidate-identity-claims';
+    }
+
+    // 1D. Tranh chấp khiếu nại
+    if (entityType === 'DISPUTE' || titleLower.includes('khiếu nại') || titleLower.includes('tranh chấp')) {
+      return '/admin/disputes';
+    }
+
+    // 1E. Yêu cầu tư vấn
+    if (
+      entityType === 'CONTACT_REQUEST' ||
+      titleLower.includes('yêu cầu tư vấn') ||
+      titleLower.includes('yêu cầu liên hệ')
+    ) {
+      const contactId = meta?.contactRequestId || meta?.entityId || item.relatedEntityId;
+      return contactId ? `/admin/contact-requests?highlight=${encodeURIComponent(contactId)}` : '/admin/contact-requests';
+    }
+
+    // 1F. Quản trị người dùng & phân quyền
+    if (entityType === 'USER' || titleLower.includes('người dùng')) {
+      return '/admin/users';
+    }
+
+    // 1G. Route có sẵn của admin
+    if (route && route.startsWith('/admin')) {
+      return route;
+    }
+
+    return '/admin/dashboard';
+  }
+
+  const isInternalHr = normRole === 'INTERNAL_HR';
 
   // Extract highlight param (jobId, company name in quotes, or job title in quotes)
   const metaJobId = meta?.jobId || meta?.job_id;
@@ -91,8 +155,7 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       titleLower.includes('yêu cầu liên hệ')
     ) {
       const contactId = meta?.contactRequestId || meta?.entityId || item.relatedEntityId;
-      const basePath = normRole === 'ADMIN' ? '/admin/contact-requests' : '/hr/contact-requests';
-      return contactId ? `${basePath}?highlight=${encodeURIComponent(contactId)}` : basePath;
+      return contactId ? `/hr/contact-requests?highlight=${encodeURIComponent(contactId)}` : '/hr/contact-requests';
     }
 
     // 2. Đối soát nhận việc (MF-04 UC-41) -> Chuyển về Internal HR phụ trách vận hành

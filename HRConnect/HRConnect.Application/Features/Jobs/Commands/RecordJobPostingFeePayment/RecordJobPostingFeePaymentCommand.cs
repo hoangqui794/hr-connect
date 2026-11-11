@@ -27,15 +27,18 @@ public sealed class RecordJobPostingFeePaymentCommandHandler : IRequestHandler<R
     private readonly IJobRepository _jobRepository;
     private readonly INotificationRepository _notifications;
     private readonly IUnitOfWork _uow;
+    private readonly IUserRepository? _users;
 
     public RecordJobPostingFeePaymentCommandHandler(
         IJobRepository jobRepository,
         INotificationRepository notifications,
-        IUnitOfWork uow)
+        IUnitOfWork uow,
+        IUserRepository? users = null)
     {
         _jobRepository = jobRepository;
         _notifications = notifications;
         _uow = uow;
+        _users = users;
     }
 
     public async Task<JobPostingFeeDto> Handle(RecordJobPostingFeePaymentCommand request, CancellationToken cancellationToken)
@@ -153,18 +156,32 @@ public sealed class RecordJobPostingFeePaymentCommandHandler : IRequestHandler<R
             CreatedAt = now
         }, cancellationToken);
 
-        // Gửi thông báo cho Internal HR đã duyệt tin
+        // Gửi thông báo cho Internal HR (chỉ gửi cho nhân sự có vai trò INTERNAL_HR)
         var hrReviewerId = job.AgreedBy ?? job.JobStatusHistories?
             .OrderByDescending(h => h.ChangedAt)
             .FirstOrDefault(h => (h.NewStatus == JobStatuses.PendingPayment || h.NewStatus == JobStatuses.PendingReview) && h.ChangedBy != job.CreatedBy)?
             .ChangedBy;
 
-        if (hrReviewerId.HasValue && hrReviewerId.Value != job.CreatedBy)
+        var activeHrIds = _users != null
+            ? await _users.GetActiveUserIdsByRoleAsync("INTERNAL_HR", cancellationToken)
+            : Array.Empty<Guid>();
+
+        var targetHrIds = new List<Guid>();
+        if (hrReviewerId.HasValue && activeHrIds.Contains(hrReviewerId.Value))
+        {
+            targetHrIds.Add(hrReviewerId.Value);
+        }
+        else
+        {
+            targetHrIds.AddRange(activeHrIds);
+        }
+
+        foreach (var hrId in targetHrIds.Distinct())
         {
             await _notifications.AddAsync(new Domain.Entities.Notification
             {
                 NotificationId = Guid.NewGuid(),
-                UserId = hrReviewerId.Value,
+                UserId = hrId,
                 NotificationType = "JOB",
                 Title = "Tin tuyển dụng đã thanh toán phí đăng tin",
                 Message = $"Doanh nghiệp đã hoàn tất thanh toán phí gói đăng tin cho vị trí \"{job.Title}\". Tin đã được kích hoạt Đang tuyển.",

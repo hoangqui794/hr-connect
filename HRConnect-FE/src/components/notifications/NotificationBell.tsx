@@ -272,7 +272,54 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
     placeholderData: (prev) => prev,
   });
 
-  const items = useMemo(() => pageData?.items ?? [], [pageData?.items]);
+  const rawItems = useMemo(() => pageData?.items ?? [], [pageData?.items]);
+
+  // Phân quyền cho Platform Admin: Admin chỉ nhận việc của Admin, ẩn các thông báo tuyển dụng nghiệp vụ của HR
+  const items = useMemo(() => {
+    if (role !== UserRole.ADMIN) return rawItems;
+    return rawItems.filter((item) => {
+      const entityType = (item.relatedEntityType || item.notificationType || '').toUpperCase();
+      const titleLower = (item.title || '').toLowerCase();
+
+      // Giữ lại các thông báo tài chính, giao dịch VNPay, Payout
+      if (
+        entityType === 'ONLINE_PAYMENT' ||
+        entityType === 'FINANCE' ||
+        entityType === 'PAYOUT' ||
+        titleLower.includes('vnpay') ||
+        (titleLower.includes('thanh toán') && !titleLower.includes('phí đăng tin'))
+      ) {
+        return true;
+      }
+
+      // Loại bỏ thông báo nghiệp vụ tuyển dụng của HR
+      if (
+        entityType === 'JOB' ||
+        entityType === 'APPLICATION' ||
+        entityType === 'CANDIDATE_APPLICATION' ||
+        entityType === 'APPLICATION_STATUS' ||
+        entityType === 'SUBMISSION' ||
+        entityType === 'INTERVIEW' ||
+        entityType === 'OFFER' ||
+        entityType === 'SERVICE_AGREEMENT' ||
+        entityType === 'PLACEMENT' ||
+        entityType === 'PLACEMENT_RECONCILIATION' ||
+        entityType === 'WARRANTY' ||
+        entityType === 'SOURCING' ||
+        entityType === 'SOURCING_DELIVERY' ||
+        titleLower.includes('tin tuyển dụng') ||
+        titleLower.includes('sàng lọc') ||
+        titleLower.includes('phỏng vấn') ||
+        titleLower.includes('bảo hành') ||
+        titleLower.includes('thỏa thuận dịch vụ') ||
+        titleLower.includes('đối soát')
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [rawItems, role]);
   const cachedAllPage = queryClient.getQueryData<{ totalCount?: number }>(['notifications', 'list', 'all']);
   const allTotalCount = filter === 'all' ? (pageData?.totalCount ?? items.length) : (cachedAllPage?.totalCount ?? null);
 
