@@ -147,7 +147,7 @@ export const CvTopbar: React.FC<CvTopbarProps> = ({
     FONT_OPTIONS.find((opt) => opt.value === fontFamily) || FONT_OPTIONS[0];
 
   return (
-    <header className="w-full shrink-0 select-none bg-white font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[#0F172A] z-30">
+    <header className="sticky top-0 z-30 w-full shrink-0 select-none bg-white font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[#0F172A] shadow-xs backdrop-blur-md">
       {/* ── ROW 1: Document Title + Auto-save Status + Action Buttons (PDF Page 20) ── */}
       <div className="border-0 border-b border-solid border-[#E2E8F0]">
         <div className="mx-auto flex h-[54px] w-full max-w-[1440px] items-center justify-between gap-3 px-4 sm:px-6">

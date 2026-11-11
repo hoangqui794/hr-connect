@@ -1,22 +1,4 @@
-.candidate-cv-builder-page-legacy {
-  /* The builder owns its internal scroll regions; avoid forcing a second
-     document scrollbar beside the workspace scrollbar. */
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
-  height: 100vh !important;
-  height: 100dvh !important;
-  max-height: 100vh !important;
-  overscroll-behavior: none !important;
-}
-
-body:has(.candidate-cv-builder-page-legacy),
-#root:has(.candidate-cv-builder-page-legacy) {
-  overflow: hidden !important;
-  height: 100vh !important;
-  height: 100dvh !important;
-  max-height: 100vh !important;
-  overscroll-behavior: none !important;
-}
+/* Candidate CV Builder Styles */
 
 .cv-builder-draft-alert.ant-alert {
   min-height: 48px;
@@ -37,19 +19,6 @@ body:has(.candidate-cv-builder-page-legacy),
   .cv-builder-draft-alert.ant-alert {
     padding-inline: 16px;
   }
-}
-
-.candidate-cv-builder-page {
-  overscroll-behavior: none !important;
-}
-
-.cv-builder-workspace {
-  overscroll-behavior: contain !important;
-}
-
-.cv-builder-workspace aside,
-.cv-builder-workspace > div {
-  overscroll-behavior: contain !important;
 }
 
 .cv-template-option {

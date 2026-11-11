@@ -594,7 +594,7 @@ export const CvTemplateGalleryView: React.FC<CvTemplateGalleryViewProps> = ({
   ];
 
   return (
-    <div className="min-h-full w-full flex-1 overflow-y-auto bg-[#F7F8FA] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[#0F172A]">
+    <div className="min-h-full w-full flex-1 bg-[#F7F8FA] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[#0F172A]">
       <div className="mx-auto max-w-[1248px] px-4 py-6 pb-24 sm:px-6 lg:px-8 lg:py-7">
         {/* Stepper (1 Chọn mẫu — 2 Điền nội dung — 3 Tải PDF hoặc lưu vào Kho CV) */}
         <div className="mb-5 flex flex-wrap items-center gap-2.5 text-[13px]">
