@@ -231,7 +231,7 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-slate-900">
-                  1. Chốt điều khoản thương mại ({isSourcing ? `SS · ${SERVICE_TYPE_LABEL.CV_SOURCING.label}` : `HH · ${SERVICE_TYPE_LABEL.HEADHUNT_COD.label}`})
+                  1. Chốt điều khoản thương mại ({isSourcing ? SERVICE_TYPE_LABEL.CV_SOURCING.label : SERVICE_TYPE_LABEL.HEADHUNT_COD.label})
                 </span>
                 <span className="text-xs text-slate-500">
                   Đối chiếu đề xuất của DN & điều chỉnh trước khi tạo hợp đồng

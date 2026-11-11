@@ -77,6 +77,26 @@ export const matchProvince = (jobLocation: string, province: string): boolean =>
   return false;
 };
 
+/** Salary filter as ranges (triệu/tháng); they map onto the existing salaryMin/salaryMax URL params. */
+const SALARY_RANGES = [
+  { key: '', label: 'Tất cả mức lương', min: '', max: '' },
+  { key: '0-10', label: 'Dưới 10 triệu', min: '', max: '10' },
+  { key: '10-15', label: '10 – 15 triệu', min: '10', max: '15' },
+  { key: '15-20', label: '15 – 20 triệu', min: '15', max: '20' },
+  { key: '20-30', label: '20 – 30 triệu', min: '20', max: '30' },
+  { key: '30-50', label: '30 – 50 triệu', min: '30', max: '50' },
+  { key: '50-', label: 'Trên 50 triệu', min: '50', max: '' },
+];
+const salaryRangeKey = (min: string, max: string) =>
+  SALARY_RANGES.find((r) => r.min === min && r.max === max)?.key ?? (min || max ? 'custom' : '');
+
+/** A deadline within a week gets the "Hạn gần" tag. */
+const isDeadlineNear = (deadline?: string | null) => {
+  if (!deadline) return false;
+  const days = dayjs(deadline).endOf('day').diff(dayjs(), 'day', true);
+  return days >= 0 && days <= 7;
+};
+
 const SORTS = [
   { value: 'FIT', label: 'Phù hợp nhất', candidateOnly: true },
   { value: 'LATEST', label: 'Mới đăng' },
@@ -105,16 +125,21 @@ const JobRow: React.FC<{ job: Job; fit?: number; canSave: boolean; saved: boolea
   const deadline = job.applicationDeadline ?? job.expiresAt;
   const href = jobHref(job.jobId);
   return (
-    <article className="flex flex-wrap gap-[14px] border-0 border-b border-solid border-[#F1F5F9] p-4">
-      <CompanyMark name={job.companyName} logoUrl={job.companyLogoUrl} size={66} />
+    <article className="hrc-card flex flex-wrap gap-4 rounded-xl border border-solid border-[#E2E8F0] bg-white p-[18px]">
+      <CompanyMark name={job.companyName} logoUrl={job.companyLogoUrl} size={56} />
       <div className="min-w-0 flex-[1_1_360px]">
-        <Link to={href} className="text-[16px] font-semibold text-[#111827] no-underline hover:text-[#075985] hover:underline">{job.title}</Link>
-        <div className="mt-0.5 text-[#4B5563]">{job.companyName}</div>
-        <div className="mt-2 flex flex-wrap gap-4 text-[13px] text-[#4B5563]">
-          <span className="text-[14px] font-semibold text-[#C2410C]">{salaryText(job)}</span>
-          {job.location && <span title={job.location} className="min-w-0 max-w-[240px] truncate">{job.location}</span>}
-          <span>{experienceText(job.minExperienceYears, job.maxExperienceYears)}</span>
-          {job.employmentType && <span>{EMPLOYMENT_TYPE_LABEL[job.employmentType]}</span>}
+        <div className="flex flex-wrap items-center gap-2">
+          <Link to={href} className="text-[17px] font-bold text-[#0F172A] no-underline hover:text-[#075985] hover:underline">{job.title}</Link>
+          {isDeadlineNear(deadline) && (
+            <span className="rounded-full bg-[#FFEDD5] px-2.5 py-0.5 text-[12px] font-bold text-[#9A3412]">Hạn gần</span>
+          )}
+        </div>
+        <div className="mt-0.5 text-[14px] text-[#475569]">{job.companyName}</div>
+        <div className="mt-2.5 flex flex-wrap gap-2 text-[13px]">
+          <span className="rounded-lg bg-[#FFF7ED] px-2.5 py-1 font-bold text-[#9A3412]">{salaryText(job)}</span>
+          {job.location && <span title={job.location} className="max-w-[260px] truncate rounded-lg bg-[#F1F5F9] px-2.5 py-1 text-[#334155]">{job.location}</span>}
+          <span className="rounded-lg bg-[#F1F5F9] px-2.5 py-1 text-[#334155]">{experienceText(job.minExperienceYears, job.maxExperienceYears)}</span>
+          {job.employmentType && <span className="rounded-lg bg-[#F1F5F9] px-2.5 py-1 text-[#334155]">{EMPLOYMENT_TYPE_LABEL[job.employmentType]}</span>}
         </div>
         {job.skills?.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -138,7 +163,7 @@ const JobRow: React.FC<{ job: Job; fit?: number; canSave: boolean; saved: boolea
               aria-label={saved ? `Bỏ lưu ${job.title}` : `Lưu ${job.title}`}
               aria-pressed={saved}
               onClick={onSave}
-              className="flex h-10 w-11 cursor-pointer items-center justify-center rounded-md border border-solid border-[#D1D5DB] bg-white text-[#4B5563] hover:bg-[#F9FAFB]"
+              className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl border border-solid border-[#CBD5E1] bg-white text-[#475569] transition-colors hover:bg-[#F8FAFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E]"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill={saved ? '#C2410C' : 'none'} stroke={saved ? '#C2410C' : 'currentColor'} strokeWidth="1.8" aria-hidden="true">
                 <path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z" />
@@ -147,7 +172,7 @@ const JobRow: React.FC<{ job: Job; fit?: number; canSave: boolean; saved: boolea
           )}
           <Link
             to={href}
-            className={`flex h-10 items-center rounded-md px-[14px] font-semibold no-underline ${applied ? 'border border-solid border-[#86EFAC] bg-[#F0FDF4] text-[#166534] hover:bg-[#DCFCE7] hover:text-[#166534]' : 'bg-[#C2410C] text-white hover:bg-[#9A3412] hover:text-white'}`}
+            className={`flex h-11 items-center rounded-xl px-5 font-bold no-underline transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E] ${applied ? 'border border-solid border-[#86EFAC] bg-[#F0FDF4] text-[#166534] hover:bg-[#DCFCE7] hover:text-[#166534]' : 'bg-[#C2410C] text-white hover:bg-[#9A3412] hover:text-white'}`}
           >
             {action}
           </Link>
@@ -224,6 +249,23 @@ export const PublicJobSplitDiscovery: React.FC = () => {
   };
   const results = usePublicJobSearch(query);
   const allActiveJobsQuery = usePublicJobSearch({ page: 1, pageSize: 100 });
+
+  // "Tìm nhiều": the most common skills across open jobs (real data, no fixed list).
+  const popularSkills = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const job of allActiveJobsQuery.data?.items ?? []) {
+      for (const skill of job.skills ?? []) if (skill.skillName) counts.set(skill.skillName, (counts.get(skill.skillName) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name]) => name);
+  }, [allActiveJobsQuery.data?.items]);
+
+  const typeCounts = useMemo(() => {
+    const items = allActiveJobsQuery.data?.items;
+    if (!items) return {} as Record<string, number>;
+    return Object.fromEntries(
+      WORK_TYPES.map((type) => [type.key, items.filter((job) => (type.key === REMOTE ? isRemote(job) : job.employmentType === type.key)).length])
+    ) as Record<string, number>;
+  }, [allActiveJobsQuery.data?.items]);
 
   const activeLocationCounts = useMemo(() => {
     const items = allActiveJobsQuery.data?.items ?? [];
@@ -353,9 +395,9 @@ export const PublicJobSplitDiscovery: React.FC = () => {
   return (
     <div className={`min-h-screen w-full bg-[#F7F8FA] ${FONT} text-[14px] text-[#1F2937] [line-height:normal]`}>
       <Navbar />
-      <section aria-label="Tìm kiếm việc làm" className="border-0 border-b border-solid border-[#E5E7EB] bg-[#F7F8FA]">
-        <div className="mx-auto max-w-[1248px] px-4 py-4 sm:px-6">
-          <form role="search" onSubmit={submitSearch} className="flex flex-wrap gap-2 rounded-xl border border-solid border-[#E5E7EB] bg-white p-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+      <section aria-label="Tìm kiếm việc làm" className="border-0 border-b border-solid border-[#E2E8F0] bg-white">
+        <div className="mx-auto max-w-[928px] px-4 py-4 sm:px-6">
+          <form role="search" onSubmit={submitSearch} className="flex flex-wrap overflow-hidden rounded-lg border border-solid border-[#CBD5E1] bg-white transition-colors focus-within:border-[#0C4A6E]">
             <label className="relative box-content flex flex-[3_1_320px] items-center gap-2.5 px-3 text-[#6B7280]">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
               <span className={SR_ONLY}>Từ khóa</span>
@@ -364,7 +406,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                 value={keywordDraft}
                 onChange={(event) => setKeywordDraft(event.target.value)}
                 placeholder="Chức danh, kỹ năng, tên công ty"
-                className={`${FONT} h-[44px] w-full border-0 bg-transparent px-0.5 text-[15px] text-[#1F2937] outline-none placeholder:text-[#6B7280]`}
+                className={`${FONT} h-[44px] w-full border-0 bg-transparent px-0.5 text-[14px] text-[#1F2937] outline-none placeholder:text-[#64748B]`}
               />
             </label>
             <div className="relative box-content flex flex-[1_1_200px] items-center gap-2 border-0 px-3 text-[#6B7280] sm:border-l sm:border-solid sm:border-[#E5E7EB]">
@@ -385,12 +427,27 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                   return normLabel.includes(normInput);
                 }}
                 options={locationOptions}
-                className={`${SELECT_TEXT} h-[42px] min-w-0 flex-1 [&_.ant-select-selector]:!px-0 [&_.ant-select-selection-item]:!text-[15px]`}
+                className={`${SELECT_TEXT} h-[44px] min-w-0 flex-1 [&_.ant-select-selector]:!px-0 [&_.ant-select-selection-item]:!text-[14px]`}
                 popupMatchSelectWidth={false}
               />
             </div>
-            <button type="submit" className={`${FONT} h-[42px] cursor-pointer self-start rounded-md border-0 bg-[#C2410C] px-[26px] text-[15px] font-semibold text-white hover:bg-[#9A3412] max-sm:w-full`}>Tìm việc</button>
+            <button type="submit" className={`${FONT} h-[44px] cursor-pointer border-0 bg-[#C2410C] px-[22px] text-[14px] font-bold text-white transition-colors hover:bg-[#9A3412] active:bg-[#7C2D12] max-sm:w-full`}>Tìm việc</button>
           </form>
+          {popularSkills.length > 0 && (
+            <p className="m-0 mt-2.5 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[13px] leading-none text-[#475569]">
+              <span>Tìm nhiều:</span>
+              {popularSkills.map((skill) => (
+                <button
+                  key={skill}
+                  type="button"
+                  onClick={() => update((next) => { next.delete('search'); next.set('keyword', skill); })}
+                  className={`${FONT} inline-flex min-h-[28px] cursor-pointer items-center border-0 bg-transparent p-0 text-[13px] leading-none ${LINK}`}
+                >
+                  {skill}
+                </button>
+              ))}
+            </p>
+          )}
         </div>
       </section>
 
@@ -409,35 +466,53 @@ export const PublicJobSplitDiscovery: React.FC = () => {
             Bộ lọc{chips.length > 0 ? ` (${chips.length})` : ''}
           </button>
 
-          <aside aria-label="Bộ lọc" className={`${filtersOpen ? 'flex' : 'hidden'} w-full shrink-0 flex-col gap-[18px] rounded-lg border border-solid border-[#E5E7EB] bg-white p-4 lg:flex lg:w-[284.3px]`}>
+          <aside aria-label="Bộ lọc" className={`${filtersOpen ? 'flex' : 'hidden'} hrc-fade-up w-full shrink-0 flex-col gap-[22px] rounded-2xl border border-solid border-[#E2E8F0] bg-white p-5 lg:flex lg:w-[290px]`}>
             <div className="flex items-baseline justify-between">
               <b className="text-[15px]">Bộ lọc</b>
               <button type="button" onClick={clearFilters} className={`${FONT} cursor-pointer border-0 bg-transparent p-0 text-[13px] ${LINK}`}>Xóa lọc</button>
             </div>
             <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
               <legend className="mb-2 px-0.5 font-semibold">Mức lương (triệu/tháng)</legend>
-              <div className="flex items-center gap-2">
-                <label className="relative min-w-0 flex-1">
-                  <span className={SR_ONLY}>Từ</span>
-                  <input type="number" min="0" value={minDraft} onChange={(event) => setMinDraft(event.target.value)} className={`${FONT} h-[38px] w-full rounded-md border border-solid border-[#D1D5DB] px-2.5 text-[14px] text-[#1F2937]`} />
-                </label>
-                <span className="text-[#6B7280]">–</span>
-                <label className="relative min-w-0 flex-1">
-                  <span className={SR_ONLY}>Đến</span>
-                  <input type="number" min="0" value={maxDraft} onChange={(event) => setMaxDraft(event.target.value)} className={`${FONT} h-[38px] w-full rounded-md border border-solid border-[#D1D5DB] px-2.5 text-[14px] text-[#1F2937]`} />
-                </label>
-              </div>
+              <Select
+                aria-label="Mức lương"
+                value={salaryRangeKey(minDraft, maxDraft)}
+                onChange={(key) => {
+                  const range = SALARY_RANGES.find((r) => r.key === key);
+                  if (!range) return;
+                  setMinDraft(range.min);
+                  setMaxDraft(range.max);
+                }}
+                options={[
+                  ...SALARY_RANGES.map((r) => ({ value: r.key, label: r.label })),
+                  ...(salaryRangeKey(minDraft, maxDraft) === 'custom'
+                    ? [{ value: 'custom', label: `${minDraft || 0} – ${maxDraft || '…'} triệu` }]
+                    : []),
+                ]}
+                className={`${SELECT_TEXT} h-[42px] w-full [&_.ant-select-selector]:!rounded-lg [&_.ant-select-selector]:!border-[#CBD5E1]`}
+              />
               <label className="flex cursor-pointer items-center gap-2 text-[#374151]">
                 <Checkbox type="checkbox" checked={negotiableDraft} onChange={(event) => setNegotiableDraft(event.target.checked)} /> Gồm việc lương thương lượng
               </label>
             </fieldset>
-            <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
+            <fieldset className="m-0 min-w-0 border-0 p-0">
               <legend className="mb-2 px-0.5 font-semibold">Kinh nghiệm</legend>
-              {EXPERIENCE.map((level) => (
-                <label key={level.key} className="flex cursor-pointer items-center gap-2">
-                  <Checkbox type="radio" name="exp" checked={expDraft === level.key} onChange={() => setExpDraft(level.key)} /> {level.label}
-                </label>
-              ))}
+              <div role="radiogroup" aria-label="Kinh nghiệm" className="flex flex-wrap gap-2">
+                {EXPERIENCE.map((level) => {
+                  const on = expDraft === level.key;
+                  return (
+                    <button
+                      key={level.key}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      onClick={() => setExpDraft(on ? '' : level.key)}
+                      className={`${FONT} min-h-[36px] cursor-pointer rounded-full border border-solid px-3 text-[13px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E] max-lg:min-h-[44px] ${on ? 'border-[#0C4A6E] bg-[#E0F2FE] text-[#0C4A6E]' : 'border-[#CBD5E1] bg-white text-[#334155] hover:border-[#94A3B8]'}`}
+                    >
+                      {level.label}
+                    </button>
+                  );
+                })}
+              </div>
             </fieldset>
             <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
               <legend id="industry-label" className="mb-2 px-0.5 font-semibold">Ngành nghề</legend>
@@ -458,16 +533,19 @@ export const PublicJobSplitDiscovery: React.FC = () => {
             <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
               <legend className="mb-2 px-0.5 font-semibold">Hình thức làm việc</legend>
               {WORK_TYPES.map((type) => (
-                <label key={type.key} className="flex cursor-pointer items-center gap-2">
-                  <Checkbox
-                    type="checkbox"
-                    checked={typesDraft.includes(type.key)}
-                    onChange={(event) => setTypesDraft((current) => (event.target.checked ? [...current, type.key] : current.filter((key) => key !== type.key)))}
-                  /> {type.label}
+                <label key={type.key} className="flex min-h-[32px] cursor-pointer items-center justify-between gap-2 text-[#334155]">
+                  <span className="flex items-center gap-2">
+                    <Checkbox
+                      type="checkbox"
+                      checked={typesDraft.includes(type.key)}
+                      onChange={(event) => setTypesDraft((current) => (event.target.checked ? [...current, type.key] : current.filter((key) => key !== type.key)))}
+                    /> {type.label}
+                  </span>
+                  {typeCounts[type.key] !== undefined && <span className="text-[12px] text-[#64748B]">{typeCounts[type.key]}</span>}
                 </label>
               ))}
             </fieldset>
-            <button type="button" onClick={applyFilters} className={`${FONT} h-10 cursor-pointer rounded-md border border-solid border-[#0C4A6E] bg-[#0C4A6E] text-[14px] font-semibold text-white hover:bg-[#075985]`}>Áp dụng</button>
+            <button type="button" onClick={applyFilters} className={`${FONT} h-11 cursor-pointer rounded-xl border-0 bg-[#0C4A6E] text-[14px] font-bold text-white transition-colors hover:bg-[#075985] active:bg-[#0B3A57]`}>Áp dụng</button>
           </aside>
 
           <section aria-labelledby="results" className="w-full min-w-0 flex-1">
@@ -513,7 +591,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                 {chips.length > 0 && <button type="button" onClick={clearFilters} className={`${FONT} mt-3 cursor-pointer border-0 bg-transparent p-0 font-semibold ${LINK}`}>Xóa lọc</button>}
               </div>
             ) : (
-              <div className="rounded-lg border border-solid border-[#E5E7EB] bg-white">
+              <div aria-busy={results.isFetching && !results.isLoading} className="hrc-dim hrc-stagger flex flex-col gap-3" key={`${page}-${currentSearch}`}>
                 {shown.map((job) => (
                   <JobRow key={job.jobId} job={job} fit={fitOf.get(job.jobId)} canSave={canSave} saved={isCandidate && isSaved(job.jobId)} onSave={() => onSave(job)} action={actionFor(job)} applied={isCandidate && isApplied(job.jobId)} />
                 ))}

@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="680 20 920 560" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0B3A57"></stop>
+      <stop offset="1" stop-color="#0C4A6E"></stop>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7DD3FC" stop-opacity=".28"></stop>
+      <stop offset="1" stop-color="#38BDF8" stop-opacity=".06"></stop>
+    </linearGradient>
+    <linearGradient id="fadeL" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#0C4A6E" stop-opacity="1"></stop>
+      <stop offset=".45" stop-color="#0C4A6E" stop-opacity=".92"></stop>
+      <stop offset="1" stop-color="#0C4A6E" stop-opacity=".15"></stop>
+    </linearGradient>
+    <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0A3550"></stop>
+      <stop offset="1" stop-color="#082C43"></stop>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="640" fill="url(#sky)"></rect>
+  
+  <g transform="translate(700 40)">
+    <rect width="900" height="420" fill="url(#glass)"></rect>
+    <g stroke="#0B3A57" stroke-width="10">
+      <line x1="0" y1="0" x2="0" y2="420"></line><line x1="180" y1="0" x2="180" y2="420"></line>
+      <line x1="360" y1="0" x2="360" y2="420"></line><line x1="540" y1="0" x2="540" y2="420"></line>
+      <line x1="720" y1="0" x2="720" y2="420"></line><line x1="900" y1="0" x2="900" y2="420"></line>
+      <line x1="0" y1="210" x2="900" y2="210"></line>
+    </g>
+    
+    <g fill="#0E557D" opacity=".75">
+      <rect x="30" y="250" width="70" height="170"></rect><rect x="110" y="200" width="50" height="220"></rect>
+      <rect x="200" y="270" width="90" height="150"></rect><rect x="310" y="180" width="40" height="240"></rect>
+      <rect x="380" y="240" width="110" height="180"></rect><rect x="560" y="220" width="60" height="200"></rect>
+      <rect x="640" y="160" width="55" height="260"></rect><rect x="740" y="250" width="120" height="170"></rect>
+    </g>
+  </g>
+  
+  <rect y="460" width="1600" height="180" fill="url(#floor)"></rect>
+  
+  <g fill="#0A3047">
+    <rect x="930" y="430" width="520" height="22" rx="6"></rect>
+    <rect x="960" y="452" width="14" height="120"></rect><rect x="1406" y="452" width="14" height="120"></rect>
+  </g>
+  
+  <g>
+    <rect x="1010" y="398" width="110" height="32" rx="3" fill="#123F5E"></rect>
+    <rect x="1000" y="428" width="130" height="6" rx="2" fill="#174B6E"></rect>
+    <rect x="1250" y="420" width="70" height="10" rx="2" fill="#E0F2FE" opacity=".55"></rect>
+    <rect x="1262" y="414" width="60" height="8" rx="2" fill="#E0F2FE" opacity=".35"></rect>
+  </g>
+  
+  <g fill="#072A40">
+    <circle cx="905" cy="300" r="34"></circle>
+    <path d="M845 452 C845 360 870 340 905 340 C940 340 965 360 965 452 Z"></path>
+    <circle cx="1480" cy="296" r="34"></circle>
+    <path d="M1420 452 C1420 356 1445 336 1480 336 C1515 336 1540 356 1540 452 Z"></path>
+    <circle cx="1195" cy="312" r="30" opacity=".9"></circle>
+    <path d="M1145 430 C1145 362 1165 346 1195 346 C1225 346 1245 362 1245 430 Z" opacity=".9"></path>
+  </g>
+  
+  <g fill="#0F5A54" opacity=".9">
+    <ellipse cx="760" cy="430" rx="26" ry="60"></ellipse><ellipse cx="735" cy="445" rx="18" ry="46" transform="rotate(-20 735 445)"></ellipse>
+    <ellipse cx="788" cy="447" rx="18" ry="46" transform="rotate(20 788 447)"></ellipse>
+    <rect x="740" y="480" width="40" height="44" rx="4" fill="#0A3550"></rect>
+  </g>
+  
+  <circle cx="1350" cy="120" r="160" fill="#FDBA74" opacity=".10"></circle>
+</svg>

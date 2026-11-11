@@ -754,7 +754,7 @@ export const ApplicationWorkbench: React.FC<{
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   {st && <StatusDot tone={st.tone}>{st.label}</StatusDot>}
                   {d.serviceTypeCode && (
-                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{SERVICE_TYPE[d.serviceTypeCode] ?? d.serviceTypeCode}</span>
+                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{(audience === 'client' ? SERVICE_TYPE[d.serviceTypeCode]?.split(' · ').pop() : SERVICE_TYPE[d.serviceTypeCode]) ?? d.serviceTypeCode}</span>
                   )}
                   {d.isReplacement && (
                     <span className="rounded-md bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-900">Người thay thế – không tính phí mới</span>

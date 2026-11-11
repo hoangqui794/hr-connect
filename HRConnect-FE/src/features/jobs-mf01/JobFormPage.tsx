@@ -442,10 +442,10 @@ interface ServiceMeta {
 const SERVICE_META: Record<ServiceTypeCode, ServiceMeta> = {
   CV_APPLICATION: {
     code: 'CV_APPLICATION',
-    tag: 'AP · Nhận hồ sơ ứng tuyển',
+    tag: 'Ứng viên tự nộp hồ sơ',
     color: 'blue',
     icon: <ProfileOutlined />,
-    defaultTitle: 'CV Application',
+    defaultTitle: 'Nhận hồ sơ ứng tuyển',
     defaultSummary: 'Đăng tin trên HR Connect, ứng viên chủ động nộp hồ sơ và doanh nghiệp tự sàng lọc.',
     bestFor: 'Vị trí cần nhiều hồ sơ và đội tuyển dụng nội bộ tự xử lý.',
     includes: [
@@ -459,10 +459,10 @@ const SERVICE_META: Record<ServiceTypeCode, ServiceMeta> = {
   },
   CV_SOURCING: {
     code: 'CV_SOURCING',
-    tag: 'SS · Tìm hồ sơ phù hợp',
+    tag: 'Giao CV theo số lượng',
     color: 'purple',
     icon: <FileSearchOutlined />,
-    defaultTitle: 'CV Sourcing',
+    defaultTitle: 'Tìm hồ sơ phù hợp',
     defaultSummary: 'HR Connect cùng mạng lưới cộng tác viên tìm và giao hồ sơ đã sàng lọc theo số lượng bạn đặt.',
     bestFor: 'Cần nhanh một số lượng CV đạt chuẩn mà không tự đi tìm.',
     includes: [
@@ -476,7 +476,7 @@ const SERVICE_META: Record<ServiceTypeCode, ServiceMeta> = {
   },
   HEADHUNT_COD: {
     code: 'HEADHUNT_COD',
-    tag: 'HH · Tuyển dụng theo kết quả',
+    tag: 'Trả phí khi tuyển thành công',
     color: 'gold',
     icon: <AimOutlined />,
     defaultTitle: 'Tuyển dụng theo kết quả',

@@ -58,7 +58,6 @@ import {
   JOB_STATUS,
   SERVICE_AGREEMENT_STATUS,
   SERVICE_TYPE_LABEL,
-  serviceTypeText,
   isAwaitingSourcingDeposit,
   sourcingDepositAmount,
 } from '@/features/jobs-mf01/jobDisplay';
@@ -538,7 +537,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                         : 'bg-purple-50 text-purple-700 border-purple-200'
                     }`}
                   >
-                    {SERVICE_TYPE_LABEL[activeJob.serviceTypeCode].short}
+                    {SERVICE_TYPE_LABEL[activeJob.serviceTypeCode].label}
                   </span>
                 )}
               </div>
@@ -659,7 +658,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
 
                         <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
                           <span className="font-semibold text-slate-600">
-                            {serviceTypeText(job.serviceTypeCode)}
+                            {SERVICE_TYPE_LABEL[job.serviceTypeCode as keyof typeof SERVICE_TYPE_LABEL]?.label ?? job.serviceTypeCode}
                           </span>
                           <span className="text-[11px] text-slate-400">
                             {dayjs(job.updatedAt).format('DD/MM/YYYY')}
