@@ -28,8 +28,11 @@ export function jobRouteForRole(jobId: string, role: UserRole | string | null | 
  */
 export function portalRoute(route: string, role: UserRole | string | null | undefined): string {
   let cleanRoute = route;
+  const normRole = (typeof role === 'string' ? role : (role as any)?.code || '').toUpperCase();
   if (cleanRoute.startsWith('/internal/jobs/review')) {
-    cleanRoute = cleanRoute.replace('/internal/jobs/review', '/hr/jobs');
+    cleanRoute = cleanRoute.replace('/internal/jobs/review', normRole === 'ADMIN' ? '/admin/jobs' : '/hr/jobs');
+  } else if (normRole === 'ADMIN' && cleanRoute.startsWith('/hr/jobs')) {
+    cleanRoute = cleanRoute.replace('/hr/jobs', '/admin/jobs');
   }
   const match = PUBLIC_JOB_ROUTE.exec(cleanRoute);
   return match ? jobRouteForRole(decodeURIComponent(match[1]), role) : cleanRoute;
@@ -83,6 +86,8 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
     (quoteMatch ? quoteMatch[1] : undefined);
 
   if (isInternalHr) {
+    const jobsBasePath = normRole === 'ADMIN' ? '/admin/jobs' : '/hr/jobs';
+
     // 1. Yêu cầu tư vấn / Liên hệ (SF-05)
     if (
       entityType === 'CONTACT_REQUEST' ||
@@ -183,7 +188,7 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       meta?.status === 'CHANGE_REQUESTED'
     ) {
       const sep = targetHighlight ? `&highlight=${encodeURIComponent(targetHighlight)}` : '';
-      return `/hr/jobs?status=CHANGE_REQUESTED${sep}`;
+      return `${jobsBasePath}?status=CHANGE_REQUESTED${sep}`;
     }
 
     // 8B. Thỏa thuận dịch vụ đã được ký điện tử (tin đã chuyển sang ACTIVE hoặc PENDING_PAYMENT)
@@ -191,7 +196,7 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       const signedJobStatus =
         meta?.jobStatus || (meta?.status && meta.status !== 'SIGNED' ? meta.status : 'ALL');
       const sep = targetHighlight ? `&highlight=${encodeURIComponent(targetHighlight)}` : '';
-      return `/hr/jobs?status=${encodeURIComponent(signedJobStatus)}${sep}`;
+      return `${jobsBasePath}?status=${encodeURIComponent(signedJobStatus)}${sep}`;
     }
 
     // 8C. Thỏa thuận dịch vụ / hợp đồng đang chờ (Client đồng ý dự thảo hoặc tải lên file ký)
@@ -201,7 +206,7 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       entityType === 'SERVICE_AGREEMENT'
     ) {
       const sep = targetHighlight ? `&highlight=${encodeURIComponent(targetHighlight)}` : '';
-      return `/hr/jobs?status=PENDING_AGREEMENT${sep}`;
+      return `${jobsBasePath}?status=PENDING_AGREEMENT${sep}`;
     }
 
     // 8D. Doanh nghiệp nộp cọc / chờ cọc
@@ -214,7 +219,7 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       meta?.status === 'PENDING_PAYMENT'
     ) {
       const sep = targetHighlight ? `&highlight=${encodeURIComponent(targetHighlight)}` : '';
-      return `/hr/jobs?status=PENDING_PAYMENT${sep}`;
+      return `${jobsBasePath}?status=PENDING_PAYMENT${sep}`;
     }
 
     // 8E. Đã thanh toán phí đăng tin / Đang tuyển
@@ -225,7 +230,7 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       meta?.status === 'ACTIVE'
     ) {
       const sep = targetHighlight ? `&highlight=${encodeURIComponent(targetHighlight)}` : '';
-      return `/hr/jobs?status=ACTIVE${sep}`;
+      return `${jobsBasePath}?status=ACTIVE${sep}`;
     }
 
     // 8F. Tin mới chờ duyệt
@@ -236,18 +241,18 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       meta?.status === 'PENDING_REVIEW'
     ) {
       const sep = targetHighlight ? `&highlight=${encodeURIComponent(targetHighlight)}` : '';
-      return `/hr/jobs?status=PENDING_REVIEW${sep}`;
+      return `${jobsBasePath}?status=PENDING_REVIEW${sep}`;
     }
 
     // 8G. Chung cho JOB
     if (entityType === 'JOB') {
-      if (route && route.startsWith('/hr/jobs') && route.includes('?')) {
-        return route;
+      if (route && (route.startsWith('/hr/jobs') || route.startsWith('/admin/jobs')) && route.includes('?')) {
+        return normRole === 'ADMIN' ? route.replace('/hr/jobs', '/admin/jobs') : route;
       }
       const statusParam = meta?.status ? `status=${encodeURIComponent(meta.status)}` : '';
       const highlightParam = targetHighlight ? `highlight=${encodeURIComponent(targetHighlight)}` : '';
       const query = [statusParam, highlightParam].filter(Boolean).join('&');
-      return query ? `/hr/jobs?${query}` : '/hr/jobs';
+      return query ? `${jobsBasePath}?${query}` : jobsBasePath;
     }
   }
 
