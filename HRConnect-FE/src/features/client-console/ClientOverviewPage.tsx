@@ -96,9 +96,8 @@ export const ClientOverviewPage: React.FC = () => {
   return (
     <div className={`${FONT} space-y-7 max-w-full animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
       {/* ── 1. Executive Studio Hero Banner ──────────────────────────── */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0B1528] via-[#0C4A6E] to-[#0369A1] px-5 py-4 text-white sm:px-6 sm:py-5">
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0B132B] via-[#0369A1] to-[#0284C7] px-5 py-4 text-white sm:px-6 sm:py-5 shadow-lg shadow-sky-950/10">
         {/* Ambient background glow */}
-        
         
 
         <div className="relative z-10 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
@@ -131,7 +130,7 @@ export const ClientOverviewPage: React.FC = () => {
                 type="primary"
                 icon={<PlusOutlined />}
                 onClick={() => navigate('/client/jobs/create')}
-                className="!h-10 !rounded-lg !border-0 !bg-white !px-4 text-sm font-bold !text-[#0C4A6E] transition-all hover:!bg-sky-50 active:scale-[0.98]"
+                className="!h-10 !rounded-lg !border-0 !bg-white !px-4 text-sm font-bold !text-[#0284C7] shadow-sm transition-all hover:!bg-sky-50 hover:!text-[#0369A1] active:scale-[0.98]"
               >
                 Đăng tin tuyển dụng mới
               </Button>
@@ -215,14 +214,14 @@ export const ClientOverviewPage: React.FC = () => {
                     {pendingCVCount} hồ sơ
                   </span>
                 </div>
-                <h3 className="m-0 mt-3.5 text-[15px] font-bold text-slate-900 group-hover:text-[#0C4A6E] transition-colors leading-snug">
+                <h3 className="m-0 mt-3.5 text-[15px] font-bold text-slate-900 group-hover:text-[#0284C7] transition-colors leading-snug">
                   Duyệt hồ sơ mới
                 </h3>
                 <p className="m-0 mt-1.5 text-xs text-slate-500 leading-relaxed">
                   Ứng viên vừa nộp hoặc do sourcing chuyển sang, cần xem và chọn lọc.
                 </p>
               </div>
-              <div className="mt-4 flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-3 text-xs font-bold text-[#0C4A6E]">
+              <div className="mt-4 flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-3 text-xs font-bold text-[#0284C7]">
                 <span>Xem danh sách</span>
                 <ArrowRightOutlined className="transition-transform group-hover:translate-x-1" />
               </div>
@@ -250,14 +249,14 @@ export const ClientOverviewPage: React.FC = () => {
                     {shortlistedCount} ứng viên
                   </span>
                 </div>
-                <h3 className="m-0 mt-3.5 text-[15px] font-bold text-slate-900 group-hover:text-[#0C4A6E] transition-colors leading-snug">
+                <h3 className="m-0 mt-3.5 text-[15px] font-bold text-slate-900 group-hover:text-[#0284C7] transition-colors leading-snug">
                   Lên lịch phỏng vấn
                 </h3>
                 <p className="m-0 mt-1.5 text-xs text-slate-500 leading-relaxed">
                   Các ứng viên đã chọn (Shortlisted) đang chờ bạn xếp lịch gặp mặt.
                 </p>
               </div>
-              <div className="mt-4 flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-3 text-xs font-bold text-[#0C4A6E]">
+              <div className="mt-4 flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-3 text-xs font-bold text-[#0284C7]">
                 <span>Lên lịch ngay</span>
                 <ArrowRightOutlined className="transition-transform group-hover:translate-x-1" />
               </div>
@@ -285,14 +284,14 @@ export const ClientOverviewPage: React.FC = () => {
                     {offerCount} mục
                   </span>
                 </div>
-                <h3 className="m-0 mt-3.5 text-[15px] font-bold text-slate-900 group-hover:text-[#0C4A6E] transition-colors leading-snug">
+                <h3 className="m-0 mt-3.5 text-[15px] font-bold text-slate-900 group-hover:text-[#0284C7] transition-colors leading-snug">
                   Phát hành Offer
                 </h3>
                 <p className="m-0 mt-1.5 text-xs text-slate-500 leading-relaxed">
                   Ứng viên phỏng vấn đạt cần gửi đề nghị hoặc xác nhận ngày đi làm.
                 </p>
               </div>
-              <div className="mt-4 flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-3 text-xs font-bold text-[#0C4A6E]">
+              <div className="mt-4 flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-3 text-xs font-bold text-[#0284C7]">
                 <span>Xem offer</span>
                 <ArrowRightOutlined className="transition-transform group-hover:translate-x-1" />
               </div>
@@ -326,7 +325,7 @@ export const ClientOverviewPage: React.FC = () => {
                     {pendingAgreements + needFix} tin
                   </span>
                 </div>
-                <h3 className="m-0 mt-3.5 text-[15px] font-bold text-slate-900 group-hover:text-[#0C4A6E] transition-colors leading-snug">
+                <h3 className="m-0 mt-3.5 text-[15px] font-bold text-slate-900 group-hover:text-[#0284C7] transition-colors leading-snug">
                   {pendingAgreements > 0 ? 'Ký thỏa thuận dịch vụ' : 'Tin nháp & hoàn thiện'}
                 </h3>
                 <p className="m-0 mt-1.5 text-xs text-slate-500 leading-relaxed">
@@ -335,7 +334,7 @@ export const ClientOverviewPage: React.FC = () => {
                     : 'Các tin nháp hoặc tin bị yêu cầu sửa đổi cần gửi lại duyệt.'}
                 </p>
               </div>
-              <div className="mt-4 flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-3 text-xs font-bold text-[#0C4A6E]">
+              <div className="mt-4 flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-3 text-xs font-bold text-[#0284C7]">
                 <span>Xử lý ngay</span>
                 <ArrowRightOutlined className="transition-transform group-hover:translate-x-1" />
               </div>
@@ -368,7 +367,7 @@ export const ClientOverviewPage: React.FC = () => {
             </div>
             <div className="flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-3 text-xs text-slate-500">
               <span>{list.length} tin tổng cộng</span>
-              <span className="font-semibold text-[#0C4A6E]">Quản lý →</span>
+              <span className="font-semibold text-[#0284C7]">Quản lý →</span>
             </div>
           </div>
 
@@ -448,7 +447,7 @@ export const ClientOverviewPage: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="m-0 text-base font-bold text-slate-900">Phễu chuyển đổi tuyển dụng</h2>
-                <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-[#0C4A6E]">
+                <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-[#0284C7] border border-sky-100">
                   Toàn bộ chiến dịch
                 </span>
               </div>
@@ -458,7 +457,7 @@ export const ClientOverviewPage: React.FC = () => {
             </div>
             <Button
               type="link"
-              className="!px-0 text-xs font-bold text-[#0C4A6E] hover:text-[#075985]"
+              className="!px-0 text-xs font-bold text-[#0284C7] hover:text-[#0369A1]"
               onClick={() => navigate('/client/candidates')}
             >
               Mở bảng Kanban <ArrowRightOutlined className="text-xs" />
@@ -479,7 +478,7 @@ export const ClientOverviewPage: React.FC = () => {
                     key={f.code}
                     type="button"
                     onClick={() => navigate(`/client/candidates?status=${f.code}`)}
-                    className="group relative flex w-full cursor-pointer items-center justify-between rounded-xl border border-transparent p-2 text-left transition-all hover:border-slate-200 hover:bg-slate-50/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0C4A6E]/30"
+                    className="group relative flex w-full cursor-pointer items-center justify-between rounded-xl border border-transparent p-2 text-left transition-all hover:border-slate-200 hover:bg-slate-50/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0284C7]/30"
                   >
                     <div className="flex w-32 shrink-0 items-center gap-2">
                       <span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-bold ${f.bg}`}>
@@ -498,7 +497,7 @@ export const ClientOverviewPage: React.FC = () => {
 
                     <div className="flex w-24 shrink-0 items-center justify-end gap-2 text-right">
                       <span className="text-xs text-slate-400 font-medium">{sharePercent}%</span>
-                      <span className="text-sm font-bold tabular-nums text-slate-900 group-hover:text-[#0C4A6E]">
+                      <span className="text-sm font-bold tabular-nums text-slate-900 group-hover:text-[#0284C7]">
                         {value}
                       </span>
                     </div>
@@ -520,7 +519,7 @@ export const ClientOverviewPage: React.FC = () => {
             </div>
             <Button
               type="link"
-              className="!px-0 text-xs font-bold text-[#0C4A6E] hover:text-[#075985]"
+              className="!px-0 text-xs font-bold text-[#0284C7] hover:text-[#0369A1]"
               onClick={() => navigate('/client/interviews-offers')}
             >
               Lịch đầy đủ <ArrowRightOutlined className="text-xs" />
@@ -541,7 +540,7 @@ export const ClientOverviewPage: React.FC = () => {
               <Button
                 size="small"
                 type="primary"
-                className="mt-4 !bg-[#0C4A6E] font-semibold !rounded-lg"
+                className="mt-4 !bg-[#0284C7] hover:!bg-[#0369A1] font-semibold !rounded-lg !border-0 text-white"
                 onClick={() => navigate('/client/candidates?stage=shortlisted')}
               >
                 Chọn ứng viên phỏng vấn
@@ -557,7 +556,7 @@ export const ClientOverviewPage: React.FC = () => {
                 >
                   {/* Date badge */}
                   <div className="flex w-12 shrink-0 flex-col items-center rounded-xl border border-slate-200 bg-white py-1.5 shadow-2xs">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#0C4A6E]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#0284C7]">
                       {iv.scheduledAt ? dayjs(iv.scheduledAt).format('MMM') : '—'}
                     </span>
                     <span className="text-lg font-black leading-tight text-slate-900">
@@ -567,16 +566,16 @@ export const ClientOverviewPage: React.FC = () => {
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="truncate text-sm font-bold text-slate-900 group-hover:text-[#0C4A6E] transition-colors">
+                      <span className="truncate text-sm font-bold text-slate-900 group-hover:text-[#0284C7] transition-colors">
                         {iv.candidateName}
                       </span>
-                      <span className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold text-[#0C4A6E]">
+                      <span className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold text-[#0284C7]">
                         Vòng {iv.interviewRound}
                       </span>
                     </div>
                     <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
                       <span className="flex items-center gap-1 font-medium text-slate-700">
-                        <ClockCircleOutlined className="text-[#0C4A6E]" />
+                        <ClockCircleOutlined className="text-[#0284C7]" />
                         {iv.scheduledAt ? dayjs(iv.scheduledAt).format('HH:mm') : ''}
                       </span>
                       <span>·</span>
@@ -608,7 +607,7 @@ export const ClientOverviewPage: React.FC = () => {
           </div>
           <Button
             type="link"
-            className="!px-0 text-xs font-bold text-[#0C4A6E] hover:text-[#075985]"
+            className="!px-0 text-xs font-bold text-[#0284C7] hover:text-[#0369A1]"
             onClick={() => navigate('/client/jobs')}
           >
             Tất cả chiến dịch ({list.length}) <ArrowRightOutlined className="text-xs" />
@@ -619,7 +618,7 @@ export const ClientOverviewPage: React.FC = () => {
           <Skeleton active paragraph={{ rows: 3 }} />
         ) : activeJobs.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-10 text-center shadow-2xs">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 text-2xl text-[#0C4A6E] mb-3">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 text-2xl text-[#0284C7] mb-3">
               <RocketOutlined />
             </div>
             <h3 className="m-0 text-base font-bold text-slate-900">Chưa có vị trí tuyển dụng nào đang mở</h3>
@@ -628,7 +627,7 @@ export const ClientOverviewPage: React.FC = () => {
             </p>
             <Button
               type="primary"
-              className="mt-4 !h-10 !rounded-xl !border-0 !bg-[#0C4A6E] px-5 font-bold text-white shadow-sm hover:!bg-[#075985]"
+              className="mt-4 !h-10 !rounded-xl !border-0 !bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] px-5 font-bold text-white shadow-sm shadow-sky-500/20 transition-all active:scale-[0.98]"
               icon={<PlusOutlined />}
               onClick={() => navigate('/client/jobs/create')}
             >
@@ -651,7 +650,7 @@ export const ClientOverviewPage: React.FC = () => {
                     {/* Top tags */}
                     <div className="flex items-center justify-between gap-2 mb-2.5">
                       {serviceInfo ? (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-[#0C4A6E] border border-sky-100">
+                        <span className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-[#0284C7] border border-sky-100">
                           {serviceInfo.label}
                         </span>
                       ) : (
@@ -665,13 +664,13 @@ export const ClientOverviewPage: React.FC = () => {
                     </div>
 
                     {/* Job Title */}
-                    <h3 className="line-clamp-2 text-base font-bold leading-snug text-slate-900 group-hover:text-[#0C4A6E] transition-colors m-0">
+                    <h3 className="line-clamp-2 text-base font-bold leading-snug text-slate-900 group-hover:text-[#0284C7] transition-colors m-0">
                       {job.title || 'Vị trí chưa đặt tên'}
                     </h3>
 
                     {/* Salary & Location */}
                     <div className="mt-2.5 space-y-1">
-                      <div className="text-xs font-bold text-[#0C4A6E] bg-sky-50/70 inline-block px-2 py-0.5 rounded">
+                      <div className="text-xs font-bold text-emerald-700 bg-emerald-50/80 border border-emerald-100/80 inline-block px-2.5 py-0.5 rounded-md">
                         {formatSalary(job)}
                       </div>
                       <div className="flex items-center gap-1.5 text-xs text-slate-500 pt-1">
@@ -685,19 +684,19 @@ export const ClientOverviewPage: React.FC = () => {
                   <div className="mt-4 border-0 border-t border-solid border-slate-100 pt-3">
                     <div className="flex items-center justify-between text-xs mb-1.5">
                       <span className="flex items-center gap-1.5 font-medium text-slate-700">
-                        <TeamOutlined className="text-[#0C4A6E]" />
+                        <TeamOutlined className="text-[#0284C7]" />
                         <b className="tabular-nums font-bold text-slate-900">
                           {perJob[i]?.isLoading ? '…' : count}
                         </b>{' '}
                         hồ sơ đã nhận
                       </span>
-                      <span className="text-[11px] font-semibold text-[#0C4A6E] group-hover:underline">
+                      <span className="text-[11px] font-semibold text-[#0284C7] group-hover:underline">
                         Xem hồ sơ →
                       </span>
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-slate-100">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-[#0C4A6E] to-[#0284C7] transition-all duration-300"
+                        className="h-full rounded-full bg-gradient-to-r from-[#0284C7] to-[#2563EB] transition-all duration-300"
                         style={{
                           width: `${Math.min(100, Math.max(10, Math.round((count / (job.quantity * 5 || 10)) * 100)))}%`,
                         }}

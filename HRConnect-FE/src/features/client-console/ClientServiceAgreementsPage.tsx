@@ -413,7 +413,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
           />
           <Button
             icon={<FileTextOutlined />}
-            className="!h-11 !rounded-lg border-slate-200 font-semibold text-[#0C4A6E]"
+            className="!h-11 !rounded-lg border-slate-200 font-semibold text-[#0284C7] hover:!border-[#0284C7]"
             onClick={() => navigate('/client/jobs')}
           >
             Tin tuyển dụng
@@ -444,16 +444,16 @@ export const ClientServiceAgreementsPage: React.FC = () => {
               role="radio"
               aria-checked={selected}
               onClick={() => handleStatusFilterChange(key)}
-              className={`group relative cursor-pointer rounded-xl border p-3 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E] ${
+              className={`group relative cursor-pointer rounded-xl border p-3 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0284C7] ${
                 selected
-                  ? 'border-[#0C4A6E] bg-white shadow-sm ring-2 ring-[#0C4A6E]/20'
+                  ? 'border-[#0284C7] bg-white shadow-sm ring-2 ring-[#0284C7]/20'
                   : needsAction
                   ? 'border-amber-300/80 bg-gradient-to-b from-amber-50/70 to-amber-50/30 hover:bg-white hover:border-slate-300'
                   : 'border-transparent bg-transparent hover:bg-white hover:border-slate-200 hover:shadow-2xs'
               }`}
             >
               <div className="flex items-center justify-between gap-1">
-                <span className={`text-xs ${selected ? 'font-bold text-[#0C4A6E]' : 'font-medium text-slate-600'}`}>
+                <span className={`text-xs ${selected ? 'font-bold text-[#0284C7]' : 'font-medium text-slate-600'}`}>
                   {label}
                 </span>
                 {needsAction && (
@@ -462,7 +462,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                   </span>
                 )}
               </div>
-              <div className={`mt-1.5 text-2xl font-black tabular-nums tracking-tight ${selected ? 'text-[#0C4A6E]' : 'text-slate-900'}`}>
+              <div className={`mt-1.5 text-2xl font-black tabular-nums tracking-tight ${selected ? 'text-[#0284C7]' : 'text-slate-900'}`}>
                 {count}
               </div>
             </button>
@@ -493,7 +493,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
           >
             <Button
               type="primary"
-              className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 rounded-xl font-bold !h-10 px-5"
+              className="!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 rounded-xl font-bold !h-10 px-5 text-white shadow-sm shadow-sky-500/20"
               onClick={() => navigate('/client/jobs/create')}
             >
               Đăng tin tuyển dụng mới
@@ -572,9 +572,9 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           setActiveJobId(job.jobId);
                           setSearchParams({ jobId: job.jobId }, { replace: true });
                         }}
-                        className={`w-full cursor-pointer text-left rounded-xl p-3.5 transition-all border relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E] ${
+                        className={`w-full cursor-pointer text-left rounded-xl p-3.5 transition-all border relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0284C7] ${
                           isSelected
-                            ? 'border-[#0C4A6E] bg-sky-50/70 shadow-2xs ring-2 ring-[#0C4A6E]/20 border-l-4 border-l-[#0C4A6E]'
+                            ? 'border-[#0284C7] bg-sky-50/70 shadow-2xs ring-2 ring-[#0284C7]/20 border-l-4 border-l-[#0284C7]'
                             : isSignedPendingReview
                             ? 'border-teal-200/90 bg-teal-50/30 hover:border-teal-300 hover:bg-teal-50/50'
                             : isAwaitingAction
@@ -586,7 +586,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           <Text
                             strong
                             className={`text-sm line-clamp-1 ${
-                              isSelected ? 'text-[#0C4A6E] font-bold' : 'text-slate-900'
+                              isSelected ? 'text-[#0284C7] font-bold' : 'text-slate-900'
                             }`}
                           >
                             {job.title}
@@ -777,7 +777,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           className={
                             isDeposited(activeJob)
                               ? '!bg-slate-100 !text-slate-400 !border-slate-200 cursor-not-allowed rounded-xl font-bold h-10'
-                              : '!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-xl shadow-2xs font-bold h-10 px-4'
+                              : '!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white rounded-xl shadow-2xs font-bold h-10 px-4'
                           }
                           onClick={() => !isDeposited(activeJob) && setPaymentModalOpen(true)}
                         >
@@ -852,7 +852,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           type="primary"
                           size="large"
                           icon={<CreditCardOutlined />}
-                          className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-xl shadow-2xs font-bold !h-10 px-5 shrink-0 self-start sm:self-center transition-all active:scale-[0.98]"
+                          className="!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white rounded-xl shadow-2xs font-bold !h-10 px-5 shrink-0 self-start sm:self-center transition-all active:scale-[0.98]"
                           onClick={() => setPaymentModalOpen(true)}
                         >
                           {isAwaitingDeposit ? 'Đặt cọc ngay' : 'Thanh toán ngay'}
@@ -956,7 +956,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           </div>
                           <div className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/70">
                             <span className="text-xs text-slate-500 font-medium block">Tiền cọc ban đầu (30%)</span>
-                            <span className="text-base font-black text-[#0C4A6E]">
+                            <span className="text-base font-black text-[#0284C7]">
                               {formatMoney(depositAmount, 'VND')}
                             </span>
                           </div>
@@ -1048,7 +1048,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                             className={
                               isDeposited(activeJob)
                                 ? '!bg-slate-100 !text-slate-400 !border-slate-200 cursor-not-allowed rounded-xl font-semibold'
-                                : '!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-xl shadow-2xs font-bold !h-9 px-4 transition-all active:scale-[0.98]'
+                                : '!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white rounded-xl shadow-2xs font-bold !h-9 px-4 transition-all active:scale-[0.98]'
                             }
                             onClick={() => !isDeposited(activeJob) && setPaymentModalOpen(true)}
                           >
@@ -1066,7 +1066,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                             className={
                               currentAgreement.hasSignedDocument
                                 ? '!h-9 rounded-xl font-semibold text-slate-700 border-slate-200'
-                                : '!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-xl shadow-2xs transition-all active:scale-[0.98] font-bold !h-9 px-4'
+                                : '!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white rounded-xl shadow-2xs transition-all active:scale-[0.98] font-bold !h-9 px-4'
                             }
                             onClick={() => setUploadModalOpen(true)}
                           >
@@ -1162,7 +1162,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                               size="small"
                               icon={<DownloadOutlined />}
                               onClick={() => handleDownloadPdf(r)}
-                              className="font-bold text-[#0C4A6E] hover:underline p-0"
+                              className="font-bold text-[#0284C7] hover:underline p-0"
                             >
                               Tải PDF
                             </Button>
@@ -1189,7 +1189,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
         cancelText="Đóng"
         destroyOnHidden
         className={FONT}
-        okButtonProps={{ className: '!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 rounded-xl font-bold h-9' }}
+        okButtonProps={{ className: '!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 rounded-xl font-bold h-9' }}
         cancelButtonProps={{ className: '!rounded-xl font-semibold h-9' }}
       >
         <div className="space-y-4 py-2">
@@ -1230,7 +1230,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
           <Button
             key="close"
             type="primary"
-            className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-xl shadow-2xs font-bold h-9"
+            className="!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 text-white rounded-xl shadow-2xs font-bold h-9"
             onClick={() => setPreview(null)}
           >
             Đóng
@@ -1260,7 +1260,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
         cancelText="Hủy"
         destroyOnHidden
         className={FONT}
-        okButtonProps={{ className: '!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 rounded-xl font-bold h-9' }}
+        okButtonProps={{ className: '!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 rounded-xl font-bold h-9' }}
         cancelButtonProps={{ className: '!rounded-xl font-semibold h-9' }}
       >
         <div className="space-y-4 py-2">
@@ -1309,7 +1309,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
             }}
             className="!rounded-2xl"
           >
-            <p className="ant-upload-drag-icon text-[#0C4A6E] text-4xl mb-2">
+            <p className="ant-upload-drag-icon text-[#0284C7] text-4xl mb-2">
               <InboxOutlined />
             </p>
             <p className="text-sm font-bold text-slate-800">

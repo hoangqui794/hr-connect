@@ -151,7 +151,7 @@ export const ClientProfilePage: React.FC = () => {
                 {userData.displayName || 'Người đại diện'}
               </h2>
               <div className="mt-1 flex flex-wrap items-center justify-center gap-1.5">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-[#0C4A6E] border border-sky-200/80">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-[#0284C7] border border-sky-200/80">
                   {typeof companyData?.roleInCompany === 'string' && companyData.roleInCompany
                     ? companyData.roleInCompany
                     : 'Đại diện tuyển dụng'}
@@ -210,7 +210,7 @@ export const ClientProfilePage: React.FC = () => {
                 block
                 icon={<KeyOutlined />}
                 onClick={() => setShowPasswordModal(true)}
-                className="!rounded-xl font-semibold !h-10 text-slate-700 hover:!text-[#0C4A6E] hover:!border-[#0C4A6E]"
+                className="!rounded-xl font-semibold !h-10 text-slate-700 hover:!text-[#0284C7] hover:!border-[#0284C7]"
               >
                 Đổi mật khẩu tài khoản
               </Button>
@@ -302,7 +302,7 @@ export const ClientProfilePage: React.FC = () => {
 
                 <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center shrink-0 text-[#0C4A6E]">
+                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center shrink-0 text-[#0284C7]">
                       <BankOutlined className="text-lg" />
                     </div>
                     <div>
@@ -333,7 +333,7 @@ export const ClientProfilePage: React.FC = () => {
                     htmlType="submit"
                     loading={saveMutation.isPending}
                     icon={<SaveOutlined />}
-                    className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-xl shadow-2xs font-bold !h-10 px-5 transition-all active:scale-[0.98]"
+                    className="!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white rounded-xl shadow-2xs font-bold !h-10 px-5 transition-all active:scale-[0.98]"
                   >
                     Lưu thay đổi
                   </Button>
@@ -345,7 +345,7 @@ export const ClientProfilePage: React.FC = () => {
             <Surface className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-4">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-sky-50 text-[#0C4A6E] flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-sky-50 text-[#0284C7] flex items-center justify-center shrink-0">
                     <KeyOutlined className="text-lg" />
                   </div>
                   <div>

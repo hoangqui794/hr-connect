@@ -153,7 +153,7 @@ const useCountUp = (value: number | undefined, run: boolean) => {
 const Stat: React.FC<{ label: string; value: number; run: boolean }> = ({ label, value, run }) => {
   const n = useCountUp(value, run);
   return (
-    <div className="bg-[#0C4A6E] px-5 py-4">
+    <div className="bg-[#0369A1] px-5 py-4">
       <dt className="text-[12px] text-[#BAE6FD]">{label}</dt>
       <dd className="m-0 mt-1.5 text-[26px] font-extrabold tabular-nums text-white" aria-label={`${value}`}>
         {n.toLocaleString('vi-VN')}
@@ -204,7 +204,7 @@ export const ServicesPage: React.FC = () => {
   return (
     <div className="svc-page bg-white font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[#0F172A]">
       {/* Hero */}
-      <section className="bg-[#0C4A6E] text-white">
+      <section className="bg-gradient-to-br from-[#0B132B] via-[#0369A1] to-[#0284C7] text-white">
         <div className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-10 px-6 py-14 lg:py-20">
           <div className="svc-hero min-w-0 flex-[1_1_520px]">
             <p className="m-0 mb-3.5 text-[13px] font-semibold text-[#7DD3FC]">Dịch vụ tuyển dụng cho doanh nghiệp</p>
@@ -248,7 +248,7 @@ export const ServicesPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="svc-float-b absolute right-[6%] top-[30%] w-[54%] rounded-xl bg-[#0C4A6E] p-4 text-white shadow-[0_22px_48px_rgba(2,22,40,0.45)] ring-1 ring-white/15">
+            <div className="svc-float-b absolute right-[6%] top-[30%] w-[54%] rounded-xl bg-[#0369A1] p-4 text-white shadow-[0_22px_48px_rgba(2,22,40,0.45)] ring-1 ring-white/15">
               <span className="absolute inset-x-0 top-0 h-1 rounded-t-xl bg-gradient-to-r from-[#0284C7] to-[#2563EB]" />
               <div className="flex items-center gap-2.5">
                 <span className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white">
@@ -261,7 +261,7 @@ export const ServicesPage: React.FC = () => {
               </div>
               <div className="mt-3 flex -space-x-2">
                 {['#7DD3FC', '#FDBA74', '#A7F3D0', '#C4B5FD'].map((c) => (
-                  <span key={c} className="h-7 w-7 rounded-full ring-2 ring-[#0C4A6E]" style={{ background: c }} />
+                  <span key={c} className="h-7 w-7 rounded-full ring-2 ring-[#0369A1]" style={{ background: c }} />
                 ))}
               </div>
             </div>
@@ -287,7 +287,7 @@ export const ServicesPage: React.FC = () => {
       </section>
 
       {stats.length > 0 && (
-        <div className="border-0 border-t border-solid border-white/15 bg-[#0C4A6E]">
+        <div className="border-0 border-t border-solid border-white/15 bg-[#0369A1]">
           <dl
             ref={statsRef.ref}
             className={`${statsRef.className} m-0 mx-auto grid max-w-[1200px] gap-px px-6 pb-8`}
@@ -308,7 +308,7 @@ export const ServicesPage: React.FC = () => {
           {plans.map((p) => (
             <article
               key={p.code}
-              className={`svc-card relative flex flex-col gap-5 overflow-hidden rounded-xl p-7 ${p.featured ? 'bg-[#0C4A6E] text-white' : 'border border-solid border-[#E2E8F0] bg-white'}`}
+              className={`svc-card relative flex flex-col gap-5 overflow-hidden rounded-xl p-7 ${p.featured ? 'bg-[#0369A1] text-white' : 'border border-solid border-[#E2E8F0] bg-white'}`}
             >
               {p.featured && <span aria-hidden="true" className="svc-bar absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#0284C7] to-[#2563EB]" />}
               <div className="flex items-baseline justify-between gap-3">
@@ -331,7 +331,7 @@ export const ServicesPage: React.FC = () => {
               </ul>
               <Link
                 to={p.href}
-                className={`svc-btn mt-auto flex min-h-[48px] items-center justify-center rounded-lg font-bold no-underline ${p.featured ? 'bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white hover:from-[#0369A1] hover:to-[#1D4ED8] hover:text-white shadow-md shadow-sky-500/25' : 'border border-solid border-[#0C4A6E] text-[#0C4A6E] hover:bg-[#F0F9FF]'}`}
+                className={`svc-btn mt-auto flex min-h-[48px] items-center justify-center rounded-lg font-bold no-underline ${p.featured ? 'bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white hover:from-[#0369A1] hover:to-[#1D4ED8] hover:text-white shadow-md shadow-sky-500/25' : 'border border-solid border-[#0284C7] text-[#0284C7] hover:bg-[#F0F9FF]'}`}
               >
                 {p.cta}
               </Link>
@@ -374,8 +374,8 @@ export const ServicesPage: React.FC = () => {
           <ol className="svc-stagger svc-steps m-0 grid list-none grid-cols-1 gap-5 p-0 sm:grid-cols-2 lg:grid-cols-6">
             {STEPS.map((s, i) => (
               <li key={s.t} className="relative pt-3.5">
-                <span aria-hidden="true" className="svc-line absolute inset-x-0 top-0 h-0.5 bg-[#0C4A6E]" style={{ transitionDelay: `${i * 90}ms` }} />
-                <span className="text-[13px] font-extrabold text-[#0C4A6E]">{String(i + 1).padStart(2, '0')}</span>
+                <span aria-hidden="true" className="svc-line absolute inset-x-0 top-0 h-0.5 bg-[#0284C7]" style={{ transitionDelay: `${i * 90}ms` }} />
+                <span className="text-[13px] font-extrabold text-[#0284C7]">{String(i + 1).padStart(2, '0')}</span>
                 <p className="m-0 mt-1.5 text-[15px] font-bold">{s.t}</p>
                 <p className="m-0 mt-1.5 text-[13px] leading-relaxed text-[#475569]">{s.d}</p>
               </li>
@@ -408,7 +408,7 @@ export const ServicesPage: React.FC = () => {
       </Reveal>
 
       {/* Closing band */}
-      <Reveal className="bg-[#0C4A6E] text-white">
+      <Reveal className="bg-gradient-to-br from-[#0B132B] via-[#0369A1] to-[#0284C7] text-white">
         <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-6 px-6 py-12">
           <div>
             <h2 className="m-0 text-[24px] font-extrabold">Chưa biết chọn dịch vụ nào?</h2>

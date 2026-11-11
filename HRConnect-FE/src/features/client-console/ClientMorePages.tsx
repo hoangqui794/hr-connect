@@ -143,7 +143,7 @@ export const ClientCompanyPage: React.FC = () => {
               <div className="relative rounded-[22px] bg-gradient-to-br from-blue-50 to-cyan-50 p-1 ring-1 ring-blue-100">
                 <CompanyLogo companyName={c.companyName} logoUrl={c.logoUrl ?? undefined} size="xl" className="!h-24 !w-24 !rounded-2xl !shadow-sm" />
                 {uploadLogo.isPending && (
-                  <div className="absolute inset-1 flex items-center justify-center rounded-2xl bg-white/80 text-sm font-semibold text-[#0C4A6E] backdrop-blur-sm">
+                  <div className="absolute inset-1 flex items-center justify-center rounded-2xl bg-white/80 text-sm font-semibold text-[#0284C7] backdrop-blur-sm">
                     Đang tải…
                   </div>
                 )}
@@ -212,7 +212,7 @@ export const ClientCompanyPage: React.FC = () => {
                   size="large"
                   htmlType="submit"
                   loading={save.isPending}
-                  className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white font-semibold !h-11 px-6 rounded-xl shadow-sm transition-all active:scale-[0.98]"
+                  className="!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white font-bold !h-11 px-6 rounded-xl shadow-sm transition-all active:scale-[0.98]"
                 >
                   Lưu thay đổi
                 </Button>

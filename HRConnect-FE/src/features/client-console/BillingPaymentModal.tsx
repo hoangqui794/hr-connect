@@ -92,7 +92,7 @@ export const BillingPaymentModal: React.FC<{ row: BillingRow | null; onClose: ()
             )}
             <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-dashed border-slate-200 pt-3">
               <span className="text-[13px] text-slate-600">Số tiền cần thanh toán</span>
-              <span className="text-xl font-bold tabular-nums text-[#0C4A6E]">{money(row.amount, row.currencyCode)}</span>
+              <span className="text-xl font-bold tabular-nums text-emerald-700">{money(row.amount, row.currencyCode)}</span>
             </div>
             {row.dueDate && (
               <div className={`mt-1 text-right text-xs ${row.bucket === 'OVERDUE' ? 'font-medium text-red-600' : 'text-slate-500'}`}>
@@ -111,7 +111,7 @@ export const BillingPaymentModal: React.FC<{ row: BillingRow | null; onClose: ()
                 icon={<CreditCardOutlined />}
                 loading={redirecting}
                 onClick={payWithVnPay}
-                className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white font-semibold !h-11 rounded-xl shadow-sm transition-all active:scale-[0.98]"
+                className="!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white font-bold !h-11 rounded-xl shadow-sm shadow-sky-500/20 transition-all active:scale-[0.98]"
               >
                 Thanh toán qua VNPay
               </Button>

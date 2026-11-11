@@ -269,7 +269,7 @@ export const ClientJobsListPage: React.FC = () => {
           <Button
             size="small"
             type="primary"
-            className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white !rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium !h-8 px-3 text-xs"
+            className="!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white !rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium !h-8 px-3 text-xs"
             icon={<CreditCardOutlined />}
             onClick={() => setPaymentModalJob({ jobId: job.jobId, title: job.title })}
           >
@@ -280,7 +280,7 @@ export const ClientJobsListPage: React.FC = () => {
           <Button
             size="small"
             type="primary"
-            className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white !rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium !h-8 px-3 text-xs"
+            className="!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white !rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium !h-8 px-3 text-xs"
             icon={<SendOutlined />}
             loading={busy}
             onClick={() => confirmSubmit(job)}
@@ -421,7 +421,7 @@ export const ClientJobsListPage: React.FC = () => {
             <h1 className="sr-only">
               Chiến dịch tuyển dụng
             </h1>
-            <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0C4A6E] border border-sky-100">
+            <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0284C7] border border-sky-100">
               {jobs.length} tin tổng cộng
             </span>
           </div>
@@ -440,7 +440,7 @@ export const ClientJobsListPage: React.FC = () => {
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            className="!h-10 !rounded-xl !border-0 !bg-gradient-to-r !from-[#0C4A6E] !to-[#0284C7] hover:!from-[#075985] hover:!to-[#0369A1] font-bold text-white shadow-sm transition-all active:scale-[0.98] !px-4.5"
+            className="!h-10 !rounded-xl !border-0 !bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] font-bold text-white shadow-sm shadow-sky-500/20 transition-all active:scale-[0.98] !px-4.5"
             onClick={() => navigate('/client/jobs/create')}
           >
             Đăng tin mới
@@ -541,7 +541,7 @@ export const ClientJobsListPage: React.FC = () => {
                   >
                     <div>
                       {isHighlighted && (
-                        <div className="mb-3.5 flex items-center justify-between rounded-xl bg-[#0C4A6E] px-3.5 py-2 text-xs font-bold text-white shadow-sm">
+                        <div className="mb-3.5 flex items-center justify-between rounded-xl bg-gradient-to-r from-[#0284C7] to-[#2563EB] px-3.5 py-2 text-xs font-bold text-white shadow-sm">
                           <span className="flex items-center gap-1.5">
                             <span>🔔</span> Đang xem tin từ thông báo
                           </span>
@@ -581,8 +581,8 @@ export const ClientJobsListPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setDetailJobId(job.jobId)}
-                        className={`cursor-pointer rounded border-0 bg-transparent p-0 text-left text-base font-bold leading-snug hover:text-[#0C4A6E] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E] transition-colors mb-2.5 line-clamp-2 ${
-                          isHighlighted ? 'text-[#0C4A6E]' : 'text-slate-900'
+                        className={`cursor-pointer rounded border-0 bg-transparent p-0 text-left text-base font-bold leading-snug hover:text-[#0284C7] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0284C7] transition-colors mb-2.5 line-clamp-2 ${
+                          isHighlighted ? 'text-[#0284C7]' : 'text-slate-900'
                         }`}
                       >
                         {job.title || 'Vị trí chưa đặt tên'}
@@ -590,7 +590,7 @@ export const ClientJobsListPage: React.FC = () => {
 
                       {/* Meta highlights */}
                       <div className="space-y-1.5 mb-4">
-                        <div className="inline-flex items-center gap-1.5 rounded-lg bg-sky-50/80 px-2.5 py-1 text-xs font-extrabold text-[#0C4A6E] border border-sky-100/70">
+                        <div className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50/80 px-2.5 py-1 text-xs font-extrabold text-emerald-700 border border-emerald-100/70">
                           <span>💰</span>
                           <span>{formatSalary(job)}</span>
                         </div>
@@ -610,7 +610,7 @@ export const ClientJobsListPage: React.FC = () => {
                             <Button
                               type="primary"
                               size="small"
-                              className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm font-semibold !text-xs !h-9 whitespace-nowrap ml-2"
+                              className="!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 text-white rounded-lg shadow-sm font-semibold !text-xs !h-9 whitespace-nowrap ml-2"
                               onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
                             >
                               Xem hợp đồng
@@ -622,7 +622,7 @@ export const ClientJobsListPage: React.FC = () => {
                             <Button
                               type="primary"
                               size="small"
-                              className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm font-semibold !text-xs !h-9 whitespace-nowrap ml-2"
+                              className="!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 text-white rounded-lg shadow-sm font-semibold !text-xs !h-9 whitespace-nowrap ml-2"
                               onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
                             >
                               Ký hợp đồng
@@ -642,13 +642,13 @@ export const ClientJobsListPage: React.FC = () => {
                             <Button
                               type="primary"
                               size="small"
-                              className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm font-bold !text-xs !h-9"
+                              className="!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 text-white rounded-lg shadow-sm font-bold !text-xs !h-9"
                               onClick={() =>
                                 setPaymentModalJob({
-                                  jobId: job.jobId,
-                                  title: job.title,
-                                  isDeposit: true,
-                                  depositAmount: sourcingDepositAmount(job) ?? 200000,
+                                   jobId: job.jobId,
+                                   title: job.title,
+                                   isDeposit: true,
+                                   depositAmount: sourcingDepositAmount(job) ?? 200000,
                                 })
                               }
                             >
@@ -689,7 +689,7 @@ export const ClientJobsListPage: React.FC = () => {
                           </div>
                           <div className="h-2 overflow-hidden rounded-full bg-slate-200/70">
                             <div
-                              className="h-full rounded-full bg-gradient-to-r from-[#0C4A6E] to-[#0284C7] transition-all duration-300"
+                              className="h-full rounded-full bg-gradient-to-r from-[#0284C7] to-[#2563EB] transition-all duration-300"
                               style={{ width: `${progressPct}%` }}
                             />
                           </div>
@@ -703,9 +703,9 @@ export const ClientJobsListPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => navigate(`/client/candidates?job=${job.jobId}`)}
-                          className="flex min-h-11 sm:min-h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-sky-200/70 bg-sky-50 px-3 py-1.5 text-xs font-bold text-[#0C4A6E] hover:bg-sky-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E] shrink-0 whitespace-nowrap transition-colors"
+                          className="flex min-h-11 sm:min-h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-sky-200/70 bg-sky-50 px-3 py-1.5 text-xs font-bold text-[#0284C7] hover:bg-sky-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0284C7] shrink-0 whitespace-nowrap transition-colors"
                         >
-                          <TeamOutlined aria-hidden className="text-[#0C4A6E]" />
+                          <TeamOutlined aria-hidden className="text-[#0284C7]" />
                           <span>Xem {totalApps} ứng viên</span>
                         </button>
                       ) : (

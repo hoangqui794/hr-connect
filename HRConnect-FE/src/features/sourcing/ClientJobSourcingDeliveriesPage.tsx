@@ -52,7 +52,7 @@ export const ClientJobSourcingDeliveriesPage: React.FC = () => {
           <Button
             icon={<ReloadOutlined />}
             type="primary"
-            className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white !h-10 !rounded-xl font-bold shadow-sm transition-all active:scale-[0.98] !px-4"
+            className="!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white !h-10 !rounded-xl font-bold shadow-sm shadow-sky-500/20 transition-all active:scale-[0.98] !px-4"
             onClick={() => refetch()}
           >
             Tải lại tin
