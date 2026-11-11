@@ -76,15 +76,15 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({ 
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
-        className={`flex h-11 cursor-pointer items-center gap-2 border-0 bg-transparent px-2 text-[14px] text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${className}`}
+        className={`flex h-10 cursor-pointer items-center gap-2.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[13.5px] font-medium text-white transition-all hover:bg-white/10 hover:border-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 ${className}`}
       >
         {getAvatarImageUrl(user?.avatar) ? (
-          <AccountAvatar name={name} avatar={user?.avatar} size={30} />
+          <AccountAvatar name={name} avatar={user?.avatar} size={28} />
         ) : (
-          <span aria-hidden className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-sky-100 text-[12px] font-bold text-[#0C4A6E]">{getInitials(name)}</span>
+          <span aria-hidden className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-blue-600 text-[12px] font-bold text-white shadow-xs">{getInitials(name)}</span>
         )}
         <span className="hidden max-w-[170px] truncate sm:block">{name}</span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="hidden sm:block"><path d="M6 9l6 6 6-6" /></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="hidden text-slate-300 sm:block"><path d="M6 9l6 6 6-6" /></svg>
       </button>
     </Dropdown>
   );
