@@ -23,7 +23,7 @@ const MAX_APPLICATIONS = 100;
 const STEP_COUNT = 5;
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
-const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
+const LINK = 'text-sky-600 no-underline hover:text-sky-700 hover:underline font-semibold';
 
 type Tab = 'ALL' | 'PROCESSING' | 'INTERVIEW' | 'OFFER' | 'HIRED' | 'ENDED';
 type Group = CandidateApplicationDisplayGroup;
@@ -104,7 +104,7 @@ const PendingReferral: React.FC<{ consent: CandidateSubmissionConsent }> = ({ co
           Từ chối
         </button>
       </Popconfirm>
-      <button type="button" disabled={respond.isPending} onClick={() => respond.mutate('CONFIRM')} className={`${FONT} h-10 cursor-pointer rounded-md border-0 bg-[#0C4A6E] px-4 text-[14px] font-semibold text-white hover:bg-[#075985] disabled:cursor-not-allowed disabled:opacity-60`}>
+      <button type="button" disabled={respond.isPending} onClick={() => respond.mutate('CONFIRM')} className={`${FONT} h-10 cursor-pointer rounded-xl border-0 bg-gradient-to-r from-sky-500 to-blue-600 px-4 text-[14px] font-bold text-white shadow-sm shadow-blue-500/20 transition-all hover:from-sky-400 hover:to-blue-500 hover:shadow-md hover:shadow-blue-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`}>
         Đồng ý
       </button>
     </div>
@@ -133,7 +133,7 @@ const ApplicationRow: React.FC<{ application: CandidateApplication }> = ({ appli
         </div>
         <div role="img" aria-label={`Tiến độ: ${stage.label}`} className="mt-3 flex gap-1">
           {Array.from({ length: STEP_COUNT }, (_, index) => (
-            <span key={index} className="h-1.5 flex-1 rounded-[3px]" style={{ background: index < view.steps ? (view.ended ? '#9CA3AF' : '#0369A1') : '#E5E7EB' }} />
+            <span key={index} className="h-1.5 flex-1 rounded-[3px]" style={{ background: index < view.steps ? (view.ended ? '#94A3B8' : 'linear-gradient(90deg, #0284C7, #2563EB)') : '#E2E8F0' }} />
           ))}
         </div>
         <div className="mt-2 flex flex-wrap justify-between gap-3 text-[13px]">
@@ -209,7 +209,7 @@ export const CandidateApplicationsPage: React.FC = () => {
                 role="tab"
                 aria-selected={selected}
                 onClick={() => setFilter('status', item.key === 'ALL' ? undefined : item.key)}
-                className={`${FONT} h-11 cursor-pointer border-0 bg-transparent px-3 text-[14px] ${selected ? 'border-b-2 border-solid border-[#0369A1] font-semibold text-[#075985]' : 'text-[#4B5563] hover:text-[#075985]'}`}
+                className={`${FONT} h-11 cursor-pointer border-0 bg-transparent px-3 text-[14px] transition-colors ${selected ? 'border-b-2 border-solid border-sky-600 font-bold text-sky-700' : 'text-slate-600 hover:text-sky-600'}`}
               >
                 {item.label} ({inTab(item.key).length})
               </button>

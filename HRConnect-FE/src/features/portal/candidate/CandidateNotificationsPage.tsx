@@ -212,7 +212,7 @@ export const CandidateNotificationsPage: React.FC = () => {
           </p>
           <Link
             to="/candidate/profile"
-            className="mt-4 inline-flex h-9 items-center justify-center rounded-md bg-[#0C4A6E] px-4 text-[13px] font-semibold text-white no-underline transition-colors hover:bg-[#075985]"
+            className="mt-4 inline-flex h-9 items-center justify-center rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 px-4 text-[13px] font-bold text-white shadow-sm shadow-blue-500/20 no-underline transition-all hover:from-sky-400 hover:to-blue-500 active:scale-[0.98]"
           >
             Hoàn thiện hồ sơ
           </Link>

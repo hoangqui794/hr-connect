@@ -163,10 +163,10 @@ const ProfileAvatar: React.FC = () => {
 
   return (
     <div className="relative shrink-0">
-      <span className="flex h-[84px] w-[84px] items-center justify-center overflow-hidden rounded-full bg-[#E0F2FE] text-[26px] font-bold text-[#0C4A6E]">
+      <span className="flex h-[84px] w-[84px] items-center justify-center overflow-hidden rounded-full bg-sky-50 border border-sky-100 text-[26px] font-bold text-sky-700">
         {avatarUrl && !failed ? <img src={avatarUrl} alt={user?.name || 'Ảnh đại diện'} className="h-full w-full object-cover" onError={() => setFailed(true)} /> : initials}
       </span>
-      <button type="button" aria-label="Đổi ảnh đại diện" disabled={busy} onClick={() => input.current?.click()} className="absolute -bottom-1.5 -right-1.5 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-solid border-white bg-[#0C4A6E] text-white hover:bg-[#075985] disabled:opacity-60">
+      <button type="button" aria-label="Đổi ảnh đại diện" disabled={busy} onClick={() => input.current?.click()} className="absolute -bottom-1.5 -right-1.5 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-solid border-white bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-sm hover:from-sky-400 hover:to-blue-500 disabled:opacity-60">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></svg>
       </button>
       {avatarUrl && (
@@ -766,7 +766,7 @@ export const CandidateProfilePage: React.FC = () => {
           >
             Hủy thay đổi
           </button>
-          <button type="button" disabled={save.isPending} onClick={submit} className={`${FONT} h-11 cursor-pointer rounded-md border-0 bg-[#0C4A6E] px-[22px] text-[14px] font-semibold text-white hover:bg-[#075985] disabled:cursor-not-allowed disabled:opacity-60`}>
+          <button type="button" disabled={save.isPending} onClick={submit} className={`${FONT} h-11 cursor-pointer rounded-xl border-0 bg-gradient-to-r from-sky-500 to-blue-600 px-[22px] text-[14px] font-bold text-white shadow-sm shadow-blue-500/20 transition-all hover:from-sky-400 hover:to-blue-500 hover:shadow-md hover:shadow-blue-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`}>
             {save.isPending ? 'Đang lưu…' : 'Lưu hồ sơ'}
           </button>
         </div>

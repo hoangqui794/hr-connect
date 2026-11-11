@@ -25,7 +25,7 @@ const MAX_SAVED = 100;
 const SOON_DAYS = 7;
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
-const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
+const LINK = 'text-sky-600 no-underline hover:text-sky-700 hover:underline font-semibold';
 const ACTION = 'flex h-10 items-center rounded-md px-[14px] text-[14px] font-semibold no-underline';
 
 const idOf = (item: SavedJobDto) => item.job?.jobId || item.jobId || item.savedJobId;

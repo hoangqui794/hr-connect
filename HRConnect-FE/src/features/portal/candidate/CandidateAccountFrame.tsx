@@ -46,13 +46,13 @@ export const CandidateAccountFrame: React.FC<{ children: React.ReactNode }> = ({
               aria-current={current ? 'page' : undefined}
               className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] no-underline transition-all duration-200 ${
                 current
-                  ? 'bg-[#E0F2FE] font-semibold text-[#075985]'
+                  ? 'bg-sky-50 font-bold text-sky-700 border border-sky-200'
                   : 'bg-[#F3F4F6] text-[#374151] hover:bg-[#E5E7EB]'
               }`}
             >
               <span>{item.label}</span>
               {Boolean(item.count) && (
-                <span className={`text-[12px] ${current ? 'text-[#075985]' : 'text-[#6B7280]'}`}>{item.count}</span>
+                <span className={`text-[12px] ${current ? 'text-sky-700 font-bold' : 'text-[#6B7280]'}`}>{item.count}</span>
               )}
             </Link>
           );
@@ -73,12 +73,12 @@ export const CandidateAccountFrame: React.FC<{ children: React.ReactNode }> = ({
               aria-current={current ? 'page' : undefined}
               className={`flex items-center justify-between rounded-md px-3 py-2.5 no-underline transition-all duration-200 ${
                 current
-                  ? 'bg-[#E0F2FE] font-semibold text-[#075985] hover:text-[#075985]'
-                  : 'text-[#1F2937] hover:bg-[#F3F4F6] hover:text-[#1F2937]'
+                  ? 'bg-sky-50 font-bold text-sky-700 border-l-2 border-sky-600 pl-2.5 hover:text-sky-700'
+                  : 'text-[#1F2937] hover:bg-slate-50 hover:text-sky-700'
               }`}
             >
               <span>{item.label}</span>
-              {Boolean(item.count) && <span className={current ? undefined : 'text-[#6B7280]'}>{item.count}</span>}
+              {Boolean(item.count) && <span className={current ? 'font-bold text-sky-700' : 'text-[#6B7280]'}>{item.count}</span>}
             </Link>
           );
         })}
