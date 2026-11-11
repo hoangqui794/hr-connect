@@ -53,6 +53,7 @@ export const CandidateOfferPage: React.FC = () => {
   const { applicationId = '', offerId = '' } = useParams();
   const [choice, setChoice] = useState<'ACCEPTED' | 'DECLINED'>('ACCEPTED');
   const [reason, setReason] = useState('');
+  const [transitionConfirmed, setTransitionConfirmed] = useState(false);
   const [reasonMissing, setReasonMissing] = useState(false);
   const [pendingOffersAction, setPendingOffersAction] = useState<OfferAcceptanceAction>('KEEP_OTHER_PENDING_OFFERS');
 
@@ -73,9 +74,14 @@ export const CandidateOfferPage: React.FC = () => {
     enabled: Boolean(detail.data && isCandidateOfferRespondable(detail.data)),
   });
   const conflict = impact.data;
+  const hasActivePlacement = Boolean(conflict?.isFullTime && conflict.activeFullTimePlacement);
   // Switching away from an accepted full-time offer is the only way to accept this one, so nothing to choose.
   const replacesAccepted = Boolean(conflict?.isFullTime && conflict.acceptedFullTimeOffer && !conflict.activeFullTimePlacement);
-  const acceptanceAction: OfferAcceptanceAction = replacesAccepted ? 'REPLACE_ACCEPTED_FULL_TIME_OFFER' : pendingOffersAction;
+  const acceptanceAction: OfferAcceptanceAction = hasActivePlacement
+    ? 'TRANSITION_FROM_ACTIVE_PLACEMENT'
+    : replacesAccepted
+      ? 'REPLACE_ACCEPTED_FULL_TIME_OFFER'
+      : pendingOffersAction;
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['candidate-offer', offerId] });
@@ -137,7 +143,9 @@ export const CandidateOfferPage: React.FC = () => {
   const daysLeft = offer.expiryDate ? dayjs(offer.expiryDate).startOf('day').diff(dayjs().startOf('day'), 'day') : null;
   const previous = (versions.data ?? []).filter((item) => item.offerVersion < offer.offerVersion).sort((a, b) => b.offerVersion - a.offerVersion)[0];
   const declining = choice === 'DECLINED';
-  const acceptBlocked = !declining && (impact.isLoading || impact.isError || Boolean(conflict?.activeFullTimePlacement));
+  const acceptBlocked =
+    !declining &&
+    (impact.isLoading || impact.isError || (hasActivePlacement && !transitionConfirmed));
   const pendingFullTime = conflict?.isFullTime && !conflict.activeFullTimePlacement && !conflict.acceptedFullTimeOffer ? conflict.otherPendingFullTimeOffers : [];
 
   const submit = () => {
@@ -237,16 +245,25 @@ export const CandidateOfferPage: React.FC = () => {
             </p>
           )}
           {!declining && conflict?.activeFullTimePlacement && (
-            <div role="alert" className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-solid border-[#FECACA] bg-[#FEF2F2] p-3.5 text-[13px] text-[#991B1B]">
-              <div className="min-w-0 flex-1 leading-relaxed">
-                Bạn đang có công việc toàn thời gian: <b>{conflict.activeFullTimePlacement.jobTitle}</b> tại <b>{conflict.activeFullTimePlacement.companyName}</b>. Vui lòng liên hệ bộ phận hỗ trợ nếu thông tin này không còn chính xác.
+            <div
+              role="region"
+              aria-label="Xác nhận chuyển việc"
+              className="mt-3 rounded-lg border border-solid border-[#FED7AA] bg-[#FFF7ED] p-3.5 text-[13px] text-[#9A3412]"
+            >
+              <div className="mb-2 leading-relaxed">
+                Hệ thống ghi nhận bạn đang có công việc toàn thời gian: <b>{conflict.activeFullTimePlacement.jobTitle}</b> tại <b>{conflict.activeFullTimePlacement.companyName}</b>.
               </div>
-              <Link
-                to="/contact?service=OTHER"
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-solid border-[#DC2626] bg-white px-3.5 py-1.5 text-[13px] font-semibold text-[#DC2626] no-underline shadow-xs transition-colors hover:bg-[#FEF2F2]"
-              >
-                Liên hệ hỗ trợ
-              </Link>
+              <label className="flex cursor-pointer items-start gap-2 rounded-md border border-solid border-[#FDBA74] bg-white/90 px-3 py-2 font-medium text-[#7C2D12]">
+                <input
+                  type="checkbox"
+                  checked={transitionConfirmed}
+                  onChange={(e) => setTransitionConfirmed(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-[#C2410C]"
+                />
+                <span>
+                  Tôi xác nhận đã nghỉ việc hoặc sẽ hoàn tất bàn giao tại <b>{conflict.activeFullTimePlacement.companyName}</b> trước ngày bắt đầu công việc mới.
+                </span>
+              </label>
             </div>
           )}
           {!declining && replacesAccepted && conflict?.acceptedFullTimeOffer && (

@@ -490,6 +490,42 @@ public class RespondToOfferCommandHandlerTests
         exception.Which.ErrorCode.Should().Be(OfferAcceptanceErrorCodes.ActiveFullTimePlacementExists);
     }
 
+    [Fact]
+    public async Task Handle_WhenCandidateConfirmsTransitionFromActivePlacement_AcceptsOfferSuccessfully()
+    {
+        var candidateId = Guid.NewGuid();
+        var candidateUserId = Guid.NewGuid();
+        var target = CreateOffer(candidateId, candidateUserId, EmploymentTypes.FullTime, OfferStates.Sent);
+        var activePlacement = new Placement
+        {
+            PlacementId = Guid.NewGuid(),
+            ApplicationId = Guid.NewGuid(),
+            Status = PlacementStates.Started,
+            Application = new HRConnect.Domain.Entities.Application
+            {
+                Job = new Job { Title = "Existing role", EmploymentType = EmploymentTypes.FullTime }
+            }
+        };
+
+        SetupTarget(target);
+        _placementRepositoryMock
+            .Setup(r => r.GetActiveFullTimeForCandidateAsync(candidateId, target.ApplicationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(activePlacement);
+
+        var command = new RespondToOfferCommand(
+            target.OfferId,
+            OfferStates.Accepted,
+            null,
+            target.ConcurrencyToken,
+            candidateUserId,
+            OfferAcceptanceActions.TransitionFromActivePlacement);
+
+        var result = await CreatePolicyHandler().Handle(command, CancellationToken.None);
+
+        result.Status.Should().Be(OfferStates.Accepted);
+        target.Status.Should().Be(OfferStates.Accepted);
+    }
+
     private void SetupTarget(Offer target)
     {
         _offerRepositoryMock

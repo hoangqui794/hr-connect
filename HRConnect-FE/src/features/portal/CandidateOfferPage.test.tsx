@@ -110,16 +110,32 @@ describe('CandidateOfferPage', () => {
     await waitFor(() => expect(respond).toHaveBeenCalledWith('off-2', expect.objectContaining({ acceptanceAction: 'WITHDRAW_OTHER_PENDING_FULL_TIME_OFFERS' })));
   });
 
-  it('blocks accepting during an active full-time placement, but not refusing', async () => {
-    vi.mocked(mf04Api.getOfferAcceptanceImpact).mockResolvedValue({ ...noConflict, activeFullTimePlacement: otherOffer('Tester', 'Công ty hiện tại', 'PLACED') } as never);
+  it('blocks accepting during an active full-time placement until confirming transition, but not refusing', async () => {
+    vi.mocked(mf04Api.getOfferAcceptanceImpact).mockResolvedValue({ ...noConflict, isFullTime: true, activeFullTimePlacement: otherOffer('Tester', 'Công ty hiện tại', 'PLACED') } as never);
+    const respond = vi.spyOn(mf04Api, 'respondOffer').mockResolvedValue({ success: true, message: 'ok' });
     renderPage();
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Công ty hiện tại');
-    expect(screen.getByRole('link', { name: 'Liên hệ hỗ trợ' })).toHaveAttribute('href', '/contact?service=OTHER');
+    expect(await screen.findByRole('region', { name: 'Xác nhận chuyển việc' })).toHaveTextContent('Công ty hiện tại');
+    expect(screen.queryByRole('link', { name: 'Liên hệ hỗ trợ' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Gửi trả lời' })).toBeDisabled();
 
+    // Refusing is not blocked
     fireEvent.click(screen.getByRole('radio', { name: /Từ chối offer/ }));
     expect(screen.getByRole('button', { name: 'Gửi trả lời' })).toBeEnabled();
+
+    // Switching back to accept without checkbox is blocked
+    fireEvent.click(screen.getByRole('radio', { name: /Chấp nhận offer/ }));
+    expect(screen.getByRole('button', { name: 'Gửi trả lời' })).toBeDisabled();
+
+    // Confirming transition unlocks accept button and sends TRANSITION_FROM_ACTIVE_PLACEMENT
+    const checkbox = screen.getByRole('checkbox', { name: /Tôi xác nhận đã nghỉ việc hoặc sẽ hoàn tất bàn giao/i });
+    fireEvent.click(checkbox);
+    expect(screen.getByRole('button', { name: 'Gửi trả lời' })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Gửi trả lời' }));
+    await waitFor(() =>
+      expect(respond).toHaveBeenCalledWith('off-2', expect.objectContaining({ acceptanceAction: 'TRANSITION_FROM_ACTIVE_PLACEMENT' }))
+    );
   });
 
   it('does not allow accepting when the check fails, and can retry', async () => {

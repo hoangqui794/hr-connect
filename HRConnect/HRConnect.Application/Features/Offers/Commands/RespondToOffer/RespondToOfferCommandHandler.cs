@@ -320,15 +320,18 @@ public class RespondToOfferCommandHandler : IRequestHandler<RespondToOfferComman
                 cancellationToken);
             if (activePlacement != null)
             {
-                throw new ConflictException(
-                    "Bạn đang có một vị trí toàn thời gian đã xác nhận đi làm. Vui lòng liên hệ bộ phận hỗ trợ nếu thông tin này không còn chính xác.",
-                    OfferAcceptanceErrorCodes.ActiveFullTimePlacementExists,
-                    new Dictionary<string, object?>
-                    {
-                        ["applicationId"] = activePlacement.ApplicationId,
-                        ["jobTitle"] = activePlacement.Application?.Job?.Title,
-                        ["companyName"] = activePlacement.Application?.Job?.Company?.CompanyName
-                    });
+                if (!string.Equals(acceptanceAction, OfferAcceptanceActions.TransitionFromActivePlacement, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new ConflictException(
+                        "Bạn đang có một vị trí toàn thời gian đã xác nhận đi làm. Vui lòng xác nhận cam kết chuyển việc nếu muốn tiếp tục.",
+                        OfferAcceptanceErrorCodes.ActiveFullTimePlacementExists,
+                        new Dictionary<string, object?>
+                        {
+                            ["applicationId"] = activePlacement.ApplicationId,
+                            ["jobTitle"] = activePlacement.Application?.Job?.Title,
+                            ["companyName"] = activePlacement.Application?.Job?.Company?.CompanyName
+                        });
+                }
             }
         }
 
@@ -342,7 +345,8 @@ public class RespondToOfferCommandHandler : IRequestHandler<RespondToOfferComman
             .ToList();
 
         if (acceptedFullTimeOffers.Count > 0 &&
-            !string.Equals(acceptanceAction, OfferAcceptanceActions.ReplaceAcceptedFullTimeOffer, StringComparison.OrdinalIgnoreCase))
+            !string.Equals(acceptanceAction, OfferAcceptanceActions.ReplaceAcceptedFullTimeOffer, StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(acceptanceAction, OfferAcceptanceActions.TransitionFromActivePlacement, StringComparison.OrdinalIgnoreCase))
         {
             var accepted = acceptedFullTimeOffers[0];
             throw new ConflictException(
@@ -357,9 +361,10 @@ public class RespondToOfferCommandHandler : IRequestHandler<RespondToOfferComman
                 });
         }
 
-        if (string.Equals(acceptanceAction, OfferAcceptanceActions.ReplaceAcceptedFullTimeOffer, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(acceptanceAction, OfferAcceptanceActions.ReplaceAcceptedFullTimeOffer, StringComparison.OrdinalIgnoreCase) ||
+            (string.Equals(acceptanceAction, OfferAcceptanceActions.TransitionFromActivePlacement, StringComparison.OrdinalIgnoreCase) && acceptedFullTimeOffers.Count > 0))
         {
-            if (acceptedFullTimeOffers.Count == 0)
+            if (string.Equals(acceptanceAction, OfferAcceptanceActions.ReplaceAcceptedFullTimeOffer, StringComparison.OrdinalIgnoreCase) && acceptedFullTimeOffers.Count == 0)
             {
                 throw new BadRequestException(
                     "Không có offer toàn thời gian đã chấp nhận để thay thế.",

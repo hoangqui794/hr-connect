@@ -219,7 +219,8 @@ export interface RespondOfferRequest {
 export type OfferAcceptanceAction =
   | 'KEEP_OTHER_PENDING_OFFERS'
   | 'WITHDRAW_OTHER_PENDING_FULL_TIME_OFFERS'
-  | 'REPLACE_ACCEPTED_FULL_TIME_OFFER';
+  | 'REPLACE_ACCEPTED_FULL_TIME_OFFER'
+  | 'TRANSITION_FROM_ACTIVE_PLACEMENT';
 
 export interface OfferAcceptanceImpactItem {
   offerId: string;
