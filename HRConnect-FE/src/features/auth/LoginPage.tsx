@@ -289,7 +289,7 @@ export const LoginPage: React.FC = () => {
                   id="login-email"
                   type="email"
                   autoComplete="email"
-                  placeholder="name@company.com"
+                  placeholder="Email chính hoặc email phụ đã liên kết"
                   value={email}
                   disabled={submitting}
                   aria-invalid={Boolean(fieldErrors.email)}

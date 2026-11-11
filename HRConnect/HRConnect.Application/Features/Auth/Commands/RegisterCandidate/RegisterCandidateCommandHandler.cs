@@ -9,6 +9,7 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using HRConnect.Application.Features.Auth.Common;
+using HRConnect.Application.Common.Utilities;
 
 namespace HRConnect.Application.Features.Auth.Commands.RegisterCandidate;
 
@@ -93,13 +94,26 @@ public class RegisterCandidateCommandHandler : IRequestHandler<RegisterCandidate
             }
 
             _logger.LogWarning("Đăng ký thất bại: Email {Email} đã tồn tại trong hệ thống.", normalizedEmail);
-            throw new ConflictException("Email này đã được sử dụng bởi một tài khoản khác.");
+            throw new ConflictException(
+                "Email này đã được sử dụng để đăng ký tài khoản. Bạn vui lòng sử dụng tính năng Đăng nhập hoặc Quên mật khẩu.",
+                "EMAIL_ALREADY_REGISTERED");
         }
 
-        if (await _userEmailIdentityRepository.ExistsActiveByNormalizedEmailAsync(normalizedEmail, cancellationToken))
+        var activeIdentity = await _userEmailIdentityRepository.GetActiveByNormalizedEmailAsync(normalizedEmail, cancellationToken);
+        if (activeIdentity != null)
         {
             _logger.LogWarning("Đăng ký thất bại: Email đã thuộc một danh tính tài khoản đang hoạt động.");
-            throw new ConflictException("Email này đã được sử dụng bởi một tài khoản khác.");
+            var maskedPrimary = EmailMasker.Mask(activeIdentity.User?.Email);
+            var details = new Dictionary<string, object?>
+            {
+                ["MaskedPrimaryEmail"] = maskedPrimary,
+                ["CanSplit"] = true
+            };
+
+            throw new ConflictException(
+                $"Email này hiện đang được liên kết làm email phụ của tài khoản {maskedPrimary}. Bạn có thể đăng nhập bằng email này với mật khẩu của bạn, hoặc tách ra để tạo tài khoản riêng.",
+                "EMAIL_ALREADY_LINKED_AS_ALIAS",
+                details);
         }
 
         // 3. Kiểm tra danh tính Candidate hiện hữu (theo normalized_email hoặc normalized_phone)

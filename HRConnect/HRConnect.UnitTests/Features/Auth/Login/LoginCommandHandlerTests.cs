@@ -14,6 +14,7 @@ namespace HRConnect.UnitTests.Features.Auth.Login;
 public class LoginCommandHandlerTests
 {
     private readonly Mock<IUserRepository> _userRepositoryMock;
+    private readonly Mock<IUserEmailIdentityRepository> _userEmailIdentityRepositoryMock;
     private readonly Mock<IRefreshTokenRepository> _refreshTokenRepositoryMock;
     private readonly Mock<IPasswordHasher> _passwordHasherMock;
     private readonly Mock<IJwtTokenGenerator> _jwtTokenGeneratorMock;
@@ -28,6 +29,7 @@ public class LoginCommandHandlerTests
     public LoginCommandHandlerTests()
     {
         _userRepositoryMock = new Mock<IUserRepository>();
+        _userEmailIdentityRepositoryMock = new Mock<IUserEmailIdentityRepository>();
         _refreshTokenRepositoryMock = new Mock<IRefreshTokenRepository>();
         _passwordHasherMock = new Mock<IPasswordHasher>();
         _jwtTokenGeneratorMock = new Mock<IJwtTokenGenerator>();
@@ -47,6 +49,7 @@ public class LoginCommandHandlerTests
 
         _handler = new LoginCommandHandler(
             _userRepositoryMock.Object,
+            _userEmailIdentityRepositoryMock.Object,
             _refreshTokenRepositoryMock.Object,
             _passwordHasherMock.Object,
             _jwtTokenGeneratorMock.Object,
@@ -643,5 +646,67 @@ public class LoginCommandHandlerTests
 
         user.FailedLoginAttempts.Should().Be(0);
         user.LockoutEndAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_ShouldLoginSuccessfully_WhenUsingVerifiedAliasEmail()
+    {
+        // Arrange: User has primary email primary@example.com and verified alias alias@example.com
+        var command = new LoginCommand("alias@example.com", "Password@123");
+        var userId = Guid.NewGuid();
+        var primaryEmail = "primary@example.com";
+        var aliasEmail = "alias@example.com";
+
+        var role = new Role { RoleId = Guid.NewGuid(), Code = "CANDIDATE", Name = "Candidate", IsActive = true };
+        var user = new AppUser
+        {
+            UserId = userId,
+            Email = primaryEmail,
+            PasswordHash = "hashed_pwd",
+            Status = "ACTIVE"
+        };
+        user.UserRoleUsers.Add(new UserRole { UserId = user.UserId, RoleId = role.RoleId, Role = role, Status = "ACTIVE" });
+
+        _emailNormalizerMock.Setup(s => s.Normalize(command.Email)).Returns(aliasEmail);
+
+        // Not found by primary email
+        _userRepositoryMock
+            .Setup(r => r.GetByEmailWithRolesAndPermissionsAsync(aliasEmail, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AppUser?)null);
+
+        // Found in user_email_identity as VERIFIED alias
+        var emailIdentity = new UserEmailIdentity
+        {
+            EmailIdentityId = Guid.NewGuid(),
+            UserId = userId,
+            Email = aliasEmail,
+            NormalizedEmail = aliasEmail,
+            Kind = "ALIAS",
+            Status = "VERIFIED"
+        };
+        _userEmailIdentityRepositoryMock
+            .Setup(r => r.GetActiveByNormalizedEmailAsync(aliasEmail, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(emailIdentity);
+
+        // Load user by ID
+        _userRepositoryMock
+            .Setup(r => r.GetByIdWithRolesAndPermissionsAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        _passwordHasherMock.Setup(p => p.Verify(command.Password, user.PasswordHash)).Returns(true);
+        _jwtTokenGeneratorMock
+            .Setup(g => g.GenerateAccessToken(user, It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>()))
+            .Returns(("token_123", DateTime.UtcNow.AddMinutes(15)));
+        _jwtTokenGeneratorMock.Setup(g => g.GenerateRefreshToken()).Returns("refresh_123");
+        _otpServiceMock.Setup(s => s.HashOtp("refresh_123")).Returns("hashed_refresh");
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Success.Should().BeTrue();
+        result.Data!.User.UserId.Should().Be(userId);
+        result.Data!.User.Email.Should().Be(primaryEmail);
     }
 }

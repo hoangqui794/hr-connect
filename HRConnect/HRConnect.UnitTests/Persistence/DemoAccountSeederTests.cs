@@ -5,6 +5,7 @@ using FluentAssertions;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
 using HRConnect.Infrastructure.Persistence.Seed;
+using HRConnect.Infrastructure.Repositories;
 using HRConnect.Infrastructure.Services.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -495,8 +496,10 @@ public class DemoAccountSeederTests
         });
         var jwtGenerator = new JwtTokenGenerator(jwtOptions);
 
+        var userEmailIdentityRepository = new UserEmailIdentityRepository(context);
         var handler = new HRConnect.Application.Features.Auth.Commands.Login.LoginCommandHandler(
             userRepository,
+            userEmailIdentityRepository,
             refreshTokenRepository,
             passwordHasher,
             jwtGenerator,

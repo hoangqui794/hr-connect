@@ -11,6 +11,7 @@ namespace HRConnect.Application.Features.Auth.Commands.ForgotPassword;
 public class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswordCommand, ForgotPasswordResponse>
 {
     private readonly IUserRepository _userRepository;
+    private readonly IUserEmailIdentityRepository _userEmailIdentityRepository;
     private readonly IUserTokenRepository _userTokenRepository;
     private readonly IEmailService _emailService;
     private readonly IOtpService _otpService;
@@ -21,6 +22,7 @@ public class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswordComman
 
     public ForgotPasswordCommandHandler(
         IUserRepository userRepository,
+        IUserEmailIdentityRepository userEmailIdentityRepository,
         IUserTokenRepository userTokenRepository,
         IEmailService emailService,
         IOtpService otpService,
@@ -30,6 +32,7 @@ public class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswordComman
         ILogger<ForgotPasswordCommandHandler> logger)
     {
         _userRepository = userRepository;
+        _userEmailIdentityRepository = userEmailIdentityRepository;
         _userTokenRepository = userTokenRepository;
         _emailService = emailService;
         _otpService = otpService;
@@ -48,8 +51,16 @@ public class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswordComman
             return new ForgotPasswordResponse();
         }
 
-        // 2. Tìm người dùng theo email đã chuẩn hóa
+        // 2. Tìm người dùng theo email đã chuẩn hóa (hỗ trợ cả Email chính và Email phụ đã xác thực)
         var user = await _userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
+        if (user == null)
+        {
+            var emailIdentity = await _userEmailIdentityRepository.GetActiveByNormalizedEmailAsync(normalizedEmail, cancellationToken);
+            if (emailIdentity != null && string.Equals(emailIdentity.Status, "VERIFIED", StringComparison.OrdinalIgnoreCase))
+            {
+                user = await _userRepository.GetByIdAsync(emailIdentity.UserId, cancellationToken);
+            }
+        }
 
         // 3. Phòng chống Account Enumeration: Luôn trả về phản hồi chung
         if (user == null)

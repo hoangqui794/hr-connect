@@ -111,13 +111,19 @@ public class RegisterCandidateCommandHandlerTests
             .Setup(x => x.ExistsByEmailAsync("alias@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
         _userEmailIdentityRepositoryMock
-            .Setup(x => x.ExistsActiveByNormalizedEmailAsync("alias@example.com", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .Setup(x => x.GetActiveByNormalizedEmailAsync("alias@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserEmailIdentity
+            {
+                Email = "alias@example.com",
+                NormalizedEmail = "alias@example.com",
+                User = new AppUser { Email = "primary@example.com" }
+            });
 
         var action = () => _handler.Handle(command, CancellationToken.None);
 
-        await action.Should().ThrowAsync<ConflictException>()
-            .WithMessage("*đã được sử dụng bởi một tài khoản khác*");
+        var exception = await action.Should().ThrowAsync<ConflictException>();
+        exception.Which.ErrorCode.Should().Be("EMAIL_ALREADY_LINKED_AS_ALIAS");
+        exception.Which.Message.Should().Contain("p***y@example.com");
         _userRepositoryMock.Verify(
             x => x.AddAsync(It.IsAny<AppUser>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWorkMock.Verify(
@@ -284,8 +290,8 @@ public class RegisterCandidateCommandHandlerTests
         _phoneNormalizerMock.Setup(x => x.Normalize(command.Phone)).Returns("+84909999999");
         _userRepositoryMock.Setup(x => x.ExistsByEmailAsync("affiliate.candidate@example.com", It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        _userEmailIdentityRepositoryMock.Setup(x => x.ExistsActiveByNormalizedEmailAsync("affiliate.candidate@example.com", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+        _userEmailIdentityRepositoryMock.Setup(x => x.GetActiveByNormalizedEmailAsync("affiliate.candidate@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserEmailIdentity?)null);
 
         // Affiliate submitted earlier with phone 0901111111, unlinked (UserId = null)
         var unclaimedCandidate = new Candidate

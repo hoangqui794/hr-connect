@@ -13,6 +13,7 @@ namespace HRConnect.UnitTests.Features.Auth.ForgotPassword;
 public class ForgotPasswordCommandHandlerTests
 {
     private readonly Mock<IUserRepository> _userRepositoryMock;
+    private readonly Mock<IUserEmailIdentityRepository> _userEmailIdentityRepositoryMock;
     private readonly Mock<IUserTokenRepository> _userTokenRepositoryMock;
     private readonly Mock<IEmailService> _emailServiceMock;
     private readonly Mock<IOtpService> _otpServiceMock;
@@ -26,6 +27,7 @@ public class ForgotPasswordCommandHandlerTests
     public ForgotPasswordCommandHandlerTests()
     {
         _userRepositoryMock = new Mock<IUserRepository>();
+        _userEmailIdentityRepositoryMock = new Mock<IUserEmailIdentityRepository>();
         _userTokenRepositoryMock = new Mock<IUserTokenRepository>();
         _emailServiceMock = new Mock<IEmailService>();
         _otpServiceMock = new Mock<IOtpService>();
@@ -51,6 +53,7 @@ public class ForgotPasswordCommandHandlerTests
 
         _handler = new ForgotPasswordCommandHandler(
             _userRepositoryMock.Object,
+            _userEmailIdentityRepositoryMock.Object,
             _userTokenRepositoryMock.Object,
             _emailServiceMock.Object,
             _otpServiceMock.Object,

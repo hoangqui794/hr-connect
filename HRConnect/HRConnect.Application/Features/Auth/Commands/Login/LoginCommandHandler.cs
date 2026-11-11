@@ -14,6 +14,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
     private const int MaxFailedLoginAttempts = 5;
     private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(15);
     private readonly IUserRepository _userRepository;
+    private readonly IUserEmailIdentityRepository _userEmailIdentityRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
@@ -25,6 +26,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
 
     public LoginCommandHandler(
         IUserRepository userRepository,
+        IUserEmailIdentityRepository userEmailIdentityRepository,
         IRefreshTokenRepository refreshTokenRepository,
         IPasswordHasher passwordHasher,
         IJwtTokenGenerator jwtTokenGenerator,
@@ -35,6 +37,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
         ILogger<LoginCommandHandler> logger)
     {
         _userRepository = userRepository;
+        _userEmailIdentityRepository = userEmailIdentityRepository;
         _refreshTokenRepository = refreshTokenRepository;
         _passwordHasher = passwordHasher;
         _jwtTokenGenerator = jwtTokenGenerator;
@@ -54,8 +57,22 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
             throw new BadRequestException("Email không hợp lệ.");
         }
 
-        // 2. Tìm người dùng kèm vai trò và quyền hạn
+        // 2. Tìm người dùng kèm vai trò và quyền hạn (hỗ trợ cả Email chính và Email phụ đã xác thực)
         var user = await _userRepository.GetByEmailWithRolesAndPermissionsAsync(normalizedEmail, cancellationToken);
+        if (user == null)
+        {
+            var emailIdentity = await _userEmailIdentityRepository.GetActiveByNormalizedEmailAsync(normalizedEmail, cancellationToken);
+            if (emailIdentity != null && string.Equals(emailIdentity.Status, "VERIFIED", StringComparison.OrdinalIgnoreCase))
+            {
+                user = await _userRepository.GetByIdWithRolesAndPermissionsAsync(emailIdentity.UserId, cancellationToken);
+                if (user != null)
+                {
+                    _logger.LogInformation("Người dùng đăng nhập bằng Email phụ đã xác minh {AliasEmail} (Tài khoản chính: {PrimaryEmail})",
+                        normalizedEmail, user.Email);
+                }
+            }
+        }
+
         if (user == null)
         {
             _logger.LogWarning("Đăng nhập thất bại: Không tìm thấy tài khoản {Email}", normalizedEmail);

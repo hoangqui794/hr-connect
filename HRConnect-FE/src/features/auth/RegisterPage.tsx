@@ -477,7 +477,19 @@ export const RegisterPage: React.FC = () => {
             {/* Form Level Error Alert */}
             {formError && (
               <div role="alert" className="sm:col-span-2 rounded-lg border border-rose-200 bg-rose-50/90 p-3.5 text-xs font-medium text-rose-700">
-                {formError}
+                <p className="leading-relaxed">{formError}</p>
+                {(formError.includes('đăng nhập') || formError.includes('Đăng nhập')) && (
+                  <div className="mt-2.5 pt-2.5 border-t border-rose-200/70 flex items-center justify-between text-xs">
+                    <span className="text-slate-600 font-normal">Bạn đã có tài khoản liên kết?</span>
+                    <Link
+                      to={`/login?email=${encodeURIComponent(values.email.trim())}`}
+                      className="font-semibold text-sky-700 hover:text-sky-800 underline underline-offset-2 flex items-center gap-1"
+                    >
+                      <span>Đăng nhập ngay</span>
+                      <span aria-hidden="true">→</span>
+                    </Link>
+                  </div>
+                )}
               </div>
             )}
 
