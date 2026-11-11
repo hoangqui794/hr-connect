@@ -32,6 +32,8 @@ const BY_ENTITY: Record<string, string[][]> = {
   PAYOUT: FINANCE,
   REPLACEMENT_SLOT: [...FINANCE, ...JOB],
   DISPUTE: [['affiliate-my-disputes'], ['admin-disputes'], ['admin-dispute-detail'], ['aff-attributions']],
+  CONTACT_REQUEST: [['admin-contact-requests']],
+  PLACEMENT_RECONCILIATION: [['placement-reconciliations'], ['mf04-placement-correction'], ...APPLICATION, ...FINANCE],
   CANDIDATE_IDENTITY_CLAIM: [['admin-candidate-identity-claims'], ['candidate']],
   CANDIDATE_DUPLICATE_CASE: [['admin-candidate-identity-claims'], ...APPLICATION],
 };
