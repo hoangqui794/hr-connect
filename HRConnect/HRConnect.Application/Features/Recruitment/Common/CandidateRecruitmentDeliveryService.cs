@@ -216,7 +216,7 @@ public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentD
             {
                 NotificationId = Guid.NewGuid(),
                 UserId = userId,
-                NotificationType = "APPLICATION",
+                NotificationType = "APPLICATION_STATUS",
                 Title = started ? "Đã xác nhận bắt đầu làm việc" : "Cập nhật kết quả nhận việc",
                 Message = started
                     ? "Doanh nghiệp đã xác nhận bạn bắt đầu làm việc. Chúc bạn thành công ở vị trí mới!"

@@ -3,20 +3,20 @@ import { compactPhoneNumber, isValidVietnamPhoneNumber } from './phoneValidation
 
 describe('phoneValidation', () => {
   it.each([
-    '0777569597',
+    '0772345678',
     '0912345678',
     '0522345678',
     '0552345678',
     '+84912345678',
     '0912 345 678',
-    '(077) 756-9597',
+    '(077) 234-5678',
   ])('accepts a supported Vietnamese mobile number: %s', (phone) => {
     expect(isValidVietnamPhoneNumber(phone)).toBe(true);
   });
 
   it.each([
     '0122010010',
-    '01227569597',
+    '01222345678',
     '0223456789',
     '12345',
     '',

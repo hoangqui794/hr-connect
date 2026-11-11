@@ -553,7 +553,7 @@ export const AffiliateSubmitPage: React.FC = () => {
                     <Form.Item
                       name="phone"
                       label="Số điện thoại của ứng viên"
-                      extra="Dùng số di động Việt Nam 10 chữ số, ví dụ 0777569597."
+                      extra="Dùng số di động Việt Nam 10 chữ số, ví dụ 0912345678."
                       rules={[
                         {
                           validator: (_, value) =>

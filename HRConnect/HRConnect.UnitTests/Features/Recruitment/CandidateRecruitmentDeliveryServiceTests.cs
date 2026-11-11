@@ -254,7 +254,10 @@ public class CandidateRecruitmentDeliveryServiceTests
 
         result.Channel.Should().Be(CandidateRecruitmentDeliveryChannel.InAppAndEmail);
         _notifications.Verify(x => x.AddAsync(
-            It.Is<Notification>(item => item.Title.Contains("bắt đầu làm việc")),
+            It.Is<Notification>(item =>
+                item.UserId == userId &&
+                item.NotificationType == "APPLICATION_STATUS" &&
+                item.Title.Contains("bắt đầu làm việc")),
             It.IsAny<CancellationToken>()), Times.Once);
         outbox.Should().NotBeNull();
         outbox!.TemplateCode.Should().Be(RecruitmentCandidateEmailTemplates.ApplicationStartedConfirmed);

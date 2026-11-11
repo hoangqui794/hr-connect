@@ -16,6 +16,7 @@ public sealed class NotificationTypeConstraintTests
     [InlineData("WARRANTY")]
     [InlineData("SOURCING")]
     [InlineData("INTERVIEW")]
+    [InlineData("APPLICATION_STATUS")]
     [InlineData("SYSTEM")]
     public void Notification_type_constraint_allows_every_type_the_notifier_sends(string type)
     {

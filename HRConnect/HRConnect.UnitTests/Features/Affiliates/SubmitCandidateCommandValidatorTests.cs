@@ -71,7 +71,7 @@ public class SubmitCandidateCommandValidatorTests
 
     [Theory]
     [InlineData("0122010010")]
-    [InlineData("01227569597")]
+    [InlineData("01222345678")]
     [InlineData("0223456789")]
     public void Validate_WhenPhoneIsNotACurrentVietnameseMobileNumber_IsInvalid(string phone)
     {
@@ -86,7 +86,7 @@ public class SubmitCandidateCommandValidatorTests
     }
 
     [Theory]
-    [InlineData("0777569597")]
+    [InlineData("0772345678")]
     [InlineData("0522345678")]
     [InlineData("0552345678")]
     [InlineData("+84912345678")]

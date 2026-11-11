@@ -102,7 +102,7 @@ public class RegisterCandidateCommandValidatorTests
     [InlineData("12345")]
     [InlineData("012345678901")] // 12 digits
     [InlineData("0122010010")] // Legacy/invalid 012x prefix
-    [InlineData("01227569597")] // Legacy 11-digit number must be converted first
+    [InlineData("01222345678")] // Legacy 11-digit number must be converted first
     [InlineData("0223456789")] // Invalid prefix
     public void Validate_ShouldHaveError_WhenPhoneIsInvalid(string invalidPhone)
     {
@@ -126,7 +126,7 @@ public class RegisterCandidateCommandValidatorTests
     [InlineData("0901234567")]
     [InlineData("+84912345678")]
     [InlineData("0389998888")]
-    [InlineData("0777569597")]
+    [InlineData("0772345678")]
     [InlineData("0522345678")]
     [InlineData("0552345678")]
     [InlineData("0912 345 678")]

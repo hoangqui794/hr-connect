@@ -380,7 +380,14 @@ export const ApplicationWorkbench: React.FC<{
         expiryDate: offer.expiryDate ? dayjs(offer.expiryDate) : undefined,
         offerDocumentUrl: offer.offerDocumentUrl ?? undefined,
       });
-    } else if (kind === 'offer') form.setFieldsValue({ currencyCode: 'VND', salaryBasis: 'GROSS', salaryPeriod: 'MONTHLY' });
+    } else if (kind === 'offer')
+      form.setFieldsValue({
+        currencyCode: 'VND',
+        salaryBasis: 'GROSS',
+        salaryPeriod: 'MONTHLY',
+        startDate: dayjs(),
+        expiryDate: dayjs(),
+      });
     if (kind === 'schedule') form.setFieldsValue({ durationMinutes: 60, interviewType: 'OFFLINE' });
     if (kind === 'reject' && d?.status === 'INTERVIEW') {
       const latestRound = [...(d.interviews ?? [])].sort((a, b) => b.interviewRound - a.interviewRound)[0];
@@ -1427,7 +1434,14 @@ export const ApplicationWorkbench: React.FC<{
                 <p className="mt-0 text-sm text-slate-600">Xác nhận ứng viên đã thực sự đi làm. Bước này tạo bản ghi nhận việc và là mốc tính phí dịch vụ.</p>
               )}
               <Form.Item name="actualStartDate" label="Ngày thực tế đi làm" rules={[{ required: true, message: 'Chọn ngày.' }]}>
-                <DatePicker format="DD/MM/YYYY" disabledDate={(x) => x.isAfter(dayjs(), 'day')} className="w-full" />
+                <DatePicker
+                  format="DD/MM/YYYY"
+                  disabledDate={(x) =>
+                    x.isAfter(dayjs(), 'day') ||
+                    (offer?.respondedAt ? x.isBefore(dayjs(offer.respondedAt), 'day') : false)
+                  }
+                  className="w-full"
+                />
               </Form.Item>
               <div className="grid gap-x-4 sm:grid-cols-2">
                 <Form.Item name="position" label="Vị trí" rules={[{ max: 150, message: 'Tối đa 150 ký tự.' }]}>
