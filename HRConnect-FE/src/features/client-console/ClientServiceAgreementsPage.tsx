@@ -395,42 +395,28 @@ export const ClientServiceAgreementsPage: React.FC = () => {
 
   return (
     <div className={`space-y-6 ${FONT} max-w-full animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
-      {/* ── 1. Studio Header ── */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5">
-        <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="m-0 text-2xl font-black tracking-tight text-slate-900 sm:text-[26px]">
-              Thỏa thuận dịch vụ tuyển dụng
-            </h1>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-[#0C4A6E] border border-sky-200/80 shadow-2xs">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#0C4A6E] animate-pulse" />
-              {counts.all} hợp đồng
-            </span>
-          </div>
-          <p className="m-0 text-sm text-slate-500 max-w-2xl">
-            Thẩm định điều khoản thương mại, ký kết hợp đồng dịch vụ (Tuyển dụng theo kết quả / Tìm hồ sơ phù hợp) và quản lý tiến trình thanh toán.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+      {/* ── 1. Compact header: the top bar already names the page, so one line with the count and actions. ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="text-sm text-slate-600">
+          <b className="text-slate-900">{counts.all}</b> thỏa thuận · Mua CV theo số lượng và Tuyển qua Affiliate
+        </span>
+        <div className="flex items-center gap-2">
           <Button
+            aria-label="Làm mới"
             icon={<ReloadOutlined className={fetchingJobs ? 'animate-spin' : ''} />}
-            className="!h-10 !rounded-xl border-slate-200 hover:!border-slate-300 font-semibold text-slate-700 bg-white shadow-2xs hover:shadow-xs transition-all"
+            className="!h-11 !w-11 !rounded-lg border-slate-200"
             onClick={() => {
               refetchJobs();
               refetchCurrent();
               refetchHistory();
             }}
-          >
-            Làm mới
-          </Button>
+          />
           <Button
-            type="primary"
             icon={<FileTextOutlined />}
-            className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white !h-10 !rounded-xl font-bold shadow-2xs hover:shadow-xs transition-all active:scale-[0.98] !px-4"
+            className="!h-11 !rounded-lg border-slate-200 font-semibold text-[#0C4A6E]"
             onClick={() => navigate('/client/jobs')}
           >
-            Quản lý tin tuyển dụng
+            Tin tuyển dụng
           </Button>
         </div>
       </div>

@@ -96,12 +96,12 @@ export const ClientOverviewPage: React.FC = () => {
   return (
     <div className={`${FONT} space-y-7 max-w-full animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
       {/* ── 1. Executive Studio Hero Banner ──────────────────────────── */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0B1528] via-[#0C4A6E] to-[#0369A1] p-6 text-white shadow-[0_12px_32px_rgba(12,74,110,0.18)] sm:p-8">
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0B1528] via-[#0C4A6E] to-[#0369A1] px-5 py-4 text-white sm:px-6 sm:py-5">
         {/* Ambient background glow */}
-        <div className="pointer-events-none absolute -right-16 -top-16 h-80 w-80 rounded-full bg-sky-400/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-16 left-1/3 h-64 w-64 rounded-full bg-indigo-500/15 blur-3xl" />
+        
+        
 
-        <div className="relative z-10 flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
+        <div className="relative z-10 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
           <div className="flex-1 min-w-0 max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold text-sky-200 backdrop-blur-md">
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -110,11 +110,11 @@ export const ClientOverviewPage: React.FC = () => {
               <span>Cổng quản trị tuyển dụng</span>
             </div>
 
-            <h1 className="m-0 mt-3.5 text-2xl font-black tracking-tight text-white sm:text-3xl lg:text-[32px]">
+            <h1 className="m-0 mt-2 text-xl font-extrabold tracking-tight text-white sm:text-[22px]">
               Chào {firstName}, chúc một ngày tuyển dụng hiệu quả!
             </h1>
 
-            <p className="m-0 mt-2.5 text-sm leading-relaxed text-sky-100/90 sm:text-[15px]">
+            <p className="m-0 mt-1.5 text-sm leading-relaxed text-sky-100/90">
               {jobs.isLoading || stagesLoading ? (
                 'Đang đồng bộ nhịp thở dữ liệu tuyển dụng...'
               ) : (
@@ -126,18 +126,18 @@ export const ClientOverviewPage: React.FC = () => {
               )}
             </p>
 
-            <div className="mt-6 flex flex-wrap items-center gap-3">
+            <div className="mt-3.5 flex flex-wrap items-center gap-2.5">
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
                 onClick={() => navigate('/client/jobs/create')}
-                className="!h-11 !rounded-xl !border-0 !bg-white !px-5 text-sm font-bold !text-[#0C4A6E] shadow-lg transition-all hover:!bg-sky-50 active:scale-[0.98]"
+                className="!h-10 !rounded-lg !border-0 !bg-white !px-4 text-sm font-bold !text-[#0C4A6E] transition-all hover:!bg-sky-50 active:scale-[0.98]"
               >
                 Đăng tin tuyển dụng mới
               </Button>
               <Button
                 onClick={() => navigate('/client/candidates')}
-                className="!h-11 !rounded-xl !border !border-white/25 !bg-white/10 !px-5 text-sm font-semibold !text-white backdrop-blur-md transition-all hover:!bg-white/20 active:scale-[0.98]"
+                className="!h-10 !rounded-lg !border !border-white/25 !bg-white/10 !px-4 text-sm font-semibold !text-white backdrop-blur-md transition-all hover:!bg-white/20 active:scale-[0.98]"
               >
                 Xem tất cả hồ sơ ({totalCandidates})
               </Button>
@@ -145,7 +145,7 @@ export const ClientOverviewPage: React.FC = () => {
           </div>
 
           {/* Mini Health Pulse Card */}
-          <div className="flex shrink-0 flex-col gap-3 rounded-2xl border border-white/15 bg-white/10 p-5 backdrop-blur-md lg:w-72">
+          <div className="flex shrink-0 flex-col gap-3 rounded-xl border border-white/15 bg-white/10 p-3.5 backdrop-blur-md lg:w-64">
             <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-sky-200">
               <span className="flex items-center gap-1.5">
                 <ThunderboltFilled className="text-amber-400" /> Nhịp độ tuyển dụng

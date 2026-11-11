@@ -373,20 +373,17 @@ const ClientFees: React.FC = () => {
 
 export const ClientWarrantyPage: React.FC = () => (
   <div className={`${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
-    {/* ── Studio Header ── */}
-    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5">
+    {/* ── Compact header: the top bar already shows the page title ── */}
+    <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-1">
       <div>
         <div className="flex items-center gap-2.5">
-          <h1 className="m-0 text-2xl font-black tracking-tight text-slate-900 sm:text-[26px]">
+          <h1 className="sr-only">
             Chính sách & quản lý bảo hành
           </h1>
           <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0C4A6E] border border-sky-100">
             Tuyển dụng theo kết quả
           </span>
         </div>
-        <p className="m-0 mt-1 text-sm text-slate-500">
-          Theo dõi thời hạn cam kết bảo hành ứng viên đã đi làm và gửi yêu cầu suất tuyển thay thế miễn phí khi cần.
-        </p>
       </div>
     </div>
     <ReplacementQuotaCard mode="client" />

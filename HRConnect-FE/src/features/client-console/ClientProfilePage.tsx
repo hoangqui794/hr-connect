@@ -104,20 +104,12 @@ export const ClientProfilePage: React.FC = () => {
 
   return (
     <div className={`${FONT} space-y-6 max-w-6xl mx-auto pb-12 animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
-      {/* ── 1. Studio Header ── */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5">
+      {/* ── 1. Compact header: the top bar already shows the page title ── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-1">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
-            <span>Doanh nghiệp tuyển dụng</span>
-            <span>•</span>
-            <span className="text-[#0C4A6E]">Cài đặt tài khoản</span>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+          <h1 className="sr-only">
             Hồ sơ cá nhân
           </h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Quản lý thông tin định danh người đại diện, số điện thoại liên hệ và chức vụ tại doanh nghiệp.
-          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
