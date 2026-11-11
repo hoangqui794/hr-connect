@@ -57,14 +57,14 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <header className="hrc-site-header sticky top-0 z-40 border-b border-white/10 bg-gradient-to-r from-[#0A1628] via-[#0F2847] to-[#0A1628] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[14px] text-white shadow-[0_4px_24px_-4px_rgba(2,12,27,0.35)] backdrop-blur-md [line-height:normal] [&_button]:[font-family:inherit]">
+    <header className="hrc-site-header sticky top-0 z-40 border-b border-white/20 bg-gradient-to-r from-[#0369A1] via-[#0284C7] to-[#0369A1] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[14px] text-white shadow-[0_4px_20px_-4px_rgba(2,132,199,0.3)] backdrop-blur-md [line-height:normal] [&_button]:[font-family:inherit]">
       <div className="mx-auto flex h-[66px] w-full max-w-[1520px] items-center gap-6 px-4 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-5 lg:gap-7">
           <Link to="/" viewTransition className="group flex shrink-0 items-center gap-2.5 whitespace-nowrap text-[18px] font-extrabold tracking-tight text-white no-underline transition-opacity hover:opacity-95">
             <div className="relative flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
               <BrandMark size={32} tone="light" />
             </div>
-            <span className="bg-gradient-to-r from-white via-slate-100 to-sky-200 bg-clip-text text-transparent">
+            <span className="font-extrabold text-white tracking-tight">
               HR Connect
             </span>
           </Link>
@@ -75,10 +75,10 @@ export const Navbar: React.FC = () => {
                 to={l.to}
                 viewTransition
                 aria-current={l.active ? 'page' : undefined}
-                className={`group relative inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-4 text-[13.5px] font-medium no-underline transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400 ${
+                className={`group relative inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-4 text-[13.5px] font-medium no-underline transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${
                   l.active
-                    ? 'bg-white/15 font-semibold text-white shadow-xs backdrop-blur-xs border border-white/15'
-                    : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                    ? 'bg-white/20 font-semibold text-white shadow-xs backdrop-blur-xs border border-white/30'
+                    : 'text-sky-100 hover:bg-white/15 hover:text-white'
                 }`}
               >
                 {l.label}
@@ -90,7 +90,7 @@ export const Navbar: React.FC = () => {
         <div className={`ml-auto flex min-w-0 shrink-0 items-center ${isCandidate ? 'gap-2.5' : 'gap-3'}`}>
           {isAuthenticated && (
             <span className="site-bell flex items-center">
-              <NotificationBell className="!h-10 !w-10 !border-0 !bg-white/5 hover:!bg-white/10 !rounded-full transition-colors" variant={isCandidate ? 'candidate' : 'default'} />
+              <NotificationBell className="!h-10 !w-10 !border !border-white/20 !bg-white/10 hover:!bg-white/20 !rounded-full text-white transition-colors" variant={isCandidate ? 'candidate' : 'default'} />
             </span>
           )}
           {isCandidate ? (
@@ -106,20 +106,20 @@ export const Navbar: React.FC = () => {
                 ],
               }}
             >
-              <button type="button" className="flex cursor-pointer items-center gap-2.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-white transition-all hover:bg-white/10 hover:border-white/20">
+              <button type="button" className="flex cursor-pointer items-center gap-2.5 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-white transition-all hover:bg-white/20 hover:border-white/30">
                 <AccountAvatar name={user?.name || 'Người dùng'} avatar={user?.avatar} size={28} />
                 <span className="hidden max-w-[150px] truncate text-[13.5px] font-medium sm:block">{user?.name}</span>
               </button>
             </Dropdown>
           ) : (
             <>
-              <Link to="/register?role=CLIENT" className="hidden whitespace-nowrap text-[13.5px] font-medium text-slate-300 no-underline transition-colors hover:text-white xl:block">
+              <Link to="/register?role=CLIENT" className="hidden whitespace-nowrap text-[13.5px] font-medium text-sky-100 no-underline transition-colors hover:text-white xl:block">
                 Dành cho nhà tuyển dụng
               </Link>
-              <Link to="/login" className="hidden whitespace-nowrap rounded-lg border border-white/20 bg-white/5 px-4 py-2 text-[13.5px] font-medium text-white no-underline transition-all hover:bg-white/10 hover:border-white/30 sm:block">
+              <Link to="/login" className="hidden whitespace-nowrap rounded-lg border border-white/30 bg-white/10 px-4 py-2 text-[13.5px] font-medium text-white no-underline transition-all hover:bg-white/20 hover:border-white/40 sm:block">
                 Đăng nhập
               </Link>
-              <Link to="/register" className="whitespace-nowrap rounded-lg bg-gradient-to-r from-sky-500 to-blue-600 px-4 py-2 text-[13.5px] font-semibold text-white no-underline shadow-sm shadow-blue-500/25 transition-all hover:from-sky-400 hover:to-blue-500 hover:shadow-md hover:shadow-blue-500/35 active:scale-[0.98]">
+              <Link to="/register" className="whitespace-nowrap rounded-lg bg-white px-4 py-2 text-[13.5px] font-bold text-[#0369A1] no-underline shadow-sm transition-all hover:bg-sky-50 hover:shadow-md active:scale-[0.98]">
                 Đăng ký
               </Link>
             </>
@@ -129,7 +129,7 @@ export const Navbar: React.FC = () => {
             aria-label="Mở menu"
             aria-expanded={mobileMenuOpen}
             onClick={() => setMobileMenuOpen(true)}
-            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-white/5 text-[18px] text-white transition-colors hover:bg-white/10 lg:hidden"
+            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border border-white/20 bg-white/10 text-[18px] text-white transition-colors hover:bg-white/20 lg:hidden"
           >
             <MenuOutlined />
           </button>
