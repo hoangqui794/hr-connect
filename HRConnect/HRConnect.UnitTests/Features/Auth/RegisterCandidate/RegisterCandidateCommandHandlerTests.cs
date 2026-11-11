@@ -268,4 +268,60 @@ public class RegisterCandidateCommandHandlerTests
         capturedOutbox.SentAt.Should().NotBeNull();
         capturedOutbox.Payload.Should().NotContain("123456");
     }
+
+    [Fact]
+    public async Task Handle_WhenAffiliateSubmittedCandidateHasDifferentPhone_ShouldRegisterSuccessfully()
+    {
+        // Arrange
+        var command = new RegisterCandidateCommand(
+            Email: "affiliate.candidate@example.com",
+            Password: "Password@123",
+            FullName: "Candidate Name",
+            Phone: "0909999999"
+        );
+
+        _emailNormalizerMock.Setup(x => x.Normalize(command.Email)).Returns("affiliate.candidate@example.com");
+        _phoneNormalizerMock.Setup(x => x.Normalize(command.Phone)).Returns("+84909999999");
+        _userRepositoryMock.Setup(x => x.ExistsByEmailAsync("affiliate.candidate@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _userEmailIdentityRepositoryMock.Setup(x => x.ExistsActiveByNormalizedEmailAsync("affiliate.candidate@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        // Affiliate submitted earlier with phone 0901111111, unlinked (UserId = null)
+        var unclaimedCandidate = new Candidate
+        {
+            CandidateId = Guid.NewGuid(),
+            Email = "affiliate.candidate@example.com",
+            NormalizedEmail = "affiliate.candidate@example.com",
+            Phone = "0901111111",
+            NormalizedPhone = "+84901111111",
+            UserId = null
+        };
+
+        _candidateRepositoryMock.Setup(x => x.GetByNormalizedEmailAsync("affiliate.candidate@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(unclaimedCandidate);
+        _candidateRepositoryMock.Setup(x => x.GetByNormalizedPhoneAsync("+84909999999", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Candidate?)null);
+
+        var candidateRole = new Role { RoleId = Guid.NewGuid(), Code = "CANDIDATE" };
+        _roleRepositoryMock.Setup(x => x.GetByCodeAsync("CANDIDATE", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidateRole);
+
+        _passwordHasherMock.Setup(x => x.Hash(command.Password)).Returns("hashed_pwd");
+        _otpServiceMock.Setup(x => x.GenerateNumericOtp(It.IsAny<int>())).Returns("654321");
+        _otpServiceMock.Setup(x => x.HashOtp("654321")).Returns("hashed_otp");
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Success.Should().BeTrue();
+        result.Data.Email.Should().Be(command.Email);
+        result.Data.Status.Should().Be("PENDING");
+
+        // Candidate profile remains unclaimed until OTP is verified
+        unclaimedCandidate.UserId.Should().BeNull();
+        _unitOfWorkMock.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
 }

@@ -262,6 +262,14 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
                     candidate.CandidateId, normalizedEmail, user.UserId, cancellationToken))
                 throw new ConflictException("Hồ sơ ứng viên đã thay đổi hoặc đã được liên kết với một tài khoản khác.");
 
+            if (!string.IsNullOrWhiteSpace(user.Phone) && candidate.Phone != user.Phone)
+            {
+                candidate.Phone = user.Phone;
+                candidate.NormalizedPhone = user.NormalizedPhone;
+                candidate.UpdatedAt = now;
+                _candidateRepository.Update(candidate);
+            }
+
             user.Status = "ACTIVE";
             _userRepository.Update(user);
             await AddEmailVerifiedAuditAsync(user.UserId, now, "CANDIDATE", cancellationToken);

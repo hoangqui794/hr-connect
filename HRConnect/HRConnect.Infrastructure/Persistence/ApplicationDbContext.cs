@@ -3073,6 +3073,15 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.DuplicateOfSubmissionId).HasColumnName("duplicate_of_submission_id");
             entity.Property(e => e.JobId).HasColumnName("job_id");
             entity.Property(e => e.Note).HasColumnName("note");
+            entity.Property(e => e.SubmittedFullName)
+                .HasMaxLength(255)
+                .HasColumnName("submitted_full_name");
+            entity.Property(e => e.SubmittedPhone)
+                .HasMaxLength(50)
+                .HasColumnName("submitted_phone");
+            entity.Property(e => e.NormalizedSubmittedPhone)
+                .HasMaxLength(50)
+                .HasColumnName("normalized_submitted_phone");
             entity.Property(e => e.Source)
                 .HasMaxLength(30)
                 .HasColumnName("source");

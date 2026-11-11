@@ -202,6 +202,9 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
                 Status = "BLOCKED_DUPLICATE",
                 DuplicateOfSubmissionId = existingSubmission?.SubmissionId,
                 Note = "Ứng viên đã nộp hồ sơ ứng tuyển vào công việc này trước đó.",
+                SubmittedFullName = candidate.FullName,
+                SubmittedPhone = candidate.Phone,
+                NormalizedSubmittedPhone = candidate.NormalizedPhone,
                 SubmittedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -249,6 +252,9 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
                 SubmittedBy = request.UserId,
                 Source = "CANDIDATE",
                 Status = "ACCEPTED",
+                SubmittedFullName = candidate.FullName,
+                SubmittedPhone = candidate.Phone,
+                NormalizedSubmittedPhone = candidate.NormalizedPhone,
                 SubmittedAt = now,
                 UpdatedAt = now
             };
@@ -403,6 +409,9 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
                 Status = "BLOCKED_DUPLICATE",
                 DuplicateOfSubmissionId = winningSubmission?.SubmissionId,
                 Note = "Nộp trùng lặp trong phiên đồng thời.",
+                SubmittedFullName = candidate.FullName,
+                SubmittedPhone = candidate.Phone,
+                NormalizedSubmittedPhone = candidate.NormalizedPhone,
                 SubmittedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };

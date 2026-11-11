@@ -56,7 +56,7 @@ public class GetAffiliateSubmissionsQueryHandler : IRequestHandler<GetAffiliateS
         {
             SubmissionId = s.SubmissionId,
             CandidateId = s.CandidateId,
-            CandidateName = s.Candidate?.FullName ?? string.Empty,
+            CandidateName = s.SubmittedFullName ?? s.Candidate?.FullName ?? string.Empty,
             JobId = s.JobId,
             JobTitle = s.Job?.Title ?? string.Empty,
             CvId = s.CvId,

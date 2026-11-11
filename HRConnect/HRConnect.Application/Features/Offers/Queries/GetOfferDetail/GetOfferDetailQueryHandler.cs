@@ -89,9 +89,9 @@ public class GetOfferDetailQueryHandler : IRequestHandler<GetOfferDetailQuery, G
             Candidate = new CandidateDetailDto
             {
                 CandidateId = offer.Application.CandidateId,
-                FullName = offer.Application.Candidate?.FullName ?? string.Empty,
+                FullName = offer.Application.Submission?.SubmittedFullName ?? offer.Application.Candidate?.FullName ?? string.Empty,
                 Email = request.IsClientCompanyUser && ClientVisibilityPolicy.ShouldMaskContactForClient(offer.Application.Job?.ServiceType?.Code, offer.Application.Status, offer.Placements.Count > 0) ? null : offer.Application.Candidate?.Email,
-                Phone = request.IsClientCompanyUser && ClientVisibilityPolicy.ShouldMaskContactForClient(offer.Application.Job?.ServiceType?.Code, offer.Application.Status, offer.Placements.Count > 0) ? null : offer.Application.Candidate?.Phone
+                Phone = request.IsClientCompanyUser && ClientVisibilityPolicy.ShouldMaskContactForClient(offer.Application.Job?.ServiceType?.Code, offer.Application.Status, offer.Placements.Count > 0) ? null : (offer.Application.Submission?.SubmittedPhone ?? offer.Application.Candidate?.Phone)
             },
             OfferVersion = offer.OfferVersion,
             Salary = offer.Salary,

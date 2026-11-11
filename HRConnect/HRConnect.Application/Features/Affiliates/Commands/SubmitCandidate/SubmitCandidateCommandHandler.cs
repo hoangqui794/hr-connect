@@ -484,6 +484,14 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                     cancellationToken);
             }
 
+            var submittedFullName = string.IsNullOrWhiteSpace(request.FullName)
+                ? candidate.FullName
+                : request.FullName.Trim();
+            var submittedPhone = string.IsNullOrWhiteSpace(request.Phone)
+                ? candidate.Phone
+                : request.Phone.Trim();
+            var normalizedSubmittedPhone = normalizedPhone ?? candidate.NormalizedPhone;
+
             submission = new Submission
             {
                 SubmissionId = Guid.NewGuid(),
@@ -495,6 +503,9 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                 Status = "PENDING_CONSENT",
                 ReplacementSlotId = replacementSlot?.ReplacementSlotId,
                 Note = request.Note?.Trim(),
+                SubmittedFullName = submittedFullName,
+                SubmittedPhone = submittedPhone,
+                NormalizedSubmittedPhone = normalizedSubmittedPhone,
                 SubmittedAt = now,
                 UpdatedAt = now
             };
@@ -863,6 +874,9 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                 Note = !string.IsNullOrWhiteSpace(note)
                     ? note.Trim()
                     : "Ứng viên đã được nộp vào công việc này trước đó.",
+                SubmittedFullName = candidate.FullName,
+                SubmittedPhone = candidate.Phone,
+                NormalizedSubmittedPhone = candidate.NormalizedPhone,
                 SubmittedAt = occurredAt,
                 UpdatedAt = occurredAt
             };

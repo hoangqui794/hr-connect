@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace HRConnect.Domain.Entities;
@@ -25,6 +25,12 @@ public partial class Submission
     public Guid? DuplicateOfSubmissionId { get; set; }
 
     public string? Note { get; set; }
+
+    public string? SubmittedFullName { get; set; }
+
+    public string? SubmittedPhone { get; set; }
+
+    public string? NormalizedSubmittedPhone { get; set; }
 
     public DateTime SubmittedAt { get; set; }
 

@@ -5667,6 +5667,11 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("job_id");
 
+                    b.Property<string>("NormalizedSubmittedPhone")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("normalized_submitted_phone");
+
                     b.Property<string>("Note")
                         .HasColumnType("text")
                         .HasColumnName("note");
@@ -5698,6 +5703,16 @@ namespace HRConnect.Infrastructure.Migrations
                     b.Property<Guid>("SubmittedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("submitted_by");
+
+                    b.Property<string>("SubmittedFullName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("submitted_full_name");
+
+                    b.Property<string>("SubmittedPhone")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("submitted_phone");
 
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
