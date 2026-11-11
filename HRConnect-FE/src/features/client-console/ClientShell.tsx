@@ -34,6 +34,7 @@ const NAV = [
   { to: '/client/interviews-offers', label: 'Phỏng vấn & Offer' },
   { to: '/client/warranty', label: 'Bảo hành' },
   { to: '/client/billing', label: 'Công nợ' },
+  { to: '/client/services', label: 'Dịch vụ' },
 ] as const;
 
 const linkClass = (active: boolean, compact?: boolean) => {
@@ -48,11 +49,9 @@ const linkClass = (active: boolean, compact?: boolean) => {
   }
   return [
     FONT,
-    `relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2.5 py-1.5 text-[13.5px] rounded-lg no-underline transition-all duration-150 ${WIDE}:px-3`,
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0C4A6E]/30',
-    active
-      ? 'bg-slate-100 text-[#0C4A6E] font-bold shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)]'
-      : 'font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+    `group relative inline-flex h-16 shrink-0 items-center whitespace-nowrap px-2.5 text-[14px] no-underline transition-colors duration-200 ease-out ${WIDE}:px-3`,
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0C4A6E]/30',
+    active ? 'font-bold text-[#0C4A6E]' : 'font-medium text-slate-700 hover:text-[#0C4A6E]',
   ].join(' ');
 };
 
@@ -105,24 +104,26 @@ export const ClientShell: React.FC = () => {
               <BrandMark size={36} />
               <div className="leading-tight">
                 <div className="flex items-center gap-2">
-                  <span className="text-[15px] font-bold text-slate-900 group-hover:text-[#0C4A6E] transition-colors">HR Connect</span>
-                  <span className={`hidden ${WIDE}:inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-[#0C4A6E] border border-sky-200/60`}>
+                  <span className="text-[17px] font-extrabold text-[#0C4A6E]">HR Connect</span>
+                  <span className={`hidden ${WIDE}:inline-flex items-center rounded border border-solid border-slate-300 px-1.5 py-0.5 text-[12px] font-semibold text-slate-600`}>
                     Doanh nghiệp
                   </span>
                 </div>
-                <span className={`hidden text-[11px] font-medium text-slate-500 ${WIDE}:block`}>Trung tâm quản lý tuyển dụng</span>
               </div>
             </NavLink>
           </div>
 
           {!compact && (
-            <nav aria-label="Điều hướng chính" className="flex min-w-0 items-center gap-0.5">
+            <nav aria-label="Điều hướng chính" className="flex h-16 min-w-0 flex-1 items-stretch gap-0.5">
               {NAV.map((n) => {
                 const active = isActive(n.to);
                 return (
                   <NavLink key={n.to} to={n.to} className={linkClass(active)} aria-current={active ? 'page' : undefined}>
-                    {active && <span className="h-1.5 w-1.5 rounded-full bg-[#0C4A6E]" aria-hidden />}
                     {n.label}
+                    <span
+                      aria-hidden
+                      className={`absolute inset-x-2.5 bottom-0 h-0.5 origin-center rounded-full bg-[#0C4A6E] transition-transform duration-200 ease-out motion-reduce:transition-none ${active ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`}
+                    />
                   </NavLink>
                 );
               })}
@@ -134,7 +135,7 @@ export const ClientShell: React.FC = () => {
               type="primary"
               icon={<PlusOutlined />}
               onClick={() => navigate('/client/jobs/create')}
-              className="hidden sm:inline-flex !bg-gradient-to-r !from-[#0C4A6E] !to-[#0284C7] hover:!from-[#075985] hover:!to-[#0369A1] !text-white !rounded-lg !border-0 shadow-sm font-semibold transition-all active:scale-[0.98] !h-9 !px-4"
+              className="hidden sm:inline-flex !bg-[#C2410C] hover:!bg-[#9A3412] !text-white !rounded-lg !border-0 !shadow-none font-bold transition-[background-color,transform] duration-150 active:scale-[0.97] !h-10 !px-4"
             >
               Đăng tin
             </Button>
@@ -205,7 +206,7 @@ export const ClientShell: React.FC = () => {
       )}
 
       <AdminTopProgress offsetLeft={0} />
-      <main className="mx-auto w-full max-w-[1280px] min-w-0 px-4 py-6 lg:px-8 lg:py-8">
+      <main className={location.pathname === '/client/services' ? 'w-full min-w-0' : 'mx-auto w-full max-w-[1280px] min-w-0 px-4 py-6 lg:px-8 lg:py-8'}>
         <AdminPageEnter pathKey={location.pathname}>
           <Suspense fallback={<AdminPageSkeleton />}>
             <Outlet />

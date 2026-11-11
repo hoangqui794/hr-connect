@@ -362,7 +362,7 @@ export const CompactFooter: React.FC = () => (
 export const SiteFooter: React.FC = () => {
   const columns: { title: string; links: [string, string][] }[] = [
     { title: 'Người tìm việc', links: [['Tìm việc làm', '/jobs'], ['Tạo CV', '/candidate/cv-builder'], ['Danh sách công ty', '/companies']] },
-    { title: 'Nhà tuyển dụng', links: [['Đăng tin tuyển dụng', '/services'], ['Tuyển qua Affiliate', '/services'], ['Mua CV theo số lượng', '/services']] },
+    { title: 'Nhà tuyển dụng', links: [['Đăng tin tuyển dụng', '/register?role=CLIENT'], ['Tuyển qua Affiliate', '/contact?service=HEADHUNT_COD'], ['Mua CV theo số lượng', '/contact?service=CV_SOURCING']] },
     { title: 'Hỗ trợ', links: [['Liên hệ', '/contact'], ['Điều khoản sử dụng', '/contact'], ['Chính sách bảo mật', '/contact']] },
   ];
   return (

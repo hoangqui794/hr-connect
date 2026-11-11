@@ -332,10 +332,10 @@ const GuestHome: React.FC = () => {
           </p>
         </div>
         <Link
-          to="/services"
+          to="/register?role=CLIENT"
           className="rounded-md border border-solid border-[#0C4A6E] px-5 py-2.5 font-semibold text-[#0C4A6E] no-underline transition-colors hover:bg-sky-50"
         >
-          Xem dịch vụ cho nhà tuyển dụng
+          Đăng ký tài khoản nhà tuyển dụng
         </Link>
       </section>
     </main>

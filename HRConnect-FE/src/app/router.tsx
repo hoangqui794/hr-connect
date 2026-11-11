@@ -22,6 +22,7 @@
 import React from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { Spin } from 'antd';
+import { UserRole } from '@/types/roles';
 import { AppShell } from '@/components/layout/AppShell';
 import {
   AppRoutes,
@@ -114,7 +115,11 @@ export const router = createBrowserRouter([
   },
   {
     path: '/services',
-    element: withSuspense(<ServicesPage />),
+    element: withSuspense(
+      <ProtectedRoute requiredRoles={[UserRole.CLIENT]} redirectTo="/jobs">
+        <Navigate to="/client/services" replace />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/contact',
@@ -323,7 +328,9 @@ export const router = createBrowserRouter([
       { path: 'profile', element: <AppRoutes.ClientProfilePage /> },
       // MF-05 warranty has no backend API yet: explicit empty state, no mock numbers.
       { path: 'warranty', element: <AppRoutes.ClientWarrantyPlaceholder /> },
+      { path: 'warranties', element: <Navigate to="/client/warranty" replace /> },
       { path: 'billing', element: <AppRoutes.ClientBillingPage /> },
+      { path: 'services', element: <ServicesPage /> },
       { path: 'billing/vnpay-return', element: <AppRoutes.ClientVnPayReturnPage /> },
       { path: 'placements/:placementId', element: <AppRoutes.PlacementDetailPage /> },
     ],
@@ -354,7 +361,9 @@ export const router = createBrowserRouter([
       { path: 'offers', element: <Navigate to="/hr/pipeline?tab=offers" replace /> },
       { path: 'placement-review', element: <AppRoutes.HrPlacementStartDateCorrectionPage /> },
       { path: 'placement-reconciliations', element: <AppRoutes.HrPlacementReconciliationPage /> },
+      { path: 'placements/reconciliation', element: <Navigate to="/hr/placement-reconciliations" replace /> },
       { path: 'warranty-tracking', element: <AppRoutes.HrWarrantyPlaceholder /> },
+      { path: 'warranties', element: <Navigate to="/hr/warranty-tracking" replace /> },
       { path: 'placements/:placementId', element: <AppRoutes.PlacementDetailPage /> },
     ],
   },

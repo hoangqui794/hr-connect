@@ -32,7 +32,6 @@ export const Navbar: React.FC = () => {
     },
     { to: '/companies', label: 'Công ty', active: location.pathname.startsWith('/companies') },
     ...(isCandidate ? [{ to: '/candidate/cv-builder', label: 'Tạo CV', active: location.pathname.startsWith('/candidate/cv-builder') }] : []),
-    { to: '/services', label: 'Dịch vụ', active: location.pathname === '/services' },
     ...(!isCandidate ? [{ to: '/contact', label: 'Liên hệ', active: location.pathname === '/contact' }] : []),
   ];
 
@@ -49,14 +48,14 @@ export const Navbar: React.FC = () => {
 
   const go = (to: string) => {
     setMobileMenuOpen(false);
-    navigate(to);
+    navigate(to, { viewTransition: true });
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-[#0C4A6E] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[14px] text-white shadow-[0_1px_3px_rgba(15,23,42,0.12)] [line-height:normal] [&_button]:[font-family:inherit]">
+    <header className="hrc-site-header sticky top-0 z-40 bg-[#0C4A6E] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[14px] text-white shadow-[0_1px_3px_rgba(15,23,42,0.12)] [line-height:normal] [&_button]:[font-family:inherit]">
       <div className="mx-auto flex h-16 w-full max-w-[1520px] items-center gap-6 px-4 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-5 lg:gap-7">
-          <Link to="/" className="flex shrink-0 items-center gap-2 whitespace-nowrap text-[18px] font-bold text-white no-underline hover:text-white">
+          <Link to="/" viewTransition className="flex shrink-0 items-center gap-2 whitespace-nowrap text-[18px] font-bold text-white no-underline hover:text-white">
             <BrandMark size={32} tone="light" /> HR Connect
           </Link>
           <nav aria-label="Điều hướng chính" className="hidden h-16 items-stretch gap-1 lg:flex">
@@ -64,13 +63,15 @@ export const Navbar: React.FC = () => {
               <Link
                 key={l.label}
                 to={l.to}
+                viewTransition
                 aria-current={l.active ? 'page' : undefined}
-                className={`relative inline-flex h-full min-w-[78px] items-center justify-center whitespace-nowrap px-2.5 font-medium no-underline transition-colors duration-150 hover:bg-white/5 hover:text-white ${l.active ? 'text-white' : 'text-slate-300'}`}
+                className={`group relative inline-flex h-full min-w-[78px] items-center justify-center whitespace-nowrap px-2.5 font-medium no-underline transition-colors duration-200 ease-out hover:bg-white/5 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-white/60 ${l.active ? 'text-white' : 'text-slate-300'}`}
               >
                 {l.label}
+                {/* Underline grows from the centre on hover and stays full under the current page. */}
                 <span
                   aria-hidden="true"
-                  className={`absolute inset-x-2.5 bottom-0 h-0.5 rounded-full transition-colors duration-150 ${l.active ? 'bg-white' : 'bg-transparent'}`}
+                  className={`absolute inset-x-2.5 bottom-0 h-0.5 origin-center rounded-full bg-white transition-[transform,opacity] duration-200 ease-out motion-reduce:transition-none ${l.active ? 'scale-x-100 opacity-100' : 'scale-x-0 opacity-60 group-hover:scale-x-100'}`}
                 />
               </Link>
             ))}
@@ -103,7 +104,7 @@ export const Navbar: React.FC = () => {
             </Dropdown>
           ) : (
             <>
-              <Link to="/services" className="hidden whitespace-nowrap text-slate-300 no-underline hover:text-white xl:block">Dành cho nhà tuyển dụng</Link>
+              <Link to="/register?role=CLIENT" className="hidden whitespace-nowrap text-slate-300 no-underline hover:text-white xl:block">Dành cho nhà tuyển dụng</Link>
               <Link to="/login" className="hidden whitespace-nowrap rounded-md border border-solid border-[#7FA6C2] px-3.5 py-2 font-medium text-white no-underline hover:bg-white/10 hover:text-white sm:block">Đăng nhập</Link>
               <Link to="/register" className="whitespace-nowrap rounded-md bg-[#C2410C] px-3.5 py-[9px] font-semibold text-white no-underline transition-colors duration-150 hover:bg-[#9A3412] hover:text-white">Đăng ký</Link>
             </>
@@ -129,7 +130,7 @@ export const Navbar: React.FC = () => {
           ))}
           {!isAuthenticated && (
             <>
-              <button type="button" onClick={() => go('/services')} className="h-11 cursor-pointer border-0 border-b border-solid border-slate-100 bg-transparent text-left text-[15px] text-gray-800">Dành cho nhà tuyển dụng</button>
+              <button type="button" onClick={() => go('/register?role=CLIENT')} className="h-11 cursor-pointer border-0 border-b border-solid border-slate-100 bg-transparent text-left text-[15px] text-gray-800">Dành cho nhà tuyển dụng</button>
               <button type="button" onClick={() => go('/login')} className="mt-4 h-11 cursor-pointer rounded-md border border-solid border-[#0C4A6E] bg-white font-semibold text-[#0C4A6E]">Đăng nhập</button>
             </>
           )}
