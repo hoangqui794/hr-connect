@@ -5,7 +5,9 @@
 import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Button, Pagination, Skeleton } from 'antd';
+import { Alert, Button, Pagination, Select, Skeleton } from 'antd';
+import { a11yItemRender } from '@/components/common/paginationA11y';
+import { ALL_VIETNAM_PROVINCES } from '@/features/jobs-mf01/PublicJobSplitDiscovery';
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { companyDirectoryApi } from '@/services/api/companyDirectoryApi';
@@ -24,56 +26,79 @@ const Frame: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </div>
 );
 
+const PIN_ICON = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>
+);
+
+type CompanyFilter = 'all' | 'hiring';
+
 export const CompaniesPage: React.FC = () => {
   const [draft, setDraft] = useState('');
+  const [locationDraft, setLocationDraft] = useState('');
   const [search, setSearch] = useState('');
+  const [location, setLocation] = useState('');
+  const [filter, setFilter] = useState<CompanyFilter>('all');
   const [page, setPage] = useState(1);
   const featured = useQuery({ queryKey: ['public-companies', 'featured'], queryFn: () => companyDirectoryApi.featured(), staleTime: 5 * 60_000 });
   const list = useQuery({
-    queryKey: ['public-companies', 'list', search, page],
-    queryFn: () => companyDirectoryApi.search({ search: search || undefined, page, pageSize: PAGE_SIZE }),
+    queryKey: ['public-companies', 'list', search, location, page],
+    queryFn: () => companyDirectoryApi.search({ search: search || undefined, location: location || undefined, page, pageSize: PAGE_SIZE }),
     placeholderData: (prev) => prev,
   });
+  // "Đang tuyển" narrows the loaded page; the API has no open-jobs filter yet.
+  const items = (list.data?.items ?? []).filter((c) => filter === 'all' || c.activeJobCount > 0);
+  const filtered = Boolean(search || location);
 
   return (
     <Frame>
-      <section className="border-0 border-b border-solid border-slate-200 bg-white">
-        <div className="mx-auto max-w-[1248px] px-4 pb-5 pt-6 sm:px-6">
-          <p className="m-0 text-[12px] font-bold uppercase tracking-[0.14em] text-sky-700">Khám phá doanh nghiệp</p>
-          <h1 className="m-0 mt-1 text-[24px] font-bold text-slate-950">Danh sách công ty</h1>
-          <p className="m-0 mt-1 text-[14px] text-slate-600">Tìm hiểu môi trường làm việc và các cơ hội đang tuyển tại doanh nghiệp phù hợp.</p>
-        </div>
-      </section>
-      <section aria-label="Tìm kiếm công ty" className="border-0 border-b border-solid border-slate-200 bg-[#F7F8FA]">
-        <div className="mx-auto max-w-[1248px] px-4 py-4 sm:px-6">
+      <section aria-label="Tìm kiếm công ty" className="border-0 border-b border-solid border-[#E2E8F0] bg-white">
+        <div className="mx-auto max-w-[928px] px-4 py-4 sm:px-6">
           <form
             role="search"
-            className="flex flex-wrap gap-2 rounded-xl border border-solid border-slate-200 bg-white p-2 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"
+            className="flex flex-wrap overflow-hidden rounded-lg border border-solid border-[#CBD5E1] bg-white transition-colors focus-within:border-[#0C4A6E]"
             onSubmit={(e) => {
               e.preventDefault();
               setPage(1);
               setSearch(draft.trim());
+              setLocation(locationDraft);
             }}
           >
-            <label className="min-w-[240px] flex-1 px-3">
-              <span className="sr-only">Tên công ty</span>
-              <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Tên công ty" className="h-11 w-full border-0 bg-transparent text-[15px] text-gray-800 outline-none placeholder:text-gray-500" />
+            <label className="flex min-w-0 flex-[3_1_320px] items-center gap-2.5 px-3 text-[#64748B]">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
+              <span className="sr-only">Tên công ty hoặc lĩnh vực</span>
+              <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Tên công ty, lĩnh vực" className="h-11 w-full border-0 bg-transparent text-[14px] text-gray-800 outline-none placeholder:text-[#64748B]" />
             </label>
-            <button type="submit" className="h-11 cursor-pointer rounded-md border-0 bg-[#C2410C] px-7 text-[15px] font-semibold text-white hover:bg-[#9A3412] max-sm:w-full">Tìm công ty</button>
+            <div className="flex min-w-0 flex-[2_1_200px] items-center gap-2 px-3 text-[#64748B] sm:border-0 sm:border-l sm:border-solid sm:border-[#E2E8F0]">
+              {PIN_ICON}
+              <Select
+                aria-label="Địa điểm"
+                showSearch
+                allowClear
+                variant="borderless"
+                value={locationDraft || undefined}
+                placeholder="Tất cả địa điểm"
+                onChange={(v) => setLocationDraft(v || '')}
+                optionFilterProp="label"
+                options={ALL_VIETNAM_PROVINCES.map((name) => ({ value: name, label: name }))}
+                className="h-11 min-w-0 flex-1 [&_.ant-select-selector]:!px-0"
+                popupMatchSelectWidth={false}
+              />
+            </div>
+            <button type="submit" className="h-11 cursor-pointer border-0 bg-[#C2410C] px-[22px] text-[14px] font-bold text-white transition-colors hover:bg-[#9A3412] active:bg-[#7C2D12] max-sm:w-full">Tìm công ty</button>
           </form>
         </div>
       </section>
-      <main className="mx-auto flex max-w-[1248px] flex-col gap-8 px-4 pb-14 pt-7 sm:px-6">
-        {!search && (featured.data ?? []).length > 0 && (
+      <main className="hrc-fade-up mx-auto flex max-w-[1248px] flex-col gap-8 px-4 pb-14 pt-7 sm:px-6">
+        {!filtered && (featured.data ?? []).length > 0 && (
           <section aria-labelledby="co-top">
             <h2 id="co-top" className="m-0 mb-3.5 text-[20px] font-bold text-gray-900">Công ty nổi bật</h2>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="hrc-stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {(featured.data ?? []).slice(0, 4).map((c) => (
-                <Link key={c.companyId} to={`/companies/${c.companyId}`} className="flex flex-col items-start gap-1.5 rounded-lg border border-solid border-gray-200 bg-white p-4 text-gray-900 no-underline hover:border-sky-300">
+                <Link key={c.companyId} to={`/companies/${c.companyId}`} className="hrc-card flex flex-col items-start gap-1.5 rounded-xl border border-solid border-[#E2E8F0] bg-white p-4 text-gray-900 no-underline">
                   <CompanyMark name={c.companyName} logoUrl={c.logoUrl} />
                   <b className="mt-1 line-clamp-2">{c.companyName}</b>
                   {c.industry?.name && <span className="text-[13px] text-gray-600">{c.industry.name}</span>}
-                  <span className="text-[13px] text-sky-700">{c.activeJobCount} việc làm đang mở</span>
+                  <span className="text-[13px] font-semibold text-[#C2410C]">{c.activeJobCount} việc làm đang mở</span>
                 </Link>
               ))}
             </div>
@@ -81,33 +106,79 @@ export const CompaniesPage: React.FC = () => {
         )}
 
         <section aria-labelledby="co-all">
-          <div className="mb-3.5 flex items-baseline justify-between gap-3">
-            <h2 id="co-all" className="m-0 text-[20px] font-bold text-gray-900">{search ? `Kết quả cho "${search}"` : 'Tất cả công ty'}</h2>
-            {list.data && <span className="text-gray-600">{list.data.totalCount.toLocaleString('vi-VN')} công ty</span>}
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 id="co-all" className="m-0 text-[20px] font-bold text-gray-900">
+              {search ? `Kết quả cho "${search}"` : 'Tất cả công ty'}
+              {list.data && <span className="ml-2 text-[14px] font-medium text-[#64748B]">· {list.data.totalCount.toLocaleString('vi-VN')} công ty</span>}
+            </h2>
+            <div role="radiogroup" aria-label="Lọc công ty" className="flex gap-2">
+              {([['all', 'Tất cả'], ['hiring', 'Đang tuyển']] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="radio"
+                  aria-checked={filter === key}
+                  onClick={() => setFilter(key)}
+                  className={`min-h-[40px] cursor-pointer rounded-full border border-solid px-4 text-[14px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E] max-sm:min-h-[44px] ${filter === key ? 'border-[#0C4A6E] bg-[#E0F2FE] text-[#0C4A6E]' : 'border-[#CBD5E1] bg-white text-[#334155] hover:border-[#94A3B8]'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
           {list.isError ? (
             <Alert type="error" showIcon message="Không tải được danh sách công ty" description={getApiErrorMessage(list.error)} action={<Button onClick={() => list.refetch()}>Thử lại</Button>} />
           ) : list.isLoading ? (
-            <div className="rounded-lg border border-solid border-gray-200 bg-white p-4"><Skeleton active avatar paragraph={{ rows: 4 }} /></div>
-          ) : (list.data?.items ?? []).length === 0 ? (
-            <p className="m-0 rounded-lg border border-solid border-gray-200 bg-white px-4 py-10 text-center text-gray-600">Không tìm thấy công ty phù hợp.</p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[0, 1, 2].map((i) => <div key={i} className="rounded-xl border border-solid border-[#E2E8F0] bg-white p-5"><Skeleton active avatar paragraph={{ rows: 2 }} /></div>)}
+            </div>
+          ) : items.length === 0 ? (
+            <p className="m-0 rounded-xl border border-solid border-[#E2E8F0] bg-white px-4 py-10 text-center text-gray-600">
+              {filter === 'hiring' ? 'Không có công ty nào đang tuyển ở trang này.' : 'Không tìm thấy công ty phù hợp.'}
+            </p>
           ) : (
-            <div className="rounded-lg border border-solid border-gray-200 bg-white">
-              {(list.data?.items ?? []).map((c) => (
-                <Link key={c.companyId} to={`/companies/${c.companyId}`} className="flex items-center gap-3.5 border-0 border-b border-solid border-slate-100 p-4 text-gray-900 no-underline last:border-b-0 hover:bg-slate-50">
-                  <CompanyMark name={c.companyName} logoUrl={c.logoUrl} />
-                  <span className="min-w-0 flex-1">
-                    <b className="block truncate">{c.companyName}</b>
-                    <span className="block truncate text-[13px] text-gray-600">{[c.industry?.name, c.companySize?.label, c.address].filter(Boolean).join(' · ')}</span>
-                  </span>
-                  <span className="shrink-0 font-semibold text-sky-700">{c.activeJobCount} việc làm</span>
-                </Link>
+            <div
+              key={`${search}-${location}-${page}-${filter}`}
+              aria-busy={list.isFetching && !list.isLoading}
+              className="hrc-dim hrc-stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            >
+              {items.map((c) => (
+                <article key={c.companyId} className="hrc-card flex flex-col gap-3.5 rounded-xl border border-solid border-[#E2E8F0] bg-white p-5">
+                  <div className="flex items-start gap-3.5">
+                    <CompanyMark name={c.companyName} logoUrl={c.logoUrl} size={60} />
+                    <div className="min-w-0">
+                      <h3 className="m-0 text-[16px] font-bold leading-snug">
+                        <Link to={`/companies/${c.companyId}`} className="text-[#0F172A] no-underline hover:text-[#075985] hover:underline">{c.companyName}</Link>
+                      </h3>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        <span className="rounded-full bg-[#ECFDF5] px-2.5 py-0.5 text-[12px] font-semibold text-[#047857]">Đã xác minh</span>
+                        {(c.companySize?.label || c.industry?.name) && (
+                          <span className="rounded-full bg-[#F1F5F9] px-2.5 py-0.5 text-[12px] text-[#334155]">{c.companySize?.label || c.industry?.name}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  {c.address && (
+                    <p className="m-0 flex gap-1.5 text-[13.5px] leading-relaxed text-[#475569]">
+                      <span className="mt-0.5 shrink-0">{PIN_ICON}</span>
+                      <span className="line-clamp-2">{c.address}</span>
+                    </p>
+                  )}
+                  <div className="mt-auto flex items-center justify-between border-0 border-t border-solid border-[#F1F5F9] pt-3.5">
+                    <span className={`text-[14px] font-bold ${c.activeJobCount > 0 ? 'text-[#C2410C]' : 'text-[#64748B]'}`}>
+                      {c.activeJobCount > 0 ? `${c.activeJobCount} việc làm đang mở` : 'Chưa có việc làm'}
+                    </span>
+                    <Link to={`/companies/${c.companyId}`} className="inline-flex min-h-[44px] items-center rounded-lg border border-solid border-[#CBD5E1] px-3.5 text-[14px] font-semibold text-[#0C4A6E] no-underline transition-colors hover:border-[#0C4A6E] hover:bg-[#F0F9FF]">
+                      Xem công ty
+                    </Link>
+                  </div>
+                </article>
               ))}
             </div>
           )}
           {(list.data?.totalPages ?? 0) > 1 && (
-            <div className="mt-4 flex justify-end">
-              <Pagination current={page} pageSize={PAGE_SIZE} total={list.data?.totalCount ?? 0} showSizeChanger={false} onChange={setPage} />
+            <div className="mt-5 flex justify-center">
+              <Pagination current={page} pageSize={PAGE_SIZE} total={list.data?.totalCount ?? 0} showSizeChanger={false} onChange={setPage} itemRender={a11yItemRender} />
             </div>
           )}
         </section>
@@ -123,7 +194,7 @@ const CompanyAboutCard: React.FC<{ description: string }> = ({ description }) =>
   const isLong = trimmed.length > 280 || lineCount > 5;
 
   return (
-    <aside aria-labelledby="co-about" className="min-w-0 flex-[1_1_300px] self-start rounded-lg border border-solid border-gray-200 bg-white p-5">
+    <section id="co-about-sec" aria-labelledby="co-about" className="scroll-mt-24 rounded-xl border border-solid border-[#E2E8F0] bg-white p-5">
       <h2 id="co-about" className="m-0 mb-2.5 text-[15px] font-bold text-gray-900">Giới thiệu công ty</h2>
       <div className="relative">
         <div
@@ -141,7 +212,7 @@ const CompanyAboutCard: React.FC<{ description: string }> = ({ description }) =>
         <button
           type="button"
           onClick={() => setIsExpanded((prev) => !prev)}
-          className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-sky-700 hover:text-sky-900 border-0 bg-transparent p-0 cursor-pointer transition-colors"
+          className="mt-3 inline-flex min-h-[40px] items-center gap-1.5 text-[14px] font-bold text-[#0C4A6E] hover:text-[#075985] border-0 bg-transparent p-0 cursor-pointer transition-colors"
         >
           {isExpanded ? (
             <>Thu gọn <UpOutlined className="text-[11px]" /></>
@@ -150,13 +221,20 @@ const CompanyAboutCard: React.FC<{ description: string }> = ({ description }) =>
           )}
         </button>
       )}
-    </aside>
+    </section>
   );
 };
+
+const DETAIL_TABS = [
+  { href: '#co-jobs', label: 'Việc làm' },
+  { href: '#co-about-sec', label: 'Giới thiệu' },
+  { href: '#co-address', label: 'Địa chỉ' },
+];
 
 export const CompanyDetailPage: React.FC = () => {
   const { companyId = '' } = useParams();
   const { isAuthenticated, role } = useAuthStore();
+  const [tab, setTab] = useState('#co-jobs');
   const detail = useQuery({
     queryKey: ['public-companies', 'detail', companyId],
     queryFn: () => companyDirectoryApi.detail(companyId),
@@ -165,59 +243,86 @@ export const CompanyDetailPage: React.FC = () => {
   });
   const company = detail.data?.company;
   const jobs = detail.data?.jobs ?? [];
+  const city = company?.address?.split(',').map((part) => part.trim()).filter(Boolean).pop();
+  const website = company?.website?.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const tabs = DETAIL_TABS.filter((t) => t.href !== '#co-about-sec' || company?.description).filter((t) => t.href !== '#co-address' || company?.address);
 
   return (
     <Frame>
-      <section aria-label="Tìm kiếm việc làm" className="border-0 border-b border-solid border-slate-200 bg-[#F7F8FA]">
-        <div className="mx-auto max-w-[1248px] px-4 py-4 sm:px-6"><SearchForm /></div>
-      </section>
-      <main className="mx-auto max-w-[1248px] px-4 pb-14 pt-5 sm:px-6">
-        <nav aria-label="Đường dẫn" className="mb-3.5 text-[13px] text-gray-600">
-          <Link to="/" className="text-sky-700">Trang chủ</Link> › <Link to="/companies" className="text-sky-700">Công ty</Link>{company ? ` › ${company.companyName}` : ''}
-        </nav>
-        {detail.isLoading ? (
-          <Skeleton active avatar paragraph={{ rows: 8 }} />
-        ) : detail.isError || !company ? (
-          <div className="rounded-lg border border-solid border-gray-200 bg-white px-4 py-14 text-center">
+      {detail.isLoading ? (
+        <div className="mx-auto max-w-[1248px] px-4 py-8 sm:px-6"><Skeleton active avatar paragraph={{ rows: 8 }} /></div>
+      ) : detail.isError || !company ? (
+        <main className="mx-auto max-w-[1248px] px-4 py-10 sm:px-6">
+          <div className="rounded-xl border border-solid border-[#E2E8F0] bg-white px-4 py-14 text-center">
             <div className="text-[16px] font-semibold text-gray-900">Không tìm thấy công ty</div>
             <p className="m-0 mb-3 mt-1 text-gray-600">Công ty có thể chưa được xác minh hoặc không còn hoạt động.</p>
             <Link to="/companies" className="font-semibold text-sky-700">Xem danh sách công ty</Link>
           </div>
-        ) : (
-          <div className="flex flex-col gap-5">
-            <section aria-labelledby="co-name" className="flex flex-wrap items-center gap-4 rounded-lg border border-solid border-gray-200 bg-white p-5">
-              <CompanyMark name={company.companyName} logoUrl={company.logoUrl} size={88} />
-              <div className="min-w-0 flex-[1_1_320px]">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 id="co-name" className="m-0 text-[22px] font-bold text-gray-900">{company.companyName}</h1>
-                  <span className="rounded bg-green-100 px-2 py-0.5 text-[12px] font-semibold text-green-800">Đã xác minh</span>
+        </main>
+      ) : (
+        <>
+          <section aria-labelledby="co-name" className="hrc-fade-up border-0 border-b border-solid border-[#E2E8F0] bg-white">
+            <div className="mx-auto max-w-[1248px] px-4 pt-4 sm:px-6">
+              <nav aria-label="Đường dẫn" className="mb-5 text-[13px] text-[#64748B]">
+                <Link to="/" className="text-[#0C4A6E] no-underline hover:underline">Trang chủ</Link> › <Link to="/companies" className="text-[#0C4A6E] no-underline hover:underline">Công ty</Link> › {company.companyName}
+              </nav>
+              <div className="flex flex-wrap items-center gap-5">
+                <span className="overflow-hidden rounded-lg border border-solid border-[#E2E8F0]">
+                  <CompanyMark name={company.companyName} logoUrl={company.logoUrl} size={72} />
+                </span>
+                <div className="min-w-0 flex-[1_1_360px]">
+                  <h1 id="co-name" className="m-0 mb-1.5 text-[24px] font-bold leading-snug text-[#0F172A]">{company.companyName}</h1>
+                  <p className="m-0 text-[14px] leading-relaxed text-[#475569]">
+                    {[company.industry?.name, company.companySize?.label, city].filter(Boolean).join(' · ')}
+                    {website && (
+                      <> · <a href={company.website!} target="_blank" rel="noreferrer" className="text-[#0C4A6E]">{website}</a></>
+                    )}
+                    {' · '}<span className="font-semibold text-[#047857]">Đã xác minh</span>
+                  </p>
                 </div>
-                <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-gray-600">
-                  {company.industry?.name && <span>{company.industry.name}</span>}
-                  {company.companySize?.label && <span>{company.companySize.label}</span>}
-                  {company.address && <span>{company.address}</span>}
-                  {company.website && <a href={company.website} target="_blank" rel="noreferrer" className="text-sky-700">{company.website.replace(/^https?:\/\//, '')}</a>}
-                </div>
+                {company.website && (
+                  <a href={company.website} target="_blank" rel="noreferrer" className="inline-flex min-h-[44px] items-center rounded-lg bg-[#0C4A6E] px-[18px] font-semibold text-white no-underline transition-colors hover:bg-[#075985] hover:text-white">
+                    Xem trang web
+                  </a>
+                )}
               </div>
-              {jobs.length > 0 && <a href="#co-jobs" className="rounded-md bg-[#C2410C] px-4 py-2.5 font-semibold text-white no-underline hover:bg-[#9A3412] hover:text-white">Xem {jobs.length} việc làm</a>}
-            </section>
+              <nav aria-label="Mục trang công ty" className="mt-6 flex gap-6 overflow-x-auto text-[14px]">
+                {tabs.map((t) => (
+                  <a
+                    key={t.href}
+                    href={t.href}
+                    onClick={() => setTab(t.href)}
+                    aria-current={tab === t.href ? 'true' : undefined}
+                    className={`whitespace-nowrap border-0 border-b-2 border-solid py-3 no-underline transition-colors ${tab === t.href ? 'border-[#0C4A6E] font-semibold text-[#0F172A]' : 'border-transparent text-[#475569] hover:text-[#0F172A]'}`}
+                  >
+                    {t.href === '#co-jobs' ? `${t.label} (${jobs.length})` : t.label}
+                  </a>
+                ))}
+              </nav>
+            </div>
+          </section>
 
+          <main className="mx-auto max-w-[1248px] px-4 pb-14 pt-6 sm:px-6">
             <div className="flex flex-wrap items-start gap-5">
-              <section id="co-jobs" aria-labelledby="co-jobs-h" className="min-w-0 flex-[999_1_560px] scroll-mt-5">
-                <h2 id="co-jobs-h" className="m-0 mb-3 text-[18px] font-bold text-gray-900">Việc làm đang tuyển ({jobs.length})</h2>
+              <section id="co-jobs" aria-labelledby="co-jobs-h" className="min-w-0 flex-[999_1_560px] scroll-mt-24">
+                <h2 id="co-jobs-h" className="m-0 mb-3 text-[19px] font-bold text-[#0F172A]">Việc làm đang tuyển <span className="font-medium text-[#64748B]">({jobs.length})</span></h2>
                 {jobs.length === 0 ? (
-                  <p className="m-0 rounded-lg border border-solid border-gray-200 bg-white px-4 py-10 text-center text-gray-600">Công ty chưa có việc làm đang mở.</p>
+                  <div className="flex flex-col items-center gap-2.5 rounded-xl border border-dashed border-[#CBD5E1] bg-white px-6 py-10 text-center">
+                    <h3 className="m-0 text-[16px] font-bold text-[#0F172A]">Công ty chưa có việc làm đang mở</h3>
+                    <p className="m-0 max-w-[420px] text-[14px] text-[#64748B]">Quay lại sau để xem tin mới, hoặc xem các việc làm khác đang tuyển.</p>
+                    <Link to="/jobs" className="mt-1.5 inline-flex min-h-[44px] items-center rounded-lg border border-solid border-[#CBD5E1] px-[18px] font-semibold text-[#0C4A6E] no-underline transition-colors hover:border-[#0C4A6E] hover:bg-[#F0F9FF]">Xem việc làm khác</Link>
+                  </div>
                 ) : (
-                  <div className="rounded-lg border border-solid border-gray-200 bg-white">
+                  <div className="hrc-stagger flex flex-col gap-3">
                     {jobs.map((j) => (
-                      <article key={j.jobId} className="flex gap-3 border-0 border-b border-solid border-slate-100 p-4 last:border-b-0">
+                      <article key={j.jobId} className="hrc-card flex gap-3 rounded-xl border border-solid border-[#E2E8F0] bg-white p-4">
                         <div className="min-w-0 flex-1">
-                          <Link to={jobHref(j.jobId, role, isAuthenticated)} className="text-[15px] font-semibold text-gray-900 no-underline hover:text-sky-800">{j.title}</Link>
-                          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-[13px] text-gray-600">
-                            <span className="font-semibold text-[#C2410C]">{salaryText(j)}</span>
-                            {j.location && <span>{j.location}</span>}
-                            {j.minExperienceYears != null && <span>{j.maxExperienceYears != null ? `${j.minExperienceYears} – ${j.maxExperienceYears} năm` : `Từ ${j.minExperienceYears} năm`}</span>}
-                            {j.applicationDeadline && <span>Hạn {dayjs(j.applicationDeadline).format('DD/MM')}</span>}
+                          <Link to={jobHref(j.jobId, role, isAuthenticated)} className="text-[16px] font-bold text-[#0F172A] no-underline hover:text-[#075985] hover:underline">{j.title}</Link>
+                          <div className="mt-2 flex flex-wrap gap-2 text-[13px]">
+                            <span className="rounded-lg bg-[#FFF7ED] px-2.5 py-1 font-bold text-[#9A3412]">{salaryText(j)}</span>
+                            {j.location && <span className="max-w-[260px] truncate rounded-lg bg-[#F1F5F9] px-2.5 py-1 text-[#334155]">{j.location}</span>}
+                            {j.minExperienceYears != null && <span className="rounded-lg bg-[#F1F5F9] px-2.5 py-1 text-[#334155]">{j.maxExperienceYears != null ? `${j.minExperienceYears} – ${j.maxExperienceYears} năm` : `Từ ${j.minExperienceYears} năm`}</span>}
+                            {j.applicationDeadline && <span className="rounded-lg bg-[#F1F5F9] px-2.5 py-1 text-[#334155]">Hạn {dayjs(j.applicationDeadline).format('DD/MM')}</span>}
                           </div>
                         </div>
                         <SaveJobButton jobId={j.jobId} title={j.title} />
@@ -226,11 +331,27 @@ export const CompanyDetailPage: React.FC = () => {
                   </div>
                 )}
               </section>
-              {company.description && <CompanyAboutCard description={company.description} />}
+              <aside aria-label="Thông tin công ty" className="flex min-w-0 flex-[1_1_300px] flex-col gap-4 lg:max-w-[380px]">
+                {company.description && <CompanyAboutCard description={company.description} />}
+                {company.address && (
+                  <section id="co-address" aria-labelledby="co-address-h" className="scroll-mt-24 rounded-xl border border-solid border-[#E2E8F0] bg-white p-5">
+                    <h2 id="co-address-h" className="m-0 mb-2.5 text-[15px] font-bold text-gray-900">Địa chỉ</h2>
+                    <p className="m-0 text-[14px] leading-relaxed text-[#334155]">{company.address}</p>
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(company.address)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex min-h-[40px] items-center text-[14px] font-bold text-[#0C4A6E] no-underline hover:underline"
+                    >
+                      Xem trên bản đồ
+                    </a>
+                  </section>
+                )}
+              </aside>
             </div>
-          </div>
-        )}
-      </main>
+          </main>
+        </>
+      )}
     </Frame>
   );
 };

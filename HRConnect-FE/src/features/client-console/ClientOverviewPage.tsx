@@ -652,7 +652,7 @@ export const ClientOverviewPage: React.FC = () => {
                     <div className="flex items-center justify-between gap-2 mb-2.5">
                       {serviceInfo ? (
                         <span className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-[#0C4A6E] border border-sky-100">
-                          {serviceInfo.short} · {serviceInfo.label}
+                          {serviceInfo.label}
                         </span>
                       ) : (
                         <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">

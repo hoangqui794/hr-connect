@@ -472,3 +472,147 @@ body {
   line-height: 16px !important;
   transform: none !important;
 }
+
+/* Candidate notification panel: our own soft open/close instead of AntD's big zoom (scale .8),
+ * which looked jumpy on a tall panel. Fade + 4px drop + scale .98 from the bell corner. */
+.hrconnect-candidate-notification-popover { transform-origin: top right !important; }
+.hrconnect-candidate-notification-popover.ant-zoom-big-appear,
+.hrconnect-candidate-notification-popover.ant-zoom-big-enter {
+  animation-name: hrc-pop-in !important;
+  animation-duration: 160ms !important;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+.hrconnect-candidate-notification-popover.ant-zoom-big-leave {
+  animation-name: hrc-pop-out !important;
+  animation-duration: 120ms !important;
+  animation-timing-function: ease-in !important;
+}
+@keyframes hrc-pop-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes hrc-pop-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(-4px) scale(0.98); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hrconnect-candidate-notification-popover { animation: none !important; }
+}
+
+/* ---------------------------------------------------------------------------
+ * Candidate site motion (canvas redesign 10/11): short, opacity/transform only.
+ * ------------------------------------------------------------------------- */
+@keyframes hrc-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.hrc-fade-up { animation: hrc-fade-up 220ms ease-out both; }
+.hrc-stagger > * { animation: hrc-fade-up 220ms ease-out both; }
+.hrc-stagger > *:nth-child(2) { animation-delay: 35ms; }
+.hrc-stagger > *:nth-child(3) { animation-delay: 70ms; }
+.hrc-stagger > *:nth-child(4) { animation-delay: 105ms; }
+.hrc-stagger > *:nth-child(5) { animation-delay: 140ms; }
+.hrc-stagger > *:nth-child(6) { animation-delay: 175ms; }
+.hrc-stagger > *:nth-child(7) { animation-delay: 210ms; }
+.hrc-stagger > *:nth-child(n + 8) { animation-delay: 245ms; }
+.hrc-card {
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+.hrc-card:hover {
+  border-color: #94A3B8;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+  transform: translateY(-2px);
+}
+.hrc-dim { transition: opacity 150ms ease; }
+.hrc-dim[aria-busy='true'] { opacity: 0.55; }
+@media (prefers-reduced-motion: reduce) {
+  .hrc-fade-up, .hrc-stagger > * { animation: none; }
+  .hrc-card, .hrc-card:hover { transform: none; transition: border-color 150ms ease; }
+}
+
+/* Notification bell: press feedback, short ring when the candidate panel opens. */
+.hrc-bell { transition: transform 150ms ease-out, background-color 150ms ease-out, border-color 150ms ease-out; }
+.hrc-bell:active { transform: scale(0.92); }
+.hrc-bell .anticon { transform-origin: 50% 10%; will-change: transform; }
+.hrc-bell-ring .anticon { animation: hrc-bell-ring 360ms ease-out; }
+@keyframes hrc-bell-ring {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(10deg); }
+  50% { transform: rotate(-8deg); }
+  75% { transform: rotate(4deg); }
+}
+/* Only the first rows (what is on screen) slide in; the rest render still, so opening stays light. */
+.hrconnect-candidate-notification-popover button.block:nth-child(-n + 6) { animation: hrc-row-in 180ms ease-out both; }
+.hrconnect-candidate-notification-popover button.block:nth-child(2) { animation-delay: 20ms; }
+.hrconnect-candidate-notification-popover button.block:nth-child(3) { animation-delay: 40ms; }
+.hrconnect-candidate-notification-popover button.block:nth-child(n + 4):nth-child(-n + 6) { animation-delay: 60ms; }
+@keyframes hrc-row-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .hrc-bell, .hrc-bell-ring .anticon, .hrconnect-candidate-notification-popover button.block { animation: none !important; transition: none !important; }
+}
+
+/* Page change from the candidate header: the header stays put, the page fades and rises a little.
+ * Uses the View Transitions API (react-router `viewTransition`); browsers without it just switch. */
+.hrc-site-header { view-transition-name: hrc-site-header; }
+::view-transition-old(root) { animation: hrc-page-out 140ms ease-in both; }
+::view-transition-new(root) { animation: hrc-page-in 240ms ease-out both; }
+::view-transition-group(hrc-site-header) { animation: none; }
+@keyframes hrc-page-out { to { opacity: 0; } }
+@keyframes hrc-page-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+}
+
+/* ---------------------------------------------------------------------------
+ * Client services page (canvas ServicesNew): reveal on scroll, card hover, FAQ.
+ * Opacity/transform only; everything is static under prefers-reduced-motion.
+ * ------------------------------------------------------------------------- */
+.svc-page { scroll-behavior: smooth; }
+.svc-hero > * { animation: svc-rise 300ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.svc-hero > *:nth-child(2) { animation-delay: 60ms; }
+.svc-hero > *:nth-child(3) { animation-delay: 120ms; }
+.svc-hero > *:nth-child(4) { animation-delay: 180ms; }
+.svc-hero-media { animation: svc-zoom 500ms cubic-bezier(0.2, 0.8, 0.2, 1) 80ms both; }
+@keyframes svc-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes svc-zoom { from { opacity: 0; transform: scale(1.03); } to { opacity: 1; transform: none; } }
+
+.svc-reveal { opacity: 0; transform: translateY(16px); transition: opacity 420ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.svc-reveal.is-in { opacity: 1; transform: none; }
+.svc-reveal .svc-stagger > * { opacity: 0; transform: translateY(12px); transition: opacity 380ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 380ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.svc-reveal.is-in .svc-stagger > * { opacity: 1; transform: none; }
+.svc-reveal.is-in .svc-stagger > *:nth-child(2) { transition-delay: 50ms; }
+.svc-reveal.is-in .svc-stagger > *:nth-child(3) { transition-delay: 100ms; }
+.svc-reveal.is-in .svc-stagger > *:nth-child(4) { transition-delay: 150ms; }
+.svc-reveal.is-in .svc-stagger > *:nth-child(5) { transition-delay: 200ms; }
+.svc-reveal.is-in .svc-stagger > *:nth-child(n + 6) { transition-delay: 250ms; }
+
+.svc-card { transition: transform 180ms ease-out, box-shadow 180ms ease-out, opacity 380ms cubic-bezier(0.2, 0.8, 0.2, 1) !important; }
+.svc-card:hover { transform: translateY(-4px) !important; box-shadow: 0 12px 28px rgba(15, 23, 42, 0.10); }
+.svc-bar { transform: scaleX(0); transform-origin: left; transition: transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1) 200ms; }
+.svc-reveal.is-in .svc-bar { transform: scaleX(1); }
+.svc-line { transform: scaleX(0); transform-origin: left; transition: transform 500ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.svc-reveal.is-in .svc-line { transform: scaleX(1); }
+
+.svc-btn { transition: background-color 150ms ease, color 150ms ease, transform 120ms ease; }
+.svc-btn:active { transform: scale(0.97); }
+.svc-btn:focus-visible { outline: 2px solid #7DD3FC; outline-offset: 2px; }
+
+.svc-faq-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 240ms ease; }
+.svc-faq[open] .svc-faq-body { grid-template-rows: 1fr; }
+.svc-chevron { transition: transform 200ms ease; }
+.svc-faq[open] .svc-chevron { transform: rotate(180deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .svc-page { scroll-behavior: auto; }
+  .svc-hero > *, .svc-hero-media { animation: none; }
+  .svc-reveal, .svc-reveal .svc-stagger > *, .svc-bar, .svc-line { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .svc-card, .svc-btn, .svc-faq-body, .svc-chevron { transition: none !important; }
+  .svc-card:hover, .svc-btn:active { transform: none !important; }
+}
+
+/* Services hero illustration: three cards drift gently, out of step. */
+@keyframes svc-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.svc-float-a { animation: svc-float 6s ease-in-out infinite; }
+.svc-float-b { animation: svc-float 7s ease-in-out 0.8s infinite; }
+.svc-float-c { animation: svc-float 6.5s ease-in-out 1.6s infinite; }
+@media (prefers-reduced-motion: reduce) { .svc-float-a, .svc-float-b, .svc-float-c { animation: none; } }

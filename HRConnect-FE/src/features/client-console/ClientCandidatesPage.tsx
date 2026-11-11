@@ -266,7 +266,7 @@ export const ClientCandidatesPage: React.FC = () => {
             {s && (
               <span className="inline-block">
                 <Tag color={color} className="m-0 text-[11px] font-medium border-0 px-2 py-0.5 rounded">
-                  {s.short} · {s.label}
+                  {s.label}
                 </Tag>
               </span>
             )}
