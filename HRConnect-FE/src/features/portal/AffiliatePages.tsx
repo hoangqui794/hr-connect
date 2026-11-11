@@ -969,6 +969,22 @@ export const AffiliateSubmissionsPage: React.FC = () => {
               {selected.status === 'BLOCKED_DUPLICATE' && (
                 <Button block size="large" className="mt-4" onClick={() => navigate(`/affiliate/disputes?submissionId=${selected.submissionId}`)}>Gửi khiếu nại</Button>
               )}
+              {selected.code === 'LEFT_IN_WARRANTY' && (
+                // The job is reopened for a free replacement; a new referral to it fills the slot automatically.
+                <div className="mt-4 rounded-lg border border-solid border-orange-200 bg-orange-50 p-3">
+                  <p className="m-0 text-[13px] leading-relaxed text-slate-700">
+                    Doanh nghiệp đang tuyển người thay miễn phí cho vị trí này. Bạn có thể giới thiệu ứng viên mới.
+                  </p>
+                  <Button
+                    type="primary"
+                    block
+                    className="affiliate-cta mt-2.5 !h-11 font-semibold"
+                    onClick={() => navigate(`/affiliate/submit-candidate?job=${selected.jobId}`)}
+                  >
+                    Giới thiệu ứng viên thay thế
+                  </Button>
+                </div>
+              )}
               <button
                 type="button"
                 className="mt-3 w-full cursor-pointer border-0 bg-transparent p-1 text-center text-[13px] font-semibold text-sky-700 hover:text-sky-900"
