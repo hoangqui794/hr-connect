@@ -197,10 +197,10 @@ type StatusFilter = 'all' | 'UNPAID' | 'OVERDUE' | 'PAID';
 const sumVnd = (rows: BillingRow[]) => rows.filter((r) => r.currencyCode === 'VND').reduce((s, r) => s + r.amount, 0);
 
 const Kpi: React.FC<{ label: string; value: string; hint: string; tone?: 'danger' | 'success' }> = ({ label, value, hint, tone }) => (
-  <Surface padded className="!p-5 shadow-xs transition-shadow hover:shadow-sm">
+  <Surface padded className="!px-4 !py-3 shadow-xs transition-shadow hover:shadow-sm">
     <div className="text-[13px] font-medium text-slate-600">{label}</div>
     <div
-      className={`mt-1 text-[22px] font-bold tabular-nums ${
+      className={`text-lg font-bold tabular-nums ${
         tone === 'danger' ? 'text-red-600' : tone === 'success' ? 'text-emerald-700' : 'text-slate-900'
       }`}
     >
@@ -327,20 +327,17 @@ export const ClientBillingPage: React.FC = () => {
 
   return (
     <div className={`${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
-      {/* ── Studio Header ── */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5">
+      {/* ── Compact header: the top bar already shows the page title ── */}
+      <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-1">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="m-0 text-2xl font-black tracking-tight text-slate-900 sm:text-[26px]">
+            <h1 className="sr-only">
               Công nợ & phí dịch vụ
             </h1>
             <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0C4A6E] border border-sky-100">
               {rows.length} khoản phí
             </span>
           </div>
-          <p className="m-0 mt-1 text-sm text-slate-500">
-            Quản lý và thanh toán các khoản phí tuyển dụng qua cổng trực tuyến VNPay hoặc chuyển khoản ngân hàng.
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">
@@ -354,7 +351,7 @@ export const ClientBillingPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-3">
+      <div className="mb-4 grid gap-3 sm:grid-cols-3">
         <Kpi label="Cần thanh toán" value={money(sumVnd(unpaid))} hint={`${unpaid.length} khoản chưa thanh toán`} />
         <Kpi label="Quá hạn" value={money(sumVnd(overdue))} hint={`${overdue.length} khoản quá hạn`} tone={overdue.length ? 'danger' : undefined} />
         <Kpi label="Đã thanh toán" value={money(sumVnd(paid))} hint={`${paid.length} khoản`} tone="success" />

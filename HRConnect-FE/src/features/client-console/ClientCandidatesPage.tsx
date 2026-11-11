@@ -340,11 +340,11 @@ export const ClientCandidatesPage: React.FC = () => {
 
   return (
     <div className={`${FONT} space-y-6 max-w-full animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
-      {/* ── 1. Studio Header ── */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5">
+      {/* ── 1. Compact header: the top bar already shows the page title ── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-1">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="m-0 text-2xl font-black tracking-tight text-slate-900 sm:text-[26px]">
+            <h1 className="sr-only">
               Hồ sơ ứng viên
             </h1>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-[#0C4A6E] border border-sky-200/80 shadow-2xs">
@@ -352,9 +352,6 @@ export const ClientCandidatesPage: React.FC = () => {
               {view === 'list' ? `${list.data?.total ?? 0} hồ sơ` : 'Bảng Kanban'}
             </span>
           </div>
-          <p className="m-0 text-sm text-slate-500 max-w-2xl">
-            Đối soát điểm AI Match, theo dõi lộ trình tuyển dụng và ra quyết định hẹn lịch hoặc gửi offer cho ứng viên.
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5 self-start sm:self-auto">

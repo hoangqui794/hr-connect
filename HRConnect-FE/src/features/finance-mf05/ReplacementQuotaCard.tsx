@@ -392,10 +392,10 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
   return (
     <div className={`mb-8 ${FONT} ${className}`}>
       {/* Header Card */}
-      <Surface padded className="mb-4 bg-gradient-to-r from-emerald-50/70 via-teal-50/40 to-white border border-emerald-100">
+      <Surface padded className={`mb-4 bg-gradient-to-r from-emerald-50/70 via-teal-50/40 to-white border border-emerald-100 ${mode === 'client' ? '!px-4 !py-3' : ''}`}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
+            <div className={`flex shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm ${mode === 'client' ? 'h-9 w-9' : 'h-11 w-11'}`}>
               <SwapOutlined className="text-xl" />
             </div>
             <div>
@@ -407,11 +407,17 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
                   <Badge count={`${counts.open} khả dụng`} style={{ backgroundColor: '#10B981' }} />
                 )}
               </div>
-              <p className="mt-1 text-sm text-slate-600 max-w-3xl leading-relaxed">
-                Áp dụng cho dịch vụ <strong>Tuyển dụng theo kết quả</strong>. Khi ứng viên nghỉ việc trong thời gian bảo hành và
-                HR Connect xác nhận, bạn được một suất tuyển thay thế <strong>miễn phí</strong>. Suất dùng được ngay nếu phí dịch vụ đã
-                thanh toán, hoặc ở trạng thái chờ cho đến khi bạn thanh toán. Mỗi suất có hạn sử dụng, xem ở cột Thời hạn sử dụng.
-              </p>
+              {mode === 'client' ? (
+                <p className="m-0 mt-0.5 text-[13px] text-slate-600">
+                  Ứng viên nghỉ trong bảo hành được HR Connect xác nhận thì bạn có một suất thay thế miễn phí, có hạn sử dụng.
+                </p>
+              ) : (
+                <p className="mt-1 text-sm text-slate-600 max-w-3xl leading-relaxed">
+                  Áp dụng cho dịch vụ <strong>Tuyển dụng theo kết quả</strong>. Khi ứng viên nghỉ việc trong thời gian bảo hành và
+                  HR Connect xác nhận, bạn được một suất tuyển thay thế <strong>miễn phí</strong>. Suất dùng được ngay nếu phí dịch vụ đã
+                  thanh toán, hoặc ở trạng thái chờ cho đến khi bạn thanh toán. Mỗi suất có hạn sử dụng, xem ở cột Thời hạn sử dụng.
+                </p>
+              )}
             </div>
           </div>
           <Button
@@ -424,7 +430,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
         </div>
 
         {/* Quick Filter & Search Bar */}
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-0 border-t border-solid border-emerald-100/70 pt-4">
+        <div className={`flex flex-wrap items-center justify-between gap-3 border-0 border-t border-solid border-emerald-100/70 ${mode === 'client' ? 'mt-3 pt-3' : 'mt-5 pt-4'}`}>
           <FilterPills<FilterTab>
             label="Lọc theo trạng thái suất"
             value={activeTab}

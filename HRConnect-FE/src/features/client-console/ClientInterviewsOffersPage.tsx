@@ -503,20 +503,17 @@ export const ClientInterviewsOffersPage: React.FC = () => {
 
   return (
     <div className={`${FONT} space-y-6 max-w-full animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
-      {/* ── 1. Studio Header ── */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-5">
+      {/* ── 1. Compact header: the top bar already shows the page title ── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-1">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="m-0 text-2xl font-black tracking-tight text-slate-900 sm:text-[26px]">
+            <h1 className="sr-only">
               Điều hành phỏng vấn & đề nghị việc làm
             </h1>
             <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0C4A6E] border border-sky-100">
               Quy trình tuyển dụng
             </span>
           </div>
-          <p className="m-0 mt-1 text-sm text-slate-500">
-            Điều phối lịch gặp gỡ ứng viên, đánh giá kết quả từng vòng, phát hành thư mời nhận việc (Offer) và xác nhận đi làm.
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">
@@ -552,7 +549,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
         <button
           type="button"
           onClick={() => switchTab('interviews')}
-          className={`group flex cursor-pointer flex-col justify-between rounded-2xl border p-5 text-left transition-all duration-200 hover:-translate-y-0.5 ${
+          className={`group flex cursor-pointer flex-col justify-between rounded-xl border px-4 py-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
             tab === 'interviews'
               ? 'border-[#0C4A6E] bg-white shadow-md ring-2 ring-[#0C4A6E]/15'
               : 'border-slate-200/90 bg-white hover:border-slate-300 hover:shadow-sm'
@@ -560,7 +557,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
         >
           <div className="flex items-center justify-between">
             <span
-              className={`inline-flex h-10 w-10 items-center justify-center rounded-xl text-lg ${
+              className={`inline-flex h-8 w-8 items-center justify-center rounded-lg text-base ${
                 tab === 'interviews' ? 'bg-[#0C4A6E] text-white shadow-xs' : 'bg-sky-50 text-sky-700'
               }`}
             >
@@ -574,9 +571,9 @@ export const ClientInterviewsOffersPage: React.FC = () => {
               Giai đoạn 1
             </span>
           </div>
-          <div className="my-3">
+          <div className="my-1.5">
             <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Lịch đã lên hẹn</div>
-            <div className="mt-1 text-3xl font-black tracking-tight text-slate-900 tabular-nums">
+            <div className="text-2xl font-extrabold tracking-tight text-slate-900 tabular-nums">
               {interviewScheduledCountQ.isLoading ? (
                 <Skeleton.Input active size="small" />
               ) : (
@@ -584,7 +581,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
               )}
             </div>
           </div>
-          <div className="flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-3 text-xs text-slate-500">
+          <div className="flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-2 text-xs text-slate-500">
             <span>
               {interviewScheduledCountQ.data ?? 0} lịch sắp tới · {interviewAllCountQ.data ?? 0} tất cả
             </span>
@@ -598,7 +595,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
         <button
           type="button"
           onClick={() => switchTab('offers')}
-          className={`group flex cursor-pointer flex-col justify-between rounded-2xl border p-5 text-left transition-all duration-200 hover:-translate-y-0.5 ${
+          className={`group flex cursor-pointer flex-col justify-between rounded-xl border px-4 py-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
             tab === 'offers'
               ? 'border-purple-600 bg-white shadow-md ring-2 ring-purple-600/15'
               : 'border-slate-200/90 bg-white hover:border-slate-300 hover:shadow-sm'
@@ -606,7 +603,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
         >
           <div className="flex items-center justify-between">
             <span
-              className={`inline-flex h-10 w-10 items-center justify-center rounded-xl text-lg ${
+              className={`inline-flex h-8 w-8 items-center justify-center rounded-lg text-base ${
                 tab === 'offers' ? 'bg-purple-600 text-white shadow-xs' : 'bg-purple-50 text-purple-700'
               }`}
             >
@@ -620,13 +617,13 @@ export const ClientInterviewsOffersPage: React.FC = () => {
               Giai đoạn 2
             </span>
           </div>
-          <div className="my-3">
+          <div className="my-1.5">
             <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Thư mời nhận việc</div>
-            <div className="mt-1 text-3xl font-black tracking-tight text-slate-900 tabular-nums">
+            <div className="text-2xl font-extrabold tracking-tight text-slate-900 tabular-nums">
               {offerCountQ.isLoading ? <Skeleton.Input active size="small" /> : offerCountQ.data ?? 0}
             </div>
           </div>
-          <div className="flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-3 text-xs text-slate-500">
+          <div className="flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-2 text-xs text-slate-500">
             <span>Phát hành & Chờ phản hồi</span>
             <span className={`font-bold ${tab === 'offers' ? 'text-purple-600' : 'text-slate-400'}`}>
               {tab === 'offers' ? 'Đang xem' : 'Mở tab →'}
@@ -638,7 +635,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
         <button
           type="button"
           onClick={() => switchTab('placements')}
-          className={`group flex cursor-pointer flex-col justify-between rounded-2xl border p-5 text-left transition-all duration-200 hover:-translate-y-0.5 ${
+          className={`group flex cursor-pointer flex-col justify-between rounded-xl border px-4 py-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
             tab === 'placements'
               ? 'border-emerald-600 bg-white shadow-md ring-2 ring-emerald-600/15'
               : 'border-slate-200/90 bg-white hover:border-slate-300 hover:shadow-sm'
@@ -646,7 +643,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
         >
           <div className="flex items-center justify-between">
             <span
-              className={`inline-flex h-10 w-10 items-center justify-center rounded-xl text-lg ${
+              className={`inline-flex h-8 w-8 items-center justify-center rounded-lg text-base ${
                 tab === 'placements' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-700'
               }`}
             >
@@ -660,13 +657,13 @@ export const ClientInterviewsOffersPage: React.FC = () => {
               Giai đoạn 3
             </span>
           </div>
-          <div className="my-3">
+          <div className="my-1.5">
             <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Ứng viên đã đi làm</div>
-            <div className="mt-1 text-3xl font-black tracking-tight text-slate-900 tabular-nums">
+            <div className="text-2xl font-extrabold tracking-tight text-slate-900 tabular-nums">
               {placementCountQ.isLoading ? <Skeleton.Input active size="small" /> : placementCountQ.data ?? 0}
             </div>
           </div>
-          <div className="flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-3 text-xs text-slate-500">
+          <div className="flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-2 text-xs text-slate-500">
             <span>Onboarding & Bảo hành</span>
             <span className={`font-bold ${tab === 'placements' ? 'text-emerald-600' : 'text-slate-400'}`}>
               {tab === 'placements' ? 'Đang xem' : 'Mở tab →'}
