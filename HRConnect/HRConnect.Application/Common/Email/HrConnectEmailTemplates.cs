@@ -68,6 +68,24 @@ public static class HrConnectEmailTemplates
                 $"Mã xác minh email có hiệu lực trong {expirationMinutes} phút."));
     }
 
+    public static HrConnectEmail SplitAccountOtp(
+        string email,
+        string otp,
+        int expirationMinutes)
+    {
+        return new HrConnectEmail(
+            "Mã xác thực tách tài khoản HR Connect",
+            Render(
+                "Xác thực để tách tài khoản",
+                "<p style=\"margin:0 0 16px\">Chào bạn,</p>" +
+                $"<p style=\"margin:0 0 16px\">HR Connect nhận được yêu cầu tách địa chỉ email <strong>{E(email)}</strong> thành một tài khoản Ứng viên độc lập mới.</p>" +
+                "<p style=\"margin:0 0 16px\">Vui lòng nhập mã OTP dưới đây để hoàn tất việc xác thực và kích hoạt tài khoản của bạn:</p>" +
+                OtpBox(otp) +
+                $"<p style=\"margin:0 0 16px\">Mã có hiệu lực trong <strong>{expirationMinutes} phút</strong>. Sau khi hoàn tất, email này sẽ được giải phóng khỏi tài khoản cũ và trở thành tài khoản chính độc lập.</p>" +
+                SecurityNote("Tuyệt đối không chia sẻ mã này với bất kỳ ai để đảm bảo an toàn cho tài khoản. Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email."),
+                $"Mã xác thực tách tài khoản: {otp}. Có hiệu lực trong {expirationMinutes} phút."));
+    }
+
     public static HrConnectEmail PasswordResetOtp(
         string recipientName,
         string otp,

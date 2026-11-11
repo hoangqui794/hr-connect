@@ -323,10 +323,14 @@ export const RegisterPage: React.FC = () => {
       setSplitModal(prev => ({ ...prev, visible: false }));
       navigate(`/login?email=${encodeURIComponent(splitModal.email)}&verified=true`, { replace: true });
     } catch (err: any) {
+      const rawMsg = getApiErrorMessage(err, 'Mã OTP không chính xác hoặc đã hết hạn.');
+      const friendlyMsg = rawMsg.toLowerCase().includes('an error occurred')
+        ? 'Đã xảy ra lỗi khi hoàn tất tạo tài khoản. Vui lòng thử lại hoặc yêu cầu mã mới.'
+        : rawMsg;
       setSplitModal(prev => ({
         ...prev,
         loading: false,
-        error: getApiErrorMessage(err, 'Mã OTP không chính xác hoặc đã hết hạn.'),
+        error: friendlyMsg,
       }));
     }
   };
@@ -671,9 +675,17 @@ export const RegisterPage: React.FC = () => {
                   type="text"
                   maxLength={6}
                   placeholder="Ví dụ: 123456"
+                  autoComplete="one-time-code"
+                  autoFocus
                   value={splitModal.otp}
                   onChange={e => setSplitModal(prev => ({ ...prev, otp: e.target.value.replace(/\D/g, '') }))}
-                  className="h-11 w-full rounded-lg border border-slate-300 px-3.5 text-center text-lg font-mono tracking-widest text-slate-900 focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-600/20"
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && splitModal.otp.length === 6 && !splitModal.loading) {
+                      e.preventDefault();
+                      handleConfirmSplitRegister();
+                    }
+                  }}
+                  className="h-12 w-full rounded-lg border border-slate-300 px-3.5 text-center text-2xl font-mono font-bold tracking-widest text-slate-900 focus:border-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-600/20"
                 />
               </div>
 

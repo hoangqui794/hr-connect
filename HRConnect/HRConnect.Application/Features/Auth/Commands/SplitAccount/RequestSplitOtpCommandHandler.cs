@@ -75,10 +75,13 @@ public class RequestSplitOtpCommandHandler : IRequestHandler<RequestSplitOtpComm
         await _userTokenRepository.AddAsync(userToken, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        var emailTemplate = HRConnect.Application.Common.Email.HrConnectEmailTemplates.SplitAccountOtp(
+            request.Email.Trim(), rawOtp, expirationMinutes);
+
         await _emailService.SendEmailAsync(
             request.Email.Trim(),
-            "Mã xác thực tách tài khoản HR Connect",
-            $"Mã xác thực của bạn để tách email này thành tài khoản độc lập là: {rawOtp}. Mã có hiệu lực trong {expirationMinutes} phút. Tuyệt đối không chia sẻ mã này với bất kỳ ai.",
+            emailTemplate.Subject,
+            emailTemplate.HtmlBody,
             cancellationToken);
 
         _logger.LogInformation("Đã gửi mã OTP tách tài khoản tới email {Email}", normalizedEmail);
