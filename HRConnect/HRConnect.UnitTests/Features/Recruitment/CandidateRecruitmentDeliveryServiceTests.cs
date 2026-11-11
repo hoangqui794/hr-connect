@@ -263,6 +263,42 @@ public class CandidateRecruitmentDeliveryServiceTests
         outbox!.TemplateCode.Should().Be(RecruitmentCandidateEmailTemplates.ApplicationStartedConfirmed);
     }
 
+    [Fact]
+    public async Task DeliverPlannedStartDateChangedAsync_DeliversBothChannelsWithOldAndNewDates()
+    {
+        var userId = Guid.NewGuid();
+        var (application, _) = CreateApplication(new Candidate
+        {
+            UserId = userId,
+            FullName = "An",
+            Email = "candidate@example.com"
+        });
+        EmailOutbox? outbox = null;
+        _outboxes.Setup(x => x.AddAsync(It.IsAny<EmailOutbox>(), It.IsAny<CancellationToken>()))
+            .Callback<EmailOutbox, CancellationToken>((value, _) => outbox = value)
+            .Returns(Task.CompletedTask);
+        var oldDate = new DateOnly(2026, 11, 15);
+        var newDate = new DateOnly(2026, 11, 22);
+
+        var result = await CreateService().DeliverPlannedStartDateChangedAsync(
+            application, oldDate, newDate, "Cần thêm thời gian bàn giao", DateTime.UtcNow);
+
+        result.Channel.Should().Be(CandidateRecruitmentDeliveryChannel.InAppAndEmail);
+        _notifications.Verify(x => x.AddAsync(
+            It.Is<Notification>(item =>
+                item.UserId == userId &&
+                item.Metadata != null &&
+                item.Metadata.Contains("PLANNED_START_DATE_CHANGED") &&
+                item.Message.Contains("22/11/2026")),
+            It.IsAny<CancellationToken>()), Times.Once);
+        outbox.Should().NotBeNull();
+        outbox!.TemplateCode.Should().Be(RecruitmentCandidateEmailTemplates.PlannedStartDateChanged);
+        var payload = JsonSerializer.Deserialize<RecruitmentCandidateEmailPayload>(outbox.Payload)!;
+        payload.OldPlannedStartDate.Should().Be(oldDate);
+        payload.NewPlannedStartDate.Should().Be(newDate);
+        payload.Reason.Should().Be("Cần thêm thời gian bàn giao");
+    }
+
     private static (JobApplication Application, Interview Interview) CreateApplication(Candidate candidate)
     {
         var application = new JobApplication

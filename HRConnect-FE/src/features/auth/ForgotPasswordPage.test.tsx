@@ -141,4 +141,33 @@ describe('ForgotPasswordPage', () => {
 
     expect(screen.getByRole('textbox', { name: 'Email' })).toHaveValue('an@example.com');
   });
+
+  it('toggles password visibility with eye icon buttons', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await toResetStep(user);
+
+    const newPwdInput = screen.getByLabelText('Mật khẩu mới');
+    const confirmPwdInput = screen.getByLabelText('Nhập lại mật khẩu mới');
+
+    expect(newPwdInput).toHaveAttribute('type', 'password');
+    expect(confirmPwdInput).toHaveAttribute('type', 'password');
+
+    const toggleNewPwd = screen.getByRole('button', { name: 'Hiện mật khẩu' });
+    const toggleConfirmPwd = screen.getByRole('button', { name: 'Hiện mật khẩu nhập lại' });
+
+    await user.click(toggleNewPwd);
+    expect(newPwdInput).toHaveAttribute('type', 'text');
+    expect(screen.getByRole('button', { name: 'Ẩn mật khẩu' })).toBeInTheDocument();
+
+    await user.click(toggleConfirmPwd);
+    expect(confirmPwdInput).toHaveAttribute('type', 'text');
+    expect(screen.getByRole('button', { name: 'Ẩn mật khẩu nhập lại' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Ẩn mật khẩu' }));
+    expect(newPwdInput).toHaveAttribute('type', 'password');
+
+    await user.click(screen.getByRole('button', { name: 'Ẩn mật khẩu nhập lại' }));
+    expect(confirmPwdInput).toHaveAttribute('type', 'password');
+  });
 });

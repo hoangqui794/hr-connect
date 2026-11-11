@@ -108,7 +108,7 @@ const MODAL_TITLE: Record<ModalKind, string> = {
   rejectBackup: 'Loại ứng viên dự phòng',
   offer: 'Offer cho ứng viên',
   withdraw: 'Thu hồi offer',
-  plannedStart: 'Ngày dự kiến nhận việc',
+  plannedStart: 'Dời ngày nhận việc',
   startWork: 'Xác nhận ứng viên đã đi làm',
   notStarted: 'Ứng viên không nhận việc',
   clientRejectSourcing: 'Từ chối CV (CV Sourcing)',
@@ -127,6 +127,14 @@ const SALARY_BASIS_OPTIONS = [
 const SALARY_PERIOD_OPTIONS = [
   { value: 'MONTHLY', label: 'Theo tháng' },
   { value: 'ANNUAL', label: 'Theo năm' },
+];
+const NOT_STARTED_REASONS = [
+  { value: 'CANDIDATE_NO_SHOW', label: 'Ứng viên không đến vào ngày hẹn' },
+  { value: 'CANDIDATE_UNREACHABLE', label: 'Không liên hệ được ứng viên' },
+  { value: 'CANDIDATE_ACCEPTED_OTHER_JOB', label: 'Ứng viên nhận công việc khác' },
+  { value: 'CANDIDATE_PERSONAL_REASON', label: 'Lý do cá nhân / gia đình' },
+  { value: 'EMPLOYER_CANCELLED', label: 'Doanh nghiệp dừng tiếp nhận' },
+  { value: 'CANDIDATE_OTHER', label: 'Lý do khác' },
 ];
 
 type StartWorkAttempt = { applicationId: string; input: ConfirmStartWorkInput };
@@ -191,6 +199,7 @@ export const ApplicationWorkbench: React.FC<{
   const effectiveInterviewType = open === 'reschedule' ? interview?.interviewType : selectedInterviewType;
   const offer = d ? [...d.offers].sort((a, b) => b.offerVersion - a.offerVersion)[0] : undefined;
   const acceptedOffer = d?.offers.find((o) => o.status === 'ACCEPTED') ?? offer;
+  const plannedStartChangeCount = (timeline.data ?? []).filter((event) => event.eventType === 'PLANNED_START_DATE_CHANGED').length;
 
   // MF-03: opening an application starts screening (idempotent on the backend).
   const start = useMutation({
@@ -404,7 +413,8 @@ export const ApplicationWorkbench: React.FC<{
       });
     if (kind === 'reschedule' && interview)
       form.setFieldsValue({ durationMinutes: interview.durationMinutes ?? 60, location: interview.location ?? undefined, meetingLink: interview.meetingLink ?? undefined });
-    if (kind === 'startWork') form.setFieldsValue({ actualStartDate: dayjs() });
+    if (kind === 'plannedStart') form.setFieldsValue({ plannedStartDate: d?.plannedStartDate ? dayjs(d.plannedStartDate) : undefined });
+    if (kind === 'startWork') form.setFieldsValue({ actualStartDate: dayjs(), position: d?.jobTitle });
     setOpen(kind);
   };
 
@@ -558,7 +568,7 @@ export const ApplicationWorkbench: React.FC<{
         case 'withdraw':
           return await run.mutateAsync(() => clientActionsApi.withdrawOffer(offer!.offerId, { reason: v.reason.trim(), concurrencyToken: offer!.concurrencyToken }));
         case 'plannedStart':
-          return await run.mutateAsync(() => clientActionsApi.setPlannedStart(d.applicationId, { plannedStartDate: day(v.plannedStartDate)!, reason: trim(v.reason), concurrencyToken: token }));
+          return await run.mutateAsync(() => clientActionsApi.setPlannedStart(d.applicationId, { plannedStartDate: day(v.plannedStartDate)!, reason: v.reason.trim(), concurrencyToken: token }));
         case 'startWork': {
           const input: ConfirmStartWorkInput = {
             offerId: acceptedOffer!.offerId,
@@ -572,7 +582,7 @@ export const ApplicationWorkbench: React.FC<{
           return await run.mutateAsync(() => clientActionsApi.confirmStartWork(d.applicationId, input));
         }
         case 'notStarted':
-          return await run.mutateAsync(() => clientActionsApi.markNotStarted(d.applicationId, { reason: v.reason.trim(), concurrencyToken: token }));
+          return await run.mutateAsync(() => clientActionsApi.markNotStarted(d.applicationId, { reason: trim(v.reason) ?? '', reasonCode: v.reasonCode, concurrencyToken: token }));
         case 'clientRejectSourcing':
           return await clientDecisionMutation.mutateAsync({
             decision: 'REJECTED',
@@ -626,7 +636,7 @@ export const ApplicationWorkbench: React.FC<{
   if (has('RESCHEDULE_INTERVIEW')) btn('resched', 'Dời lịch', () => openModal('reschedule'));
   if (has('WITHDRAW_OFFER')) btn('withdraw', 'Thu hồi offer', () => openModal('withdraw'), { danger: true });
   if (has('MARK_NOT_STARTED')) btn('nostart', 'Không nhận việc', () => openModal('notStarted'), { danger: true });
-  if (has('CONFIRM_PLANNED_START_DATE')) btn('planned', 'Ngày dự kiến', () => openModal('plannedStart'));
+  if (has('CONFIRM_PLANNED_START_DATE')) btn('planned', 'Dời ngày nhận việc', () => openModal('plannedStart'));
   if (has('UPDATE_OFFER')) btn('upd', 'Sửa offer', () => openModal('offer'));
   if (has('SELECT_BACKUP'))
     btn(
@@ -898,6 +908,15 @@ export const ApplicationWorkbench: React.FC<{
                   );
                 })}
                 {d.plannedStartDate && <Row label="Ngày dự kiến nhận việc">{fmt(d.plannedStartDate, 'DD/MM/YYYY')}</Row>}
+                {d.status === 'OFFER_ACCEPTED' && d.plannedStartDate && dayjs(d.plannedStartDate).isBefore(dayjs(), 'day') && (
+                  <Alert
+                    className="mt-3"
+                    type="error"
+                    showIcon
+                    message={`Quá ngày nhận việc ${dayjs().startOf('day').diff(dayjs(d.plannedStartDate).startOf('day'), 'day')} ngày – cần cập nhật`}
+                    description="Hãy xác nhận đi làm, dời ngày hoặc ghi nhận không bắt đầu làm việc."
+                  />
+                )}
                 {d.placement && (
                   <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/70 p-4 text-emerald-950 font-medium">
                     Đã đi làm từ {fmt(d.placement.actualStartDate, 'DD/MM/YYYY')}
@@ -1245,7 +1264,7 @@ export const ApplicationWorkbench: React.FC<{
             </>
           )}
 
-          {(open === 'cancel' || open === 'noshow' || open === 'withdraw' || open === 'notStarted') && (
+          {(open === 'cancel' || open === 'noshow' || open === 'withdraw') && (
             <Form.Item
               name="reason"
               label={open === 'cancel' ? 'Lý do hủy lịch' : open === 'noshow' ? 'Ghi chú vắng mặt' : open === 'withdraw' ? 'Lý do thu hồi offer' : 'Lý do không nhận việc'}
@@ -1253,6 +1272,31 @@ export const ApplicationWorkbench: React.FC<{
             >
               <Input.TextArea rows={3} maxLength={1000} showCount />
             </Form.Item>
+          )}
+
+          {open === 'notStarted' && (
+            <>
+              <Form.Item name="reasonCode" label="Lý do" rules={[{ required: true, message: 'Chọn lý do.' }]}>
+                <Select
+                  placeholder="Chọn lý do"
+                  options={NOT_STARTED_REASONS.map((item) => ({
+                    ...item,
+                    disabled: item.value === 'CANDIDATE_NO_SHOW' && (!d?.plannedStartDate || dayjs().isBefore(dayjs(d.plannedStartDate), 'day')),
+                  }))}
+                />
+              </Form.Item>
+              <Form.Item noStyle shouldUpdate={(a, b) => a.reasonCode !== b.reasonCode}>
+                {({ getFieldValue }) => {
+                  const code = getFieldValue('reasonCode');
+                  const required = code === 'CANDIDATE_OTHER';
+                  return (
+                    <Form.Item name="reason" label={required ? 'Ghi chú (bắt buộc)' : 'Ghi chú (không bắt buộc)'} rules={[{ required, whitespace: required, message: 'Vui lòng ghi chú lý do.' }, { max: 1000, message: 'Tối đa 1000 ký tự.' }]}>
+                      <Input.TextArea rows={3} maxLength={1000} showCount />
+                    </Form.Item>
+                  );
+                }}
+              </Form.Item>
+            </>
           )}
 
           {open === 'rejectBackup' && (
@@ -1418,10 +1462,10 @@ export const ApplicationWorkbench: React.FC<{
 
           {open === 'plannedStart' && (
             <>
-              <Form.Item name="plannedStartDate" label="Ngày dự kiến" rules={[{ required: true, message: 'Chọn ngày.' }]}>
+              <Form.Item name="plannedStartDate" label="Ngày nhận việc mới" rules={[{ required: true, message: 'Chọn ngày.' }]}>
                 <DatePicker format="DD/MM/YYYY" disabledDate={notPast} className="w-full" />
               </Form.Item>
-              <Form.Item name="reason" label="Ghi chú (không bắt buộc)">
+              <Form.Item name="reason" label="Lý do dời ngày" rules={REQUIRED}>
                 <Input.TextArea rows={2} maxLength={1000} />
               </Form.Item>
             </>
@@ -1429,7 +1473,7 @@ export const ApplicationWorkbench: React.FC<{
 
           {open === 'startWork' && (
             <>
-              {d?.isReplacement ? (
+              {d?.isReplacement && (
                 <Alert
                   className="mb-4"
                   type="success"
@@ -1437,8 +1481,6 @@ export const ApplicationWorkbench: React.FC<{
                   message="Người thay thế – không tính phí mới"
                   description="Nếu suất thay thế còn hiệu lực, xác nhận này sẽ dùng suất đó và khởi động lại thời hạn bảo hành."
                 />
-              ) : (
-                <p className="mt-0 text-sm text-slate-600">Xác nhận ứng viên đã thực sự đi làm. Bước này tạo bản ghi nhận việc và là mốc tính phí dịch vụ.</p>
               )}
               <Form.Item name="actualStartDate" label="Ngày thực tế đi làm" rules={[{ required: true, message: 'Chọn ngày.' }]}>
                 <DatePicker

@@ -283,11 +283,11 @@ export const clientActionsApi = {
   updateOffer: (offerId: string, input: OfferInput) => put(`/offers/${offerId}`, input),
   sendOffer: (offerId: string, concurrencyToken: string) => post<CandidateDeliveryActionResult>(`/offers/${offerId}/send`, { concurrencyToken }),
   withdrawOffer: (offerId: string, input: { reason: string; concurrencyToken: string }) => post<CandidateDeliveryActionResult>(`/offers/${offerId}/withdraw`, input),
-  setPlannedStart: (applicationId: string, input: { plannedStartDate: string; reason?: string; concurrencyToken: string }) =>
+  setPlannedStart: (applicationId: string, input: { plannedStartDate: string; reason: string; concurrencyToken: string }) =>
     put(`/recruitment/applications/${applicationId}/planned-start-date`, input),
   confirmStartWork: (applicationId: string, input: ConfirmStartWorkInput) =>
     post(`/recruitment/applications/${applicationId}/start-work`, input),
-  markNotStarted: (applicationId: string, input: { reason: string; concurrencyToken: string }) =>
+  markNotStarted: (applicationId: string, input: { reason: string; reasonCode?: string; concurrencyToken: string }) =>
     post(`/recruitment/applications/${applicationId}/not-started`, input),
 };
 
