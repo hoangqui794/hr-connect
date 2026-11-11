@@ -200,7 +200,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
         width: 260,
         render: (_, r) => (
           <div className="flex items-center gap-3 py-1">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sm font-bold text-[#0C4A6E] border border-sky-100">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sm font-bold text-[#0284C7] border border-sky-100">
               {r.candidateName ? r.candidateName.charAt(0).toUpperCase() : <UserOutlined />}
             </div>
             <div className="min-w-0">
@@ -230,7 +230,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
         width: 120,
         align: 'center',
         render: (v) => (
-          <span className="inline-flex items-center rounded-lg bg-sky-50 px-2.5 py-1 text-xs font-bold text-[#0C4A6E] border border-sky-100">
+          <span className="inline-flex items-center rounded-lg bg-sky-50 px-2.5 py-1 text-xs font-bold text-[#0284C7] border border-sky-100">
             Vòng {v}
           </span>
         ),
@@ -247,12 +247,12 @@ export const ClientInterviewsOffersPage: React.FC = () => {
           return (
             <div className="inline-flex items-center gap-2.5 py-0.5">
               <div className="flex flex-col items-center rounded-lg border border-slate-200 bg-white px-2 py-1 shadow-2xs">
-                <span className="text-[10px] font-bold text-[#0C4A6E] uppercase">{dt.format('MMM')}</span>
+                <span className="text-[10px] font-bold text-[#0284C7] uppercase">{dt.format('MMM')}</span>
                 <span className="text-sm font-black leading-none text-slate-900">{dt.format('DD')}</span>
               </div>
               <div className="text-left">
                 <div className="flex items-center gap-1 text-xs font-bold text-slate-900">
-                  <ClockCircleOutlined className="text-[#0C4A6E]" />
+                  <ClockCircleOutlined className="text-[#0284C7]" />
                   <span>{dt.format('HH:mm')}</span>
                 </div>
                 {isToday && (
@@ -304,7 +304,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
           <Button
             type="primary"
             size="small"
-            className="!h-8 !rounded-lg !border-0 !bg-[#0C4A6E] hover:!bg-[#075985] text-white font-bold text-xs shadow-2xs transition-all active:scale-[0.98]"
+            className="!h-8 !rounded-lg !border-0 !bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] text-white font-bold text-xs shadow-2xs transition-all active:scale-[0.98]"
             onClick={(e) => {
               e.stopPropagation();
               handleSetOpenInterviewId(r.interviewId);
@@ -401,7 +401,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
           <Button
             type="primary"
             size="small"
-            className="!h-8 !rounded-lg !border-0 !bg-[#0C4A6E] hover:!bg-[#075985] text-white font-bold text-xs shadow-2xs transition-all active:scale-[0.98]"
+            className="!h-8 !rounded-lg !border-0 !bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] text-white font-bold text-xs shadow-2xs transition-all active:scale-[0.98]"
             onClick={(e) => {
               e.stopPropagation();
               setOpen(r.applicationId);
@@ -487,7 +487,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
           <Button
             type="primary"
             size="small"
-            className="!h-8 !rounded-lg !border-0 !bg-[#0C4A6E] hover:!bg-[#075985] text-white font-bold text-xs shadow-2xs transition-all active:scale-[0.98]"
+            className="!h-8 !rounded-lg !border-0 !bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] text-white font-bold text-xs shadow-2xs transition-all active:scale-[0.98]"
             onClick={(e) => {
               e.stopPropagation();
               setOpen(r.applicationId);
@@ -510,7 +510,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             <h1 className="sr-only">
               Điều hành phỏng vấn & đề nghị việc làm
             </h1>
-            <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0C4A6E] border border-sky-100">
+            <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0284C7] border border-sky-100">
               Quy trình tuyển dụng
             </span>
           </div>
@@ -535,7 +535,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
           <Button
             type="primary"
             icon={<TeamOutlined />}
-            className="!h-10 !rounded-xl !border-0 !bg-gradient-to-r !from-[#0C4A6E] !to-[#0284C7] hover:!from-[#075985] hover:!to-[#0369A1] font-bold text-white shadow-sm transition-all active:scale-[0.98] !px-4"
+            className="!h-10 !rounded-xl !border-0 !bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] font-bold text-white shadow-sm shadow-sky-500/20 transition-all active:scale-[0.98] !px-4"
             onClick={() => navigate('/client/candidates')}
           >
             Xem hồ sơ ứng viên
@@ -551,21 +551,21 @@ export const ClientInterviewsOffersPage: React.FC = () => {
           onClick={() => switchTab('interviews')}
           className={`group flex cursor-pointer flex-col justify-between rounded-xl border px-4 py-3 text-left transition-all duration-200 hover:-translate-y-0.5 ${
             tab === 'interviews'
-              ? 'border-[#0C4A6E] bg-white shadow-md ring-2 ring-[#0C4A6E]/15'
+              ? 'border-[#0284C7] bg-white shadow-md ring-2 ring-[#0284C7]/15'
               : 'border-slate-200/90 bg-white hover:border-slate-300 hover:shadow-sm'
           }`}
         >
           <div className="flex items-center justify-between">
             <span
               className={`inline-flex h-8 w-8 items-center justify-center rounded-lg text-base ${
-                tab === 'interviews' ? 'bg-[#0C4A6E] text-white shadow-xs' : 'bg-sky-50 text-sky-700'
+                tab === 'interviews' ? 'bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white shadow-xs' : 'bg-sky-50 text-sky-700'
               }`}
             >
               <CalendarOutlined />
             </span>
             <span
               className={`rounded-full px-2.5 py-0.5 text-xs font-bold tabular-nums ${
-                tab === 'interviews' ? 'bg-sky-50 text-[#0C4A6E]' : 'bg-slate-100 text-slate-600'
+                tab === 'interviews' ? 'bg-sky-50 text-[#0284C7]' : 'bg-slate-100 text-slate-600'
               }`}
             >
               Giai đoạn 1
@@ -585,7 +585,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             <span>
               {interviewScheduledCountQ.data ?? 0} lịch sắp tới · {interviewAllCountQ.data ?? 0} tất cả
             </span>
-            <span className={`font-bold ${tab === 'interviews' ? 'text-[#0C4A6E]' : 'text-slate-400'}`}>
+            <span className={`font-bold ${tab === 'interviews' ? 'text-[#0284C7]' : 'text-slate-400'}`}>
               {tab === 'interviews' ? 'Đang xem' : 'Mở tab →'}
             </span>
           </div>
@@ -730,7 +730,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
                     title={opt.desc}
                     className={`min-h-[36px] cursor-pointer rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all border ${
                       isActive
-                        ? 'bg-sky-50 text-[#0C4A6E] border-sky-300 font-bold shadow-2xs ring-1 ring-sky-300/40'
+                        ? 'bg-sky-50 text-[#0284C7] border-sky-300 font-bold shadow-2xs ring-1 ring-sky-300/40'
                         : 'bg-white text-slate-600 border-slate-200/90 hover:bg-slate-50 hover:text-slate-900'
                     }`}
                   >
@@ -841,7 +841,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
               {tab === 'interviews' && (
                 <Button
                   type="primary"
-                  className="mt-2 !bg-[#0C4A6E] font-semibold !rounded-xl"
+                  className="mt-2 !bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white font-semibold !rounded-xl shadow-sm"
                   onClick={() => navigate('/client/candidates?stage=shortlisted')}
                 >
                   Chọn ứng viên phỏng vấn

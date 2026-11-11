@@ -99,7 +99,7 @@ export const AiScore: React.FC<{ score: number | null; tier?: string | null; sta
 }) => {
   if (score == null) {
     const st = status?.toUpperCase();
-    if (st === 'PENDING' || st === 'PROCESSING') return <span className="text-xs text-[#0C4A6E] font-medium">Đang chấm…</span>;
+    if (st === 'PENDING' || st === 'PROCESSING') return <span className="text-xs text-[#0284C7] font-medium">Đang chấm…</span>;
     return <span className="text-xs text-slate-400 font-medium">Chưa có điểm</span>;
   }
   const rounded = Math.round(score);
@@ -242,7 +242,7 @@ export const ClientCandidatesPage: React.FC = () => {
         <div className="flex items-start gap-3 py-1">
           <Initials name={r.candidateName} size={38} />
           <div className="min-w-0 flex-1 space-y-0.5">
-            <div className="truncate text-[14px] font-bold text-slate-900 hover:text-[#0C4A6E] transition-colors">
+            <div className="truncate text-[14px] font-bold text-slate-900 hover:text-[#0284C7] transition-colors">
               {r.candidateName}
             </div>
             <div className="truncate text-[12px] text-slate-500">{r.candidateEmail || 'Chưa có email'}</div>
@@ -317,7 +317,7 @@ export const ClientCandidatesPage: React.FC = () => {
             ghost={step.urgent}
             className={`w-[135px] !h-8 text-xs font-semibold rounded-lg shadow-2xs transition-all ${
               step.urgent
-                ? '!border-[#0C4A6E] !text-[#0C4A6E] hover:!bg-[#0C4A6E] hover:!text-white'
+                ? '!border-[#0284C7] !text-[#0284C7] hover:!bg-[#0284C7] hover:!text-white'
                 : '!border-slate-200 text-slate-700 hover:!border-slate-300 hover:bg-slate-50'
             }`}
             onClick={(e) => {
@@ -347,8 +347,8 @@ export const ClientCandidatesPage: React.FC = () => {
             <h1 className="sr-only">
               Hồ sơ ứng viên
             </h1>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-[#0C4A6E] border border-sky-200/80 shadow-2xs">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#0C4A6E] animate-pulse" />
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-[#0284C7] border border-sky-200/80 shadow-2xs">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#0284C7] animate-pulse" />
               {view === 'list' ? `${list.data?.total ?? 0} hồ sơ` : 'Bảng Kanban'}
             </span>
           </div>
@@ -443,7 +443,7 @@ export const ClientCandidatesPage: React.FC = () => {
                   onClick={() => setParams({ view: v === 'board' ? 'board' : undefined }, true)}
                   className={`flex h-8 cursor-pointer items-center gap-2 rounded-lg border-0 px-3.5 text-[13px] font-medium transition-all ${
                     view === v
-                      ? 'bg-white text-[#0C4A6E] shadow-2xs font-bold'
+                      ? 'bg-white text-[#0284C7] shadow-2xs font-bold'
                       : 'bg-transparent text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -488,9 +488,9 @@ export const ClientCandidatesPage: React.FC = () => {
                     role="radio"
                     aria-checked={selected}
                     onClick={() => setParams({ stage: g.key === 'all' ? undefined : g.key, status: undefined })}
-                    className={`group relative cursor-pointer rounded-xl border p-3 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E] ${
+                    className={`group relative cursor-pointer rounded-xl border p-3 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0284C7] ${
                       selected
-                        ? 'border-[#0C4A6E] bg-white shadow-sm ring-2 ring-[#0C4A6E]/20'
+                        ? 'border-[#0284C7] bg-white shadow-sm ring-2 ring-[#0284C7]/20'
                         : needsAction
                         ? 'border-amber-300/80 bg-gradient-to-b from-amber-50/60 to-amber-50/20 hover:bg-white hover:border-slate-300'
                         : 'border-transparent bg-transparent hover:bg-white hover:border-slate-200 hover:shadow-2xs'
@@ -499,7 +499,7 @@ export const ClientCandidatesPage: React.FC = () => {
                     <div className="flex items-center justify-between gap-1">
                       <span
                         className={`text-xs ${
-                          selected ? 'font-bold text-[#0C4A6E]' : 'font-medium text-slate-600'
+                          selected ? 'font-bold text-[#0284C7]' : 'font-medium text-slate-600'
                         }`}
                       >
                         {g.label}
@@ -512,7 +512,7 @@ export const ClientCandidatesPage: React.FC = () => {
                     </div>
                     <div
                       className={`mt-1.5 text-2xl font-black tabular-nums tracking-tight ${
-                        selected ? 'text-[#0C4A6E]' : 'text-slate-900'
+                        selected ? 'text-[#0284C7]' : 'text-slate-900'
                       }`}
                     >
                       {counts[i].isLoading ? '–' : n ?? 0}
@@ -559,12 +559,12 @@ export const ClientCandidatesPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => handleOpenCandidate(a.applicationId)}
-                              className="client-soft-card group flex w-full cursor-pointer flex-col gap-2 rounded-xl border border-slate-200/90 bg-white p-3.5 text-left shadow-2xs transition-all duration-200 hover:border-[#0C4A6E]/50 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0C4A6E]"
+                              className="client-soft-card group flex w-full cursor-pointer flex-col gap-2 rounded-xl border border-slate-200/90 bg-white p-3.5 text-left shadow-2xs transition-all duration-200 hover:border-[#0284C7]/50 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0284C7]"
                             >
                               <span className="flex items-center gap-2.5">
                                 <Initials name={a.candidateName} size={32} />
                                 <span className="min-w-0 flex-1">
-                                  <span className="block truncate text-[13.5px] font-bold text-slate-900 group-hover:text-[#0C4A6E] transition-colors">
+                                  <span className="block truncate text-[13.5px] font-bold text-slate-900 group-hover:text-[#0284C7] transition-colors">
                                     {a.candidateName}
                                   </span>
                                   <span className="block truncate text-xs text-slate-500">{a.jobTitle}</span>
@@ -594,7 +594,7 @@ export const ClientCandidatesPage: React.FC = () => {
                                   false
                                 )
                               }
-                              className="w-full cursor-pointer rounded-xl border border-slate-200/60 bg-white py-2 text-xs font-semibold text-[#0C4A6E] hover:bg-sky-50/50 shadow-2xs transition-all"
+                              className="w-full cursor-pointer rounded-xl border border-slate-200/60 bg-white py-2 text-xs font-semibold text-[#0284C7] hover:bg-sky-50/50 shadow-2xs transition-all"
                             >
                               Xem tất cả {qy.data?.total}
                             </button>

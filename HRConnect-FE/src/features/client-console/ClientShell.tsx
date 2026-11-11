@@ -67,7 +67,7 @@ const ALL_ITEMS: NavItem[] = [
   { to: '/client/company', label: 'Hồ sơ doanh nghiệp', icon: <BankOutlined /> },
 ];
 
-const focusRing = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0C4A6E]';
+const focusRing = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0284C7]';
 
 export const ClientShell: React.FC = () => {
   const [collapsedPref, setCollapsed] = useState(false);
@@ -119,7 +119,7 @@ export const ClientShell: React.FC = () => {
           <BrandMark size={32} className="shrink-0" />
           {!collapsed && (
             <span className="flex min-w-0 flex-col leading-tight">
-              <span className="truncate text-[17px] font-extrabold text-[#0C4A6E]">HR Connect</span>
+              <span className="truncate text-[17px] font-extrabold text-[#0369A1]">HR Connect</span>
               <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-slate-500">Doanh nghiệp</span>
             </span>
           )}
@@ -130,7 +130,7 @@ export const ClientShell: React.FC = () => {
             <NavLink
               to="/client/jobs/create"
               aria-label={collapsed ? 'Đăng tin' : undefined}
-              className={`flex h-11 items-center justify-center gap-2 rounded-lg bg-[#C2410C] text-sm font-bold text-white no-underline transition-[background-color,transform] duration-150 hover:bg-[#9A3412] hover:text-white active:scale-[0.97] ${focusRing}`}
+              className={`flex h-11 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-sm font-bold text-white no-underline shadow-sm shadow-sky-500/25 transition-[all,transform] duration-150 hover:from-[#0369A1] hover:to-[#1D4ED8] hover:text-white hover:shadow-md hover:shadow-sky-500/30 active:scale-[0.97] ${focusRing}`}
             >
               <PlusOutlined aria-hidden />
               {!collapsed && <span>Đăng tin</span>}
@@ -151,8 +151,8 @@ export const ClientShell: React.FC = () => {
                         focusRing,
                         collapsed ? 'justify-center' : '',
                         isActive
-                          ? 'bg-[#E0F2FE] font-bold text-[#0C4A6E] before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-r before:bg-[#0C4A6E] before:content-[""]'
-                          : 'font-medium text-slate-700 hover:bg-slate-100 hover:text-[#0C4A6E]',
+                          ? 'bg-sky-50/90 font-bold text-[#0284C7] shadow-2xs before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-r before:bg-[#0284C7] before:content-[""]'
+                          : 'font-medium text-slate-700 hover:bg-slate-100/80 hover:text-[#0284C7]',
                       ].join(' ')
                     }
                   >
@@ -252,7 +252,7 @@ export const ClientShell: React.FC = () => {
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
-              `flex flex-col items-center justify-center gap-0.5 text-[11px] no-underline ${isActive ? 'font-semibold text-[#0C4A6E]' : 'text-slate-500'}`
+              `flex flex-col items-center justify-center gap-0.5 text-[11px] no-underline ${isActive ? 'font-semibold text-[#0284C7]' : 'text-slate-500'}`
             }
           >
             <span className="text-lg" aria-hidden>{item.icon}</span>
