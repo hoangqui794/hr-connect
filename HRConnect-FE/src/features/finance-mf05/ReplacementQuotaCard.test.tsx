@@ -229,7 +229,7 @@ describe('ReplacementQuotaCard', () => {
     expect(screen.getByText('Chờ thanh toán phí')).toBeInTheDocument();
   });
 
-  it('allows Client to click "Sử dụng suất" to navigate to job creation with replacement quota', async () => {
+  it('gives the Client no "use slot" step: the open slot fills itself, the Client follows the job and its candidates', async () => {
     vi.mocked(financeApi.getPlacements).mockResolvedValue({
       items: mockPlacements,
       totalCount: 1,
@@ -239,14 +239,14 @@ describe('ReplacementQuotaCard', () => {
 
     renderComponent({ mode: 'client' });
 
-    const useBtn = await screen.findByRole('button', { name: /Sử dụng suất/i }, { timeout: 10000 });
-    expect(useBtn).toBeInTheDocument();
+    expect(await screen.findByText('Affiliate đang tìm người thay', {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Sử dụng suất/i })).toBeNull();
 
-    fireEvent.click(useBtn);
+    fireEvent.click(screen.getByRole('button', { name: /Hồ sơ người thay/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/client/candidates?job=job-101');
 
-    expect(mockNavigate).toHaveBeenCalledWith(
-      '/client/post-job?jobId=job-101&replacementSlotId=slot-uuid-1&serviceType=HEADHUNT_COD'
-    );
+    fireEvent.click(screen.getByRole('button', { name: /Xem tin/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/client/jobs?highlight=job-101&openDetail=true');
   });
 
   it('allows Internal HR to cancel a slot with a reason', async () => {
