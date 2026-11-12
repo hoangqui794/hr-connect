@@ -3,6 +3,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -171,10 +172,11 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
             throw new BadRequestException("Phải cung cấp đúng một nguồn CV: tệp PDF mới hoặc cvId trong kho CV của Candidate.");
 
         // 5. Kiểm tra trùng lặp (Duplicate Check): Cùng Candidate + Cùng Job
-        var existingSubmission = await _submissionRepository.GetAcceptedSubmissionAsync(candidate.CandidateId, job.JobId, cancellationToken);
         var existingApplication = await _applicationRepository.GetByCandidateAndJobAsync(candidate.CandidateId, job.JobId, cancellationToken);
+        var isReapplying = existingApplication != null && existingApplication.Status == ApplicationStates.Withdrawn;
+        var existingSubmission = await _submissionRepository.GetAcceptedSubmissionAsync(candidate.CandidateId, job.JobId, cancellationToken);
 
-        if (existingSubmission != null || existingApplication != null)
+        if (!isReapplying && (existingSubmission != null || existingApplication != null))
         {
             _logger.LogWarning("Phát hiện nộp trùng lặp: CandidateId={CandidateId}, JobId={JobId}. Ghi nhận BLOCKED_DUPLICATE.",
                 candidate.CandidateId, job.JobId);
@@ -232,15 +234,25 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
                 job.CompanyId,
                 cancellationToken);
 
-            existingSubmission = await _submissionRepository.GetAcceptedSubmissionAsync(
-                candidate.CandidateId, job.JobId, cancellationToken);
             existingApplication = await _applicationRepository.GetByCandidateAndJobAsync(
                 candidate.CandidateId, job.JobId, cancellationToken);
-            if (existingSubmission != null || existingApplication != null)
+            existingSubmission = await _submissionRepository.GetAcceptedSubmissionAsync(
+                candidate.CandidateId, job.JobId, cancellationToken);
+
+            isReapplying = existingApplication != null && existingApplication.Status == ApplicationStates.Withdrawn;
+
+            if (!isReapplying && (existingSubmission != null || existingApplication != null))
             {
                 throw new ConflictException(
                     "Bạn đã nộp hồ sơ ứng tuyển vào công việc này trước đó.",
                     "CANDIDATE_ALREADY_SUBMITTED");
+            }
+
+            if (isReapplying && existingSubmission != null)
+            {
+                existingSubmission.Status = "CANCELLED";
+                existingSubmission.UpdatedAt = now;
+                _submissionRepository.Update(existingSubmission);
             }
 
             submission = new Submission
@@ -260,18 +272,45 @@ public class ApplyJobCommandHandler : IRequestHandler<ApplyJobCommand, ApplyJobR
             };
             await _submissionRepository.AddAsync(submission, cancellationToken);
 
-            application = new JobApplication
+            if (isReapplying && existingApplication != null)
             {
-                ApplicationId = Guid.NewGuid(),
-                JobId = job.JobId,
-                CandidateId = candidate.CandidateId,
-                AcceptedSubmissionId = submission.SubmissionId,
-                Status = "SUBMITTED",
-                CurrentStage = "SUBMITTED",
-                AppliedAt = now,
-                UpdatedAt = now
-            };
-            await _applicationRepository.AddAsync(application, cancellationToken);
+                existingApplication.AcceptedSubmissionId = submission.SubmissionId;
+                existingApplication.Status = "SUBMITTED";
+                existingApplication.CurrentStage = "SUBMITTED";
+                existingApplication.StatusReason = null;
+                existingApplication.AppliedAt = now;
+                existingApplication.UpdatedAt = now;
+                existingApplication.ConcurrencyToken = Guid.NewGuid();
+
+                existingApplication.ApplicationStatusHistories.Add(new ApplicationStatusHistory
+                {
+                    ApplicationStatusHistoryId = Guid.NewGuid(),
+                    ApplicationId = existingApplication.ApplicationId,
+                    OldStatus = ApplicationStates.Withdrawn,
+                    NewStatus = ApplicationStates.Submitted,
+                    ChangedBy = request.UserId,
+                    ChangedAt = now,
+                    Reason = "Ứng viên nộp lại hồ sơ sau khi rút đơn."
+                });
+
+                _applicationRepository.Update(existingApplication);
+                application = existingApplication;
+            }
+            else
+            {
+                application = new JobApplication
+                {
+                    ApplicationId = Guid.NewGuid(),
+                    JobId = job.JobId,
+                    CandidateId = candidate.CandidateId,
+                    AcceptedSubmissionId = submission.SubmissionId,
+                    Status = "SUBMITTED",
+                    CurrentStage = "SUBMITTED",
+                    AppliedAt = now,
+                    UpdatedAt = now
+                };
+                await _applicationRepository.AddAsync(application, cancellationToken);
+            }
 
             // Persist the AI request in the same transaction. A hosted dispatcher sends it after commit.
             await _scoringTrigger.TriggerScoringAsync(

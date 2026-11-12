@@ -150,7 +150,7 @@ export const CvSidebarTools: React.FC<CvSidebarToolsProps> = ({
   return (
     <aside
       aria-label="Các mục trong CV"
-      className="w-full shrink-0 select-none font-['Be_Vietnam_Pro',system-ui,sans-serif] lg:w-[252px] lg:sticky lg:top-[108px] lg:self-start"
+      className="w-full shrink-0 select-none font-['Be_Vietnam_Pro',system-ui,sans-serif] lg:w-[252px] lg:sticky lg:top-[108px] lg:self-start lg:max-h-[calc(100vh-130px)] lg:overflow-y-auto pr-1"
     >
       <div className="rounded-[10px] border border-solid border-[#E2E8F0] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
         <h2 className="m-0 text-[13px] font-bold text-[#0F172A]">Các mục trong CV</h2>

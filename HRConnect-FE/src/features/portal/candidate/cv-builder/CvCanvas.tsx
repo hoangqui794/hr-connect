@@ -340,21 +340,32 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
             </div>
 
             {/* Single-line dot-separated contact bar matching PDF Page 20 */}
-            <div className="mt-1.5 px-1 text-[12.5px] text-[#475569]">
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 px-1 text-[12.5px] text-[#475569]">
               <CvInlineField
-                value={[content.email, content.phone, content.address].filter(Boolean).join(' · ')}
-                onChange={(val) => {
-                  const parts = val.split('·').map((p) => p.trim());
-                  onChangeContent({
-                    email: parts[0] || '',
-                    phone: parts[1] || '',
-                    address: parts.slice(2).join(' · ') || '',
-                  });
-                }}
+                value={content.email || ''}
+                onChange={(val) => onChangeContent({ email: val })}
                 readOnly={readOnly}
-                aria-label="Thông tin liên hệ"
-                placeholder="truongqui858@gmail.com · 0912 345 678 · Thủ Đức, Hồ Chí Minh"
-                className="!px-0 !py-0 text-[12.5px] text-[#475569]"
+                aria-label="Email liên hệ"
+                placeholder="truongqui858@gmail.com"
+                className="!px-1 !py-0 w-auto min-w-[140px]"
+              />
+              <span className="text-slate-400">·</span>
+              <CvInlineField
+                value={content.phone || ''}
+                onChange={(val) => onChangeContent({ phone: val })}
+                readOnly={readOnly}
+                aria-label="Số điện thoại"
+                placeholder="0912 345 678"
+                className="!px-1 !py-0 w-auto min-w-[100px]"
+              />
+              <span className="text-slate-400">·</span>
+              <CvInlineField
+                value={content.address || ''}
+                onChange={(val) => onChangeContent({ address: val })}
+                readOnly={readOnly}
+                aria-label="Địa chỉ"
+                placeholder="Thủ Đức, Hồ Chí Minh"
+                className="!px-1 !py-0 w-auto min-w-[140px]"
               />
             </div>
           </div>
@@ -465,28 +476,44 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
                 return (
                   <div key={idx} className="group relative px-1">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <div className="min-w-0 flex-1 text-[13px] font-bold text-[#0F172A]">
+                      <div className="min-w-0 flex-1 flex flex-wrap items-center gap-1.5 text-[13px] font-bold text-[#0F172A]">
                         <CvInlineField
-                          value={[exp.title, exp.company].filter(Boolean).join(' · ')}
-                          onChange={(val) => {
-                            const parts = val.split('·').map((p) => p.trim());
-                            handleUpdateExperience(idx, 'title', parts[0] || '');
-                            if (parts.length > 1) {
-                              handleUpdateExperience(idx, 'company', parts.slice(1).join(' · '));
-                            }
-                          }}
+                          value={exp.title || ''}
+                          onChange={(val) => handleUpdateExperience(idx, 'title', val)}
                           readOnly={readOnly}
-                          aria-label={`Chức danh và công ty ${idx + 1}`}
-                          placeholder="Backend Developer · Công ty ABC Tech"
-                          className="!px-0 !py-0 text-[13px] font-bold text-[#0F172A]"
+                          aria-label={`Chức danh ${idx + 1}`}
+                          placeholder="Backend Developer"
+                          className="!px-1 !py-0 w-auto min-w-[130px] font-bold text-[#0F172A]"
+                        />
+                        <span className="text-slate-400 font-normal">·</span>
+                        <CvInlineField
+                          value={exp.company || ''}
+                          onChange={(val) => handleUpdateExperience(idx, 'company', val)}
+                          readOnly={readOnly}
+                          aria-label={`Công ty ${idx + 1}`}
+                          placeholder="Công ty ABC Tech"
+                          className="!px-1 !py-0 w-auto min-w-[130px] font-bold text-[#0F172A]"
                         />
                       </div>
 
                       <div className="flex shrink-0 items-center gap-1 text-[12.5px] text-[#64748B]">
-                        <span>
-                          {exp.startDate}
-                          {exp.endDate ? ` – ${exp.endDate}` : ''}
-                        </span>
+                        <CvInlineField
+                          value={exp.startDate || ''}
+                          onChange={(val) => handleUpdateExperience(idx, 'startDate', val)}
+                          readOnly={readOnly}
+                          placeholder="01/2024"
+                          aria-label={`Ngày bắt đầu ${idx + 1}`}
+                          className="!px-1 !py-0 w-16 text-center text-[12.5px] text-[#64748B]"
+                        />
+                        <span>–</span>
+                        <CvInlineField
+                          value={exp.endDate || ''}
+                          onChange={(val) => handleUpdateExperience(idx, 'endDate', val)}
+                          readOnly={readOnly}
+                          placeholder="nay"
+                          aria-label={`Ngày kết thúc ${idx + 1}`}
+                          className="!px-1 !py-0 w-14 text-center text-[12.5px] text-[#64748B]"
+                        />
                         {!readOnly && (content.experiences || []).length > 1 && (
                           <button
                             type="button"
@@ -569,25 +596,43 @@ export const CvCanvas: React.FC<CvCanvasProps> = ({
             <div className="space-y-2 px-1">
               {(content.educations || []).map((edu, idx) => (
                 <div key={idx} className="flex flex-wrap items-baseline justify-between gap-2">
-                  <div className="min-w-0 flex-1 text-[13px] font-bold text-[#0F172A]">
+                  <div className="min-w-0 flex-1 flex flex-wrap items-center gap-1.5 text-[13px] font-bold text-[#0F172A]">
                     <CvInlineField
-                      value={[edu.school, edu.degree].filter(Boolean).join(' – ')}
-                      onChange={(val) => {
-                        const parts = val.split(/–|-/).map((p) => p.trim());
-                        handleUpdateEducation(idx, 'school', parts[0] || '');
-                        if (parts.length > 1) {
-                          handleUpdateEducation(idx, 'degree', parts.slice(1).join(' – '));
-                        }
-                      }}
+                      value={edu.school || ''}
+                      onChange={(val) => handleUpdateEducation(idx, 'school', val)}
                       readOnly={readOnly}
-                      aria-label={`Trường học và bằng cấp ${idx + 1}`}
-                      placeholder="Đại học FPT – Kỹ thuật phần mềm"
-                      className="!px-0 !py-0 text-[13px] font-bold text-[#0F172A]"
+                      aria-label={`Trường học ${idx + 1}`}
+                      placeholder="Đại học FPT"
+                      className="!px-1 !py-0 w-auto min-w-[120px] font-bold text-[#0F172A]"
+                    />
+                    <span className="text-slate-400 font-normal">–</span>
+                    <CvInlineField
+                      value={edu.degree || ''}
+                      onChange={(val) => handleUpdateEducation(idx, 'degree', val)}
+                      readOnly={readOnly}
+                      aria-label={`Bằng cấp / Chuyên ngành ${idx + 1}`}
+                      placeholder="Kỹ thuật phần mềm"
+                      className="!px-1 !py-0 w-auto min-w-[120px] font-bold text-[#0F172A]"
                     />
                   </div>
-                  <div className="shrink-0 text-[12.5px] text-[#64748B]">
-                    {edu.startDate}
-                    {edu.endDate ? ` – ${edu.endDate}` : ''}
+                  <div className="flex shrink-0 items-center gap-1 text-[12.5px] text-[#64748B]">
+                    <CvInlineField
+                      value={edu.startDate || ''}
+                      onChange={(val) => handleUpdateEducation(idx, 'startDate', val)}
+                      readOnly={readOnly}
+                      aria-label={`Năm bắt đầu học vấn ${idx + 1}`}
+                      placeholder="2019"
+                      className="!px-1 !py-0 w-16 text-center text-[12.5px] text-[#64748B]"
+                    />
+                    <span>–</span>
+                    <CvInlineField
+                      value={edu.endDate || ''}
+                      onChange={(val) => handleUpdateEducation(idx, 'endDate', val)}
+                      readOnly={readOnly}
+                      aria-label={`Năm kết thúc học vấn ${idx + 1}`}
+                      placeholder="2023"
+                      className="!px-1 !py-0 w-16 text-center text-[12.5px] text-[#64748B]"
+                    />
                   </div>
                 </div>
               ))}

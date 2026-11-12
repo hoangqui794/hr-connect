@@ -23,6 +23,7 @@ export interface JobCardData {
   level: string;
   salaryMin: number;
   salaryMax: number;
+  salaryNegotiable?: boolean;
   serviceType?: ServiceType | string;
   commissionRate?: number;
   estimatedCommission?: string;
@@ -31,6 +32,8 @@ export interface JobCardData {
   deadline?: string;
   updatedAt?: string;
   aiMatchScore?: number;
+  maxApplications?: number | null;
+  sourcingTarget?: number | null;
 }
 
 export interface JobCardProps {
@@ -43,12 +46,23 @@ export interface JobCardProps {
 }
 
 // Format salary into compact VND (triệu)
-export const formatSalaryVND = (min: number, max: number): string => {
-  if (!min && !max) return 'Thỏa thuận';
-  const minM = Math.round(min / 1000000);
-  const maxM = Math.round(max / 1000000);
-  if (minM === maxM) return `${minM} Triệu`;
-  return `${minM} - ${maxM} Triệu`;
+export const formatSalaryVND = (min?: number | null, max?: number | null, negotiable?: boolean): string => {
+  const minVal = min ?? 0;
+  const maxVal = max ?? 0;
+  if (!minVal && !maxVal) return negotiable ? 'Thương lượng' : 'Thỏa thuận';
+  const minM = Math.round(minVal / 1000000);
+  const maxM = Math.round(maxVal / 1000000);
+  let range = '';
+  if (minM > 0 && maxM > 0) {
+    range = minM === maxM ? `${minM} Triệu` : `${minM} - ${maxM} Triệu`;
+  } else if (minM > 0) {
+    range = `Từ ${minM} Triệu`;
+  } else if (maxM > 0) {
+    range = `Đến ${maxM} Triệu`;
+  } else {
+    range = 'Thỏa thuận';
+  }
+  return negotiable ? `${range} (Thương lượng)` : range;
 };
 
 /**
@@ -302,7 +316,7 @@ export const JobCard: React.FC<JobCardProps> = ({
         <div className="mb-2">
           <span className="text-emerald-600 font-bold text-sm bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 rounded-md inline-flex items-center gap-1.5 shadow-2xs">
             <DollarOutlined className="text-emerald-600 text-xs" />
-            {formatSalaryVND(job.salaryMin, job.salaryMax)} / tháng
+            {formatSalaryVND(job.salaryMin, job.salaryMax, job.salaryNegotiable)} / tháng
           </span>
         </div>
 
@@ -339,6 +353,16 @@ export const JobCard: React.FC<JobCardProps> = ({
               Khớp ATS 90%+
             </span>
           )}
+
+          {job.maxApplications ? (
+            <span className="inline-flex items-center gap-1 text-2xs font-semibold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200/80">
+              Hạn mức: {job.maxApplications} hồ sơ
+            </span>
+          ) : job.sourcingTarget ? (
+            <span className="inline-flex items-center gap-1 text-2xs font-semibold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200/80">
+              Chỉ tiêu: {job.sourcingTarget} hồ sơ
+            </span>
+          ) : null}
         </div>
 
         {/* ── Deduplicated Skills Tags ── */}

@@ -132,7 +132,7 @@ export const JobCardHorizontal: React.FC<JobCardHorizontalProps> = ({
           {/* Emerald Salary Badge */}
           <span className="text-emerald-600 font-extrabold text-sm sm:text-base bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 rounded-lg inline-flex items-center gap-1 shadow-2xs">
             <DollarOutlined className="text-xs" />
-            {formatSalaryVND(job.salaryMin, job.salaryMax)}
+            {formatSalaryVND(job.salaryMin, job.salaryMax, job.salaryNegotiable)}
           </span>
 
           {/* HR Connect Special Badges */}

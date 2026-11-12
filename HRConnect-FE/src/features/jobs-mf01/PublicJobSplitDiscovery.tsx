@@ -72,6 +72,7 @@ export const matchProvince = (jobLocation: string, province: string): boolean =>
   if (normLoc.includes(normProv)) return true;
   if (normProv === 'ho chi minh' && (normLoc.includes('hcm') || normLoc.includes('sai gon') || normLoc.includes('thu duc'))) return true;
   if (normProv === 'ha noi' && normLoc.includes('hn')) return true;
+  if (normProv === 'da nang' && normLoc.includes('dn')) return true;
   if (normProv === 'ba ria - vung tau' && (normLoc.includes('vung tau') || normLoc.includes('ba ria'))) return true;
   if (normProv === 'thua thien hue' && normLoc.includes('hue')) return true;
   return false;

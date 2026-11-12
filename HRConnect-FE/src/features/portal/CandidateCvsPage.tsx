@@ -109,14 +109,21 @@ export const CandidateCvsPage: React.FC = () => {
   };
 
   /** Runs a change on the browser copy or through the API, depending on where the CV lives. */
-  const change = (cv: CandidateCv, local: () => void, remote: () => Promise<{ message?: string }>, done: string) => {
-    if (isLocal(cv)) {
+  const change = async (cv: CandidateCv, local: () => void, remote: () => Promise<{ message?: string }>, done: string) => {
+    const id = idOf(cv);
+    const isOnlyLocalDraft = !cv.cvId || id.startsWith('cv_builder_');
+    if (isOnlyLocalDraft) {
       local();
       message.success(done);
-      void queryClient.invalidateQueries({ queryKey: candidateKeys.cvs });
-      return Promise.resolve();
+      await queryClient.invalidateQueries({ queryKey: candidateKeys.cvs });
+      return;
     }
-    return act(idOf(cv), remote, done);
+    // If it exists in local storage, sync local first
+    if (cvStorage.getById(id)) {
+      local();
+    }
+    // Always sync with backend API for real CVs
+    await act(id, remote, done);
   };
 
   const list = cvs.data ?? [];

@@ -6,7 +6,7 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Alert, Button, Card, Empty, Input, InputNumber, Pagination, Select, Skeleton, Tag, Typography } from 'antd';
+import { Alert, AutoComplete, Button, Card, Empty, Input, InputNumber, Pagination, Select, Skeleton, Tag, Typography } from 'antd';
 import { ArrowRightOutlined, CheckCircleFilled, EnvironmentOutlined, FilterOutlined, SearchOutlined, SlidersOutlined } from '@ant-design/icons';
 import type { EmploymentType, Job, JobSearchParams } from '@/types/api/jobs';
 import { getApiErrorMessage } from '@/services/apiClient';
@@ -16,6 +16,7 @@ import { CompanyLogo } from '@/components/common/CompanyLogo';
 import { useJobSearch, usePublicJobSearch, useServiceTypes } from './useJobQueries';
 import { useIndustryOptions } from './useIndustryOptions';
 import { EMPLOYMENT_TYPE_LABEL, SERVICE_TYPE_LABEL, formatDate, formatExperience, formatSalary } from './jobDisplay';
+import { ALL_VIETNAM_PROVINCES, removeDiacritics } from './PublicJobSplitDiscovery';
 
 const { Title, Text } = Typography;
 const PAGE_SIZE = 12;
@@ -158,6 +159,14 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
   const [locationDraft, setLocationDraft] = useState(params.location ?? '');
   const [filtersOpen, setFiltersOpen] = useState(Boolean(params.employmentType || params.serviceTypeId || params.salaryMin || params.salaryMax || params.experienceYears || params.industryId));
 
+  const locationOptions = useMemo(() => {
+    const query = removeDiacritics(locationDraft.trim().toLowerCase());
+    return ALL_VIETNAM_PROVINCES
+      .filter((p) => !query || removeDiacritics(p.toLowerCase()).includes(query))
+      .slice(0, 8)
+      .map((p) => ({ value: p, label: p }));
+  }, [locationDraft]);
+
   useEffect(() => {
     setKeywordDraft(params.search ?? '');
     setLocationDraft(params.location ?? '');
@@ -213,15 +222,20 @@ export const JobDiscoveryPage: React.FC<JobDiscoveryPageProps> = ({ detailBasePa
             prefix={<SearchOutlined aria-hidden />}
             aria-label="Từ khóa tìm việc"
           />
-          <Input
+          <AutoComplete
             size="large"
             allowClear
             value={locationDraft}
-            onChange={(event) => setLocationDraft(event.target.value)}
-            placeholder="Tỉnh, thành phố hoặc khu vực"
-            prefix={<EnvironmentOutlined aria-hidden />}
-            aria-label="Địa điểm"
-          />
+            onChange={(value) => setLocationDraft(value)}
+            options={locationOptions}
+            className="w-full"
+          >
+            <Input
+              prefix={<EnvironmentOutlined aria-hidden />}
+              placeholder="Tỉnh, thành phố (Hà Nội, Đà Nẵng, TP.HCM...)"
+              aria-label="Địa điểm"
+            />
+          </AutoComplete>
           <Button type="primary" size="large" htmlType="submit" icon={<SearchOutlined />}>
             Tìm việc
           </Button>

@@ -94,6 +94,11 @@ export const ClientJobsListPage: React.FC = () => {
     const next = new URLSearchParams(searchParams);
     if (v === 'ALL') next.delete('status');
     else next.set('status', v);
+    // Khi người dùng chủ động chọn tab, xóa các query param deep-link để không bị kẹt tab
+    next.delete('highlight');
+    next.delete('jobId');
+    next.delete('openDetail');
+    next.delete('openPayment');
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
   const [detailJobId, setDetailJobId] = useState<string>();
@@ -109,6 +114,7 @@ export const ClientJobsListPage: React.FC = () => {
   const openDetailParam = searchParams.get('openDetail') === 'true';
   const openPaymentParam = searchParams.get('openPayment') === 'true';
   const [highlightedJobId, setHighlightedJobId] = useState<string | null>(null);
+  const handledDeepLinkRef = React.useRef<string | null>(null);
 
   // One request for everything, filtered locally so each tab can show its count.
   const { data: jobs = [], isLoading, isError, error, refetch, isFetching } = useMyJobs();
@@ -127,6 +133,14 @@ export const ClientJobsListPage: React.FC = () => {
   React.useEffect(() => {
     if (jobs.length === 0) return;
 
+    const deepLinkKey = `${highlightParam || ''}_${openPaymentParam}_${openDetailParam}`;
+    if (!highlightParam && !openPaymentParam && !openDetailParam) {
+      return;
+    }
+    if (handledDeepLinkRef.current === deepLinkKey) {
+      return;
+    }
+
     let targetJob: typeof jobs[0] | undefined;
 
     if (highlightParam) {
@@ -141,11 +155,15 @@ export const ClientJobsListPage: React.FC = () => {
     }
 
     if (targetJob) {
+      handledDeepLinkRef.current = deepLinkKey;
       setHighlightedJobId(targetJob.jobId);
 
-      // Nếu bộ lọc hiện tại đang ẩn bài này, tự động chuyển về trạng thái của bài hoặc ALL
-      if (filter !== 'ALL' && targetJob.status !== filter) {
-        setFilter(targetJob.status);
+      // Nếu bộ lọc hiện tại đang ẩn bài này, tự động chuyển về trạng thái của bài
+      const currentStatus = searchParams.get('status');
+      if (currentStatus !== targetJob.status) {
+        const next = new URLSearchParams(searchParams);
+        next.set('status', targetJob.status);
+        setSearchParams(next, { replace: true });
       }
 
       if (openDetailParam) {
@@ -166,7 +184,7 @@ export const ClientJobsListPage: React.FC = () => {
 
       return () => clearTimeout(timer);
     }
-  }, [highlightParam, openPaymentParam, openDetailParam, jobs, filter, setFilter]);
+  }, [highlightParam, openPaymentParam, openDetailParam, jobs, searchParams, setSearchParams]);
 
   const expiredJobs = useMemo(
     () =>

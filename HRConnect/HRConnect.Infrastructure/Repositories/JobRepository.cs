@@ -443,8 +443,9 @@ public class JobRepository : IJobRepository
 
     private static readonly Dictionary<string, string[]> LocationAliases = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["Da Nang"] = new[] { "Đà Nẵng" },
-        ["Đà Nẵng"] = new[] { "Da Nang" },
+        ["Da Nang"] = new[] { "Đà Nẵng", "DN" },
+        ["Đà Nẵng"] = new[] { "Da Nang", "DN" },
+        ["DN"] = new[] { "Đà Nẵng", "Da Nang" },
         ["Ha Noi"] = new[] { "Hà Nội", "HN" },
         ["Hà Nội"] = new[] { "Ha Noi", "HN" },
         ["HN"] = new[] { "Hà Nội", "Ha Noi" },

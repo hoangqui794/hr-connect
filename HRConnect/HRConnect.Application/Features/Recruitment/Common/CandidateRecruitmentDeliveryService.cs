@@ -419,8 +419,10 @@ public sealed class CandidateRecruitmentDeliveryService : ICandidateRecruitmentD
         var (title, message) = deliveryEvent switch
         {
             OfferCandidateDeliveryEvent.Sent => (
-                "Bạn nhận được lời mời nhận việc (Offer)",
-                $"Bạn vừa nhận được lời mời nhận việc cho vị trí {jobTitle}{companyPrefix}."),
+                "Chúc mừng! Bạn đã nhận được thư mời nhận việc (Offer)",
+                string.IsNullOrWhiteSpace(companyName)
+                    ? $"Chúc mừng bạn đã nhận được thư mời nhận việc cho vị trí \"{jobTitle}\"!"
+                    : $"Chúc mừng bạn đã nhận được thư mời nhận việc từ {companyName} cho vị trí \"{jobTitle}\"!"),
             OfferCandidateDeliveryEvent.Withdrawn => (
                 "Lời mời nhận việc đã bị thu hồi",
                 $"Lời mời nhận việc{companyPrefix} cho vị trí {jobTitle} đã bị thu hồi."),

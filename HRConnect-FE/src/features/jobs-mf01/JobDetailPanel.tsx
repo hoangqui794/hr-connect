@@ -17,6 +17,7 @@ import {
   CreditCardOutlined,
   BookOutlined,
   DollarCircleOutlined,
+  DownOutlined,
   EnvironmentOutlined,
   GlobalOutlined,
   InfoCircleOutlined,
@@ -25,6 +26,7 @@ import {
   ShopOutlined,
   TeamOutlined,
   ThunderboltOutlined,
+  UpOutlined,
 } from '@ant-design/icons';
 import type { Job, JobRequirement, PublicJobCompany } from '@/types/api/jobs';
 import { useAuthStore, UserRole } from '@/stores/authStore';
@@ -177,6 +179,50 @@ const safeWebsiteUrl = (website: string | null) => {
   }
 };
 
+const CompanyDescriptionView: React.FC<{ description?: string | null }> = ({ description }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const text = description?.trim() || '';
+
+  if (!text) {
+    return (
+      <p className="m-0 text-sm leading-6 text-slate-500 italic">
+        Doanh nghiệp chưa cập nhật phần giới thiệu.
+      </p>
+    );
+  }
+
+  const isLong = text.length > 180 || text.includes('\n');
+
+  if (!isLong) {
+    return (
+      <p className="m-0 text-sm leading-6 text-slate-600 whitespace-pre-line">
+        {text}
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className={`relative transition-all duration-200 ${!isExpanded ? 'line-clamp-3 overflow-hidden' : ''}`}>
+        <p className="m-0 text-sm leading-6 text-slate-600 whitespace-pre-line">
+          {text}
+        </p>
+        {!isExpanded && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-white/90 to-transparent" />
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors focus:outline-none"
+      >
+        <span>{isExpanded ? 'Thu gọn' : 'Xem thêm giới thiệu'}</span>
+        {isExpanded ? <UpOutlined className="text-2xs" /> : <DownOutlined className="text-2xs" />}
+      </button>
+    </div>
+  );
+};
+
 export const JobCompanyCard: React.FC<{
   company: PublicJobCompany;
   companyId?: string;
@@ -299,9 +345,7 @@ export const JobCompanyCard: React.FC<{
         )}
 
         <div className="border-0 border-t border-solid border-blue-100 pt-4">
-          <p className="m-0 text-sm leading-6 text-slate-600">
-            {company.description?.trim() || 'Doanh nghiệp chưa cập nhật phần giới thiệu.'}
-          </p>
+          <CompanyDescriptionView description={company.description} />
         </div>
       </div>
     </section>
@@ -721,7 +765,10 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           ...(!isApplicant && job.postingPackageName
             ? [{ label: 'Gói đăng tin', value: formatPostingPackage(job.postingPackageCode, job.postingPackageName) }]
             : []),
-          ...(!isApplicant && job.maxApplications ? [{ label: 'Hạn mức hồ sơ', value: `Tối đa ${job.maxApplications} hồ sơ hợp lệ` }] : []),
+          ...(job.maxApplications ? [{ label: 'Hạn mức tiếp nhận', value: `Tối đa ${job.maxApplications} hồ sơ` }] : []),
+          ...(job.sourcingTarget && job.serviceTypeCode === 'CV_SOURCING'
+            ? [{ label: 'Hạn mức tìm kiếm', value: `${job.sourcingTarget} hồ sơ` }]
+            : []),
           ...(job.expiresAt
             ? [{
               label: isApplicant ? 'Hạn nộp hồ sơ' : 'Hạn hiển thị',

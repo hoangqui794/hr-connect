@@ -178,7 +178,7 @@ export const JobDetailModal: React.FC<JobDetailModalProps> = ({
               </div>
               <div className="text-sm sm:text-base font-bold text-emerald-700 flex items-center gap-1 mt-0.5">
                 <DollarOutlined className="text-xs" />
-                {formatSalaryVND(job.salaryMin, job.salaryMax)}
+                {formatSalaryVND(job.salaryMin, job.salaryMax, job.salaryNegotiable)}
               </div>
             </div>
 
@@ -366,7 +366,7 @@ export const JobDetailModal: React.FC<JobDetailModalProps> = ({
                     </h5>
                     <ul className="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-slate-600">
                       <li>
-                        <strong>Thu nhập:</strong> {formatSalaryVND(job.salaryMin, job.salaryMax)} / tháng + Lương tháng 13 + Thưởng KPI hiệu suất dự án hàng quý.
+                        <strong>Thu nhập:</strong> {formatSalaryVND(job.salaryMin, job.salaryMax, job.salaryNegotiable)} / tháng + Lương tháng 13 + Thưởng KPI hiệu suất dự án hàng quý.
                       </li>
                       <li>
                         <strong>Bảo hiểm:</strong> Đóng BHXH, BHYT full lương; Gói bảo hiểm sức khỏe quốc tế cao cấp khám chữa bệnh tại các bệnh viện tư nhân hàng đầu.
@@ -430,7 +430,7 @@ export const JobDetailModal: React.FC<JobDetailModalProps> = ({
           <div className="hidden sm:block">
             <div className="text-2xs text-slate-500 uppercase font-semibold">Thu nhập dự kiến</div>
             <div className="text-base font-extrabold text-emerald-600">
-              {formatSalaryVND(job.salaryMin, job.salaryMax)}
+              {formatSalaryVND(job.salaryMin, job.salaryMax, job.salaryNegotiable)}
             </div>
           </div>
 

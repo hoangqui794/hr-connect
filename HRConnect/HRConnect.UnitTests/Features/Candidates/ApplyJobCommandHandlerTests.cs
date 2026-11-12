@@ -5,6 +5,7 @@ using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Candidates.Commands.ApplyJob;
 using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -584,6 +585,83 @@ public class ApplyJobCommandHandlerTests
         // Assert
         await act.Should().ThrowAsync<BadRequestException>()
             .WithMessage("*đã nhận đủ số lượng hồ sơ tối đa*");
+    }
+
+    [Fact]
+    public async Task Handle_WhenExistingApplicationIsWithdrawn_AllowsReapplicationAndReactivatesApplication()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var candidateId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var cvId = Guid.NewGuid();
+        var previousAppId = Guid.NewGuid();
+
+        var candidate = new Candidate
+        {
+            CandidateId = candidateId,
+            UserId = userId,
+            Status = "ACTIVE",
+            FullName = "Nguyen Van A",
+            Phone = "0912345678",
+            NormalizedPhone = "+84912345678"
+        };
+        var job = new Job
+        {
+            JobId = jobId,
+            CompanyId = Guid.NewGuid(),
+            Status = JobStatuses.Active,
+            ServiceTypeId = Guid.NewGuid(),
+            Company = new Company { CompanyId = Guid.NewGuid(), CompanyName = "Acme Corp" }
+        };
+        var existingWithdrawnApp = new HRConnect.Domain.Entities.Application
+        {
+            ApplicationId = previousAppId,
+            CandidateId = candidateId,
+            JobId = jobId,
+            Status = ApplicationStates.Withdrawn,
+            AppliedAt = DateTime.UtcNow.AddDays(-5),
+            UpdatedAt = DateTime.UtcNow.AddDays(-2)
+        };
+        var candidateCv = new CandidateCv
+        {
+            CvId = cvId,
+            CandidateId = candidateId,
+            Status = "ACTIVE",
+            SourceFileUrl = "https://r2.example.com/cv.pdf"
+        };
+
+        _candidateRepositoryMock.Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidate);
+        _jobRepositoryMock.Setup(r => r.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(job);
+        _jobRepositoryMock.Setup(r => r.CanAnyRoleSubmitJobAsync(job.ServiceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _candidateCvRepositoryMock.Setup(r => r.GetByIdAsync(cvId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidateCv);
+        _applicationRepositoryMock.Setup(r => r.GetByCandidateAndJobAsync(candidateId, jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingWithdrawnApp);
+        _submissionRepositoryMock.Setup(s => s.GetAcceptedSubmissionAsync(candidateId, jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Submission?)null);
+
+        var command = new ApplyJobCommand
+        {
+            JobId = jobId,
+            UserId = userId,
+            CvId = cvId,
+            RoleCodes = new[] { "CANDIDATE" }
+        };
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Data.Should().NotBeNull();
+        result.Data!.ApplicationId.Should().Be(previousAppId);
+        existingWithdrawnApp.Status.Should().Be(ApplicationStates.Submitted);
+        _applicationRepositoryMock.Verify(r => r.Update(existingWithdrawnApp), Times.Once);
+        _scoringTriggerMock.Verify(t => t.TriggerScoringAsync(It.IsAny<Mf03TriggerPayload>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     private static AppUser CreateActiveCandidateUser(

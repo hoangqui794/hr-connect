@@ -239,9 +239,12 @@ export const CandidateOfferPage: React.FC = () => {
             </label>
           </fieldset>
           {!declining && impact.isError && (
-            <p role="alert" className="m-0 mt-3 rounded-md border border-solid border-[#FECACA] bg-[#FEF2F2] p-3 text-[13px] text-[#991B1B]">
-              Chưa kiểm tra được các thư mời khác của bạn nên chưa thể chấp nhận.{' '}
-              <button type="button" onClick={() => impact.refetch()} className={`${FONT} cursor-pointer border-0 bg-transparent p-0 text-[13px] font-semibold ${LINK}`}>Thử lại</button>
+            <p role="alert" className="m-0 mt-3 rounded-md border border-solid border-[#FECACA] bg-[#FEF2F2] p-3 text-[13px] text-[#991B1B] flex items-center justify-between gap-3">
+              <span>Chưa kiểm tra được các thư mời khác của bạn nên chưa thể chấp nhận.</span>
+              <span className="flex items-center gap-3 shrink-0">
+                <button type="button" onClick={() => impact.refetch()} className={`${FONT} cursor-pointer border-0 bg-transparent p-0 text-[13px] font-semibold ${LINK}`}>Thử lại</button>
+                <Link to="/contact" className="text-[13px] font-semibold text-[#991B1B] underline">Liên hệ hỗ trợ</Link>
+              </span>
             </p>
           )}
           {!declining && conflict?.activeFullTimePlacement && (
@@ -286,6 +289,14 @@ export const CandidateOfferPage: React.FC = () => {
                 Chấp nhận và rút các thư mời toàn thời gian đang chờ
               </label>
             </fieldset>
+          )}
+          {respond.isError && (
+            <div role="alert" className="m-0 mt-3 rounded-md border border-solid border-[#FECACA] bg-[#FEF2F2] p-3 text-[13px] text-[#991B1B] flex items-center justify-between gap-3">
+              <span>{getApiErrorMessage(respond.error, 'Không thể gửi phản hồi cho thư mời.')}</span>
+              <Link to="/contact" className="shrink-0 text-xs font-semibold text-[#991B1B] underline">
+                Liên hệ hỗ trợ
+              </Link>
+            </div>
           )}
           <div className="mt-[18px] flex justify-end">
             <button type="button" disabled={respond.isPending || acceptBlocked} onClick={submit} className={`${FONT} h-11 cursor-pointer rounded-xl border-0 bg-gradient-to-r from-[#0284C7] to-[#2563EB] px-[22px] text-[14px] font-bold text-white transition-all hover:from-[#0369A1] hover:to-[#1D4ED8] shadow-md shadow-sky-500/25 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-none disabled:bg-[#9CA3AF] disabled:shadow-none`}>

@@ -173,7 +173,7 @@
   --cv-font-family: 'Be Vietnam Pro', 'Segoe UI', sans-serif;
   font-family: var(--cv-font-family) !important;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .cv-paper *,

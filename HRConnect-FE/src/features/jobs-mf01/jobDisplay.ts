@@ -216,10 +216,13 @@ export const formatSalary = (job?: Partial<Pick<Job, 'salaryMin' | 'salaryMax' |
   if (!job) return 'Chưa công bố';
   const curr = job.currencyCode || 'VND';
   const { salaryMin: min, salaryMax: max } = job;
-  if (min != null && max != null) return `${formatAmount(min, curr)} – ${formatAmount(max, curr)}`;
-  if (min != null) return `Từ ${formatAmount(min, curr)}`;
-  if (max != null) return `Đến ${formatAmount(max, curr)}`;
-  return job.salaryNegotiable ? 'Thỏa thuận' : 'Chưa công bố';
+  let range = '';
+  if (min != null && max != null) range = `${formatAmount(min, curr)} – ${formatAmount(max, curr)}`;
+  else if (min != null) range = `Từ ${formatAmount(min, curr)}`;
+  else if (max != null) range = `Đến ${formatAmount(max, curr)}`;
+  else return job.salaryNegotiable ? 'Thương lượng' : 'Chưa công bố';
+
+  return job.salaryNegotiable ? `${range} (Thương lượng)` : range;
 };
 
 export const formatExperience = (min: number | null, max: number | null): string => {

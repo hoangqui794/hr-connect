@@ -235,14 +235,14 @@ public static class HrConnectEmailTemplates
             ? $" Vui lòng phản hồi trước ngày <strong>{value:dd/MM/yyyy}</strong>."
             : string.Empty;
         return new HrConnectEmail(
-            SubjectText($"Bạn nhận được Offer cho vị trí {payload.JobTitle}"),
+            SubjectText($"Chúc mừng! Bạn nhận được thư mời nhận việc cho vị trí {payload.JobTitle}"),
             Render(
-                "Bạn có một lời mời nhận việc",
+                "Chúc mừng bạn nhận được thư mời nhận việc!",
                 Greeting(payload.CandidateName) +
-                $"<p style=\"margin:0 0 16px\">{company} đã gửi lời mời nhận việc cho vị trí <strong>{E(payload.JobTitle)}</strong>.{expiry}</p>" +
+                $"<p style=\"margin:0 0 16px\">Chúc mừng bạn! {company} đã gửi thư mời nhận việc cho vị trí <strong>{E(payload.JobTitle)}</strong>.{expiry}</p>" +
                 $"<p style=\"margin:0 0 18px\">{accountInstruction} Vì an toàn thông tin, email này không chứa chi tiết lương hoặc tài liệu Offer.</p>" +
                 Button(actionLabel, payload.PortalUrl),
-                $"Bạn có Offer mới cho vị trí {payload.JobTitle}."));
+                $"Chúc mừng bạn đã nhận được thư mời nhận việc cho vị trí {payload.JobTitle}!"));
     }
 
     public static HrConnectEmail OfferWithdrawn(RecruitmentCandidateEmailPayload payload)

@@ -167,7 +167,21 @@ export const ApplyModal: React.FC<{ job: Job; open: boolean; onClose: () => void
               }}
               className="flex flex-col gap-[18px] overflow-auto px-[22px] py-[18px]"
             >
-              {error && <Alert type="error" showIcon message={error} />}
+              {error && (
+                <Alert
+                  type="error"
+                  showIcon
+                  message={error}
+                  action={
+                    <Link
+                      to="/contact"
+                      className="inline-flex items-center text-xs font-semibold text-rose-700 hover:text-rose-800 hover:underline"
+                    >
+                      Liên hệ hỗ trợ
+                    </Link>
+                  }
+                />
+              )}
               {retryRemaining > 0 && <Alert type="warning" showIcon message={`Bạn có thể thử lại sau ${retryRemaining} giây.`} />}
               {cvs.isError && <Alert type="error" showIcon message={getApiError(cvs.error, 'Không tải được kho CV.').message} />}
 

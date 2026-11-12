@@ -156,10 +156,10 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
                 NotificationId = Guid.NewGuid(),
                 UserId = candidateUserId,
                 NotificationType = "OFFER",
-                Title = "Bạn nhận được lời mời nhận việc (Offer)",
+                Title = "Chúc mừng! Bạn đã nhận được thư mời nhận việc (Offer)",
                 Message = string.IsNullOrWhiteSpace(companyName)
-                    ? $"Bạn vừa nhận được lời mời nhận việc cho vị trí {jobTitle}."
-                    : $"Bạn vừa nhận được lời mời nhận việc cho vị trí {jobTitle} từ {companyName}.",
+                    ? $"Chúc mừng bạn đã nhận được thư mời nhận việc cho vị trí \"{jobTitle}\"!"
+                    : $"Chúc mừng bạn đã nhận được thư mời nhận việc từ {companyName} cho vị trí \"{jobTitle}\"!",
                 RelatedEntityType = "OFFER",
                 RelatedEntityId = offer.OfferId,
                 Metadata = System.Text.Json.JsonSerializer.Serialize(new

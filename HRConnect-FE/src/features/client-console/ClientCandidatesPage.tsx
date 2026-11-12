@@ -369,66 +369,69 @@ export const ClientCandidatesPage: React.FC = () => {
       <Surface className="rounded-2xl border border-solid border-slate-200/90 shadow-[0_1px_3px_rgba(15,23,42,0.03)] bg-white overflow-hidden">
         <div className="space-y-4 px-5 pb-4 pt-5">
           {/* ── 2. Unified Filter Toolbar ── */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <Select
-              size="large"
-              showSearch
-              allowClear
-              className="w-full sm:w-[300px]"
-              placeholder="Tất cả tin tuyển dụng"
-              aria-label="Chọn tin tuyển dụng"
-              loading={jobs.isLoading}
-              value={jobId}
-              onChange={(v) => setParam('job', v)}
-              optionFilterProp="label"
-              options={jobOptions.map((j) => ({
-                value: j.jobId,
-                label: `${j.title || 'Vị trí chưa đặt tên'}${j.status !== 'ACTIVE' ? ' (đã dừng)' : ''}`,
-              }))}
-            />
-            <Select
-              size="large"
-              className="w-full sm:w-[190px]"
-              aria-label="Lọc theo dịch vụ"
-              value={service ?? 'all'}
-              onChange={(v) =>
-                setParams({
-                  service: v === 'all' ? undefined : v,
-                  job: selectedJob && v !== 'all' && selectedJob.serviceTypeCode !== v ? undefined : jobId,
-                })
-              }
-              options={SERVICES}
-            />
-            <div key={q} className="min-w-[220px] flex-1">
-              <Input
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-1 flex-wrap items-center gap-2.5">
+              <Select
                 size="large"
+                showSearch
                 allowClear
-                defaultValue={q}
-                prefix={<SearchOutlined className="text-slate-400" />}
-                placeholder="Tìm tên hoặc email ứng viên"
-                onPressEnter={(e) => setParam('q', (e.target as HTMLInputElement).value.trim() || undefined)}
-                onChange={(e) => !e.target.value && q && setParam('q', undefined)}
-                aria-label="Tìm theo tên ứng viên"
-                className="!rounded-xl"
+                className="w-full sm:w-[280px]"
+                placeholder="Tất cả tin tuyển dụng"
+                aria-label="Chọn tin tuyển dụng"
+                loading={jobs.isLoading}
+                value={jobId}
+                onChange={(v) => setParam('job', v)}
+                optionFilterProp="label"
+                options={jobOptions.map((j) => ({
+                  value: j.jobId,
+                  label: `${j.title || 'Vị trí chưa đặt tên'}${j.status !== 'ACTIVE' ? ' (đã dừng)' : ''}`,
+                }))}
               />
+              <Select
+                size="large"
+                className="w-full sm:w-[180px]"
+                aria-label="Lọc theo dịch vụ"
+                value={service ?? 'all'}
+                onChange={(v) =>
+                  setParams({
+                    service: v === 'all' ? undefined : v,
+                    job: selectedJob && v !== 'all' && selectedJob.serviceTypeCode !== v ? undefined : jobId,
+                  })
+                }
+                options={SERVICES}
+              />
+              <div key={q} className="w-full sm:w-[240px] sm:flex-1">
+                <Input
+                  size="large"
+                  allowClear
+                  defaultValue={q}
+                  prefix={<SearchOutlined className="text-slate-400" />}
+                  placeholder="Tìm tên hoặc email ứng viên"
+                  onPressEnter={(e) => setParam('q', (e.target as HTMLInputElement).value.trim() || undefined)}
+                  onChange={(e) => !e.target.value && q && setParam('q', undefined)}
+                  aria-label="Tìm theo tên ứng viên"
+                  className="!rounded-xl w-full"
+                />
+              </div>
+
+              {filtered && (
+                <Button
+                  icon={<ClearOutlined />}
+                  onClick={handleResetFilters}
+                  className="!h-10 !rounded-xl border-dashed border-slate-300 text-slate-600 hover:!border-rose-400 hover:!text-rose-600 font-medium"
+                >
+                  Xóa bộ lọc
+                </Button>
+              )}
             </div>
 
-            {filtered && (
-              <Button
-                icon={<ClearOutlined />}
-                onClick={handleResetFilters}
-                className="!h-10 !rounded-xl border-dashed border-slate-300 text-slate-600 hover:!border-rose-400 hover:!text-rose-600 font-medium"
-              >
-                Xóa bộ lọc
-              </Button>
-            )}
-
             {/* View Mode Switch */}
-            <div
-              role="radiogroup"
-              aria-label="Kiểu hiển thị"
-              className="inline-flex h-10 items-center rounded-xl bg-slate-100/90 p-1 border border-slate-200/60"
-            >
+            <div className="flex items-center justify-end shrink-0">
+              <div
+                role="radiogroup"
+                aria-label="Kiểu hiển thị"
+                className="inline-flex h-10 items-center rounded-xl bg-slate-100/90 p-1 border border-slate-200/60"
+              >
               {(
                 [
                   ['list', <UnorderedListOutlined key="l" />, 'Danh sách'],
@@ -453,6 +456,7 @@ export const ClientCandidatesPage: React.FC = () => {
               ))}
             </div>
           </div>
+        </div>
 
           {selectedJob?.serviceTypeCode === 'CV_SOURCING' && (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-solid border-teal-200 bg-teal-50/70 p-3.5">

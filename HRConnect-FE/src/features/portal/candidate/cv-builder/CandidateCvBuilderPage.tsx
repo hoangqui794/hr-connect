@@ -17,6 +17,7 @@ import {
   BUILTIN_CV_TEMPLATES,
   type BuiltInCvTemplate,
 } from './CvTemplateGalleryView';
+import { STATIC_CV_TEMPLATES } from './constants/templates';
 import {
   cvBuilderApi,
   validateStructuredCvContent,
@@ -164,11 +165,15 @@ export const CandidateCvBuilderPage: React.FC = () => {
   );
 
   // 1. Fetch available templates
-  const { data: templates = [], isLoading: isLoadingTemplates } = useQuery({
+  const { data: remoteTemplates = [], isLoading: isLoadingTemplates } = useQuery({
     queryKey: ['cv-templates'],
     queryFn: () => cvBuilderApi.getTemplates(),
     staleTime: 5 * 60 * 1000,
   });
+
+  const templates = useMemo(() => {
+    return remoteTemplates.length > 0 ? remoteTemplates : STATIC_CV_TEMPLATES;
+  }, [remoteTemplates]);
 
   // 2. Fetch existing CV if in edit mode
   const {
@@ -696,7 +701,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
       )}
 
       {/* 2. MAIN WORKSPACE: LEFT SECTION CARD + LIVE A4 PAPER */}
-      <div className="flex-1 w-full">
+      <div className="flex-1 w-full overflow-y-auto">
         <div className="mx-auto flex w-full max-w-[1440px] flex-col items-start gap-6 px-4 py-5 pb-24 sm:px-6 lg:flex-row lg:gap-10">
           {/* Left Floating Card: "Các mục trong CV" */}
           <CvSidebarTools

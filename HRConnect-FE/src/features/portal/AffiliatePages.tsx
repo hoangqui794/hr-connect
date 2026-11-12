@@ -48,7 +48,7 @@ import {
   SafetyCertificateOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { UploadCloud } from 'lucide-react';
+import { UploadCloud, Building2, MapPin, DollarSign, ExternalLink, Briefcase } from 'lucide-react';
 import dayjs from 'dayjs';
 import relativeTimePlugin from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
@@ -62,6 +62,7 @@ import type { AffiliateAttribution, AffiliateSubmission } from '@/types/api/mf02
 import { Initials, StatusDot, Surface } from '@/features/admin-console/ui';
 import { ATTRIBUTION_STATUS, MAX_CV_MB, cvFileError, fileSize, submissionStatus } from './mf02Labels';
 import { useOpenSignedUrl } from './CandidatePages';
+import { salaryText, jobHref } from '@/features/landing/components/SiteParts';
 import {
   AffiliatePageHeader,
   AffiliateSectionHeading,
@@ -508,7 +509,12 @@ export const AffiliateSubmitPage: React.FC = () => {
                   {visibleJobs.map((job) => (
                     <Radio key={job.jobId} value={job.jobId} className="affiliate-job-option">
                       <span className="affiliate-job-option__copy">
-                        <strong>{job.title}</strong>
+                        <strong className="flex items-center gap-2">
+                          <span>{job.title}</span>
+                          <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            {salaryText(job)}
+                          </span>
+                        </strong>
                         <small>{job.companyName || 'Doanh nghiệp tuyển dụng'} · {job.location || 'Toàn quốc'}</small>
                       </span>
                       <span className="affiliate-job-option__state">{serviceLabel(job.serviceTypeCode)}</span>
@@ -649,18 +655,63 @@ export const AffiliateSubmitPage: React.FC = () => {
 
           <aside className="min-w-0 space-y-4 xl:sticky xl:top-24 xl:self-start">
             <Surface className="p-5">
-              <div className="text-sm font-bold text-gray-900">Giới thiệu vào</div>
+              <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Vị trí đã chọn</span>
+                {selectedJob && (
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                    selectedJob.serviceTypeCode === 'HEADHUNT_COD'
+                      ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                      : selectedJob.serviceTypeCode === 'CV_SOURCING'
+                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                      : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  }`}>
+                    {serviceLabel(selectedJob.serviceTypeCode)}
+                  </span>
+                )}
+              </div>
+
               {selectedJob ? (
-                <div className="mt-2">
-                  <div className="font-semibold text-slate-900">{selectedJob.title}</div>
-                  <div className="text-[13px] text-slate-600">{selectedJob.companyName}</div>
-                  <div className="text-[13px] text-slate-600">{selectedJob.location}</div>
+                <div className="mt-3 space-y-2.5">
+                  <h3 className="m-0 text-base font-bold text-slate-900 leading-snug">
+                    {selectedJob.title}
+                  </h3>
+                  <div className="space-y-1.5 text-[13px] text-slate-600">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 shrink-0 text-slate-400" />
+                      <span className="truncate font-medium text-slate-800">{selectedJob.companyName || 'Doanh nghiệp tuyển dụng'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
+                      <span className="truncate text-slate-600">{selectedJob.location || 'Toàn quốc'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 shrink-0 text-emerald-600" />
+                      <span className="font-semibold text-emerald-700">{salaryText(selectedJob)}</span>
+                    </div>
+                  </div>
+                  <div className="pt-2">
+                    <a
+                      href={jobHref(selectedJob.jobId)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-600 hover:text-sky-700 hover:underline"
+                    >
+                      <span>Xem tin tuyển dụng chi tiết</span>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  </div>
                 </div>
               ) : (
-                <p className="m-0 mt-2 text-sm text-slate-500">Chưa chọn vị trí tuyển dụng.</p>
+                <div className="py-6 text-center text-sm text-slate-400">
+                  <Briefcase className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+                  Chưa chọn vị trí tuyển dụng. Vui lòng chọn ở danh sách bên trái.
+                </div>
               )}
-              <div className="mt-4 text-sm font-bold text-gray-900">Sau khi gửi</div>
-              <ol className="m-0 mt-1.5 space-y-1.5 pl-4 text-[13px] leading-relaxed text-gray-700">
+
+              <div className="mt-5 border-t border-slate-100 pt-4 text-xs font-bold uppercase tracking-wider text-slate-500">
+                Quy trình sau khi gửi
+              </div>
+              <ol className="m-0 mt-2 space-y-1.5 pl-4 text-[13px] leading-relaxed text-slate-600">
                 <li>Ứng viên nhận email và tự đồng ý cho bạn gửi hồ sơ.</li>
                 <li>Đồng ý xong, hồ sơ được AI chấm điểm và chuyển cho HR.</li>
                 <li>Bạn được ghi nhận là nguồn nếu đây là lượt hợp lệ đầu tiên.</li>
@@ -668,7 +719,16 @@ export const AffiliateSubmitPage: React.FC = () => {
               </ol>
             </Surface>
             {selectedJob && <CommissionEstimateCard jobId={selectedJob.jobId} />}
-            <Button type="primary" size="large" block htmlType="submit" icon={<SendOutlined />} loading={submit.isPending} className="affiliate-cta">
+            <Button
+              type="primary"
+              size="large"
+              block
+              htmlType="submit"
+              icon={<SendOutlined />}
+              loading={submit.isPending}
+              disabled={!selectedJob}
+              className="affiliate-cta"
+            >
               Gửi giới thiệu
             </Button>
           </aside>
