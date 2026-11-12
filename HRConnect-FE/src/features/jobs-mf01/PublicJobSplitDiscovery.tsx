@@ -137,7 +137,7 @@ const JobRow: React.FC<{ job: Job; fit?: number; canSave: boolean; saved: boolea
         </div>
         <div className="mt-0.5 text-[14px] text-[#475569]">{job.companyName}</div>
         <div className="mt-2.5 flex flex-wrap gap-2 text-[13px]">
-          <span className="rounded-lg bg-[#FFF7ED] px-2.5 py-1 font-bold text-[#9A3412]">{salaryText(job)}</span>
+          <span className="rounded-lg border border-solid border-emerald-200/80 bg-emerald-50 px-2.5 py-1 font-bold text-emerald-700">{salaryText(job)}</span>
           {job.location && <span title={job.location} className="max-w-[260px] truncate rounded-lg bg-[#F1F5F9] px-2.5 py-1 text-[#334155]">{job.location}</span>}
           <span className="rounded-lg bg-[#F1F5F9] px-2.5 py-1 text-[#334155]">{experienceText(job.minExperienceYears, job.maxExperienceYears)}</span>
           {job.employmentType && <span className="rounded-lg bg-[#F1F5F9] px-2.5 py-1 text-[#334155]">{EMPLOYMENT_TYPE_LABEL[job.employmentType]}</span>}

@@ -55,6 +55,9 @@ export const usePublicJobSearch = (params: JobSearchParams, enabled = true) =>
     queryKey: jobQueryKeys.publicSearch(params),
     queryFn: () => jobsApi.searchPublic(params),
     enabled,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
     placeholderData: (previous) => previous,
   });
 

@@ -53,13 +53,12 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { to: '/admin/disputes', label: 'Tranh chấp & Khiếu nại', icon: <SolutionOutlined /> },
       { to: '/admin/users', label: 'Người dùng', icon: <TeamOutlined /> },
       { to: '/admin/contact-requests', label: 'Yêu cầu tư vấn', icon: <CustomerServiceOutlined /> },
-      { to: '/admin/user-authorization', label: 'Quyền truy cập người dùng', icon: <UserSwitchOutlined /> },
     ],
   },
   {
     group: 'Cấu hình',
     items: [
-      { to: '/admin/roles-permissions', label: 'Vai trò & quyền truy cập', icon: <KeyOutlined /> },
+      { to: '/admin/roles-permissions', label: 'Vai trò & Phân quyền', icon: <KeyOutlined /> },
       { to: '/admin/service-types', label: 'Loại dịch vụ', icon: <AppstoreOutlined /> },
       { to: '/admin/commission-rules', label: 'Quy tắc hoa hồng', icon: <DollarOutlined /> },
       { to: '/admin/settings', label: 'Cài đặt hệ thống', icon: <SettingOutlined /> },
@@ -126,7 +125,7 @@ export const AdminLayout: React.FC = () => {
         <div className="fixed inset-0 z-[25] bg-slate-900/40" onClick={() => setMenuOpen(false)} aria-hidden />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 flex flex-col bg-[#0F172A] transition-[width,transform] duration-200${compact && menuOpen ? ' shadow-2xl' : ''}`}
+        className={`fixed inset-y-0 left-0 z-30 flex flex-col bg-white border-0 border-r border-solid border-slate-200/90 transition-[width,transform] duration-200${compact && menuOpen ? ' shadow-2xl' : ' shadow-[1px_0_3px_0_rgba(0,0,0,0.02)]'}`}
         style={{
           width: compact ? 272 : width,
           transform: compact && !menuOpen ? 'translateX(-100%)' : undefined,
@@ -134,21 +133,23 @@ export const AdminLayout: React.FC = () => {
         }}
         aria-label="Điều hướng quản trị"
       >
-        <div className="flex h-16 items-center gap-3 px-5">
-          <BrandMark size={36} className="shrink-0" />
+        <div className="flex h-16 items-center gap-2.5 px-4 border-0 border-b border-solid border-slate-100">
+          <BrandMark size={34} className="shrink-0" />
           {!collapsed && (
-            <div className="min-w-0 leading-tight">
-              <div className="truncate text-[15px] font-bold text-white">HR Connect</div>
-              <div className="text-[11px] font-medium tracking-wide text-slate-400">Bảng quản trị</div>
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="truncate text-[16px] font-black tracking-tight text-slate-900">HR Connect</span>
+              <span className="rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-sky-700 border border-sky-200/80">
+                Quản trị
+              </span>
             </div>
           )}
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 pb-4">
           {navGroups.map((g) => (
-            <div key={g.group} className="mt-5 first:mt-2">
+            <div key={g.group} className="mt-5 first:mt-3">
               {!collapsed && (
-                <div className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{g.group}</div>
+                <div className="px-3 pb-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-600">{g.group}</div>
               )}
               <ul className="m-0 list-none space-y-0.5 p-0">
                 {g.items.map((item) => (
@@ -158,18 +159,16 @@ export const AdminLayout: React.FC = () => {
                         to={item.to}
                         className={({ isActive }) =>
                           [
-                            'group flex h-10 items-center gap-3 rounded-lg px-3 text-[13.5px] font-medium no-underline transition-colors duration-150',
-                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-blue-500',
+                            'relative flex h-11 items-center gap-3 rounded-lg px-3 text-sm no-underline transition-colors duration-150',
+                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-sky-500',
                             collapsed ? 'justify-center' : '',
                             isActive
-                              ? 'bg-slate-800 text-white font-medium rounded-lg border-l-2 border-blue-500'
-                              : item.muted
-                                ? 'text-slate-400 font-normal hover:bg-white/[0.04] hover:text-slate-200'
-                                : 'text-slate-300 hover:bg-white/[0.05] hover:text-white',
+                              ? 'bg-sky-50/90 font-bold text-[#0284C7] shadow-2xs before:absolute before:inset-y-2 before:left-0 before:w-[3.5px] before:rounded-r before:bg-[#0284C7] before:content-[""]'
+                              : 'font-medium text-slate-700 hover:bg-slate-100/80 hover:text-[#0284C7]',
                           ].join(' ')
                         }
                       >
-                        <span className="text-[16px]" aria-hidden>
+                        <span className="text-[17px] shrink-0" aria-hidden>
                           {item.icon}
                         </span>
                         {!collapsed && <span className="truncate">{item.label}</span>}
@@ -183,15 +182,15 @@ export const AdminLayout: React.FC = () => {
         </nav>
 
         {!compact && (
-        <button
-          type="button"
-          onClick={() => setCollapsed((c) => !c)}
-          className="flex h-11 cursor-pointer items-center gap-2 border-0 border-t border-solid border-white/10 bg-transparent px-5 text-slate-400 transition-colors hover:text-white"
-          aria-label={collapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
-        >
-          {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-          {!collapsed && <span className="text-xs">Thu gọn</span>}
-        </button>
+          <button
+            type="button"
+            onClick={() => setCollapsed((c) => !c)}
+            className="flex h-11 cursor-pointer items-center gap-2 border-0 border-t border-solid border-slate-100 bg-slate-50/60 px-5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+            aria-label={collapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
+          >
+            {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            {!collapsed && <span className="text-xs font-semibold">Thu gọn thanh bên</span>}
+          </button>
         )}
       </aside>
 

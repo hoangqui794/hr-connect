@@ -1,35 +1,29 @@
 /**
  * @file AffiliateProfilePage.tsx
- * @description Affiliate profile and payout bank account, side by side (mockup 03/11). Changing the
- * password stays in the account menu of the shell.
+ * @description Affiliate personal profile management.
+ * Payout bank settings have been dedicated to /affiliate/bank-account for optimal UX.
  */
 import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App as AntApp, Button, Form, Input, Select, Skeleton } from 'antd';
+import { Alert, App as AntApp, Button, Form, Input, Skeleton } from 'antd';
+import {
+  BankOutlined,
+  CheckCircleOutlined,
+  IdcardOutlined,
+  MailOutlined,
+  PhoneOutlined,
+  SafetyCertificateOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
 import {
   affiliateApi,
-  UpdateAffiliateBankAccountInput,
   UpdateAffiliateProfileInput,
 } from '@/services/api/mf02Api';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { AvatarUpload } from '@/components/common/AvatarUpload';
 
-const VIETNAM_BANKS = [
-  { label: 'Vietcombank (Ngoại thương Việt Nam)', value: 'Vietcombank' },
-  { label: 'Techcombank (Kỹ thương Việt Nam)', value: 'Techcombank' },
-  { label: 'MB Bank (Quân đội)', value: 'MB Bank' },
-  { label: 'ACB (Á Châu)', value: 'ACB' },
-  { label: 'VPBank (Việt Nam Thịnh Vượng)', value: 'VPBank' },
-  { label: 'BIDV (Đầu tư và Phát triển)', value: 'BIDV' },
-  { label: 'VietinBank (Công thương Việt Nam)', value: 'VietinBank' },
-  { label: 'TPBank (Tiên Phong)', value: 'TPBank' },
-  { label: 'VIB (Quốc tế)', value: 'VIB' },
-  { label: 'Sacombank (Sài Gòn Thương Tín)', value: 'Sacombank' },
-  { label: 'HDBank (Phát triển TP.HCM)', value: 'HDBank' },
-  { label: 'OCB (Phương Đông)', value: 'OCB' },
-  { label: 'MSB (Hàng Hải)', value: 'MSB' },
-  { label: 'SHB (Sài Gòn - Hà Nội)', value: 'SHB' },
-];
+const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 
 const STATUS: Record<string, { label: string; className: string }> = {
   ACTIVE: { label: 'Đã được duyệt', className: 'bg-emerald-50 text-emerald-800 border border-emerald-200/60' },
@@ -38,21 +32,23 @@ const STATUS: Record<string, { label: string; className: string }> = {
   SUSPENDED: { label: 'Bị khóa', className: 'bg-slate-100 text-slate-700 border border-slate-200/60' },
 };
 
-/** The red star goes after the label, as in the mockup. */
+/** Consistent required label styling */
 const requiredAfterLabel = (label: React.ReactNode, { required }: { required: boolean }) => (
   <>
     {label}
-    {required && <span className="ml-1 text-red-700">*</span>}
+    {required && <span className="ml-1 text-red-600">*</span>}
   </>
 );
 
 export const AffiliateProfilePage: React.FC = () => {
+  const navigate = useNavigate();
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
-  const profileQuery = useQuery({ queryKey: ['aff-profile-detail'], queryFn: () => affiliateApi.profile() });
-  const bankQuery = useQuery({ queryKey: ['aff-bank-account'], queryFn: () => affiliateApi.getBankAccount() });
+  const profileQuery = useQuery({
+    queryKey: ['aff-profile-detail'],
+    queryFn: () => affiliateApi.profile(),
+  });
   const [profileForm] = Form.useForm<UpdateAffiliateProfileInput>();
-  const [bankForm] = Form.useForm<UpdateAffiliateBankAccountInput>();
 
   useEffect(() => {
     const p = profileQuery.data;
@@ -67,122 +63,189 @@ export const AffiliateProfilePage: React.FC = () => {
     }
   }, [profileQuery.data, profileForm]);
 
-  useEffect(() => {
-    const b = bankQuery.data;
-    if (b) {
-      bankForm.setFieldsValue({
-        bankName: b.bankName ?? '',
-        bankAccountNumber: b.bankAccountNumber ?? '',
-        bankAccountHolder: b.bankAccountHolder ?? '',
-        bankBranch: b.bankBranch ?? '',
-      });
-    }
-  }, [bankQuery.data, bankForm]);
-
   const updateProfile = useMutation({
     mutationFn: (values: UpdateAffiliateProfileInput) => affiliateApi.updateProfile(values),
     onSuccess: (res) => {
-      message.success(res?.message || 'Đã lưu hồ sơ.');
+      message.success(res?.message || 'Đã lưu hồ sơ thành công.');
       queryClient.invalidateQueries({ queryKey: ['aff-profile-detail'] });
       queryClient.invalidateQueries({ queryKey: ['aff-profile'] });
     },
     onError: (err) => message.error(getApiErrorMessage(err, 'Không lưu được hồ sơ.')),
   });
 
-  const updateBank = useMutation({
-    mutationFn: (values: UpdateAffiliateBankAccountInput) => affiliateApi.updateBankAccount(values),
-    onSuccess: (res) => {
-      message.success(res?.message || 'Đã lưu tài khoản ngân hàng.');
-      queryClient.invalidateQueries({ queryKey: ['aff-bank-account'] });
-    },
-    onError: (err) => message.error(getApiErrorMessage(err, 'Không lưu được tài khoản ngân hàng.')),
-  });
-
   const p = profileQuery.data;
-  const status = STATUS[p?.status ?? ''] ?? { label: 'Đang cập nhật', className: 'bg-gray-100 text-gray-700' };
+  const status = STATUS[p?.status ?? ''] ?? { label: 'Đang cập nhật', className: 'bg-slate-100 text-slate-700' };
 
   return (
-    <div>
-      <h1 className="sr-only">Hồ sơ và ngân hàng</h1>
-      <div className="flex flex-wrap items-start gap-5">
-        <section aria-labelledby="aff-profile-form" className="min-w-0 flex-[1_1_440px] rounded-xl border border-solid border-slate-200/80 bg-white p-5 shadow-sm">
-          <div className="mb-3.5 flex items-center justify-between gap-3">
-            <h2 id="aff-profile-form" className="m-0 text-[15px] font-bold text-gray-900">Hồ sơ Affiliate</h2>
-            <span className={`rounded px-2 py-0.5 text-xs font-semibold ${status.className}`}>{status.label}</span>
-          </div>
-          {profileQuery.isLoading ? (
-            <Skeleton active paragraph={{ rows: 6 }} />
-          ) : profileQuery.isError ? (
-            <Alert type="error" showIcon message={getApiErrorMessage(profileQuery.error)} action={<Button onClick={() => profileQuery.refetch()}>Thử lại</Button>} />
-          ) : (
-            <>
-              <AvatarUpload size={64} className="affiliate-avatar mb-4" />
-              <Form form={profileForm} layout="vertical" requiredMark={requiredAfterLabel} onFinish={(v) => updateProfile.mutate(v)} disabled={updateProfile.isPending}>
-                <Form.Item name="displayName" label="Họ và tên" rules={[{ required: true, whitespace: true, message: 'Nhập họ và tên.' }]}>
-                  <Input size="large" />
-                </Form.Item>
-                <div className="grid gap-x-3.5 sm:grid-cols-2">
-                  <Form.Item label="Email">
-                    <Input size="large" value={p?.email} disabled />
-                  </Form.Item>
-                  <Form.Item name="phone" label="Số điện thoại" rules={[{ pattern: /^[0-9+-\s]{8,15}$/, message: 'Số điện thoại không hợp lệ.' }]}>
-                    <Input size="large" type="tel" />
-                  </Form.Item>
-                  <Form.Item name="contactPerson" label="Người liên hệ chính">
-                    <Input size="large" />
-                  </Form.Item>
-                  <Form.Item name="taxInformation" label="Mã số thuế (không bắt buộc)">
-                    <Input size="large" />
-                  </Form.Item>
-                </div>
-                <Form.Item name="address" label="Địa chỉ liên lạc">
-                  <Input size="large" />
-                </Form.Item>
-                <div className="flex justify-end">
-                  <Button type="primary" size="large" htmlType="submit" loading={updateProfile.isPending} className="!bg-gradient-to-r from-[#0284C7] to-[#2563EB] hover:from-[#0369A1] hover:to-[#1D4ED8] !border-0 text-white font-semibold shadow-md shadow-sky-500/20">Lưu hồ sơ</Button>
-                </div>
-              </Form>
-            </>
-          )}
-        </section>
+    <div className={`${FONT} max-w-5xl space-y-6 animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
+      {/* ── Sub-navigation Header Tabs ───────────────────────────── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-0 border-b border-solid border-slate-200/80 pb-4">
+        <div>
+          <h1 className="m-0 text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
+            Hồ sơ cá nhân
+          </h1>
+          <p className="m-0 mt-1 text-sm text-slate-500">
+            Thông tin định danh và liên hệ của bạn trên mạng lưới đối tác HR Connect.
+          </p>
+        </div>
 
-        <section aria-labelledby="aff-bank-form" className="min-w-0 flex-[1_1_380px] rounded-xl border border-solid border-slate-200/80 bg-white p-5 shadow-sm">
-          <h2 id="aff-bank-form" className="m-0 text-[15px] font-bold text-gray-900">Tài khoản nhận hoa hồng</h2>
-          <p className="m-0 mb-3.5 mt-1 text-[13px] text-gray-600">Hoa hồng được chuyển vào tài khoản này. Tài khoản phải thuộc tên của bạn hoặc đơn vị đã đăng ký với HR Connect.</p>
-          {bankQuery.isLoading ? (
-            <Skeleton active paragraph={{ rows: 5 }} />
-          ) : (
-            <Form form={bankForm} layout="vertical" requiredMark={requiredAfterLabel} onFinish={(v) => updateBank.mutate(v)} disabled={updateBank.isPending}>
-              <Form.Item name="bankName" label="Ngân hàng" rules={[{ required: true, message: 'Chọn ngân hàng.' }]}>
-                <Select
-                  size="large"
-                  showSearch
-                  allowClear
-                  placeholder="Chọn ngân hàng"
-                  options={VIETNAM_BANKS}
-                  labelRender={({ value }) => value}
-                  filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-                />
-              </Form.Item>
-              <Form.Item
-                name="bankAccountNumber"
-                label="Số tài khoản"
-                rules={[{ required: true, message: 'Nhập số tài khoản.' }, { pattern: /^[0-9A-Za-z-]{6,25}$/, message: 'Số tài khoản không hợp lệ.' }]}
-              >
-                <Input size="large" inputMode="numeric" />
-              </Form.Item>
-              <Form.Item name="bankAccountHolder" label="Tên chủ tài khoản" rules={[{ required: true, message: 'Nhập tên chủ tài khoản.' }]}>
-                <Input size="large" placeholder="IN HOA KHÔNG DẤU" onChange={(e) => bankForm.setFieldsValue({ bankAccountHolder: e.target.value.toUpperCase() })} />
-              </Form.Item>
-              <Form.Item name="bankBranch" label="Chi nhánh">
-                <Input size="large" />
-              </Form.Item>
-              <p className="m-0 mb-3.5 rounded-lg border border-solid border-amber-200/80 bg-amber-50/70 px-3.5 py-2.5 text-[13px] text-amber-900">Đổi tài khoản khi đang có khoản chờ chi: khoản đó sẽ chuyển vào tài khoản mới.</p>
-              <Button type="primary" size="large" block htmlType="submit" loading={updateBank.isPending} className="affiliate-cta">Lưu tài khoản</Button>
-            </Form>
-          )}
-        </section>
+        {/* Tab switch pills */}
+        <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200/60 shadow-2xs">
+          <button
+            type="button"
+            className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-xs font-bold text-[#0284C7] shadow-xs border-0 cursor-default"
+          >
+            <UserOutlined />
+            <span>Hồ sơ cá nhân</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/affiliate/bank-account')}
+            className="flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold text-slate-600 transition-all hover:text-slate-900 border-0 bg-transparent cursor-pointer"
+          >
+            <BankOutlined />
+            <span>Tài khoản nhận tiền</span>
+          </button>
+        </div>
       </div>
+
+      {profileQuery.isError ? (
+        <Alert
+          type="error"
+          showIcon
+          message="Không tải được hồ sơ"
+          description={getApiErrorMessage(profileQuery.error)}
+          action={<Button onClick={() => profileQuery.refetch()}>Thử lại</Button>}
+        />
+      ) : profileQuery.isLoading ? (
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+          <Skeleton active avatar paragraph={{ rows: 6 }} />
+        </div>
+      ) : (
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-[0_2px_12px_rgba(15,23,42,0.03)] space-y-6">
+          {/* Header Status & Avatar Section */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-0 border-b border-solid border-slate-100">
+            <div className="flex items-center gap-4">
+              <AvatarUpload size={72} className="affiliate-avatar shrink-0 shadow-sm" />
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h2 className="m-0 text-lg font-bold text-slate-900">
+                    {p?.displayName || 'Đối tác Affiliate'}
+                  </h2>
+                  <span className={`rounded-md px-2.5 py-0.5 text-xs font-bold ${status.className}`}>
+                    {status.label}
+                  </span>
+                </div>
+                <p className="m-0 mt-1 text-xs text-slate-500">
+                  {p?.email} · Mã đối tác: <span className="font-mono font-medium text-slate-700">{p?.affiliateId?.slice(0, 8)}...</span>
+                </p>
+              </div>
+            </div>
+
+            <Button
+              type="default"
+              icon={<BankOutlined className="text-[#0284C7]" />}
+              onClick={() => navigate('/affiliate/bank-account')}
+              className="!h-10 !rounded-xl !border-slate-200 text-xs font-semibold text-slate-700 hover:!border-[#0284C7] hover:!text-[#0284C7]"
+            >
+              Cài đặt tài khoản nhận hoa hồng →
+            </Button>
+          </div>
+
+          {/* Form Content */}
+          <Form
+            form={profileForm}
+            layout="vertical"
+            requiredMark={requiredAfterLabel}
+            onFinish={(v) => updateProfile.mutate(v)}
+            disabled={updateProfile.isPending}
+            className="space-y-5"
+          >
+            <div>
+              <h3 className="m-0 mb-3 text-sm font-bold text-slate-900 uppercase tracking-wider text-xs text-[#0284C7]">
+                1. Thông tin định danh cơ bản
+              </h3>
+              <div className="grid grid-cols-1 gap-x-5 sm:grid-cols-2">
+                <Form.Item
+                  name="displayName"
+                  label={<span className="text-xs font-bold text-slate-700">Họ và tên / Tên tổ chức</span>}
+                  rules={[{ required: true, whitespace: true, message: 'Vui lòng nhập họ và tên.' }]}
+                >
+                  <Input size="large" placeholder="Ví dụ: Nguyễn Văn A" />
+                </Form.Item>
+
+                <Form.Item label={<span className="text-xs font-bold text-slate-700">Email đăng nhập (Cố định)</span>}>
+                  <Input
+                    size="large"
+                    value={p?.email}
+                    disabled
+                    prefix={<MailOutlined className="text-slate-400" />}
+                    className="bg-slate-50 text-slate-500"
+                  />
+                </Form.Item>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <h3 className="m-0 mb-3 text-sm font-bold text-slate-900 uppercase tracking-wider text-xs text-[#0284C7]">
+                2. Thông tin liên lạc & Người phụ trách
+              </h3>
+              <div className="grid grid-cols-1 gap-x-5 sm:grid-cols-3">
+                <Form.Item
+                  name="phone"
+                  label={<span className="text-xs font-bold text-slate-700">Số điện thoại</span>}
+                  rules={[{ pattern: /^[0-9+-\s]{8,15}$/, message: 'Số điện thoại không hợp lệ.' }]}
+                >
+                  <Input
+                    size="large"
+                    type="tel"
+                    placeholder="Ví dụ: 0912345678"
+                    prefix={<PhoneOutlined className="text-slate-400" />}
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  name="contactPerson"
+                  label={<span className="text-xs font-bold text-slate-700">Người liên hệ chính</span>}
+                >
+                  <Input size="large" placeholder="Người đại diện / liên hệ" />
+                </Form.Item>
+
+                <Form.Item
+                  name="taxInformation"
+                  label={<span className="text-xs font-bold text-slate-700">Mã số thuế (Tùy chọn)</span>}
+                >
+                  <Input
+                    size="large"
+                    placeholder="Mã số thuế cá nhân / DN"
+                    prefix={<IdcardOutlined className="text-slate-400" />}
+                  />
+                </Form.Item>
+              </div>
+
+              <Form.Item
+                name="address"
+                label={<span className="text-xs font-bold text-slate-700">Địa chỉ liên lạc</span>}
+              >
+                <Input size="large" placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố" />
+              </Form.Item>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-0 border-t border-solid border-slate-100">
+              <Button
+                type="primary"
+                size="large"
+                htmlType="submit"
+                loading={updateProfile.isPending}
+                icon={<CheckCircleOutlined />}
+                className="!h-11 !rounded-xl !border-0 !bg-[#0284C7] hover:!bg-[#0369A1] px-7 text-sm font-bold text-white shadow-md shadow-sky-500/20 transition-all active:scale-[0.98]"
+              >
+                Lưu thay đổi hồ sơ
+              </Button>
+            </div>
+          </Form>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,9 +1,10 @@
 /**
  * @file AdminContactRequestsPage.tsx
  * @description Contact Requests management page for Platform Admin and Internal HR (SF-05).
- * Endpoints used:
- *   - GET /admin/contact-requests?status=&page=&pageSize=
- *   - PATCH /admin/contact-requests/{id} { status, note }
+ * Designed following Vercel Web Interface Guidelines & Anthropic Frontend Design:
+ * - Fluid table layout without horizontal clipping
+ * - KPI summary cards for operational visibility
+ * - Cohesive fintech color palette for service types and request states
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -19,7 +20,6 @@ import {
   Input,
   Modal,
   Radio,
-  Select,
   Space,
   Table,
   Tag,
@@ -38,6 +38,9 @@ import {
   SearchOutlined,
   ClockCircleOutlined,
   LockOutlined,
+  InboxOutlined,
+  ThunderboltOutlined,
+  CheckSquareOutlined,
 } from '@ant-design/icons';
 import { contactApi } from '@/services/api/contactApi';
 import { getApiErrorMessage } from '@/services/apiClient';
@@ -50,22 +53,50 @@ import type {
   UpdateContactRequestInput,
 } from '@/types/api/contact';
 import { formatDateTime } from './adminTheme';
-import { FilterPills, PageHero, PersonCell, StatusDot, Surface, type Tone } from './ui';
+import { PageHero, PersonCell, StatusDot, Surface, type Tone } from './ui';
 
-const { Text, Paragraph } = Typography;
+const { Text } = Typography;
 const { TextArea } = Input;
 
-const STATUS_CONFIG: Record<ContactRequestStatus, { label: string; tone: Tone }> = {
-  NEW: { label: 'Mới tiếp nhận', tone: 'warning' },
-  CONTACTED: { label: 'Đã liên hệ', tone: 'info' },
-  CLOSED: { label: 'Đã đóng', tone: 'neutral' },
+const STATUS_CONFIG: Record<ContactRequestStatus, { label: string; tone: Tone; badgeClass: string }> = {
+  NEW: {
+    label: 'Mới tiếp nhận',
+    tone: 'warning',
+    badgeClass: 'bg-amber-50 text-amber-800 border-amber-200/80',
+  },
+  CONTACTED: {
+    label: 'Đã liên hệ',
+    tone: 'info',
+    badgeClass: 'bg-sky-50 text-sky-800 border-sky-200/80',
+  },
+  CLOSED: {
+    label: 'Đã đóng',
+    tone: 'neutral',
+    badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
+  },
 };
 
-const SERVICE_INTEREST_LABELS: Record<ContactServiceInterest, { label: string; color: string }> = {
-  HEADHUNT_COD: { label: 'Tuyển trọn gói (COD)', color: 'blue' },
-  CV_SOURCING: { label: 'Cung cấp hồ sơ (Sourcing)', color: 'cyan' },
-  CV_APPLICATION: { label: 'Đăng tin tuyển dụng', color: 'green' },
-  OTHER: { label: 'Dịch vụ khác', color: 'default' },
+const SERVICE_INTEREST_LABELS: Record<ContactServiceInterest, { label: string; color: string; badgeStyle: string }> = {
+  HEADHUNT_COD: {
+    label: 'Tuyển trọn gói (COD)',
+    color: 'blue',
+    badgeStyle: 'bg-indigo-50 text-indigo-700 border-indigo-200/70',
+  },
+  CV_SOURCING: {
+    label: 'Cung cấp hồ sơ (Sourcing)',
+    color: 'cyan',
+    badgeStyle: 'bg-cyan-50 text-cyan-700 border-cyan-200/70',
+  },
+  CV_APPLICATION: {
+    label: 'Đăng tin tuyển dụng',
+    color: 'green',
+    badgeStyle: 'bg-emerald-50 text-emerald-700 border-emerald-200/70',
+  },
+  OTHER: {
+    label: 'Dịch vụ khác',
+    color: 'default',
+    badgeStyle: 'bg-slate-100 text-slate-700 border-slate-200',
+  },
 };
 
 const PAGE_SIZE = 20;
@@ -184,9 +215,20 @@ export const AdminContactRequestsPage: React.FC = () => {
     );
   }, [data?.items, searchTerm]);
 
+  // Operational KPI stats
+  const kpiStats = useMemo(() => {
+    const items = data?.items || [];
+    const total = data?.totalCount || items.length;
+    const newCount = items.filter((i) => i.status === 'NEW').length;
+    const contactedCount = items.filter((i) => i.status === 'CONTACTED').length;
+    const closedCount = items.filter((i) => i.status === 'CLOSED').length;
+    return { total, newCount, contactedCount, closedCount };
+  }, [data]);
+
+  // Optimized table columns without overlapping or clipping
   const columns: ColumnsType<ContactRequestDto> = [
     {
-      title: 'Họ tên',
+      title: 'Họ tên & Doanh nghiệp',
       key: 'fullName',
       render: (_, record) => (
         <PersonCell
@@ -199,11 +241,10 @@ export const AdminContactRequestsPage: React.FC = () => {
       title: 'Email',
       dataIndex: 'email',
       key: 'email',
-      width: 170,
       render: (val: string) => (
         <div className="flex items-center gap-1.5 text-slate-700">
-          <MailOutlined className="text-slate-400 text-xs" />
-          <a href={`mailto:${val}`} className="text-blue-600 hover:underline">
+          <MailOutlined className="text-slate-400 text-xs shrink-0" />
+          <a href={`mailto:${val}`} className="text-sky-600 hover:text-sky-800 hover:underline truncate max-w-[200px]" title={val}>
             {val}
           </a>
         </div>
@@ -213,12 +254,11 @@ export const AdminContactRequestsPage: React.FC = () => {
       title: 'Số điện thoại',
       dataIndex: 'phone',
       key: 'phone',
-      width: 120,
       render: (val?: string | null) =>
         val ? (
-          <div className="flex items-center gap-1.5 text-slate-700">
-            <PhoneOutlined className="text-slate-400 text-xs" />
-            <a href={`tel:${val}`} className="text-slate-800 hover:text-blue-600 font-medium">
+          <div className="flex items-center gap-1.5 text-slate-700 whitespace-nowrap">
+            <PhoneOutlined className="text-slate-400 text-xs shrink-0" />
+            <a href={`tel:${val}`} className="text-slate-800 hover:text-sky-600 font-medium tabular-nums">
               {val}
             </a>
           </div>
@@ -227,29 +267,22 @@ export const AdminContactRequestsPage: React.FC = () => {
         ),
     },
     {
-      title: 'Công ty',
-      dataIndex: 'companyName',
-      key: 'companyName',
-      width: 130,
-      render: (val?: string | null) => (
-        <span className="font-medium text-slate-800">{val || '—'}</span>
-      ),
-    },
-    {
       title: 'Dịch vụ quan tâm',
       dataIndex: 'serviceInterest',
       key: 'serviceInterest',
-      width: 150,
       render: (val: ContactServiceInterest) => {
-        const conf = SERVICE_INTEREST_LABELS[val] || { label: val, color: 'default' };
-        return <Tag color={conf.color} className="font-semibold">{conf.label}</Tag>;
+        const conf = SERVICE_INTEREST_LABELS[val] || { label: val, color: 'default', badgeStyle: 'bg-slate-100 text-slate-700 border-slate-200' };
+        return (
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border border-solid ${conf.badgeStyle}`}>
+            {conf.label}
+          </span>
+        );
       },
     },
     {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
-      width: 130,
       render: (val: ContactRequestStatus) => {
         const conf = STATUS_CONFIG[val] || { label: val, tone: 'neutral' };
         return <StatusDot tone={conf.tone}>{conf.label}</StatusDot>;
@@ -259,9 +292,8 @@ export const AdminContactRequestsPage: React.FC = () => {
       title: 'Ngày tạo',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      width: 130,
       render: (val: string) => (
-        <span className="text-xs text-slate-600 tabular-nums">
+        <span className="text-xs text-slate-600 tabular-nums whitespace-nowrap">
           {formatDateTime(val)}
         </span>
       ),
@@ -269,34 +301,30 @@ export const AdminContactRequestsPage: React.FC = () => {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 170,
-      fixed: 'right',
       align: 'right',
-      className: 'w-[170px] text-right pr-4',
       render: (_, record) => (
-        <Space size="small">
+        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
           <Tooltip title="Xem chi tiết nội dung lời nhắn">
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined />}
+            <button
+              type="button"
               onClick={() => setDetailItem(record)}
+              className="inline-flex items-center gap-1 h-8 px-2.5 rounded-md border border-solid border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
             >
-              Chi tiết
-            </Button>
+              <EyeOutlined className="text-[13px] text-slate-400" />
+              <span>Chi tiết</span>
+            </button>
           </Tooltip>
           <Tooltip title="Đổi trạng thái và ghi chú">
-            <Button
-              type="link"
-              size="small"
-              icon={<EditOutlined />}
+            <button
+              type="button"
               onClick={() => openStatusModal(record)}
-              className="font-semibold text-blue-600"
+              className="inline-flex items-center gap-1 h-8 px-2.5 rounded-md border border-solid border-sky-200 bg-sky-50 text-xs font-semibold text-sky-700 hover:bg-sky-100 hover:text-sky-800 transition-colors cursor-pointer"
             >
-              Xử lý
-            </Button>
+              <EditOutlined className="text-[13px] text-sky-600" />
+              <span>Xử lý</span>
+            </button>
           </Tooltip>
-        </Space>
+        </div>
       ),
     },
   ];
@@ -319,6 +347,7 @@ export const AdminContactRequestsPage: React.FC = () => {
             icon={<ReloadOutlined spin={isFetching} />}
             onClick={() => refetch()}
             loading={isFetching}
+            className="rounded-lg font-medium"
           >
             Làm mới
           </Button>
@@ -344,6 +373,57 @@ export const AdminContactRequestsPage: React.FC = () => {
         </Surface>
       ) : (
         <>
+          {/* Quick KPI Overview */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-xl border border-solid border-slate-200/90 bg-white p-4 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Tổng yêu cầu</span>
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600 text-xs">
+                  <InboxOutlined />
+                </span>
+              </div>
+              <div className="mt-2 text-2xl font-extrabold text-slate-900 tabular-nums">
+                {kpiStats.total}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-solid border-amber-200 bg-amber-50/50 p-4 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-amber-800">Cần phản hồi</span>
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-700 text-xs">
+                  <ThunderboltOutlined />
+                </span>
+              </div>
+              <div className="mt-2 text-2xl font-extrabold text-amber-700 tabular-nums">
+                {kpiStats.newCount}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-solid border-sky-200 bg-sky-50/50 p-4 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-sky-800">Đã liên hệ</span>
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-100 text-sky-700 text-xs">
+                  <PhoneOutlined />
+                </span>
+              </div>
+              <div className="mt-2 text-2xl font-extrabold text-sky-700 tabular-nums">
+                {kpiStats.contactedCount}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-solid border-slate-200 bg-slate-50/60 p-4 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Đã đóng</span>
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-200 text-slate-600 text-xs">
+                  <CheckSquareOutlined />
+                </span>
+              </div>
+              <div className="mt-2 text-2xl font-extrabold text-slate-700 tabular-nums">
+                {kpiStats.closedCount}
+              </div>
+            </div>
+          </div>
+
           {isError && (
             <Alert
               type="error"
@@ -355,12 +435,25 @@ export const AdminContactRequestsPage: React.FC = () => {
           <Surface padded className="space-y-4">
             {/* Filter bar: status pills + quick search */}
             <div className="flex flex-wrap items-center justify-between gap-4">
-              <FilterPills
-                label="Lọc theo trạng thái"
-                value={statusParam}
-                onChange={handleStatusChangeFilter}
-                options={filterOptions}
-              />
+              <div className="flex flex-wrap items-center gap-1.5">
+                {filterOptions.map((opt) => {
+                  const active = statusParam === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => handleStatusChangeFilter(opt.value)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border border-solid ${
+                        active
+                          ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
 
               <div className="w-full sm:w-72">
                 <Input
@@ -369,28 +462,29 @@ export const AdminContactRequestsPage: React.FC = () => {
                   placeholder="Tìm theo tên, email, công ty..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="rounded-lg"
+                  className="rounded-lg h-9"
                 />
               </div>
             </div>
 
-            {/* Table */}
-            <Table<ContactRequestDto>
-              columns={columns}
-              dataSource={filteredItems}
-              rowKey="contactRequestId"
-              loading={isLoading}
-              pagination={{
-                current: pageParam,
-                pageSize: PAGE_SIZE,
-                total: data?.totalCount || 0,
-                showTotal: (total) => `Tổng cộng ${total} yêu cầu`,
-                onChange: handlePageChange,
-                showSizeChanger: false,
-              }}
-              scroll={{ x: 1080 }}
-              className="admin-soft-table w-full table-auto"
-            />
+            {/* Table without forced horizontal scrolling */}
+            <div className="overflow-x-auto">
+              <Table<ContactRequestDto>
+                columns={columns}
+                dataSource={filteredItems}
+                rowKey="contactRequestId"
+                loading={isLoading}
+                pagination={{
+                  current: pageParam,
+                  pageSize: PAGE_SIZE,
+                  total: data?.totalCount || 0,
+                  showTotal: (total) => `Tổng cộng ${total} yêu cầu`,
+                  onChange: handlePageChange,
+                  showSizeChanger: false,
+                }}
+                className="admin-soft-table w-full [&_.ant-table-thead>tr>th]:!bg-slate-50/80 [&_.ant-table-thead>tr>th]:!text-[12px] [&_.ant-table-thead>tr>th]:!font-bold [&_.ant-table-thead>tr>th]:!text-slate-600"
+              />
+            </div>
           </Surface>
         </>
       )}
@@ -399,16 +493,11 @@ export const AdminContactRequestsPage: React.FC = () => {
       <Drawer
         title={
           <div className="flex items-center gap-2">
-            <span>Chi tiết yêu cầu tư vấn</span>
+            <span className="font-bold text-slate-900">Chi tiết yêu cầu tư vấn</span>
             {detailItem && (
-              <Tag
-                color={
-                  SERVICE_INTEREST_LABELS[detailItem.serviceInterest]?.color || 'default'
-                }
-              >
-                {SERVICE_INTEREST_LABELS[detailItem.serviceInterest]?.label ||
-                  detailItem.serviceInterest}
-              </Tag>
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border border-solid ${SERVICE_INTEREST_LABELS[detailItem.serviceInterest]?.badgeStyle || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
+                {SERVICE_INTEREST_LABELS[detailItem.serviceInterest]?.label || detailItem.serviceInterest}
+              </span>
             )}
           </div>
         }
@@ -425,6 +514,7 @@ export const AdminContactRequestsPage: React.FC = () => {
                 setDetailItem(null);
                 openStatusModal(cur);
               }}
+              className="bg-sky-600 hover:bg-sky-700 font-semibold"
             >
               Cập nhật xử lý
             </Button>
@@ -437,7 +527,7 @@ export const AdminContactRequestsPage: React.FC = () => {
             <div className="rounded-xl border border-solid border-slate-200 bg-slate-50 p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-xs font-semibold text-slate-500 uppercase">
+                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     Trạng thái hiện tại
                   </div>
                   <div className="mt-1">
@@ -467,18 +557,18 @@ export const AdminContactRequestsPage: React.FC = () => {
             </div>
 
             {/* Customer Info */}
-            <Descriptions title="Thông tin người liên hệ" column={1} bordered size="small">
+            <Descriptions title="Thông tin người liên hệ" column={1} bordered size="small" className="rounded-lg overflow-hidden">
               <Descriptions.Item label="Họ và tên">
                 <span className="font-semibold text-slate-900">{detailItem.fullName}</span>
               </Descriptions.Item>
               <Descriptions.Item label="Email">
-                <a href={`mailto:${detailItem.email}`} className="text-blue-600">
+                <a href={`mailto:${detailItem.email}`} className="text-sky-600 hover:underline">
                   {detailItem.email}
                 </a>
               </Descriptions.Item>
               <Descriptions.Item label="Số điện thoại">
                 {detailItem.phone ? (
-                  <a href={`tel:${detailItem.phone}`} className="text-slate-900 font-medium">
+                  <a href={`tel:${detailItem.phone}`} className="text-slate-900 font-medium hover:text-sky-600">
                     {detailItem.phone}
                   </a>
                 ) : (
@@ -486,7 +576,7 @@ export const AdminContactRequestsPage: React.FC = () => {
                 )}
               </Descriptions.Item>
               <Descriptions.Item label="Doanh nghiệp">
-                {detailItem.companyName || '—'}
+                {detailItem.companyName || 'Khách vãng lai'}
               </Descriptions.Item>
               <Descriptions.Item label="Dịch vụ quan tâm">
                 {SERVICE_INTEREST_LABELS[detailItem.serviceInterest]?.label ||
@@ -497,7 +587,7 @@ export const AdminContactRequestsPage: React.FC = () => {
             {/* Customer Message */}
             <div>
               <div className="mb-2 font-bold text-slate-900 text-sm">Nội dung yêu cầu từ khách:</div>
-              <div className="rounded-xl border border-solid border-blue-100 bg-blue-50/50 p-4 text-sm leading-relaxed text-slate-800 whitespace-pre-wrap">
+              <div className="rounded-xl border border-solid border-sky-100 bg-sky-50/50 p-4 text-sm leading-relaxed text-slate-800 whitespace-pre-wrap">
                 {detailItem.message}
               </div>
             </div>
@@ -521,11 +611,13 @@ export const AdminContactRequestsPage: React.FC = () => {
 
       {/* Status & Note Update Modal */}
       <Modal
-        title="Cập nhật trạng thái xử lý"
+        title={<span className="text-[17px] font-bold text-slate-900">Cập nhật trạng thái xử lý</span>}
         open={Boolean(statusModalItem)}
         onCancel={() => setStatusModalItem(null)}
         footer={null}
         destroyOnHidden
+        centered
+        className="[&_.ant-modal-content]:!rounded-2xl [&_.ant-modal-content]:!p-6"
       >
         {statusModalItem && (
           <Form
@@ -534,48 +626,50 @@ export const AdminContactRequestsPage: React.FC = () => {
             onFinish={handleModalSubmit}
             className="mt-4 space-y-4"
           >
-            <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+            <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600 border border-slate-100">
               Khách hàng: <strong>{statusModalItem.fullName}</strong> ({statusModalItem.email})
             </div>
 
             <Form.Item
               name="status"
-              label={<span className="font-semibold text-slate-800">Trạng thái</span>}
+              label={<span className="font-semibold text-slate-800 text-[13px]">Trạng thái xử lý</span>}
               rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}
             >
-              <Radio.Group className="flex flex-col gap-2">
-                <Radio value="NEW">
-                  <StatusDot tone="warning">Mới tiếp nhận (Chưa liên hệ)</StatusDot>
+              <Radio.Group className="flex flex-col gap-2.5">
+                <Radio value="NEW" className="!p-2.5 !rounded-lg hover:!bg-amber-50/50 !border !border-solid !border-slate-200 transition-colors">
+                  <StatusDot tone="warning">Mới tiếp nhận (Chưa liên hệ khách)</StatusDot>
                 </Radio>
-                <Radio value="CONTACTED">
-                  <StatusDot tone="info">Đã liên hệ (Đang trao đổi / Báo giá)</StatusDot>
+                <Radio value="CONTACTED" className="!p-2.5 !rounded-lg hover:!bg-sky-50/50 !border !border-solid !border-slate-200 transition-colors">
+                  <StatusDot tone="info">Đã liên hệ (Đang trao đổi / Tư vấn báo giá)</StatusDot>
                 </Radio>
-                <Radio value="CLOSED">
-                  <StatusDot tone="neutral">Đã đóng (Hoàn tất hoặc Không có nhu cầu)</StatusDot>
+                <Radio value="CLOSED" className="!p-2.5 !rounded-lg hover:!bg-slate-100/50 !border !border-solid !border-slate-200 transition-colors">
+                  <StatusDot tone="neutral">Đã đóng (Đã chốt hợp đồng hoặc Không có nhu cầu)</StatusDot>
                 </Radio>
               </Radio.Group>
             </Form.Item>
 
             <Form.Item
               name="note"
-              label={<span className="font-semibold text-slate-800">Ghi chú xử lý nội bộ</span>}
+              label={<span className="font-semibold text-slate-800 text-[13px]">Ghi chú xử lý nội bộ</span>}
             >
               <TextArea
                 rows={4}
                 maxLength={1000}
                 showCount
                 placeholder="Ghi nhận nội dung đã trao đổi với khách, kết quả tư vấn, lý do đóng..."
-                className="rounded-lg"
+                className="!rounded-lg"
               />
             </Form.Item>
 
-            <div className="flex justify-end gap-2 pt-2">
-              <Button onClick={() => setStatusModalItem(null)}>Hủy</Button>
+            <div className="flex justify-end gap-2.5 pt-3 border-0 border-t border-solid border-slate-100">
+              <Button onClick={() => setStatusModalItem(null)} className="rounded-lg h-9 px-4 font-medium">
+                Hủy
+              </Button>
               <Button
                 type="primary"
                 htmlType="submit"
                 loading={updateMutation.isPending}
-                className="bg-blue-600 font-semibold"
+                className="bg-sky-600 hover:bg-sky-700 font-semibold rounded-lg h-9 px-5"
               >
                 Lưu cập nhật
               </Button>
