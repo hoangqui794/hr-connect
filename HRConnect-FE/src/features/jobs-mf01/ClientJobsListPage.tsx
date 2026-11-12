@@ -68,11 +68,10 @@ type PendingAction = { kind: 'pause' | 'close'; job: Job } | null;
 const ServiceTypeTag: React.FC<{ code?: string | null }> = ({ code }) => {
   if (!code || !SERVICE_TYPE_LABEL[code as ServiceTypeCode]) return null;
   const info = SERVICE_TYPE_LABEL[code as ServiceTypeCode];
-  const color = code === 'HEADHUNT_COD' ? 'blue' : code === 'CV_SOURCING' ? 'purple' : 'cyan';
   return (
-    <Tag color={color} className="m-0 text-[11px] font-medium border-0">
+    <span className="inline-flex items-center rounded-md border border-slate-200/80 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600">
       {info.label}
-    </Tag>
+    </span>
   );
 };
 
@@ -269,7 +268,7 @@ export const ClientJobsListPage: React.FC = () => {
           <Button
             size="small"
             type="primary"
-            className="!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white !rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium !h-8 px-3 text-xs"
+            className="!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 text-white !rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium !h-8 px-3 text-xs"
             icon={<CreditCardOutlined />}
             onClick={() => setPaymentModalJob({ jobId: job.jobId, title: job.title })}
           >
@@ -280,7 +279,7 @@ export const ClientJobsListPage: React.FC = () => {
           <Button
             size="small"
             type="primary"
-            className="!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white !rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium !h-8 px-3 text-xs"
+            className="!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 text-white !rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium !h-8 px-3 text-xs"
             icon={<SendOutlined />}
             loading={busy}
             onClick={() => confirmSubmit(job)}
@@ -440,7 +439,7 @@ export const ClientJobsListPage: React.FC = () => {
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            className="!h-10 !rounded-xl !border-0 !bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] font-bold text-white shadow-sm shadow-sky-500/20 transition-all active:scale-[0.98] !px-4.5"
+            className="!h-10 !rounded-xl !border-0 !bg-[#0284C7] hover:!bg-[#0369A1] font-bold text-white shadow-sm shadow-sky-500/15 transition-all active:scale-[0.98] !px-4.5"
             onClick={() => navigate('/client/jobs/create')}
           >
             Đăng tin mới
@@ -589,10 +588,9 @@ export const ClientJobsListPage: React.FC = () => {
                       </button>
 
                       {/* Meta highlights */}
-                      <div className="space-y-1.5 mb-4">
-                        <div className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50/80 px-2.5 py-1 text-xs font-extrabold text-emerald-700 border border-emerald-100/70">
-                          <span>💰</span>
-                          <span>{formatSalary(job)}</span>
+                      <div className="space-y-1 mb-3.5">
+                        <div className="text-sm font-bold text-slate-800 tracking-tight">
+                          {formatSalary(job)}
                         </div>
                         <div className="flex items-center gap-1.5 text-xs text-slate-500">
                           <EnvironmentOutlined aria-hidden className="text-slate-400" />
@@ -605,24 +603,24 @@ export const ClientJobsListPage: React.FC = () => {
                       {/* Special Callout Banners */}
                       {job.status === 'PENDING_AGREEMENT' &&
                         (job.hasSignedAgreement ? (
-                          <div className="flex items-center justify-between rounded-2xl bg-teal-50 border border-teal-200/80 p-3 text-xs text-teal-900 mb-3.5 shadow-2xs">
-                            <span className="font-semibold text-xs">📄 Đã nộp hợp đồng · Đang chờ duyệt tin</span>
+                          <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200/90 p-3 text-xs text-slate-800 mb-3.5 shadow-2xs">
+                            <span className="font-semibold text-xs">Đã nộp hợp đồng · Đang chờ duyệt tin</span>
                             <Button
                               type="primary"
                               size="small"
-                              className="!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 text-white rounded-lg shadow-sm font-semibold !text-xs !h-9 whitespace-nowrap ml-2"
+                              className="!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 text-white rounded-lg shadow-sm font-semibold !text-xs !h-8 whitespace-nowrap ml-2"
                               onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
                             >
                               Xem hợp đồng
                             </Button>
                           </div>
                         ) : (
-                          <div className="flex items-center justify-between rounded-2xl bg-purple-50 border border-purple-200/80 p-3 text-xs text-purple-900 mb-3.5 shadow-2xs">
+                          <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200/90 p-3 text-xs text-slate-800 mb-3.5 shadow-2xs">
                             <span className="font-semibold text-xs">Hợp đồng dịch vụ sẵn sàng ký kết</span>
                             <Button
                               type="primary"
                               size="small"
-                              className="!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 text-white rounded-lg shadow-sm font-semibold !text-xs !h-9 whitespace-nowrap ml-2"
+                              className="!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 text-white rounded-lg shadow-sm font-semibold !text-xs !h-8 whitespace-nowrap ml-2"
                               onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
                             >
                               Ký hợp đồng
@@ -631,18 +629,18 @@ export const ClientJobsListPage: React.FC = () => {
                         ))}
 
                       {isAwaitingSourcingDeposit(job) && (
-                        <div className="flex flex-col gap-2 rounded-2xl bg-amber-50 border border-amber-200/90 p-3 text-xs text-amber-900 mb-3.5 shadow-2xs">
+                        <div className="flex flex-col gap-2 rounded-xl bg-slate-50 border border-slate-200/90 p-3 text-xs text-slate-800 mb-3.5 shadow-2xs">
                           <div className="flex items-center justify-between">
-                            <span className="font-bold text-amber-950 text-xs">
+                            <span className="font-bold text-slate-900 text-xs">
                               Chờ cọc ({formatMoney(sourcingDepositAmount(job) ?? 200000, 'VND')})
                             </span>
-                            <span className="text-[11px] text-amber-700 font-medium">Kích hoạt tin khi nhận cọc</span>
+                            <span className="text-[11px] text-slate-500 font-medium">Kích hoạt tin khi nhận cọc</span>
                           </div>
-                          <div className="flex items-center gap-2 pt-1 border-0 border-t border-solid border-amber-200/60">
+                          <div className="flex items-center gap-2 pt-1 border-0 border-t border-solid border-slate-200/60">
                             <Button
                               type="primary"
                               size="small"
-                              className="!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 text-white rounded-lg shadow-sm font-bold !text-xs !h-9"
+                              className="!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 text-white rounded-lg shadow-sm font-bold !text-xs !h-8"
                               onClick={() =>
                                 setPaymentModalJob({
                                    jobId: job.jobId,
@@ -656,7 +654,7 @@ export const ClientJobsListPage: React.FC = () => {
                             </Button>
                             <Button
                               size="small"
-                              className="!text-xs !h-9 border-amber-300 text-amber-900 hover:text-amber-700 rounded-lg font-medium"
+                              className="!text-xs !h-8 border-slate-300 text-slate-700 hover:text-slate-900 rounded-lg font-medium"
                               onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
                             >
                               Hợp đồng cọc
@@ -666,13 +664,13 @@ export const ClientJobsListPage: React.FC = () => {
                       )}
 
                       {job.status === 'PENDING_PAYMENT' && !isAwaitingSourcingDeposit(job) && (
-                        <div className="flex items-center justify-between rounded-2xl bg-amber-50/90 border border-amber-200/80 px-3 py-2 text-xs text-amber-900 mb-3.5">
+                        <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200/90 px-3 py-2 text-xs text-slate-700 mb-3.5">
                           <span className="font-semibold text-xs">Chờ thanh toán phí đăng để công bố tin</span>
                         </div>
                       )}
 
                       {job.status === 'REJECTED' && job.statusReason && (
-                        <div className="rounded-2xl bg-rose-50 border border-rose-200/80 p-3 text-xs text-rose-800 mb-3.5">
+                        <div className="rounded-xl bg-rose-50 border border-rose-200/80 p-3 text-xs text-rose-800 mb-3.5">
                           <div className="font-bold text-rose-900 mb-0.5">Lý do từ chối:</div>
                           <div className="line-clamp-2 leading-relaxed">{job.statusReason}</div>
                         </div>
@@ -680,16 +678,16 @@ export const ClientJobsListPage: React.FC = () => {
 
                       {/* Visual Application Progress Bar */}
                       {job.status === 'ACTIVE' && (
-                        <div className="mb-2 rounded-2xl bg-slate-50/80 border border-slate-100 p-2.5">
+                        <div className="mb-2 rounded-xl bg-slate-50 border border-slate-100 p-2.5">
                           <div className="flex items-center justify-between text-xs mb-1.5 font-medium text-slate-600">
                             <span>Tiến độ nhận CV</span>
                             <span className="font-bold text-slate-900 tabular-nums">
                               {totalApps} {job.maxApplications ? `/ ${job.maxApplications}` : 'hồ sơ'}
                             </span>
                           </div>
-                          <div className="h-2 overflow-hidden rounded-full bg-slate-200/70">
+                          <div className="h-1.5 overflow-hidden rounded-full bg-slate-200/70">
                             <div
-                              className="h-full rounded-full bg-gradient-to-r from-[#0284C7] to-[#2563EB] transition-all duration-300"
+                              className="h-full rounded-full bg-[#0284C7] transition-all duration-300"
                               style={{ width: `${progressPct}%` }}
                             />
                           </div>
