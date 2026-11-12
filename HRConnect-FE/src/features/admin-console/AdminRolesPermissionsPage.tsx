@@ -69,10 +69,37 @@ export const AdminRolesPermissionsPage: React.FC = () => {
   // Active tab: 'roles' or 'permissions'
   const activeTab = searchParams.get('tab') || 'roles';
   const handleTabChange = (key: string) => {
-    const next = new URLSearchParams(searchParams);
-    next.set('tab', key);
-    next.delete('page');
-    setSearchParams(next);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', key);
+      next.delete('page');
+      return next;
+    });
+  };
+
+  const handleSelectRoleScope = (isSystem?: boolean) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', 'roles');
+      if (isSystem === true) {
+        next.set('is_system', 'true');
+      } else if (isSystem === false) {
+        next.set('is_system', 'false');
+      } else {
+        next.delete('is_system');
+      }
+      next.delete('role_page');
+      return next;
+    });
+  };
+
+  const handleSelectPermissionsTab = () => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', 'permissions');
+      next.delete('perm_page');
+      return next;
+    });
   };
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -356,13 +383,15 @@ export const AdminRolesPermissionsPage: React.FC = () => {
 
   // Helper for URL parameters
   const setParam = (key: string, value?: string) => {
-    const next = new URLSearchParams(searchParams);
-    if (value !== undefined && value !== null && value !== '') {
-      next.set(key, value);
-    } else {
-      next.delete(key);
-    }
-    setSearchParams(next);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (value !== undefined && value !== null && value !== '') {
+        next.set(key, value);
+      } else {
+        next.delete(key);
+      }
+      return next;
+    });
   };
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -633,38 +662,29 @@ export const AdminRolesPermissionsPage: React.FC = () => {
           label="Tất cả vai trò"
           value={v(rolesCountsQuery, 'all')}
           tone="neutral"
-          active={activeTab === 'roles' && !roleParams.isSystem}
-          onClick={() => {
-            handleTabChange('roles');
-            setParam('is_system', undefined);
-          }}
+          active={activeTab === 'roles' && roleParams.isSystem === undefined}
+          onClick={() => handleSelectRoleScope(undefined)}
         />
         <StatTile
           label="Vai trò tùy chỉnh"
           value={v(rolesCountsQuery, 'custom')}
           tone="success"
           active={activeTab === 'roles' && roleParams.isSystem === false}
-          onClick={() => {
-            handleTabChange('roles');
-            setParam('is_system', 'false');
-          }}
+          onClick={() => handleSelectRoleScope(false)}
         />
         <StatTile
           label="Vai trò hệ thống (cố định)"
           value={v(rolesCountsQuery, 'system')}
           tone="info"
           active={activeTab === 'roles' && roleParams.isSystem === true}
-          onClick={() => {
-            handleTabChange('roles');
-            setParam('is_system', 'true');
-          }}
+          onClick={() => handleSelectRoleScope(true)}
         />
         <StatTile
           label="Tổng quyền hệ thống"
           value={v(permissionsCountsQuery, 'all')}
           tone="warning"
           active={activeTab === 'permissions'}
-          onClick={() => handleTabChange('permissions')}
+          onClick={handleSelectPermissionsTab}
         />
       </div>
 
