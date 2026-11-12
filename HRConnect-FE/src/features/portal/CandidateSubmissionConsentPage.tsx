@@ -14,10 +14,10 @@ import { getApiError } from '@/services/apiClient';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 const LINK = 'text-[#0369A1] no-underline transition-colors duration-200 hover:text-[#075985] hover:underline';
-const CARD = 'rounded-lg border border-solid border-[#E5E7EB] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)]';
-const BUTTON = `${FONT} box-border inline-flex h-12 cursor-pointer items-center justify-center rounded-md px-4 text-[15px] no-underline transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`;
-const PRIMARY = `${BUTTON} border-0 bg-[#0C4A6E] font-semibold text-white hover:bg-[#075985] hover:text-white`;
-const SECONDARY = `${BUTTON} border border-solid border-[#D1D5DB] bg-white font-medium text-[#1F2937] hover:bg-[#F9FAFB] hover:text-[#1F2937]`;
+const CARD = 'rounded-xl border border-solid border-slate-200/80 bg-white shadow-sm';
+const BUTTON = `${FONT} box-border inline-flex h-11 cursor-pointer items-center justify-center rounded-xl px-5 text-[14px] font-semibold no-underline transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`;
+const PRIMARY = `${BUTTON} border-0 bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white shadow-md shadow-sky-500/20 hover:opacity-95 hover:text-white`;
+const SECONDARY = `${BUTTON} border border-solid border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900`;
 
 const consentKey = (submissionId: string) => ['candidate-submission-consent', submissionId] as const;
 

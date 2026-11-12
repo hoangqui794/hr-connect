@@ -46,14 +46,14 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { to: '/affiliate/dashboard', label: 'Tổng quan', icon: <DashboardOutlined /> },
-  { to: '/affiliate/jobs', label: 'Việc làm', icon: <FileTextOutlined /> },
+  { to: '/affiliate/jobs', label: 'Sàn việc làm', icon: <FileTextOutlined /> },
   { to: '/affiliate/submissions', label: 'Lượt giới thiệu', icon: <SendOutlined /> },
-  { to: '/affiliate/attributions', label: 'Ghi nhận nguồn', icon: <SafetyCertificateOutlined /> },
   { to: '/affiliate/candidates', label: 'Kho ứng viên', icon: <TeamOutlined /> },
-  { to: '/affiliate/commissions', label: 'Hoa hồng và chi trả', icon: <DollarOutlined /> },
-  { to: '/affiliate/performance', label: 'Hiệu suất', icon: <TrophyOutlined /> },
+  { to: '/affiliate/attributions', label: 'Ghi nhận nguồn', icon: <SafetyCertificateOutlined /> },
+  { to: '/affiliate/commissions', label: 'Hoa hồng & chi trả', icon: <DollarOutlined /> },
+  { to: '/affiliate/performance', label: 'Hiệu suất & uy tín', icon: <TrophyOutlined /> },
   { to: '/affiliate/disputes', label: 'Khiếu nại', icon: <SolutionOutlined /> },
-  { to: '/affiliate/profile', label: 'Hồ sơ và ngân hàng', icon: <UserOutlined /> },
+  { to: '/affiliate/profile', label: 'Hồ sơ & ngân hàng', icon: <UserOutlined /> },
 ];
 
 // Phones get the four most used pages at the bottom; the rest stay in the off-canvas menu.

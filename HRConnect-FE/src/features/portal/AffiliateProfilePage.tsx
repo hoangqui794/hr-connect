@@ -105,7 +105,7 @@ export const AffiliateProfilePage: React.FC = () => {
     <div>
       <h1 className="sr-only">Hồ sơ và ngân hàng</h1>
       <div className="flex flex-wrap items-start gap-5">
-        <section aria-labelledby="aff-profile-form" className="min-w-0 flex-[1_1_440px] rounded-lg border border-solid border-gray-200 bg-white p-5">
+        <section aria-labelledby="aff-profile-form" className="min-w-0 flex-[1_1_440px] rounded-xl border border-solid border-slate-200/80 bg-white p-5 shadow-sm">
           <div className="mb-3.5 flex items-center justify-between gap-3">
             <h2 id="aff-profile-form" className="m-0 text-[15px] font-bold text-gray-900">Hồ sơ Affiliate</h2>
             <span className={`rounded px-2 py-0.5 text-xs font-semibold ${status.className}`}>{status.label}</span>

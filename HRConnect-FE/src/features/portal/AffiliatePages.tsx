@@ -833,7 +833,7 @@ export const AffiliateSubmissionsPage: React.FC = () => {
   return (
     <div className="affiliate-submissions-page">
       <h1 className="sr-only">Lượt giới thiệu</h1>
-      <div role="tablist" aria-label="Lọc theo trạng thái" className="mb-3.5 flex flex-wrap gap-1.5">
+      <div role="tablist" aria-label="Lọc theo trạng thái" className="mb-4 flex flex-wrap gap-2">
         {REFERRAL_GROUPS.map((g) => {
           const active = g.key === group;
           const count = g.key === 'all' ? all.length : all.filter((r) => r.rowGroup === g.key).length;
@@ -844,8 +844,10 @@ export const AffiliateSubmissionsPage: React.FC = () => {
               role="tab"
               aria-selected={active}
               onClick={() => update({ status: g.key === 'all' ? undefined : g.key })}
-              className={`h-9 cursor-pointer rounded-full border border-solid px-3 text-[13px] font-medium transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 ${
-                active ? 'border-[#0C4A6E] bg-[#0C4A6E] text-white' : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+              className={`h-9 cursor-pointer rounded-full border border-solid px-3.5 text-[13px] font-semibold transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0284C7] ${
+                active
+                  ? 'border-[#0284C7] bg-[#0284C7] text-white shadow-sm shadow-sky-500/25'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
               }`}
             >
               {g.label} · {list.isLoading ? '…' : count}
@@ -853,7 +855,7 @@ export const AffiliateSubmissionsPage: React.FC = () => {
           );
         })}
         {(jobId || candidateId) && (
-          <Button className="!h-9" onClick={() => update({ jobId: undefined, candidateId: undefined })}>
+          <Button className="!h-9 rounded-full border-slate-200 text-slate-600 hover:border-slate-300" onClick={() => update({ jobId: undefined, candidateId: undefined })}>
             Bỏ lọc theo {jobId ? 'việc làm' : 'ứng viên'}
           </Button>
         )}
@@ -863,7 +865,7 @@ export const AffiliateSubmissionsPage: React.FC = () => {
         <Alert type="error" showIcon message="Không tải được lượt giới thiệu" description={getApiErrorMessage(list.error)} action={<Button onClick={() => list.refetch()}>Thử lại</Button>} />
       ) : (
         <div className="flex flex-wrap items-start gap-5">
-          <section className="min-w-0 flex-[999_1_520px] rounded-lg border border-solid border-gray-200 bg-white">
+          <section className="min-w-0 flex-[999_1_520px] rounded-xl border border-solid border-slate-200/80 bg-white shadow-sm">
             {list.isLoading ? (
               <div className="p-5"><Skeleton active paragraph={{ rows: 5 }} /></div>
             ) : pageItems.length === 0 ? (
@@ -880,11 +882,11 @@ export const AffiliateSubmissionsPage: React.FC = () => {
               <div className="relative overflow-x-auto">
                 <table className="w-full min-w-[600px] border-collapse">
                   <thead>
-                    <tr className="text-left text-xs text-gray-500">
-                      <th className="px-4 py-2.5 font-medium">Ứng viên</th>
-                      <th className="px-4 py-2.5 font-medium">Việc làm</th>
-                      <th className="px-4 py-2.5 font-medium">Trạng thái</th>
-                      <th className="px-4 py-2.5 font-medium">Ngày gửi</th>
+                    <tr className="border-0 border-b border-solid border-slate-100 bg-slate-50/60 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      <th className="px-4 py-3">Ứng viên</th>
+                      <th className="px-4 py-3">Việc làm</th>
+                      <th className="px-4 py-3">Trạng thái</th>
+                      <th className="px-4 py-3">Ngày gửi</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -895,12 +897,12 @@ export const AffiliateSubmissionsPage: React.FC = () => {
                         aria-selected={r.submissionId === selected?.submissionId}
                         onClick={() => setSelectedId(r.submissionId)}
                         onKeyDown={(e) => e.key === 'Enter' && setSelectedId(r.submissionId)}
-                        className={`cursor-pointer border-0 border-t border-solid border-slate-100 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-600 ${r.submissionId === selected?.submissionId ? 'bg-sky-50' : 'hover:bg-slate-50'}`}
+                        className={`cursor-pointer border-0 border-t border-solid border-slate-100 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0284C7] ${r.submissionId === selected?.submissionId ? 'bg-sky-50/80 font-medium' : 'hover:bg-slate-50/70'}`}
                       >
-                        <td className="px-4 py-3 font-bold text-gray-900">{r.candidateName}</td>
-                        <td className="px-4 py-3 text-[13px] text-gray-800">{r.jobTitle}</td>
-                        <td className="px-4 py-3"><StatusChip tone={r.tone}>{r.label}</StatusChip></td>
-                        <td className="px-4 py-3 text-[13px] tabular-nums text-gray-600">{dayjs(r.submittedAt).format('DD/MM/YYYY')}</td>
+                        <td className="px-4 py-3.5 font-bold text-gray-900">{r.candidateName}</td>
+                        <td className="px-4 py-3.5 text-[13px] text-gray-800">{r.jobTitle}</td>
+                        <td className="px-4 py-3.5"><StatusChip tone={r.tone}>{r.label}</StatusChip></td>
+                        <td className="px-4 py-3.5 text-[13px] tabular-nums text-gray-600">{dayjs(r.submittedAt).format('DD/MM/YYYY')}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -915,7 +917,7 @@ export const AffiliateSubmissionsPage: React.FC = () => {
           </section>
 
           {selected && (
-            <aside aria-label="Chi tiết lượt giới thiệu" className="min-w-0 flex-[1_1_320px] rounded-lg border border-solid border-gray-200 bg-white p-5">
+            <aside aria-label="Chi tiết lượt giới thiệu" className="min-w-0 flex-[1_1_320px] rounded-xl border border-solid border-slate-200/80 bg-white p-5 shadow-sm">
               <div className="text-base font-bold text-gray-900">{selected.candidateName}</div>
               <div className="text-[13px] text-gray-600">{selected.jobTitle}</div>
               <div className="mt-2"><StatusChip tone={selected.tone}>{selected.label}</StatusChip></div>
@@ -928,18 +930,18 @@ export const AffiliateSubmissionsPage: React.FC = () => {
                 {selectedStep === undefined ? (
                   <>
                     <li className="flex items-start gap-2.5">
-                      <span aria-hidden className="mt-[5px] h-2.5 w-2.5 shrink-0 rounded-full bg-sky-700" />
+                      <span aria-hidden className="mt-[5px] h-2.5 w-2.5 shrink-0 rounded-full bg-[#0284C7]" />
                       <span><span className="block font-medium text-gray-800">Đã gửi giới thiệu</span><span className="block text-xs text-gray-500">{dayjs(selected.submittedAt).format('DD/MM/YYYY')}</span></span>
                     </li>
                     <li className="flex items-start gap-2.5">
-                      <span aria-hidden className="mt-[5px] h-2.5 w-2.5 shrink-0 rounded-full bg-red-700" />
+                      <span aria-hidden className="mt-[5px] h-2.5 w-2.5 shrink-0 rounded-full bg-red-600" />
                       <span><span className="block font-medium text-red-800">{selected.label}</span><span className="block text-xs text-gray-500">Kết thúc</span></span>
                     </li>
                   </>
                 ) : (
                   PROGRESS_STEPS.map((label, i) => (
                     <li key={label} className="flex items-start gap-2.5" aria-current={i === selectedStep ? 'step' : undefined}>
-                      <span aria-hidden className={`mt-[5px] h-2.5 w-2.5 shrink-0 rounded-full ${i <= selectedStep ? 'bg-sky-700' : 'bg-gray-200'}`} />
+                      <span aria-hidden className={`mt-[5px] h-2.5 w-2.5 shrink-0 rounded-full ${i <= selectedStep ? 'bg-[#0284C7]' : 'bg-slate-200'}`} />
                       <span>
                         <span className={`block font-medium ${i <= selectedStep ? 'text-gray-800' : 'text-gray-400'}`}>{label}</span>
                         {i <= selectedStep && <span className="block text-xs text-gray-500">{i === selectedStep ? 'Hiện tại' : 'Xong'}</span>}
@@ -956,7 +958,7 @@ export const AffiliateSubmissionsPage: React.FC = () => {
                     size="large"
                     icon={<MailOutlined aria-hidden />}
                     loading={resend.isPending}
-                    className="!border-sky-700 !text-sky-700"
+                    className="!border-[#0284C7] !text-[#0284C7] hover:!bg-sky-50 font-semibold"
                     onClick={() => resend.mutate(selected.submissionId)}
                   >
                     Gửi lại email xác nhận
@@ -987,7 +989,7 @@ export const AffiliateSubmissionsPage: React.FC = () => {
               )}
               <button
                 type="button"
-                className="mt-3 w-full cursor-pointer border-0 bg-transparent p-1 text-center text-[13px] font-semibold text-sky-700 hover:text-sky-900"
+                className="mt-3 w-full cursor-pointer border-0 bg-transparent p-1 text-center text-[13px] font-semibold text-[#0284C7] hover:text-[#0369A1]"
                 onClick={() => navigate(`/affiliate/submissions/${selected.submissionId}`)}
               >
                 Xem đầy đủ
@@ -1255,24 +1257,24 @@ export const AffiliateCandidatesPage: React.FC = () => {
             if (!e.target.value) setSearch('');
           }}
         />
-        <Button type="primary" htmlType="submit" className="!bg-[color:var(--affiliate-brand)]">Tìm</Button>
+        <Button type="primary" htmlType="submit" className="!bg-gradient-to-r from-[#0284C7] to-[#2563EB] !border-0 text-white font-semibold shadow-sm shadow-sky-500/20 hover:opacity-95 !h-10 px-5">Tìm</Button>
       </form>
-      <p className="m-0 mb-3 mt-4 text-sm text-gray-600">{list.isLoading ? 'Đang tải…' : `${list.data?.total ?? 0} ứng viên · CV lưu theo từng lượt giới thiệu`}</p>
+      <p className="m-0 mb-3 mt-4 text-sm text-slate-600">{list.isLoading ? 'Đang tải…' : `${list.data?.total ?? 0} ứng viên · CV lưu theo từng lượt giới thiệu`}</p>
       {list.isError ? (
         <Alert type="error" showIcon message="Không tải được kho ứng viên" description={getApiErrorMessage(list.error)} action={<Button onClick={() => list.refetch()}>Thử lại</Button>} />
       ) : list.isLoading ? (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3">
-          {[0, 1, 2].map((i) => <div key={i} className="rounded-lg border border-solid border-gray-200 bg-white p-4"><Skeleton active avatar paragraph={{ rows: 2 }} /></div>)}
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3.5">
+          {[0, 1, 2].map((i) => <div key={i} className="rounded-xl border border-solid border-slate-200/80 bg-white p-4 shadow-sm"><Skeleton active avatar paragraph={{ rows: 2 }} /></div>)}
         </div>
       ) : (list.data?.items ?? []).length === 0 ? (
-        <div className="rounded-lg border border-solid border-gray-200 bg-white px-4 py-12 text-center">
+        <div className="rounded-xl border border-solid border-slate-200/80 bg-white px-4 py-12 text-center shadow-sm">
           <div className="font-semibold text-gray-900">{search ? 'Không tìm thấy ứng viên' : 'Kho ứng viên đang trống'}</div>
           <p className="m-0 mt-1 text-sm text-gray-600">Ứng viên đồng ý qua lời giới thiệu của bạn sẽ được lưu ở đây.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3.5">
           {(list.data?.items ?? []).map((c) => (
-            <article key={c.candidateId} className="flex flex-col gap-2.5 rounded-lg border border-solid border-gray-200 bg-white p-4">
+            <article key={c.candidateId} className="flex flex-col gap-2.5 rounded-xl border border-solid border-slate-200/80 bg-white p-4 shadow-sm transition-all duration-200 hover:border-sky-200 hover:shadow-md">
               <button
                 type="button"
                 className="flex cursor-pointer items-center gap-3 border-0 bg-transparent p-0 text-left"
@@ -1289,7 +1291,7 @@ export const AffiliateCandidatesPage: React.FC = () => {
                   {c.activeCvCount > 0 ? `${c.activeCvCount} CV` : 'Chưa có CV'} · {c.acceptedSubmissionCount} lượt
                   {c.lastSubmittedAt ? ` · ${dayjs(c.lastSubmittedAt).fromNow()}` : ''}
                 </span>
-                <Button size="small" type="primary" className="!bg-[color:var(--affiliate-brand)]" onClick={() => navigate(`/affiliate/submit-candidate?candidate=${c.candidateId}`)}>
+                <Button size="small" type="primary" className="!bg-gradient-to-r from-[#0284C7] to-[#2563EB] !border-0 text-white font-semibold shadow-sm shadow-sky-500/20 hover:opacity-95" onClick={() => navigate(`/affiliate/submit-candidate?candidate=${c.candidateId}`)}>
                   Giới thiệu
                 </Button>
               </div>
@@ -1302,7 +1304,7 @@ export const AffiliateCandidatesPage: React.FC = () => {
           <Pagination current={page} pageSize={10} total={list.data?.total ?? 0} showSizeChanger={false} onChange={setPage} />
         </div>
       )}
-      <p className="m-0 mt-4 rounded-md border border-solid border-sky-200 bg-sky-50 px-3.5 py-3 text-[13px] text-sky-900">Mỗi lần giới thiệu vào job mới, ứng viên vẫn nhận email và phải đồng ý lại cho job đó.</p>
+      <p className="m-0 mt-4 rounded-xl border border-solid border-sky-200/80 bg-sky-50/70 px-4 py-3 text-[13px] text-sky-950 font-medium leading-relaxed">Mỗi lần giới thiệu vào job mới, ứng viên vẫn nhận email và phải đồng ý lại cho job đó.</p>
 
     </div>
   );
@@ -1328,7 +1330,7 @@ export const AffiliateCandidateDetailPage: React.FC = () => {
     <div>
       <button
         type="button"
-        className="mb-3 inline-flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-sm text-sky-700 hover:text-sky-900"
+        className="mb-3 inline-flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-sm font-medium text-[#0284C7] hover:text-[#0369A1]"
         onClick={() => navigate('/affiliate/candidates')}
       >
         <ArrowLeftOutlined aria-hidden /> Kho ứng viên
@@ -1339,7 +1341,7 @@ export const AffiliateCandidateDetailPage: React.FC = () => {
         <Skeleton active paragraph={{ rows: 8 }} />
       ) : (
         <div className="space-y-4">
-          <section className="flex flex-wrap items-center gap-4 rounded-lg border border-solid border-gray-200 bg-white p-5">
+          <section className="flex flex-wrap items-center gap-4 rounded-xl border border-solid border-slate-200/80 bg-white p-5 shadow-sm">
             <Initials name={c.fullName} size={64} />
             <div className="min-w-0 flex-[1_1_260px]">
               <h1 className="m-0 text-xl font-bold text-gray-900">{c.fullName}</h1>
@@ -1351,28 +1353,28 @@ export const AffiliateCandidateDetailPage: React.FC = () => {
             </Button>
           </section>
 
-          <section aria-labelledby="aff-cand-cvs" className="rounded-lg border border-solid border-gray-200 bg-white">
-            <h2 id="aff-cand-cvs" className="m-0 border-0 border-b border-solid border-slate-100 px-4 py-3.5 text-[15px] font-bold text-gray-900">CV đã lưu ({c.cvs.length})</h2>
+          <section aria-labelledby="aff-cand-cvs" className="rounded-xl border border-solid border-slate-200/80 bg-white shadow-sm overflow-hidden">
+            <h2 id="aff-cand-cvs" className="m-0 border-0 border-b border-solid border-slate-100 bg-slate-50/60 px-4 py-3.5 text-[15px] font-bold text-gray-900">CV đã lưu ({c.cvs.length})</h2>
             {c.cvs.length === 0 && <p className="m-0 px-4 py-6 text-center text-sm text-gray-600">Ứng viên chưa có CV.</p>}
             <ul className="m-0 list-none p-0">
               {c.cvs.map((cv) => (
-                <li key={cv.cvId} className="flex flex-wrap items-center gap-3 border-0 border-b border-solid border-slate-100 px-4 py-3 last:border-b-0">
-                  <span aria-hidden className="flex h-11 w-9 shrink-0 items-center justify-center rounded border border-solid border-gray-200 text-[10px] font-bold text-red-700">PDF</span>
+                <li key={cv.cvId} className="flex flex-wrap items-center gap-3 border-0 border-b border-solid border-slate-100 px-4 py-3.5 last:border-b-0 hover:bg-slate-50/60 transition-colors">
+                  <span aria-hidden className="flex h-11 w-9 shrink-0 items-center justify-center rounded border border-solid border-rose-200 bg-rose-50 text-[10px] font-bold text-rose-700">PDF</span>
                   <div className="min-w-0 flex-[1_1_220px]">
                     <div className="truncate font-semibold text-gray-900">{cv.title || cv.fileName}</div>
                     <div className="text-xs text-gray-500">{cv.status === 'ACTIVE' ? 'Sẵn sàng sử dụng' : 'Không thể sử dụng'} · đã dùng {cv.acceptedSubmissionCount} lần · tải lên {dayjs(cv.createdAt).format('DD/MM/YYYY')}</div>
                   </div>
                   <Button icon={<EyeOutlined />} onClick={() => openSigned(() => affiliateApi.libraryCvUrl(c.candidateId, cv.cvId))}>Xem CV</Button>
                   {cv.status === 'ACTIVE' && (
-                    <Button onClick={() => navigate(`/affiliate/submit-candidate?candidate=${c.candidateId}&cv=${cv.cvId}`)}>Dùng CV này</Button>
+                    <Button className="!bg-sky-50 !border-sky-200/80 !text-[#0284C7] font-semibold hover:!bg-sky-100" onClick={() => navigate(`/affiliate/submit-candidate?candidate=${c.candidateId}&cv=${cv.cvId}`)}>Dùng CV này</Button>
                   )}
                 </li>
               ))}
             </ul>
           </section>
 
-          <section aria-labelledby="aff-cand-refs" className="rounded-lg border border-solid border-gray-200 bg-white">
-            <h2 id="aff-cand-refs" className="m-0 border-0 border-b border-solid border-slate-100 px-4 py-3.5 text-[15px] font-bold text-gray-900">Các lần bạn giới thiệu</h2>
+          <section aria-labelledby="aff-cand-refs" className="rounded-xl border border-solid border-slate-200/80 bg-white shadow-sm overflow-hidden">
+            <h2 id="aff-cand-refs" className="m-0 border-0 border-b border-solid border-slate-100 bg-slate-50/60 px-4 py-3.5 text-[15px] font-bold text-gray-900">Các lần bạn giới thiệu</h2>
             {referrals.isLoading ? (
               <div className="p-4"><Skeleton active paragraph={{ rows: 2 }} /></div>
             ) : (referrals.data?.items ?? []).length === 0 ? (
@@ -1382,8 +1384,8 @@ export const AffiliateCandidateDetailPage: React.FC = () => {
                 {(referrals.data?.items ?? []).map((r) => {
                   const st = submissionStatus(r.status);
                   return (
-                    <li key={r.submissionId} className="flex flex-wrap items-center gap-3 border-0 border-b border-solid border-slate-100 px-4 py-3 last:border-b-0">
-                      <button type="button" className="min-w-0 flex-[1_1_220px] cursor-pointer border-0 bg-transparent p-0 text-left font-semibold text-gray-900 hover:text-sky-800" onClick={() => navigate(`/affiliate/submissions/${r.submissionId}`)}>{r.jobTitle}</button>
+                    <li key={r.submissionId} className="flex flex-wrap items-center gap-3 border-0 border-b border-solid border-slate-100 px-4 py-3.5 last:border-b-0 hover:bg-slate-50/60 transition-colors">
+                      <button type="button" className="min-w-0 flex-[1_1_220px] cursor-pointer border-0 bg-transparent p-0 text-left font-semibold text-gray-900 hover:text-[#0284C7] transition-colors" onClick={() => navigate(`/affiliate/submissions/${r.submissionId}`)}>{r.jobTitle}</button>
                       <StatusChip tone={st.tone}>{st.label}</StatusChip>
                       <span className="text-[13px] tabular-nums text-gray-600">{dayjs(r.submittedAt).format('DD/MM/YYYY')}</span>
                     </li>
@@ -1434,7 +1436,7 @@ export const AffiliateAttributionsPage: React.FC = () => {
       key: 'a',
       width: 90,
       render: (_, r) => (
-        <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-[13px] font-semibold text-sky-700 hover:text-sky-900" onClick={() => navigate(`/affiliate/candidates/${r.candidateId}`)}>
+        <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-[13px] font-semibold text-[#0284C7] hover:text-[#0369A1]" onClick={() => navigate(`/affiliate/candidates/${r.candidateId}`)}>
           Chi tiết
         </button>
       ),
@@ -1445,9 +1447,9 @@ export const AffiliateAttributionsPage: React.FC = () => {
       <AffiliatePageHeader
         title="Ghi nhận nguồn"
         description="Ứng viên đã xác nhận bạn là người giới thiệu."
-        actions={<Button size="large" icon={<TrophyOutlined />} onClick={() => navigate('/affiliate/commissions')}>Xem hoa hồng</Button>}
+        actions={<Button size="large" icon={<TrophyOutlined />} className="!border-emerald-300 !bg-emerald-50 !text-emerald-700 hover:!bg-emerald-100 font-semibold" onClick={() => navigate('/affiliate/commissions')}>Xem hoa hồng</Button>}
       />
-      <p className="m-0 mb-3.5 rounded-md border border-solid border-sky-200 bg-sky-50 px-3.5 py-3 text-[13px] leading-relaxed text-sky-900">
+      <p className="m-0 mb-3.5 rounded-xl border border-solid border-sky-200/80 bg-sky-50/70 px-4 py-3 text-[13px] leading-relaxed text-sky-950 font-medium">
         Ghi nhận nguồn là bằng chứng bạn là người giới thiệu ứng viên vào job. Chỉ lượt hợp lệ đầu tiên được ghi nhận, và hoa hồng tính theo ghi nhận này. Hiện có <strong>{list.data?.totalCount ?? 0}</strong> ghi nhận.
       </p>
       <Surface>
