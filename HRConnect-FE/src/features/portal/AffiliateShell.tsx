@@ -127,8 +127,8 @@ export const AffiliateShell: React.FC = () => {
           <BrandMark size={32} className="shrink-0" />
           {!collapsed && (
             <div className="flex min-w-0 items-center gap-2">
-              <span className="truncate text-[17px] font-bold text-[color:var(--affiliate-brand)]">HR Connect</span>
-              <span className="rounded bg-sky-100 px-1.5 py-px text-[11px] font-semibold text-sky-800">Affiliate</span>
+              <span className="truncate text-[17px] font-bold text-[#0369A1]">HR Connect</span>
+              <span className="rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-[#0284C7] border border-sky-200/60">Affiliate</span>
             </div>
           )}
         </div>
@@ -138,7 +138,7 @@ export const AffiliateShell: React.FC = () => {
             <NavLink
               to="/affiliate/submit-candidate"
               aria-label={collapsed ? 'Giới thiệu ứng viên' : undefined}
-              className="affiliate-sidebar-cta flex h-11 items-center justify-center gap-2 rounded-md text-sm font-semibold no-underline transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400"
+              className="affiliate-sidebar-cta flex h-11 items-center justify-center gap-2 rounded-lg text-sm font-semibold no-underline transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 shadow-md shadow-sky-500/20"
             >
               <UserAddOutlined aria-hidden />
               {!collapsed && <span>Giới thiệu ứng viên</span>}
@@ -167,7 +167,7 @@ export const AffiliateShell: React.FC = () => {
                     </span>
                     {!collapsed && <span className="truncate">{item.label}</span>}
                     {!collapsed && item.to === '/affiliate/submissions' && Boolean(pendingCount.data) && (
-                      <span className="ml-auto text-xs text-orange-800" aria-label={`${pendingCount.data} lượt chờ xác nhận`}>{pendingCount.data}</span>
+                      <span className="ml-auto text-xs text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-200/60 font-semibold" aria-label={`${pendingCount.data} lượt chờ xác nhận`}>{pendingCount.data}</span>
                     )}
                   </NavLink>
                 </Tooltip>
@@ -265,7 +265,7 @@ export const AffiliateShell: React.FC = () => {
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
-              `flex flex-col items-center justify-center gap-0.5 text-[11px] no-underline ${isActive ? 'font-semibold text-[color:var(--affiliate-brand)]' : 'text-gray-500'}`
+              `flex flex-col items-center justify-center gap-0.5 text-[11px] no-underline ${isActive ? 'font-semibold text-[#0284C7]' : 'text-slate-500'}`
             }
           >
             <span className="text-lg" aria-hidden>{item.icon}</span>

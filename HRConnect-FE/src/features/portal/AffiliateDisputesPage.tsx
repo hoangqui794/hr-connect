@@ -20,11 +20,11 @@ import { submissionStatus } from './mf02Labels';
 const fmtDate = (v?: string | null) => (v ? dayjs(v).format('DD/MM/YYYY') : '—');
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  OPEN: { label: 'Đã gửi', className: 'bg-orange-50 text-orange-800' },
-  UNDER_REVIEW: { label: 'Đang xem xét', className: 'bg-sky-100 text-sky-800' },
-  UPHELD: { label: 'Được chấp nhận', className: 'bg-green-100 text-green-800' },
-  REJECTED: { label: 'Không chấp nhận', className: 'bg-red-50 text-red-800' },
-  WITHDRAWN: { label: 'Đã rút', className: 'bg-gray-100 text-gray-700' },
+  OPEN: { label: 'Đã gửi', className: 'bg-amber-50 text-amber-800 border border-amber-200/60' },
+  UNDER_REVIEW: { label: 'Đang xem xét', className: 'bg-sky-50 text-sky-800 border border-sky-200/60' },
+  UPHELD: { label: 'Được chấp nhận', className: 'bg-emerald-50 text-emerald-800 border border-emerald-200/60' },
+  REJECTED: { label: 'Không chấp nhận', className: 'bg-rose-50 text-rose-800 border border-rose-200/60' },
+  WITHDRAWN: { label: 'Đã rút', className: 'bg-slate-100 text-slate-700 border border-slate-200/60' },
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -76,7 +76,7 @@ export const AffiliateDisputesPage: React.FC = () => {
       {isError ? <Alert className="mb-4" type="error" showIcon message="Không tải được danh sách khiếu nại" description={getApiErrorMessage(error)} /> : null}
 
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-        <section aria-labelledby="aff-disputes-mine" className="rounded-lg border border-solid border-gray-200 bg-white">
+        <section aria-labelledby="aff-disputes-mine" className="rounded-xl border border-solid border-slate-200/80 bg-white shadow-sm overflow-hidden">
           <h2 id="aff-disputes-mine" className="m-0 border-0 border-b border-solid border-slate-100 px-4 py-3.5 text-[15px] font-bold text-gray-900">Khiếu nại của tôi</h2>
           {isLoading ? (
             <div className="p-4"><Skeleton active paragraph={{ rows: 3 }} /></div>
@@ -107,7 +107,7 @@ export const AffiliateDisputesPage: React.FC = () => {
           )}
         </section>
 
-        <section aria-labelledby="aff-dispute-new" className="rounded-lg border border-solid border-gray-200 bg-white p-5">
+        <section aria-labelledby="aff-dispute-new" className="rounded-xl border border-solid border-slate-200/80 bg-white p-5 shadow-sm">
           <h2 id="aff-dispute-new" className="m-0 mb-3.5 text-[15px] font-bold text-gray-900">Gửi khiếu nại mới</h2>
           <Form<CreateDisputeRequest>
             form={form}
@@ -140,7 +140,7 @@ export const AffiliateDisputesPage: React.FC = () => {
               <Input.TextArea rows={2} placeholder="Ví dụ: email trao đổi với ứng viên ngày..." />
             </Form.Item>
             <p className="m-0 mb-3.5 text-xs leading-relaxed text-gray-500">Admin xem xét và thông báo kết quả. Bạn không thấy thông tin của Affiliate bên kia. Hoa hồng liên quan được giữ đến khi có kết quả.</p>
-            <Button type="primary" htmlType="submit" block size="large" loading={createMutation.isPending} className="!bg-[color:var(--affiliate-brand)]">
+            <Button type="primary" htmlType="submit" block size="large" loading={createMutation.isPending} className="!bg-gradient-to-r from-[#0284C7] to-[#2563EB] hover:from-[#0369A1] hover:to-[#1D4ED8] !border-0 text-white font-semibold shadow-md shadow-sky-500/20">
               Gửi khiếu nại
             </Button>
           </Form>

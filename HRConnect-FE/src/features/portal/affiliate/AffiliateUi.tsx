@@ -19,12 +19,12 @@ export const AffiliatePageHeader: React.FC<PageHeaderProps> = ({ title, descript
 );
 
 const TONE_CHIP: Record<string, string> = {
-  success: 'bg-green-100 text-green-800',
-  warning: 'bg-orange-50 text-orange-800',
-  amber: 'bg-amber-100 text-amber-800',
-  danger: 'bg-red-50 text-red-800',
-  info: 'bg-sky-100 text-sky-800',
-  neutral: 'bg-gray-100 text-gray-700',
+  success: 'bg-emerald-50 text-emerald-800 border border-emerald-200/60',
+  warning: 'bg-amber-50 text-amber-800 border border-amber-200/60',
+  amber: 'bg-amber-50 text-amber-800 border border-amber-200/60',
+  danger: 'bg-rose-50 text-rose-800 border border-rose-200/60',
+  info: 'bg-sky-50 text-sky-800 border border-sky-200/60',
+  neutral: 'bg-slate-100 text-slate-700 border border-slate-200/60',
 };
 
 export const StatusChip: React.FC<{ tone?: string; children: React.ReactNode }> = ({ tone = 'neutral', children }) => (
@@ -52,7 +52,7 @@ export const AffiliateStatCard: React.FC<{
   icon: React.ReactNode;
   color?: string;
   softColor?: string;
-}> = ({ label, value, hint, icon, color = '#0369A1', softColor = '#eff6ff' }) => (
+}> = ({ label, value, hint, icon, color = '#0284C7', softColor = '#F0F9FF' }) => (
   <article
     className="affiliate-stat-card"
     style={{ '--stat-color': color, '--stat-soft': softColor } as React.CSSProperties}
@@ -91,9 +91,9 @@ export const AffiliateFlowSteps: React.FC<{ active?: 1 | 2 | 3 }> = ({ active = 
               <span
                 className={`flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full text-xs sm:text-sm font-semibold transition-all ${
                   isDone
-                    ? 'bg-emerald-500 text-white shadow-sm ring-4 ring-emerald-50'
+                    ? 'bg-emerald-600 text-white shadow-sm ring-4 ring-emerald-50'
                     : isCurrent
-                    ? 'bg-sky-700 text-white shadow-sm ring-4 ring-sky-50'
+                    ? 'bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white shadow-md shadow-sky-500/25 ring-4 ring-sky-100'
                     : 'bg-slate-100 text-slate-500 border border-slate-200'
                 }`}
               >
@@ -102,7 +102,7 @@ export const AffiliateFlowSteps: React.FC<{ active?: 1 | 2 | 3 }> = ({ active = 
               <div className="text-center sm:text-left">
                 <div
                   className={`text-xs sm:text-sm font-semibold leading-tight ${
-                    isCurrent ? 'text-sky-700' : isDone ? 'text-slate-900' : 'text-slate-500'
+                    isCurrent ? 'text-[#0284C7]' : isDone ? 'text-slate-900' : 'text-slate-500'
                   }`}
                 >
                   {step.title}

@@ -1,26 +1,26 @@
 .affiliate-console {
-  --console-accent: #0369a1;
-  --console-accent-strong: #075985;
-  --console-accent-soft: #e0f2fe;
+  --console-accent: #0284c7;
+  --console-accent-strong: #0369a1;
+  --console-accent-soft: #f0f9ff;
   --console-accent-bright: #38bdf8;
-  --console-accent-glow: rgba(3, 105, 161, 0.3);
-  --affiliate-brand: #0c4a6e;
-  --affiliate-cta: #c2410c;
-  --affiliate-cta-strong: #9a3412;
-  --affiliate-gold: #c2410c;
-  --affiliate-navy: #0c4a6e;
-  --affiliate-canvas: #f7f8fa;
-  --affiliate-border: #e5e7eb;
-  --affiliate-muted: #6b7280;
+  --console-accent-glow: rgba(2, 132, 199, 0.25);
+  --affiliate-brand: #0369a1;
+  --affiliate-cta: #0284c7;
+  --affiliate-cta-strong: #0369a1;
+  --affiliate-gold: #059669;
+  --affiliate-navy: #0369a1;
+  --affiliate-canvas: #f8fafc;
+  --affiliate-border: #e2e8f0;
+  --affiliate-muted: #64748b;
   background: var(--affiliate-canvas);
   font-family: 'Be Vietnam Pro', system-ui, sans-serif;
 }
 
-/* Sidebar: white, flat menu, sky active item (mockup 03/11). */
+/* Sidebar: clean white surface, subtle border, electric azure active item */
 .affiliate-console .affiliate-sidebar {
   background: #fff;
   border-color: var(--affiliate-border);
-  color: #374151;
+  color: #334155;
 }
 
 .affiliate-console .affiliate-sidebar-brand {
@@ -28,27 +28,29 @@
 }
 
 .affiliate-console .affiliate-sidebar-cta {
-  background: var(--affiliate-cta);
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
   color: #fff;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
 }
 
 .affiliate-console .affiliate-sidebar-cta:hover {
-  background: var(--affiliate-cta-strong);
+  background: linear-gradient(135deg, #0369a1 0%, #1d4ed8 100%);
   color: #fff;
+  box-shadow: 0 6px 16px rgba(2, 132, 199, 0.35);
 }
 
 .affiliate-console .affiliate-nav-link {
-  color: #374151;
+  color: #334155;
 }
 
 .affiliate-console .affiliate-nav-link:hover {
-  background: #f1f5f9;
-  color: #111827;
+  background: #f8fafc;
+  color: #0f172a;
 }
 
 .affiliate-console .affiliate-nav-link.active {
-  background: #e0f2fe;
-  color: #075985;
+  background: #f0f9ff;
+  color: #0284c7;
 }
 
 .affiliate-console .affiliate-sidebar-footer {
@@ -71,13 +73,17 @@
   box-sizing: border-box;
 }
 
-/* Money and primary CTA use the orange accent from the mockup. */
+/* Primary CTA & action buttons use the signature sapphire & azure gradient */
 .affiliate-console .affiliate-cta.ant-btn-primary:not(:disabled) {
-  background: var(--affiliate-cta);
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  border: none;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);
 }
 
 .affiliate-console .affiliate-cta.ant-btn-primary:not(:disabled):hover {
-  background: var(--affiliate-cta-strong);
+  background: linear-gradient(135deg, #0369a1 0%, #1d4ed8 100%);
+  border: none;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
 }
 
 .affiliate-page-header {
@@ -1112,9 +1118,9 @@
 
 .affiliate-console .affiliate-avatar .bg-gradient-to-br {
   border: 0;
-  background: #e0f2fe;
+  background: #f0f9ff;
   box-shadow: none;
-  color: #0c4a6e;
+  color: #0369a1;
 }
 
 .affiliate-console .affiliate-avatar .ant-btn {
