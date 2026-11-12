@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { candidateApplicationsApi } from '@/services/api/mf02Api';
 import { candidateInterviewApi } from '@/services/api/candidateInterviewApi';
 import { mf04Api } from '@/services/api/mf04Api';
+import { jobsApi } from '@/services/api/jobsApi';
 import { CandidateApplicationDetailPage } from './CandidateApplicationDetailPage';
 
 // Mock matchMedia for Ant Design responsive Grid
@@ -28,6 +29,13 @@ describe('CandidateApplicationDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(candidateApplicationsApi, 'list').mockResolvedValue({ items: [], page: 1, pageSize: 1, total: 0, totalPages: 0 });
+    vi.spyOn(jobsApi, 'getById').mockResolvedValue({
+      id: 'job-1',
+      jobId: 'job-1',
+      title: 'Senior .NET Developer',
+      status: 'ACTIVE',
+      isAcceptingApplications: true,
+    } as any);
   });
 
   const mockMf04Application = {
@@ -349,5 +357,59 @@ describe('CandidateApplicationDetailPage', () => {
 
     expect(await screen.findByRole('status')).toHaveTextContent('Đang chuẩn bị offer');
     expect(screen.getByRole('list', { name: 'Tiến trình: Đang chuẩn bị offer' })).toBeInTheDocument();
+  });
+
+  it('shows reapply button when application is WITHDRAWN', async () => {
+    vi.spyOn(mf04Api, 'getApplicationDetail').mockResolvedValueOnce({
+      ...mockMf04Application,
+      status: 'WITHDRAWN',
+      offers: [],
+      interviews: [],
+    } as any);
+    vi.spyOn(mf04Api, 'getApplicationTimeline').mockResolvedValueOnce({
+      applicationId: 'application-1',
+      candidateName: 'Nguyễn Văn A',
+      jobTitle: 'Senior .NET Developer',
+      currentStatus: 'WITHDRAWN',
+      events: [],
+    });
+
+    renderComponent();
+
+    const reapplyButtons = await screen.findAllByRole('button', { name: /Ứng tuyển lại/i });
+    expect(reapplyButtons.length).toBeGreaterThan(0);
+    expect(screen.getByText(/Bạn đã rút đơn ứng tuyển vị trí này/i)).toBeInTheDocument();
+  });
+
+  it('disables reapply button when job is CLOSED', async () => {
+    vi.spyOn(jobsApi, 'getById').mockResolvedValueOnce({
+      id: 'job-1',
+      jobId: 'job-1',
+      title: 'Senior .NET Developer',
+      status: 'CLOSED',
+      isAcceptingApplications: false,
+    } as any);
+    vi.spyOn(mf04Api, 'getApplicationDetail').mockResolvedValueOnce({
+      ...mockMf04Application,
+      jobStatus: 'CLOSED',
+      status: 'WITHDRAWN',
+      offers: [],
+      interviews: [],
+    } as any);
+    vi.spyOn(mf04Api, 'getApplicationTimeline').mockResolvedValueOnce({
+      applicationId: 'application-1',
+      candidateName: 'Nguyễn Văn A',
+      jobTitle: 'Senior .NET Developer',
+      currentStatus: 'WITHDRAWN',
+      events: [],
+    });
+
+    renderComponent();
+
+    await waitFor(() => {
+      const button = screen.getByRole('button', { name: /Ứng tuyển lại/i });
+      expect(button).toBeDisabled();
+    });
+    expect(screen.getByText(/Tin tuyển dụng này hiện đã đóng/i)).toBeInTheDocument();
   });
 });

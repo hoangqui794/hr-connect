@@ -7,11 +7,11 @@
  *  - Affiliate: "Giới thiệu ứng viên" → the referral form, preset to this job.
  */
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { Alert, App as AntApp, Button, Modal, Result, Skeleton } from 'antd';
-import { CheckCircleFilled, SendOutlined, UserAddOutlined } from '@ant-design/icons';
+import { CheckCircleFilled, SendOutlined, UserAddOutlined, RedoOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { applyApi, candidateCvApi } from '@/services/api/mf02Api';
 import { mf04Api } from '@/services/api/mf04Api';
 import { getApiError } from '@/services/apiClient';
@@ -43,7 +43,23 @@ const ContactField: React.FC<{ label: string; value?: string | null; type?: stri
   </label>
 );
 
-export const ApplyModal: React.FC<{ job: Job; open: boolean; onClose: () => void }> = ({ job, open, onClose }) => {
+export interface ApplyModalProps {
+  job: Job;
+  open: boolean;
+  onClose: () => void;
+  isReapply?: boolean;
+  previousApplicationId?: string;
+  onSuccess?: () => void;
+}
+
+export const ApplyModal: React.FC<ApplyModalProps> = ({
+  job,
+  open,
+  onClose,
+  isReapply = false,
+  previousApplicationId,
+  onSuccess,
+}) => {
   const { message } = AntApp.useApp();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -77,10 +93,16 @@ export const ApplyModal: React.FC<{ job: Job; open: boolean; onClose: () => void
   }, [open, cvs.data, source]);
 
   const apply = useMutation({
-    mutationFn: () => applyApi.apply(job.jobId, source!.kind === 'vault' ? { cvId: source!.cvId } : { file: source!.file }),
+    mutationFn: () => {
+      const payload = source!.kind === 'vault' ? { cvId: source!.cvId } : { file: source!.file };
+      return isReapply
+        ? applyApi.reapply(job.jobId, payload, previousApplicationId)
+        : applyApi.apply(job.jobId, payload);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: candidateKeys.applications });
       queryClient.invalidateQueries({ queryKey: candidateKeys.cvs });
+      if (onSuccess) onSuccess();
     },
     onError: (err) => {
       const apiError = getApiError(err, 'Không nộp được đơn ứng tuyển.');
@@ -134,12 +156,25 @@ export const ApplyModal: React.FC<{ job: Job; open: boolean; onClose: () => void
         {apply.isSuccess ? (
           <Result
             status="success"
-            title="Đã nộp đơn ứng tuyển"
+            title={isReapply ? 'Đã nộp lại đơn ứng tuyển thành công' : 'Đã nộp đơn ứng tuyển'}
             subTitle={`Đơn vào vị trí “${job.title}” đã được tiếp nhận. Hệ thống đang thực hiện đánh giá mức độ phù hợp của hồ sơ.`}
             extra={
               <div className="flex flex-wrap justify-center gap-2.5">
                 <button type="button" className={SECONDARY} onClick={close}>Đóng</button>
-                <button type="button" className={PRIMARY} onClick={() => navigate(`/candidate/applications/${apply.data.data.applicationId}`)}>Xem đơn vừa nộp</button>
+                <button
+                  type="button"
+                  className={PRIMARY}
+                  onClick={() => {
+                    const targetId = apply.data?.data?.applicationId || previousApplicationId;
+                    if (targetId && targetId !== 'reapplied-application') {
+                      navigate(`/candidate/applications/${targetId}`);
+                    } else {
+                      navigate('/candidate/applications');
+                    }
+                  }}
+                >
+                  Xem đơn vừa nộp
+                </button>
               </div>
             }
           />
@@ -147,7 +182,7 @@ export const ApplyModal: React.FC<{ job: Job; open: boolean; onClose: () => void
           <>
             <div className="flex items-start gap-3 border-0 border-b border-solid border-[#E5E7EB] px-[22px] py-[18px]">
               <div className="min-w-0 flex-1">
-                <h2 id="apply-title" className="m-0 text-[18px] font-bold text-[#1F2937]">Ứng tuyển {job.title}</h2>
+                <h2 id="apply-title" className="m-0 text-[18px] font-bold text-[#1F2937]">{isReapply ? `Ứng tuyển lại vị trí ${job.title}` : `Ứng tuyển ${job.title}`}</h2>
                 {companyLine && <div className="mt-0.5 text-[#4B5563]">{companyLine}</div>}
               </div>
               <button type="button" aria-label="Đóng" onClick={close} className={`${FONT} -mr-2 -mt-2 h-11 w-11 shrink-0 cursor-pointer border-0 bg-transparent text-[20px] text-[#4B5563]`}>×</button>
@@ -167,6 +202,15 @@ export const ApplyModal: React.FC<{ job: Job; open: boolean; onClose: () => void
               }}
               className="flex flex-col gap-[18px] overflow-auto px-[22px] py-[18px]"
             >
+              {isReapply && (
+                <div className="flex items-start gap-2.5 rounded-xl border border-sky-200 bg-sky-50/80 p-3 text-[13px] text-sky-950">
+                  <InfoCircleOutlined className="mt-0.5 text-sky-600 text-sm shrink-0" />
+                  <div className="leading-relaxed">
+                    <strong className="block text-sky-900 font-semibold mb-0.5">Thông tin ứng tuyển lại:</strong>
+                    Bạn đã rút đơn trước đó. Bạn có thể chọn bản CV mới để gửi lại hồ sơ ứng tuyển cho vị trí này.
+                  </div>
+                </div>
+              )}
               {error && (
                 <Alert
                   type="error"
@@ -402,16 +446,19 @@ export const ApplyModal: React.FC<{ job: Job; open: boolean; onClose: () => void
 /** Role-aware call to action for a job page. Renders nothing for roles that cannot submit. */
 export const JobApplyActions: React.FC<{ job: Job; autoOpen?: boolean }> = ({ job, autoOpen = false }) => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const hasAnyRole = useAuthStore((s) => s.hasAnyRole);
   const hasPermission = useAuthStore((s) => s.hasPermission);
-  const { isApplied, getApplication } = useCandidateAppliedJobs();
-  const [open, setOpen] = useState(autoOpen);
+  const { isApplied, isWithdrawn, getApplication } = useCandidateAppliedJobs();
+  const shouldAutoOpen = autoOpen || searchParams.get('reapply') === 'true';
+  const [open, setOpen] = useState(shouldAutoOpen);
 
   if (job.status !== 'ACTIVE') return null;
 
   if (hasAnyRole([UserRole.CANDIDATE])) {
     const applied = isApplied(job.jobId);
-    const appliedApp = applied ? getApplication(job.jobId) : undefined;
+    const withdrawn = isWithdrawn(job.jobId);
+    const appliedApp = getApplication(job.jobId);
 
     if (applied) {
       return (
@@ -447,11 +494,29 @@ export const JobApplyActions: React.FC<{ job: Job; autoOpen?: boolean }> = ({ jo
     const allowed = hasPermission('application.create');
     return (
       <>
-        <Button type="primary" size="large" icon={<SendOutlined />} disabled={!allowed} onClick={() => setOpen(true)}>
-          Ứng tuyển
+        <Button
+          type="primary"
+          size="large"
+          icon={withdrawn ? <RedoOutlined /> : <SendOutlined />}
+          disabled={!allowed}
+          onClick={() => setOpen(true)}
+          className={withdrawn ? "!bg-blue-600 hover:!bg-blue-700 text-white font-bold" : undefined}
+        >
+          {withdrawn ? 'Ứng tuyển lại' : 'Ứng tuyển'}
         </Button>
+        {withdrawn && (
+          <p className="m-0 mt-1 text-xs text-slate-500">
+            Bạn đã rút đơn trước đó. Bạn có thể chọn bản CV mới để nộp lại.
+          </p>
+        )}
         {!allowed && <p className="m-0 mt-1 text-xs text-slate-500">Tài khoản chưa có quyền tự ứng tuyển.</p>}
-        <ApplyModal job={job} open={open} onClose={() => setOpen(false)} />
+        <ApplyModal
+          job={job}
+          open={open}
+          onClose={() => setOpen(false)}
+          isReapply={withdrawn}
+          previousApplicationId={appliedApp?.applicationId}
+        />
       </>
     );
   }

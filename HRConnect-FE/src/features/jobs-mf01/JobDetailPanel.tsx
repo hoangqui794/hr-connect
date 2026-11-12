@@ -9,6 +9,7 @@ import { CompanyLogo } from '@/components/common/CompanyLogo';
 import { Alert, Button, Descriptions, Drawer, Empty, Tag, Timeline, Typography } from 'antd';
 import {
   AuditOutlined,
+  RedoOutlined,
   BankOutlined,
   CalendarOutlined,
   CheckCircleFilled,
@@ -382,9 +383,10 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const navigate = useNavigate();
   const currentRole = useAuthStore((s) => s.role);
   const isApplicant = isApplicantView ?? (currentRole === UserRole.CANDIDATE || currentRole === UserRole.GUEST);
-  const { isApplied, getApplication } = useCandidateAppliedJobs();
+  const { isApplied, isWithdrawn, getApplication } = useCandidateAppliedJobs();
   const applied = isApplicant && isApplied(job.jobId);
-  const appliedApp = applied ? getApplication(job.jobId) : undefined;
+  const withdrawn = isApplicant && isWithdrawn(job.jobId);
+  const appliedApp = getApplication(job.jobId);
 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showSourcingDrawer, setShowSourcingDrawer] = useState(false);
@@ -455,6 +457,11 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           {applied && (
             <Tag color="success" icon={<CheckCircleOutlined />} className="m-0 font-medium">
               Đã ứng tuyển
+            </Tag>
+          )}
+          {withdrawn && (
+            <Tag color="default" className="m-0 font-medium text-slate-600 bg-slate-100 border-slate-200">
+              Đã rút đơn
             </Tag>
           )}
           {service && !isApplicant && currentRole !== UserRole.AFFILIATE && <Tag className="m-0 font-medium">{service.label}</Tag>}
@@ -716,6 +723,42 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 Xem chi tiết đơn
               </Button>
             )}
+          </div>
+        )}
+
+        {withdrawn && (
+          <div className="rounded-xl border border-solid border-sky-200 bg-sky-50/80 p-3.5 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2.5 text-xs text-sky-950">
+              <InfoCircleOutlined className="text-sky-600 text-base shrink-0" />
+              <div>
+                <span className="font-semibold text-sm block text-sky-950">Bạn đã rút đơn ứng tuyển vị trí này</span>
+                <span className="text-sky-800">
+                  Bạn có thể cập nhật bản CV mới để gửi lại hồ sơ ứng tuyển.
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {appliedApp?.applicationId && (
+                <Button
+                  size="small"
+                  className="border-slate-300 text-slate-700 rounded-lg text-xs"
+                  onClick={() => navigate(`/candidate/applications/${appliedApp.applicationId}`)}
+                >
+                  Xem đơn cũ
+                </Button>
+              )}
+              {job.status === 'ACTIVE' && job.isAcceptingApplications !== false && (
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<RedoOutlined />}
+                  className="!bg-blue-600 hover:!bg-blue-700 !border-0 text-white rounded-lg shadow-xs font-semibold text-xs active:scale-[0.98]"
+                  onClick={() => navigate(`/jobs/${job.jobId}?reapply=true`)}
+                >
+                  Ứng tuyển lại
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </header>

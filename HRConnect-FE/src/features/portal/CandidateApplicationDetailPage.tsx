@@ -4,9 +4,9 @@
  * on the MF-04 detail (MF-02 as fallback). Withdrawing happens here, answering an offer on its own page.
  */
 import React, { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App as AntApp, Modal, Skeleton } from 'antd';
+import { Alert, App as AntApp, Modal, Skeleton, Tooltip } from 'antd';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 import { CompanyMark } from '@/features/landing/components/SiteParts';
@@ -21,6 +21,9 @@ import { CandidateDialog, DIALOG_CANCEL, DIALOG_DANGER, DIALOG_FONT } from './ca
 import { candidateInterviewType, candidateOfferStatus, candidateStage, candidateTimelineEventCopy } from './mf02Labels';
 import { candidateKeys, useOpenSignedUrl } from './CandidatePages';
 import { CandidateResignModal } from './components/CandidateResignModal';
+import { RedoOutlined } from '@ant-design/icons';
+import { useJobDetail } from '@/features/jobs-mf01/useJobQueries';
+import { ApplyModal } from './JobApplyActions';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
@@ -82,6 +85,8 @@ export const CandidateApplicationDetailPage: React.FC = () => {
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
   const { applicationId = '' } = useParams();
+  const navigate = useNavigate();
+  const [reapplyOpen, setReapplyOpen] = useState(false);
   const openSigned = useOpenSignedUrl();
   const [overviewOpen, setOverviewOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
@@ -105,6 +110,9 @@ export const CandidateApplicationDetailPage: React.FC = () => {
     queryFn: () => mf04Api.getApplicationTimeline(applicationId),
     enabled: Boolean(applicationId),
   });
+
+  const currentJobId = (detail.data as { jobId?: string } | undefined)?.jobId;
+  const jobQuery = useJobDetail(currentJobId);
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: candidateKeys.applicationDetail(applicationId) });
@@ -168,6 +176,12 @@ export const CandidateApplicationDetailPage: React.FC = () => {
   const color = application.status === 'INTERVIEW' ? TONE_COLOR.warning : TONE_COLOR[stage.tone] ?? TONE_COLOR.neutral;
   const isResigned = stage.label === 'Đã nghỉ việc' || application.status === 'RESIGNED' || application.placement?.status === 'RESIGNED' || application.placement?.status === 'LEFT_DURING_WARRANTY';
   const isPlaced = (application.status === 'PLACED' || stage.label === 'Đã đi làm') && !isResigned;
+  const isWithdrawn = application.status === 'WITHDRAWN';
+  const job = jobQuery.data;
+  const jobStatus = job?.status || application.jobStatus || overview?.status;
+  const isJobClosed = job
+    ? job.status !== 'ACTIVE' || job.isAcceptingApplications === false
+    : Boolean(jobStatus && jobStatus !== 'ACTIVE');
   const stepsToShow = isResigned ? ['Đã nộp', 'Sàng lọc', 'Phỏng vấn', 'Offer', 'Nhận việc', 'Đã nghỉ việc'] : STEPS;
   const gridColsClass = isResigned ? 'grid-cols-6' : 'grid-cols-5';
   const reached = STEP_OF_STAGE[stage.step] ?? 1;
@@ -240,6 +254,35 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                 >
                   Tìm việc làm mới →
                 </Link>
+              )}
+              {isWithdrawn && (
+                isJobClosed ? (
+                  <Tooltip title="Tin tuyển dụng này đã ngừng nhận hồ sơ">
+                    <button
+                      type="button"
+                      disabled
+                      className={`${FONT} inline-flex items-center gap-1.5 rounded-lg border border-solid border-slate-200 bg-slate-100 px-3.5 py-1 text-[13px] font-medium text-slate-400 cursor-not-allowed`}
+                    >
+                      <RedoOutlined />
+                      Ứng tuyển lại
+                    </button>
+                  </Tooltip>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (job) {
+                        setReapplyOpen(true);
+                      } else {
+                        navigate(`/jobs/${application.jobId}?reapply=true`);
+                      }
+                    }}
+                    className={`${FONT} inline-flex items-center gap-1.5 rounded-lg !bg-blue-600 hover:!bg-blue-700 active:scale-[0.98] px-3.5 py-1 text-[13px] font-bold text-white cursor-pointer shadow-xs transition-all border-0`}
+                  >
+                    <RedoOutlined />
+                    Ứng tuyển lại
+                  </button>
+                )
               )}
             </div>
           </div>
@@ -354,6 +397,33 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                     Tìm việc làm mới
                   </Link>
                 </div>
+              ) : isWithdrawn ? (
+                <div className="space-y-3">
+                  <p className="m-0 text-[13px] text-[#4B5563]">
+                    {isJobClosed
+                      ? 'Tin tuyển dụng này hiện đã đóng hoặc ngừng nhận hồ sơ mới.'
+                      : 'Bạn đã rút đơn ứng tuyển vị trí này. Bạn có thể chọn bản CV mới để gửi lại hồ sơ ứng tuyển.'}
+                  </p>
+                  {isJobClosed ? (
+                    <Link to="/jobs" className={PRIMARY}>
+                      Tìm việc làm khác
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (job) {
+                          setReapplyOpen(true);
+                        } else {
+                          navigate(`/jobs/${application.jobId}?reapply=true`);
+                        }
+                      }}
+                      className={PRIMARY}
+                    >
+                      Ứng tuyển lại ngay
+                    </button>
+                  )}
+                </div>
               ) : (
                 <p className="m-0 text-[13px] text-[#4B5563]">Hiện chưa có việc nào cần bạn làm. Bạn sẽ nhận thông báo khi có cập nhật.</p>
               )}
@@ -448,6 +518,17 @@ export const CandidateApplicationDetailPage: React.FC = () => {
         startDate={placement?.actualStartDate || application.plannedStartDate}
         onSuccess={refresh}
       />
+
+      {job && (
+        <ApplyModal
+          job={job}
+          open={reapplyOpen}
+          onClose={() => setReapplyOpen(false)}
+          isReapply={true}
+          previousApplicationId={applicationId}
+          onSuccess={refresh}
+        />
+      )}
     </CandidateAccountFrame>
   );
 };

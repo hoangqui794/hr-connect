@@ -20,6 +20,7 @@ export interface CandidateApplication {
   cvTitle: string | null;
   displayGroup: CandidateApplicationDisplayGroup;
   displayLabel: string;
+  status?: string;
   aiStatus: string | null;
   submissionSource: 'CANDIDATE' | 'AFFILIATE' | null;
   appliedAt: string;
