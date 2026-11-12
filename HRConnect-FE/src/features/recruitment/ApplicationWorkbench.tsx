@@ -42,6 +42,7 @@ import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import { deliveryFeedback, type CandidateDeliveryActionResult } from './candidateDeliveryFeedback';
 import type { RecruitmentApplicationDetail } from '@/types/api/hr';
 import { Initials, StatusDot } from '@/features/admin-console/ui';
+import { CurrencyCodeSelect, currencyCodeRules } from '@/components/common/CurrencyCodeSelect';
 import {
   INTERVIEW_RESULT,
   INTERVIEW_STATUS,
@@ -445,8 +446,45 @@ export const ApplicationWorkbench: React.FC<{
 
   const confirmSendOffer = () =>
     modal.confirm({
-      title: 'Gửi offer cho ứng viên?',
-      content: `Offer ${money(offer?.salary ?? null, offer?.currencyCode ?? 'VND')} sẽ được gửi tới ${d?.candidateFullName}. Sau khi gửi, bạn không sửa được nội dung.`,
+      icon: <SendOutlined className="text-[#0284c7] text-lg" />,
+      title: 'Gửi offer cho ứng viên',
+      width: 480,
+      content: (
+        <div className="mt-3 space-y-3 text-[13px]">
+          <div className="rounded-lg border border-solid border-slate-200 bg-slate-50/80 p-3.5 space-y-2">
+            <div className="flex justify-between items-center gap-2">
+              <span className="text-slate-500">Ứng viên:</span>
+              <span className="font-semibold text-slate-800 text-right">{d?.candidateFullName}</span>
+            </div>
+            <div className="flex justify-between items-center gap-2">
+              <span className="text-slate-500">Vị trí:</span>
+              <span className="font-semibold text-slate-800 text-right">{d?.jobTitle}</span>
+            </div>
+            <div className="flex justify-between items-center gap-2">
+              <span className="text-slate-500">Mức lương:</span>
+              <span className="font-semibold text-[#0284c7] text-right">
+                {money(offer?.salary ?? null, offer?.currencyCode ?? 'VND')}
+                {offer?.salaryBasis ? ` (${offer.salaryBasis})` : ''}
+              </span>
+            </div>
+            {offer?.startDate && (
+              <div className="flex justify-between items-center gap-2">
+                <span className="text-slate-500">Ngày dự kiến nhận việc:</span>
+                <span className="font-semibold text-slate-800">{fmt(offer.startDate, 'DD/MM/YYYY')}</span>
+              </div>
+            )}
+            {offer?.expiryDate && (
+              <div className="flex justify-between items-center gap-2">
+                <span className="text-slate-500">Hạn phản hồi:</span>
+                <span className="font-semibold text-slate-800">{fmt(offer.expiryDate, 'DD/MM/YYYY')}</span>
+              </div>
+            )}
+          </div>
+          <p className="m-0 text-xs text-slate-500 leading-relaxed">
+            Hệ thống sẽ gửi email và thông báo kèm lời mời nhận việc đến ứng viên. Sau khi gửi, bạn không thể chỉnh sửa nội dung cho đến khi ứng viên phản hồi.
+          </p>
+        </div>
+      ),
       okText: 'Gửi offer',
       cancelText: 'Hủy',
       okButtonProps: { loading: run.isPending || pendingAction === 'send' },
@@ -1363,8 +1401,8 @@ export const ApplicationWorkbench: React.FC<{
                       parser={(v) => Number(String(v).replace(/\./g, '')) as 0}
                     />
                   </Form.Item>
-                  <Form.Item name="currencyCode" label="Tiền tệ" rules={[{ max: 3, message: 'Tối đa 3 ký tự.' }]}>
-                    <Input maxLength={3} />
+                  <Form.Item name="currencyCode" label="Tiền tệ" rules={currencyCodeRules}>
+                    <CurrencyCodeSelect />
                   </Form.Item>
                 </div>
               </div>

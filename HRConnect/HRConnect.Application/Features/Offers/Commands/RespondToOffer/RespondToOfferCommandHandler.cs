@@ -342,6 +342,7 @@ public class RespondToOfferCommandHandler : IRequestHandler<RespondToOfferComman
         var acceptedFullTimeOffers = otherOffers
             .Where(IsFullTimeOffer)
             .Where(o => string.Equals(o.Status, OfferStates.Accepted, StringComparison.OrdinalIgnoreCase))
+            .Where(o => !HasPlacementRecord(o))
             .ToList();
 
         if (acceptedFullTimeOffers.Count > 0 &&
@@ -386,7 +387,8 @@ public class RespondToOfferCommandHandler : IRequestHandler<RespondToOfferComman
         {
             foreach (var competing in otherOffers
                          .Where(IsFullTimeOffer)
-                         .Where(o => string.Equals(o.Status, OfferStates.Sent, StringComparison.OrdinalIgnoreCase)))
+                         .Where(o => string.Equals(o.Status, OfferStates.Sent, StringComparison.OrdinalIgnoreCase))
+                         .Where(o => !HasPlacementRecord(o)))
             {
                 await WithdrawCompetingOfferAsync(
                     competing,
@@ -405,6 +407,14 @@ public class RespondToOfferCommandHandler : IRequestHandler<RespondToOfferComman
         string reason,
         CancellationToken cancellationToken)
     {
+        // A placement is a completed business event with downstream fee,
+        // warranty and commission records. Accepting another offer must never
+        // rewrite that historical employment flow as WITHDRAWN.
+        if (HasPlacementRecord(offer))
+        {
+            return;
+        }
+
         var oldOfferStatus = offer.Status;
         offer.Status = OfferStates.Withdrawn;
         offer.DeclineReason = reason;
@@ -475,6 +485,13 @@ public class RespondToOfferCommandHandler : IRequestHandler<RespondToOfferComman
             }, cancellationToken);
         }
     }
+
+    private static bool HasPlacementRecord(Offer offer) =>
+        offer.Application?.Placement != null ||
+        string.Equals(
+            offer.Application?.Status,
+            ApplicationStates.Placed,
+            StringComparison.OrdinalIgnoreCase);
 
     private static bool IsFullTimeOffer(Offer offer) =>
         OfferAcceptancePolicy.IsFullTime(offer.Application?.Job?.EmploymentType);
