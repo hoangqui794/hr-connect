@@ -110,12 +110,13 @@ const JobContent: React.FC<{ job: Job }> = ({ job }) => {
   const hasAnyRole = useAuthStore((s) => s.hasAnyRole);
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const { isSaved, toggleSave } = useSavedJobs();
-  const { isApplied, getApplication } = useCandidateAppliedJobs();
+  const { isApplied, isWithdrawn, getApplication } = useCandidateAppliedJobs();
   const [applyOpen, setApplyOpen] = useState(false);
 
   const isCandidate = isAuthenticated && hasAnyRole([UserRole.CANDIDATE]);
   const isReferrer = isAuthenticated && hasAnyRole([UserRole.AFFILIATE]) && hasPermission('submission.create');
   const applied = isCandidate && isApplied(job.jobId);
+  const withdrawn = isCandidate && isWithdrawn(job.jobId);
   const canApply = isCandidate && !applied && job.isAcceptingApplications !== false && hasPermission('application.create');
 
   const matches = useQuery({
@@ -148,6 +149,9 @@ const JobContent: React.FC<{ job: Job }> = ({ job }) => {
     }
     if (job.isAcceptingApplications === false) return { label: 'Đã hết hạn nhận hồ sơ', disabled: true };
     if (!hasPermission('application.create')) return { label: 'Tài khoản chưa có quyền ứng tuyển', disabled: true };
+    if (withdrawn) {
+      return { label: 'Ứng tuyển lại', isReapply: true, onClick: open };
+    }
     return { label: 'Ứng tuyển ngay', onClick: open };
   })();
 
@@ -330,7 +334,7 @@ const JobContent: React.FC<{ job: Job }> = ({ job }) => {
         </aside>
       </div>
 
-      {canApply && <ApplyModal job={job} open={applyOpen} onClose={() => setApplyOpen(false)} />}
+      {canApply && <ApplyModal job={job} open={applyOpen} onClose={() => setApplyOpen(false)} isReapply={withdrawn} previousApplicationId={getApplication(job.jobId)?.applicationId} />}
     </>
   );
 };

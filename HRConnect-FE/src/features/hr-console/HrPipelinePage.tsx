@@ -117,8 +117,19 @@ export const HrPipelinePage: React.FC<{
             <div className="py-1 space-y-1 text-left">
               <StatusDot tone={st.tone}>{st.label}</StatusDot>
               {r.result && (
-                <div className="text-[11.5px] text-slate-500 pl-3.5">
-                  Kết quả: <span className="font-semibold text-slate-700">{INTERVIEW_RESULT[r.result] ?? r.result}</span>
+                <div className="text-[11.5px] text-slate-500 pl-3.5 flex items-center gap-1.5">
+                  <span className="text-slate-400 font-medium">Kết quả:</span>
+                  <span
+                    className={`inline-flex items-center px-1.5 py-0.2 rounded font-bold text-[11px] border ${
+                      r.result === 'PASS'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : r.result === 'FAIL'
+                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                    }`}
+                  >
+                    {INTERVIEW_RESULT[r.result] ?? r.result}
+                  </span>
                 </div>
               )}
             </div>

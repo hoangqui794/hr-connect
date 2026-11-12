@@ -22,6 +22,7 @@ export const APPLICATION_STATUS: Record<string, { label: string; tone: Tone }> =
   NOT_STARTED: { label: 'Không đi làm', tone: 'danger' },
   WITHDRAWN: { label: 'Đã rút hồ sơ', tone: 'neutral' },
   PLACED: { label: 'Đã đi làm', tone: 'success' },
+  RESIGNED: { label: 'Đã nghỉ việc', tone: 'neutral' },
   CLOSED: { label: 'Đã đóng', tone: 'neutral' },
 };
 

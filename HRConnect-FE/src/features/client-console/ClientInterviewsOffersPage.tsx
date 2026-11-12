@@ -40,6 +40,7 @@ import { useMyJobs } from '@/features/jobs-mf01/useJobQueries';
 import { INTERVIEW_RESULT, INTERVIEW_STATUS, OFFER_STATUS, PLACEMENT_STATUS, pick } from '@/features/hr-console/hrLabels';
 import { ApplicationWorkbench } from '@/features/recruitment/ApplicationWorkbench';
 import { ClientInterviewDetailDrawer } from '@/features/client-console/ClientInterviewDetailDrawer';
+import { ReportResignationModal } from './components/ReportResignationModal';
 
 dayjs.extend(relativeTimePlugin);
 dayjs.locale('vi');
@@ -93,6 +94,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
   };
 
   const [searchKeyword, setSearchKeyword] = useState<string>('');
+  const [resigningPlacement, setResigningPlacement] = useState<PlacementItem | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<string>('all');
 
   const { data: myJobs = [], isLoading: loadingJobs } = useMyJobs();
@@ -276,15 +278,15 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             <div className="py-1 space-y-1">
               <StatusDot tone={st.tone}>{st.label}</StatusDot>
               {res && (
-                <div className="text-xs pl-3.5">
-                  <span className="text-slate-500">Kết quả: </span>
+                <div className="text-xs pl-3.5 flex items-center gap-1.5">
+                  <span className="text-slate-500 font-medium">Kết quả:</span>
                   <span
-                    className={`font-bold ${
+                    className={`inline-flex items-center px-1.5 py-0.2 rounded text-[11px] font-bold border ${
                       r.result === 'PASS'
-                        ? 'text-emerald-700'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                         : r.result === 'FAIL'
-                        ? 'text-rose-700'
-                        : 'text-amber-700'
+                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                        : 'bg-amber-50 text-amber-700 border-amber-200'
                     }`}
                   >
                     {res}
@@ -468,9 +470,19 @@ export const ClientInterviewsOffersPage: React.FC = () => {
       {
         title: 'Trạng thái',
         key: 's',
-        width: 160,
+        width: 170,
         render: (_, r) => {
           const st = pick(PLACEMENT_STATUS, r.status);
+          if (r.status === 'RESIGNED') {
+            return (
+              <div className="py-1">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700 border border-slate-200/80">
+                  <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
+                  Đã nghỉ việc
+                </span>
+              </div>
+            );
+          }
           return (
             <div className="py-1">
               <StatusDot tone={st.tone}>{st.label}</StatusDot>
@@ -481,20 +493,28 @@ export const ClientInterviewsOffersPage: React.FC = () => {
       {
         title: 'Thao tác',
         key: 'actions',
-        width: 130,
+        width: 220,
         align: 'right',
         render: (_, r) => (
-          <Button
-            type="primary"
-            size="small"
-            className="!h-8 !rounded-lg !border-0 !bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] text-white font-bold text-xs shadow-2xs transition-all active:scale-[0.98]"
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpen(r.applicationId);
-            }}
-          >
-            Hồ sơ Onboard
-          </Button>
+          <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+            {r.status === 'STARTED' && (
+              <Button
+                size="small"
+                className="!h-8 !rounded-lg !border-slate-300 text-slate-700 hover:!border-rose-300 hover:!text-rose-600 hover:!bg-rose-50 font-semibold text-xs transition-all active:scale-[0.98]"
+                onClick={() => setResigningPlacement(r)}
+              >
+                Báo nghỉ việc
+              </Button>
+            )}
+            <Button
+              type="primary"
+              size="small"
+              className="!h-8 !rounded-lg !border-0 !bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] text-white font-bold text-xs shadow-2xs transition-all active:scale-[0.98]"
+              onClick={() => setOpen(r.applicationId)}
+            >
+              Hồ sơ Onboard
+            </Button>
+          </div>
         ),
       },
     ],
@@ -776,6 +796,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
                   { value: 'all', label: 'Tất cả' },
                   { value: 'STARTED', label: 'Đã đi làm' },
                   { value: 'LEFT_DURING_WARRANTY', label: 'Nghỉ trong bảo hành' },
+                  { value: 'RESIGNED', label: 'Đã nghỉ việc' },
                 ] as const
               ).map((opt) => {
                 const isActive = statusFilter === opt.value;
@@ -921,6 +942,16 @@ export const ClientInterviewsOffersPage: React.FC = () => {
         onOpenApplication={(appId) => {
           handleSetOpenInterviewId(null);
           setOpen(appId);
+        }}
+      />
+
+      <ReportResignationModal
+        open={Boolean(resigningPlacement)}
+        onClose={() => setResigningPlacement(null)}
+        placement={resigningPlacement}
+        onSuccess={() => {
+          listQ.refetch();
+          placementCountQ.refetch();
         }}
       />
     </div>
