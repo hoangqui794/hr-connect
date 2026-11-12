@@ -270,7 +270,7 @@ export const AdminSettingsPage: React.FC = () => {
 
   const query = search.trim().toLowerCase();
 
-  const allSettings = settings.data ?? [];
+  const allSettings = useMemo(() => settings.data ?? [], [settings.data]);
   const totalCount = allSettings.length;
   const changedCount = allSettings.filter((s) => s.isOverridden).length;
   const defaultCount = totalCount - changedCount;
