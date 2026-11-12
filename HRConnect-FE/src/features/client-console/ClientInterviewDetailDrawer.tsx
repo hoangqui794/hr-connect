@@ -33,6 +33,7 @@ import {
   CheckOutlined,
   CloseOutlined,
   LinkOutlined,
+  LockOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
@@ -436,13 +437,31 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                         )}
 
                         {/* Result & Evaluation */}
-                        {interview.result && (
-                          <div className="rounded-xl border border-solid border-slate-200 bg-slate-50 p-4">
-                            <span className="text-xs font-semibold text-slate-600">Kết quả đánh giá</span>
-                            <div className="mt-1 flex items-center gap-2">
-                              <Tag color={interview.result === 'PASS' ? 'success' : interview.result === 'FAIL' ? 'error' : 'warning'}>
-                                {INTERVIEW_RESULT[interview.result] ?? interview.result}
-                              </Tag>
+                        {(interview.result || interview.feedback) && (
+                          <div className="rounded-xl border border-solid border-slate-200/80 bg-slate-50 p-4">
+                            <div className="flex items-center justify-between gap-2 flex-wrap mb-2.5">
+                              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Kết quả đánh giá</span>
+                              <div className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-white px-2.5 py-0.5 rounded-full border border-slate-200 shadow-2xs">
+                                <LockOutlined className="text-[10px] text-slate-400" />
+                                <span>Ghi chú nội bộ (Chỉ Doanh nghiệp &amp; HR xem)</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {interview.result ? (
+                                <span
+                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-bold text-xs border ${
+                                    interview.result === 'PASS'
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                      : interview.result === 'FAIL'
+                                      ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                      : 'bg-amber-50 text-amber-700 border-amber-200'
+                                  }`}
+                                >
+                                  {INTERVIEW_RESULT[interview.result] ?? interview.result}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-slate-400 font-medium">Chưa có kết quả</span>
+                              )}
                               {interview.recordedByName && (
                                 <span className="text-xs text-slate-500">
                                   Ghi nhận bởi: {interview.recordedByName}
@@ -450,8 +469,8 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                               )}
                             </div>
                             {interview.feedback && (
-                              <div className="mt-2 text-sm text-slate-700">
-                                <b>Nhận xét:</b> {interview.feedback}
+                              <div className="mt-2.5 pt-2 border-0 border-t border-solid border-slate-200/70 text-sm text-slate-700 leading-relaxed">
+                                <b className="text-slate-900">Ghi chú / Nhận xét:</b> {interview.feedback}
                               </div>
                             )}
                           </div>
