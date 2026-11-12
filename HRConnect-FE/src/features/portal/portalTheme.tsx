@@ -2,7 +2,7 @@
  * @file portalTheme.tsx
  * @description Candidate and Affiliate workspace palettes (ui-ux-pro-max, chosen 2026-10-08).
  * Candidate and guest pages share the Affiliate palette below (mockup 03/11).
- * Affiliate (mockup 03/11): sky #0369A1 (white 5.9:1), navy brand #0C4A6E, orange #C2410C for CTA and money.
+ * Affiliate: Electric Azure #0284C7, Royal Sapphire #0369A1, FinTech Emerald #059669 for money.
  */
 import React from 'react';
 import { ConfigProvider } from 'antd';

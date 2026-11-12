@@ -16,10 +16,10 @@ import { getApiError } from '@/services/apiClient';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
-const CARD = 'rounded-lg border border-solid border-[#E5E7EB] bg-white';
-const BUTTON = `${FONT} box-border flex h-12 cursor-pointer items-center justify-center rounded-md px-4 text-[15px] no-underline disabled:cursor-not-allowed disabled:opacity-60`;
-const PRIMARY = `${BUTTON} border-0 bg-[#0C4A6E] font-semibold text-white hover:bg-[#075985] hover:text-white`;
-const SECONDARY = `${BUTTON} border border-solid border-[#D1D5DB] bg-white text-[#1F2937] hover:bg-[#F9FAFB] hover:text-[#1F2937]`;
+const CARD = 'rounded-xl border border-solid border-slate-200/80 bg-white shadow-sm';
+const BUTTON = `${FONT} box-border flex h-11 cursor-pointer items-center justify-center rounded-xl px-5 text-[14px] font-semibold no-underline transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`;
+const PRIMARY = `${BUTTON} border-0 bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white shadow-md shadow-sky-500/20 hover:opacity-95 hover:text-white`;
+const SECONDARY = `${BUTTON} border border-solid border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900`;
 
 const timeLeft = (expiresAt: string) => {
   const minutes = dayjs(expiresAt).diff(dayjs(), 'minute');
@@ -28,13 +28,13 @@ const timeLeft = (expiresAt: string) => {
 const webLink = (url?: string | null) => (url && /^https?:\/\//i.test(url) ? url : undefined);
 
 const Frame: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className={`${FONT} min-h-screen bg-[#F7F8FA] text-[14px] text-[#1F2937] [line-height:normal]`}>
-    <header className="bg-[#0C4A6E] text-white">
+  <div className={`${FONT} min-h-screen bg-slate-50 text-[14px] text-slate-900 [line-height:normal]`}>
+    <header className="bg-gradient-to-r from-[#0B132B] via-[#0369A1] to-[#0284C7] text-white shadow-sm">
       <div className="mx-auto flex h-16 max-w-[1248px] items-center px-6">
         <Link to="/" className="flex items-center gap-2 text-[18px] font-bold text-white no-underline hover:text-white hover:no-underline">
           <BrandMark size={32} tone="light" className="block" /> HR Connect
         </Link>
-        <Link to="/login" className="ml-auto rounded-md border border-solid border-[#7FA6C2] px-[14px] py-2 font-medium text-white no-underline hover:bg-[#075985] hover:text-white">Đăng nhập</Link>
+        <Link to="/login" className="ml-auto rounded-lg border border-solid border-white/30 bg-white/10 px-4 py-2 text-sm font-medium text-white no-underline backdrop-blur hover:bg-white/20 transition-colors">Đăng nhập</Link>
       </div>
     </header>
     <main className="mx-auto flex max-w-[768px] flex-col gap-4 px-4 pb-14 pt-8 sm:px-6">{children}</main>

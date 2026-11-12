@@ -211,11 +211,11 @@
 
 /* Skeleton stays invisible for fast chunk loads, so it never flashes. */
 .admin-skeleton-wrap {
-  animation: admin-fade-in 200ms ease-out 150ms both;
+  animation: admin-fade-in 150ms ease-out both;
 }
 
 @keyframes admin-fade-in {
-  from { opacity: 0; }
+  from { opacity: 0.96; }
   to { opacity: 1; }
 }
 
@@ -224,7 +224,7 @@
 }
 
 @keyframes admin-page-in {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0.96; transform: translateY(2px); }
   to { opacity: 1; transform: none; }
 }
 

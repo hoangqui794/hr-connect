@@ -83,7 +83,7 @@ export const CandidateAccountFrame: React.FC<{ children: React.ReactNode }> = ({
           );
         })}
       </nav>
-      <div key={pathname} className="min-w-0 w-full flex-1 animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]">
+      <div className="min-w-0 w-full flex-1">
         {children}
       </div>
     </div>

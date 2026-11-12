@@ -60,21 +60,21 @@ export const AffiliatePerformancePage: React.FC = () => {
       )}
 
       <div className="flex flex-wrap items-stretch gap-5">
-        <section aria-labelledby="aff-rating" className="min-w-0 flex-[1_1_300px] rounded-lg border border-solid border-gray-200 bg-white p-5">
+        <section aria-labelledby="aff-rating" className="min-w-0 flex-[1_1_300px] rounded-xl border border-solid border-slate-200/80 bg-white p-5 shadow-sm">
           <h2 id="aff-rating" className="m-0 text-[15px] font-bold text-gray-900">Đánh giá chất lượng</h2>
           {performance.isLoading ? <Skeleton active paragraph={{ rows: 2 }} /> : (
             <>
               <div className="mt-2.5 flex flex-wrap items-baseline gap-2.5">
-                <span className="text-4xl font-bold tabular-nums text-[color:var(--affiliate-brand)]">{Math.round(period?.qualityRating ?? 0)}</span>
+                <span className="text-4xl font-bold tabular-nums text-[#0369A1]">{Math.round(period?.qualityRating ?? 0)}</span>
                 <span className="text-gray-500">/ 100</span>
-                <span className="rounded bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">{qualityLabel(period?.ratingLabel)}</span>
+                <span className="rounded-md bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">{qualityLabel(period?.ratingLabel)}</span>
               </div>
               <p className="m-0 mt-2.5 text-[13px] leading-relaxed text-gray-600">Điểm được tổng hợp từ kết quả xử lý thực tế của các hồ sơ bạn giới thiệu.</p>
             </>
           )}
         </section>
 
-        <section aria-labelledby="aff-funnel" className="min-w-0 flex-[2_1_480px] rounded-lg border border-solid border-gray-200 bg-white p-5">
+        <section aria-labelledby="aff-funnel" className="min-w-0 flex-[2_1_480px] rounded-xl border border-solid border-slate-200/80 bg-white p-5 shadow-sm">
           <h2 id="aff-funnel" className="m-0 mb-3.5 text-[15px] font-bold text-gray-900">Từ giới thiệu đến đi làm</h2>
           {performance.isLoading ? <Skeleton active paragraph={{ rows: 3 }} /> : (
             <>
@@ -82,18 +82,18 @@ export const AffiliatePerformancePage: React.FC = () => {
                 {funnel.map((f) => (
                   <div key={f.label} className="flex items-center gap-3">
                     <span className="w-[100px] shrink-0 text-[13px] text-gray-700">{f.label}</span>
-                    <span className="h-6 min-w-0 flex-1 overflow-hidden rounded bg-slate-100"><span className="block h-full bg-sky-700" style={{ width: `${Math.round((f.n / top) * 100)}%` }} /></span>
+                    <span className="h-6 min-w-0 flex-1 overflow-hidden rounded bg-slate-100"><span className="block h-full bg-gradient-to-r from-[#0284C7] to-[#2563EB]" style={{ width: `${Math.round((f.n / top) * 100)}%` }} /></span>
                     <b className="w-9 text-right tabular-nums">{f.n}</b>
                   </div>
                 ))}
               </div>
-              <p className="m-0 mt-3.5 text-[13px] text-gray-600">Tỉ lệ giới thiệu → đi làm: <b className="text-[color:var(--affiliate-brand)]">{Math.round((period?.submissionToHireRate ?? 0) * 100)}%</b></p>
+              <p className="m-0 mt-3.5 text-[13px] text-gray-600">Tỉ lệ giới thiệu → đi làm: <b className="text-[#0369A1]">{Math.round((period?.submissionToHireRate ?? 0) * 100)}%</b></p>
             </>
           )}
         </section>
       </div>
 
-      <section aria-labelledby="aff-history" className="rounded-lg border border-solid border-gray-200 bg-white">
+      <section aria-labelledby="aff-history" className="rounded-xl border border-solid border-slate-200/80 bg-white shadow-sm overflow-hidden">
         <h2 id="aff-history" className="m-0 border-0 border-b border-solid border-slate-100 px-4 py-3.5 text-[15px] font-bold text-gray-900">Các kỳ trước</h2>
         {performance.isLoading ? (
           <div className="p-4"><Skeleton active paragraph={{ rows: 2 }} /></div>

@@ -50,7 +50,7 @@ const CompanyLogo: React.FC<{ job: Pick<Job, 'companyName' | 'companyLogoUrl'>; 
 );
 
 const ServiceChip: React.FC<{ code?: string | null }> = ({ code }) => (
-  <span className="rounded bg-sky-100 px-2 py-px text-xs font-medium text-sky-800">{affiliateServiceLabel(code)}</span>
+  <span className="rounded-md bg-sky-50 border border-sky-200/60 px-2 py-0.5 text-xs font-semibold text-[#0284C7]">{affiliateServiceLabel(code)}</span>
 );
 
 /** One line about how much of the job is left to fill. */
@@ -139,17 +139,17 @@ export const AffiliateJobsPage: React.FC = () => {
           onChange={(e) => !e.target.value && update({ location: undefined })}
           className="!h-10 min-w-[160px] flex-[1_1_160px]"
         />
-        <Button htmlType="submit" type="primary" className="!bg-[color:var(--affiliate-brand)]">Lọc</Button>
+        <Button htmlType="submit" type="primary" className="!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 text-white font-semibold">Lọc</Button>
       </form>
 
-      <p className="m-0 mb-2.5 text-sm text-gray-600">
+      <p className="m-0 mb-2.5 text-sm text-slate-600">
         {jobs.isLoading ? 'Đang tải…' : `${jobs.data?.totalCount ?? 0} việc làm đang mở`}
       </p>
 
       {jobs.isError ? (
         <Alert type="error" showIcon message="Không tải được việc làm" description={getApiErrorMessage(jobs.error)} action={<Button onClick={() => jobs.refetch()}>Thử lại</Button>} />
       ) : (
-        <div className="rounded-lg border border-solid border-gray-200 bg-white">
+        <div className="rounded-xl border border-solid border-slate-200/80 bg-white shadow-sm overflow-hidden">
           {jobs.isLoading &&
             [0, 1, 2].map((i) => (
               <div key={i} className="border-0 border-b border-solid border-slate-100 p-4">
@@ -166,11 +166,11 @@ export const AffiliateJobsPage: React.FC = () => {
           {items.map((job, i) => {
             const est = estimates[i];
             return (
-              <article key={job.jobId} className="flex flex-wrap items-center gap-3.5 border-0 border-b border-solid border-slate-100 p-4 last:border-b-0">
+              <article key={job.jobId} className="flex flex-wrap items-center gap-3.5 border-0 border-b border-solid border-slate-100 p-4 last:border-b-0 hover:bg-slate-50/50 transition-colors">
                 <CompanyLogo job={job} />
                 <div className="min-w-0 flex-[1_1_300px]">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Link to={`/affiliate/jobs/${job.jobId}`} className="text-[15px] font-semibold text-gray-900 hover:text-sky-800">{job.title}</Link>
+                    <Link to={`/affiliate/jobs/${job.jobId}`} className="text-[15px] font-semibold text-gray-900 hover:text-[#0284C7]">{job.title}</Link>
                     <ServiceChip code={job.serviceTypeCode} />
                   </div>
                   <div className="text-[13px] text-gray-600">
@@ -179,12 +179,12 @@ export const AffiliateJobsPage: React.FC = () => {
                   <div className="mt-0.5 text-[13px] text-gray-500">{progressLine(job)}</div>
                 </div>
                 <div className="shrink-0 text-right max-sm:w-full max-sm:text-left">
-                  <div className="text-xs text-gray-500">Hoa hồng ước tính</div>
-                  <div className="whitespace-nowrap text-[15px] font-bold tabular-nums text-[color:var(--affiliate-cta)]">
+                  <div className="text-xs text-gray-500 font-medium">Hoa hồng ước tính</div>
+                  <div className="whitespace-nowrap text-[15px] font-extrabold tabular-nums text-[#059669]">
                     {est?.isLoading ? <Skeleton.Input active size="small" /> : (est?.data && formatEstimate(est.data)) || '—'}
                   </div>
                 </div>
-                <Button type="primary" className="!bg-[color:var(--affiliate-brand)]" onClick={() => navigate(`/affiliate/submit-candidate?job=${job.jobId}`)}>
+                <Button type="primary" className="!bg-gradient-to-r from-[#0284C7] to-[#2563EB] hover:from-[#0369A1] hover:to-[#1D4ED8] !border-0 text-white font-semibold shadow-sm shadow-sky-500/20" onClick={() => navigate(`/affiliate/submit-candidate?job=${job.jobId}`)}>
                   Giới thiệu
                 </Button>
               </article>
@@ -233,7 +233,7 @@ export const AffiliateJobDetailPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <Link to="/affiliate/jobs" className="inline-flex items-center gap-1.5 text-sm text-sky-700 hover:text-sky-900">
+      <Link to="/affiliate/jobs" className="inline-flex items-center gap-1.5 text-sm font-medium text-[#0284C7] hover:text-[#0369A1]">
         <ArrowLeftOutlined aria-hidden /> Việc làm
       </Link>
       <h1 className="sr-only">{job?.title ?? 'Chi tiết việc làm'}</h1>
@@ -244,7 +244,7 @@ export const AffiliateJobDetailPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 gap-5 w-full max-w-full min-w-0 overflow-hidden xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className="w-full min-w-0 max-w-full space-y-4">
-            <section className="flex flex-wrap gap-4 rounded-lg border border-solid border-gray-200 bg-white p-5">
+            <section className="flex flex-wrap gap-4 rounded-xl border border-solid border-slate-200/80 bg-white p-5 shadow-sm">
               <CompanyLogo job={job} size={72} />
               <div className="min-w-0 flex-[1_1_300px]">
                 <div className="flex flex-wrap items-center gap-2">
@@ -259,7 +259,7 @@ export const AffiliateJobDetailPage: React.FC = () => {
                 </dl>
               </div>
             </section>
-            <article className="min-w-0 max-w-full space-y-5 overflow-hidden rounded-lg border border-solid border-gray-200 bg-white p-5 leading-relaxed sm:p-6">
+            <article className="min-w-0 max-w-full space-y-5 overflow-hidden rounded-xl border border-solid border-slate-200/80 bg-white p-5 shadow-sm leading-relaxed sm:p-6">
               <RequirementList title="Yêu cầu bắt buộc" items={job.requirements.filter((r) => r.requirementType === 'MUST_HAVE')} />
               <RequirementList title="Ưu tiên" items={job.requirements.filter((r) => r.requirementType === 'SHOULD_HAVE')} />
               {job.skills.length > 0 && (

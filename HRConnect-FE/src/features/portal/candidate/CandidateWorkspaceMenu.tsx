@@ -12,6 +12,7 @@ import { getAvatarImageUrl, getInitials, useAuthStore } from '@/stores/authStore
 import { AccountAvatar } from '@/components/common/AccountAvatar';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
 import { candidateApplicationsApi } from '@/services/api/mf02Api';
+import { prefetchRoute } from '@/app/routePrefetch';
 
 interface CandidateWorkspaceMenuProps {
   showWorkspaceButton?: boolean;
@@ -64,7 +65,15 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({ 
           </div>
           <div className="py-1">
             {items.map((item) => (
-              <Link key={item.to} role="menuitem" to={item.to} onClick={() => setOpen(false)} className="flex w-full cursor-pointer items-center justify-between gap-3 border-0 bg-transparent px-4 py-2 text-left text-[13.5px] font-medium text-slate-700 no-underline transition-colors hover:bg-sky-50 hover:text-sky-700">
+              <Link
+                key={item.to}
+                role="menuitem"
+                to={item.to}
+                onMouseEnter={() => prefetchRoute(item.to)}
+                onFocus={() => prefetchRoute(item.to)}
+                onClick={() => setOpen(false)}
+                className="flex w-full cursor-pointer items-center justify-between gap-3 border-0 bg-transparent px-4 py-2 text-left text-[13.5px] font-medium text-slate-700 no-underline transition-colors hover:bg-sky-50 hover:text-sky-700"
+              >
                 <span>{item.label}</span>
                 {Boolean(item.count) && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11.5px] font-semibold text-slate-600">{item.count}</span>}
               </Link>

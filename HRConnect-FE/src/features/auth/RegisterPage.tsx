@@ -104,12 +104,12 @@ const TextField: React.FC<{
           aria-invalid={Boolean(error)}
           aria-describedby={describedBy}
           onChange={(event) => onChange(event.target.value)}
-          className={`block h-11 w-full rounded-lg border bg-white px-3.5 text-sm text-slate-900 shadow-sm transition-all placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-600/20 disabled:cursor-not-allowed disabled:bg-slate-50 ${
+          className={`block h-11 w-full rounded-xl border bg-slate-50/40 px-3.5 text-sm text-slate-900 shadow-xs transition-all placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-sky-500/15 disabled:cursor-not-allowed disabled:bg-slate-50 ${
             revealable ? 'pr-11' : ''
           } ${
             error
               ? 'border-rose-400 focus:border-rose-500'
-              : 'border-slate-300 hover:border-slate-400 focus:border-sky-600'
+              : 'border-slate-300 hover:border-slate-400 focus:border-[#0284C7]'
           }`}
         />
         {revealable && (
@@ -338,22 +338,23 @@ export const RegisterPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-slate-800 antialiased">
       {/* Top Header */}
-      <header className="border-b border-slate-200 bg-white sticky top-0 z-30 shadow-xs">
+      <header className="border-b border-slate-200/80 bg-white/90 sticky top-0 z-30 shadow-xs backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
           <Link
             to="/"
-            className="flex items-center gap-2.5 text-lg font-bold text-[#0C4A6E] no-underline transition-opacity hover:opacity-90"
+            className="flex items-center gap-2.5 text-lg font-bold text-slate-900 no-underline transition-opacity hover:opacity-90"
           >
-            <BrandMark size={32} tone="dark" className="drop-shadow-xs" />
-            <span>HR Connect</span>
+            <BrandMark size={34} tone="dark" className="drop-shadow-xs" />
+            <span className="font-extrabold tracking-tight">HR Connect</span>
           </Link>
-          <div className="text-sm text-slate-600">
+          <div className="text-sm text-slate-600 flex items-center gap-2">
             <span className="max-sm:hidden">Đã có tài khoản? </span>
             <Link
               to="/login"
-              className="font-semibold text-sky-700 transition-colors hover:text-sky-900 focus-visible:outline-none focus-visible:underline"
+              className="inline-flex items-center gap-1.5 rounded-full border border-sky-600/30 bg-sky-50/70 px-4 py-1.5 text-xs font-bold text-[#0284C7] transition-all hover:bg-sky-100 hover:text-[#0369A1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600"
             >
-              Đăng nhập
+              <span>Đăng nhập</span>
+              <span aria-hidden="true">→</span>
             </Link>
           </div>
         </div>
@@ -361,39 +362,64 @@ export const RegisterPage: React.FC = () => {
 
       {/* Main Container */}
       <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-12">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+        <div className="text-center max-w-2xl mx-auto">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-800 border border-sky-200/80 mb-3 shadow-xs">
+            <span className="h-1.5 w-1.5 rounded-full bg-sky-600 animate-pulse" />
+            Khởi đầu hành trình mới cùng HR Connect
+          </div>
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
             Tạo tài khoản HR Connect
           </h1>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-2 text-sm text-slate-600 leading-relaxed">
             Chọn nhóm đối tượng phù hợp nhất với bạn để trải nghiệm hệ sinh thái tuyển dụng thông minh.
           </p>
         </div>
 
         {/* 3-Card Role Selector */}
-        <fieldset className="mt-8 mb-2 grid min-w-0 grid-cols-1 gap-3.5 border-0 p-0 sm:grid-cols-3">
+        <fieldset className="mt-8 mb-2 grid min-w-0 grid-cols-1 gap-4 border-0 p-0 sm:grid-cols-3">
           <legend className="sr-only">Loại tài khoản</legend>
           {ROLES.map((option) => {
             const selected = role === option.role;
+            const isCan = option.role === UserRole.CANDIDATE;
+            const isCli = option.role === UserRole.CLIENT;
+
+            const activeCardClass = isCan
+              ? 'border-2 border-[#0284C7] bg-gradient-to-b from-sky-50/90 to-white shadow-[0_8px_24px_-4px_rgba(2,132,199,0.18)]'
+              : isCli
+                ? 'border-2 border-[#0369A1] bg-gradient-to-b from-sky-50/90 to-white shadow-[0_8px_24px_-4px_rgba(3,105,161,0.18)]'
+                : 'border-2 border-emerald-600 bg-gradient-to-b from-emerald-50/90 to-white shadow-[0_8px_24px_-4px_rgba(5,150,105,0.18)]';
+
+            const iconBg = isCan
+              ? selected ? 'bg-[#0284C7] text-white' : 'bg-sky-100 text-sky-700'
+              : isCli
+                ? selected ? 'bg-[#0369A1] text-white' : 'bg-slate-100 text-slate-700'
+                : selected ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-700';
+
             return (
               <label
                 key={option.role}
-                className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-all select-none ${
+                className={`group relative flex cursor-pointer items-start gap-3.5 rounded-2xl border p-4.5 transition-all select-none ${
                   selected
-                    ? 'border-2 border-sky-600 bg-sky-50/70 shadow-xs'
-                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
+                    ? activeCardClass
+                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60 shadow-xs'
                 }`}
               >
                 <input
                   type="radio"
                   name="role"
+                  aria-label={option.title}
                   checked={selected}
                   onChange={() => chooseRole(option.role)}
-                  className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-sky-700"
+                  className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-[#0284C7]"
                 />
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-slate-900">{option.title}</span>
-                  <span className="mt-0.5 text-xs text-slate-500 leading-relaxed">{option.hint}</span>
+                <div className="flex flex-1 flex-col">
+                  <div className="flex items-center gap-2">
+                    <span aria-hidden="true" className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs transition-colors ${iconBg}`}>
+                      {option.icon}
+                    </span>
+                    <span className="text-sm font-bold text-slate-900">{option.title}</span>
+                  </div>
+                  <span className="mt-2 text-xs text-slate-500 leading-relaxed">{option.hint}</span>
                 </div>
               </label>
             );
@@ -402,18 +428,18 @@ export const RegisterPage: React.FC = () => {
 
         {/* Role Notice Banner */}
         {isClient && (
-          <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50/80 p-3.5 text-xs text-sky-900">
+          <div className="mt-4 rounded-xl border border-sky-200 bg-sky-50/80 p-4 text-xs text-sky-950 leading-relaxed shadow-xs">
             🏢 <b>Tài khoản Doanh nghiệp:</b> Sau khi kích hoạt tài khoản bằng email OTP, hồ sơ công ty sẽ được xác thực qua Mã số thuế trước khi đăng tuyển chính thức.
           </div>
         )}
         {isAffiliate && (
-          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/80 p-3.5 text-xs text-amber-900">
-            🤝 <b>Đối tác Affiliate (Cộng tác viên tuyển dụng):</b> Đăng ký trực tiếp tại form bên dưới. Sau khi xác minh email, hồ sơ của bạn sẽ được kích hoạt để tham gia giới thiệu ứng viên và nhận hoa hồng.
+          <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 text-xs text-emerald-950 leading-relaxed shadow-xs">
+            🤝 <b>Đối tác Affiliate (Cộng tác viên tuyển dụng):</b> Đăng ký trực tiếp tại form bên dưới. Sau khi xác minh email, hồ sơ của bạn sẽ được kích hoạt để tham gia giới thiệu ứng viên và nhận hoa hồng bảo hộ độc quyền.
           </div>
         )}
 
         {/* Registration Form */}
-        <form noValidate onSubmit={submit} className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-xs sm:p-8">
+        <form noValidate onSubmit={submit} className="mt-6 rounded-2xl border border-slate-200/90 bg-white p-6 shadow-[0_12px_36px_-6px_rgba(15,23,42,0.06)] sm:p-9">
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             {isClient && (
               <>
@@ -572,11 +598,11 @@ export const RegisterPage: React.FC = () => {
             )}
 
             {/* Submit Button */}
-            <div className="sm:col-span-2 pt-2">
+            <div className="sm:col-span-2 pt-3">
               <button
                 type="submit"
                 disabled={submitting}
-                className="group relative flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border-0 bg-[#0C4A6E] px-4 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#075985] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                className="group relative flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-0 bg-gradient-to-r from-[#0284C7] via-[#0369A1] to-[#0284C7] px-4 text-sm font-semibold text-white shadow-[0_8px_20px_-4px_rgba(2,132,199,0.35)] transition-all hover:from-[#0369A1] hover:to-[#0284C7] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {submitting ? (
                   <span className="inline-flex items-center gap-2">
@@ -586,7 +612,7 @@ export const RegisterPage: React.FC = () => {
                 ) : (
                   <>
                     <span>Tạo tài khoản</span>
-                    <ArrowRightOutlined aria-hidden="true" className="transition-transform group-hover:translate-x-0.5" />
+                    <ArrowRightOutlined aria-hidden="true" className="transition-transform group-hover:translate-x-1" />
                   </>
                 )}
               </button>
@@ -599,7 +625,7 @@ export const RegisterPage: React.FC = () => {
           Đã có tài khoản trên HR Connect?{' '}
           <Link
             to="/login"
-            className="font-semibold text-sky-700 transition-colors hover:text-sky-900 focus-visible:outline-none focus-visible:underline"
+            className="font-bold text-[#0284C7] transition-colors hover:text-[#0369A1] focus-visible:outline-none focus-visible:underline"
           >
             Đăng nhập ngay
           </Link>

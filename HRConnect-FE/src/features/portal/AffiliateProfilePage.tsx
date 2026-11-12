@@ -32,10 +32,10 @@ const VIETNAM_BANKS = [
 ];
 
 const STATUS: Record<string, { label: string; className: string }> = {
-  ACTIVE: { label: 'Đã được duyệt', className: 'bg-green-100 text-green-800' },
-  PENDING: { label: 'Chờ duyệt', className: 'bg-orange-50 text-orange-800' },
-  REJECTED: { label: 'Chưa được duyệt', className: 'bg-red-50 text-red-800' },
-  SUSPENDED: { label: 'Bị khóa', className: 'bg-gray-100 text-gray-700' },
+  ACTIVE: { label: 'Đã được duyệt', className: 'bg-emerald-50 text-emerald-800 border border-emerald-200/60' },
+  PENDING: { label: 'Chờ duyệt', className: 'bg-amber-50 text-amber-800 border border-amber-200/60' },
+  REJECTED: { label: 'Chưa được duyệt', className: 'bg-rose-50 text-rose-800 border border-rose-200/60' },
+  SUSPENDED: { label: 'Bị khóa', className: 'bg-slate-100 text-slate-700 border border-slate-200/60' },
 };
 
 /** The red star goes after the label, as in the mockup. */
@@ -105,7 +105,7 @@ export const AffiliateProfilePage: React.FC = () => {
     <div>
       <h1 className="sr-only">Hồ sơ và ngân hàng</h1>
       <div className="flex flex-wrap items-start gap-5">
-        <section aria-labelledby="aff-profile-form" className="min-w-0 flex-[1_1_440px] rounded-lg border border-solid border-gray-200 bg-white p-5">
+        <section aria-labelledby="aff-profile-form" className="min-w-0 flex-[1_1_440px] rounded-xl border border-solid border-slate-200/80 bg-white p-5 shadow-sm">
           <div className="mb-3.5 flex items-center justify-between gap-3">
             <h2 id="aff-profile-form" className="m-0 text-[15px] font-bold text-gray-900">Hồ sơ Affiliate</h2>
             <span className={`rounded px-2 py-0.5 text-xs font-semibold ${status.className}`}>{status.label}</span>
@@ -139,14 +139,14 @@ export const AffiliateProfilePage: React.FC = () => {
                   <Input size="large" />
                 </Form.Item>
                 <div className="flex justify-end">
-                  <Button type="primary" size="large" htmlType="submit" loading={updateProfile.isPending} className="!bg-[color:var(--affiliate-brand)]">Lưu hồ sơ</Button>
+                  <Button type="primary" size="large" htmlType="submit" loading={updateProfile.isPending} className="!bg-gradient-to-r from-[#0284C7] to-[#2563EB] hover:from-[#0369A1] hover:to-[#1D4ED8] !border-0 text-white font-semibold shadow-md shadow-sky-500/20">Lưu hồ sơ</Button>
                 </div>
               </Form>
             </>
           )}
         </section>
 
-        <section aria-labelledby="aff-bank-form" className="min-w-0 flex-[1_1_380px] rounded-lg border border-solid border-gray-200 bg-white p-5">
+        <section aria-labelledby="aff-bank-form" className="min-w-0 flex-[1_1_380px] rounded-xl border border-solid border-slate-200/80 bg-white p-5 shadow-sm">
           <h2 id="aff-bank-form" className="m-0 text-[15px] font-bold text-gray-900">Tài khoản nhận hoa hồng</h2>
           <p className="m-0 mb-3.5 mt-1 text-[13px] text-gray-600">Hoa hồng được chuyển vào tài khoản này. Tài khoản phải thuộc tên của bạn hoặc đơn vị đã đăng ký với HR Connect.</p>
           {bankQuery.isLoading ? (
@@ -177,7 +177,7 @@ export const AffiliateProfilePage: React.FC = () => {
               <Form.Item name="bankBranch" label="Chi nhánh">
                 <Input size="large" />
               </Form.Item>
-              <p className="m-0 mb-3.5 rounded-md border border-solid border-orange-200 bg-orange-50 px-3 py-2.5 text-[13px] text-orange-800">Đổi tài khoản khi đang có khoản chờ chi: khoản đó sẽ chuyển vào tài khoản mới.</p>
+              <p className="m-0 mb-3.5 rounded-lg border border-solid border-amber-200/80 bg-amber-50/70 px-3.5 py-2.5 text-[13px] text-amber-900">Đổi tài khoản khi đang có khoản chờ chi: khoản đó sẽ chuyển vào tài khoản mới.</p>
               <Button type="primary" size="large" block htmlType="submit" loading={updateBank.isPending} className="affiliate-cta">Lưu tài khoản</Button>
             </Form>
           )}

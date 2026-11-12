@@ -6,7 +6,8 @@
 import React, { Suspense } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Navbar } from '@/features/landing/components/Navbar';
-import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from '@/features/admin-console/AdminRouteProgress';
+import { AdminTopProgress } from '@/features/admin-console/AdminRouteProgress';
+import { prefetchRoute } from '@/app/routePrefetch';
 import '@/features/admin-console/admin-console.css';
 import './candidate/candidate.css';
 
@@ -71,6 +72,8 @@ const MobileBottomNav: React.FC<{ pathname: string }> = ({ pathname }) => {
         <Link
           key={item.to}
           to={item.to}
+          onMouseEnter={() => prefetchRoute(item.to)}
+          onTouchStart={() => prefetchRoute(item.to)}
           aria-current={item.active ? 'page' : undefined}
           className={`flex flex-1 flex-col items-center justify-center gap-1 py-1.5 text-[11px] no-underline transition-colors duration-200 ${
             item.active ? 'font-semibold text-[#0369A1]' : 'font-normal text-[#4B5563] hover:text-[#075985]'
@@ -88,6 +91,14 @@ export const CandidateShell: React.FC = () => {
   const location = useLocation();
 
   const isCvBuilder = location.pathname.startsWith('/candidate/cv-builder');
+  const searchParams = new URLSearchParams(location.search);
+  const stepParam = searchParams.get('step');
+  const isEditorRoute =
+    isCvBuilder &&
+    (stepParam === 'editor' ||
+      /^\/candidate\/cv-builder\/[^/]+$/.test(location.pathname) ||
+      Boolean(searchParams.get('template')));
+
   // Pages rebuilt from the 03/11 mockup bring their own frame and use its page width.
   const usesAccountFrame =
     ['/candidate/applications', '/candidate/cvs', '/candidate/affiliate-cvs', '/candidate/profile', '/candidate/saved-jobs', '/candidate/settings/email-identities', '/candidate/notifications'].includes(location.pathname) ||
@@ -96,45 +107,21 @@ export const CandidateShell: React.FC = () => {
     /^\/candidate\/submission-consents\/[^/]+$/.test(location.pathname) ||
     /^\/candidate\/affiliate-cvs\/[^/]+$/.test(location.pathname);
 
-  if (isCvBuilder) {
-    const searchParams = new URLSearchParams(location.search);
-    const stepParam = searchParams.get('step');
-    const isEditorRoute =
-      stepParam === 'editor' ||
-      /^\/candidate\/cv-builder\/[^/]+$/.test(location.pathname) ||
-      Boolean(searchParams.get('template'));
-
-    return (
-      <div className="candidate-console flex min-h-screen flex-col bg-[#F7F8FA] text-slate-900">
-        {!isEditorRoute && <Navbar />}
-        <AdminTopProgress offsetLeft={0} />
-        <div className="flex min-h-0 flex-1 flex-col">
-          <Suspense fallback={<AdminPageSkeleton />}>
-            <Outlet />
-          </Suspense>
-        </div>
-        <MobileBottomNav pathname={location.pathname} />
-      </div>
-    );
-  }
+  const mainClassName = isCvBuilder
+    ? 'flex min-h-0 flex-1 flex-col w-full'
+    : usesAccountFrame
+      ? 'mx-auto w-full max-w-[1248px] flex-1 px-4 pb-24 pt-4 sm:px-6 lg:pb-14 lg:pt-6'
+      : 'candidate-main mx-auto w-full max-w-[1440px] flex-1 px-4 py-6 pb-24 sm:px-6 lg:px-8 lg:py-8';
 
   return (
-    <div className="candidate-console flex min-h-screen flex-col text-slate-900 bg-[#f8fafc]" style={usesAccountFrame ? { background: '#F7F8FA' } : undefined}>
-      {/* Unified top Navbar matching Homepage & public portal */}
-      <Navbar />
+    <div className="candidate-console flex min-h-screen flex-col bg-[#F7F8FA] text-slate-900">
+      {/* Unified top Navbar matching Homepage & public portal (hidden only in CV editor mode) */}
+      {!isEditorRoute && <Navbar />}
       <AdminTopProgress offsetLeft={0} />
-      <main className={usesAccountFrame ? 'mx-auto w-full max-w-[1248px] flex-1 px-4 pb-24 pt-4 sm:px-6 lg:pb-14 lg:pt-6' : 'candidate-main mx-auto w-full max-w-[1440px] flex-1 px-4 py-6 pb-24 sm:px-6 lg:px-8 lg:py-8'}>
-        {usesAccountFrame ? (
-          <Suspense fallback={<AdminPageSkeleton />}>
-            <Outlet />
-          </Suspense>
-        ) : (
-          <AdminPageEnter pathKey={location.pathname}>
-            <Suspense fallback={<AdminPageSkeleton />}>
-              <Outlet />
-            </Suspense>
-          </AdminPageEnter>
-        )}
+      <main className={mainClassName}>
+        <Suspense fallback={null}>
+          <Outlet />
+        </Suspense>
       </main>
       <MobileBottomNav pathname={location.pathname} />
     </div>

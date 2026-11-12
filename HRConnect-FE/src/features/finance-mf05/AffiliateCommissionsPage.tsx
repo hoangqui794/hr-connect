@@ -83,10 +83,10 @@ export const AffiliateCommissionsPage: React.FC = () => {
   const count = (statuses: CommissionStatus[]) => `${inStatus(statuses).length} khoản`;
 
   const kpis = [
-    { label: 'Trong bảo hành', statuses: ['PENDING', 'IN_WARRANTY'] as CommissionStatus[], note: 'Ứng viên đang đi làm', color: 'text-gray-900' },
-    { label: 'Đủ điều kiện', statuses: ['EARNED'] as CommissionStatus[], note: 'Hết bảo hành', color: 'text-[color:var(--affiliate-cta)]' },
-    { label: 'Chờ chi', statuses: ['PAYABLE'] as CommissionStatus[], note: 'Đã được Admin duyệt', color: 'text-[color:var(--affiliate-cta)]' },
-    { label: 'Đã nhận', statuses: ['PAID'] as CommissionStatus[], note: 'Đã chuyển khoản', color: 'text-green-800' },
+    { label: 'Trong bảo hành', statuses: ['PENDING', 'IN_WARRANTY'] as CommissionStatus[], note: 'Ứng viên đang đi làm', color: 'text-slate-900' },
+    { label: 'Đủ điều kiện', statuses: ['EARNED'] as CommissionStatus[], note: 'Hết bảo hành', color: 'text-[#0284C7]' },
+    { label: 'Chờ chi', statuses: ['PAYABLE'] as CommissionStatus[], note: 'Đã được Admin duyệt', color: 'text-amber-600 font-extrabold' },
+    { label: 'Đã nhận', statuses: ['PAID'] as CommissionStatus[], note: 'Đã chuyển khoản', color: 'text-emerald-600 font-extrabold' },
   ];
 
   const payoutItems = payouts.data?.items ?? [];
@@ -101,27 +101,27 @@ export const AffiliateCommissionsPage: React.FC = () => {
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {kpis.map((k) => (
-          <section key={k.label} aria-label={k.label} className="rounded-lg border border-solid border-gray-200 bg-white p-4">
-            <div className="text-[13px] text-gray-600">{k.label}</div>
+          <section key={k.label} aria-label={k.label} className="rounded-xl border border-solid border-slate-200/80 bg-white p-4 shadow-sm">
+            <div className="text-[13px] text-slate-600">{k.label}</div>
             <div className={`mt-1 text-lg font-bold tabular-nums sm:text-[22px] ${k.color}`}>
               {commissions.isLoading ? <Skeleton.Input active size="small" /> : money(sum(k.statuses))}
             </div>
-            <div className="mt-0.5 text-xs text-gray-500">{k.note} · {count(k.statuses)}</div>
+            <div className="mt-0.5 text-xs text-slate-500">{k.note} · {count(k.statuses)}</div>
           </section>
         ))}
       </div>
 
-      <section aria-labelledby="aff-commission-flow" className="rounded-lg border border-solid border-gray-200 bg-white p-4">
-        <h2 id="aff-commission-flow" className="m-0 mb-2.5 text-[15px] font-bold text-gray-900">Hoa hồng đi qua các bước</h2>
+      <section aria-labelledby="aff-commission-flow" className="rounded-xl border border-solid border-slate-200/80 bg-white p-4 shadow-sm">
+        <h2 id="aff-commission-flow" className="m-0 mb-2.5 text-[15px] font-bold text-slate-900">Hoa hồng đi qua các bước</h2>
         <ol className="m-0 grid list-none grid-cols-2 gap-2 p-0 text-[13px] lg:grid-cols-4">
           {FLOW.map(([title, body]) => (
-            <li key={title} className="rounded-md bg-slate-50 p-2.5"><b className="text-gray-900">{title}</b><div className="text-gray-600">{body}</div></li>
+            <li key={title} className="rounded-lg bg-slate-50 border border-slate-100 p-2.5"><b className="text-slate-900">{title}</b><div className="text-slate-600">{body}</div></li>
           ))}
         </ol>
       </section>
 
-      <section aria-labelledby="aff-commission-list" className="rounded-lg border border-solid border-gray-200 bg-white">
-        <h2 id="aff-commission-list" className="m-0 border-0 border-b border-solid border-slate-100 px-4 py-3.5 text-[15px] font-bold text-gray-900">Hoa hồng</h2>
+      <section aria-labelledby="aff-commission-list" className="rounded-xl border border-solid border-slate-200/80 bg-white shadow-sm overflow-hidden">
+        <h2 id="aff-commission-list" className="m-0 border-0 border-b border-solid border-slate-100 px-4 py-3.5 text-[15px] font-bold text-slate-900">Hoa hồng</h2>
         {commissions.isLoading ? (
           <div className="p-4"><Skeleton active paragraph={{ rows: 4 }} /></div>
         ) : items.length === 0 ? (
@@ -153,7 +153,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
                       </td>
                       <td className="px-4 py-3 text-[13px]">{c.placementId ? 'Tuyển qua Affiliate' : 'Mua CV'}</td>
                       <td className="px-4 py-3 text-[13px] text-gray-600">{c.baseAmount ? `Trên phí ${money(c.baseAmount)}` : 'Theo CV được nhận'}</td>
-                      <td className={`whitespace-nowrap px-4 py-3 text-right font-bold tabular-nums ${c.status === 'CANCELLED' ? 'text-gray-400 line-through' : 'text-[color:var(--affiliate-cta)]'}`}>{money(c.amount)}</td>
+                      <td className={`whitespace-nowrap px-4 py-3 text-right font-bold tabular-nums ${c.status === 'CANCELLED' ? 'text-gray-400 line-through' : c.status === 'PAID' ? 'text-emerald-600 font-extrabold' : 'text-[#0284C7]'}`}>{money(c.amount)}</td>
                       <td className="px-4 py-3">
                         <StatusChip tone={chip.tone}>{chip.label}</StatusChip>
                         {note && <div className="mt-0.5 text-xs text-gray-500">{note}</div>}
@@ -167,15 +167,15 @@ export const AffiliateCommissionsPage: React.FC = () => {
         )}
       </section>
 
-      <section aria-labelledby="aff-payouts" className="rounded-lg border border-solid border-gray-200 bg-white">
+      <section aria-labelledby="aff-payouts" className="rounded-xl border border-solid border-slate-200/80 bg-white shadow-sm overflow-hidden">
         <div className="flex flex-wrap items-baseline justify-between gap-2 border-0 border-b border-solid border-slate-100 px-4 py-3.5">
           <h2 id="aff-payouts" className="m-0 text-[15px] font-bold text-gray-900">Lịch sử chi trả</h2>
           {!account.isLoading && (
-            <span className={`text-[13px] ${hasAccount ? 'text-gray-600' : 'text-orange-800'}`}>
+            <span className={`text-[13px] ${hasAccount ? 'text-gray-600' : 'text-amber-700 font-medium'}`}>
               {hasAccount ? (
-                <>Nhận vào: {account.data?.bankName} {lastDigits(account.data?.bankAccountNumber ?? '')} · <Link to="/affiliate/profile">Đổi tài khoản</Link></>
+                <>Nhận vào: {account.data?.bankName} {lastDigits(account.data?.bankAccountNumber ?? '')} · <Link to="/affiliate/profile" className="text-[#0284C7] hover:text-[#0369A1] font-medium">Đổi tài khoản</Link></>
               ) : (
-                <>Chưa có tài khoản nhận tiền · <Link to="/affiliate/profile">Thêm tài khoản</Link></>
+                <>Chưa có tài khoản nhận tiền · <Link to="/affiliate/profile" className="text-[#0284C7] hover:text-[#0369A1] font-medium">Thêm tài khoản</Link></>
               )}
             </span>
           )}
