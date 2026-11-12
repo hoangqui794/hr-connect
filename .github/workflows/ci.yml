@@ -6,7 +6,10 @@ on:
       - main
       - dev
       - 'feature/**'
+      - 'feat/**'
       - 'fix/**'
+      - 'chore/**'
+      - 'refactor/**'
   pull_request:
     branches:
       - main
