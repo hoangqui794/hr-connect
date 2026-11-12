@@ -8,7 +8,7 @@ import React, { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import { Alert, Button, DatePicker, Descriptions, Drawer, Input, Select, Skeleton, Table, Typography } from 'antd';
+import { Alert, Button, DatePicker, Descriptions, Drawer, Input, Select, Skeleton, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ReloadOutlined } from '@ant-design/icons';
 import { adminAuditApi } from '@/services/api/adminApi';
@@ -16,7 +16,7 @@ import { getApiErrorMessage } from '@/services/apiClient';
 import type { AuditLogItem } from '@/types/api/admin';
 import { adminTokens, formatDateTime } from './adminTheme';
 import { PageHero, PersonCell, Surface } from './ui';
-import { describeAuditAction } from './auditLabels';
+import { describeAuditAction, describeEntityType } from './auditLabels';
 
 const PAGE_SIZE = 25;
 const ACTOR_TYPES: Record<string, string> = {
@@ -140,18 +140,51 @@ export const AdminAuditLogPage: React.FC = () => {
       dataIndex: 'action',
       render: (v: string) => (
         <div className="min-w-0">
-          <div className="text-slate-900">{describeAuditAction(v)}</div>
-          <Mono>{v}</Mono>
+          <div className="text-slate-900 font-medium text-[13px] leading-snug">
+            {describeAuditAction(v)}
+          </div>
+          <div className="mt-0.5">
+            <span className="font-mono text-[10.5px] text-slate-400 tracking-tight">
+              {v}
+            </span>
+          </div>
         </div>
       ),
     },
     {
       title: 'Đối tượng',
       key: 'entity',
-      width: 200,
-      render: (_, r) => (r.entityType ? <span className="text-slate-700">{r.entityType}</span> : <span className="text-slate-500">—</span>),
+      width: 180,
+      render: (_, r) => {
+        if (!r.entityType) return <span className="text-slate-400">—</span>;
+        const conf = describeEntityType(r.entityType);
+        return (
+          <Tag color={conf.color} className="!m-0 text-xs font-medium">
+            {conf.label}
+          </Tag>
+        );
+      },
     },
-    { title: 'Nguồn', dataIndex: 'source', width: 130, render: (v: string) => <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{SOURCES[v] ?? v}</span> },
+    {
+      title: 'Nguồn',
+      dataIndex: 'source',
+      width: 120,
+      render: (v: string) => {
+        const label = SOURCES[v] ?? v;
+        const isApi = v === 'API';
+        return (
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${
+              isApi
+                ? 'bg-slate-100 text-slate-600'
+                : 'bg-sky-50 text-sky-700 border border-sky-200'
+            }`}
+          >
+            {label}
+          </span>
+        );
+      },
+    },
   ];
 
   const log = detail.data;

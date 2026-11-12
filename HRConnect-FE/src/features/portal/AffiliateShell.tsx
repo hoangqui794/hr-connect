@@ -226,7 +226,6 @@ export const AffiliateShell: React.FC = () => {
               menu={{
                 items: [
                   { key: 'profile', icon: <UserOutlined />, label: 'Hồ sơ cá nhân' },
-                  { key: 'bank', icon: <BankOutlined />, label: 'Tài khoản ngân hàng' },
                   { key: 'password', icon: <KeyOutlined />, label: 'Đổi mật khẩu' },
                   { type: 'divider' },
                   { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true },
@@ -235,7 +234,6 @@ export const AffiliateShell: React.FC = () => {
                   if (key === 'logout') signOut();
                   else if (key === 'password') setShowPasswordModal(true);
                   else if (key === 'profile') navigate('/affiliate/profile');
-                  else if (key === 'bank') navigate('/affiliate/bank-account');
                 },
               }}
             >

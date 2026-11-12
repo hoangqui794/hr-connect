@@ -1,20 +1,54 @@
 /**
  * @file AdminUsersPage.tsx
- * @description Admin · platform users (GET /admin/users), soft-UI layout. Status tiles are real
- * totals and act as filters. Suspend needs a reason (backend rule); reactivate and unlock are
- * separate actions; Platform Admin accounts are read-only because the backend refuses them.
+ * @description Admin · Platform Users & RBAC Authorization (/admin/users).
+ * Soft-UI layout adhering to Vercel & Anthropic guidelines:
+ * - Real-time KPI summary stats
+ * - Fluid table with clear typography, roles, status, and last activity
+ * - 2-in-1 Drawer: Account management + Complete RBAC Authorization (assign/revoke roles & inspect effective permissions)
  */
-import React, { useState } from 'react';
+
+import React, { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App as AntApp, Button, Drawer, Form, Input, Modal, Select, Skeleton, Table, Typography } from 'antd';
+import {
+  Alert,
+  App as AntApp,
+  Button,
+  Drawer,
+  Form,
+  Input,
+  Modal,
+  Select,
+  Skeleton,
+  Table,
+  Tabs,
+  Tag,
+  Tooltip,
+  Typography,
+} from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { KeyOutlined, LockOutlined, ReloadOutlined, SearchOutlined, StopOutlined, UnlockOutlined } from '@ant-design/icons';
+import {
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  KeyOutlined,
+  LockOutlined,
+  ReloadOutlined,
+  SearchOutlined,
+  StopOutlined,
+  TeamOutlined,
+  ThunderboltOutlined,
+  UnlockOutlined,
+  UserOutlined,
+  SafetyCertificateOutlined,
+  CheckSquareOutlined,
+  InboxOutlined,
+} from '@ant-design/icons';
 import { adminUsersApi } from '@/services/api/adminApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { AdminUserListItem, AdminUserStatus, RoleCode } from '@/types/api/admin';
 import { adminTokens, formatDateTime } from './adminTheme';
-import { Initials, PageHero, PersonCell, StatTile, StatusDot, Surface, type Tone } from './ui';
+import { Initials, PageHero, PersonCell, StatusDot, Surface, type Tone } from './ui';
+import { UserAuthorizationTab } from './UserAuthorizationTab';
 
 const PAGE_SIZE = 20;
 
@@ -49,7 +83,7 @@ const RoleChips: React.FC<{ roles: RoleCode[] }> = ({ roles }) => (
       : roles.map((r) => (
           <span
             key={r}
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
               ROLE_BADGE_STYLES[r] ?? 'bg-slate-100 text-slate-700 border border-slate-200/80'
             }`}
           >
@@ -61,9 +95,11 @@ const RoleChips: React.FC<{ roles: RoleCode[] }> = ({ roles }) => (
 
 const UserState: React.FC<{ user: Pick<AdminUserListItem, 'status' | 'isLoginLocked'> }> = ({ user }) => (
   <div className="flex flex-col gap-1">
-    <StatusDot tone={STATUS[user.status]?.tone ?? 'neutral'}>{STATUS[user.status]?.label ?? user.status}</StatusDot>
+    <StatusDot tone={STATUS[user.status]?.tone ?? 'neutral'}>
+      {STATUS[user.status]?.label ?? user.status}
+    </StatusDot>
     {user.isLoginLocked && (
-      <span className="inline-flex items-center gap-1 text-[12px] font-medium text-amber-800">
+      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
         <LockOutlined aria-hidden /> Khóa đăng nhập
       </span>
     )}
@@ -72,7 +108,7 @@ const UserState: React.FC<{ user: Pick<AdminUserListItem, 'status' | 'isLoginLoc
 
 const InfoRow: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div className="flex items-start justify-between gap-4 border-0 border-t border-solid border-slate-100 py-2.5 first:border-t-0">
-    <span className="text-[13px] text-slate-600">{label}</span>
+    <span className="text-[13px] text-slate-500">{label}</span>
     <span className="text-right text-[13.5px] font-medium text-slate-900">{children}</span>
   </div>
 );
@@ -89,7 +125,10 @@ export const AdminUsersPage: React.FC = () => {
   const { message, modal } = AntApp.useApp();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [selectedId, setSelectedId] = useState<string>();
+
+  // Selected user and active drawer tab ('info' | 'rbac')
+  const [selectedId, setSelectedId] = useState<string | undefined>(searchParams.get('userId') || undefined);
+  const [drawerTab, setDrawerTab] = useState<'info' | 'rbac'>('info');
   const [suspendOpen, setSuspendOpen] = useState(false);
   const [form] = Form.useForm<{ reason: string }>();
 
@@ -101,7 +140,12 @@ export const AdminUsersPage: React.FC = () => {
     pageSize: PAGE_SIZE,
   };
 
-  const list = useQuery({ queryKey: ['admin-users', params], queryFn: () => adminUsersApi.list(params), placeholderData: (p) => p });
+  const list = useQuery({
+    queryKey: ['admin-users', params],
+    queryFn: () => adminUsersApi.list(params),
+    placeholderData: (p) => p,
+  });
+
   const totalAll = useUserCount();
   const totalActive = useUserCount('ACTIVE');
   const totalPending = useUserCount('PENDING');
@@ -128,7 +172,8 @@ export const AdminUsersPage: React.FC = () => {
   };
 
   const changeStatus = useMutation({
-    mutationFn: (v: { status: 'ACTIVE' | 'SUSPENDED'; reason?: string }) => adminUsersApi.changeStatus(selectedId as string, v.status, v.reason),
+    mutationFn: (v: { status: 'ACTIVE' | 'SUSPENDED'; reason?: string }) =>
+      adminUsersApi.changeStatus(selectedId as string, v.status, v.reason),
     onSuccess: (res) => {
       message.success(res.message ?? 'Đã cập nhật trạng thái.');
       setSuspendOpen(false);
@@ -136,6 +181,7 @@ export const AdminUsersPage: React.FC = () => {
     },
     onError: (err) => message.error(getApiErrorMessage(err)),
   });
+
   const unlock = useMutation({
     mutationFn: () => adminUsersApi.unlock(selectedId as string),
     onSuccess: (res) => {
@@ -145,21 +191,74 @@ export const AdminUsersPage: React.FC = () => {
     onError: (err) => message.error(getApiErrorMessage(err)),
   });
 
+  const openUserDrawer = (userId: string, tab: 'info' | 'rbac' = 'info') => {
+    setSelectedId(userId);
+    setDrawerTab(tab);
+  };
+
   const columns: ColumnsType<AdminUserListItem> = [
     {
       title: 'Người dùng',
       key: 'user',
       render: (_, u) => (
-        <PersonCell name={u.displayName || u.email} secondary={u.displayName ? u.email : null} />
+        <PersonCell
+          name={u.displayName || u.email}
+          secondary={u.displayName ? u.email : `Tạo lúc ${formatDateTime(u.createdAt)}`}
+        />
       ),
     },
-    { title: 'Vai trò', dataIndex: 'roles', width: 200, render: (roles: RoleCode[]) => <RoleChips roles={roles} /> },
-    { title: 'Trạng thái', key: 'status', width: 170, render: (_, u) => <UserState user={u} /> },
+    {
+      title: 'Vai trò & Chức vụ',
+      dataIndex: 'roles',
+      key: 'roles',
+      render: (roles: RoleCode[]) => <RoleChips roles={roles} />,
+    },
+    {
+      title: 'Trạng thái',
+      key: 'status',
+      width: 150,
+      render: (_, u) => <UserState user={u} />,
+    },
     {
       title: 'Hoạt động gần nhất',
       dataIndex: 'lastLoginAt',
+      key: 'lastLoginAt',
       width: 170,
-      render: (v: string | null) => <span className="tabular-nums text-slate-700">{v ? formatDateTime(v) : 'Chưa đăng nhập'}</span>,
+      render: (v: string | null) => (
+        <span className="tabular-nums text-xs text-slate-600">
+          {v ? formatDateTime(v) : 'Chưa đăng nhập'}
+        </span>
+      ),
+    },
+    {
+      title: 'Thao tác',
+      key: 'actions',
+      align: 'right',
+      render: (_, u) => (
+        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              openUserDrawer(u.userId, 'info');
+            }}
+            className="inline-flex items-center gap-1 h-8 px-2.5 rounded-md border border-solid border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+          >
+            <span>Tài khoản</span>
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              openUserDrawer(u.userId, 'rbac');
+            }}
+            className="inline-flex items-center gap-1 h-8 px-2.5 rounded-md border border-solid border-sky-200 bg-sky-50 text-xs font-semibold text-sky-700 hover:bg-sky-100 transition-colors cursor-pointer"
+          >
+            <KeyOutlined className="text-xs text-sky-600" />
+            <span>Phân quyền</span>
+          </button>
+        </div>
+      ),
     },
   ];
 
@@ -169,210 +268,351 @@ export const AdminUsersPage: React.FC = () => {
   const v = (q: { data?: number; isLoading: boolean }) => (q.isLoading ? '…' : q.data ?? '—');
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHero
         eyebrow="Vận hành"
-        title="Người dùng"
-        description="Tra cứu tài khoản, tạm khóa khi vi phạm và mở khóa đăng nhập cho người nhập sai mật khẩu quá số lần."
+        title="Quản lý Người dùng & Phân quyền"
+        description="Tra cứu tài khoản người dùng, quản trị trạng thái hoạt động và cấu hình phân quyền vai trò (RBAC) trực tiếp."
         actions={
-          <Button icon={<ReloadOutlined />} loading={list.isFetching && !list.isLoading} onClick={() => list.refetch()}>
-            Tải lại
+          <Button
+            icon={<ReloadOutlined spin={list.isFetching && !list.isLoading} />}
+            loading={list.isFetching && !list.isLoading}
+            onClick={() => list.refetch()}
+            className="rounded-lg font-medium"
+          >
+            Làm mới
           </Button>
         }
       />
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile label="Tất cả tài khoản" value={v(totalAll)} tone="neutral" active={!params.status} onClick={() => setParam('status', undefined)} />
-        <StatTile label="Đang hoạt động" value={v(totalActive)} tone="success" active={params.status === 'ACTIVE'} onClick={() => setParam('status', 'ACTIVE')} />
-        <StatTile label="Chờ kích hoạt" value={v(totalPending)} tone="warning" active={params.status === 'PENDING'} onClick={() => setParam('status', 'PENDING')} />
-        <StatTile label="Tạm khóa" value={v(totalSuspended)} tone="danger" active={params.status === 'SUSPENDED'} onClick={() => setParam('status', 'SUSPENDED')} />
+      {/* ── KPI Tiles ────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div
+          onClick={() => setParam('status', undefined)}
+          className={`cursor-pointer rounded-xl border border-solid p-4 transition-all shadow-xs ${
+            !params.status ? 'border-slate-800 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-900 hover:bg-slate-50'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-semibold uppercase tracking-wider ${!params.status ? 'text-slate-300' : 'text-slate-500'}`}>
+              Tất cả tài khoản
+            </span>
+            <InboxOutlined className="text-base" />
+          </div>
+          <div className="mt-2 text-2xl font-extrabold tabular-nums">{v(totalAll)}</div>
+        </div>
+
+        <div
+          onClick={() => setParam('status', 'ACTIVE')}
+          className={`cursor-pointer rounded-xl border border-solid p-4 transition-all shadow-xs ${
+            params.status === 'ACTIVE' ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-emerald-200 bg-emerald-50/50 text-emerald-800 hover:bg-emerald-50'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-semibold uppercase tracking-wider ${params.status === 'ACTIVE' ? 'text-emerald-100' : 'text-emerald-700'}`}>
+              Đang hoạt động
+            </span>
+            <CheckCircleOutlined className="text-base" />
+          </div>
+          <div className="mt-2 text-2xl font-extrabold tabular-nums">{v(totalActive)}</div>
+        </div>
+
+        <div
+          onClick={() => setParam('status', 'PENDING')}
+          className={`cursor-pointer rounded-xl border border-solid p-4 transition-all shadow-xs ${
+            params.status === 'PENDING' ? 'border-amber-600 bg-amber-600 text-white' : 'border-amber-200 bg-amber-50/50 text-amber-800 hover:bg-amber-50'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-semibold uppercase tracking-wider ${params.status === 'PENDING' ? 'text-amber-100' : 'text-amber-700'}`}>
+              Chờ kích hoạt
+            </span>
+            <ThunderboltOutlined className="text-base" />
+          </div>
+          <div className="mt-2 text-2xl font-extrabold tabular-nums">{v(totalPending)}</div>
+        </div>
+
+        <div
+          onClick={() => setParam('status', 'SUSPENDED')}
+          className={`cursor-pointer rounded-xl border border-solid p-4 transition-all shadow-xs ${
+            params.status === 'SUSPENDED' ? 'border-rose-600 bg-rose-600 text-white' : 'border-rose-200 bg-rose-50/50 text-rose-800 hover:bg-rose-50'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-semibold uppercase tracking-wider ${params.status === 'SUSPENDED' ? 'text-rose-100' : 'text-rose-700'}`}>
+              Tạm khóa
+            </span>
+            <StopOutlined className="text-base" />
+          </div>
+          <div className="mt-2 text-2xl font-extrabold tabular-nums">{v(totalSuspended)}</div>
+        </div>
       </div>
 
-      <Surface>
-        <div key={searchParams.toString()} className="flex flex-wrap items-center gap-3 px-5 pb-2 pt-5">
-          <Input
-            allowClear
-            size="large"
-            defaultValue={params.search}
-            prefix={<SearchOutlined className="text-slate-500" aria-hidden />}
-            placeholder="Tìm theo tên hoặc email, nhấn Enter"
-            className="max-w-sm"
-            onPressEnter={(e) => setParam('q', e.currentTarget.value.trim() || undefined)}
-            onChange={(e) => !e.target.value && params.search && setParam('q', undefined)}
-            aria-label="Tìm người dùng"
-          />
-          <Select
-            allowClear
-            size="large"
-            value={params.role}
-            placeholder="Mọi vai trò"
-            className="w-52"
-            onChange={(val) => setParam('role', val)}
-            options={(Object.keys(ROLE_LABEL) as RoleCode[]).map((r) => ({ value: r, label: ROLE_LABEL[r] }))}
-            aria-label="Lọc theo vai trò"
-          />
-          {page && <span className="ml-auto text-sm tabular-nums text-slate-600">{page.total} kết quả</span>}
+      {/* ── Table Surface ────────────────────────────────────────────────── */}
+      <Surface padded className="space-y-4">
+        <div key={searchParams.toString()} className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto flex-1">
+            <div className="w-full sm:w-72">
+              <Input
+                allowClear
+                defaultValue={params.search}
+                prefix={<SearchOutlined className="text-slate-400" aria-hidden />}
+                placeholder="Tìm theo tên hoặc email, nhấn Enter"
+                className="rounded-lg h-9"
+                onPressEnter={(e) => setParam('q', e.currentTarget.value.trim() || undefined)}
+                onChange={(e) => !e.target.value && params.search && setParam('q', undefined)}
+                aria-label="Tìm người dùng"
+              />
+            </div>
+            <Select
+              allowClear
+              value={params.role}
+              placeholder="Mọi vai trò"
+              className="w-48 h-9"
+              onChange={(val) => setParam('role', val)}
+              options={(Object.keys(ROLE_LABEL) as RoleCode[]).map((r) => ({ value: r, label: ROLE_LABEL[r] }))}
+              aria-label="Lọc theo vai trò"
+            />
+          </div>
+          {page && (
+            <span className="text-xs text-slate-500 tabular-nums">
+              Hiển thị {page.items.length} / {page.total} tài khoản
+            </span>
+          )}
         </div>
 
         {list.isError ? (
-          <div className="p-5">
-            <Alert type="error" showIcon message="Không tải được danh sách người dùng" description={getApiErrorMessage(list.error)} />
+          <div className="p-4">
+            <Alert
+              type="error"
+              showIcon
+              message="Không tải được danh sách người dùng"
+              description={getApiErrorMessage(list.error)}
+            />
           </div>
         ) : (
-          <Table<AdminUserListItem>
-            className="admin-soft-table w-full table-auto"
-            rowKey="userId"
-            loading={list.isLoading}
-            columns={columns}
-            dataSource={page?.items ?? []}
-            locale={{ emptyText: <div className="py-10 text-slate-600">Không có tài khoản phù hợp bộ lọc.</div> }}
-            onRow={(u) => ({
-              onClick: () => setSelectedId(u.userId),
-              onKeyDown: (e) => {
-                if (e.key === 'Enter') setSelectedId(u.userId);
-              },
-              tabIndex: 0,
-              className: 'cursor-pointer',
-              'aria-label': `Mở tài khoản ${u.email}`,
-            })}
-            pagination={{
-              current: page?.page ?? params.page,
-              pageSize: PAGE_SIZE,
-              total: page?.total ?? 0,
-              showSizeChanger: false,
-              hideOnSinglePage: true,
-              onChange: (p) => setParam('page', String(p)),
-            }}
-          />
+          <div className="overflow-x-auto">
+            <Table<AdminUserListItem>
+              className="admin-soft-table w-full [&_.ant-table-thead>tr>th]:!bg-slate-50/80 [&_.ant-table-thead>tr>th]:!text-[12px] [&_.ant-table-thead>tr>th]:!font-bold [&_.ant-table-thead>tr>th]:!text-slate-600"
+              rowKey="userId"
+              loading={list.isLoading}
+              columns={columns}
+              dataSource={page?.items ?? []}
+              locale={{ emptyText: <div className="py-10 text-slate-500">Không có tài khoản phù hợp bộ lọc.</div> }}
+              onRow={(u) => ({
+                onClick: () => openUserDrawer(u.userId, 'info'),
+                className: 'cursor-pointer hover:bg-slate-50/80 transition-colors',
+              })}
+              pagination={{
+                current: page?.page ?? params.page,
+                pageSize: PAGE_SIZE,
+                total: page?.total ?? 0,
+                showSizeChanger: false,
+                hideOnSinglePage: true,
+                onChange: (p) => setParam('page', String(p)),
+              }}
+            />
+          </div>
         )}
       </Surface>
 
+      {/* ── User & RBAC Drawer ───────────────────────────────────────────── */}
       <Drawer
         open={Boolean(selectedId)}
-        width="min(480px, 100vw)"
+        width="min(680px, 100vw)"
         onClose={() => setSelectedId(undefined)}
-        title={null}
+        title={
+          user ? (
+            <div className="flex items-center gap-3">
+              <Initials name={user.displayName || user.email} size={36} />
+              <div className="min-w-0 flex-1">
+                <div className="font-bold text-slate-900 text-sm truncate">{user.displayName || user.email}</div>
+                <div className="text-xs text-slate-500 truncate">{user.email}</div>
+              </div>
+            </div>
+          ) : (
+            'Chi tiết tài khoản'
+          )
+        }
         closable
         destroyOnHidden
-        styles={{ body: { padding: 0, background: '#F4F6FA' } }}
       >
         {detail.isLoading ? (
-          <div className="p-6">
+          <div className="p-4 space-y-4">
             <Skeleton active avatar paragraph={{ rows: 8 }} />
           </div>
         ) : detail.isError || !user ? (
-          <div className="p-6">
-            <Alert type="error" showIcon message={getApiErrorMessage(detail.error, 'Không tải được tài khoản.')} />
+          <div className="p-4">
+            <Alert
+              type="error"
+              showIcon
+              message={getApiErrorMessage(detail.error, 'Không tải được tài khoản.')}
+            />
           </div>
         ) : (
-          <div className="space-y-4 p-5">
-            <div className="admin-surface flex flex-col items-center gap-3 p-6 text-center">
-              <Initials name={user.displayName || user.email} size={64} />
-              <div>
-                <Typography.Title level={4} className="!mb-0">
-                  {user.displayName || '(chưa đặt tên)'}
-                </Typography.Title>
-                <div className="text-sm text-slate-600">{user.email}</div>
-              </div>
-              <div className="flex flex-wrap items-center justify-center gap-3">
-                <UserState user={user} />
-                <RoleChips roles={user.roles} />
-              </div>
-            </div>
+          <div className="space-y-4">
+            {/* Drawer Tabs: Info vs Authorization */}
+            <Tabs
+              activeKey={drawerTab}
+              onChange={(key) => setDrawerTab(key as 'info' | 'rbac')}
+              className="user-detail-tabs"
+              items={[
+                {
+                  key: 'info',
+                  label: (
+                    <span className="flex items-center gap-2 font-medium">
+                      <UserOutlined />
+                      <span>Thông tin tài khoản</span>
+                    </span>
+                  ),
+                  children: (
+                    <div className="space-y-4 pt-1">
+                      {/* Status and roles header */}
+                      <div className="rounded-xl border border-solid border-slate-200 bg-slate-50/60 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Trạng thái</span>
+                            <div className="mt-1">
+                              <UserState user={user} />
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Vai trò</span>
+                            <div className="mt-1">
+                              <RoleChips roles={user.roles} />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
 
-            {readOnly ? (
-              <Alert type="info" showIcon message="Tài khoản Quản trị viên chỉ xem, không thao tác được ở đây." />
-            ) : (
-              <div className="admin-surface flex flex-wrap gap-2 p-4">
-                {user.status === 'SUSPENDED' ? (
-                  <Button
-                    type="primary"
-                    size="large"
-                    block
-                    loading={changeStatus.isPending}
-                    onClick={() =>
-                      modal.confirm({
-                        title: 'Kích hoạt lại tài khoản?',
-                        content: `${user.email} sẽ đăng nhập và dùng nền tảng bình thường trở lại.`,
-                        okText: 'Kích hoạt lại',
-                        cancelText: 'Hủy',
-                        onOk: () => changeStatus.mutateAsync({ status: 'ACTIVE' }),
-                      })
-                    }
-                  >
-                    Kích hoạt lại tài khoản
-                  </Button>
-                ) : (
-                  user.status === 'ACTIVE' && (
-                    <Button danger size="large" className="flex-1" icon={<StopOutlined />} onClick={() => setSuspendOpen(true)}>
-                      Tạm khóa
-                    </Button>
-                  )
-                )}
-                <Button
-                  size="large"
-                  className="flex-1"
-                  icon={<UnlockOutlined />}
-                  loading={unlock.isPending}
-                  disabled={!user.isLoginLocked && user.failedLoginAttempts === 0}
-                  onClick={() => unlock.mutate()}
-                >
-                  Mở khóa đăng nhập
-                </Button>
-                <Button
-                  size="large"
-                  block
-                  icon={<KeyOutlined />}
-                  onClick={() => navigate(`/admin/user-authorization?userId=${user.userId}`)}
-                >
-                  Quyền truy cập người dùng
-                </Button>
-              </div>
-            )}
+                      {/* Action buttons */}
+                      {readOnly ? (
+                        <Alert
+                          type="info"
+                          showIcon
+                          message="Tài khoản Quản trị viên chỉ xem, không chỉnh sửa trạng thái ở đây."
+                          className="rounded-xl"
+                        />
+                      ) : (
+                        <div className="flex flex-wrap gap-2.5 p-3 rounded-xl border border-solid border-slate-200 bg-white shadow-2xs">
+                          {user.status === 'SUSPENDED' ? (
+                            <Button
+                              type="primary"
+                              block
+                              loading={changeStatus.isPending}
+                              onClick={() =>
+                                modal.confirm({
+                                  title: 'Kích hoạt lại tài khoản?',
+                                  content: `${user.email} sẽ đăng nhập và dùng nền tảng bình thường trở lại.`,
+                                  okText: 'Kích hoạt lại',
+                                  cancelText: 'Hủy',
+                                  onOk: () => changeStatus.mutateAsync({ status: 'ACTIVE' }),
+                                })
+                              }
+                              className="bg-emerald-600 hover:bg-emerald-700 font-semibold h-9"
+                            >
+                              Kích hoạt lại tài khoản
+                            </Button>
+                          ) : (
+                            user.status === 'ACTIVE' && (
+                              <Button
+                                danger
+                                className="flex-1 h-9 font-medium"
+                                icon={<StopOutlined />}
+                                onClick={() => setSuspendOpen(true)}
+                              >
+                                Tạm khóa
+                              </Button>
+                            )
+                          )}
+                          <Button
+                            className="flex-1 h-9 font-medium"
+                            icon={<UnlockOutlined />}
+                            loading={unlock.isPending}
+                            disabled={!user.isLoginLocked && user.failedLoginAttempts === 0}
+                            onClick={() => unlock.mutate()}
+                          >
+                            Mở khóa đăng nhập
+                          </Button>
+                        </div>
+                      )}
 
-            <div className="admin-surface px-5 py-2">
-              <InfoRow label="Điện thoại">{user.phone ?? '—'}</InfoRow>
-              <InfoRow label="Email">{user.isEmailVerified ? 'Đã xác thực' : 'Chưa xác thực'}</InfoRow>
-              <InfoRow label="Đăng nhập sai liên tiếp">
-                <span className="tabular-nums">{user.failedLoginAttempts} lần</span>
-              </InfoRow>
-              <InfoRow label="Khóa đăng nhập đến">{formatDateTime(user.lockoutEndAt)}</InfoRow>
-              <InfoRow label="Đăng nhập gần nhất">{formatDateTime(user.lastLoginAt)}</InfoRow>
-              <InfoRow label="Tạo lúc">{formatDateTime(user.createdAt)}</InfoRow>
-              <InfoRow label="Mã người dùng">
-                <code style={{ fontFamily: adminTokens.mono }} className="break-all text-xs font-normal text-slate-700">
-                  {user.userId}
-                </code>
-              </InfoRow>
-            </div>
+                      {/* Details specs */}
+                      <div className="rounded-xl border border-solid border-slate-200 bg-white px-4 py-1 shadow-2xs">
+                        <InfoRow label="Số điện thoại">{user.phone ?? '—'}</InfoRow>
+                        <InfoRow label="Email">
+                          {user.isEmailVerified ? (
+                            <span className="text-emerald-700 font-semibold">Đã xác thực</span>
+                          ) : (
+                            <span className="text-amber-700 font-medium">Chưa xác thực</span>
+                          )}
+                        </InfoRow>
+                        <InfoRow label="Đăng nhập sai liên tiếp">
+                          <span className="tabular-nums font-semibold text-slate-800">{user.failedLoginAttempts} lần</span>
+                        </InfoRow>
+                        <InfoRow label="Khóa đăng nhập đến">{formatDateTime(user.lockoutEndAt)}</InfoRow>
+                        <InfoRow label="Đăng nhập gần nhất">{formatDateTime(user.lastLoginAt)}</InfoRow>
+                        <InfoRow label="Ngày tạo tài khoản">{formatDateTime(user.createdAt)}</InfoRow>
+                        <InfoRow label="Mã người dùng (User ID)">
+                          <code className="text-xs text-slate-700 font-mono select-all bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">
+                            {user.userId}
+                          </code>
+                        </InfoRow>
+                      </div>
+                    </div>
+                  ),
+                },
+                {
+                  key: 'rbac',
+                  label: (
+                    <span className="flex items-center gap-2 font-medium">
+                      <KeyOutlined />
+                      <span>Phân quyền & Vai trò</span>
+                    </span>
+                  ),
+                  children: (
+                    <div className="pt-1">
+                      <UserAuthorizationTab userId={user.userId} userEmail={user.email} />
+                    </div>
+                  ),
+                },
+              ]}
+            />
           </div>
         )}
       </Drawer>
 
+      {/* ── Suspend Modal ────────────────────────────────────────────────── */}
       <Modal
         open={suspendOpen}
-        title="Tạm khóa tài khoản"
-        okText="Tạm khóa"
+        title={<span className="text-base font-bold text-slate-900">Tạm khóa tài khoản người dùng</span>}
+        okText="Xác nhận tạm khóa"
         cancelText="Hủy"
         okButtonProps={{ danger: true, loading: changeStatus.isPending }}
         onCancel={() => setSuspendOpen(false)}
         onOk={() => form.submit()}
         destroyOnHidden
+        centered
       >
-        <Typography.Paragraph className="text-slate-600">
-          Mọi phiên đăng nhập của người dùng bị thu hồi (phiên đang mở hết hiệu lực khi token hết hạn) và họ không đăng
-          nhập được cho tới khi bạn kích hoạt lại.
-        </Typography.Paragraph>
-        <Form form={form} layout="vertical" preserve={false} onFinish={({ reason }) => changeStatus.mutate({ status: 'SUSPENDED', reason: reason.trim() })}>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          Mọi phiên đăng nhập hiện tại của người dùng sẽ bị thu hồi và tài khoản không thể truy cập hệ thống cho đến khi được kích hoạt lại.
+        </p>
+        <Form
+          form={form}
+          layout="vertical"
+          preserve={false}
+          onFinish={({ reason }) => changeStatus.mutate({ status: 'SUSPENDED', reason: reason.trim() })}
+          className="mt-3"
+        >
           <Form.Item
             name="reason"
-            label="Lý do tạm khóa"
+            label={<span className="text-xs font-semibold text-slate-700">Lý do tạm khóa (Bắt buộc)</span>}
             rules={[
-              { required: true, whitespace: true, message: 'Nhập lý do tạm khóa.' },
-              { max: 500, message: 'Tối đa 500 ký tự.' },
+              { required: true, whitespace: true, message: 'Vui lòng nhập lý do tạm khóa tài khoản!' },
+              { max: 500, message: 'Tối đa 500 ký tự!' },
             ]}
           >
-            <Input.TextArea rows={4} showCount maxLength={500} />
+            <Input.TextArea rows={4} showCount maxLength={500} placeholder="Nhập lý do vi phạm hoặc yêu cầu tạm ngưng dịch vụ..." className="rounded-lg" />
           </Form.Item>
         </Form>
       </Modal>
