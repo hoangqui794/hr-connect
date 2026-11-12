@@ -13,6 +13,7 @@ import {
   Button,
   Form,
   Input,
+  Modal,
   Pagination,
   Radio,
   Result,
@@ -1405,6 +1406,7 @@ export const AffiliateCandidateDetailPage: React.FC = () => {
 export const AffiliateAttributionsPage: React.FC = () => {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
+  const [selectedAttribution, setSelectedAttribution] = useState<AffiliateAttribution | null>(null);
   const list = useQuery({ queryKey: ['aff-attributions', page], queryFn: () => affiliateApi.attributions({ page, pageSize: 10 }), placeholderData: (prev) => prev });
   const attributionRuleLabel = (rule: string) => {
     const labels: Record<string, string> = {
@@ -1436,7 +1438,11 @@ export const AffiliateAttributionsPage: React.FC = () => {
       key: 'a',
       width: 90,
       render: (_, r) => (
-        <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-[13px] font-semibold text-[#0284C7] hover:text-[#0369A1]" onClick={() => navigate(`/affiliate/candidates/${r.candidateId}`)}>
+        <button
+          type="button"
+          className="cursor-pointer border-0 bg-transparent p-0 text-[13px] font-semibold text-[#0284C7] hover:text-[#0369A1]"
+          onClick={() => setSelectedAttribution(r)}
+        >
           Chi tiết
         </button>
       ),
@@ -1464,6 +1470,89 @@ export const AffiliateAttributionsPage: React.FC = () => {
           locale={{ emptyText: <div className="py-10 text-slate-600">Chưa có ghi nhận nào. Ghi nhận được tạo sau khi ứng viên đồng ý.</div> }}
         />
       </Surface>
+
+      {/* Modal chi tiết Ghi nhận nguồn */}
+      <Modal
+        open={Boolean(selectedAttribution)}
+        onCancel={() => setSelectedAttribution(null)}
+        footer={null}
+        centered
+        width={560}
+        title={
+          <div className="flex items-center gap-2 text-base font-bold text-slate-900">
+            <SafetyCertificateOutlined className="text-[#0284C7]" />
+            <span>Chi tiết ghi nhận nguồn ứng viên</span>
+          </div>
+        }
+      >
+        {selectedAttribution && (
+          <div className="pt-2">
+            {/* Thẻ ứng viên và vị trí */}
+            <div className="rounded-xl border border-solid border-slate-200/80 bg-slate-50/70 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-base font-bold text-slate-900">{selectedAttribution.candidateName}</div>
+                <StatusChip tone={(ATTRIBUTION_STATUS[selectedAttribution.status] ?? { tone: 'neutral' as const }).tone}>
+                  {(ATTRIBUTION_STATUS[selectedAttribution.status] ?? { label: selectedAttribution.status }).label}
+                </StatusChip>
+              </div>
+              <div className="mt-1 text-[13.5px] font-medium text-slate-700">
+                Vị trí tuyển dụng: <span className="font-semibold text-slate-900">{selectedAttribution.jobTitle}</span>
+              </div>
+            </div>
+
+            {/* Thông tin pháp lý & bảo hộ nguồn */}
+            <dl className="mt-4 grid grid-cols-1 gap-y-3 rounded-xl border border-solid border-slate-100 bg-white p-4 text-[13px] sm:grid-cols-2 gap-x-4">
+              <div>
+                <dt className="text-slate-500">Mã ghi nhận nguồn</dt>
+                <dd className="m-0 mt-0.5 font-mono text-xs font-semibold text-slate-800 break-all">{selectedAttribution.attributionId}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Mã đơn ứng tuyển</dt>
+                <dd className="m-0 mt-0.5 font-mono text-xs font-semibold text-slate-800 break-all">{selectedAttribution.applicationId || 'Đang đồng bộ'}</dd>
+              </div>
+              <div className="sm:col-span-2">
+                <dt className="text-slate-500">Cơ chế xác lập quyền giới thiệu</dt>
+                <dd className="m-0 mt-0.5 font-semibold text-slate-800">{attributionRuleLabel(selectedAttribution.attributionRule)}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Thời điểm xác lập</dt>
+                <dd className="m-0 mt-0.5 font-semibold text-slate-800 tabular-nums">{fmt(selectedAttribution.establishedAt)}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Thời hạn bảo hộ nguồn</dt>
+                <dd className="m-0 mt-0.5 font-semibold text-emerald-700">90 ngày độc quyền cho CTV</dd>
+              </div>
+            </dl>
+
+            <div className="mt-4 rounded-xl border border-solid border-sky-100 bg-sky-50/70 p-3.5 text-xs text-sky-900 leading-relaxed">
+              <strong>Lưu ý bảo vệ quyền lợi:</strong> Khi nguồn đã được ghi nhận thành công, mọi khoản hoa hồng phát sinh từ lượt tuyển dụng này (khi ứng viên hoàn tất phỏng vấn, nhận việc và qua thời gian bảo hành) sẽ được tự động kết chuyển vào sổ cái hoa hồng của bạn.
+            </div>
+
+            {/* Các nút điều hướng nhanh */}
+            <div className="mt-5 flex flex-wrap gap-2.5">
+              <Button
+                type="primary"
+                className="affiliate-cta !h-10 flex-1 font-semibold"
+                onClick={() => {
+                  navigate(`/affiliate/submissions?candidateId=${selectedAttribution.candidateId}`);
+                  setSelectedAttribution(null);
+                }}
+              >
+                Xem tiến độ tuyển dụng
+              </Button>
+              <Button
+                className="!h-10 flex-1 font-semibold border-slate-200 hover:border-[#0284C7] hover:text-[#0284C7]"
+                onClick={() => {
+                  navigate(`/affiliate/jobs/${selectedAttribution.jobId}`);
+                  setSelectedAttribution(null);
+                }}
+              >
+                Xem tin việc làm
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
