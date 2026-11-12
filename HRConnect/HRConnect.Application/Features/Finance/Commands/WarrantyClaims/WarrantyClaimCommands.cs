@@ -201,6 +201,21 @@ public sealed class ResolveResignationCommandHandler : IRequestHandler<ResolveRe
         }, cancellationToken);
 
         var jobTitle = placement.Application.Job.Title;
+        if (request.Confirmed && _notifier != null)
+        {
+            var candidateUserId = placement.Application?.Candidate?.UserId;
+            if (candidateUserId.HasValue && candidateUserId.Value != Guid.Empty)
+            {
+                await _notifier.NotifyUsersAsync([candidateUserId.Value], new AppNotice(
+                    "PLACEMENT",
+                    "Hồ sơ nhận việc đã kết thúc",
+                    $"Hồ sơ nhận việc tại vị trí \"{jobTitle}\" đã kết thúc ngày {placement.UpdatedAt:dd/MM/yyyy}.",
+                    "PLACEMENT",
+                    placement.PlacementId,
+                    "/candidate/applications"), cancellationToken);
+            }
+        }
+
         await AffiliateCommissionNotice.SendAsync(_financeRepository, _notifier, held, request.Confirmed
             ? new AppNotice(
                 "COMMISSION",

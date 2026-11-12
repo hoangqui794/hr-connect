@@ -73,7 +73,8 @@ public class GetCandidateApplicationsQueryHandler : IRequestHandler<GetCandidate
             var displayStatus = CandidateApplicationDisplayStatusMapper.Map(
                 a.Status,
                 a.Offers?.Select(offer => offer.Status),
-                _logger);
+                _logger,
+                a.Placement?.Status);
             return new CandidateApplicationItemDto
             {
                 ApplicationId = a.ApplicationId,

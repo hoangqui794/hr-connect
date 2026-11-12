@@ -34,7 +34,7 @@ const TABS: { key: Tab; label: string; groups?: Group[] }[] = [
   { key: 'INTERVIEW', label: 'Phỏng vấn', groups: ['INTERVIEW'] },
   { key: 'OFFER', label: 'Offer', groups: ['OFFER'] },
   { key: 'HIRED', label: 'Đang làm việc', groups: ['HIRED'] },
-  { key: 'ENDED', label: 'Đã kết thúc', groups: ['NOT_SELECTED', 'WITHDRAWN'] },
+  { key: 'ENDED', label: 'Đã kết thúc', groups: ['ENDED', 'NOT_SELECTED', 'WITHDRAWN'] },
 ];
 
 /** Older links pass one status group in `status`; it opens the tab holding that group. */
@@ -53,6 +53,7 @@ const GROUP_VIEW: Record<Group, { steps: number; ended?: boolean; color: { text:
   INTERVIEW: { steps: 3, color: { text: '#9A3412', background: '#FFEDD5' }, next: 'Ngày giờ và hình thức phỏng vấn có trong đơn', action: 'Xem lịch phỏng vấn' },
   OFFER: { steps: 4, color: GOOD, next: 'Điều khoản và hạn trả lời có trong đơn', action: 'Xem offer' },
   HIRED: { steps: 5, color: GOOD, next: 'Chúc mừng bạn đã nhận việc', action: 'Xem chi tiết' },
+  ENDED: { steps: 5, ended: true, color: NEUTRAL, next: 'Hồ sơ nhận việc tại vị trí này đã kết thúc', action: 'Xem chi tiết' },
   NOT_SELECTED: { steps: 2, ended: true, color: NEUTRAL, action: 'Xem việc tương tự' },
   WITHDRAWN: { steps: 1, ended: true, color: NEUTRAL, action: 'Xem chi tiết' },
 };

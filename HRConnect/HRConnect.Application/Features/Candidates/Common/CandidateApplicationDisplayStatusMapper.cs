@@ -13,14 +13,20 @@ public static class CandidateApplicationDisplayStatusMapper
 {
     public static readonly IReadOnlySet<string> AllowedGroups = new HashSet<string>(StringComparer.Ordinal)
     {
-        "SUBMITTED", "IN_REVIEW", "SELECTED", "INTERVIEW", "OFFER", "HIRED", "NOT_SELECTED", "WITHDRAWN"
+        "SUBMITTED", "IN_REVIEW", "SELECTED", "INTERVIEW", "OFFER", "HIRED", "ENDED", "NOT_SELECTED", "WITHDRAWN"
     };
 
     public static CandidateApplicationDisplayStatus Map(
         string? applicationStatus,
         IEnumerable<string?>? offerStatuses = null,
-        ILogger? logger = null)
+        ILogger? logger = null,
+        string? placementStatus = null)
     {
+        if (string.Equals(placementStatus, PlacementStates.LeftDuringWarranty, StringComparison.OrdinalIgnoreCase))
+        {
+            return new("ENDED", "Đã nghỉ việc");
+        }
+
         var normalizedStatus = applicationStatus?.Trim().ToUpperInvariant();
         var hasSentOffer = offerStatuses?.Any(status =>
             string.Equals(status, OfferStates.Sent, StringComparison.OrdinalIgnoreCase)) == true;
@@ -51,6 +57,7 @@ public static class CandidateApplicationDisplayStatusMapper
         "INTERVIEW" => [ApplicationStates.Interview],
         "OFFER" => [ApplicationStates.OfferPending],
         "HIRED" => [ApplicationStates.OfferAccepted, ApplicationStates.Placed],
+        "ENDED" => [ApplicationStates.Placed, ApplicationStates.Closed],
         "NOT_SELECTED" => [ApplicationStates.Rejected, ApplicationStates.InterviewFailed, ApplicationStates.BackupNotSelected, ApplicationStates.Closed],
         "WITHDRAWN" => [ApplicationStates.Withdrawn, ApplicationStates.OfferDeclined, ApplicationStates.NotStarted],
         _ => []

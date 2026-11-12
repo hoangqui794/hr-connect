@@ -522,6 +522,34 @@ public class Mf05FinanceTests
     }
 
     [Fact]
+    public async Task Candidate_is_notified_when_hr_confirms_resignation()
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        var candidateUser = new AppUser { UserId = Guid.NewGuid(), Email = "candidate@example.com", PasswordHash = "x", Status = "ACTIVE", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+        var candidate = await _context.Candidates.SingleAsync(c => c.CandidateId == placement.Application.CandidateId);
+        candidate.UserId = candidateUser.UserId;
+        _context.Add(candidateUser);
+        await _context.SaveChangesAsync();
+        await InitializeAsync(placement, offer);
+
+        var notifier = new Mock<IAppNotifier>();
+        var companyUsers = new Mock<ICompanyUserRepository>();
+        companyUsers.Setup(r => r.GetByUserIdAsync(_actor, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { CompanyId = _companyId, UserId = _actor, Status = "ACTIVE" });
+        await new ReportResignationCommandHandler(Repository, companyUsers.Object, UnitOfWork, _audit.Object, notifier.Object)
+            .Handle(new ReportResignationCommand(placement.PlacementId, Start.AddDays(10), "Ứng viên xin nghỉ", _actor), default);
+
+        await new ResolveResignationCommandHandler(
+                Repository, UnitOfWork, _audit.Object, new BusinessSettingsService(new SystemSettingRepository(_context)), notifier: notifier.Object)
+            .Handle(new ResolveResignationCommand(placement.PlacementId, true, "Đã xác minh", _actor), default);
+
+        notifier.Verify(n => n.NotifyUsersAsync(
+            It.Is<IEnumerable<Guid>>(ids => ids.Single() == candidateUser.UserId),
+            It.Is<AppNotice>(a => a.Title == "Hồ sơ nhận việc đã kết thúc" && a.NotificationType == "PLACEMENT" && a.RouteHint == "/candidate/applications"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task Rejected_report_restores_the_warranty_and_commission()
     {
         var (placement, offer) = await SeedPlacementAsync();

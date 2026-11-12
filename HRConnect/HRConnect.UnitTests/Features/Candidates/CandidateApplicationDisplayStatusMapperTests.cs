@@ -64,6 +64,18 @@ public sealed class CandidateApplicationDisplayStatusMapperTests
             .Should().BeEquivalentTo([ApplicationStates.OfferPending]);
     }
 
+    [Fact]
+    public void Map_WhenPlacementStatusIsLeftDuringWarranty_ReturnsEndedAndDaNghiViec()
+    {
+        var result = CandidateApplicationDisplayStatusMapper.Map(
+            ApplicationStates.Placed,
+            logger: NullLogger.Instance,
+            placementStatus: PlacementStates.LeftDuringWarranty);
+
+        result.Group.Should().Be("ENDED");
+        result.Label.Should().Be("Đã nghỉ việc");
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("FUTURE_INTERNAL_STATUS")]

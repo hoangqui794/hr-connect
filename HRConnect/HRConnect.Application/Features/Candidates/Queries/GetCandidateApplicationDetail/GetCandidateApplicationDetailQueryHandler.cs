@@ -51,7 +51,8 @@ public class GetCandidateApplicationDetailQueryHandler : IRequestHandler<GetCand
         var displayStatus = CandidateApplicationDisplayStatusMapper.Map(
             application.Status,
             application.Offers?.Select(offer => offer.Status),
-            _logger);
+            _logger,
+            application.Placement?.Status);
 
         return new CandidateApplicationDetailResponse
         {

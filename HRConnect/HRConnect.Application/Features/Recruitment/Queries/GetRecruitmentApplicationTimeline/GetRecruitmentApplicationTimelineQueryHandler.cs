@@ -322,7 +322,7 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
                 CandidateName = candidateName,
                 JobTitle = jobTitle,
                 CurrentStatus = request.IsCandidate
-                    ? CandidateApplicationDisplayStatusMapper.Map(app.Status, app.Offers?.Select(o => o.Status)).Group
+                    ? CandidateApplicationDisplayStatusMapper.Map(app.Status, app.Offers?.Select(o => o.Status), placementStatus: app.Placement?.Status).Group
                     : app.Status,
                 Events = sortedEvents
             }

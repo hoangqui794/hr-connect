@@ -26,7 +26,7 @@ const BY_ENTITY: Record<string, string[][]> = {
   INTERVIEW: [...APPLICATION, ['interview-history'], ['client-interview-detail']],
   OFFER: APPLICATION,
   PLACEMENT: [...APPLICATION, ...FINANCE, ['mf04-placement-correction']],
-  WARRANTY: FINANCE,
+  WARRANTY: [...FINANCE, ...APPLICATION],
   SERVICE_FEE: FINANCE,
   COMMISSION: [...FINANCE, ['affiliate-performance']],
   PAYOUT: FINANCE,

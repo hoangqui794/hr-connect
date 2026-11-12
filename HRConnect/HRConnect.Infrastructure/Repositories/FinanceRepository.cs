@@ -135,6 +135,7 @@ public class FinanceRepository : IFinanceRepository
     public Task<Placement?> GetPlacementForFinanceAsync(Guid placementId, CancellationToken cancellationToken = default) =>
         _context.Placements
             .Include(p => p.Application).ThenInclude(a => a.Job)
+            .Include(p => p.Application).ThenInclude(a => a.Candidate)
             .Include(p => p.Offer)
             .Include(p => p.Warranty)
             .Include(p => p.ServiceFee)

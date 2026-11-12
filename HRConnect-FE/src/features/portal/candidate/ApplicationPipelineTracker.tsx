@@ -47,6 +47,7 @@ const getPipelineStepIndex = (group: CandidateApplicationDisplayGroup): number =
       return 2; // Phỏng vấn
     case 'OFFER':
     case 'HIRED':
+    case 'ENDED':
     case 'NOT_SELECTED':
     case 'WITHDRAWN':
       return 3; // Kết quả
@@ -81,6 +82,12 @@ const getStatusNotificationTag = (group: CandidateApplicationDisplayGroup, appli
         label: 'Trúng tuyển chính thức 🎉',
         badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200/80 font-bold',
         icon: CheckCircle2,
+      };
+    case 'ENDED':
+      return {
+        label: 'Hồ sơ đã kết thúc (Đã nghỉ việc)',
+        badgeClass: 'bg-slate-100 text-slate-700 border-slate-300 font-medium',
+        icon: AlertCircle,
       };
     case 'OFFER':
       return {

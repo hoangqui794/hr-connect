@@ -6,6 +6,7 @@ export type CandidateApplicationDisplayGroup =
   | 'INTERVIEW'
   | 'OFFER'
   | 'HIRED'
+  | 'ENDED'
   | 'NOT_SELECTED'
   | 'WITHDRAWN';
 

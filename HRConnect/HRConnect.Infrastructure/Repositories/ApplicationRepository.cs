@@ -61,6 +61,7 @@ public class ApplicationRepository : IApplicationRepository
                 .ThenInclude(s => s!.CandidateCv)
             .Include(a => a.AiMatchResults)
             .Include(a => a.Offers)
+            .Include(a => a.Placement)
             .FirstOrDefaultAsync(a => a.ApplicationId == applicationId, cancellationToken);
     }
 
@@ -109,6 +110,15 @@ public class ApplicationRepository : IApplicationRepository
                     a.Status != ApplicationStates.OfferPending ||
                     !a.Offers.Any(offer => offer.Status == OfferStates.Sent));
             }
+            else if (displayGroup == "HIRED")
+            {
+                query = query.Where(a => a.Placement == null || a.Placement.Status != PlacementStates.LeftDuringWarranty);
+            }
+            else if (displayGroup == "ENDED")
+            {
+                query = query.Where(a => a.Status == ApplicationStates.Closed ||
+                    (a.Placement != null && a.Placement.Status == PlacementStates.LeftDuringWarranty));
+            }
         }
 
         if (jobId.HasValue && jobId.Value != Guid.Empty)
@@ -149,6 +159,7 @@ public class ApplicationRepository : IApplicationRepository
                 .ThenInclude(s => s!.CandidateCv)
             .Include(a => a.AiMatchResults)
             .Include(a => a.Offers)
+            .Include(a => a.Placement)
             .OrderByDescending(a => a.AppliedAt)
             .ThenByDescending(a => a.ApplicationId)
             .Skip((page - 1) * pageSize)

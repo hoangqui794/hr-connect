@@ -48,6 +48,13 @@ export const candidateDisplayStage = (
     INTERVIEW: { step: 3, label: 'Phỏng vấn', tone: 'info', closed: false },
     OFFER: { step: 5, label: 'Đã nhận lời mời', tone: 'success', closed: false },
     HIRED: { step: 6, label: 'Đang làm việc', tone: 'success', closed: true },
+    ENDED: {
+      step: 6,
+      label: 'Đã nghỉ việc',
+      tone: 'neutral',
+      closed: true,
+      terminalMessage: 'Hồ sơ nhận việc tại vị trí này đã kết thúc.',
+    },
     NOT_SELECTED: {
       step: 1,
       label: 'Chưa phù hợp lần này',
@@ -114,8 +121,12 @@ export const candidateTimelineEventCopy = (event: {
 
 export const candidateStage = (
   status: string,
-  offerStatuses: string[] = []
+  offerStatuses: string[] = [],
+  placementStatus?: string
 ): { step: number; label: string; tone: Tone; closed?: boolean } => {
+  if (placementStatus === 'LEFT_DURING_WARRANTY') {
+    return { step: 6, label: 'Đã nghỉ việc', tone: 'neutral', closed: true };
+  }
   switch (status) {
     case 'SUBMITTED':
       return { step: 0, label: 'Đã nộp, chờ xem', tone: 'info' };

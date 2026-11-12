@@ -158,7 +158,11 @@ export const CandidateApplicationDetailPage: React.FC = () => {
   const interviews: { interviewId: string; interviewRound: number; interviewType?: string | null; scheduledAt?: string | null; durationMinutes?: number | null; meetingLink?: string | null; status: string }[] = application.interviews || [];
   const offers: CandidateOfferSummaryDto[] = application.offers || [];
   const canWithdraw = (application.allowedActions || []).includes('WITHDRAW_APPLICATION');
-  const stage = candidateStage(application.status, offers.map((offer) => String(offer.status || '')));
+  const stage = candidateStage(
+    application.status,
+    offers.map((offer) => String(offer.status || '')),
+    application.placement?.status
+  );
   const color = application.status === 'INTERVIEW' ? TONE_COLOR.warning : TONE_COLOR[stage.tone] ?? TONE_COLOR.neutral;
   const reached = STEP_OF_STAGE[stage.step] ?? 1;
   const ended = Boolean(stage.closed) && stage.tone !== 'success';
