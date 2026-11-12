@@ -40,6 +40,7 @@ import {
   Tag,
 } from 'antd';
 import type { FormInstance } from 'antd';
+import { CurrencyCodeSelect, currencyCodeRules } from '@/components/common/CurrencyCodeSelect';
 import {
   AimOutlined,
   ArrowLeftOutlined,
@@ -1652,8 +1653,8 @@ export const JobFormPage: React.FC = () => {
                 </header>
 
                 {(() => {
-                  const isUsd = (watched.currencyCode ?? 'VND') !== 'VND';
-                  const salaryRange = isUsd ? SALARY_RANGE_CUSTOM : salaryRangePick ?? salaryRangeOf(watched);
+                  const usesNonVndCurrency = (watched.currencyCode ?? 'VND') !== 'VND';
+                  const salaryRange = usesNonVndCurrency ? SALARY_RANGE_CUSTOM : salaryRangePick ?? salaryRangeOf(watched);
                   const custom = salaryRange === SALARY_RANGE_CUSTOM;
                   const pickRange = (value: string) => {
                     setSalaryRangePick(value);
@@ -1677,13 +1678,13 @@ export const JobFormPage: React.FC = () => {
                             disabled={!editable}
                             onChange={pickRange}
                             options={[
-                              ...(isUsd ? [] : SALARY_RANGE_PRESETS.map((p) => ({ value: p.value, label: p.label }))),
+                              ...(usesNonVndCurrency ? [] : SALARY_RANGE_PRESETS.map((p) => ({ value: p.value, label: p.label }))),
                               { value: SALARY_RANGE_CUSTOM, label: 'Tự nhập…' },
                             ]}
                           />
                         </Form.Item>
-                        <Form.Item name="currencyCode" label="Tiền tệ" rules={[{ required: true, message: 'Chọn tiền tệ.' }]}>
-                          <Select size="large" options={['VND', 'USD'].map((c) => ({ value: c, label: c }))} />
+                        <Form.Item name="currencyCode" label="Tiền tệ" rules={currencyCodeRules}>
+                          <CurrencyCodeSelect size="large" disabled={!editable} />
                         </Form.Item>
                       </div>
 

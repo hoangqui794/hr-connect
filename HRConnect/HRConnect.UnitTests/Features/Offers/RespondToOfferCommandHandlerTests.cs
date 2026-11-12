@@ -526,6 +526,64 @@ public class RespondToOfferCommandHandlerTests
         target.Status.Should().Be(OfferStates.Accepted);
     }
 
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task Handle_WhenTransitioningFromActivePlacement_ShouldNeverWithdrawPlacedApplication(
+        bool applicationIsPlaced,
+        bool hasPlacementNavigation)
+    {
+        var candidateId = Guid.NewGuid();
+        var candidateUserId = Guid.NewGuid();
+        var target = CreateOffer(candidateId, candidateUserId, EmploymentTypes.FullTime, OfferStates.Sent);
+        var placedOffer = CreateOffer(candidateId, candidateUserId, EmploymentTypes.FullTime, OfferStates.Accepted);
+        placedOffer.Application.Status = applicationIsPlaced
+            ? ApplicationStates.Placed
+            : ApplicationStates.OfferAccepted;
+
+        var activePlacement = new Placement
+        {
+            PlacementId = Guid.NewGuid(),
+            ApplicationId = placedOffer.ApplicationId,
+            OfferId = placedOffer.OfferId,
+            ActualStartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-10)),
+            Status = PlacementStates.Started,
+            Application = placedOffer.Application,
+            Offer = placedOffer
+        };
+        if (hasPlacementNavigation)
+        {
+            placedOffer.Application.Placement = activePlacement;
+        }
+
+        SetupTarget(target);
+        _placementRepositoryMock
+            .Setup(r => r.GetActiveFullTimeForCandidateAsync(candidateId, target.ApplicationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(activePlacement);
+        _offerRepositoryMock
+            .Setup(r => r.GetCandidateOffersForAcceptanceAsync(candidateId, target.OfferId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { placedOffer });
+
+        var command = new RespondToOfferCommand(
+            target.OfferId,
+            OfferStates.Accepted,
+            null,
+            target.ConcurrencyToken,
+            candidateUserId,
+            OfferAcceptanceActions.TransitionFromActivePlacement);
+
+        var result = await CreatePolicyHandler().Handle(command, CancellationToken.None);
+
+        result.Status.Should().Be(OfferStates.Accepted);
+        target.Application.Status.Should().Be(ApplicationStates.OfferAccepted);
+        placedOffer.Status.Should().Be(OfferStates.Accepted);
+        placedOffer.Application.Status.Should().Be(
+            applicationIsPlaced ? ApplicationStates.Placed : ApplicationStates.OfferAccepted);
+        placedOffer.Application.ApplicationStatusHistories.Should().BeEmpty();
+        _offerRepositoryMock.Verify(repository => repository.Update(placedOffer), Times.Never);
+        _applicationRepositoryMock.Verify(repository => repository.Update(placedOffer.Application), Times.Never);
+    }
+
     private void SetupTarget(Offer target)
     {
         _offerRepositoryMock
