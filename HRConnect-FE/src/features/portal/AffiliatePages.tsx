@@ -44,6 +44,7 @@ import {
   TrophyOutlined,
   CloseCircleOutlined,
   ExclamationCircleOutlined,
+  InfoCircleOutlined,
   FileDoneOutlined,
   IdcardOutlined,
   SafetyCertificateOutlined,
@@ -470,7 +471,85 @@ export const AffiliateSubmitPage: React.FC = () => {
       >
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className="space-y-5">
-            {submit.isError && <Alert type="error" showIcon message="Chưa gửi được" description={getApiErrorMessage(submit.error)} />}
+            {submit.isError && (() => {
+              const errMsg = getApiErrorMessage(submit.error);
+              const isCandidateConflict =
+                errMsg.includes('không khớp') ||
+                errMsg.includes('hồ sơ Candidate') ||
+                errMsg.includes('đã tồn tại') ||
+                errMsg.includes('đã có trong hệ thống') ||
+                errMsg.includes('trùng khớp') ||
+                errMsg.toLowerCase().includes('candidate');
+
+              if (isCandidateConflict) {
+                return (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50/90 p-4 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-600 border border-rose-200">
+                        <ExclamationCircleOutlined className="text-lg" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="m-0 text-sm font-bold text-rose-900 leading-tight">
+                          Thông tin ứng viên đã có trong hệ thống
+                        </h4>
+                        <p className="mt-1 mb-2.5 text-xs text-rose-800 leading-relaxed font-medium">
+                          {errMsg}
+                        </p>
+                        <div className="rounded-lg bg-white/90 border border-rose-200/80 p-3 text-xs text-slate-700 space-y-1.5 shadow-2xs">
+                          <div className="font-semibold text-slate-900 flex items-center gap-1.5">
+                            <InfoCircleOutlined className="text-sky-600 text-sm" />
+                            Gợi ý xử lý dành cho Cộng tác viên:
+                          </div>
+                          <ul className="m-0 list-disc pl-4 text-slate-600 space-y-1">
+                            <li>
+                              Nếu bạn đã lưu hồ sơ ứng viên này trước đây, hãy chuyển sang chế độ{' '}
+                              <strong className="text-slate-900 font-semibold">"Chọn từ kho của tôi"</strong> để gửi nhanh chóng.
+                            </li>
+                            <li>
+                              Mỗi ứng viên trên hệ thống được định danh duy nhất bởi <strong>Email</strong> và <strong>Số điện thoại</strong>. Vui lòng kiểm tra lại để đảm bảo thông tin liên lạc chính xác.
+                            </li>
+                          </ul>
+                        </div>
+                        {mode === 'new' && (
+                          <div className="mt-3 flex items-center gap-2">
+                            <Button
+                              type="primary"
+                              size="small"
+                              className="!h-8 !rounded-lg !bg-rose-600 hover:!bg-rose-700 !border-0 text-white font-semibold text-xs shadow-xs active:scale-[0.98]"
+                              onClick={() => {
+                                form.setFieldValue('mode', 'library');
+                                submit.reset();
+                              }}
+                            >
+                              Chuyển sang "Chọn từ kho"
+                            </Button>
+                            <Button
+                              size="small"
+                              className="!h-8 !rounded-lg border-slate-300 text-slate-700 hover:bg-white text-xs active:scale-[0.98]"
+                              onClick={() => submit.reset()}
+                            >
+                              Đóng
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <Alert
+                  type="error"
+                  showIcon
+                  closable
+                  onClose={() => submit.reset()}
+                  message="Chưa gửi được hồ sơ"
+                  description={errMsg}
+                  className="rounded-xl border-rose-200 bg-rose-50/90 text-xs"
+                />
+              );
+            })()}
             {presetRejected && (
               <Alert
                 type="warning"

@@ -956,11 +956,20 @@ export const ApplicationWorkbench: React.FC<{
                   />
                 )}
                 {d.placement && (
-                  <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/70 p-4 text-emerald-950 font-medium">
-                    Đã đi làm từ {fmt(d.placement.actualStartDate, 'DD/MM/YYYY')}
+                  <div
+                    className={`rounded-xl border p-4 font-medium ${
+                      d.placement.status === 'RESIGNED'
+                        ? 'border-slate-300 bg-slate-100 text-slate-800'
+                        : 'border-emerald-200/80 bg-emerald-50/70 text-emerald-950'
+                    }`}
+                  >
+                    {d.placement.status === 'RESIGNED'
+                      ? `Đã nghỉ việc${d.placement.endDate ? ` từ ${fmt(d.placement.endDate, 'DD/MM/YYYY')}` : ''}`
+                      : `Đã đi làm từ ${fmt(d.placement.actualStartDate, 'DD/MM/YYYY')}`}
                     {d.placement.position ? ` · ${d.placement.position}` : ''}
                     {d.placement.department ? ` · ${d.placement.department}` : ''}
                     {d.placement.isReplacement ? ' · Người thay thế, không tính phí mới' : ''}
+                    {d.placement.resignationReason ? ` · Lý do: ${d.placement.resignationReason}` : ''}
                   </div>
                 )}
               </div>

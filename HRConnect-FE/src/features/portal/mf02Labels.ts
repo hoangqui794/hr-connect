@@ -87,6 +87,7 @@ const CANDIDATE_TIMELINE_STATUS_COPY: Record<string, { title: string; descriptio
   OFFER_PENDING: { title: 'Nhà tuyển dụng đang chuẩn bị lời mời', description: 'Quy trình của bạn đang ở bước chuẩn bị lời mời nhận việc.' },
   OFFER_ACCEPTED: { title: 'Bạn đã chấp nhận lời mời nhận việc', description: 'Nhà tuyển dụng sẽ tiếp tục hướng dẫn thủ tục nhận việc.' },
   PLACED: { title: 'Bạn đã hoàn tất quy trình tuyển dụng', description: 'Thông tin nhận việc của bạn đã được xác nhận.' },
+  RESIGNED: { title: 'Đã kết thúc công việc', description: 'Trạng thái đã ghi nhận nghỉ việc. Bạn có thể tiếp tục tìm kiếm các cơ hội việc làm mới.' },
   REJECTED: { title: 'Chưa phù hợp lần này', description: 'Quy trình tuyển dụng cho đơn này đã kết thúc.' },
   NOT_SELECTED: { title: 'Chưa phù hợp lần này', description: 'Quy trình tuyển dụng cho đơn này đã kết thúc.' },
   INTERVIEW_FAILED: { title: 'Chưa phù hợp lần này', description: 'Quy trình tuyển dụng cho đơn này đã kết thúc.' },
@@ -124,7 +125,7 @@ export const candidateStage = (
   offerStatuses: string[] = [],
   placementStatus?: string
 ): { step: number; label: string; tone: Tone; closed?: boolean } => {
-  if (placementStatus === 'LEFT_DURING_WARRANTY') {
+  if (placementStatus === 'LEFT_DURING_WARRANTY' || placementStatus === 'RESIGNED' || status === 'RESIGNED') {
     return { step: 6, label: 'Đã nghỉ việc', tone: 'neutral', closed: true };
   }
   switch (status) {
@@ -146,6 +147,8 @@ export const candidateStage = (
       return { step: 5, label: 'Đã chấp nhận offer', tone: 'success' };
     case 'PLACED':
       return { step: 6, label: 'Đã đi làm', tone: 'success', closed: true };
+    case 'RESIGNED':
+      return { step: 6, label: 'Đã nghỉ việc', tone: 'neutral', closed: true };
     case 'REJECTED':
       return { step: 1, label: 'Chưa phù hợp lần này', tone: 'neutral', closed: true };
     case 'BACKUP_NOT_SELECTED':

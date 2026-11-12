@@ -20,6 +20,7 @@ import { CandidateAccountFrame } from './candidate/CandidateAccountFrame';
 import { CandidateDialog, DIALOG_CANCEL, DIALOG_DANGER, DIALOG_FONT } from './candidate/CandidateDialog';
 import { candidateInterviewType, candidateOfferStatus, candidateStage, candidateTimelineEventCopy } from './mf02Labels';
 import { candidateKeys, useOpenSignedUrl } from './CandidatePages';
+import { CandidateResignModal } from './components/CandidateResignModal';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
@@ -86,6 +87,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [withdrawReason, setWithdrawReason] = useState('');
   const [interviewId, setInterviewId] = useState<string | null>(null);
+  const [resignOpen, setResignOpen] = useState(false);
 
   const detail = useQuery({
     queryKey: candidateKeys.applicationDetail(applicationId),
@@ -164,6 +166,10 @@ export const CandidateApplicationDetailPage: React.FC = () => {
     application.placement?.status
   );
   const color = application.status === 'INTERVIEW' ? TONE_COLOR.warning : TONE_COLOR[stage.tone] ?? TONE_COLOR.neutral;
+  const isResigned = stage.label === 'Đã nghỉ việc' || application.status === 'RESIGNED' || application.placement?.status === 'RESIGNED' || application.placement?.status === 'LEFT_DURING_WARRANTY';
+  const isPlaced = (application.status === 'PLACED' || stage.label === 'Đã đi làm') && !isResigned;
+  const stepsToShow = isResigned ? ['Đã nộp', 'Sàng lọc', 'Phỏng vấn', 'Offer', 'Nhận việc', 'Đã nghỉ việc'] : STEPS;
+  const gridColsClass = isResigned ? 'grid-cols-6' : 'grid-cols-5';
   const reached = STEP_OF_STAGE[stage.step] ?? 1;
   const ended = Boolean(stage.closed) && stage.tone !== 'success';
   const cvName = application.submittedCv?.title || application.submittedCv?.fileName || application.cvTitle || application.cvFileName;
@@ -216,15 +222,51 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                 description="Vui lòng liên hệ trực tiếp doanh nghiệp để thỏa thuận. Ngày mới sẽ được cập nhật và thông báo trên HR Connect."
               />
             )}
-            <span role="status" className="rounded px-2.5 py-1 text-[13px] font-semibold" style={{ color: color.text, background: color.background }}>{stage.label}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span role="status" className="rounded px-2.5 py-1 text-[13px] font-semibold" style={{ color: color.text, background: color.background }}>{stage.label}</span>
+              {isPlaced && (
+                <button
+                  type="button"
+                  onClick={() => setResignOpen(true)}
+                  className={`${FONT} inline-flex items-center gap-1.5 rounded-lg border border-solid border-slate-300 bg-white px-3 py-1 text-[13px] font-medium text-slate-700 hover:bg-slate-50 active:scale-[0.98] transition-all cursor-pointer`}
+                >
+                  Cập nhật đã nghỉ việc
+                </button>
+              )}
+              {isResigned && (
+                <Link
+                  to="/jobs"
+                  className={`${FONT} inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-3.5 py-1 text-[13px] font-bold text-white hover:bg-sky-500 hover:text-white active:scale-[0.98] no-underline shadow-xs transition-all`}
+                >
+                  Tìm việc làm mới →
+                </Link>
+              )}
+            </div>
           </div>
-          <ol aria-label={`Tiến trình: ${stage.label}`} className="m-0 mt-5 grid list-none grid-cols-5 gap-1.5 p-0">
-            {STEPS.map((step, index) => {
-              const done = index < reached;
-              const current = index === reached - 1;
+          <ol aria-label={`Tiến trình: ${stage.label}`} className={`m-0 mt-5 grid list-none ${gridColsClass} gap-1.5 p-0`}>
+            {stepsToShow.map((step, index) => {
+              const isLastResignedStep = isResigned && index === 5;
+              const done = isResigned ? index <= 5 : index < reached;
+              const current = isResigned ? index === 5 : index === reached - 1;
+              const barBg = isLastResignedStep
+                ? '#64748B'
+                : done
+                ? (ended && !isResigned ? '#9CA3AF' : '#0369A1')
+                : '#E5E7EB';
               return (
-                <li key={step} className={`text-[12px] ${current && !ended ? 'font-semibold text-[#075985]' : done ? 'text-[#374151]' : 'text-[#6B7280]'}`}>
-                  <div className="mb-1.5 h-1.5 rounded-[3px]" style={{ background: done ? (ended ? '#9CA3AF' : '#0369A1') : '#E5E7EB' }} />
+                <li
+                  key={step}
+                  className={`text-[12px] ${
+                    isLastResignedStep
+                      ? 'font-semibold text-slate-700'
+                      : current && !ended
+                      ? 'font-semibold text-[#075985]'
+                      : done
+                      ? 'text-[#374151]'
+                      : 'text-[#6B7280]'
+                  }`}
+                >
+                  <div className="mb-1.5 h-1.5 rounded-[3px]" style={{ background: barBg }} />
                   {step}
                 </li>
               );
@@ -303,6 +345,15 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                 </>
               ) : nextInterview ? (
                 <NextInterview interview={nextInterview} onOpen={() => setInterviewId(nextInterview.interviewId)} />
+              ) : isResigned ? (
+                <div className="space-y-3">
+                  <p className="m-0 text-[13px] text-[#4B5563]">
+                    Bạn đã kết thúc công việc này. Hồ sơ của bạn đã được mở lại ở trạng thái sẵn sàng tìm việc để bạn ứng tuyển hoặc nhận lời mời mới.
+                  </p>
+                  <Link to="/jobs" className={PRIMARY}>
+                    Tìm việc làm mới
+                  </Link>
+                </div>
               ) : (
                 <p className="m-0 text-[13px] text-[#4B5563]">Hiện chưa có việc nào cần bạn làm. Bạn sẽ nhận thông báo khi có cập nhật.</p>
               )}
@@ -314,6 +365,20 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                 <div className="font-semibold">{placement.position || application.jobTitle}</div>
                 {placement.department && <div className="mt-0.5 text-[13px] text-[#4B5563]">{placement.department}</div>}
                 <div className="mt-0.5 text-[13px] text-[#4B5563]">Bắt đầu {dayjs(placement.actualStartDate).format('DD/MM/YYYY')}</div>
+                {placement.endDate && (
+                  <div className="mt-0.5 text-[13px] text-slate-500">Nghỉ việc {dayjs(placement.endDate).format('DD/MM/YYYY')}</div>
+                )}
+                {isPlaced && (
+                  <div className="mt-3 pt-2.5 border-0 border-t border-solid border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setResignOpen(true)}
+                      className={`${FONT} w-full py-2 px-3 rounded-lg border border-solid border-slate-300 bg-white text-[13px] font-medium text-slate-700 hover:bg-slate-50 active:scale-[0.98] transition-all cursor-pointer`}
+                    >
+                      Cập nhật đã nghỉ việc
+                    </button>
+                  </div>
+                )}
               </section>
             )}
 
@@ -373,6 +438,16 @@ export const CandidateApplicationDetailPage: React.FC = () => {
       </CandidateDialog>
 
       <CandidateInterviewDetailModal open={Boolean(interviewId)} interviewId={interviewId || undefined} onClose={() => setInterviewId(null)} />
+
+      <CandidateResignModal
+        open={resignOpen}
+        onClose={() => setResignOpen(false)}
+        applicationId={applicationId}
+        jobTitle={application.jobTitle}
+        companyName={application.companyName}
+        startDate={placement?.actualStartDate || application.plannedStartDate}
+        onSuccess={refresh}
+      />
     </CandidateAccountFrame>
   );
 };

@@ -63,6 +63,7 @@ export type ApplicationStatus =
   | 'NOT_STARTED'
   | 'WITHDRAWN'
   | 'PLACED'
+  | 'RESIGNED'
   | 'CLOSED';
 
 /** GET /recruitment/applications item. */
@@ -193,6 +194,9 @@ export interface ApplicationOffer {
 export interface ApplicationPlacement {
   placementId: string;
   actualStartDate: string;
+  endDate?: string | null;
+  resignationReason?: string | null;
+  resignedBy?: 'CANDIDATE' | 'CLIENT' | string | null;
   position: string | null;
   department: string | null;
   status: string;
@@ -266,6 +270,9 @@ export interface PlacementItem {
   placementId: string;
   applicationId: string;
   actualStartDate: string;
+  endDate?: string | null;
+  resignationReason?: string | null;
+  resignedBy?: 'CANDIDATE' | 'CLIENT' | string | null;
   position: string | null;
   department: string | null;
   status: string;
@@ -285,6 +292,9 @@ export interface PlacementCorrectionDetail {
   applicationId: string;
   offerId: string;
   actualStartDate: string;
+  endDate?: string | null;
+  resignationReason?: string | null;
+  resignedBy?: 'CANDIDATE' | 'CLIENT' | string | null;
   position: string | null;
   department: string | null;
   status: string;
