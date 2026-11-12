@@ -7,6 +7,7 @@ import React, { Suspense } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Navbar } from '@/features/landing/components/Navbar';
 import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from '@/features/admin-console/AdminRouteProgress';
+import { prefetchRoute } from '@/app/routePrefetch';
 import '@/features/admin-console/admin-console.css';
 import './candidate/candidate.css';
 
@@ -71,6 +72,8 @@ const MobileBottomNav: React.FC<{ pathname: string }> = ({ pathname }) => {
         <Link
           key={item.to}
           to={item.to}
+          onMouseEnter={() => prefetchRoute(item.to)}
+          onTouchStart={() => prefetchRoute(item.to)}
           aria-current={item.active ? 'page' : undefined}
           className={`flex flex-1 flex-col items-center justify-center gap-1 py-1.5 text-[11px] no-underline transition-colors duration-200 ${
             item.active ? 'font-semibold text-[#0369A1]' : 'font-normal text-[#4B5563] hover:text-[#075985]'

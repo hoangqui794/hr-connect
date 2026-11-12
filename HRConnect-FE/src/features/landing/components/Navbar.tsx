@@ -3,7 +3,7 @@
  * @description Site header for the public pages and the Candidate workspace (mockup 03/11): navy bar with
  * the main links, then sign-in actions for guests or the account menu for signed-in users.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { App, Dropdown, Drawer } from 'antd';
 import { DashboardOutlined, LogoutOutlined, MenuOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -15,6 +15,7 @@ import { CandidateWorkspaceMenu } from '@/features/portal/candidate/CandidateWor
 import { UserRole } from '@/types/roles';
 import { ROLE_DASHBOARD_ROUTES } from '@/routes/routeHelpers';
 import { BrandMark } from '@/components/common/BrandMark';
+import { prefetchCommonRoutes, prefetchRoute } from '@/app/routePrefetch';
 
 export const Navbar: React.FC = () => {
   const { message } = App.useApp();
@@ -23,6 +24,10 @@ export const Navbar: React.FC = () => {
   const { isAuthenticated, role, user, logout } = useAuthStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isCandidate = isAuthenticated && role === UserRole.CANDIDATE;
+
+  useEffect(() => {
+    prefetchCommonRoutes(isCandidate);
+  }, [isCandidate]);
 
   const links: { to: string; label: string; active: boolean }[] = [
     {
@@ -60,7 +65,12 @@ export const Navbar: React.FC = () => {
     <header className="hrc-site-header sticky top-0 z-40 border-b border-white/20 bg-gradient-to-r from-[#0369A1] via-[#0284C7] to-[#0369A1] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[14px] text-white shadow-[0_4px_20px_-4px_rgba(2,132,199,0.3)] backdrop-blur-md [line-height:normal] [&_button]:[font-family:inherit]">
       <div className="mx-auto flex h-[66px] w-full max-w-[1520px] items-center gap-6 px-4 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-5 lg:gap-7">
-          <Link to="/" className="group flex shrink-0 items-center gap-2.5 whitespace-nowrap text-[18px] font-extrabold tracking-tight text-white no-underline transition-opacity hover:opacity-95">
+          <Link
+            to="/"
+            onMouseEnter={() => prefetchRoute('/')}
+            onFocus={() => prefetchRoute('/')}
+            className="group flex shrink-0 items-center gap-2.5 whitespace-nowrap text-[18px] font-extrabold tracking-tight text-white no-underline transition-opacity hover:opacity-95"
+          >
             <div className="relative flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
               <BrandMark size={32} tone="light" />
             </div>
@@ -73,6 +83,8 @@ export const Navbar: React.FC = () => {
               <Link
                 key={l.label}
                 to={l.to}
+                onMouseEnter={() => prefetchRoute(l.to)}
+                onFocus={() => prefetchRoute(l.to)}
                 aria-current={l.active ? 'page' : undefined}
                 className={`group relative inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-4 text-[13.5px] font-medium no-underline transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${
                   l.active
@@ -112,13 +124,28 @@ export const Navbar: React.FC = () => {
             </Dropdown>
           ) : (
             <>
-              <Link to="/register?role=CLIENT" className="hidden whitespace-nowrap text-[13.5px] font-medium text-sky-100 no-underline transition-colors hover:text-white xl:block">
+              <Link
+                to="/register?role=CLIENT"
+                onMouseEnter={() => prefetchRoute('/register')}
+                onFocus={() => prefetchRoute('/register')}
+                className="hidden whitespace-nowrap text-[13.5px] font-medium text-sky-100 no-underline transition-colors hover:text-white xl:block"
+              >
                 Dành cho nhà tuyển dụng
               </Link>
-              <Link to="/login" className="hidden whitespace-nowrap rounded-lg border border-white/30 bg-white/10 px-4 py-2 text-[13.5px] font-medium text-white no-underline transition-all hover:bg-white/20 hover:border-white/40 sm:block">
+              <Link
+                to="/login"
+                onMouseEnter={() => prefetchRoute('/login')}
+                onFocus={() => prefetchRoute('/login')}
+                className="hidden whitespace-nowrap rounded-lg border border-white/30 bg-white/10 px-4 py-2 text-[13.5px] font-medium text-white no-underline transition-all hover:bg-white/20 hover:border-white/40 sm:block"
+              >
                 Đăng nhập
               </Link>
-              <Link to="/register" className="whitespace-nowrap rounded-lg bg-white px-4 py-2 text-[13.5px] font-bold text-[#0369A1] no-underline shadow-sm transition-all hover:bg-sky-50 hover:shadow-md active:scale-[0.98]">
+              <Link
+                to="/register"
+                onMouseEnter={() => prefetchRoute('/register')}
+                onFocus={() => prefetchRoute('/register')}
+                className="whitespace-nowrap rounded-lg bg-white px-4 py-2 text-[13.5px] font-bold text-[#0369A1] no-underline shadow-sm transition-all hover:bg-sky-50 hover:shadow-md active:scale-[0.98]"
+              >
                 Đăng ký
               </Link>
             </>

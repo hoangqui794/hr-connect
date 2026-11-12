@@ -46,15 +46,22 @@ import { AffiliateShell } from '@/features/portal/AffiliateShell';
 // ─── Page-level Suspense boundary ────────────────────────────────────────────
 
 const PageLoader: React.FC = () => (
-  <div
-    style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '60vh',
-    }}
-  >
-    <Spin size="large" aria-label="Đang tải" />
+  <div className="relative min-h-[70vh] w-full bg-[#F7F8FA]" role="status" aria-label="Đang tải trang">
+    {/* Subtle top progress bar */}
+    <div className="fixed inset-x-0 top-0 z-50 h-[3px] overflow-hidden bg-sky-100/60">
+      <div className="h-full w-full origin-left animate-pulse bg-gradient-to-r from-[#0284c7] via-[#2563eb] to-[#0284c7]" />
+    </div>
+    <div className="mx-auto max-w-[1248px] px-4 py-8 sm:px-6">
+      <div className="space-y-4">
+        <div className="h-8 w-44 animate-pulse rounded-lg bg-slate-200/70" />
+        <div className="h-24 w-full animate-pulse rounded-xl bg-slate-200/50" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 pt-2">
+          <div className="h-36 animate-pulse rounded-xl bg-slate-200/50" />
+          <div className="h-36 animate-pulse rounded-xl bg-slate-200/50" />
+          <div className="h-36 animate-pulse rounded-xl bg-slate-200/50" />
+        </div>
+      </div>
+    </div>
   </div>
 );
 

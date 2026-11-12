@@ -12,8 +12,7 @@ import { usePublicJobSearch } from '@/features/jobs-mf01/useJobQueries';
 import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
 import { companyPhoto, useFeaturedCompanies } from './useFeaturedCompanies';
-
-const CandidateHome = React.lazy(() => import('./CandidateHome').then((m) => ({ default: m.CandidateHome })));
+import { CandidateHome } from './CandidateHome';
 
 const SUGGESTED = ['.NET Developer', 'Kế toán tổng hợp', 'Nhân viên kinh doanh', 'Digital Marketing', 'Tester'];
 
@@ -368,13 +367,7 @@ export const HomePage: React.FC = () => {
           )}
         </div>
       </section>
-      {candidate ? (
-        <Suspense fallback={<div className="mx-auto max-w-[1248px] px-6 py-8"><Skeleton active paragraph={{ rows: 8 }} /></div>}>
-          <CandidateHome />
-        </Suspense>
-      ) : (
-        <GuestHome />
-      )}
+      {candidate ? <CandidateHome /> : <GuestHome />}
       <SiteFooter />
     </div>
   );
