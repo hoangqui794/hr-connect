@@ -72,6 +72,8 @@ export interface ServiceFee {
   /** CV_SOURCING job terms, so a deposit / settlement can be explained as CVs × price per CV. */
   sourcingTarget?: number | null;
   sourcingPricePerCv?: number | null;
+  /** REPLACEMENT_REFUND: when the replacement slot it comes from ran out. */
+  replacementExpiredAt?: string | null;
   paidAt?: string | null;
   paymentReference?: string | null;
   createdAt: string;
@@ -82,6 +84,8 @@ export interface Commission {
   /** HEADHUNT_COD placement; null for a CV_SOURCING commission (see sourcingDeliveryId). */
   placementId: string | null;
   sourcingDeliveryId?: string | null;
+  /** Job of the placement or delivery; used to refer a replacement after a voided warranty. */
+  jobId?: string | null;
   attributionId: string;
   affiliateId: string;
   affiliateName?: string | null;

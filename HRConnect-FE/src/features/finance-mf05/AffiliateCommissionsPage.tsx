@@ -157,6 +157,15 @@ export const AffiliateCommissionsPage: React.FC = () => {
                       <td className="px-4 py-3">
                         <StatusChip tone={chip.tone}>{chip.label}</StatusChip>
                         {note && <div className="mt-0.5 text-xs text-gray-500">{note}</div>}
+                        {c.status === 'CANCELLED' && c.warrantyStatus === 'VOIDED' && c.jobId && (
+                          // The job is reopened for a free replacement; a new referral fills the slot.
+                          <Link
+                            to={`/affiliate/submit-candidate?job=${c.jobId}`}
+                            className="mt-2 inline-flex min-h-[36px] items-center rounded-md bg-[#C2410C] px-3 text-xs font-semibold text-white no-underline hover:bg-[#9A3412] hover:text-white"
+                          >
+                            Giới thiệu ứng viên thay thế
+                          </Link>
+                        )}
                       </td>
                     </tr>
                   );

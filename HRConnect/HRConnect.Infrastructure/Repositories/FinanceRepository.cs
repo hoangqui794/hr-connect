@@ -74,7 +74,9 @@ public class FinanceRepository : IFinanceRepository
             .FirstOrDefaultAsync(s => s.ServiceFeeId == serviceFeeId, cancellationToken);
 
     public Task<ReplacementSlot?> GetReplacementSlotForUpdateAsync(Guid replacementSlotId, CancellationToken cancellationToken = default) =>
-        _context.ReplacementSlots.Include(s => s.Job).Include(s => s.ServiceFee)
+        _context.ReplacementSlots
+            .Include(s => s.Job).ThenInclude(j => j.Company)
+            .Include(s => s.ServiceFee)
             .FirstOrDefaultAsync(s => s.ReplacementSlotId == replacementSlotId, cancellationToken);
 
     public Task<bool> HasReplacementCandidateReachedClientAsync(Guid replacementSlotId, CancellationToken cancellationToken = default) =>
@@ -142,6 +144,21 @@ public class FinanceRepository : IFinanceRepository
             .Include(p => p.Commissions)
             .FirstOrDefaultAsync(p => p.PlacementId == placementId, cancellationToken);
 
+    public async Task<IReadOnlyList<ReplacementSlot>> GetExpiredReplacementSlotsForJobsAsync(
+        IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default)
+    {
+        if (jobIds.Count == 0)
+        {
+            return Array.Empty<ReplacementSlot>();
+        }
+
+        return await _context.ReplacementSlots.AsNoTracking()
+            .Include(slot => slot.ServiceFee)
+            .Include(slot => slot.OriginalPlacement).ThenInclude(placement => placement.Application).ThenInclude(application => application.Candidate)
+            .Where(slot => jobIds.Contains(slot.JobId) && slot.Status == ReplacementSlotStates.Expired)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<Guid?> GetAffiliateUserIdAsync(Guid attributionId, CancellationToken cancellationToken = default) =>
         await _context.Attributions.AsNoTracking()
             .Where(a => a.AttributionId == attributionId)
@@ -150,6 +167,7 @@ public class FinanceRepository : IFinanceRepository
 
     public Task<ServiceFee?> GetServiceFeeForUpdateAsync(Guid serviceFeeId, CancellationToken cancellationToken = default) =>
         _context.ServiceFees
+            .Include(fee => fee.Company)
             .Include(fee => fee.Placement!).ThenInclude(placement => placement.Reconciliation)
             .FirstOrDefaultAsync(fee => fee.ServiceFeeId == serviceFeeId, cancellationToken);
 

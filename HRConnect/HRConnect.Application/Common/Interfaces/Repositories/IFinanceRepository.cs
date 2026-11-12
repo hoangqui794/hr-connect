@@ -59,6 +59,9 @@ public interface IFinanceRepository
     /// <summary>The slot granted under a service fee, with its job, tracked for update.</summary>
     Task<ReplacementSlot?> GetReplacementSlotByServiceFeeForUpdateAsync(Guid serviceFeeId, CancellationToken cancellationToken = default);
 
+    /// <summary>Expired replacement slots of these jobs, with the candidate who left and the fee the refund is a share of (read only).</summary>
+    Task<IReadOnlyList<ReplacementSlot>> GetExpiredReplacementSlotsForJobsAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default);
+
     /// <summary>Slot with its job, tracked for update.</summary>
     Task<ReplacementSlot?> GetReplacementSlotForUpdateAsync(Guid replacementSlotId, CancellationToken cancellationToken = default);
 

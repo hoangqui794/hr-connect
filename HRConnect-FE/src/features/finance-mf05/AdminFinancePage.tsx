@@ -181,8 +181,13 @@ export const AdminFinancePage: React.FC = () => {
     {
       title: 'Trạng thái',
       dataIndex: 'status',
-      render: (v: CommissionStatus) => {
-        const s = labelOf(COMMISSION_STATUS, v);
+      render: (v: CommissionStatus, c: Commission) => {
+        let s = labelOf(COMMISSION_STATUS, v);
+        if (v === 'EARNED') {
+          s = c.serviceFeeStatus === 'PAID'
+            ? { label: 'Đủ điều kiện · Chờ duyệt', tone: 'info', hint: 'Client đã thanh toán phí dịch vụ, chờ Admin duyệt chi' }
+            : { label: 'Đã đạt · Chờ Client thanh toán', tone: 'warning', hint: 'Ứng viên đã hết bảo hành, chờ Client thanh toán phí dịch vụ' };
+        }
         return (
           <Tooltip title={s.hint}>
             <span><StatusDot tone={s.tone}>{s.label}</StatusDot></span>

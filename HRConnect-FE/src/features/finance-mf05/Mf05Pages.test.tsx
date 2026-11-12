@@ -190,9 +190,10 @@ describe('MF-05 Client warranty page', () => {
 
     renderWith(<ClientWarrantyPage />);
 
-    await waitFor(() => expect(financeApi.serviceFees).toHaveBeenCalled());
+    await waitFor(() => expect(financeApi.serviceFees).toHaveBeenCalledWith(expect.objectContaining({ kind: 'PLACEMENT' })));
+    // Headhunt only: the fee table asks PLACEMENT, the replacement slots ask their refunds; never Sourcing kinds.
     for (const [params] of vi.mocked(financeApi.serviceFees).mock.calls) {
-      expect(params).toEqual(expect.objectContaining({ kind: 'PLACEMENT' }));
+      expect(['PLACEMENT', 'REPLACEMENT_REFUND']).toContain(params.kind);
     }
   });
 });

@@ -1,5 +1,7 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Domain.Constants;
+using HRConnect.Domain.Entities;
 using MediatR;
 
 namespace HRConnect.Application.Features.Finance.Queries;
@@ -14,14 +16,15 @@ public sealed record ServiceFeeDto(
     Guid ServiceFeeId, Guid? PlacementId, Guid CompanyId, string? CompanyName, string? JobTitle, string? CandidateName,
     decimal BaseSalary, decimal FeeMultiplier, decimal Amount, string CurrencyCode, DateOnly DueDate, string Status,
     DateTime? PaidAt, string? PaymentReference, DateTime CreatedAt, string Kind = "PLACEMENT", Guid? JobId = null,
-    string? ReconciliationStatus = null, int? SourcingTarget = null, decimal? SourcingPricePerCv = null);
+    string? ReconciliationStatus = null, int? SourcingTarget = null, decimal? SourcingPricePerCv = null,
+    DateTime? ReplacementExpiredAt = null);
 
 /// <summary>PlacementId is set for HEADHUNT_COD; SourcingDeliveryId for CV_SOURCING (one per accepted CV).</summary>
 public sealed record CommissionDto(
     Guid CommissionId, Guid? PlacementId, Guid AttributionId, Guid AffiliateId, string? AffiliateName, string? JobTitle,
     string? CandidateName, decimal Amount, decimal? BaseAmount, string Status, string? MilestoneType,
     DateOnly? WarrantyEndDate, string? WarrantyStatus, string? ServiceFeeStatus, DateTime? ApprovedAt, DateTime CreatedAt,
-    AffiliateBankDto? AffiliateBank = null, Guid? SourcingDeliveryId = null);
+    AffiliateBankDto? AffiliateBank = null, Guid? SourcingDeliveryId = null, Guid? JobId = null);
 
 /// <summary>Where to transfer the commission. Only returned to users who record payouts.</summary>
 public sealed record AffiliateBankDto(string? BankName, string? BankAccountNumber, string? BankAccountHolder, string? BankBranch);
@@ -77,15 +80,31 @@ public sealed class FinanceQueryHandlers :
 
         var (items, total) = await _financeRepository.GetServiceFeesAsync(
             companyId, Upper(request.Status), page, pageSize, cancellationToken, request.JobId, Upper(request.Kind));
+
+        // A replacement refund stores no placement, so it is matched back to the expired slot it came from
+        // (same job, refund base = the fee the slot was opened for) to show who left and when the slot ran out.
+        var refundJobIds = items
+            .Where(fee => fee.Kind == ServiceFeeKinds.ReplacementRefund && fee.JobId.HasValue)
+            .Select(fee => fee.JobId!.Value).Distinct().ToList();
+        var expiredSlots = refundJobIds.Count == 0
+            ? Array.Empty<ReplacementSlot>()
+            : await _financeRepository.GetExpiredReplacementSlotsForJobsAsync(refundJobIds, cancellationToken) ?? Array.Empty<ReplacementSlot>();
+        ReplacementSlot? SlotOf(ServiceFee fee) => fee.Kind != ServiceFeeKinds.ReplacementRefund ? null : expiredSlots
+            .Where(slot => slot.JobId == fee.JobId && slot.ServiceFee?.Amount == fee.BaseSalary)
+            .OrderBy(slot => Math.Abs(((slot.ClosedAt ?? slot.UpdatedAt) - fee.CreatedAt).Ticks))
+            .FirstOrDefault();
+
         return new PagedResult<ServiceFeeDto>(items.Select(fee => new ServiceFeeDto(
             fee.ServiceFeeId, fee.PlacementId, fee.CompanyId, fee.Company?.CompanyName,
-            fee.Job?.Title ?? fee.Placement?.Application?.Job?.Title, fee.Placement?.Application?.Candidate?.FullName,
+            fee.Job?.Title ?? fee.Placement?.Application?.Job?.Title,
+            fee.Placement?.Application?.Candidate?.FullName ?? SlotOf(fee)?.OriginalPlacement?.Application?.Candidate?.FullName,
             fee.BaseSalary, fee.FeeMultiplier, fee.Amount, fee.CurrencyCode, fee.DueDate, fee.Status,
             fee.PaidAt, fee.PaymentReference, fee.CreatedAt, fee.Kind,
             fee.JobId ?? fee.Placement?.Application?.JobId,
             fee.Placement?.Reconciliation?.Status,
             // CV_SOURCING: lets the Client see how a deposit or settlement was worked out (CVs × price per CV).
-            fee.Job?.SourcingTarget, fee.Job?.SourcingPricePerCv)).ToList(), total, page, pageSize);
+            fee.Job?.SourcingTarget, fee.Job?.SourcingPricePerCv,
+            SlotOf(fee)?.ExpiresAt)).ToList(), total, page, pageSize);
     }
 
     public async Task<PagedResult<CommissionDto>> Handle(GetCommissionsQuery request, CancellationToken cancellationToken)
@@ -105,7 +124,9 @@ public sealed class FinanceQueryHandlers :
             request.IncludeBankDetails && c.Attribution.Affiliate is { } affiliate
                 ? new AffiliateBankDto(affiliate.BankName, affiliate.BankAccountNumber, affiliate.BankAccountHolder, affiliate.BankBranch)
                 : null,
-            c.SourcingDeliveryId)).ToList(), total, page, pageSize);
+            c.SourcingDeliveryId,
+            // Lets the Affiliate refer a replacement to the same job when the warranty was voided.
+            c.Placement?.Application?.JobId ?? c.SourcingDelivery?.JobId)).ToList(), total, page, pageSize);
     }
 
     public async Task<PagedResult<PayoutDto>> Handle(GetPayoutsQuery request, CancellationToken cancellationToken)

@@ -27,6 +27,7 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<VerifyEmailOtpCommandHandler> _logger;
     private readonly ICandidateRepository _candidateRepository;
+    private readonly IAppNotifier? _notifier;
 
     public VerifyEmailOtpCommandHandler(
         IUserRepository userRepository,
@@ -41,7 +42,8 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
         IOtpService otpService,
         IUnitOfWork unitOfWork,
         ILogger<VerifyEmailOtpCommandHandler> logger,
-        ICandidateRepository candidateRepository)
+        ICandidateRepository candidateRepository,
+        IAppNotifier? notifier = null)
     {
         _userRepository = userRepository;
         _userEmailIdentityRepository = userEmailIdentityRepository;
@@ -56,6 +58,7 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
         _unitOfWork = unitOfWork;
         _logger = logger;
         _candidateRepository = candidateRepository;
+        _notifier = notifier;
     }
 
     public async Task<VerifyEmailOtpResponse> Handle(VerifyEmailOtpCommand request, CancellationToken cancellationToken)
@@ -182,6 +185,17 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
                 cancellationToken);
             await AddEmailVerifiedAuditAsync(user.UserId, now, "AFFILIATE", cancellationToken);
 
+            if (_notifier != null)
+            {
+                await _notifier.NotifyRoleAsync("PLATFORM_ADMIN", new AppNotice(
+                    "ACCOUNT",
+                    "Đơn đăng ký Affiliate mới",
+                    $"Người dùng {user.Email} vừa hoàn tất xác thực và gửi hồ sơ đăng ký Đối tác tuyển dụng (Affiliate).",
+                    "AFFILIATE_APPLICATION",
+                    affiliateApp.AffiliateApplicationId,
+                    "/admin/approvals"), cancellationToken);
+            }
+
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Xác thực email thành công cho Affiliate UserId {UserId}. Hồ sơ chuyển sang UNDER_REVIEW chờ Admin duyệt.",
@@ -230,6 +244,18 @@ public class VerifyEmailOtpCommandHandler : IRequestHandler<VerifyEmailOtpComman
                 now,
                 cancellationToken);
             await AddEmailVerifiedAuditAsync(user.UserId, now, "CLIENT", cancellationToken);
+
+            if (_notifier != null)
+            {
+                await _notifier.NotifyRoleAsync("PLATFORM_ADMIN", new AppNotice(
+                    "ACCOUNT",
+                    "Doanh nghiệp mới cần duyệt hồ sơ",
+                    $"Doanh nghiệp {company?.CompanyName ?? user.Email} đã gửi hồ sơ xác minh công ty. Vui lòng kiểm tra và phê duyệt.",
+                    "COMPANY_VERIFICATION",
+                    companyVerification.CompanyVerificationRequestId,
+                    "/admin/approvals"), cancellationToken);
+            }
+
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Xác thực email thành công cho Client UserId {UserId}, Company {CompanyId}. Chờ Admin duyệt.",

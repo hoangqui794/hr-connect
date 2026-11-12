@@ -274,27 +274,47 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
 
   const rawItems = useMemo(() => pageData?.items ?? [], [pageData?.items]);
 
-  // Phân quyền cho Platform Admin: Admin chỉ nhận việc của Admin, ẩn các thông báo tuyển dụng nghiệp vụ của HR
+  // Phân quyền cho Platform Admin: Admin chỉ nhận việc của Admin (tài chính, phê duyệt tài khoản, khiếu nại, tin tuyển dụng mới), ẩn các thông báo tác nghiệp nội bộ của HR (sàng lọc CV, phỏng vấn ứng viên, thư offer)
   const items = useMemo(() => {
     if (role !== UserRole.ADMIN) return rawItems;
     return rawItems.filter((item) => {
       const entityType = (item.relatedEntityType || item.notificationType || '').toUpperCase();
       const titleLower = (item.title || '').toLowerCase();
 
-      // Giữ lại các thông báo tài chính, giao dịch VNPay, Payout
+      // Giữ lại các thông báo tài chính, giao dịch VNPay, Payout, phê duyệt tài khoản, khiếu nại, tin tuyển dụng mới
       if (
+        item.routeHint?.startsWith('/admin') ||
         entityType === 'ONLINE_PAYMENT' ||
         entityType === 'FINANCE' ||
         entityType === 'PAYOUT' ||
+        entityType === 'SERVICE_FEE' ||
+        entityType === 'COMMISSION' ||
+        entityType === 'ACCOUNT' ||
+        entityType === 'COMPANY_VERIFICATION' ||
+        entityType === 'AFFILIATE_APPLICATION' ||
+        entityType === 'DISPUTE' ||
+        entityType === 'IDENTITY_CLAIM' ||
+        entityType === 'CANDIDATE_DUPLICATE_CASE' ||
+        entityType === 'CONTACT_REQUEST' ||
         titleLower.includes('vnpay') ||
-        (titleLower.includes('thanh toán') && !titleLower.includes('phí đăng tin'))
+        titleLower.includes('thanh toán') ||
+        titleLower.includes('hoàn') ||
+        titleLower.includes('hoa hồng') ||
+        titleLower.includes('quá hạn') ||
+        titleLower.includes('phê duyệt') ||
+        titleLower.includes('duyệt hồ sơ') ||
+        titleLower.includes('đăng ký') ||
+        titleLower.includes('khiếu nại') ||
+        titleLower.includes('tranh chấp') ||
+        titleLower.includes('yêu cầu tư vấn') ||
+        titleLower.includes('yêu cầu liên hệ') ||
+        (entityType === 'JOB' && titleLower.includes('chờ duyệt'))
       ) {
         return true;
       }
 
-      // Loại bỏ thông báo nghiệp vụ tuyển dụng của HR
+      // Loại bỏ thông báo tác nghiệp chi tiết ứng viên của HR
       if (
-        entityType === 'JOB' ||
         entityType === 'APPLICATION' ||
         entityType === 'CANDIDATE_APPLICATION' ||
         entityType === 'APPLICATION_STATUS' ||
@@ -304,13 +324,10 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ className, b
         entityType === 'SERVICE_AGREEMENT' ||
         entityType === 'PLACEMENT' ||
         entityType === 'PLACEMENT_RECONCILIATION' ||
-        entityType === 'WARRANTY' ||
         entityType === 'SOURCING' ||
         entityType === 'SOURCING_DELIVERY' ||
-        titleLower.includes('tin tuyển dụng') ||
         titleLower.includes('sàng lọc') ||
         titleLower.includes('phỏng vấn') ||
-        titleLower.includes('bảo hành') ||
         titleLower.includes('thỏa thuận dịch vụ') ||
         titleLower.includes('đối soát')
       ) {
