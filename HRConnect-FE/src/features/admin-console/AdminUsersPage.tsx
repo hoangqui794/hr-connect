@@ -158,11 +158,13 @@ export const AdminUsersPage: React.FC = () => {
   });
 
   const setParam = (key: string, value?: string) => {
-    const next = new URLSearchParams(searchParams);
-    if (value) next.set(key, value);
-    else next.delete(key);
-    if (key !== 'page') next.delete('page');
-    setSearchParams(next);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (value) next.set(key, value);
+      else next.delete(key);
+      if (key !== 'page') next.delete('page');
+      return next;
+    });
   };
 
   const refresh = () => {
@@ -287,64 +289,140 @@ export const AdminUsersPage: React.FC = () => {
 
       {/* ── KPI Tiles ────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {/* Card: Tất cả tài khoản */}
         <div
+          role="button"
+          tabIndex={0}
           onClick={() => setParam('status', undefined)}
-          className={`cursor-pointer rounded-xl border border-solid p-4 transition-all shadow-xs ${
-            !params.status ? 'border-slate-800 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-900 hover:bg-slate-50'
+          onKeyDown={(e) => e.key === 'Enter' && setParam('status', undefined)}
+          className={`cursor-pointer select-none rounded-xl border border-solid p-4 transition-all duration-200 shadow-xs hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:scale-[0.99] ${
+            !params.status
+              ? 'border-2 border-[#0284C7] bg-sky-50/50 text-sky-950 ring-2 ring-[#0284C7]/20 shadow-sm'
+              : 'border-slate-200/90 bg-white text-slate-900 hover:border-sky-300 hover:bg-slate-50/70'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className={`text-xs font-semibold uppercase tracking-wider ${!params.status ? 'text-slate-300' : 'text-slate-500'}`}>
+            <span
+              className={`text-xs font-semibold uppercase tracking-wider ${
+                !params.status ? 'text-[#0369A1]' : 'text-slate-500'
+              }`}
+            >
               Tất cả tài khoản
             </span>
-            <InboxOutlined className="text-base" />
+            <div className="flex items-center gap-1.5">
+              {!params.status && (
+                <span className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[10.5px] font-semibold text-sky-700">
+                  Đang lọc
+                </span>
+              )}
+              <InboxOutlined className={`text-base ${!params.status ? 'text-[#0284C7]' : 'text-slate-400'}`} />
+            </div>
           </div>
-          <div className="mt-2 text-2xl font-extrabold tabular-nums">{v(totalAll)}</div>
+          <div className={`mt-2 text-2xl font-extrabold tabular-nums ${!params.status ? 'text-[#0284C7]' : 'text-slate-900'}`}>
+            {v(totalAll)}
+          </div>
         </div>
 
+        {/* Card: Đang hoạt động */}
         <div
+          role="button"
+          tabIndex={0}
           onClick={() => setParam('status', 'ACTIVE')}
-          className={`cursor-pointer rounded-xl border border-solid p-4 transition-all shadow-xs ${
-            params.status === 'ACTIVE' ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-emerald-200 bg-emerald-50/50 text-emerald-800 hover:bg-emerald-50'
+          onKeyDown={(e) => e.key === 'Enter' && setParam('status', 'ACTIVE')}
+          className={`cursor-pointer select-none rounded-xl border border-solid p-4 transition-all duration-200 shadow-xs hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:scale-[0.99] ${
+            params.status === 'ACTIVE'
+              ? 'border-2 border-emerald-600 bg-emerald-50/80 text-emerald-950 ring-2 ring-emerald-500/20 shadow-sm'
+              : 'border-emerald-200 bg-emerald-50/40 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-50/70'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className={`text-xs font-semibold uppercase tracking-wider ${params.status === 'ACTIVE' ? 'text-emerald-100' : 'text-emerald-700'}`}>
+            <span
+              className={`text-xs font-semibold uppercase tracking-wider ${
+                params.status === 'ACTIVE' ? 'text-emerald-900 font-bold' : 'text-emerald-700'
+              }`}
+            >
               Đang hoạt động
             </span>
-            <CheckCircleOutlined className="text-base" />
+            <div className="flex items-center gap-1.5">
+              {params.status === 'ACTIVE' && (
+                <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10.5px] font-semibold text-emerald-800">
+                  Đang lọc
+                </span>
+              )}
+              <CheckCircleOutlined className={`text-base ${params.status === 'ACTIVE' ? 'text-emerald-700' : 'text-emerald-600'}`} />
+            </div>
           </div>
-          <div className="mt-2 text-2xl font-extrabold tabular-nums">{v(totalActive)}</div>
+          <div className={`mt-2 text-2xl font-extrabold tabular-nums ${params.status === 'ACTIVE' ? 'text-emerald-700' : 'text-emerald-800'}`}>
+            {v(totalActive)}
+          </div>
         </div>
 
+        {/* Card: Chờ kích hoạt */}
         <div
+          role="button"
+          tabIndex={0}
           onClick={() => setParam('status', 'PENDING')}
-          className={`cursor-pointer rounded-xl border border-solid p-4 transition-all shadow-xs ${
-            params.status === 'PENDING' ? 'border-amber-600 bg-amber-600 text-white' : 'border-amber-200 bg-amber-50/50 text-amber-800 hover:bg-amber-50'
+          onKeyDown={(e) => e.key === 'Enter' && setParam('status', 'PENDING')}
+          className={`cursor-pointer select-none rounded-xl border border-solid p-4 transition-all duration-200 shadow-xs hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:scale-[0.99] ${
+            params.status === 'PENDING'
+              ? 'border-2 border-amber-500 bg-amber-50/80 text-amber-950 ring-2 ring-amber-500/20 shadow-sm'
+              : 'border-amber-200 bg-amber-50/40 text-amber-800 hover:border-amber-300 hover:bg-amber-50/70'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className={`text-xs font-semibold uppercase tracking-wider ${params.status === 'PENDING' ? 'text-amber-100' : 'text-amber-700'}`}>
+            <span
+              className={`text-xs font-semibold uppercase tracking-wider ${
+                params.status === 'PENDING' ? 'text-amber-900 font-bold' : 'text-amber-700'
+              }`}
+            >
               Chờ kích hoạt
             </span>
-            <ThunderboltOutlined className="text-base" />
+            <div className="flex items-center gap-1.5">
+              {params.status === 'PENDING' && (
+                <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10.5px] font-semibold text-amber-800">
+                  Đang lọc
+                </span>
+              )}
+              <ThunderboltOutlined className={`text-base ${params.status === 'PENDING' ? 'text-amber-700' : 'text-amber-600'}`} />
+            </div>
           </div>
-          <div className="mt-2 text-2xl font-extrabold tabular-nums">{v(totalPending)}</div>
+          <div className={`mt-2 text-2xl font-extrabold tabular-nums ${params.status === 'PENDING' ? 'text-amber-700' : 'text-amber-800'}`}>
+            {v(totalPending)}
+          </div>
         </div>
 
+        {/* Card: Tạm khóa */}
         <div
+          role="button"
+          tabIndex={0}
           onClick={() => setParam('status', 'SUSPENDED')}
-          className={`cursor-pointer rounded-xl border border-solid p-4 transition-all shadow-xs ${
-            params.status === 'SUSPENDED' ? 'border-rose-600 bg-rose-600 text-white' : 'border-rose-200 bg-rose-50/50 text-rose-800 hover:bg-rose-50'
+          onKeyDown={(e) => e.key === 'Enter' && setParam('status', 'SUSPENDED')}
+          className={`cursor-pointer select-none rounded-xl border border-solid p-4 transition-all duration-200 shadow-xs hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:scale-[0.99] ${
+            params.status === 'SUSPENDED'
+              ? 'border-2 border-rose-500 bg-rose-50/80 text-rose-950 ring-2 ring-rose-500/20 shadow-sm'
+              : 'border-rose-200 bg-rose-50/40 text-rose-800 hover:border-rose-300 hover:bg-rose-50/70'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className={`text-xs font-semibold uppercase tracking-wider ${params.status === 'SUSPENDED' ? 'text-rose-100' : 'text-rose-700'}`}>
+            <span
+              className={`text-xs font-semibold uppercase tracking-wider ${
+                params.status === 'SUSPENDED' ? 'text-rose-900 font-bold' : 'text-rose-700'
+              }`}
+            >
               Tạm khóa
             </span>
-            <StopOutlined className="text-base" />
+            <div className="flex items-center gap-1.5">
+              {params.status === 'SUSPENDED' && (
+                <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-[10.5px] font-semibold text-rose-800">
+                  Đang lọc
+                </span>
+              )}
+              <StopOutlined className={`text-base ${params.status === 'SUSPENDED' ? 'text-rose-700' : 'text-rose-600'}`} />
+            </div>
           </div>
-          <div className="mt-2 text-2xl font-extrabold tabular-nums">{v(totalSuspended)}</div>
+          <div className={`mt-2 text-2xl font-extrabold tabular-nums ${params.status === 'SUSPENDED' ? 'text-rose-700' : 'text-rose-800'}`}>
+            {v(totalSuspended)}
+          </div>
         </div>
       </div>
 
