@@ -48,7 +48,7 @@ export function prefetchRoute(to: string): void {
  */
 export function prefetchCommonRoutes(isCandidate: boolean): void {
   const commonRoutes = isCandidate
-    ? ['/jobs', '/companies', '/candidate/cv-builder', '/candidate/applications', '/candidate/profile', '/candidate/saved-jobs', '/candidate/cvs']
+    ? ['/candidate/cv-builder', '/jobs', '/companies', '/candidate/applications', '/candidate/profile', '/candidate/saved-jobs', '/candidate/cvs']
     : ['/jobs', '/companies', '/contact', '/login', '/register'];
 
   const runPrefetch = () => {
