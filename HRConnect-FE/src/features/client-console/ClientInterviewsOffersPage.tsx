@@ -278,15 +278,15 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             <div className="py-1 space-y-1">
               <StatusDot tone={st.tone}>{st.label}</StatusDot>
               {res && (
-                <div className="text-xs pl-3.5">
-                  <span className="text-slate-500">Kết quả: </span>
+                <div className="text-xs pl-3.5 flex items-center gap-1.5">
+                  <span className="text-slate-500 font-medium">Kết quả:</span>
                   <span
-                    className={`font-bold ${
+                    className={`inline-flex items-center px-1.5 py-0.2 rounded text-[11px] font-bold border ${
                       r.result === 'PASS'
-                        ? 'text-emerald-700'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                         : r.result === 'FAIL'
-                        ? 'text-rose-700'
-                        : 'text-amber-700'
+                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                        : 'bg-amber-50 text-amber-700 border-amber-200'
                     }`}
                   >
                     {res}

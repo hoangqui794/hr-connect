@@ -27,7 +27,7 @@ import {
   Tag,
   Tooltip,
 } from 'antd';
-import { CheckCircleOutlined, CheckOutlined, CloseOutlined, EditOutlined, ExperimentOutlined, FileOutlined, HeartFilled, HistoryOutlined, LoadingOutlined, LockOutlined, SendOutlined, WarningOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, CheckOutlined, CloseOutlined, EditOutlined, ExperimentOutlined, FileOutlined, HeartFilled, HistoryOutlined, LoadingOutlined, LockOutlined, SendOutlined, VideoCameraOutlined, WarningOutlined } from '@ant-design/icons';
 import { MATCH_TIER_STYLE, matchTierOf } from '@/features/screening/matchTierStyle';
 import dayjs, { type Dayjs } from 'dayjs';
 import { clientActionsApi, interviewHistoryApi, screeningApi, type ConfirmStartWorkInput } from '@/services/api/hrApi';
@@ -912,8 +912,55 @@ export const ApplicationWorkbench: React.FC<{
                         {fmt(i.scheduledAt)} · {i.durationMinutes ?? '—'} phút · {i.interviewType ?? '—'}
                         {i.location ? ` · ${i.location}` : ''}
                       </div>
-                      {i.meetingLink && <div className="mt-0.5 truncate text-[13px] text-[#0C4A6E] font-medium">Link: {i.meetingLink}</div>}
-                      {i.result && <div className="mt-1.5 text-[13px] text-slate-800 font-medium">Kết quả: {INTERVIEW_RESULT[i.result] ?? i.result}{i.feedback ? ` — ${i.feedback}` : ''}</div>}
+                      {i.meetingLink && (
+                        <div className="mt-2 flex items-center gap-1.5 text-[13px]">
+                          <span className="inline-flex items-center gap-1 font-medium text-slate-500 shrink-0">
+                            <VideoCameraOutlined className="text-blue-600 text-xs" /> Link phòng họp:
+                          </span>
+                          <a
+                            href={i.meetingLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="truncate font-medium text-sky-700 hover:text-sky-900 hover:underline"
+                          >
+                            {i.meetingLink}
+                          </a>
+                        </div>
+                      )}
+
+                      {(i.result || i.feedback) && (
+                        <div className="mt-3 rounded-lg border border-slate-200/80 bg-slate-50 p-3 text-xs space-y-2">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-slate-600">Kết quả:</span>
+                              {i.result ? (
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-full font-bold text-xs border ${
+                                    i.result === 'PASS'
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                      : i.result === 'FAIL'
+                                      ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                      : 'bg-amber-50 text-amber-700 border-amber-200'
+                                  }`}
+                                >
+                                  {INTERVIEW_RESULT[i.result] ?? i.result}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 font-medium">Chưa có kết quả</span>
+                              )}
+                            </div>
+                            <div className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-2xs">
+                              <LockOutlined className="text-[10px] text-slate-400" />
+                              <span>Ghi chú nội bộ (Chỉ Doanh nghiệp &amp; HR xem)</span>
+                            </div>
+                          </div>
+                          {i.feedback && (
+                            <div className="pt-2 border-0 border-t border-solid border-slate-200/70 text-[13px] text-slate-700 leading-relaxed">
+                              <span className="font-semibold text-slate-900">Ghi chú / Nhận xét:</span> {i.feedback}
+                            </div>
+                          )}
+                        </div>
+                      )}
                       <div className="mt-2.5 flex justify-end">
                         <Button size="small" icon={<HistoryOutlined />} onClick={() => setHistoryInterviewId(i.interviewId)} className="!rounded-lg text-slate-600 font-medium border-slate-200">
                           Lịch sử

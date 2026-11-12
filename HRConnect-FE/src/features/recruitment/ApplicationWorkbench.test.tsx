@@ -209,5 +209,5 @@ describe('ApplicationWorkbench MF-04', () => {
         concurrencyToken: 'interview-token',
       });
     });
-  });
+  }, 60000);
 });

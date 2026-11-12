@@ -98,15 +98,59 @@ const CANDIDATE_TIMELINE_STATUS_COPY: Record<string, { title: string; descriptio
   NOT_STARTED: { title: 'Không tiếp tục nhận việc', description: 'Quy trình tuyển dụng cho đơn này đã kết thúc.' },
 };
 
-/** Prevents an older API deployment or cached response from exposing internal workflow codes. */
+/**
+ * Prevents an older API deployment or cached response from exposing internal workflow codes
+ * and strictly prevents leaking employer internal interview evaluation/notes/feedback to the candidate.
+ */
 export const candidateTimelineEventCopy = (event: {
   eventType?: string | null;
   status?: string | null;
   title?: string | null;
   description?: string | null;
 }) => {
+  const eventType = (event.eventType || '').toUpperCase();
+
+  // Neutral candidate-safe copy for all interview-related events
+  // Strictly protects employer internal interview evaluation, feedback, and notes from candidate view
+  if (eventType.includes('INTERVIEW')) {
+    if (eventType.includes('SCHEDULE') || eventType === 'INTERVIEW_SCHEDULED') {
+      return {
+        title: 'Đã lên lịch phỏng vấn',
+        description: 'Lịch phỏng vấn đã được sắp xếp. Vui lòng kiểm tra thời gian và xác nhận tham gia.',
+      };
+    }
+    if (eventType.includes('RESCHEDULE') || eventType === 'INTERVIEW_RESCHEDULED') {
+      return {
+        title: 'Đã dời lịch phỏng vấn',
+        description: 'Lịch phỏng vấn đã được cập nhật lại.',
+      };
+    }
+    if (eventType.includes('CANCEL') || eventType === 'INTERVIEW_CANCELLED') {
+      return {
+        title: 'Đã hủy lịch phỏng vấn',
+        description: 'Buổi phỏng vấn đã được hủy.',
+      };
+    }
+    if (eventType.includes('COMPLETED') || eventType.includes('RESULT')) {
+      return {
+        title: 'Đã phỏng vấn',
+        description: 'Buổi phỏng vấn đã hoàn tất. Nhà tuyển dụng đang xem xét tiến trình hồ sơ của bạn.',
+      };
+    }
+    return {
+      title: 'Cập nhật tiến trình phỏng vấn',
+      description: 'Lịch trình phỏng vấn của bạn đã có cập nhật mới.',
+    };
+  }
+
   if (event.eventType !== 'APPLICATION_STATUS_CHANGED') {
-    return { title: event.title || 'Tiến trình hồ sơ được cập nhật', description: event.description || null };
+    // Sanitize any raw description that might contain leaked internal evaluation keywords
+    const rawDesc = event.description || null;
+    const isInternalNote = rawDesc && /(feedback|nhận xét|ghi chú|đánh giá|kết quả|note|pv thêm)/i.test(rawDesc);
+    return {
+      title: event.title || 'Tiến trình hồ sơ được cập nhật',
+      description: isInternalNote ? 'Tiến trình hồ sơ của bạn đã có cập nhật mới.' : rawDesc,
+    };
   }
 
   const normalizedStatus = event.status?.trim().toUpperCase();

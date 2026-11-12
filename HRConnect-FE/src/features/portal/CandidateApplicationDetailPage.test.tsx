@@ -412,4 +412,49 @@ describe('CandidateApplicationDetailPage', () => {
     });
     expect(screen.getByText(/Tin tuyển dụng này hiện đã đóng/i)).toBeInTheDocument();
   });
+
+  it('protects candidate from seeing employer internal interview evaluation notes in timeline and status', async () => {
+    vi.spyOn(mf04Api, 'getApplicationDetail').mockResolvedValueOnce({
+      ...mockMf04Application,
+      status: 'INTERVIEW',
+      offers: [],
+      interviews: [
+        {
+          interviewId: 'int-done',
+          interviewRound: 1,
+          interviewType: 'Trực tuyến Google Meet',
+          scheduledAt: '2026-10-10T09:00:00Z',
+          durationMinutes: 45,
+          status: 'COMPLETED',
+          result: 'PASS',
+          feedback: 'cần pv thêm vòng nữa về system design',
+        },
+      ],
+    } as any);
+    vi.spyOn(mf04Api, 'getApplicationTimeline').mockResolvedValueOnce({
+      applicationId: 'application-1',
+      candidateName: 'Nguyễn Văn A',
+      jobTitle: 'Senior .NET Developer',
+      currentStatus: 'INTERVIEW',
+      events: [
+        {
+          eventType: 'INTERVIEW_RESULT_RECORDED',
+          title: 'Ghi kết quả phỏng vấn',
+          description: 'cần pv thêm vòng nữa, chuyên môn còn thiếu',
+          timestamp: '2026-10-10T10:00:00Z',
+        },
+      ],
+    });
+
+    renderComponent();
+
+    // Neutral progress copy
+    expect(await screen.findByText('Đã phỏng vấn')).toBeInTheDocument();
+    expect(screen.getByText('Phỏng vấn vòng 1 · Đã phỏng vấn')).toBeInTheDocument();
+
+    // Strictly ensure internal employer notes/feedback are NOT displayed
+    expect(screen.queryByText(/cần pv thêm vòng nữa/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/chuyên môn còn thiếu/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/system design/i)).not.toBeInTheDocument();
+  });
 });

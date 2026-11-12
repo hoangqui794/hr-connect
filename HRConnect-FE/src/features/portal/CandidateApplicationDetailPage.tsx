@@ -42,10 +42,11 @@ const TONE_COLOR: Record<string, { text: string; background: string }> = {
 };
 
 const UPCOMING_INTERVIEW = ['SCHEDULED', 'RESCHEDULED'];
+// Candidate-safe interview display statuses (neutral, hides internal employer notes and evaluations)
 const INTERVIEW_STATUS: Record<string, string> = {
-  COMPLETED: 'Đã hoàn thành',
+  COMPLETED: 'Đã phỏng vấn',
   CANCELLED: 'Đã hủy',
-  NO_SHOW: 'Đã ghi nhận vắng mặt',
+  NO_SHOW: 'Vắng mặt',
   RESCHEDULED: 'Đã dời lịch',
   SCHEDULED: 'Đã lên lịch',
 };
