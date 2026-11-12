@@ -42,9 +42,11 @@ import { ClientShell } from '@/features/client-console/ClientShell';
 import { AffiliateScope, CandidateScope } from '@/features/portal/portalTheme';
 import { CandidateShell } from '@/features/portal/CandidateShell';
 import { AffiliateShell } from '@/features/portal/AffiliateShell';
+import { Navbar } from '@/features/landing/components/Navbar';
 
 // ─── Page-level Suspense boundary ────────────────────────────────────────────
 
+/** Generic fallback for auth or standalone pages without Navbar */
 const PageLoader: React.FC = () => (
   <div className="relative min-h-[70vh] w-full bg-[#F7F8FA]" role="status" aria-label="Đang tải trang">
     {/* Subtle top progress bar */}
@@ -65,8 +67,37 @@ const PageLoader: React.FC = () => (
   </div>
 );
 
+/**
+ * Public portal loader that retains the Navbar at the top so the entire layout never flashes white
+ * when transitioning between landing, jobs, companies, contact and candidate routes.
+ */
+const PortalPageLoader: React.FC = () => (
+  <div className="min-h-screen w-full bg-[#F7F8FA] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[14px] text-gray-800" role="status" aria-label="Đang tải trang">
+    <Navbar />
+    {/* Subtle top progress bar pinned directly below Navbar */}
+    <div className="fixed inset-x-0 top-[66px] z-50 h-[3px] overflow-hidden bg-sky-100/60">
+      <div className="h-full w-full origin-left animate-pulse bg-gradient-to-r from-[#0284c7] via-[#2563eb] to-[#0284c7]" />
+    </div>
+    <div className="mx-auto max-w-[1248px] px-4 py-8 sm:px-6">
+      <div className="space-y-4">
+        <div className="h-8 w-44 animate-pulse rounded-lg bg-slate-200/70" />
+        <div className="h-24 w-full animate-pulse rounded-xl bg-slate-200/50" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 pt-2">
+          <div className="h-36 animate-pulse rounded-xl bg-slate-200/50" />
+          <div className="h-36 animate-pulse rounded-xl bg-slate-200/50" />
+          <div className="h-36 animate-pulse rounded-xl bg-slate-200/50" />
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 function withSuspense(element: React.ReactElement): React.ReactElement {
   return <React.Suspense fallback={<PageLoader />}>{element}</React.Suspense>;
+}
+
+function withPortalSuspense(element: React.ReactElement): React.ReactElement {
+  return <React.Suspense fallback={<PortalPageLoader />}>{element}</React.Suspense>;
 }
 
 function protectedPage(
@@ -86,7 +117,7 @@ export const router = createBrowserRouter([
   // ── Public routes (no AppShell) ────────────────────────────────────────────
   {
     path: '/',
-    element: withSuspense(<CandidateScope><LandingPage /></CandidateScope>),
+    element: withPortalSuspense(<CandidateScope><LandingPage /></CandidateScope>),
   },
   {
     path: '/login',
@@ -114,15 +145,15 @@ export const router = createBrowserRouter([
   },
   {
     path: '/companies',
-    element: withSuspense(<CandidateScope><AppRoutes.CompaniesPage /></CandidateScope>),
+    element: withPortalSuspense(<CandidateScope><AppRoutes.CompaniesPage /></CandidateScope>),
   },
   {
     path: '/companies/:companyId',
-    element: withSuspense(<CandidateScope><AppRoutes.CompanyDetailPage /></CandidateScope>),
+    element: withPortalSuspense(<CandidateScope><AppRoutes.CompanyDetailPage /></CandidateScope>),
   },
   {
     path: '/services',
-    element: withSuspense(
+    element: withPortalSuspense(
       <ProtectedRoute requiredRoles={[UserRole.CLIENT]} redirectTo="/jobs">
         <Navigate to="/client/services" replace />
       </ProtectedRoute>
@@ -130,23 +161,23 @@ export const router = createBrowserRouter([
   },
   {
     path: '/contact',
-    element: withSuspense(<AppRoutes.ContactPage />),
+    element: withPortalSuspense(<CandidateScope><AppRoutes.ContactPage /></CandidateScope>),
   },
   {
     path: '/submission-consent',
     element: (
       <CandidateScope>
-        {withSuspense(<AppRoutes.PublicSubmissionConsentPage />)}
+        {withPortalSuspense(<AppRoutes.PublicSubmissionConsentPage />)}
       </CandidateScope>
     ),
   },
   {
     path: '/jobs',
-    element: withSuspense(<AppRoutes.Mf01PublicJobSearchPage />),
+    element: withPortalSuspense(<CandidateScope><AppRoutes.Mf01PublicJobSearchPage /></CandidateScope>),
   },
   {
     path: '/jobs/:id',
-    element: withSuspense(<AppRoutes.Mf01PublicJobDetailPage />),
+    element: withPortalSuspense(<CandidateScope><AppRoutes.Mf01PublicJobDetailPage /></CandidateScope>),
   },
 
   // ── Protected routes (inside AppShell) ────────────────────────────────────
@@ -380,4 +411,8 @@ export const router = createBrowserRouter([
     path: '*',
     element: <Navigate to="/" replace />,
   },
-]);
+], {
+  future: {
+    v7_relativeSplatPath: true,
+  },
+});

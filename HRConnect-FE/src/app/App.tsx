@@ -40,7 +40,7 @@ const App: React.FC = () => {
       <ConfigProvider theme={antdTheme} locale={antdLocale}>
         {/* AntApp gives message/modal/notification the theme via App.useApp(). */}
         <AntApp>
-          <RouterProvider router={router} />
+          <RouterProvider router={router} future={{ v7_startTransition: true }} />
         </AntApp>
       </ConfigProvider>
     </QueryClientProvider>

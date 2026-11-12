@@ -85,6 +85,7 @@ export const Navbar: React.FC = () => {
                 to={l.to}
                 onMouseEnter={() => prefetchRoute(l.to)}
                 onFocus={() => prefetchRoute(l.to)}
+                onTouchStart={() => prefetchRoute(l.to)}
                 aria-current={l.active ? 'page' : undefined}
                 className={`group relative inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-4 text-[13.5px] font-medium no-underline transition-all duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${
                   l.active

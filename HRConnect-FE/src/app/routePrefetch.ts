@@ -48,21 +48,20 @@ export function prefetchRoute(to: string): void {
  */
 export function prefetchCommonRoutes(isCandidate: boolean): void {
   const commonRoutes = isCandidate
-    ? ['/jobs', '/companies', '/candidate/cv-builder', '/candidate/applications']
-    : ['/jobs', '/companies', '/contact', '/login'];
+    ? ['/jobs', '/companies', '/candidate/cv-builder', '/candidate/applications', '/candidate/profile', '/candidate/saved-jobs', '/candidate/cvs']
+    : ['/jobs', '/companies', '/contact', '/login', '/register'];
 
   const runPrefetch = () => {
     commonRoutes.forEach((route, idx) => {
-      // Stagger slightly so we don't hog main-thread or network in a burst
-      setTimeout(() => prefetchRoute(route), idx * 200);
+      setTimeout(() => prefetchRoute(route), idx * 40);
     });
   };
 
   if (typeof window !== 'undefined') {
     if ('requestIdleCallback' in window) {
-      (window as Window & { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(runPrefetch);
+      (window as Window & { requestIdleCallback: (cb: () => void, opts?: { timeout: number }) => void }).requestIdleCallback(runPrefetch, { timeout: 800 });
     } else {
-      setTimeout(runPrefetch, 1000);
+      setTimeout(runPrefetch, 50);
     }
   }
 }
