@@ -24,6 +24,7 @@ import type { ColumnsType } from 'antd/es/table';
 import {
   AppstoreOutlined,
   CreditCardOutlined,
+  DollarCircleOutlined,
   EditOutlined,
   EnvironmentOutlined,
   EyeOutlined,
@@ -377,7 +378,14 @@ export const ClientJobsListPage: React.FC = () => {
         </div>
       ),
     },
-    { title: 'Mức lương', key: 'salary', width: 220, render: (_, job) => formatSalary(job) },
+    {
+      title: 'Mức lương',
+      key: 'salary',
+      width: 220,
+      render: (_, job) => (
+        <span className="font-bold text-emerald-700">{formatSalary(job)}</span>
+      ),
+    },
     {
       title: <span className="whitespace-nowrap">Số lượng / Quota</span>,
       key: 'quantity',
@@ -588,9 +596,12 @@ export const ClientJobsListPage: React.FC = () => {
                       </button>
 
                       {/* Meta highlights */}
-                      <div className="space-y-1 mb-3.5">
-                        <div className="text-sm font-bold text-slate-800 tracking-tight">
-                          {formatSalary(job)}
+                      <div className="space-y-1.5 mb-3.5">
+                        <div>
+                          <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200/70 tracking-tight">
+                            <DollarCircleOutlined className="text-emerald-600 text-xs" />
+                            <span>{formatSalary(job)}</span>
+                          </span>
                         </div>
                         <div className="flex items-center gap-1.5 text-xs text-slate-500">
                           <EnvironmentOutlined aria-hidden className="text-slate-400" />
@@ -629,12 +640,12 @@ export const ClientJobsListPage: React.FC = () => {
                         ))}
 
                       {isAwaitingSourcingDeposit(job) && (
-                        <div className="flex flex-col gap-2 rounded-xl bg-slate-50 border border-slate-200/90 p-3 text-xs text-slate-800 mb-3.5 shadow-2xs">
+                        <div className="flex flex-col gap-2 rounded-xl bg-amber-50/70 border border-amber-200/90 p-3 text-xs text-slate-800 mb-3.5 shadow-2xs">
                           <div className="flex items-center justify-between">
-                            <span className="font-bold text-slate-900 text-xs">
-                              Chờ cọc ({formatMoney(sourcingDepositAmount(job) ?? 200000, 'VND')})
+                            <span className="font-bold text-amber-950 text-xs">
+                              Chờ cọc: <span className="text-amber-800 font-extrabold">{formatMoney(sourcingDepositAmount(job) ?? 200000, 'VND')}</span>
                             </span>
-                            <span className="text-[11px] text-slate-500 font-medium">Kích hoạt tin khi nhận cọc</span>
+                            <span className="text-[11px] text-amber-700 font-medium">Kích hoạt tin khi nhận cọc</span>
                           </div>
                           <div className="flex items-center gap-2 pt-1 border-0 border-t border-solid border-slate-200/60">
                             <Button

@@ -18,6 +18,7 @@ import {
   CalendarOutlined,
   CheckCircleFilled,
   ClockCircleOutlined,
+  DollarCircleOutlined,
   EnvironmentOutlined,
   FileTextOutlined,
   InboxOutlined,
@@ -96,44 +97,44 @@ export const ClientOverviewPage: React.FC = () => {
   return (
     <div className={`${FONT} space-y-7 max-w-full animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
       {/* ── 1. Executive Studio Hero Banner ──────────────────────────── */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-[#0369A1] px-5 py-5 text-white sm:px-6 shadow-sm">
-        <div className="relative z-10 flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
+      <section className="relative overflow-hidden rounded-3xl border border-slate-200/90 bg-gradient-to-r from-sky-50/50 via-white to-white p-6 sm:p-7 shadow-[0_2px_12px_rgba(15,23,42,0.03)]">
+        <div className="relative z-10 flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
           <div className="flex-1 min-w-0 max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-slate-200 backdrop-blur-md">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-sky-50 px-3 py-1 text-xs font-semibold text-[#0284C7]">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
               <span>{dayjs().format('dddd, DD/MM/YYYY')}</span>
-              <span className="text-white/40">·</span>
+              <span className="text-slate-300">·</span>
               <span>Cổng quản trị tuyển dụng</span>
             </div>
 
-            <h1 className="m-0 mt-2.5 text-xl font-extrabold tracking-tight text-white sm:text-2xl">
+            <h1 className="m-0 mt-3 text-2xl font-black tracking-tight text-slate-900 sm:text-[26px] leading-snug">
               Chào {firstName}, chúc một ngày tuyển dụng hiệu quả!
             </h1>
 
-            <p className="m-0 mt-1.5 text-sm leading-relaxed text-slate-300">
+            <p className="m-0 mt-2 text-sm leading-relaxed text-slate-600">
               {jobs.isLoading || stagesLoading ? (
                 'Đang đồng bộ nhịp thở dữ liệu tuyển dụng...'
               ) : (
                 <>
-                  Doanh nghiệp đang vận hành <b className="text-white font-semibold">{activeJobs.length} tin tuyển dụng</b> đang mở
+                  Doanh nghiệp đang vận hành <b className="text-slate-900 font-bold">{activeJobs.length} tin tuyển dụng</b> đang mở
                   {pendingReview > 0 ? `, ${pendingReview} tin đang chờ duyệt` : ''}. Có{' '}
-                  <b className="text-white font-semibold">{pendingCVCount} ứng viên mới</b> sẵn sàng để bạn đánh giá.
+                  <b className="text-[#0284C7] font-extrabold">{pendingCVCount} ứng viên mới</b> sẵn sàng để bạn đánh giá.
                 </>
               )}
             </p>
 
-            <div className="mt-4 flex flex-wrap items-center gap-3">
+            <div className="mt-4.5 flex flex-wrap items-center gap-3">
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
                 onClick={() => navigate('/client/jobs/create')}
-                className="!h-10 !rounded-xl !border-0 !bg-[#0284C7] hover:!bg-[#0369A1] !px-4.5 text-sm font-semibold !text-white shadow-sm transition-all active:scale-[0.98]"
+                className="!h-10.5 !rounded-xl !border-0 !bg-[#0284C7] hover:!bg-[#0369A1] !px-5 text-sm font-bold !text-white shadow-sm shadow-sky-500/20 transition-all active:scale-[0.98]"
               >
                 Đăng tin tuyển dụng mới
               </Button>
               <Button
                 onClick={() => navigate('/client/candidates')}
-                className="!h-10 !rounded-xl !border !border-white/20 !bg-white/10 !px-4.5 text-sm font-medium !text-white backdrop-blur-md transition-all hover:!bg-white/20 active:scale-[0.98]"
+                className="!h-10.5 !rounded-xl !border !border-slate-200 !bg-white hover:!bg-slate-50 !px-4.5 text-sm font-semibold !text-slate-700 shadow-2xs transition-all active:scale-[0.98]"
               >
                 Xem tất cả hồ sơ ({totalCandidates})
               </Button>
@@ -141,30 +142,32 @@ export const ClientOverviewPage: React.FC = () => {
           </div>
 
           {/* Mini Health Pulse Card */}
-          <div className="flex shrink-0 flex-col gap-3 rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-md lg:w-68">
-            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-300">
+          <div className="flex shrink-0 flex-col gap-3 rounded-2xl border border-slate-200/90 bg-slate-50/80 p-4.5 lg:w-72 shadow-2xs">
+            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-600">
               <span className="flex items-center gap-1.5">
-                <ThunderboltFilled className="text-amber-400" /> Nhịp độ tuyển dụng
+                <ThunderboltFilled className="text-amber-500" /> Nhịp độ tuyển dụng
               </span>
-              <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] text-emerald-300 font-semibold">Live</span>
+              <span className="rounded-full bg-emerald-50 border border-emerald-200/70 px-2 py-0.5 text-[10px] text-emerald-700 font-bold">Live</span>
             </div>
 
             <div className="grid grid-cols-3 gap-2.5 py-1 text-center">
-              <div className="rounded-xl bg-white/10 p-2.5">
-                <div className="text-xl font-extrabold text-white tabular-nums">{activeJobs.length}</div>
-                <div className="text-[11px] text-slate-300 font-medium">Tin mở</div>
+              <div className="rounded-xl border border-slate-200/70 bg-white p-2.5 shadow-2xs">
+                <div className="text-xl font-black text-slate-900 tabular-nums">{activeJobs.length}</div>
+                <div className="text-[11px] text-slate-500 font-medium">Tin mở</div>
               </div>
-              <div className="rounded-xl bg-white/10 p-2.5">
-                <div className="text-xl font-extrabold text-white tabular-nums">{pendingCVCount}</div>
-                <div className="text-[11px] text-slate-300 font-medium">Chờ duyệt</div>
+              <div className="rounded-xl border border-slate-200/70 bg-white p-2.5 shadow-2xs">
+                <div className={`text-xl font-black tabular-nums ${pendingCVCount > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
+                  {pendingCVCount}
+                </div>
+                <div className="text-[11px] text-slate-500 font-medium">Chờ duyệt</div>
               </div>
-              <div className="rounded-xl bg-white/10 p-2.5">
-                <div className="text-xl font-extrabold text-white tabular-nums">{interviewCount}</div>
-                <div className="text-[11px] text-slate-300 font-medium">Phỏng vấn</div>
+              <div className="rounded-xl border border-slate-200/70 bg-white p-2.5 shadow-2xs">
+                <div className="text-xl font-black text-[#0284C7] tabular-nums">{interviewCount}</div>
+                <div className="text-[11px] text-slate-500 font-medium">Phỏng vấn</div>
               </div>
             </div>
 
-            <div className="text-xs text-slate-300/90 leading-tight">
+            <div className="text-xs text-slate-500 leading-tight">
               Tỷ lệ hồ sơ đạt chuẩn đi tiếp phỏng vấn đạt mức tích cực.
             </div>
           </div>
@@ -666,9 +669,12 @@ export const ClientOverviewPage: React.FC = () => {
                     </h3>
 
                     {/* Salary & Location */}
-                    <div className="mt-2 space-y-1">
-                      <div className="text-sm font-bold text-slate-800">
-                        {formatSalary(job)}
+                    <div className="mt-2.5 space-y-1.5">
+                      <div>
+                        <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200/70">
+                          <DollarCircleOutlined className="text-emerald-600 text-xs" />
+                          <span>{formatSalary(job)}</span>
+                        </span>
                       </div>
                       <div className="flex items-center gap-1.5 text-xs text-slate-500">
                         <EnvironmentOutlined className="text-slate-400" />
