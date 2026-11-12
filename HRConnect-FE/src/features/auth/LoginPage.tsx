@@ -14,9 +14,6 @@ import {
   CheckCircleFilled,
   EyeInvisibleOutlined,
   EyeOutlined,
-  SafetyCertificateOutlined,
-  ThunderboltOutlined,
-  FileProtectOutlined,
   ArrowRightOutlined
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
@@ -220,7 +217,6 @@ export const LoginPage: React.FC = () => {
         {/* Hero value propositions */}
         <div className="relative z-10 my-auto py-10 max-lg:hidden">
           <div className="inline-flex items-center gap-2 rounded-full border border-sky-300/30 bg-sky-400/15 px-3.5 py-1 text-xs font-semibold text-sky-100 backdrop-blur-md shadow-xs">
-            <ThunderboltOutlined className="text-amber-300" />
             <span>Hệ sinh thái tuyển dụng tích hợp AI</span>
           </div>
 
@@ -231,42 +227,19 @@ export const LoginPage: React.FC = () => {
             Nền tảng một điểm chạm kết nối Doanh nghiệp, Ứng viên và Mạng lưới Headhunter Affiliate trên toàn quốc.
           </p>
 
-          <div className="mt-8 space-y-3.5">
-            <div className="flex items-start gap-3.5 rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-md transition-all hover:bg-white/15 shadow-sm">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/25 text-sky-200 shadow-inner">
-                <SafetyCertificateOutlined className="text-xl" />
-              </div>
-              <div>
-                <h4 className="text-sm font-semibold text-white">Doanh nghiệp &amp; Việc làm xác minh</h4>
-                <p className="mt-0.5 text-xs text-sky-100/80 leading-relaxed mb-0">
-                  {openJobs > 0 ? `${openJobs.toLocaleString('vi-VN')} việc làm đang mở từ các công ty đã xác minh` : 'Việc làm đang mở từ các công ty đã xác minh'}
-                </p>
-              </div>
+          <div className="mt-8 space-y-3.5 max-w-lg">
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-4.5 backdrop-blur-md transition-all hover:bg-white/15 shadow-sm">
+              <h4 className="text-sm font-bold text-white mb-1">Doanh nghiệp &amp; Việc làm xác minh</h4>
+              <p className="text-xs text-sky-100/80 leading-relaxed mb-0">
+                {openJobs > 0 ? `${openJobs.toLocaleString('vi-VN')} việc làm đang mở từ các công ty đã xác minh` : 'Việc làm đang mở từ các công ty đã xác minh'}
+              </p>
             </div>
 
-            <div className="flex items-start gap-3.5 rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-md transition-all hover:bg-white/15 shadow-sm">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-500/25 text-teal-200 shadow-inner">
-                <FileProtectOutlined className="text-xl" />
-              </div>
-              <div>
-                <h4 className="text-sm font-semibold text-white">Minh bạch tiến độ tuyển dụng</h4>
-                <p className="mt-0.5 text-xs text-sky-100/80 leading-relaxed mb-0">
-                  Theo dõi hành trình hồ sơ thời gian thực: từ Sàng lọc AI, Phỏng vấn, Nhận offer đến Đi làm.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Social Proof Trust Badge */}
-          <div className="mt-8 flex items-center gap-3.5 rounded-2xl border border-white/15 bg-white/10 p-3.5 backdrop-blur-md shadow-sm">
-            <div className="flex -space-x-2 overflow-hidden">
-              <img className="inline-block h-8 w-8 rounded-full ring-2 ring-white/70 object-cover" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80" alt="Ứng viên" />
-              <img className="inline-block h-8 w-8 rounded-full ring-2 ring-white/70 object-cover" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80" alt="Doanh nghiệp" />
-              <img className="inline-block h-8 w-8 rounded-full ring-2 ring-white/70 object-cover" src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=120&q=80" alt="Affiliate" />
-            </div>
-            <div className="text-xs">
-              <p className="font-bold text-white mb-0.5">⭐️ 4.9/5 điểm hài lòng</p>
-              <p className="text-sky-100/80 text-[11px] mb-0">Hơn 2,400+ ứng viên và đối tác đã kết nối</p>
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-4.5 backdrop-blur-md transition-all hover:bg-white/15 shadow-sm">
+              <h4 className="text-sm font-bold text-white mb-1">Minh bạch tiến độ tuyển dụng</h4>
+              <p className="text-xs text-sky-100/80 leading-relaxed mb-0">
+                Theo dõi hành trình hồ sơ thời gian thực: từ Sàng lọc AI, Phỏng vấn, Nhận offer đến Đi làm.
+              </p>
             </div>
           </div>
         </div>
