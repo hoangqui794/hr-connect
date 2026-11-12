@@ -1169,7 +1169,7 @@ export const AffiliateSubmissionDetailPage: React.FC = () => {
         <ArrowLeftOutlined aria-hidden /> Lượt giới thiệu
       </button>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-4">
           <section className="rounded-xl border border-solid border-slate-200/80 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-center gap-2.5">
@@ -1191,13 +1191,38 @@ export const AffiliateSubmissionDetailPage: React.FC = () => {
           <section aria-labelledby="aff-consent" className="rounded-xl border border-solid border-slate-200/80 bg-white p-5 shadow-sm">
             <h2 id="aff-consent" className="m-0 mb-3 text-[15px] font-bold text-gray-900">Xác nhận của ứng viên</h2>
             {consentWindow && (
-              <div className="mb-4">
-                <div className="h-2 overflow-hidden rounded bg-slate-100" role="progressbar" aria-label="Thời gian đã qua của lời mời" aria-valuenow={consentWindow.used} aria-valuemin={0} aria-valuemax={100}>
-                  <div className="h-full bg-gradient-to-r from-[#0284C7] to-[#2563EB]" style={{ width: `${consentWindow.used}%` }} />
+              <div className="mb-4 rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5 font-semibold text-slate-700">
+                    <ClockCircleOutlined className="text-[#0284C7]" />
+                    <span>Thời hạn xác nhận</span>
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-700 border border-amber-200/70">
+                    Còn {consentWindow.left}
+                  </span>
                 </div>
-                <div className="mt-1.5 flex flex-wrap justify-between gap-2 text-xs text-slate-600">
-                  <span>Gửi email {fmt(sentAt)}</span>
-                  <span className="font-semibold text-amber-700">Hết hạn {fmt(submission.consentExpiresAt)} · còn {consentWindow.left}</span>
+                <div
+                  className="my-2.5 h-2 overflow-hidden rounded-full bg-slate-200/80"
+                  role="progressbar"
+                  aria-label="Thời gian đã qua của lời mời"
+                  aria-valuenow={consentWindow.used}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                >
+                  <div
+                    className="h-full rounded-full bg-[#0284C7] transition-all duration-300"
+                    style={{ width: `${Math.max(3, consentWindow.used)}%` }}
+                  />
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <span className="flex items-center gap-1.5 text-slate-500">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#0284C7]" />
+                    <span>Gửi email: <b className="font-medium text-slate-700">{fmt(sentAt)}</b></span>
+                  </span>
+                  <span className="flex items-center gap-1.5 text-slate-500">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                    <span>Hết hạn: <b className="font-semibold text-amber-700">{fmt(submission.consentExpiresAt)}</b></span>
+                  </span>
                 </div>
               </div>
             )}

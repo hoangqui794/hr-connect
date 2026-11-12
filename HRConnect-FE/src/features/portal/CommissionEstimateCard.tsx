@@ -62,11 +62,25 @@ export const CommissionEstimateCard: React.FC<{ jobId: string }> = ({ jobId }) =
 
   return (
     <section aria-label="Hoa hồng ước tính" className="w-full max-w-full min-w-0 overflow-hidden break-words rounded-xl border border-solid border-slate-200/80 bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h2 className="m-0 text-[15px] font-bold text-slate-900">Hoa hồng ước tính</h2>
-        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200/60">Thu nhập Affiliate</span>
+        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200/60 shrink-0">Thu nhập Affiliate</span>
       </div>
-      <div className="mt-2 text-2xl font-extrabold leading-snug tabular-nums break-words text-[#059669]">{headline ?? 'Không áp dụng'}</div>
+      <div className="mt-2.5 text-xl font-black leading-snug tracking-tight text-emerald-600 sm:text-[22px] break-words">
+        {headline ? (
+          headline.includes(' – ') ? (
+            <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+              <span>{headline.split(' – ')[0]}</span>
+              <span className="text-slate-400 font-normal text-base">–</span>
+              <span>{headline.split(' – ')[1]}</span>
+            </span>
+          ) : (
+            <span>{headline}</span>
+          )
+        ) : (
+          'Không áp dụng'
+        )}
+      </div>
       <dl className="m-0 mt-3.5 space-y-2 border-0 border-t border-solid border-slate-100 pt-3 text-[13px] break-words">
         {estimate.data.feeMultiplier != null && (
           <div className="flex justify-between gap-2"><dt className="text-slate-600">Phí dịch vụ của doanh nghiệp</dt><dd className="m-0 text-right font-medium">{estimate.data.feeMultiplier} × lương tháng</dd></div>
