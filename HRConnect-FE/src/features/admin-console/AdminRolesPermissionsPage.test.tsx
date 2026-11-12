@@ -206,4 +206,38 @@ describe('AdminRolesPermissionsPage', () => {
     expect(screen.getByText(/Được bảo vệ/)).toBeTruthy();
     expect(screen.getByText(/Có thể ủy quyền/)).toBeTruthy();
   });
+
+  it('filters roles and switches tabs when clicking top stat tiles', async () => {
+    renderPage();
+
+    // Click "Vai trò tùy chỉnh" stat tile
+    const customRoleCard = await screen.findByRole('button', { name: /Vai trò tùy chỉnh/ });
+    fireEvent.click(customRoleCard);
+
+    await waitFor(() => {
+      expect(getRolesMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isSystem: false,
+        })
+      );
+    });
+
+    // Click "Vai trò hệ thống" stat tile
+    const systemRoleCard = await screen.findByRole('button', { name: /Vai trò hệ thống \(cố định\)/ });
+    fireEvent.click(systemRoleCard);
+
+    await waitFor(() => {
+      expect(getRolesMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isSystem: true,
+        })
+      );
+    });
+
+    // Click "Tổng quyền hệ thống" stat tile to switch tab
+    const totalPermissionsCard = await screen.findByRole('button', { name: /Tổng quyền hệ thống/ });
+    fireEvent.click(totalPermissionsCard);
+
+    expect(await screen.findByText('candidate.view')).toBeTruthy();
+  });
 });

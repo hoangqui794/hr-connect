@@ -434,7 +434,7 @@ export const RegisterPage: React.FC = () => {
   return (
     <div className="flex min-h-screen w-full bg-[#F8FAFC] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-slate-800 antialiased max-lg:flex-col">
       {/* ── Left Hero Branding Panel (Synced with LoginPage luxury aesthetic) ── */}
-      <aside className="relative flex flex-col justify-between overflow-hidden bg-[#072B42] p-8 text-white max-lg:min-h-[220px] max-lg:p-6 lg:w-[42%] lg:p-12 xl:p-14">
+      <aside className="relative flex flex-col justify-between overflow-hidden bg-[#072B42] p-8 text-white max-lg:min-h-[220px] max-lg:p-6 lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:w-[38%] xl:w-[36%] 2xl:w-[34%] lg:p-10 xl:p-12 shrink-0">
         {/* Background photo & sapphire overlay */}
         <img
           src={REGISTER_HERO_IMAGE}
@@ -500,8 +500,8 @@ export const RegisterPage: React.FC = () => {
       </aside>
 
       {/* ── Right Registration Form Section ────────────────────────────────── */}
-      <main className="flex flex-1 items-center justify-center bg-[#F8FAFC] px-4 py-8 sm:px-8 lg:px-12 xl:px-16 overflow-y-auto">
-        <div className="w-full max-w-[620px] rounded-2xl border border-slate-200/90 bg-white p-6 shadow-[0_12px_36px_-6px_rgba(15,23,42,0.06)] sm:p-9 my-4">
+      <main className="flex flex-1 items-center justify-center bg-[#F8FAFC] px-4 py-8 sm:px-6 lg:px-8 xl:px-12 overflow-y-auto min-h-screen">
+        <div className="w-full max-w-[720px] xl:max-w-[760px] rounded-2xl border border-slate-200/90 bg-white p-6 shadow-[0_12px_36px_-6px_rgba(15,23,42,0.06)] sm:p-9 my-auto">
           {/* Header */}
           <div className="text-left">
             <div className="flex items-center justify-between">
@@ -568,7 +568,7 @@ export const RegisterPage: React.FC = () => {
                       >
                         {option.icon}
                       </span>
-                      <span className="text-xs font-bold text-slate-900 truncate">{option.title}</span>
+                      <span className="text-[13px] font-bold text-slate-900 whitespace-nowrap">{option.title}</span>
                     </div>
                     <span className="mt-1.5 text-[11px] text-slate-500 leading-snug line-clamp-2">
                       {option.hint}

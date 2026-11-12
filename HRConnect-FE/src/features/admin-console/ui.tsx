@@ -124,14 +124,29 @@ export const StatTile: React.FC<{
       type={onClick ? 'button' : undefined}
       onClick={onClick}
       aria-pressed={onClick ? Boolean(active) : undefined}
-      className={`admin-surface flex w-full flex-col gap-1 border-0 p-4 text-left transition-shadow duration-200 ${
-        onClick ? 'cursor-pointer hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]' : ''
-      } ${active ? 'admin-surface--active' : ''}`}
+      className={`admin-surface relative flex w-full flex-col gap-1 p-4 text-left transition-all duration-200 ${
+        onClick
+          ? 'cursor-pointer select-none border border-solid focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]'
+          : 'border border-solid border-slate-200/80'
+      } ${
+        active
+          ? 'border-2 border-[#0284C7] bg-sky-50/30 shadow-sm ring-2 ring-[#0284C7]/20 admin-surface--active'
+          : onClick
+            ? 'border-slate-200/90 bg-white hover:-translate-y-0.5 hover:border-sky-300 hover:bg-slate-50/70 hover:shadow-md active:translate-y-0 active:scale-[0.99]'
+            : 'border-slate-200/80 bg-white'
+      }`}
     >
-      <span className="flex items-center gap-2 text-[12.5px] font-medium text-slate-600">
-        <span className="h-2 w-2 rounded-full" style={{ background: DOT[tone] }} aria-hidden />
-        {label}
-      </span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex items-center gap-2 text-[12.5px] font-medium text-slate-600">
+          <span className="h-2 w-2 rounded-full" style={{ background: DOT[tone] }} aria-hidden />
+          {label}
+        </span>
+        {active && (
+          <span className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[10.5px] font-semibold text-sky-700">
+            Đang lọc
+          </span>
+        )}
+      </div>
       <span className="text-2xl font-bold tabular-nums text-slate-900">{value}</span>
       {hint && <span className="text-xs text-slate-600">{hint}</span>}
     </Tag>
