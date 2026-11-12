@@ -10,6 +10,7 @@ import { Dropdown, Tooltip } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { affiliateApi } from '@/services/api/mf02Api';
 import {
+  BankOutlined,
   DashboardOutlined,
   DollarOutlined,
   FileTextOutlined,
@@ -53,16 +54,17 @@ const NAV: NavItem[] = [
   { to: '/affiliate/commissions', label: 'Hoa hồng & chi trả', icon: <DollarOutlined /> },
   { to: '/affiliate/performance', label: 'Hiệu suất & uy tín', icon: <TrophyOutlined /> },
   { to: '/affiliate/disputes', label: 'Khiếu nại', icon: <SolutionOutlined /> },
-  { to: '/affiliate/profile', label: 'Hồ sơ & ngân hàng', icon: <UserOutlined /> },
+  { to: '/affiliate/bank-account', label: 'Tài khoản ngân hàng', icon: <BankOutlined /> },
 ];
 
 // Phones get the four most used pages at the bottom; the rest stay in the off-canvas menu.
 const BOTTOM_NAV = ['/affiliate/dashboard', '/affiliate/jobs', '/affiliate/submissions', '/affiliate/commissions'];
 const BOTTOM_LABEL: Record<string, string> = { '/affiliate/submissions': 'Giới thiệu', '/affiliate/commissions': 'Hoa hồng' };
 
-// Pages reached from the CTA rather than the menu still need a header title.
+// Pages reached from the CTA or avatar menu rather than the sidebar still need a header title.
 const ALL_ITEMS: NavItem[] = [
   ...NAV,
+  { to: '/affiliate/profile', label: 'Hồ sơ cá nhân', icon: <UserOutlined /> },
   { to: '/affiliate/submit-candidate', label: 'Giới thiệu ứng viên', icon: <UserAddOutlined /> },
 ];
 
@@ -223,7 +225,8 @@ export const AffiliateShell: React.FC = () => {
               trigger={['click']}
               menu={{
                 items: [
-                  { key: 'profile', icon: <UserOutlined />, label: 'Hồ sơ & Tài khoản' },
+                  { key: 'profile', icon: <UserOutlined />, label: 'Hồ sơ cá nhân' },
+                  { key: 'bank', icon: <BankOutlined />, label: 'Tài khoản ngân hàng' },
                   { key: 'password', icon: <KeyOutlined />, label: 'Đổi mật khẩu' },
                   { type: 'divider' },
                   { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true },
@@ -232,6 +235,7 @@ export const AffiliateShell: React.FC = () => {
                   if (key === 'logout') signOut();
                   else if (key === 'password') setShowPasswordModal(true);
                   else if (key === 'profile') navigate('/affiliate/profile');
+                  else if (key === 'bank') navigate('/affiliate/bank-account');
                 },
               }}
             >

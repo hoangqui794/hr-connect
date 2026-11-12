@@ -310,6 +310,7 @@ export const router = createBrowserRouter([
       { path: 'performance', element: <AppRoutes.AffiliatePerformancePage /> },
       { path: 'disputes', element: <AppRoutes.AffiliateDisputesPage /> },
       { path: 'profile', element: <AppRoutes.AffiliateProfilePage /> },
+      { path: 'bank-account', element: <AppRoutes.AffiliateBankPage /> },
       // MF-05: the affiliate's own commissions, payouts and payout account.
       { path: 'commissions', element: <AppRoutes.AffiliateCommissionsPage /> },
       // Old entry points.
