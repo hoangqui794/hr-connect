@@ -419,8 +419,6 @@ Các route dưới `/api/v1`:
 |---|---|
 | `POST /placements/{placementId}/resignation` | Báo Candidate nghỉ việc. |
 | `POST /placements/{placementId}/resignation/resolve` | Internal HR/Admin xác minh và xử lý. |
-| `GET /placements/{placementId}` | Chi tiết nhận việc, kèm khối `financial`: Client chỉ thấy phí dịch vụ (`serviceFeeAmount`, `serviceFeeStatus`), hoa hồng Affiliate chỉ trả cho Internal HR/Admin, Candidate không nhận khối này; `null` khi chưa có phí lẫn hoa hồng. |
-| `GET /replacement-slots` | Danh sách lượt thay thế có phân trang (`jobId`, `status`, `page`, `pageSize` ≤ 100), mỗi lượt có `jobTitle` và `companyName`. Client (thành viên ACTIVE) chỉ thấy lượt của doanh nghiệp mình; Internal HR/Admin thấy tất cả. |
 | `GET /jobs/{jobId}/replacement-slots` | Các lượt thay thế của Job. |
 | `POST /internal/replacement-slots/{id}/cancel` | Hủy lượt thay thế hợp lệ. |
 | `GET /placements/{placementId}` | Chi tiết nhận việc, kèm khối `financial`: Client chỉ thấy phí dịch vụ (`serviceFeeAmount`, `serviceFeeStatus`), hoa hồng Affiliate chỉ trả cho Internal HR/Admin, Candidate không nhận khối này; `null` khi chưa có phí lẫn hoa hồng. |
