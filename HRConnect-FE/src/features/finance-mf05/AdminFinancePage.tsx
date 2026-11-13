@@ -229,7 +229,7 @@ export const AdminFinancePage: React.FC = () => {
                 size="small"
                 type="primary"
                 className="!h-8 px-3 text-xs font-semibold rounded-lg"
-                onClick={() => { form.setFieldsValue({ result: 'success', payoutDate: dayjs() }); setDialog({ kind: 'payout', commission: c }); }}
+                onClick={() => { form.setFieldsValue({ result: 'success', payoutDate: dayjs(), method: 'Chuyển khoản ngân hàng' }); setDialog({ kind: 'payout', commission: c }); }}
               >
                 Ghi nhận chi
               </Button>
@@ -574,10 +574,10 @@ export const AdminFinancePage: React.FC = () => {
               ) : (
                 <Alert className="mb-4" type="warning" showIcon message="Affiliate chưa khai báo tài khoản nhận tiền. Liên hệ Affiliate trước khi chuyển khoản." />
               )}
-              <Form.Item name="result" label="Kết quả chuyển khoản" rules={[{ required: true }]}>
+              <Form.Item name="result" label="Trạng thái chuyển khoản" rules={[{ required: true }]}>
                 <Radio.Group>
-                  <Radio value="success">Thành công</Radio>
-                  <Radio value="failed">Thất bại (giữ để chi lại)</Radio>
+                  <Radio value="success">Đã chuyển thành công</Radio>
+                  <Radio value="failed">Chuyển thất bại (giữ lại để chi sau)</Radio>
                 </Radio.Group>
               </Form.Item>
               <Form.Item name="payoutDate" label="Ngày chi" rules={[{ required: true, message: 'Chọn ngày chi.' }]}>
