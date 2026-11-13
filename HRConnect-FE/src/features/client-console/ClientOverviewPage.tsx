@@ -93,7 +93,7 @@ const CommitmentTile: React.FC<{
     </span>
     <span className="my-3 block">
       <span className="text-2xl font-black tracking-tight text-slate-900 tabular-nums">
-        {loading ? <Skeleton.Input active size="small" /> : value}
+        {loading ? '…' : value}
       </span>
     </span>
     <span className="flex w-full items-center justify-between gap-2 border-0 border-t border-solid border-slate-100 pt-3 text-xs">
