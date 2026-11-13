@@ -387,7 +387,7 @@ Phí dịch vụ và hoa hồng là hai khoản độc lập: phí dịch vụ �
      - Người thay thế đi làm (MF-04): khóa suất, chuyển `FILLED`; suất không còn `OPEN` thì `409 REPLACEMENT_SLOT_ALREADY_FILLED`, HR của Client có thể chọn "nhận như tuyển mới" (có phí).
      - Quá `expires_at` lần đầu → **tự gia hạn một lần** (`extended_at`, `expires_at` = lúc gia hạn + `mf05.replacement.extension_days`, mặc định 30, đặt 0 để không gia hạn; có thông báo cho Client, chốt 2026-11-05). Hoàn phí là bước cuối, chỉ xét sau khi đã gia hạn.
      - Quá hạn sau khi đã gia hạn → `EXPIRED` (worker MF-05, có thông báo). **Hoàn phí một phần** (chốt 2026-11-04): nếu chưa có hồ sơ nào của suất được chuyển cho Client, hệ thống tạo khoản `REPLACEMENT_REFUND` = phí đã trả × `mf05.replacement.refund_percent` (mặc định 30%, đặt 0 để không hoàn), Platform Admin ghi nhận khi đã chuyển tiền. Đã có hồ sơ được chuyển mà Client không tuyển thì không hoàn. Internal HR hủy suất `WAITING_PAYMENT` / `OPEN` kèm lý do → `CANCELLED`, không hoàn phí (`REPLACEMENT_SLOT_NOT_CANCELLABLE` nếu suất đã kết thúc).
-     - API: `GET /api/v1/jobs/{jobId}/replacement-slots`, `POST /api/v1/internal/replacement-slots/{id}/cancel`.
+     - API: `GET /api/v1/replacement-slots` (danh sách có phân trang, kèm tên job và doanh nghiệp; Client chỉ thấy suất của doanh nghiệp mình), `GET /api/v1/jobs/{jobId}/replacement-slots`, `POST /api/v1/internal/replacement-slots/{id}/cancel`.
 4. **Thử việc nằm ngoài phạm vi đồ án** (chốt 2026-10-17): không dùng làm mốc tính hoa hồng (thời gian thử việc khác nhau theo vị trí) và hệ thống không ghi kết quả thử việc. Bảng `probation` giữ trong cơ sở dữ liệu cho hướng phát triển sau.
 
 ## Hoa hồng
