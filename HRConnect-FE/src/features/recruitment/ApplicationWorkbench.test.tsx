@@ -1,6 +1,7 @@
 import { App as AntApp } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import dayjs from 'dayjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApplicationWorkbench } from './ApplicationWorkbench';
 import { clientActionsApi, interviewHistoryApi, screeningApi } from '@/services/api/hrApi';
@@ -164,6 +165,61 @@ describe('ApplicationWorkbench MF-04', () => {
     expect(screen.queryByRole('button', { name: 'Xác nhận đã đi làm' })).not.toBeInTheDocument();
   });
 
+  it('defaults actual start to the eligible planned date when Client confirms start work', async () => {
+    const plannedStart = dayjs().subtract(1, 'day');
+    renderWorkbench({
+      ...baseApplication,
+      status: 'OFFER_ACCEPTED',
+      currentStage: 'OFFER',
+      plannedStartDate: plannedStart.format('YYYY-MM-DD'),
+      allowedActions: ['CONFIRM_PLACEMENT'],
+      offers: [
+        {
+          offerId: 'offer-accepted',
+          offerVersion: 1,
+          status: 'ACCEPTED',
+          respondedAt: plannedStart.subtract(1, 'day').toISOString(),
+          concurrencyToken: 'offer-token',
+        },
+      ],
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Xác nhận đã đi làm' }));
+
+    expect(screen.getByLabelText('Ngày thực tế đi làm')).toHaveValue(plannedStart.format('DD/MM/YYYY'));
+    expect(screen.getByText('Bảo hành và hạn thanh toán sẽ được tính từ ngày thực tế đi làm.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Ghi chú (không bắt buộc)')).toBeInTheDocument();
+  });
+
+  it('requires a reason when the actual start date differs from the planned date', async () => {
+    renderWorkbench({
+      ...baseApplication,
+      status: 'OFFER_ACCEPTED',
+      currentStage: 'OFFER',
+      plannedStartDate: dayjs().add(30, 'day').format('YYYY-MM-DD'),
+      allowedActions: ['CONFIRM_PLACEMENT'],
+      offers: [
+        {
+          offerId: 'offer-accepted',
+          offerVersion: 1,
+          status: 'ACCEPTED',
+          respondedAt: dayjs().subtract(1, 'day').toISOString(),
+          concurrencyToken: 'offer-token',
+        },
+      ],
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Xác nhận đã đi làm' }));
+
+    expect(screen.getByText('Ngày thực tế khác ngày dự kiến — cần ghi rõ lý do.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Lý do ngày thực tế khác ngày dự kiến')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận' }));
+
+    expect(await screen.findByText('Nhập lý do ngày thực tế khác ngày dự kiến.')).toBeInTheDocument();
+    expect(clientActionsApi.confirmStartWork).not.toHaveBeenCalled();
+  });
+
   it('treats a failed interview as rejection without offering another interview round', async () => {
     renderWorkbench({
       ...baseApplication,
@@ -210,4 +266,32 @@ describe('ApplicationWorkbench MF-04', () => {
       });
     });
   }, 60000);
+
+  it('switches scheduled interview controls to result, no-show or reschedule after the interview window', async () => {
+    renderWorkbench({
+      ...baseApplication,
+      status: 'INTERVIEW',
+      currentStage: 'INTERVIEW',
+      allowedActions: ['CANCEL_INTERVIEW', 'UPDATE_INTERVIEW', 'RESCHEDULE_INTERVIEW', 'RECORD_NO_SHOW', 'RECORD_INTERVIEW_RESULT'],
+      offers: [],
+      interviews: [
+        {
+          interviewId: 'interview-overdue',
+          interviewRound: 1,
+          scheduledAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+          durationMinutes: 60,
+          status: 'SCHEDULED',
+          result: null,
+          concurrencyToken: 'interview-token',
+        },
+      ],
+    });
+
+    expect(await screen.findByText('Quá giờ · Chờ cập nhật')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Vắng mặt' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Dời lịch' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ghi kết quả' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Hủy lịch' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Sửa thông tin lịch/i })).not.toBeInTheDocument();
+  });
 });

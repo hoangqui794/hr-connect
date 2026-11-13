@@ -10,6 +10,7 @@ public static class Mf04InputPolicy
     public const int InterviewFeedbackMaxLength = 2000;
     public const int PlacementPositionMaxLength = 180;
     public const int PlacementDepartmentMaxLength = 180;
+    public const int PlacementConfirmationNoteMaxLength = 1000;
 
     public const string OnlineInterviewType = "ONLINE";
     public const string OfflineInterviewType = "OFFLINE";

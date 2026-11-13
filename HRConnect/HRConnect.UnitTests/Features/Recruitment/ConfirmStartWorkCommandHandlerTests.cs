@@ -583,6 +583,50 @@ public class ConfirmStartWorkCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenActualStartDateDiffersFromPlannedDateWithoutReason_ShouldReject()
+    {
+        var appId = Guid.NewGuid();
+        var offerId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var application = new Domain.Entities.Application
+        {
+            ApplicationId = appId,
+            Status = ApplicationStates.OfferAccepted,
+            PlannedStartDate = today.AddDays(-1),
+            ConcurrencyToken = Guid.NewGuid(),
+            Job = new Job { CompanyId = Guid.NewGuid() }
+        };
+        var offer = new Offer
+        {
+            OfferId = offerId,
+            ApplicationId = appId,
+            Status = OfferStates.Accepted,
+            RespondedAt = DateTime.UtcNow.AddDays(-2)
+        };
+
+        _applicationRepositoryMock.Setup(r => r.GetByIdAsync(appId, It.IsAny<CancellationToken>())).ReturnsAsync(application);
+        _placementRepositoryMock.Setup(r => r.GetByApplicationIdAsync(appId, It.IsAny<CancellationToken>())).ReturnsAsync((Placement?)null);
+        _offerRepositoryMock.Setup(r => r.GetByIdAsync(offerId, It.IsAny<CancellationToken>())).ReturnsAsync(offer);
+
+        var act = () => CreateHandler().Handle(new ConfirmStartWorkCommand(
+            appId,
+            offerId,
+            today,
+            "   ",
+            null,
+            null,
+            application.ConcurrencyToken,
+            userId,
+            IsClientCompanyUser: true), default);
+
+        var exception = await act.Should().ThrowAsync<BadRequestException>();
+        exception.Which.ErrorCode.Should().Be(PlacementStartDateErrorCodes.InvalidStartDate);
+        exception.Which.Message.Should().Contain("Phải nhập lý do");
+        _companyUserRepositoryMock.Verify(r => r.GetByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Handle_WhenValid_ShouldCreatePlacementAndUpdateApplicationToPlaced()
     {
         // Arrange

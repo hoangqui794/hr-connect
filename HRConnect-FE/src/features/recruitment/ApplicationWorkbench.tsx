@@ -43,6 +43,7 @@ import { deliveryFeedback, type CandidateDeliveryActionResult } from './candidat
 import type { RecruitmentApplicationDetail } from '@/types/api/hr';
 import { Initials, StatusDot } from '@/features/admin-console/ui';
 import { CurrencyCodeSelect, currencyCodeRules } from '@/components/common/CurrencyCodeSelect';
+import { isInterviewOverdue } from './interviewTiming';
 import {
   INTERVIEW_RESULT,
   INTERVIEW_STATUS,
@@ -173,6 +174,7 @@ export const ApplicationWorkbench: React.FC<{
   const [historyInterviewId, setHistoryInterviewId] = useState<string | null>(null);
   const [form] = Form.useForm();
   const selectedInterviewType = Form.useWatch('interviewType', form);
+  const watchedActualStartDate = Form.useWatch('actualStartDate', form);
   const startedFor = useRef<string>();
   const pendingStartWork = useRef<StartWorkAttempt>();
 
@@ -197,9 +199,15 @@ export const ApplicationWorkbench: React.FC<{
   const actions = d?.allowedActions ?? [];
   const has = (a: string) => actions.includes(a);
   const interview = d?.interviews.filter((i) => i.status === 'SCHEDULED').sort((a, b) => (b.scheduledAt ?? '').localeCompare(a.scheduledAt ?? ''))[0];
+  const interviewOverdue = isInterviewOverdue(interview);
   const effectiveInterviewType = open === 'reschedule' ? interview?.interviewType : selectedInterviewType;
   const offer = d ? [...d.offers].sort((a, b) => b.offerVersion - a.offerVersion)[0] : undefined;
   const acceptedOffer = d?.offers.find((o) => o.status === 'ACCEPTED') ?? offer;
+  const actualStartDiffersFromPlan = Boolean(
+    d?.plannedStartDate &&
+      watchedActualStartDate &&
+      !dayjs(watchedActualStartDate).isSame(dayjs(d.plannedStartDate), 'day')
+  );
   const plannedStartChangeCount = (timeline.data ?? []).filter((event) => event.eventType === 'PLANNED_START_DATE_CHANGED').length;
 
   // MF-03: opening an application starts screening (idempotent on the backend).
@@ -415,7 +423,22 @@ export const ApplicationWorkbench: React.FC<{
     if (kind === 'reschedule' && interview)
       form.setFieldsValue({ durationMinutes: interview.durationMinutes ?? 60, location: interview.location ?? undefined, meetingLink: interview.meetingLink ?? undefined });
     if (kind === 'plannedStart') form.setFieldsValue({ plannedStartDate: d?.plannedStartDate ? dayjs(d.plannedStartDate) : undefined });
-    if (kind === 'startWork') form.setFieldsValue({ actualStartDate: dayjs(), position: d?.jobTitle });
+    if (kind === 'startWork') {
+      const today = dayjs().startOf('day');
+      const plannedStart = d?.plannedStartDate ? dayjs(d.plannedStartDate).startOf('day') : null;
+      const acceptedAt = acceptedOffer?.respondedAt ? dayjs(acceptedOffer.respondedAt).startOf('day') : null;
+      const canUsePlannedStart = Boolean(
+        plannedStart !== null &&
+          plannedStart.isValid() &&
+          !plannedStart.isAfter(today, 'day') &&
+          (!acceptedAt || !acceptedAt.isValid() || !plannedStart.isBefore(acceptedAt, 'day'))
+      );
+      form.setFieldsValue({
+        actualStartDate: canUsePlannedStart ? plannedStart : today,
+        position: d?.jobTitle,
+        note: undefined,
+      });
+    }
     setOpen(kind);
   };
 
@@ -668,9 +691,9 @@ export const ApplicationWorkbench: React.FC<{
   if (has('MARK_BACKUP')) btn('backup', 'Đưa vào dự phòng', confirmBackup);
   if (has('REJECT')) btn('reject', 'Loại hồ sơ', () => openModal('reject'), { danger: true, icon: <CloseOutlined /> });
   if (has('REJECT_BACKUP')) btn('rejb', 'Loại dự phòng', () => openModal('rejectBackup'), { danger: true });
-  if (has('CANCEL_INTERVIEW')) btn('cancel', 'Hủy lịch', () => openModal('cancel'), { danger: true });
-  if (has('RECORD_NO_SHOW')) btn('noshow', 'Vắng mặt', () => openModal('noshow'));
-  if (has('UPDATE_INTERVIEW')) btn('editInterview', 'Sửa thông tin lịch', () => openModal('editInterview'), { icon: <EditOutlined /> });
+  if (has('CANCEL_INTERVIEW') && !interviewOverdue) btn('cancel', 'Hủy lịch', () => openModal('cancel'), { danger: true });
+  if (has('RECORD_NO_SHOW') && interviewOverdue) btn('noshow', 'Vắng mặt', () => openModal('noshow'), { danger: true });
+  if (has('UPDATE_INTERVIEW') && !interviewOverdue) btn('editInterview', 'Sửa thông tin lịch', () => openModal('editInterview'), { icon: <EditOutlined /> });
   if (has('RESCHEDULE_INTERVIEW')) btn('resched', 'Dời lịch', () => openModal('reschedule'));
   if (has('WITHDRAW_OFFER')) btn('withdraw', 'Thu hồi offer', () => openModal('withdraw'), { danger: true });
   if (has('MARK_NOT_STARTED')) btn('nostart', 'Không nhận việc', () => openModal('notStarted'), { danger: true });
@@ -902,12 +925,26 @@ export const ApplicationWorkbench: React.FC<{
               <div className="space-y-3 text-sm">
                 {d.interviews.map((i) => {
                   const s = pick(INTERVIEW_STATUS, i.status);
+                  const overdue = isInterviewOverdue(i);
                   return (
                     <div key={i.interviewId} className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 transition-all hover:border-slate-300">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="font-bold text-slate-900">Phỏng vấn vòng {i.interviewRound}</span>
-                        <StatusDot tone={s.tone}>{s.label}</StatusDot>
+                        {overdue ? (
+                          <StatusDot tone="warning">Quá giờ · Chờ cập nhật</StatusDot>
+                        ) : (
+                          <StatusDot tone={s.tone}>{s.label}</StatusDot>
+                        )}
                       </div>
+                      {overdue && (
+                        <Alert
+                          className="mt-3"
+                          type="warning"
+                          showIcon
+                          message="Buổi phỏng vấn đã quá giờ"
+                          description="Hãy ghi kết quả, đánh dấu vắng mặt hoặc dời sang lịch mới."
+                        />
+                      )}
                       <div className="mt-1 text-[13px] text-slate-600">
                         {fmt(i.scheduledAt)} · {i.durationMinutes ?? '—'} phút · {i.interviewType ?? '—'}
                         {i.location ? ` · ${i.location}` : ''}
@@ -1576,6 +1613,16 @@ export const ApplicationWorkbench: React.FC<{
                   description="Nếu suất thay thế còn hiệu lực, xác nhận này sẽ dùng suất đó và khởi động lại thời hạn bảo hành."
                 />
               )}
+              <div className="mb-4 grid gap-3 rounded-lg bg-slate-50 p-3 text-sm sm:grid-cols-2">
+                <div>
+                  <div className="text-slate-500">Ứng viên chấp nhận Offer</div>
+                  <div className="font-medium text-slate-900">{fmt(acceptedOffer?.respondedAt, 'DD/MM/YYYY HH:mm')}</div>
+                </div>
+                <div>
+                  <div className="text-slate-500">Ngày nhận việc dự kiến</div>
+                  <div className="font-medium text-slate-900">{fmt(d?.plannedStartDate, 'DD/MM/YYYY')}</div>
+                </div>
+              </div>
               <Form.Item name="actualStartDate" label="Ngày thực tế đi làm" rules={[{ required: true, message: 'Chọn ngày.' }]}>
                 <DatePicker
                   format="DD/MM/YYYY"
@@ -1586,6 +1633,16 @@ export const ApplicationWorkbench: React.FC<{
                   className="w-full"
                 />
               </Form.Item>
+              <Alert
+                className="mb-4"
+                type={actualStartDiffersFromPlan ? 'warning' : 'info'}
+                showIcon
+                message={
+                  actualStartDiffersFromPlan
+                    ? 'Ngày thực tế khác ngày dự kiến — cần ghi rõ lý do.'
+                    : 'Bảo hành và hạn thanh toán sẽ được tính từ ngày thực tế đi làm.'
+                }
+              />
               <div className="grid gap-x-4 sm:grid-cols-2">
                 <Form.Item name="position" label="Vị trí" rules={[{ max: 150, message: 'Tối đa 150 ký tự.' }]}>
                   <Input />
@@ -1594,7 +1651,15 @@ export const ApplicationWorkbench: React.FC<{
                   <Input />
                 </Form.Item>
               </div>
-              <Form.Item name="note" label="Ghi chú (không bắt buộc)">
+              <Form.Item
+                name="note"
+                label={actualStartDiffersFromPlan ? 'Lý do ngày thực tế khác ngày dự kiến' : 'Ghi chú (không bắt buộc)'}
+                rules={
+                  actualStartDiffersFromPlan
+                    ? [{ required: true, whitespace: true, message: 'Nhập lý do ngày thực tế khác ngày dự kiến.' }]
+                    : undefined
+                }
+              >
                 <Input.TextArea rows={2} maxLength={1000} />
               </Form.Item>
             </>
