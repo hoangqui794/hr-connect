@@ -193,4 +193,12 @@ describe('ClientBillingPage', () => {
     expect(vnPayApi.createPayment).toHaveBeenCalledWith('SERVICE_FEE', 'hh');
     vi.unstubAllGlobals();
   }, 15000);
+
+  it('orders billing columns as Tin tuyển dụng, Dịch vụ, Khoản phí, Số tiền, Hạn thanh toán, Trạng thái, Thao tác', async () => {
+    renderPage();
+    await screen.findByText('Backend .NET');
+
+    const headers = screen.getAllByRole('columnheader').map((h) => h.textContent?.trim());
+    expect(headers).toEqual(['Tin tuyển dụng', 'Dịch vụ', 'Khoản phí', 'Số tiền', 'Hạn thanh toán', 'Trạng thái', 'Thao tác']);
+  });
 });

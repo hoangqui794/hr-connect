@@ -189,6 +189,13 @@ public class FinanceRepository : IFinanceRepository
             .OrderBy(fee => fee.CreatedAt)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<ServiceFee>> GetJobServiceFeesAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default) =>
+        jobIds.Count == 0
+            ? Array.Empty<ServiceFee>()
+            : await _context.ServiceFees.AsNoTracking()
+                .Where(fee => fee.JobId.HasValue && jobIds.Contains(fee.JobId.Value))
+                .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<Guid>> GetSourcingJobIdsAwaitingDepositAsync(int take, CancellationToken cancellationToken = default) =>
         await _context.Jobs.AsNoTracking()
             .Where(j => j.ServiceType.Code == ServiceTypeCvSourcing

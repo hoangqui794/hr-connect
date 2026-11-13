@@ -132,6 +132,19 @@ public sealed class FinanceQueryHandlers :
     {
         var (page, pageSize) = Normalize(request.Page, request.PageSize);
         var (items, total) = await _financeRepository.GetCommissionsAsync(request.AffiliateUserId, Upper(request.Status), page, pageSize, cancellationToken);
+        // CV_SOURCING commissions link to a job's Deposit/Settlement/Credit fees instead of a single Placement.ServiceFee.
+        var sourcingJobIds = items
+            .Where(c => c.PlacementId == null && c.SourcingDelivery != null)
+            .Select(c => c.SourcingDelivery!.JobId)
+            .Distinct()
+            .ToList();
+        var sourcingFeeStatusByJob = sourcingJobIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : (await _financeRepository.GetJobServiceFeesAsync(sourcingJobIds, cancellationToken))
+                .Where(f => f.JobId.HasValue)
+                .GroupBy(f => f.JobId!.Value)
+                .ToDictionary(g => g.Key, g => ResolveSourcingFeeStatus(g));
+
         // An Affiliate sees its own commission but never the Client's fee: BaseAmount is the service fee
         // (percent rules) or the Client's price per CV (CV_SOURCING), so it is only returned to platform roles.
         var hideClientFee = request.AffiliateUserId.HasValue;
@@ -140,7 +153,8 @@ public sealed class FinanceQueryHandlers :
             c.Placement?.Application?.Job?.Title ?? c.SourcingDelivery?.Job?.Title,
             c.Placement?.Application?.Candidate?.FullName ?? c.SourcingDelivery?.Application?.Candidate?.FullName,
             c.Amount, hideClientFee ? null : c.BaseAmount, c.Status, c.MilestoneType,
-            c.Placement?.Warranty?.EndDate, c.Placement?.Warranty?.Status, c.Placement?.ServiceFee?.Status,
+            c.Placement?.Warranty?.EndDate, c.Placement?.Warranty?.Status,
+            c.Placement?.ServiceFee?.Status ?? (c.SourcingDelivery?.JobId is { } sJobId ? sourcingFeeStatusByJob.GetValueOrDefault(sJobId, ServiceFeeStates.Pending) : null),
             c.ApprovedAt, c.CreatedAt,
             request.IncludeBankDetails && c.Attribution.Affiliate is { } affiliate
                 ? new AffiliateBankDto(affiliate.BankName, affiliate.BankAccountNumber, affiliate.BankAccountHolder, affiliate.BankBranch)
@@ -148,6 +162,21 @@ public sealed class FinanceQueryHandlers :
             c.SourcingDeliveryId,
             // Lets the Affiliate refer a replacement to the same job when the warranty was voided.
             c.Placement?.Application?.JobId ?? c.SourcingDelivery?.JobId)).ToList(), total, page, pageSize);
+    }
+
+    private static string ResolveSourcingFeeStatus(IEnumerable<ServiceFee> fees)
+    {
+        var list = fees as IReadOnlyCollection<ServiceFee> ?? fees.ToList();
+        if (list.Any(f => f.Kind is ServiceFeeKinds.Deposit or ServiceFeeKinds.Settlement && f.Status == ServiceFeeStates.Overdue))
+        {
+            return ServiceFeeStates.Overdue;
+        }
+
+        var hasClosing = list.Any(f => ServiceFeeKinds.Closing.Contains(f.Kind));
+        var allCollectiblesPaid = list
+            .Where(f => f.Kind is ServiceFeeKinds.Deposit or ServiceFeeKinds.Settlement)
+            .All(f => f.Status == ServiceFeeStates.Paid);
+        return hasClosing && allCollectiblesPaid ? ServiceFeeStates.Paid : ServiceFeeStates.Pending;
     }
 
     public async Task<PagedResult<PayoutDto>> Handle(GetPayoutsQuery request, CancellationToken cancellationToken)
