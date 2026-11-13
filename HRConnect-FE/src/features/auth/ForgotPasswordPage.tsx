@@ -6,7 +6,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { EyeInvisibleOutlined, EyeOutlined } from '@ant-design/icons';
+import { CheckCircleFilled, EyeInvisibleOutlined, EyeOutlined } from '@ant-design/icons';
 import { BrandMark } from '@/components/common/BrandMark';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import { authService } from '@/services/authService';
@@ -133,18 +133,76 @@ export const ForgotPasswordPage: React.FC = () => {
   const backLink = <Link to={backToLogin} state={loginState} className={`text-center text-[13px] ${LINK}`}>Quay lại đăng nhập</Link>;
 
   return (
-    <div className={`${FONT} min-h-screen bg-[#F4F7FA] text-sm text-slate-900 antialiased [line-height:normal]`}>
-      <header className="bg-[#08253C] text-white">
-        <div className="mx-auto flex h-16 max-w-[1248px] items-center px-6">
-          <Link to="/" className="flex items-center gap-2.5 text-[18px] font-bold text-white no-underline transition-opacity hover:opacity-90">
-            <BrandMark size={32} tone="light" className="block" /> HR Connect
+    <div className={`${FONT} flex min-h-screen w-full bg-white text-sm text-slate-900 antialiased [line-height:normal] max-lg:flex-col`}>
+      {/* Left Hero Panel — Midnight Ocean */}
+      <aside className="relative flex flex-col justify-between overflow-hidden bg-[#08253C] p-8 text-white max-lg:hidden lg:sticky lg:top-0 lg:h-screen lg:w-[41%] xl:w-[39%] lg:p-11 xl:p-14 shrink-0">
+        <div
+          className="absolute inset-0 bg-gradient-to-b from-[#08253C] via-[#071F33] to-[#051523]"
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute -top-24 -right-24 h-80 w-80 rounded-full bg-[#0EA5E9]/15 blur-3xl"
+          aria-hidden="true"
+        />
+
+        <div className="relative z-10">
+          <Link to="/" className="inline-flex items-center gap-3 text-xl font-bold tracking-tight text-white no-underline transition-opacity hover:opacity-90">
+            <BrandMark size={38} tone="light" className="shadow-sm" />
+            <span className="font-extrabold tracking-tight">HR Connect</span>
           </Link>
         </div>
-      </header>
-      <main className="mx-auto flex max-w-[1048px] justify-center px-4 py-12 sm:px-6">
-        <section aria-labelledby="forgot" className="w-full max-w-[488px] rounded-2xl border border-solid border-[#DCE3EC] bg-white p-6 shadow-[0_1px_2px_rgba(8,37,60,0.05),0_16px_36px_-12px_rgba(8,37,60,0.09)] sm:p-8">
+
+        <div className="relative z-10 my-auto py-8">
+          <span className="inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1 text-xs font-semibold tracking-wide text-sky-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-sky-300" aria-hidden="true" />
+            Bảo mật tài khoản 2 lớp
+          </span>
+          <h2 className="mt-4 text-3xl font-extrabold leading-[1.22] tracking-tight text-white xl:text-[34px]">
+            Khôi phục quyền truy cập nhanh chóng &amp; an toàn
+          </h2>
+          <p className="mt-3.5 max-w-md text-[15px] font-normal leading-relaxed text-slate-200/85">
+            Xác thực danh tính qua mã OTP 6 chữ số gửi trực tiếp tới email đã đăng ký để thiết lập lại mật khẩu mới.
+          </p>
+
+          <div className="mt-8 max-w-md space-y-3">
+            <div className="rounded-xl border border-white/12 bg-white/[0.06] p-4 backdrop-blur-sm">
+              <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-white">
+                <CheckCircleFilled aria-hidden="true" className="text-xs text-sky-300" />
+                <span>Bước 1 — Xác minh địa chỉ email</span>
+              </div>
+              <p className="mb-0 text-xs leading-relaxed text-slate-200/80">
+                Nhập email chính hoặc email phụ đã liên kết để nhận mã OTP có hiệu lực trong vài phút.
+              </p>
+            </div>
+            <div className="rounded-xl border border-white/12 bg-white/[0.06] p-4 backdrop-blur-sm">
+              <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-white">
+                <CheckCircleFilled aria-hidden="true" className="text-xs text-sky-300" />
+                <span>Bước 2 — Thiết lập mật khẩu mới</span>
+              </div>
+              <p className="mb-0 text-xs leading-relaxed text-slate-200/80">
+                Mật khẩu mới được mã hóa an toàn và tự động đồng bộ ngay trên toàn hệ thống.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative z-10 flex items-center justify-between border-t border-white/10 pt-5 text-xs text-slate-300/75">
+          <span>© {new Date().getFullYear()} HR Connect Vietnam</span>
+          <span>Khôi phục bảo mật</span>
+        </div>
+      </aside>
+
+      {/* Right White Canvas */}
+      <main className="flex min-h-screen flex-1 items-center justify-center bg-white px-6 py-10 sm:px-10 lg:px-14 xl:px-20">
+        <section aria-labelledby="forgot" className="w-full max-w-[420px]">
+          <div className="mb-6 flex items-center justify-between lg:hidden">
+            <Link to="/" className="inline-flex items-center gap-2 no-underline">
+              <BrandMark size={32} tone="dark" />
+              <span className="text-lg font-bold text-slate-900">HR Connect</span>
+            </Link>
+          </div>
           <p className="mb-1 text-xs font-semibold text-[#0369A1]">Khôi phục truy cập</p>
-          <h1 id="forgot" className="m-0 text-[22px] font-extrabold tracking-tight text-slate-900">Đặt lại mật khẩu</h1>
+          <h1 id="forgot" className="m-0 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-[26px]">Đặt lại mật khẩu</h1>
 
           {step === 'EMAIL' ? (
             <>

@@ -131,11 +131,11 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: 'Quên mật khẩu?' }));
 
     expect(screen.queryByTestId('probe')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Quên mật khẩu' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Quên mật khẩu' })).toBeInTheDocument();
     expect(screen.getByLabelText('Email tài khoản')).toHaveValue('an@example.com');
 
     await user.click(screen.getByRole('button', { name: 'Quay lại đăng nhập' }));
-    expect(screen.getByRole('heading', { name: 'Chào mừng trở lại' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Chào mừng trở lại' })).toBeInTheDocument();
   });
 
   it('completes inline forgot password reset and returns to login with confirmation', async () => {
@@ -146,12 +146,12 @@ describe('LoginPage', () => {
     renderPage();
     await user.type(screen.getByLabelText('Email'), 'an@example.com');
     await user.click(screen.getByRole('button', { name: 'Quên mật khẩu?' }));
-    await user.click(screen.getByRole('button', { name: 'Gửi mã khôi phục' }));
+    await user.click(await screen.findByRole('button', { name: 'Gửi mã khôi phục' }));
 
     await waitFor(() => {
       expect(forgotSpy).toHaveBeenCalledWith('an@example.com');
     });
-    expect(screen.getByRole('heading', { name: 'Đặt lại mật khẩu' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Đặt lại mật khẩu' })).toBeInTheDocument();
 
     await user.type(screen.getByLabelText('Mã OTP (6 chữ số)'), '123456');
     await user.type(screen.getByLabelText('Mật khẩu mới'), 'StrongPass1!');
@@ -167,9 +167,7 @@ describe('LoginPage', () => {
       });
     });
 
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Chào mừng trở lại' })).toBeInTheDocument();
-    });
+    expect(await screen.findByRole('heading', { name: 'Chào mừng trở lại' })).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('Đã đặt lại mật khẩu thành công');
   });
 

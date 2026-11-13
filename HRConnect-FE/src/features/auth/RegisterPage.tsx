@@ -55,22 +55,22 @@ const ROLES: RoleOption[] = [
     role: UserRole.CANDIDATE,
     title: 'Người tìm việc',
     badge: 'Ứng viên',
-    hint: 'Tìm việc làm, nhận phỏng vấn và tạo CV AI',
-    icon: <UserOutlined className="text-lg" />,
+    hint: 'Tìm việc làm & tạo CV AI',
+    icon: <UserOutlined className="text-base" />,
   },
   {
     role: UserRole.CLIENT,
     title: 'Nhà tuyển dụng',
     badge: 'Doanh nghiệp',
-    hint: 'Đăng tin tuyển dụng, tiếp cận kho hồ sơ chất lượng',
-    icon: <BankOutlined className="text-lg" />,
+    hint: 'Đăng tin & tuyển nhân sự',
+    icon: <BankOutlined className="text-base" />,
   },
   {
     role: UserRole.AFFILIATE,
     title: 'Cộng tác viên',
     badge: 'Đối tác CTV',
-    hint: 'Giới thiệu ứng viên, nhận hoa hồng bảo hộ độc quyền',
-    icon: <TeamOutlined className="text-lg" />,
+    hint: 'Giới thiệu & nhận hoa hồng',
+    icon: <TeamOutlined className="text-base" />,
   },
 ];
 
@@ -224,12 +224,14 @@ const TextField: React.FC<{
 
 export interface RegisterFormPanelProps {
   initialEmail?: string;
+  embedded?: boolean;
   onSwitchToLogin?: (prefillEmail?: string) => void;
   onRoleChange?: (role: RegisterableRole) => void;
 }
 
 export const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({
   initialEmail,
+  embedded = false,
   onSwitchToLogin,
   onRoleChange,
 }) => {
@@ -488,29 +490,31 @@ export const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({
                   Chọn nhóm vai trò phù hợp để bắt đầu trải nghiệm hệ sinh thái HR Connect.
                 </p>
               </div>
-              {onSwitchToLogin ? (
-                <button
-                  type="button"
-                  onClick={() => onSwitchToLogin(values.email.trim() || undefined)}
-                  className="hidden sm:inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-[#DCE3EC] bg-[#F8FAFC] px-3.5 py-2 text-xs font-semibold text-[#0369A1] transition-colors duration-150 hover:border-[#0369A1]/40 hover:bg-[#EEF6FB] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1]"
-                >
-                  <ArrowLeftOutlined aria-hidden="true" className="text-[11px]" />
-                  <span>Đăng nhập</span>
-                </button>
-              ) : (
-                <Link
-                  to="/login"
-                  className="hidden sm:inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#DCE3EC] bg-[#F8FAFC] px-3.5 py-2 text-xs font-semibold text-[#0369A1] no-underline transition-colors duration-150 hover:border-[#0369A1]/40 hover:bg-[#EEF6FB] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1]"
-                >
-                  <span>Đăng nhập</span>
-                  <ArrowRightOutlined aria-hidden="true" className="text-[11px]" />
-                </Link>
+              {!embedded && (
+                onSwitchToLogin ? (
+                  <button
+                    type="button"
+                    onClick={() => onSwitchToLogin(values.email.trim() || undefined)}
+                    className="hidden sm:inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-[#DCE3EC] bg-[#F8FAFC] px-3.5 py-2 text-xs font-semibold text-[#0369A1] transition-colors duration-150 hover:border-[#0369A1]/40 hover:bg-[#EEF6FB] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1]"
+                  >
+                    <ArrowLeftOutlined aria-hidden="true" className="text-[11px]" />
+                    <span>Đăng nhập</span>
+                  </button>
+                ) : (
+                  <Link
+                    to="/login"
+                    className="hidden sm:inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#DCE3EC] bg-[#F8FAFC] px-3.5 py-2 text-xs font-semibold text-[#0369A1] no-underline transition-colors duration-150 hover:border-[#0369A1]/40 hover:bg-[#EEF6FB] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1]"
+                  >
+                    <span>Đăng nhập</span>
+                    <ArrowRightOutlined aria-hidden="true" className="text-[11px]" />
+                  </Link>
+                )
               )}
             </div>
           </div>
 
-          {/* 3-Card Role Selector — Unified Brand Cobalt */}
-          <fieldset className="mt-6 mb-2 grid min-w-0 grid-cols-1 gap-3 border-0 p-0 sm:grid-cols-3">
+          {/* 3-Card Role Selector — Clean SaaS Cards */}
+          <fieldset className="mt-5 mb-2 grid min-w-0 grid-cols-1 gap-2.5 border-0 p-0 sm:grid-cols-3">
             <legend className="sr-only">Loại tài khoản</legend>
             {ROLES.map((option) => {
               const selected = role === option.role;
@@ -518,9 +522,9 @@ export const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({
               return (
                 <label
                   key={option.role}
-                  className={`group relative flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-[border-color,background-color,box-shadow] duration-150 motion-reduce:transition-none select-none touch-manipulation ${
+                  className={`group relative flex cursor-pointer flex-col justify-between gap-2.5 rounded-xl border p-3.5 transition-[border-color,background-color,box-shadow] duration-150 motion-reduce:transition-none select-none touch-manipulation ${
                     selected
-                      ? 'border-[#0284C7] bg-[#EEF6FB] text-[#08253C] ring-2 ring-[#0369A1]/15'
+                      ? 'border-[#0369A1] bg-[#F0F7FC] text-[#08253C] shadow-[0_0_0_3px_rgba(3,105,161,0.12)]'
                       : 'border-[#DCE3EC] bg-white hover:border-slate-300 hover:bg-slate-50/70'
                   }`}
                 >
@@ -530,27 +534,37 @@ export const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({
                     aria-label={option.title}
                     checked={selected}
                     onChange={() => chooseRole(option.role)}
-                    className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-[#0369A1]"
+                    className="sr-only"
                   />
-                  <div className="flex min-w-0 flex-1 flex-col">
-                    <div className="flex items-center gap-2">
-                      <span
-                        aria-hidden="true"
-                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs transition-colors duration-150 ${
-                          selected
-                            ? 'bg-[#0369A1] text-white'
-                            : 'bg-slate-100 text-slate-600 group-hover:bg-sky-50 group-hover:text-[#0369A1]'
-                        }`}
-                      >
-                        {option.icon}
-                      </span>
-                      <span className="whitespace-nowrap text-[13px] font-bold text-slate-900">
-                        {option.title}
-                      </span>
-                    </div>
-                    <span className="mt-1.5 line-clamp-2 text-[11.5px] leading-snug text-slate-600">
-                      {option.hint}
+                  <div className="flex items-center justify-between gap-2">
+                    <span
+                      aria-hidden="true"
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 ${
+                        selected
+                          ? 'bg-[#0369A1] text-white shadow-sm'
+                          : 'bg-slate-100 text-slate-600 group-hover:bg-sky-50 group-hover:text-[#0369A1]'
+                      }`}
+                    >
+                      {option.icon}
                     </span>
+                    <span
+                      aria-hidden="true"
+                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors duration-150 ${
+                        selected
+                          ? 'border-[#0369A1] bg-[#0369A1]'
+                          : 'border-slate-300 bg-white group-hover:border-slate-400'
+                      }`}
+                    >
+                      {selected && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[13.5px] font-bold leading-snug text-slate-900">
+                      {option.title}
+                    </div>
+                    <div className="mt-0.5 text-[11.5px] leading-snug text-slate-500">
+                      {option.hint}
+                    </div>
                   </div>
                 </label>
               );
@@ -1048,9 +1062,9 @@ export const RegisterPage: React.FC = () => {
         </div>
       </aside>
 
-      {/* ── Right Registration Form Section ────────────────────────────────── */}
-      <main className="flex min-h-screen flex-1 items-center justify-center bg-[#F4F7FA] px-4 py-8 sm:px-6 lg:px-8 xl:px-12">
-        <div className="my-auto w-full max-w-[720px] xl:max-w-[760px] rounded-2xl border border-[#DCE3EC] bg-white p-6 shadow-[0_1px_2px_rgba(8,37,60,0.05),0_16px_36px_-12px_rgba(8,37,60,0.09)] sm:p-9">
+      {/* ── Right Registration Form Section — Full-Height Pure White Canvas ── */}
+      <main className="flex min-h-screen flex-1 items-center justify-center bg-white px-5 py-10 sm:px-10 lg:px-14 xl:px-16">
+        <div className="my-auto w-full max-w-[600px]">
           <RegisterFormPanel onRoleChange={setHeroRole} />
         </div>
       </main>

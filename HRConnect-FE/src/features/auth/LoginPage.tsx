@@ -55,6 +55,66 @@ const strongPassword = (value: string) =>
   value.length >= 8 && /[a-z]/.test(value) && /[A-Z]/.test(value) && /\d/.test(value) && /[^A-Za-z\d]/.test(value);
 
 type AuthPanelMode = 'login' | 'forgot' | 'register';
+type TransitionStage = 'idle' | 'exiting' | 'entering';
+
+const HERO_META: Record<
+  AuthPanelMode,
+  {
+    eyebrow: string;
+    title: string;
+    description: string;
+    cards: { title: string; desc: string }[];
+  }
+> = {
+  login: {
+    eyebrow: 'Hệ sinh thái tuyển dụng tích hợp AI',
+    title: 'Tìm việc, tuyển dụng & kết nối nhân sự thông minh',
+    description:
+      'Nền tảng một điểm chạm kết nối Doanh nghiệp, Ứng viên và Mạng lưới Cộng tác viên tuyển dụng trên toàn quốc.',
+    cards: [
+      {
+        title: 'Doanh nghiệp & Việc làm xác minh',
+        desc: 'Việc làm đang mở từ các công ty đã xác minh',
+      },
+      {
+        title: 'Minh bạch tiến độ tuyển dụng',
+        desc: 'Theo dõi hành trình hồ sơ thời gian thực: từ Sàng lọc AI, Phỏng vấn, Nhận offer đến Đi làm.',
+      },
+    ],
+  },
+  forgot: {
+    eyebrow: 'Bảo mật tài khoản 2 lớp',
+    title: 'Khôi phục quyền truy cập nhanh chóng & an toàn',
+    description:
+      'Xác thực danh tính qua mã OTP 6 chữ số gửi trực tiếp tới email đã đăng ký để thiết lập lại mật khẩu mới.',
+    cards: [
+      {
+        title: 'Bước 1 — Xác minh địa chỉ email',
+        desc: 'Nhập email chính hoặc email phụ đã liên kết để nhận mã OTP có hiệu lực trong vài phút.',
+      },
+      {
+        title: 'Bước 2 — Thiết lập mật khẩu mới',
+        desc: 'Mật khẩu mới được mã hóa an toàn và tự động đồng bộ ngay trên toàn hệ thống.',
+      },
+    ],
+  },
+  register: {
+    eyebrow: 'Gia nhập mạng lưới HR Connect',
+    title: 'Khởi tạo tài khoản phù hợp với vai trò của bạn',
+    description:
+      'Dù bạn là ứng viên tìm kiếm cơ hội, doanh nghiệp tuyển dụng hay cộng tác viên giới thiệu nhân sự, mọi công cụ đều sẵn sàng.',
+    cards: [
+      {
+        title: 'Kích hoạt nhanh qua OTP',
+        desc: 'Chỉ mất chưa đầy 1 phút để xác thực email và mở khóa không gian làm việc riêng.',
+      },
+      {
+        title: 'Quyền lợi & bảo mật rõ ràng',
+        desc: 'Hồ sơ ứng viên, tin tuyển dụng và hoa hồng cộng tác viên được bảo vệ minh bạch.',
+      },
+    ],
+  },
+};
 
 export const LoginPage: React.FC = () => {
   const { message } = App.useApp();
@@ -71,9 +131,10 @@ export const LoginPage: React.FC = () => {
   const [inlinePasswordResetSuccess, setInlinePasswordResetSuccess] = useState(false);
 
   const [panelMode, setPanelMode] = useState<AuthPanelMode>('login');
-  const [exitingPanel, setExitingPanel] = useState<AuthPanelMode | null>(null);
+  const [transitionStage, setTransitionStage] = useState<TransitionStage>('idle');
   const [slideDirection, setSlideDirection] = useState<'forward' | 'backward'>('forward');
-  const transitionTimerRef = useRef<number | null>(null);
+  const exitTimerRef = useRef<number | null>(null);
+  const enterTimerRef = useRef<number | null>(null);
 
   // Inline Forgot Password state
   const [forgotStep, setForgotStep] = useState<'EMAIL' | 'RESET'>('EMAIL');
@@ -97,24 +158,29 @@ export const LoginPage: React.FC = () => {
 
   useEffect(() => {
     return () => {
-      if (transitionTimerRef.current) {
-        window.clearTimeout(transitionTimerRef.current);
-      }
+      if (exitTimerRef.current) window.clearTimeout(exitTimerRef.current);
+      if (enterTimerRef.current) window.clearTimeout(enterTimerRef.current);
     };
   }, []);
 
   const switchPanel = (target: AuthPanelMode, direction: 'forward' | 'backward') => {
-    if (target === panelMode) return;
-    if (transitionTimerRef.current) {
-      window.clearTimeout(transitionTimerRef.current);
-    }
+    if (target === panelMode && transitionStage === 'idle') return;
+    if (exitTimerRef.current) window.clearTimeout(exitTimerRef.current);
+    if (enterTimerRef.current) window.clearTimeout(enterTimerRef.current);
+
     setSlideDirection(direction);
-    setExitingPanel(panelMode);
-    setPanelMode(target);
-    transitionTimerRef.current = window.setTimeout(() => {
-      setExitingPanel(null);
-      transitionTimerRef.current = null;
-    }, 420);
+    setTransitionStage('exiting');
+
+    exitTimerRef.current = window.setTimeout(() => {
+      setPanelMode(target);
+      setTransitionStage('entering');
+      exitTimerRef.current = null;
+
+      enterTimerRef.current = window.setTimeout(() => {
+        setTransitionStage('idle');
+        enterTimerRef.current = null;
+      }, 320);
+    }, 140);
   };
 
   useEffect(() => {
@@ -520,14 +586,21 @@ export const LoginPage: React.FC = () => {
   const renderForgotPanel = () => (
     <>
       <div className="text-left">
-        <button
-          type="button"
-          onClick={() => switchBackToLogin()}
-          className="mb-4 inline-flex min-h-[28px] touch-manipulation cursor-pointer items-center gap-1.5 rounded border-0 bg-transparent p-0 text-xs font-semibold text-[#0369A1] transition-colors duration-150 hover:text-[#075985] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1]"
-        >
-          <ArrowLeftOutlined aria-hidden="true" className="text-[11px]" />
-          <span>Quay lại đăng nhập</span>
-        </button>
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => switchBackToLogin()}
+            className="inline-flex min-h-[28px] touch-manipulation cursor-pointer items-center gap-1.5 rounded border-0 bg-transparent p-0 text-xs font-semibold text-[#0369A1] transition-colors duration-150 hover:text-[#075985] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1]"
+          >
+            <ArrowLeftOutlined aria-hidden="true" className="text-[11px]" />
+            <span>Quay lại đăng nhập</span>
+          </button>
+
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-[#DCE3EC] bg-[#F8FAFC] px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#0369A1]" aria-hidden="true" />
+            <span>{forgotStep === 'EMAIL' ? 'Bước 1/2' : 'Bước 2/2'}</span>
+          </div>
+        </div>
 
         <p className="mb-1.5 text-xs font-semibold text-[#0369A1]">
           Khôi phục quyền truy cập
@@ -773,43 +846,59 @@ export const LoginPage: React.FC = () => {
     );
   };
 
+  const hero = HERO_META[panelMode];
+  const stageAnimation =
+    transitionStage === 'exiting'
+      ? `${slideDirection === 'forward' ? 'authExitLeft' : 'authExitRight'} 140ms cubic-bezier(0.4, 0, 1, 1) forwards`
+      : transitionStage === 'entering'
+        ? `${slideDirection === 'forward' ? 'authEnterFromRight' : 'authEnterFromLeft'} 320ms cubic-bezier(0.22, 1, 0.36, 1) both`
+        : undefined;
+
   return (
-    <div className="flex min-h-screen w-full bg-[#F4F7FA] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-slate-900 antialiased max-lg:flex-col">
+    <div className="flex min-h-screen w-full bg-white font-['Be_Vietnam_Pro',system-ui,sans-serif] text-slate-900 antialiased max-lg:flex-col">
       <style>{`
-        @keyframes authSlideInFromRight {
-          0% { opacity: 0.92; transform: translate3d(100%, 0, 0); }
+        @keyframes authExitLeft {
+          0% { opacity: 1; transform: translate3d(0, 0, 0); }
+          100% { opacity: 0; transform: translate3d(-28px, 0, 0); }
+        }
+        @keyframes authExitRight {
+          0% { opacity: 1; transform: translate3d(0, 0, 0); }
+          100% { opacity: 0; transform: translate3d(28px, 0, 0); }
+        }
+        @keyframes authEnterFromRight {
+          0% { opacity: 0; transform: translate3d(40px, 0, 0); }
           100% { opacity: 1; transform: translate3d(0, 0, 0); }
         }
-        @keyframes authSlideInFromLeft {
-          0% { opacity: 0.35; transform: translate3d(-24%, 0, 0) scale(0.96); }
-          100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+        @keyframes authEnterFromLeft {
+          0% { opacity: 0; transform: translate3d(-40px, 0, 0); }
+          100% { opacity: 1; transform: translate3d(0, 0, 0); }
         }
-        @keyframes authSlideOutToLeft {
-          0% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
-          100% { opacity: 0; transform: translate3d(-28%, 0, 0) scale(0.96); }
-        }
-        @keyframes authSlideOutToRight {
-          0% { opacity: 1; transform: translate3d(0, 0, 0); }
-          100% { opacity: 0.85; transform: translate3d(100%, 0, 0); }
+        @keyframes authHeroSwap {
+          0% { opacity: 0; transform: translate3d(0, 8px, 0); }
+          100% { opacity: 1; transform: translate3d(0, 0, 0); }
         }
         @media (prefers-reduced-motion: reduce) {
-          .auth-slide-panel { animation: none !important; }
+          .auth-motion-stage, .auth-hero-stage { animation: none !important; }
         }
       `}</style>
-      {/* BRANDING HERO PANEL (Left) — Midnight Ocean Palette */}
-      <aside className="relative flex flex-col justify-between overflow-hidden bg-[#08253C] p-8 text-white max-lg:min-h-[220px] max-lg:p-6 lg:sticky lg:top-0 lg:h-screen lg:w-[46%] xl:w-[45%] lg:p-12 xl:p-16 shrink-0">
+      {/* BRANDING HERO PANEL (Left) — Midnight Ocean Editorial Canvas */}
+      <aside className="relative flex flex-col justify-between overflow-hidden bg-[#08253C] p-8 text-white max-lg:hidden lg:sticky lg:top-0 lg:h-screen lg:w-[41%] xl:w-[39%] lg:p-11 xl:p-14 shrink-0">
         {/* Background photo */}
         <img
           src={LOGIN_HERO_IMAGE}
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-cover object-center opacity-35"
+          className="absolute inset-0 h-full w-full object-cover object-center opacity-25"
           loading="eager"
           decoding="async"
         />
-        {/* Layered Midnight Ocean gradient overlay */}
+        {/* Layered Midnight Ocean gradient + subtle sky glow */}
         <div
-          className="absolute inset-0 bg-gradient-to-t from-[#061A2B]/98 via-[#08253C]/85 to-[#0C4A6E]/70"
+          className="absolute inset-0 bg-gradient-to-b from-[#08253C]/85 via-[#071F33]/92 to-[#051523]/98"
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute -top-24 -right-24 h-80 w-80 rounded-full bg-[#0EA5E9]/15 blur-3xl"
           aria-hidden="true"
         />
 
@@ -824,89 +913,64 @@ export const LoginPage: React.FC = () => {
           </Link>
         </div>
 
-        {/* Hero value propositions */}
-        <div className="relative z-10 my-auto py-8 max-lg:hidden">
-          <p className="m-0 text-xs font-semibold tracking-wide text-sky-300">
-            Hệ sinh thái tuyển dụng tích hợp AI
-          </p>
+        {/* Dynamic Hero Content */}
+        <div
+          key={`hero-${panelMode}`}
+          className="auth-hero-stage relative z-10 my-auto py-8"
+          style={{ animation: 'authHeroSwap 280ms cubic-bezier(0.22, 1, 0.36, 1) both' }}
+        >
+          <span className="inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1 text-xs font-semibold tracking-wide text-sky-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-sky-300" aria-hidden="true" />
+            {hero.eyebrow}
+          </span>
 
-          <h2 className="mt-3 text-3xl font-extrabold leading-[1.22] tracking-tight text-white xl:text-[36px]">
-            Tìm việc, tuyển dụng &amp; kết nối nhân sự thông minh
+          <h2 className="mt-4 text-3xl font-extrabold leading-[1.22] tracking-tight text-white xl:text-[34px]">
+            {hero.title}
           </h2>
-          <p className="mt-4 max-w-md text-[15px] font-normal leading-relaxed text-slate-200/90">
-            Nền tảng một điểm chạm kết nối Doanh nghiệp, Ứng viên và Mạng lưới Headhunter Affiliate trên toàn quốc.
+          <p className="mt-3.5 max-w-md text-[15px] font-normal leading-relaxed text-slate-200/85">
+            {hero.description}
           </p>
 
           <div className="mt-8 max-w-md space-y-3">
-            <div className="rounded-xl border border-white/12 bg-white/[0.07] p-4 backdrop-blur-sm">
-              <h4 className="mb-1 text-sm font-semibold text-white">Doanh nghiệp &amp; Việc làm xác minh</h4>
-              <p className="mb-0 text-xs leading-relaxed text-slate-200/85">
-                {openJobs > 0 ? `${openJobs.toLocaleString('vi-VN')} việc làm đang mở từ các công ty đã xác minh` : 'Việc làm đang mở từ các công ty đã xác minh'}
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-white/12 bg-white/[0.07] p-4 backdrop-blur-sm">
-              <h4 className="mb-1 text-sm font-semibold text-white">Minh bạch tiến độ tuyển dụng</h4>
-              <p className="mb-0 text-xs leading-relaxed text-slate-200/85">
-                Theo dõi hành trình hồ sơ thời gian thực: từ Sàng lọc AI, Phỏng vấn, Nhận offer đến Đi làm.
-              </p>
-            </div>
+            {hero.cards.map((card, index) => (
+              <div
+                key={card.title}
+                className="rounded-xl border border-white/12 bg-white/[0.06] p-4 backdrop-blur-sm"
+              >
+                <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-white">
+                  <CheckCircleFilled aria-hidden="true" className="text-xs text-sky-300" />
+                  <span>{card.title}</span>
+                </div>
+                <p className="mb-0 text-xs leading-relaxed text-slate-200/80">
+                  {panelMode === 'login' && index === 0 && openJobs > 0
+                    ? `${openJobs.toLocaleString('vi-VN')} việc làm đang mở từ các công ty đã xác minh`
+                    : card.desc}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
 
         {/* Footer info */}
-        <div className="relative z-10 flex items-center justify-between border-t border-white/10 pt-5 text-xs text-slate-300/80 max-lg:hidden">
+        <div className="relative z-10 flex items-center justify-between border-t border-white/10 pt-5 text-xs text-slate-300/75">
           <span>© {new Date().getFullYear()} HR Connect Vietnam</span>
-          <span className="text-slate-300/70">Kết nối đúng người, đúng cơ hội</span>
+          <span>Kết nối đúng người, đúng cơ hội</span>
         </div>
       </aside>
 
-      {/* LOGIN FORM SECTION (Right) — Porcelain Mist Canvas & Pure White Surface */}
-      <main className="flex flex-1 items-center justify-center bg-[#F4F7FA] px-5 py-10 sm:px-10 lg:px-14 xl:px-20">
+      {/* FORM CANVAS SECTION (Right) — Full-Height Pure White Surface */}
+      <main className="flex min-h-screen flex-1 items-center justify-center bg-white px-6 py-10 sm:px-10 lg:px-14 xl:px-20">
         <div
-          className={`w-full overflow-hidden rounded-2xl border border-[#DCE3EC] bg-white p-7 shadow-[0_1px_2px_rgba(8,37,60,0.05),0_16px_36px_-12px_rgba(8,37,60,0.09)] transition-[max-width] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none sm:p-9 ${
-            panelMode === 'register' ? 'max-w-[720px] xl:max-w-[760px]' : 'max-w-[440px]'
+          className={`w-full overflow-x-clip transition-[max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
+            panelMode === 'register' ? 'max-w-[600px]' : 'max-w-[420px]'
           }`}
         >
-          <div className="relative overflow-hidden">
-            {exitingPanel && (
-              <div
-                key={`exit-${exitingPanel}`}
-                aria-hidden="true"
-                className={`auth-slide-panel pointer-events-none absolute inset-x-0 top-0 min-h-full bg-white ${
-                  slideDirection === 'forward' ? 'z-10' : 'z-20'
-                }`}
-                style={{
-                  willChange: 'transform, opacity',
-                  animation: `${
-                    slideDirection === 'forward'
-                      ? 'authSlideOutToLeft 260ms cubic-bezier(0.32, 0.72, 0, 1)'
-                      : 'authSlideOutToRight 380ms cubic-bezier(0.32, 0.72, 0, 1)'
-                  } both`,
-                }}
-              >
-                {renderPanelContent(exitingPanel)}
-              </div>
-            )}
-
-            <div
-              key={`active-${panelMode}`}
-              className={`auth-slide-panel relative bg-white ${
-                slideDirection === 'forward' ? 'z-20' : 'z-10'
-              }`}
-              style={
-                exitingPanel
-                  ? {
-                      willChange: 'transform, opacity',
-                      animation: `${
-                        slideDirection === 'forward' ? 'authSlideInFromRight' : 'authSlideInFromLeft'
-                      } 420ms cubic-bezier(0.22, 1, 0.36, 1) both`,
-                    }
-                  : undefined
-              }
-            >
-              {renderPanelContent(panelMode)}
-            </div>
+          <div
+            key={`panel-${panelMode}`}
+            className="auth-motion-stage w-full"
+            style={stageAnimation ? { willChange: 'transform, opacity', animation: stageAnimation } : undefined}
+          >
+            {renderPanelContent(panelMode)}
           </div>
         </div>
       </main>
