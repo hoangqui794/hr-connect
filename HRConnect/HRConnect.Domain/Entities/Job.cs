@@ -57,6 +57,18 @@ public partial class Job
     public Guid ConcurrencyToken { get; set; }
 
     public string? StatusReason { get; set; }
+
+    /// <summary>Reason code of the last status change (JobReasonCodes), kept next to the free-text StatusReason.</summary>
+    public string? StatusReasonCode { get; set; }
+
+    /// <summary>When the job last changed status.</summary>
+    public DateTime? StatusChangedAt { get; set; }
+
+    /// <summary>When the Client last sent the job for review (PENDING_REVIEW).</summary>
+    public DateTime? SubmittedAt { get; set; }
+
+    /// <summary>When the Client reported paying the CV_SOURCING deposit; replaces matching "DEPOSIT_SUBMITTED" in StatusReason.</summary>
+    public DateTime? DepositSubmittedAt { get; set; }
  
     /// <summary>
     /// Sourcing Target: Số lượng Qualified CV Client mua (dịch vụ CV_SOURCING).

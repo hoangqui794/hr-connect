@@ -1990,6 +1990,12 @@ public partial class ApplicationDbContext : DbContext
                 .HasComment("Allowed Job states. Exact transition graph is enforced by application service until Business Rule state machine is formally baselined.")
                 .HasColumnName("status");
             entity.Property(e => e.StatusReason).HasColumnName("status_reason");
+            entity.Property(e => e.StatusReasonCode)
+                .HasMaxLength(100)
+                .HasColumnName("status_reason_code");
+            entity.Property(e => e.StatusChangedAt).HasColumnName("status_changed_at");
+            entity.Property(e => e.SubmittedAt).HasColumnName("submitted_at");
+            entity.Property(e => e.DepositSubmittedAt).HasColumnName("deposit_submitted_at");
             entity.Property(e => e.Title)
                 .HasMaxLength(255)
                 .HasColumnName("title");

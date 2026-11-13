@@ -91,6 +91,8 @@ public sealed class JobExpirationWorker : BackgroundService
             job.Status = JobStatuses.Closed;
             job.ClosedAt = now;
             job.StatusReason = "Tin đăng đã hết hạn theo thời hạn gói đăng tin.";
+            job.StatusReasonCode = JobReasonCodes.ClosedExpired;
+            job.StatusChangedAt = now;
             job.UpdatedAt = now;
             job.ConcurrencyToken = Guid.NewGuid();
 
