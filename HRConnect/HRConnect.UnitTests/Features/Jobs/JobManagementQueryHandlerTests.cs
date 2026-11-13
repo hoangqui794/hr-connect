@@ -26,6 +26,34 @@ public class JobManagementQueryHandlerTests
     }
 
     [Fact]
+    public async Task GetMyJobs_ShouldPopulateSourcingCountedForCvSourcingJobs()
+    {
+        var user = Guid.NewGuid();
+        var company = Guid.NewGuid();
+        var sourcingJob = Job(company, "ACTIVE");
+        sourcingJob.ServiceType = new ServiceType { ServiceTypeId = sourcingJob.ServiceTypeId, Code = "CV_SOURCING", Name = "CV Sourcing" };
+        sourcingJob.SourcingTarget = 10;
+        var headhuntJob = Job(company, "ACTIVE");
+        headhuntJob.ServiceType = new ServiceType { ServiceTypeId = headhuntJob.ServiceTypeId, Code = "HEADHUNT_COD", Name = "Headhunt" };
+
+        var sourcingDeliveries = new Mock<ISourcingDeliveryRepository>();
+        sourcingDeliveries
+            .Setup(x => x.GetCountedCountsByJobIdsAsync(
+                It.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(sourcingJob.JobId)),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, int> { [sourcingJob.JobId] = 4 });
+
+        _members.Setup(x => x.GetByUserIdAsync(user, It.IsAny<CancellationToken>())).ReturnsAsync(Member(user, company));
+        _jobs.Setup(x => x.GetByCompanyIdAsync(company, It.IsAny<CancellationToken>())).ReturnsAsync([sourcingJob, headhuntJob]);
+
+        var result = await new GetMyJobsQueryHandler(_jobs.Object, _members.Object, sourcingDeliveries.Object)
+            .Handle(new GetMyJobsQuery(user, null), default);
+
+        result.Single(j => j.JobId == sourcingJob.JobId).SourcingCounted.Should().Be(4);
+        result.Single(j => j.JobId == headhuntJob.JobId).SourcingCounted.Should().BeNull();
+    }
+
+    [Fact]
     public async Task GetDetail_ShouldAllowReviewerAndRejectDifferentCompanyClient()
     {
         var job = Job(Guid.NewGuid(), "PENDING_REVIEW"); var user = Guid.NewGuid();

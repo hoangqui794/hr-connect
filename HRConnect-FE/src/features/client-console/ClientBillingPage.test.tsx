@@ -140,6 +140,43 @@ describe('ClientBillingPage', () => {
     expect(settlement[2].value).toMatch(/^− 1\.200\.000/);
   });
 
+  it('shows counted vs target CV progress on CV_SOURCING billing rows and deposit breakdown', async () => {
+    vi.mocked(financeApi.serviceFees).mockResolvedValue({
+      items: [
+        fee({
+          serviceFeeId: 'ss-progress',
+          kind: 'DEPOSIT',
+          jobTitle: 'Kế toán kho',
+          baseSalary: 50_000_000,
+          feeMultiplier: 0.5,
+          amount: 25_000_000,
+          sourcingTarget: 50,
+          sourcingPricePerCv: 1_000_000,
+          sourcingCounted: 3,
+          status: 'PAID',
+        }),
+      ],
+      totalCount: 1, page: 1, pageSize: 100,
+    } as never);
+    vi.mocked(jobsApi.getMine).mockResolvedValue([] as never);
+
+    renderPage();
+
+    expect(await screen.findByText('Kế toán kho')).toBeTruthy();
+    expect(screen.getByText('3/50 CV')).toBeTruthy();
+
+    const deposit = feeBreakdown(fee({
+      kind: 'DEPOSIT',
+      baseSalary: 50_000_000,
+      feeMultiplier: 0.5,
+      amount: 25_000_000,
+      sourcingTarget: 50,
+      sourcingPricePerCv: 1_000_000,
+      sourcingCounted: 3,
+    }) as never);
+    expect(deposit.find((l) => l.label === 'Đã nhận CV')?.value).toBe('3/50 CV');
+  });
+
   it('sends the Client to VNPay for the chosen fee', async () => {
     vi.mocked(vnPayApi.enabled).mockResolvedValue(true);
     vi.mocked(vnPayApi.createPayment).mockResolvedValue({ onlinePaymentId: 'op', paymentUrl: 'https://sandbox.vnpayment.vn/pay?x=1' });

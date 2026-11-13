@@ -155,6 +155,9 @@ public sealed record JobDto(
     /// <summary>The job's latest posting fee, so the Client billing page needs no request per job (C-07).</summary>
     public JobPostingFeeSummaryDto? PostingFee { get; init; }
 
+    /// <summary>Count of accepted/auto-accepted CV deliveries for CV_SOURCING jobs.</summary>
+    public int? SourcingCounted { get; init; }
+
     public static JobDto From(Job job, bool includeStatusHistories = false, bool isReviewer = false,
         ICompanyLogoUrlResolver? logoUrlResolver = null)
     {

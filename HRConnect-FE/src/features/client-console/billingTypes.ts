@@ -36,4 +36,6 @@ export interface BillingRow {
   note?: string | null;
   /** Money HR Connect owes the Client, so the date is HR Connect's deadline. */
   owedToClient?: boolean;
+  /** Accepted/counted CVs vs sourcing target for CV_SOURCING fees. */
+  sourcingProgress?: { counted: number; target: number } | null;
 }
