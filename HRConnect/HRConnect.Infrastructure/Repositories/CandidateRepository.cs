@@ -89,6 +89,14 @@ public class CandidateRepository : ICandidateRepository
             .FirstOrDefaultAsync(c => c.NormalizedEmail == normalizedEmail, cancellationToken);
     }
 
+    public async Task<Candidate?> GetArchivedMergedSourceAsync(Guid targetCandidateId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Candidates
+            .Where(c => c.MergedIntoCandidateId == targetCandidateId && c.UserId == null && c.Status == "ARCHIVED")
+            .OrderByDescending(c => c.UpdatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<Candidate?> GetByNormalizedPhoneAsync(string normalizedPhone, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(normalizedPhone)) return null;

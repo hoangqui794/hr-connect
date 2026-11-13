@@ -171,5 +171,175 @@ public class SplitAccountCommandHandlersTests
         _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.AtLeastOnce);
         _unitOfWorkMock.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task ConfirmSplitRegister_ShouldRestoreArchivedPlaceholderForPreviousOwner_WhenSplitCandidateWasSwappedDuringMerge()
+    {
+        var handler = new ConfirmSplitRegisterCommandHandler(
+            _userRepositoryMock.Object,
+            _userEmailIdentityRepositoryMock.Object,
+            _candidateRepositoryMock.Object,
+            _roleRepositoryMock.Object,
+            _userRoleRepositoryMock.Object,
+            _userTokenRepositoryMock.Object,
+            _auditLogServiceMock.Object,
+            _passwordHasherMock.Object,
+            _otpServiceMock.Object,
+            _emailNormalizerMock.Object,
+            _phoneNormalizerMock.Object,
+            _unitOfWorkMock.Object,
+            Mock.Of<ILogger<ConfirmSplitRegisterCommandHandler>>());
+
+        var email = "alias-aff@example.com";
+        var oldUserId = Guid.NewGuid();
+        var command = new ConfirmSplitRegisterCommand(email, "NewPass@123", "Split Candidate", "0909888777", "123456");
+
+        _emailNormalizerMock.Setup(x => x.Normalize(email)).Returns(email);
+        _phoneNormalizerMock.Setup(x => x.Normalize(command.Phone)).Returns("+84909888777");
+
+        _userEmailIdentityRepositoryMock.Setup(x => x.GetActiveByNormalizedEmailAsync(email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserEmailIdentity
+            {
+                EmailIdentityId = Guid.NewGuid(),
+                UserId = oldUserId,
+                Email = email,
+                NormalizedEmail = email,
+                Kind = "ALIAS",
+                Status = "VERIFIED"
+            });
+
+        _userTokenRepositoryMock.Setup(x => x.GetLatestActiveOtpAsync(oldUserId, "SPLIT_EMAIL_OTP", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserToken
+            {
+                TokenId = Guid.NewGuid(),
+                UserId = oldUserId,
+                TokenType = "SPLIT_EMAIL_OTP",
+                TokenHash = "hash_123456",
+                ExpiresAt = DateTime.UtcNow.AddMinutes(10)
+            });
+
+        _otpServiceMock.Setup(x => x.VerifyOtp("123456", "hash_123456")).Returns(true);
+        _passwordHasherMock.Setup(x => x.Hash(command.Password)).Returns("hashed_pwd");
+        _roleRepositoryMock.Setup(x => x.GetByCodeAsync("CANDIDATE", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Role { RoleId = Guid.NewGuid(), Code = "CANDIDATE" });
+
+        var swappedCandidate = new Candidate
+        {
+            CandidateId = Guid.NewGuid(),
+            UserId = oldUserId,
+            NormalizedEmail = email,
+            Status = "ACTIVE"
+        };
+        var archivedPlaceholder = new Candidate
+        {
+            CandidateId = Guid.NewGuid(),
+            UserId = null,
+            NormalizedEmail = "primary@example.com",
+            Status = "ARCHIVED",
+            MergedIntoCandidateId = swappedCandidate.CandidateId
+        };
+
+        _candidateRepositoryMock.Setup(x => x.GetByNormalizedEmailAsync(email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(swappedCandidate);
+        _candidateRepositoryMock.Setup(x => x.GetByUserIdAsync(oldUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Candidate?)null);
+        _candidateRepositoryMock.Setup(x => x.GetArchivedMergedSourceAsync(swappedCandidate.CandidateId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(archivedPlaceholder);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        swappedCandidate.UserId.Should().Be(result.Data!.UserId);
+        archivedPlaceholder.Status.Should().Be("ACTIVE");
+        archivedPlaceholder.MergedIntoCandidateId.Should().BeNull();
+        archivedPlaceholder.UserId.Should().Be(oldUserId);
+        _candidateRepositoryMock.Verify(x => x.Update(archivedPlaceholder), Times.Once);
+        _unitOfWorkMock.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ConfirmSplitRegister_ShouldCreateFallbackCandidateForPreviousOwner_WhenNoArchivedPlaceholderExists()
+    {
+        var handler = new ConfirmSplitRegisterCommandHandler(
+            _userRepositoryMock.Object,
+            _userEmailIdentityRepositoryMock.Object,
+            _candidateRepositoryMock.Object,
+            _roleRepositoryMock.Object,
+            _userRoleRepositoryMock.Object,
+            _userTokenRepositoryMock.Object,
+            _auditLogServiceMock.Object,
+            _passwordHasherMock.Object,
+            _otpServiceMock.Object,
+            _emailNormalizerMock.Object,
+            _phoneNormalizerMock.Object,
+            _unitOfWorkMock.Object,
+            Mock.Of<ILogger<ConfirmSplitRegisterCommandHandler>>());
+
+        var email = "alias-aff@example.com";
+        var oldUserId = Guid.NewGuid();
+        var command = new ConfirmSplitRegisterCommand(email, "NewPass@123", "Split Candidate", null, "123456");
+
+        _emailNormalizerMock.Setup(x => x.Normalize(email)).Returns(email);
+        _emailNormalizerMock.Setup(x => x.Normalize("owner@example.com")).Returns("owner@example.com");
+        _phoneNormalizerMock.Setup(x => x.Normalize(null)).Returns(string.Empty);
+
+        _userEmailIdentityRepositoryMock.Setup(x => x.GetActiveByNormalizedEmailAsync(email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserEmailIdentity
+            {
+                EmailIdentityId = Guid.NewGuid(),
+                UserId = oldUserId,
+                Email = email,
+                NormalizedEmail = email,
+                Kind = "ALIAS",
+                Status = "VERIFIED"
+            });
+
+        _userTokenRepositoryMock.Setup(x => x.GetLatestActiveOtpAsync(oldUserId, "SPLIT_EMAIL_OTP", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserToken
+            {
+                TokenId = Guid.NewGuid(),
+                UserId = oldUserId,
+                TokenType = "SPLIT_EMAIL_OTP",
+                TokenHash = "hash_123456",
+                ExpiresAt = DateTime.UtcNow.AddMinutes(10)
+            });
+
+        _otpServiceMock.Setup(x => x.VerifyOtp("123456", "hash_123456")).Returns(true);
+        _passwordHasherMock.Setup(x => x.Hash(command.Password)).Returns("hashed_pwd");
+        _roleRepositoryMock.Setup(x => x.GetByCodeAsync("CANDIDATE", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Role { RoleId = Guid.NewGuid(), Code = "CANDIDATE" });
+
+        var swappedCandidate = new Candidate
+        {
+            CandidateId = Guid.NewGuid(),
+            UserId = oldUserId,
+            NormalizedEmail = email,
+            Status = "ACTIVE"
+        };
+
+        _candidateRepositoryMock.Setup(x => x.GetByNormalizedEmailAsync(email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(swappedCandidate);
+        _candidateRepositoryMock.Setup(x => x.GetByUserIdAsync(oldUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Candidate?)null);
+        _candidateRepositoryMock.Setup(x => x.GetArchivedMergedSourceAsync(swappedCandidate.CandidateId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Candidate?)null);
+        _userRepositoryMock.Setup(x => x.GetByIdAsync(oldUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AppUser
+            {
+                UserId = oldUserId,
+                Email = "owner@example.com",
+                DisplayName = "Khúc Ngọc Sơn"
+            });
+
+        await handler.Handle(command, CancellationToken.None);
+
+        _candidateRepositoryMock.Verify(x => x.AddAsync(
+            It.Is<Candidate>(c =>
+                c.UserId == oldUserId &&
+                c.Status == "ACTIVE" &&
+                c.NormalizedEmail == "owner@example.com" &&
+                c.FullName == "Khúc Ngọc Sơn"),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _unitOfWorkMock.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
 }
 

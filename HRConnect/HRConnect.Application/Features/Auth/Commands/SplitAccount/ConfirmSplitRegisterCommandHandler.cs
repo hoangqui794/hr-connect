@@ -166,6 +166,7 @@ public class ConfirmSplitRegisterCommandHandler : IRequestHandler<ConfirmSplitRe
             var existingCandidate = await _candidateRepository.GetByNormalizedEmailAsync(normalizedEmail, cancellationToken);
             if (existingCandidate != null)
             {
+                var previousOwnerUserId = existingCandidate.UserId;
                 existingCandidate.Status = "ACTIVE";
                 existingCandidate.MergedIntoCandidateId = null;
                 existingCandidate.UserId = newUser.UserId;
@@ -177,6 +178,18 @@ public class ConfirmSplitRegisterCommandHandler : IRequestHandler<ConfirmSplitRe
                 }
                 existingCandidate.UpdatedAt = now;
                 _candidateRepository.Update(existingCandidate);
+
+                if (previousOwnerUserId.HasValue && previousOwnerUserId.Value != newUser.UserId)
+                {
+                    // Lưu trước để giải phóng ràng buộc unique candidate_user_id_key cho previousOwnerUserId
+                    await _unitOfWork.SaveChangesAsync(cancellationToken);
+                    await EnsurePreviousOwnerHasCandidateAsync(
+                        previousOwnerUserId.Value,
+                        existingCandidate.CandidateId,
+                        existingCandidate.NormalizedPhone,
+                        now,
+                        cancellationToken);
+                }
             }
             else
             {
@@ -228,5 +241,56 @@ public class ConfirmSplitRegisterCommandHandler : IRequestHandler<ConfirmSplitRe
             await _unitOfWork.RollbackTransactionAsync(CancellationToken.None);
             throw;
         }
+    }
+
+    private async Task EnsurePreviousOwnerHasCandidateAsync(
+        Guid previousOwnerUserId,
+        Guid splitCandidateId,
+        string? splitCandidateNormalizedPhone,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        if (await _candidateRepository.GetByUserIdAsync(previousOwnerUserId, cancellationToken) != null)
+            return;
+
+        var archivedPlaceholder = await _candidateRepository.GetArchivedMergedSourceAsync(splitCandidateId, cancellationToken);
+        if (archivedPlaceholder != null)
+        {
+            archivedPlaceholder.Status = "ACTIVE";
+            archivedPlaceholder.MergedIntoCandidateId = null;
+            archivedPlaceholder.UserId = previousOwnerUserId;
+            if (!string.IsNullOrWhiteSpace(splitCandidateNormalizedPhone) &&
+                string.Equals(archivedPlaceholder.NormalizedPhone, splitCandidateNormalizedPhone, StringComparison.Ordinal))
+            {
+                archivedPlaceholder.Phone = null;
+                archivedPlaceholder.NormalizedPhone = null;
+            }
+            archivedPlaceholder.UpdatedAt = now;
+            _candidateRepository.Update(archivedPlaceholder);
+            return;
+        }
+
+        var previousUser = await _userRepository.GetByIdAsync(previousOwnerUserId, cancellationToken);
+        var previousNormalizedEmail = previousUser != null
+            ? _emailNormalizer.Normalize(previousUser.Email)
+            : null;
+        var hasPhoneConflict = !string.IsNullOrWhiteSpace(splitCandidateNormalizedPhone) &&
+            string.Equals(previousUser?.NormalizedPhone, splitCandidateNormalizedPhone, StringComparison.Ordinal);
+
+        var fallbackCandidate = new Candidate
+        {
+            CandidateId = Guid.NewGuid(),
+            UserId = previousOwnerUserId,
+            FullName = string.IsNullOrWhiteSpace(previousUser?.DisplayName) ? "Ứng viên" : previousUser.DisplayName,
+            Email = previousUser?.Email,
+            NormalizedEmail = string.IsNullOrWhiteSpace(previousNormalizedEmail) ? null : previousNormalizedEmail,
+            Phone = hasPhoneConflict ? null : previousUser?.Phone,
+            NormalizedPhone = hasPhoneConflict ? null : previousUser?.NormalizedPhone,
+            ProfileVisibility = "PRIVATE",
+            Status = "ACTIVE",
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        await _candidateRepository.AddAsync(fallbackCandidate, cancellationToken);
     }
 }
