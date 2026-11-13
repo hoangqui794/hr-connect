@@ -254,25 +254,9 @@ export const ClientBillingPage: React.FC = () => {
 
   const columns: ColumnsType<BillingRow> = [
     {
-      title: 'Dịch vụ',
-      key: 'service',
-      width: 280,
-      render: (_, r) => (
-        <div className="min-w-0 py-1">
-          <div className="text-[13.5px] font-semibold leading-snug text-slate-900">{r.item}</div>
-          <Tag
-            className="m-0 mt-1 rounded-md border-0 px-1.5 py-0.5 text-[11px] font-bold"
-            color={r.service === 'HEADHUNT_COD' ? 'orange' : r.service === 'CV_SOURCING' ? 'cyan' : 'blue'}
-          >
-            {CLIENT_SERVICE_NAME[r.service]}
-          </Tag>
-        </div>
-      ),
-    },
-    {
       title: 'Tin tuyển dụng',
       key: 'job',
-      width: 260,
+      width: 240,
       render: (_, r) => (
         <div className="min-w-0 py-1">
           <div className="truncate font-semibold text-[13.5px] text-slate-900 leading-snug" title={r.jobTitle}>
@@ -292,6 +276,31 @@ export const ClientBillingPage: React.FC = () => {
             </div>
           ) : null}
           {r.note && <div className="mt-0.5 whitespace-normal text-[11.5px] font-medium leading-snug text-emerald-700">{r.note}</div>}
+        </div>
+      ),
+    },
+    {
+      title: 'Dịch vụ',
+      key: 'service',
+      width: 170,
+      render: (_, r) => (
+        <div className="py-1">
+          <Tag
+            className="m-0 rounded-md border-0 px-2 py-0.5 text-[11.5px] font-bold"
+            color={r.service === 'HEADHUNT_COD' ? 'orange' : r.service === 'CV_SOURCING' ? 'cyan' : 'blue'}
+          >
+            {CLIENT_SERVICE_NAME[r.service]}
+          </Tag>
+        </div>
+      ),
+    },
+    {
+      title: 'Khoản phí',
+      key: 'item',
+      width: 210,
+      render: (_, r) => (
+        <div className="min-w-0 py-1">
+          <div className="text-[13.5px] font-semibold leading-snug text-slate-900">{r.item}</div>
         </div>
       ),
     },

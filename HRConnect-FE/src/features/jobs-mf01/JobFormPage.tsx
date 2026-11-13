@@ -885,7 +885,11 @@ export const JobFormPage: React.FC = () => {
   );
 
   // Only real service types from the API: their ids are what POST /jobs needs.
-  const availableServiceTypes = useMemo(() => serviceTypes.data ?? [], [serviceTypes.data]);
+  // Keep deterministic display order: CV App -> CV Sourcing -> Headhunt.
+  const availableServiceTypes = useMemo(() => {
+    const order: Record<string, number> = { CV_APPLICATION: 0, CV_SOURCING: 1, HEADHUNT_COD: 2 };
+    return [...(serviceTypes.data ?? [])].sort((a, b) => (order[a.code] ?? 99) - (order[b.code] ?? 99));
+  }, [serviceTypes.data]);
 
   // Watch entire form for live readiness and preview
   const watchedValues = Form.useWatch((v) => v, form) as Partial<JobFormValues> | undefined;
