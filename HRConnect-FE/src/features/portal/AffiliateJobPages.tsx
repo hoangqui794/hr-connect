@@ -184,7 +184,7 @@ export const AffiliateJobsPage: React.FC = () => {
                     {est?.isLoading ? <Skeleton.Input active size="small" /> : (est?.data && formatEstimate(est.data)) || '—'}
                   </div>
                 </div>
-                <Button type="primary" className="!bg-gradient-to-r from-[#0284C7] to-[#2563EB] hover:from-[#0369A1] hover:to-[#1D4ED8] !border-0 text-white font-semibold shadow-sm shadow-sky-500/20" onClick={() => navigate(`/affiliate/submit-candidate?job=${job.jobId}`)}>
+                <Button type="primary" className="!bg-[#0369A1] hover:bg-[#075985] !border-0 text-white font-semibold shadow-sm shadow-sky-500/20" onClick={() => navigate(`/affiliate/submit-candidate?job=${job.jobId}`)}>
                   Giới thiệu
                 </Button>
               </article>

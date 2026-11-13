@@ -84,7 +84,7 @@ export const CompaniesPage: React.FC = () => {
                 popupMatchSelectWidth={false}
               />
             </div>
-            <button type="submit" className="h-11 cursor-pointer border-0 bg-gradient-to-r from-[#0284C7] to-[#2563EB] px-[24px] text-[14px] font-bold text-white transition-all hover:from-[#0369A1] hover:to-[#1D4ED8] hover:shadow-md hover:shadow-sky-500/25 active:scale-[0.98] max-sm:w-full">Tìm công ty</button>
+            <button type="submit" className="h-11 cursor-pointer border-0 bg-[#0369A1] px-[24px] text-[14px] font-bold text-white transition-all hover:from-[#0369A1] hover:to-[#1D4ED8] hover:shadow-md hover:shadow-sky-500/25 active:scale-[0.98] max-sm:w-full">Tìm công ty</button>
           </form>
         </div>
       </section>
@@ -281,7 +281,7 @@ export const CompanyDetailPage: React.FC = () => {
                   </p>
                 </div>
                 {company.website && (
-                  <a href={company.website} target="_blank" rel="noreferrer" className="inline-flex min-h-[44px] items-center rounded-lg bg-gradient-to-r from-sky-500 to-blue-600 px-[18px] font-semibold text-white no-underline shadow-sm shadow-sky-500/20 transition-all hover:from-sky-600 hover:to-blue-700 hover:text-white active:scale-[0.98]">
+                  <a href={company.website} target="_blank" rel="noreferrer" className="inline-flex min-h-[44px] items-center rounded-lg bg-[#0369A1] px-[18px] font-semibold text-white no-underline shadow-sm shadow-sky-500/20 transition-all hover:bg-[#075985] hover:text-white active:scale-[0.98]">
                     Xem trang web
                   </a>
                 )}

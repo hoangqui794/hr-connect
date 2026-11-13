@@ -23,12 +23,35 @@ import type { ServiceTypeCode } from '@/types/api/jobs';
 import { FilterPills, PageHero, StatusDot, Surface, type Tone } from '@/features/admin-console/ui';
 import { SERVICE_FEE_KIND, SERVICE_FEE_STATUS, labelOf, money, OWED_FEE_STATUS, isOwedToClient } from '@/features/finance-mf05/financeLabels';
 import { depositTransferNote, serviceFeeTransferNote, transferNote } from '@/features/finance-mf05/platformBankAccount';
-import { SERVICE_TYPE_LABEL } from '@/features/jobs-mf01/jobDisplay';
 import { BillingPaymentModal } from './BillingPaymentModal';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 
 const PAGE_SIZE = 10;
+
+/** Client wording (no "Client", no HH/SS/AP); Admin keeps the finance labels. */
+const CLIENT_SERVICE_NAME: Record<ServiceTypeCode, string> = {
+  HEADHUNT_COD: 'Tuyển qua Affiliate',
+  CV_SOURCING: 'Mua CV theo số lượng',
+  CV_APPLICATION: 'Nhận hồ sơ ứng tuyển',
+};
+const CLIENT_FEE_NAME: Record<ServiceFeeKind, string> = {
+  PLACEMENT: 'Phí tuyển thành công',
+  DEPOSIT: 'Đặt cọc',
+  SETTLEMENT: 'Quyết toán theo CV',
+  CREDIT: 'Hoàn cọc dư',
+  REPLACEMENT_REFUND: 'Hoàn phí do không tìm được người thay',
+};
+
+/** Why a refund exists, with the real share from the row (never a fixed number). */
+export const refundNote = (f: ServiceFee): string | null => {
+  if (f.kind === 'REPLACEMENT_REFUND') {
+    const when = f.replacementExpiredAt ? ` ngày ${dayjs(f.replacementExpiredAt).format('DD/MM/YYYY')}` : '';
+    return `Suất thay thế hết hạn${when} mà chưa có ứng viên nào. HR Connect hoàn ${percent(f.feeMultiplier)} phí đã trả.`;
+  }
+  if (f.kind === 'CREDIT') return 'Số CV được nhận ít hơn số đã đặt cọc, phần cọc dư được hoàn lại.';
+  return null;
+};
 
 import type { Bucket, BillingRow, BreakdownLine } from './billingTypes';
 export type { Bucket, BillingRow, BreakdownLine };
@@ -133,7 +156,9 @@ const useBillingRows = () => {
       return {
         key: `fee-${f.serviceFeeId}`,
         service: SERVICE_OF_KIND[kind],
-        item: labelOf(SERVICE_FEE_KIND, kind).label,
+        item: CLIENT_FEE_NAME[kind] ?? labelOf(SERVICE_FEE_KIND, kind).label,
+        note: refundNote(f),
+        owedToClient: isOwedToClient(kind),
         jobTitle: f.jobTitle ?? '—',
         candidateName: f.candidateName ?? null,
         amount: isOwedToClient(kind) ? -f.amount : f.amount,
@@ -227,18 +252,16 @@ export const ClientBillingPage: React.FC = () => {
     {
       title: 'Dịch vụ',
       key: 'service',
-      width: 250,
+      width: 280,
       render: (_, r) => (
-        <div className="flex items-start gap-2.5 py-1">
+        <div className="min-w-0 py-1">
+          <div className="text-[13.5px] font-semibold leading-snug text-slate-900">{r.item}</div>
           <Tag
-            className="m-0 font-bold rounded-md px-1.5 py-0.5 text-[11px] border-0 shrink-0 mt-0.5"
-            color={r.service === 'HEADHUNT_COD' ? 'blue' : r.service === 'CV_SOURCING' ? 'purple' : 'cyan'}
+            className="m-0 mt-1 rounded-md border-0 px-1.5 py-0.5 text-[11px] font-bold"
+            color={r.service === 'HEADHUNT_COD' ? 'orange' : r.service === 'CV_SOURCING' ? 'cyan' : 'blue'}
           >
-            {SERVICE_TYPE_LABEL[r.service].label}
+            {CLIENT_SERVICE_NAME[r.service]}
           </Tag>
-          <div className="min-w-0">
-            <div className="text-[13.5px] font-semibold text-slate-900 leading-snug">{r.item}</div>
-          </div>
         </div>
       ),
     },
@@ -251,11 +274,12 @@ export const ClientBillingPage: React.FC = () => {
           <div className="truncate font-semibold text-[13.5px] text-slate-900 leading-snug" title={r.jobTitle}>
             {r.jobTitle}
           </div>
-          {r.candidateName && (
+          {r.candidateName ? (
             <div className="truncate text-xs text-slate-500 mt-0.5">
               Ứng viên: <span className="font-medium text-slate-700">{r.candidateName}</span>
             </div>
-          )}
+          ) : null}
+          {r.note && <div className="mt-0.5 whitespace-normal text-[11.5px] font-medium leading-snug text-emerald-700">{r.note}</div>}
         </div>
       ),
     },
@@ -276,9 +300,15 @@ export const ClientBillingPage: React.FC = () => {
       align: 'center',
       width: 130,
       render: (_, r) => (
-        <span className="tabular-nums text-[13px] text-slate-700">
-          {r.dueDate ? dayjs(r.dueDate).format('DD/MM/YYYY') : '—'}
-        </span>
+        r.owedToClient && r.dueDate && r.bucket !== 'PAID' && !r.paidAt ? (
+          <span className="text-[12px] leading-snug text-emerald-700">
+            HR Connect hoàn
+            <br />
+            trước {dayjs(r.dueDate).format('DD/MM/YYYY')}
+          </span>
+        ) : (
+          <span className="tabular-nums text-[13px] text-slate-700">{r.dueDate ? dayjs(r.dueDate).format('DD/MM/YYYY') : '—'}</span>
+        )
       ),
     },
     {
@@ -309,7 +339,7 @@ export const ClientBillingPage: React.FC = () => {
             <Button
               type="primary"
               size="small"
-              className="!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white w-[100px] !h-8 text-xs font-semibold rounded-lg shadow-sm transition-all active:scale-[0.98]"
+              className="!bg-[#0369A1] hover:!bg-[#075985] !border-0 text-white w-[100px] !h-8 text-xs font-semibold rounded-lg shadow-sm transition-all active:scale-[0.98]"
               onClick={() => setPaying(r)}
               aria-label={`Thanh toán: ${r.item} · ${r.jobTitle}`}
             >
@@ -368,9 +398,9 @@ export const ClientBillingPage: React.FC = () => {
             }}
             options={[
               { value: 'all', label: 'Tất cả', count: rows.length },
-              { value: 'HEADHUNT_COD', label: SERVICE_TYPE_LABEL.HEADHUNT_COD.label, count: count('HEADHUNT_COD') },
-              { value: 'CV_SOURCING', label: SERVICE_TYPE_LABEL.CV_SOURCING.label, count: count('CV_SOURCING') },
-              { value: 'CV_APPLICATION', label: SERVICE_TYPE_LABEL.CV_APPLICATION.label, count: count('CV_APPLICATION') },
+              { value: 'HEADHUNT_COD', label: CLIENT_SERVICE_NAME.HEADHUNT_COD, count: count('HEADHUNT_COD') },
+              { value: 'CV_SOURCING', label: CLIENT_SERVICE_NAME.CV_SOURCING, count: count('CV_SOURCING') },
+              { value: 'CV_APPLICATION', label: CLIENT_SERVICE_NAME.CV_APPLICATION, count: count('CV_APPLICATION') },
             ]}
           />
           <FilterPills<StatusFilter>

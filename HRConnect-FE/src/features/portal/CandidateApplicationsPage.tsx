@@ -105,7 +105,7 @@ const PendingReferral: React.FC<{ consent: CandidateSubmissionConsent }> = ({ co
           Từ chối
         </button>
       </Popconfirm>
-      <button type="button" disabled={respond.isPending} onClick={() => respond.mutate('CONFIRM')} className={`${FONT} h-10 cursor-pointer rounded-xl border-0 bg-gradient-to-r from-sky-500 to-blue-600 px-4 text-[14px] font-bold text-white shadow-sm shadow-blue-500/20 transition-all hover:from-sky-400 hover:to-blue-500 hover:shadow-md hover:shadow-blue-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`}>
+      <button type="button" disabled={respond.isPending} onClick={() => respond.mutate('CONFIRM')} className={`${FONT} h-10 cursor-pointer rounded-xl border-0 bg-[#0369A1] px-4 text-[14px] font-bold text-white shadow-sm shadow-blue-500/20 transition-all hover:bg-[#075985] hover:shadow-md hover:shadow-blue-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`}>
         Đồng ý
       </button>
     </div>

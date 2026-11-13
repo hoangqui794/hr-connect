@@ -32,4 +32,8 @@ export interface BillingRow {
   payTarget: { type: OnlinePaymentTargetType; id: string };
   /** How the amount was worked out, shown in the payment dialog. */
   breakdown: BreakdownLine[];
+  /** One line telling the Client why this row exists (refunds). */
+  note?: string | null;
+  /** Money HR Connect owes the Client, so the date is HR Connect's deadline. */
+  owedToClient?: boolean;
 }

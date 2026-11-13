@@ -75,29 +75,43 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
 
   // 1. Phân quyền Platform Admin: Giữ trọn vẹn trong Admin Console (/admin/*)
   if (normRole === 'ADMIN') {
-    // 1A. Giao dịch thanh toán / VNPay / Payouts / Tài chính
+    // 1A. Nếu backend đã cung cấp routeHint chính xác tới Admin Console
+    if (route && route.startsWith('/admin')) {
+      return route;
+    }
+
+    // 1B. Giao dịch thanh toán / VNPay / Payouts / Tài chính / Hoa hồng / Hoàn tiền
     if (
       entityType === 'ONLINE_PAYMENT' ||
       entityType === 'PAYMENT' ||
       entityType === 'FINANCE' ||
       entityType === 'PAYOUT' ||
+      entityType === 'SERVICE_FEE' ||
+      entityType === 'COMMISSION' ||
       titleLower.includes('vnpay') ||
-      titleLower.includes('thanh toán')
+      titleLower.includes('thanh toán') ||
+      titleLower.includes('hoàn') ||
+      titleLower.includes('hoa hồng') ||
+      titleLower.includes('quá hạn')
     ) {
       return '/admin/payouts';
     }
 
-    // 1B. Phê duyệt tài khoản Doanh nghiệp / Affiliate
+    // 1C. Phê duyệt tài khoản Doanh nghiệp / Affiliate
     if (
       entityType === 'APPROVAL' ||
       entityType === 'ACCOUNT_APPROVAL' ||
+      entityType === 'COMPANY_VERIFICATION' ||
+      entityType === 'AFFILIATE_APPLICATION' ||
       titleLower.includes('phê duyệt') ||
-      titleLower.includes('đăng ký tài khoản')
+      titleLower.includes('đăng ký') ||
+      titleLower.includes('xác minh công ty') ||
+      titleLower.includes('duyệt hồ sơ')
     ) {
       return '/admin/approvals';
     }
 
-    // 1C. Nghi trùng danh tính Candidate / Claim
+    // 1D. Nghi trùng danh tính Candidate / Claim
     if (
       entityType === 'CANDIDATE_DUPLICATE_CASE' ||
       entityType === 'IDENTITY_CLAIM' ||
@@ -107,12 +121,12 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       return '/admin/candidate-identity-claims';
     }
 
-    // 1D. Tranh chấp khiếu nại
+    // 1E. Tranh chấp khiếu nại
     if (entityType === 'DISPUTE' || titleLower.includes('khiếu nại') || titleLower.includes('tranh chấp')) {
       return '/admin/disputes';
     }
 
-    // 1E. Yêu cầu tư vấn
+    // 1F. Yêu cầu tư vấn
     if (
       entityType === 'CONTACT_REQUEST' ||
       titleLower.includes('yêu cầu tư vấn') ||
@@ -122,14 +136,9 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       return contactId ? `/admin/contact-requests?highlight=${encodeURIComponent(contactId)}` : '/admin/contact-requests';
     }
 
-    // 1F. Quản trị người dùng & phân quyền
+    // 1G. Quản trị người dùng & phân quyền
     if (entityType === 'USER' || titleLower.includes('người dùng')) {
       return '/admin/users';
-    }
-
-    // 1G. Route có sẵn của admin
-    if (route && route.startsWith('/admin')) {
-      return route;
     }
 
     return '/admin/dashboard';
@@ -328,6 +337,31 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
 
   // Client
   if (normRole === 'CLIENT') {
+    if (
+      entityType === 'REPLACEMENT_SLOT' ||
+      titleLower.includes('suất tuyển người thay thế') ||
+      titleLower.includes('suất thay thế')
+    ) {
+      if (titleLower.includes('hết hạn') || messageLower.includes('hoàn')) {
+        return '/client/billing';
+      }
+      return '/client/warranty';
+    }
+    if (
+      entityType === 'WARRANTY' ||
+      titleLower.includes('bảo hành') ||
+      titleLower.includes('nghỉ việc')
+    ) {
+      return '/client/warranty';
+    }
+    if (
+      entityType === 'SERVICE_FEE' ||
+      titleLower.includes('phí dịch vụ') ||
+      titleLower.includes('công nợ') ||
+      titleLower.includes('hoàn tiền')
+    ) {
+      return '/client/billing';
+    }
     if (entityType === 'SERVICE_AGREEMENT' || titleLower.includes('thỏa thuận') || titleLower.includes('hợp đồng')) {
       const sep = targetHighlight ? `?jobId=${encodeURIComponent(targetHighlight)}` : '';
       return `/client/agreements${sep}`;

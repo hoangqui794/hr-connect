@@ -138,6 +138,17 @@ public sealed class SettlementCommandHandlers :
                 "SERVICE_FEE", ServiceFeeKinds.OwedToClient.Contains(fee.Kind) ? "Đã hoàn tiền" : "Đã ghi nhận thanh toán",
                 $"HR Connect đã {(ServiceFeeKinds.OwedToClient.Contains(fee.Kind) ? "hoàn" : "ghi nhận khoản thanh toán")} {fee.Amount:N0} {fee.CurrencyCode} (mã tham chiếu {fee.PaymentReference}).",
                 "SERVICE_FEE", fee.ServiceFeeId, "/client/dashboard"), cancellationToken);
+
+            if (!ServiceFeeKinds.OwedToClient.Contains(fee.Kind))
+            {
+                await _notifier.NotifyRoleAsync("PLATFORM_ADMIN", new AppNotice(
+                    "SERVICE_FEE",
+                    "Đã ghi nhận thanh toán phí dịch vụ",
+                    $"Đã ghi nhận khoản thanh toán {fee.Amount:N0} {fee.CurrencyCode} (mã tham chiếu {fee.PaymentReference}) cho công ty {fee.Company?.CompanyName ?? "Doanh nghiệp"}.",
+                    "SERVICE_FEE",
+                    fee.ServiceFeeId,
+                    "/admin/payouts"), cancellationToken);
+            }
         }
         if (fee.Kind == ServiceFeeKinds.Deposit && fee.JobId is Guid jobId)
         {

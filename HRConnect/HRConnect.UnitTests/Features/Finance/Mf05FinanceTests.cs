@@ -1040,6 +1040,22 @@ public class Mf05FinanceTests
     }
 
     [Fact]
+    public async Task Client_fee_list_names_who_left_and_when_the_slot_ran_out_on_a_refund()
+    {
+        var slot = await ExpiredSlotReadyAsync();
+        (await ProgressWithRefundPercent(30m).ExpireReplacementSlotAsync(slot.ReplacementSlotId, slot.ExpiresAt!.Value)).Should().BeTrue();
+        var leaver = (await _context.Placements.Include(p => p.Application).ThenInclude(a => a.Candidate)
+            .SingleAsync(p => p.PlacementId == slot.OriginalPlacementId)).Application.Candidate?.FullName;
+
+        var fees = await new FinanceQueryHandlers(Repository, Mock.Of<ICompanyUserRepository>())
+            .Handle(new GetServiceFeesQuery(null, null, 1, 20), default);
+
+        var refund = fees.Items.Single(f => f.Kind == ServiceFeeKinds.ReplacementRefund);
+        refund.CandidateName.Should().Be(leaver);
+        refund.ReplacementExpiredAt.Should().Be(slot.ExpiresAt);
+    }
+
+    [Fact]
     public async Task Expired_slot_refunds_nothing_when_a_candidate_reached_the_client()
     {
         var slot = await ExpiredSlotReadyAsync();

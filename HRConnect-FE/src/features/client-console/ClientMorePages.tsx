@@ -212,7 +212,7 @@ export const ClientCompanyPage: React.FC = () => {
                   size="large"
                   htmlType="submit"
                   loading={save.isPending}
-                  className="!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white font-bold !h-11 px-6 rounded-xl shadow-sm transition-all active:scale-[0.98]"
+                  className="!bg-[#0369A1] hover:!bg-[#075985] !border-0 text-white font-bold !h-11 px-6 rounded-xl shadow-sm transition-all active:scale-[0.98]"
                 >
                   Lưu thay đổi
                 </Button>

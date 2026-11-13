@@ -6,17 +6,17 @@
  */
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { EyeInvisibleOutlined, EyeOutlined } from '@ant-design/icons';
+import { CheckCircleFilled, EyeInvisibleOutlined, EyeOutlined } from '@ant-design/icons';
 import { BrandMark } from '@/components/common/BrandMark';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import { authService } from '@/services/authService';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
-const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
+const LINK = 'font-semibold text-[#0369A1] no-underline transition-colors duration-150 hover:text-[#075985] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1] rounded';
 const FIELD = 'flex flex-col gap-1.5';
-const LABEL = 'font-medium';
-const INPUT = `${FONT} box-border h-[46px] w-full rounded-md border border-solid bg-white px-3 text-[14px] text-[#1F2937] outline-none focus:border-[#0369A1] focus:ring-1 focus:ring-[#0369A1]`;
-const BUTTON = `${FONT} h-[46px] w-full cursor-pointer rounded-md border-0 bg-[#0C4A6E] text-[14px] font-semibold text-white hover:bg-[#075985] disabled:cursor-not-allowed disabled:opacity-60`;
+const LABEL = 'text-[13px] font-semibold text-slate-700';
+const INPUT = `${FONT} box-border h-11 w-full rounded-xl border border-solid bg-white px-3.5 text-base sm:text-sm text-slate-900 outline-none transition-[border-color,box-shadow] duration-150 motion-reduce:transition-none focus:border-[#0369A1] focus:ring-4 focus:ring-[#0369A1]/12`;
+const BUTTON = `${FONT} h-11 w-full touch-manipulation cursor-pointer rounded-xl border-0 bg-[#0369A1] text-sm font-semibold text-white shadow-[0_1px_2px_rgba(3,105,161,0.3)] transition-[background-color,transform] duration-150 motion-reduce:transition-none hover:bg-[#075985] active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1] disabled:cursor-not-allowed disabled:opacity-60`;
 const TEXT_BUTTON = `${FONT} cursor-pointer border-0 bg-transparent p-0 text-[13px] ${LINK}`;
 
 /** The backend refuses a new code within this many seconds (ResendPasswordResetOtpCommandHandler). */
@@ -24,9 +24,9 @@ const RESEND_SECONDS = 60;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STRONG_PASSWORD = (value: string) => value.length >= 8 && /[a-z]/.test(value) && /[A-Z]/.test(value) && /\d/.test(value) && /[^A-Za-z\d]/.test(value);
 
-const borderOf = (error?: string) => (error ? 'border-[#B91C1C]' : 'border-[#D1D5DB]');
+const borderOf = (error?: string) => (error ? 'border-rose-400 focus:border-rose-600 focus:ring-rose-500/12' : 'border-[#CBD5E1] hover:border-slate-400');
 const FieldError: React.FC<{ id: string; message?: string }> = ({ id, message }) =>
-  message ? <span id={id} className="text-[12px] text-[#B91C1C]">{message}</span> : null;
+  message ? <span id={id} className="text-xs font-medium text-rose-700">{message}</span> : null;
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 
 type LoginState = { email?: string; from?: string; intent?: string } | null;
@@ -129,21 +129,88 @@ export const ForgotPasswordPage: React.FC = () => {
   };
 
   const clearError = (field: keyof Errors) => setErrors((current) => ({ ...current, [field]: undefined }));
-  const alert = formError && <p role="alert" className="m-0 rounded-md border border-solid border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-[13px] text-[#B91C1C]">{formError}</p>;
+  const alert = formError && <p role="alert" className="m-0 rounded-xl border border-solid border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium text-rose-800">{formError}</p>;
   const backLink = <Link to={backToLogin} state={loginState} className={`text-center text-[13px] ${LINK}`}>Quay lại đăng nhập</Link>;
 
   return (
-    <div className={`${FONT} min-h-screen bg-[#F7F8FA] text-[14px] text-[#1F2937] [line-height:normal]`}>
-      <header className="bg-[#0C4A6E] text-white">
-        <div className="mx-auto flex h-16 max-w-[1248px] items-center px-6">
-          <Link to="/" className="flex items-center gap-2 text-[18px] font-bold text-white no-underline hover:text-white hover:no-underline">
-            <BrandMark size={32} tone="light" className="block" /> HR Connect
+    <div className={`${FONT} flex min-h-screen w-full bg-white text-sm text-slate-900 antialiased [line-height:normal] max-lg:flex-col`}>
+      {/* Left Hero Panel — Bright Ocean Cobalt */}
+      <aside className="relative flex flex-col justify-between overflow-hidden bg-[#075985] p-8 text-white max-lg:hidden lg:sticky lg:top-0 lg:h-screen lg:w-[41%] xl:w-[39%] lg:p-11 xl:p-14 shrink-0">
+        <div
+          className="absolute inset-0 bg-gradient-to-br from-[#0369A1] via-[#075985] to-[#0C4A6E]"
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute inset-0 opacity-20"
+          style={{
+            backgroundImage: 'radial-gradient(rgba(255,255,255,0.45) 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
+          }}
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute -top-24 -right-24 h-96 w-96 rounded-full bg-[#38BDF8]/30 blur-3xl"
+          aria-hidden="true"
+        />
+
+        <div className="relative z-10">
+          <Link to="/" className="inline-flex items-center gap-3 text-xl font-bold tracking-tight text-white no-underline transition-opacity hover:opacity-90">
+            <BrandMark size={38} tone="light" className="shadow-sm" />
+            <span className="font-extrabold tracking-tight">HR Connect</span>
           </Link>
         </div>
-      </header>
-      <main className="mx-auto flex max-w-[1048px] justify-center px-4 py-10 sm:px-6">
-        <section aria-labelledby="forgot" className="w-full max-w-[488px] rounded-lg border border-solid border-[#E5E7EB] bg-white p-5 sm:p-7">
-          <h1 id="forgot" className="m-0 text-[20px] font-bold">Đặt lại mật khẩu</h1>
+
+        <div className="relative z-10 my-auto py-8">
+          <span className="inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1 text-xs font-semibold tracking-wide text-sky-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-sky-300" aria-hidden="true" />
+            Bảo mật tài khoản 2 lớp
+          </span>
+          <h2 className="mt-4 text-3xl font-extrabold leading-[1.22] tracking-tight text-white xl:text-[34px]">
+            Khôi phục quyền truy cập nhanh chóng &amp; an toàn
+          </h2>
+          <p className="mt-3.5 max-w-md text-[15px] font-normal leading-relaxed text-slate-200/85">
+            Xác thực danh tính qua mã OTP 6 chữ số gửi trực tiếp tới email đã đăng ký để thiết lập lại mật khẩu mới.
+          </p>
+
+          <div className="mt-8 max-w-md space-y-3">
+            <div className="rounded-xl border border-white/12 bg-white/[0.06] p-4 backdrop-blur-sm">
+              <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-white">
+                <CheckCircleFilled aria-hidden="true" className="text-xs text-sky-300" />
+                <span>Bước 1 — Xác minh địa chỉ email</span>
+              </div>
+              <p className="mb-0 text-xs leading-relaxed text-slate-200/80">
+                Nhập email chính hoặc email phụ đã liên kết để nhận mã OTP có hiệu lực trong vài phút.
+              </p>
+            </div>
+            <div className="rounded-xl border border-white/12 bg-white/[0.06] p-4 backdrop-blur-sm">
+              <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-white">
+                <CheckCircleFilled aria-hidden="true" className="text-xs text-sky-300" />
+                <span>Bước 2 — Thiết lập mật khẩu mới</span>
+              </div>
+              <p className="mb-0 text-xs leading-relaxed text-slate-200/80">
+                Mật khẩu mới được mã hóa an toàn và tự động đồng bộ ngay trên toàn hệ thống.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative z-10 flex items-center justify-between border-t border-white/10 pt-5 text-xs text-slate-300/75">
+          <span>© {new Date().getFullYear()} HR Connect Vietnam</span>
+          <span>Khôi phục bảo mật</span>
+        </div>
+      </aside>
+
+      {/* Right White Canvas */}
+      <main className="flex min-h-screen flex-1 items-center justify-center bg-white px-6 py-10 sm:px-10 lg:px-14 xl:px-20">
+        <section aria-labelledby="forgot" className="w-full max-w-[420px]">
+          <div className="mb-6 flex items-center justify-between lg:hidden">
+            <Link to="/" className="inline-flex items-center gap-2 no-underline">
+              <BrandMark size={32} tone="dark" />
+              <span className="text-lg font-bold text-slate-900">HR Connect</span>
+            </Link>
+          </div>
+          <p className="mb-1 text-xs font-semibold text-[#0369A1]">Khôi phục truy cập</p>
+          <h1 id="forgot" className="m-0 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-[26px]">Đặt lại mật khẩu</h1>
 
           {step === 'EMAIL' ? (
             <>

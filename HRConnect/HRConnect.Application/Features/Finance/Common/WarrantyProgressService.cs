@@ -37,12 +37,14 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
     private readonly INotificationRepository? _notificationRepository;
     private readonly IPlacementReconciliationRepository? _reconciliationRepository;
     private readonly IAdminBusinessSettings? _settings;
+    private readonly IAppNotifier? _notifier;
 
     public WarrantyProgressService(
         IFinanceRepository financeRepository, IUnitOfWork unitOfWork, IAuditLogService auditLogService,
         INotificationRepository? notificationRepository = null,
         IPlacementReconciliationRepository? reconciliationRepository = null,
-        IAdminBusinessSettings? settings = null)
+        IAdminBusinessSettings? settings = null,
+        IAppNotifier? notifier = null)
     {
         _financeRepository = financeRepository;
         _unitOfWork = unitOfWork;
@@ -50,6 +52,7 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
         _notificationRepository = notificationRepository;
         _reconciliationRepository = reconciliationRepository;
         _settings = settings;
+        _notifier = notifier;
     }
 
     public async Task<bool> CompleteWarrantyAsync(Guid placementId, DateOnly today, CancellationToken cancellationToken = default)
@@ -82,6 +85,7 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
             EntityType = "WARRANTY",
             EntityId = warranty.WarrantyId,
             ActorType = AuditActorTypes.Service,
+            ServiceName = "WarrantyProgressWorker",
             OldValues = new { status = WarrantyStates.Active },
             NewValues = new { status = warranty.Status, placementId, endDate },
         }, cancellationToken);
@@ -93,9 +97,25 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
                 EntityType = "COMMISSION",
                 EntityId = commission.CommissionId,
                 ActorType = AuditActorTypes.Service,
+                ServiceName = "WarrantyProgressWorker",
                 OldValues = new { status = CommissionStates.InWarranty },
                 NewValues = new { status = commission.Status, amount = commission.Amount },
             }, cancellationToken);
+        }
+
+        if (_notifier != null)
+        {
+            var jobTitle = placement.Application?.Job?.Title ?? "vị trí tuyển dụng";
+            foreach (var commission in earned)
+            {
+                await _notifier.NotifyRoleAsync("PLATFORM_ADMIN", new AppNotice(
+                    "COMMISSION",
+                    "Hoa hồng Affiliate chờ duyệt chi",
+                    $"Ứng viên của vị trí \"{jobTitle}\" đã làm đủ thời hạn bảo hành. Khoản hoa hồng {commission.Amount:N0} đ đang chờ Admin duyệt chi.",
+                    "COMMISSION",
+                    commission.CommissionId,
+                    "/admin/payouts"), cancellationToken);
+            }
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -124,9 +144,22 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
             EntityType = "SERVICE_FEE",
             EntityId = fee.ServiceFeeId,
             ActorType = AuditActorTypes.Service,
+            ServiceName = "WarrantyProgressWorker",
             OldValues = new { status = oldStatus },
             NewValues = new { status = fee.Status, dueDate = fee.DueDate },
         }, cancellationToken);
+
+        if (_notifier != null)
+        {
+            await _notifier.NotifyRoleAsync("PLATFORM_ADMIN", new AppNotice(
+                "SERVICE_FEE",
+                "Công nợ phí dịch vụ quá hạn",
+                $"Doanh nghiệp có khoản phí dịch vụ {fee.Amount:N0} {fee.CurrencyCode} đã quá hạn thanh toán ({fee.DueDate:dd/MM/yyyy}).",
+                "SERVICE_FEE",
+                fee.ServiceFeeId,
+                "/admin/payouts"), cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return true;
     }
@@ -154,6 +187,7 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
             EntityType = "SERVICE_FEE",
             EntityId = fee.ServiceFeeId,
             ActorType = AuditActorTypes.Service,
+            ServiceName = "WarrantyProgressWorker",
             OldValues = new { status = ServiceFeeStates.Pending },
             NewValues = new { status = fee.Status, dueDate = fee.DueDate, reminderDays },
         }, cancellationToken);
@@ -221,6 +255,7 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
             EntityType = "REPLACEMENT_SLOT",
             EntityId = slot.ReplacementSlotId,
             ActorType = AuditActorTypes.Service,
+            ServiceName = "WarrantyProgressWorker",
             OldValues = new { status = ReplacementSlotStates.Open },
             NewValues = new { status = slot.Status, slot.ExpiresAt },
         }, cancellationToken);
@@ -233,6 +268,17 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
 
         await ReplacementSlotLifecycle.NotifyClientAsync(slot.Job, slot, "Suất tuyển người thay thế đã hết hạn",
             message, now, _financeRepository, _notificationRepository, cancellationToken);
+
+        if (refund != null && _notifier != null)
+        {
+            await _notifier.NotifyRoleAsync("PLATFORM_ADMIN", new AppNotice(
+                "SERVICE_FEE",
+                "Cần hoàn 30% phí dịch vụ",
+                $"Suất thay thế của công ty {slot.Job.Company?.CompanyName ?? "Doanh nghiệp"} (vị trí \"{slot.Job.Title}\") đã hết hạn. Cần xử lý lệnh hoàn {refund.Amount:N0} {refund.CurrencyCode} cho doanh nghiệp.",
+                "SERVICE_FEE",
+                refund.ServiceFeeId,
+                "/admin/payouts"), cancellationToken);
+        }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return true;
@@ -265,6 +311,7 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
             EntityType = "REPLACEMENT_SLOT",
             EntityId = slot.ReplacementSlotId,
             ActorType = AuditActorTypes.Service,
+            ServiceName = "WarrantyProgressWorker",
             OldValues = new { expiresAt = previousExpiry },
             NewValues = new { slot.ExpiresAt, extensionDays = days },
         }, cancellationToken);
@@ -317,6 +364,7 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
             EntityType = "SERVICE_FEE",
             EntityId = refund.ServiceFeeId,
             ActorType = AuditActorTypes.Service,
+            ServiceName = "WarrantyProgressWorker",
             NewValues = new { slot.ReplacementSlotId, originalServiceFeeId = slot.ServiceFeeId, percent, refund.Amount },
         }, cancellationToken);
         return refund;

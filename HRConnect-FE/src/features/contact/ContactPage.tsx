@@ -9,7 +9,7 @@ import type { ContactServiceInterest } from '@/types/api/contact';
 import { ContactConsultationForm } from './ContactConsultationForm';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
-const CARD = 'rounded-lg border border-solid border-[#E5E7EB] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)]';
+const CARD = 'rounded-2xl border border-solid border-[#DCE3EC] bg-white shadow-[0_1px_2px_rgba(8,37,60,0.05),0_12px_28px_-12px_rgba(8,37,60,0.08)]';
 
 const VALID_SERVICES: ContactServiceInterest[] = ['HEADHUNT_COD', 'CV_SOURCING', 'CV_APPLICATION', 'OTHER'];
 
@@ -19,7 +19,7 @@ export const ContactPage: React.FC = () => {
   const initialService = serviceParam && VALID_SERVICES.includes(serviceParam) ? serviceParam : 'HEADHUNT_COD';
 
   return (
-    <div className={`${FONT} min-h-screen bg-[#F7F8FA] text-[14px] text-[#1F2937] [line-height:normal]`}>
+    <div className={`${FONT} min-h-screen bg-[#F4F7FA] text-sm text-slate-900 antialiased [line-height:normal]`}>
       <Navbar />
 
       <main className="mx-auto max-w-[1048px] px-4 pb-16 pt-8 sm:px-6 animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]">

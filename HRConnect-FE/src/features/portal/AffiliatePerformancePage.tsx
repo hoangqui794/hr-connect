@@ -82,7 +82,7 @@ export const AffiliatePerformancePage: React.FC = () => {
                 {funnel.map((f) => (
                   <div key={f.label} className="flex items-center gap-3">
                     <span className="w-[100px] shrink-0 text-[13px] text-gray-700">{f.label}</span>
-                    <span className="h-6 min-w-0 flex-1 overflow-hidden rounded bg-slate-100"><span className="block h-full bg-gradient-to-r from-[#0284C7] to-[#2563EB]" style={{ width: `${Math.round((f.n / top) * 100)}%` }} /></span>
+                    <span className="h-6 min-w-0 flex-1 overflow-hidden rounded bg-slate-100"><span className="block h-full bg-[#0369A1]" style={{ width: `${Math.round((f.n / top) * 100)}%` }} /></span>
                     <b className="w-9 text-right tabular-nums">{f.n}</b>
                   </div>
                 ))}

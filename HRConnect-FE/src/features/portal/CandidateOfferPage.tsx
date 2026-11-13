@@ -299,7 +299,7 @@ export const CandidateOfferPage: React.FC = () => {
             </div>
           )}
           <div className="mt-[18px] flex justify-end">
-            <button type="button" disabled={respond.isPending || acceptBlocked} onClick={submit} className={`${FONT} h-11 cursor-pointer rounded-xl border-0 bg-gradient-to-r from-[#0284C7] to-[#2563EB] px-[22px] text-[14px] font-bold text-white transition-all hover:from-[#0369A1] hover:to-[#1D4ED8] shadow-md shadow-sky-500/25 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-none disabled:bg-[#9CA3AF] disabled:shadow-none`}>
+            <button type="button" disabled={respond.isPending || acceptBlocked} onClick={submit} className={`${FONT} h-11 cursor-pointer rounded-xl border-0 bg-[#0369A1] px-[22px] text-[14px] font-bold text-white transition-all hover:from-[#0369A1] hover:to-[#1D4ED8] shadow-md shadow-sky-500/25 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-none disabled:bg-[#9CA3AF] disabled:shadow-none`}>
               {respond.isPending ? 'Đang gửi…' : 'Gửi trả lời'}
             </button>
           </div>
