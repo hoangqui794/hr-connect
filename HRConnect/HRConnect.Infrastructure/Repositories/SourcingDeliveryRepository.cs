@@ -35,6 +35,18 @@ public class SourcingDeliveryRepository : ISourcingDeliveryRepository
             .Where(d => d.JobId == jobId)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyDictionary<Guid, int>> GetCountedCountsByJobIdsAsync(
+        IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default)
+    {
+        if (jobIds.Count == 0)
+            return new Dictionary<Guid, int>();
+
+        return await _context.SourcingDeliveries.AsNoTracking()
+            .Where(d => jobIds.Contains(d.JobId) && SourcingDeliveryStates.Counted.Contains(d.Status))
+            .GroupBy(d => d.JobId)
+            .ToDictionaryAsync(g => g.Key, g => g.Count(), cancellationToken);
+    }
+
     public Task<SourcingDelivery?> GetByIdAsync(Guid deliveryId, CancellationToken cancellationToken = default) =>
         _context.SourcingDeliveries
             .Include(d => d.Job).ThenInclude(j => j.ServiceType)

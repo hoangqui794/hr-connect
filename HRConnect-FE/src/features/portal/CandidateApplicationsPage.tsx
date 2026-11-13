@@ -8,7 +8,7 @@ import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App as AntApp, DatePicker, Input, Pagination, Popconfirm, Select, Skeleton } from 'antd';
-import { CloseCircleOutlined, SearchOutlined } from '@ant-design/icons';
+import { ArrowRightOutlined, CheckCircleOutlined, CloseCircleOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { CompanyMark } from '@/features/landing/components/SiteParts';
 import { candidateApplicationsApi, candidateConsentApi } from '@/services/api/mf02Api';
@@ -38,9 +38,50 @@ const TABS: { key: Tab; label: string; groups?: Group[] }[] = [
   { key: 'ENDED', label: 'Đã kết thúc', groups: ['ENDED', 'NOT_SELECTED', 'WITHDRAWN'] },
 ];
 
+export const isApplicationResigned = (a: CandidateApplication): boolean => {
+  const label = (a.displayLabel || '').toLowerCase();
+  const status = (a.status || '').toUpperCase();
+  return (
+    status === 'RESIGNED' ||
+    status === 'LEFT_DURING_WARRANTY' ||
+    label.includes('nghỉ việc') ||
+    a.displayGroup === 'ENDED'
+  );
+};
+
+export const isApplicationHired = (a: CandidateApplication): boolean => {
+  if (isApplicationResigned(a)) return false;
+  const status = (a.status || '').toUpperCase();
+  return (
+    a.displayGroup === 'HIRED' ||
+    status === 'HIRED' ||
+    status === 'PLACED' ||
+    status === 'ONBOARDED'
+  );
+};
+
+export const isApplicationEnded = (a: CandidateApplication): boolean => {
+  if (isApplicationResigned(a)) return true;
+  const status = (a.status || '').toUpperCase();
+  return (
+    a.displayGroup === 'NOT_SELECTED' ||
+    a.displayGroup === 'WITHDRAWN' ||
+    status === 'REJECTED' ||
+    status === 'WITHDRAWN' ||
+    status === 'OFFER_DECLINED' ||
+    status === 'NOT_STARTED' ||
+    status === 'CLOSED'
+  );
+};
+
 /** Older links pass one status group in `status`; it opens the tab holding that group. */
-const tabFromParam = (value: string | null): Tab =>
-  TABS.find((tab) => tab.key === value || tab.groups?.includes(value as Group))?.key ?? 'ALL';
+const tabFromParam = (value: string | null): Tab => {
+  if (!value) return 'ALL';
+  const upper = value.toUpperCase();
+  if (upper === 'HIRED' || upper === 'ONBOARDED' || upper === 'PLACED') return 'HIRED';
+  if (upper === 'ENDED' || upper === 'RESIGNED' || upper === 'REJECTED' || upper === 'WITHDRAWN') return 'ENDED';
+  return TABS.find((tab) => tab.key === upper || tab.groups?.includes(upper as Group))?.key ?? 'ALL';
+};
 
 const NEUTRAL = { text: '#374151', background: '#F3F4F6' };
 const INFO = { text: '#075985', background: '#E0F2FE' };
@@ -53,7 +94,7 @@ const GROUP_VIEW: Record<Group, { steps: number; ended?: boolean; color: { text:
   SELECTED: { steps: 2, color: GOOD, next: 'Bạn được chọn phỏng vấn, chờ nhà tuyển dụng gửi lịch', action: 'Xem chi tiết' },
   INTERVIEW: { steps: 3, color: { text: '#9A3412', background: '#FFEDD5' }, next: 'Ngày giờ và hình thức phỏng vấn có trong đơn', action: 'Xem lịch phỏng vấn' },
   OFFER: { steps: 4, color: GOOD, next: 'Điều khoản và hạn trả lời có trong đơn', action: 'Xem offer' },
-  HIRED: { steps: 5, color: GOOD, next: 'Chúc mừng bạn đã nhận việc', action: 'Xem chi tiết' },
+  HIRED: { steps: 5, color: { text: '#065F46', background: '#D1FAE5' }, next: 'Chúc mừng bạn đã nhận việc', action: 'Xem chi tiết' },
   ENDED: { steps: 5, ended: true, color: NEUTRAL, next: 'Hồ sơ nhận việc tại vị trí này đã kết thúc', action: 'Xem chi tiết' },
   NOT_SELECTED: { steps: 2, ended: true, color: NEUTRAL, action: 'Xem việc tương tự' },
   WITHDRAWN: { steps: 1, ended: true, color: NEUTRAL, action: 'Xem chi tiết' },
@@ -118,6 +159,9 @@ const ApplicationRow: React.FC<{ application: CandidateApplication }> = ({ appli
   const stage = candidateDisplayStage(a.displayGroup, a.displayLabel);
   const detailHref = `/candidate/applications/${a.applicationId}`;
   const actionHref = a.displayGroup === 'NOT_SELECTED' ? `/jobs?keyword=${encodeURIComponent(a.jobTitle)}` : detailHref;
+  const isHired = isApplicationHired(a);
+  const isResigned = isApplicationResigned(a);
+
   return (
     <article className="flex flex-wrap gap-[14px] rounded-lg border border-solid border-[#E5E7EB] bg-white p-4">
       <CompanyMark name={a.companyName} size={54} />
@@ -129,17 +173,47 @@ const ApplicationRow: React.FC<{ application: CandidateApplication }> = ({ appli
               {a.companyName} · Nộp {dayjs(a.appliedAt).format('DD/MM/YYYY')} · {a.submissionSource === 'AFFILIATE' ? 'Được Affiliate giới thiệu' : 'Tự ứng tuyển'}
             </div>
           </div>
-          <span className="self-start rounded px-2 py-[3px] text-[12px] font-semibold" style={{ color: view.color.text, background: view.color.background }}>
-            {a.displayGroup === 'HIRED' ? 'Đang làm việc' : stage.label}
-          </span>
+          {isHired ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-solid border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 shadow-2xs">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Đang làm việc</span>
+            </span>
+          ) : isResigned ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-solid border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+              <span>Đã nghỉ việc</span>
+            </span>
+          ) : (
+            <span className="self-start rounded px-2 py-[3px] text-[12px] font-semibold" style={{ color: view.color.text, background: view.color.background }}>
+              {stage.label}
+            </span>
+          )}
         </div>
-        <div role="img" aria-label={`Tiến độ: ${stage.label}`} className="mt-3 flex gap-1">
+        <div role="img" aria-label={`Tiến độ: ${isHired ? 'Đang làm việc' : isResigned ? 'Đã nghỉ việc' : stage.label}`} className="mt-3 flex gap-1">
           {Array.from({ length: STEP_COUNT }, (_, index) => (
-            <span key={index} className="h-1.5 flex-1 rounded-[3px]" style={{ background: index < view.steps ? (view.ended ? '#94A3B8' : 'linear-gradient(90deg, #0284C7, #2563EB)') : '#E2E8F0' }} />
+            <span
+              key={index}
+              className="h-1.5 flex-1 rounded-[3px]"
+              style={{
+                background:
+                  index < (isHired ? 5 : view.steps)
+                    ? view.ended || isResigned
+                      ? '#94A3B8'
+                      : isHired
+                        ? 'linear-gradient(90deg, #059669, #10B981)'
+                        : 'linear-gradient(90deg, #0284C7, #2563EB)'
+                    : '#E2E8F0',
+              }}
+            />
           ))}
         </div>
         <div className="mt-2 flex flex-wrap justify-between gap-3 text-[13px]">
-          <span className="text-[#4B5563]">{stage.terminalMessage ?? view.next}</span>
+          <span className="text-[#4B5563]">
+            {isHired
+              ? 'Bạn đang làm việc tại vị trí này'
+              : isResigned
+                ? 'Hồ sơ nhận việc tại vị trí này đã kết thúc'
+                : (stage.terminalMessage ?? view.next)}
+          </span>
           <Link to={actionHref} className={`font-semibold ${LINK}`}>{view.action}</Link>
         </div>
       </div>
@@ -212,9 +286,37 @@ export const CandidateApplicationsPage: React.FC = () => {
   });
 
   const all = applications.data?.items ?? [];
+  const activeHiredApps = all.filter(isApplicationHired);
+
   const inTab = (key: Tab) => {
-    const groups = TABS.find((item) => item.key === key)?.groups;
-    const base = groups ? all.filter((a) => groups.includes(a.displayGroup)) : all;
+    let base = all;
+    if (key === 'PROCESSING') {
+      base = all.filter(
+        (a) =>
+          !isApplicationResigned(a) &&
+          !isApplicationHired(a) &&
+          (a.displayGroup === 'SUBMITTED' ||
+            a.displayGroup === 'IN_REVIEW' ||
+            a.displayGroup === 'SELECTED')
+      );
+    } else if (key === 'INTERVIEW') {
+      base = all.filter(
+        (a) =>
+          !isApplicationResigned(a) &&
+          a.displayGroup === 'INTERVIEW'
+      );
+    } else if (key === 'OFFER') {
+      base = all.filter(
+        (a) =>
+          !isApplicationResigned(a) &&
+          a.displayGroup === 'OFFER'
+      );
+    } else if (key === 'HIRED') {
+      base = all.filter(isApplicationHired);
+    } else if (key === 'ENDED') {
+      base = all.filter(isApplicationEnded);
+    }
+
     return base.filter((a) => {
       if (searchParam) {
         const q = searchParam.toLowerCase().trim();
@@ -376,6 +478,47 @@ export const CandidateApplicationsPage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* Banner thông báo vị trí hiện tại đang làm việc */}
+      {activeHiredApps.length > 0 && (tab === 'HIRED' || tab === 'ALL') && (
+        <section
+          aria-label="Thông tin công việc hiện tại"
+          className="mb-4 flex flex-col gap-3 rounded-2xl border border-solid border-emerald-200 bg-gradient-to-r from-emerald-50/90 via-teal-50/50 to-white p-4 text-emerald-950 shadow-xs sm:flex-row sm:items-center sm:justify-between sm:p-5"
+        >
+          <div className="flex items-start gap-3.5">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 shadow-2xs">
+              <CheckCircleOutlined className="text-xl" />
+            </span>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">
+                  Công việc hiện tại
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100/90 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                  Đang ghi nhận trên hệ thống
+                </span>
+              </div>
+              <h2 className="m-0 mt-1 text-[15px] font-bold text-slate-900">
+                {activeHiredApps[0].jobTitle} ·{' '}
+                <span className="font-semibold text-slate-700">{activeHiredApps[0].companyName}</span>
+              </h2>
+              <p className="m-0 mt-0.5 text-xs text-slate-600 sm:text-[13px]">
+                Nếu bạn đã hoàn tất công việc hoặc nghỉ việc, vui lòng vào chi tiết đơn để cập nhật trạng thái đã nghỉ việc.
+              </p>
+            </div>
+          </div>
+          <div className="shrink-0 self-end sm:self-center">
+            <Link
+              to={`/candidate/applications/${activeHiredApps[0].applicationId}`}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-solid border-emerald-300 bg-white px-3.5 py-2 text-xs font-bold text-emerald-800 shadow-xs transition-colors hover:bg-emerald-50 hover:text-emerald-900 no-underline"
+            >
+              <span>Xem chi tiết</span>
+              <ArrowRightOutlined className="text-[10px]" />
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* Tabs trạng thái */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-0 border-b border-solid border-[#E5E7EB]">

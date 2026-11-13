@@ -72,6 +72,7 @@ export interface ServiceFee {
   /** CV_SOURCING job terms, so a deposit / settlement can be explained as CVs × price per CV. */
   sourcingTarget?: number | null;
   sourcingPricePerCv?: number | null;
+  sourcingCounted?: number | null;
   /** REPLACEMENT_REFUND: when the replacement slot it comes from ran out. */
   replacementExpiredAt?: string | null;
   paidAt?: string | null;

@@ -810,7 +810,18 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             : []),
           ...(job.maxApplications ? [{ label: 'Hạn mức tiếp nhận', value: `Tối đa ${job.maxApplications} hồ sơ` }] : []),
           ...(job.sourcingTarget && job.serviceTypeCode === 'CV_SOURCING'
-            ? [{ label: 'Hạn mức tìm kiếm', value: `${job.sourcingTarget} hồ sơ` }]
+            ? [
+                {
+                  label: !isApplicant && job.sourcingCounted != null ? 'Đã nhận CV' : 'Hạn mức tìm kiếm',
+                  value: !isApplicant && job.sourcingCounted != null
+                    ? (
+                      <span className="font-semibold text-sky-700 tabular-nums">
+                        {job.sourcingCounted}/{job.sourcingTarget} CV
+                      </span>
+                    )
+                    : `${job.sourcingTarget} hồ sơ`,
+                },
+              ]
             : []),
           ...(job.expiresAt
             ? [{

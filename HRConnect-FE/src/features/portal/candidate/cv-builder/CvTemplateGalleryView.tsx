@@ -43,9 +43,9 @@ export const BUILTIN_CV_TEMPLATES: BuiltInCvTemplate[] = [
   {
     id: 'tpl-standard',
     code: 'STANDARD',
-    name: 'Tiêu chuẩn',
+    name: 'Tiêu chuẩn 1 cột',
     category: 'ats',
-    tags: ['ATS', 'Đơn giản', 'Mọi ngành'],
+    tags: ['ATS', '1 cột', 'Mọi ngành'],
     layout: 'ats',
     defaultColor: '#0284C7',
     colors: ['#0284C7', '#166534', '#9F1239', '#334155'],
@@ -78,8 +78,8 @@ export const BUILTIN_CV_TEMPLATES: BuiltInCvTemplate[] = [
   },
   {
     id: 'tpl-modern',
-    code: 'MODERN',
-    name: 'Hai cột hiện đại',
+    code: 'MODERN_TWO_COL',
+    name: 'Hiện đại 2 cột',
     category: 'modern',
     tags: ['Hai cột', 'Có ảnh', 'Hiện đại'],
     layout: 'modern',
@@ -106,17 +106,49 @@ export const BUILTIN_CV_TEMPLATES: BuiltInCvTemplate[] = [
           bullets: ['Phát triển API cho ứng dụng giao hàng.'],
         },
       ],
-      education: 'Đại học Bách khoa Đà Nẵng · Công nghệ thông tin, 2014 – 2018',
+      education: 'Đại học Bách khoa Đà Nẵng · Công nghệ thông tin',
+      educationPeriod: '2014 – 2018',
       skills: 'Java, Spring Boot, PostgreSQL, Docker, Kubernetes, AWS',
       languages: 'Tiếng Anh – IELTS 7.0',
     },
   },
   {
-    id: 'tpl-fresh-grad',
+    id: 'tpl-elegant',
+    code: 'ELEGANT',
+    name: 'Thanh lịch (Header Banner)',
+    category: 'modern',
+    tags: ['Header Banner', 'Có ảnh', 'Chuyên nghiệp'],
+    layout: 'elegant',
+    defaultColor: '#0284C7',
+    colors: ['#0284C7', '#166534', '#9F1239', '#334155'],
+    hasPhoto: true,
+    sample: {
+      fullName: 'Đỗ Minh Quân',
+      headline: 'Nhân viên Hành chính – Nhân sự',
+      contact: 'minhquan@email.com · 0909 222 111 · Thủ Đức, Hồ Chí Minh',
+      email: 'minhquan@email.com',
+      phone: '0909 222 111',
+      address: 'Thủ Đức, Hồ Chí Minh',
+      summary: 'Ba năm kinh nghiệm hành chính – nhân sự, thành thạo quy trình tuyển dụng và chấm công.',
+      experiences: [
+        {
+          company: 'Công ty CP Đất Phương Nam',
+          period: '2023 – nay',
+          bullets: ['Quản lý hồ sơ 150 nhân viên, phối hợp tuyển dụng 40 vị trí/năm.'],
+        },
+      ],
+      education: 'Đại học Lao động – Xã hội · Quản trị nhân lực',
+      educationPeriod: '2017 – 2021',
+      skills: 'Tuyển dụng, C&B, Luật lao động, Excel nhân sự',
+      languages: 'Tiếng Anh giao tiếp',
+    },
+  },
+  {
+    id: 'tpl-minimal',
     code: 'MINIMAL',
-    name: 'Sinh viên mới ra trường',
+    name: 'Tối giản (Minimalist)',
     category: 'junior',
-    tags: ['Ít kinh nghiệm', 'Có ảnh'],
+    tags: ['Tối giản', 'Đường kẻ tinh tế', 'ATS'],
     layout: 'minimal',
     defaultColor: '#0284C7',
     colors: ['#0284C7', '#166534', '#9F1239', '#334155'],
@@ -126,43 +158,18 @@ export const BUILTIN_CV_TEMPLATES: BuiltInCvTemplate[] = [
       headline: 'Thực tập sinh Kế toán',
       contact: 'thuha@email.com · 0987 654 321 · Cầu Giấy, Hà Nội',
       summary: 'Sinh viên năm cuối ngành Kế toán, mong muốn làm việc trong môi trường kiểm toán chuyên nghiệp.',
-      education: 'Học viện Tài chính – Kế toán doanh nghiệp, 2022 – 2026 · GPA 3.6/4',
+      education: 'Học viện Tài chính – Kế toán doanh nghiệp',
+      educationPeriod: '2022 – 2026',
       activity: 'CLB Kế toán trẻ – Trưởng ban Sự kiện, tổ chức 4 hội thảo nghề nghiệp.',
       skills: 'MISA, Excel, tiếng Anh TOEIC 800, làm việc nhóm',
     },
   },
   {
-    id: 'tpl-classic',
-    code: 'CLASSIC',
-    name: 'Cổ điển',
-    category: 'ats',
-    tags: ['ATS', 'Không ảnh', 'Trang trọng'],
-    layout: 'classic',
-    defaultColor: '#0284C7',
-    colors: ['#0284C7', '#166534', '#9F1239', '#334155'],
-    hasPhoto: false,
-    sample: {
-      fullName: 'Đỗ Minh Quân',
-      headline: 'Nhân viên Hành chính – Nhân sự',
-      contact: 'minhquan@email.com · 0909 222 111 · Thủ Đức, Hồ Chí Minh',
-      summary: 'Ba năm kinh nghiệm hành chính – nhân sự, thành thạo quy trình tuyển dụng và chấm công.',
-      experiences: [
-        {
-          company: 'Công ty CP Đất Phương Nam · 2023 – nay',
-          period: '',
-          bullets: ['Quản lý hồ sơ 150 nhân viên, phối hợp tuyển dụng 40 vị trí/năm.'],
-        },
-      ],
-      education: 'Đại học Lao động – Xã hội · Quản trị nhân lực, 2017 – 2021',
-      skills: 'Tuyển dụng, C&B, Luật lao động, Excel nhân sự',
-    },
-  },
-  {
-    id: 'tpl-left-band',
+    id: 'tpl-executive',
     code: 'EXECUTIVE',
-    name: 'Cột màu bên trái',
+    name: 'Chuyên nghiệp (Sidebar phải)',
     category: 'modern',
-    tags: ['Có ảnh', 'Nổi bật'],
+    tags: ['Sidebar phải', 'Có ảnh', 'Quản lý'],
     layout: 'executive',
     defaultColor: '#0284C7',
     colors: ['#0284C7', '#166534', '#9F1239', '#334155'],
@@ -177,22 +184,24 @@ export const BUILTIN_CV_TEMPLATES: BuiltInCvTemplate[] = [
       summary: 'Năm năm giảng dạy luyện thi IELTS, mong muốn phát triển chương trình học cho học sinh THPT.',
       experiences: [
         {
-          company: 'Trung tâm Anh ngữ Ánh Dương · 2021 – nay',
-          period: '',
+          company: 'Trung tâm Anh ngữ Ánh Dương',
+          period: '2021 – nay',
           bullets: ['Phụ trách 6 lớp IELTS, 85% học viên đạt mục tiêu.'],
         },
       ],
-      education: 'Đại học Sư phạm TP.HCM · Sư phạm Tiếng Anh, 2015 – 2019',
+      education: 'Đại học Sư phạm TP.HCM · Sư phạm Tiếng Anh',
+      educationPeriod: '2015 – 2019',
       skills: 'Giảng dạy IELTS, Thiết kế giáo án, Quản lý lớp học',
+      languages: 'Tiếng Anh bản xứ',
       certificates: ['IELTS 8.0', 'TESOL 2024'],
     },
   },
   {
     id: 'tpl-compact',
     code: 'COMPACT',
-    name: 'Gọn một trang',
+    name: 'Sáng tạo (Timeline dọc)',
     category: 'ats',
-    tags: ['ATS', 'Nhiều kinh nghiệm'],
+    tags: ['Timeline', 'Sáng tạo', 'Trực quan'],
     layout: 'compact',
     defaultColor: '#0284C7',
     colors: ['#0284C7', '#166534', '#9F1239', '#334155'],
@@ -206,17 +215,18 @@ export const BUILTIN_CV_TEMPLATES: BuiltInCvTemplate[] = [
       summary: 'Ba năm phân tích dữ liệu bán lẻ bằng SQL, Python và Power BI.',
       experiences: [
         {
-          company: 'Công ty Bán lẻ Hưng Thịnh · 2022 – nay',
-          period: '',
+          company: 'Công ty Bán lẻ Hưng Thịnh',
+          period: '2022 – nay',
           bullets: ['Xây dựng 12 dashboard doanh thu, giảm 30% thời gian báo cáo tuần.'],
         },
         {
-          company: 'Công ty Phần mềm Gia Linh · 2021 – 2022',
-          period: '',
+          company: 'Công ty Phần mềm Gia Linh',
+          period: '2021 – 2022',
           bullets: ['Làm sạch và chuẩn hóa dữ liệu khách hàng.'],
         },
       ],
-      education: 'Đại học Kinh tế Quốc dân · Hệ thống thông tin, 2017 – 2021',
+      education: 'Đại học Kinh tế Quốc dân · Hệ thống thông tin',
+      educationPeriod: '2017 – 2021',
       skills: 'SQL, Python (pandas), Power BI, Excel, thống kê cơ bản',
     },
   },
@@ -226,40 +236,50 @@ const TemplateMiniPreview: React.FC<{ template: BuiltInCvTemplate; accentColor: 
   template,
   accentColor,
 }) => {
-  const { sample, id } = template;
+  const { sample, layout } = template;
 
-  if (id === 'tpl-modern') {
+  // 1. MODERN: 2-column (left 36% sidebar, right 64% main)
+  if (layout === 'modern') {
     return (
       <div className="flex h-full w-full flex-col overflow-hidden rounded-[6px] border border-solid border-[#E2E8F0] bg-white text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-        <div className="flex items-center gap-3 px-4 py-3 text-white" style={{ backgroundColor: accentColor }}>
-          <div className="h-9 w-9 shrink-0 rounded-full bg-white/90" />
+        {/* Full-width header on top */}
+        <div className="flex items-center gap-2.5 border-0 border-b-[1.5px] border-solid px-3 py-2 text-white" style={{ backgroundColor: accentColor, borderColor: accentColor }}>
+          <div className="h-7 w-7 shrink-0 rounded-full bg-white/90" />
           <div className="min-w-0">
-            <div className="truncate text-[10px] font-bold">{sample.fullName}</div>
-            <div className="truncate text-[7.5px] text-white/85">{sample.headline}</div>
+            <div className="truncate text-[9.5px] font-bold text-white">{sample.fullName}</div>
+            <div className="truncate text-[7px] text-white/90">{sample.headline}</div>
           </div>
         </div>
-        <div className="grid flex-1 grid-cols-[0.38fr_0.62fr] gap-2.5 p-3 text-[6.5px] leading-[1.35] text-[#334155]">
-          <div className="space-y-2 border-0 border-r border-solid border-[#E2E8F0] pr-2 text-center">
+        <div className="grid flex-1 grid-cols-[0.36fr_0.64fr] gap-2 p-2.5 text-[6.5px] leading-[1.35] text-[#334155]">
+          {/* Left Column: Contact + Skills + Languages */}
+          <div className="space-y-2 rounded-[4px] bg-[#F8FAFC] p-1.5 border border-solid border-[#E2E8F0]/70">
             <div>
               <div className="mb-0.5 font-bold uppercase tracking-wider" style={{ color: accentColor }}>LIÊN HỆ</div>
               <div className="text-[#475569]">{sample.email}<br />{sample.phone}<br />{sample.address}</div>
             </div>
             <div>
               <div className="mb-0.5 font-bold uppercase tracking-wider" style={{ color: accentColor }}>KỸ NĂNG</div>
-              <div className="text-[#475569]">Java, Spring Boot<br />PostgreSQL<br />Docker, Kubernetes<br />AWS</div>
+              <div className="text-[#475569]">{sample.skills}</div>
             </div>
-            <div>
-              <div className="mb-0.5 font-bold uppercase tracking-wider" style={{ color: accentColor }}>NGOẠI NGỮ</div>
-              <div className="text-[#475569]">{sample.languages}</div>
-            </div>
+            {sample.languages && (
+              <div>
+                <div className="mb-0.5 font-bold uppercase tracking-wider" style={{ color: accentColor }}>NGOẠI NGỮ</div>
+                <div className="text-[#475569]">{sample.languages}</div>
+              </div>
+            )}
           </div>
+          {/* Right Column: Summary + Experience + Education */}
           <div className="space-y-2">
             <div>
-              <div className="mb-0.5 text-center font-bold uppercase tracking-wider" style={{ color: accentColor }}>KINH NGHIỆM</div>
+              <div className="mb-0.5 font-bold uppercase tracking-wider" style={{ color: accentColor }}>MỤC TIÊU</div>
+              <div className="text-[#475569]">{sample.summary}</div>
+            </div>
+            <div>
+              <div className="mb-0.5 font-bold uppercase tracking-wider" style={{ color: accentColor }}>KINH NGHIỆM</div>
               {sample.experiences?.map((exp, idx) => (
-                <div key={idx} className="mb-1.5">
-                  <div className="text-center font-bold text-[#0F172A]">{exp.company}</div>
-                  <div className="text-center text-[6px] text-[#64748B]">{exp.period}</div>
+                <div key={idx} className="mb-1">
+                  <div className="font-bold text-[#0F172A]">{exp.company}</div>
+                  <div className="text-[6px] text-[#64748B]">{exp.period}</div>
                   {exp.bullets.map((b, bIdx) => (
                     <div key={bIdx} className="text-[#334155]">• {b}</div>
                   ))}
@@ -267,8 +287,8 @@ const TemplateMiniPreview: React.FC<{ template: BuiltInCvTemplate; accentColor: 
               ))}
             </div>
             <div>
-              <div className="mb-0.5 text-center font-bold uppercase tracking-wider" style={{ color: accentColor }}>HỌC VẤN</div>
-              <div className="text-center font-semibold text-[#0F172A]">{sample.education}</div>
+              <div className="mb-0.5 font-bold uppercase tracking-wider" style={{ color: accentColor }}>HỌC VẤN</div>
+              <div className="font-semibold text-[#0F172A]">{sample.education}</div>
             </div>
           </div>
         </div>
@@ -276,50 +296,122 @@ const TemplateMiniPreview: React.FC<{ template: BuiltInCvTemplate; accentColor: 
     );
   }
 
-  if (id === 'tpl-left-band') {
+  // 2. EXECUTIVE: Reversed 2-column (left 64% main, right 36% sidebar)
+  if (layout === 'executive') {
     return (
-      <div className="grid h-full w-full grid-cols-[0.36fr_0.64fr] overflow-hidden rounded-[6px] border border-solid border-[#E2E8F0] bg-white text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-        <div className="flex flex-col items-center px-2.5 py-3 text-center text-[6.5px] leading-[1.35] text-white" style={{ backgroundColor: accentColor }}>
-          <div className="mb-2 h-10 w-10 rounded-full bg-white/85" />
-          <div className="text-[8.5px] font-bold">{sample.fullName}</div>
-          <div className="mb-2.5 text-[6.5px] text-white/80">{sample.headline}</div>
-          <div className="mb-2 w-full">
-            <div className="mb-0.5 font-bold uppercase tracking-wider text-white/90">THÔNG TIN</div>
-            <div className="text-white/80">{sample.email}<br />{sample.phone}<br />{sample.address}</div>
-          </div>
-          <div className="w-full">
-            <div className="mb-0.5 font-bold uppercase tracking-wider text-white/90">CHỨNG CHỈ</div>
-            <div className="text-white/80">{sample.certificates?.join('\n')}</div>
+      <div className="flex h-full w-full flex-col overflow-hidden rounded-[6px] border border-solid border-[#E2E8F0] bg-white text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        {/* Full-width header on top */}
+        <div className="flex items-center gap-2.5 border-0 border-b-[2px] border-solid bg-slate-50 px-3 py-2 text-left" style={{ borderColor: accentColor }}>
+          <div className="h-7 w-7 shrink-0 rounded-full bg-slate-200" />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[9.5px] font-bold text-[#0F172A]">{sample.fullName}</div>
+            <div className="truncate text-[7px] font-semibold" style={{ color: accentColor }}>{sample.headline}</div>
           </div>
         </div>
-        <div className="space-y-2.5 p-3 text-[6.5px] leading-[1.35] text-[#334155]">
-          <div>
-            <div className="mb-0.5 text-center font-bold uppercase tracking-wider" style={{ color: accentColor }}>MỤC TIÊU NGHỀ NGHIỆP</div>
-            <div className="text-center text-[#475569]">{sample.summary}</div>
+        <div className="grid flex-1 grid-cols-[0.64fr_0.36fr] gap-2 p-2.5 text-[6.5px] leading-[1.35] text-[#334155]">
+          {/* Left Column: Main content */}
+          <div className="space-y-2">
+            <div>
+              <div className="mb-0.5 font-bold uppercase tracking-wider" style={{ color: accentColor }}>MỤC TIÊU</div>
+              <div className="text-[#475569]">{sample.summary}</div>
+            </div>
+            <div>
+              <div className="mb-0.5 font-bold uppercase tracking-wider" style={{ color: accentColor }}>KINH NGHIỆM</div>
+              {sample.experiences?.map((exp, idx) => (
+                <div key={idx} className="mb-1">
+                  <div className="font-bold text-[#0F172A]">{exp.company}</div>
+                  <div className="text-[6px] text-[#64748B]">{exp.period}</div>
+                  {exp.bullets.map((b, bIdx) => (
+                    <div key={bIdx} className="text-[#475569]">• {b}</div>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div>
+              <div className="mb-0.5 font-bold uppercase tracking-wider" style={{ color: accentColor }}>HỌC VẤN</div>
+              <div className="font-semibold text-[#0F172A]">{sample.education}</div>
+            </div>
           </div>
-          <div>
-            <div className="mb-0.5 text-center font-bold uppercase tracking-wider" style={{ color: accentColor }}>KINH NGHIỆM</div>
-            {sample.experiences?.map((exp, idx) => (
-              <div key={idx} className="text-center">
-                <div className="font-bold text-[#0F172A]">{exp.company}</div>
-                {exp.bullets.map((b, bIdx) => (
-                  <div key={bIdx} className="text-[#475569]">{b}</div>
-                ))}
+          {/* Right Column: Sidebar */}
+          <div className="space-y-2 rounded-[4px] border-0 border-l border-solid border-[#CBD5E1] pl-2">
+            <div>
+              <div className="mb-0.5 font-bold uppercase tracking-wider" style={{ color: accentColor }}>KỸ NĂNG</div>
+              <div className="text-[#475569]">{sample.skills}</div>
+            </div>
+            {sample.languages && (
+              <div>
+                <div className="mb-0.5 font-bold uppercase tracking-wider" style={{ color: accentColor }}>NGOẠI NGỮ</div>
+                <div className="text-[#475569]">{sample.languages}</div>
               </div>
-            ))}
-          </div>
-          <div>
-            <div className="mb-0.5 text-center font-bold uppercase tracking-wider" style={{ color: accentColor }}>HỌC VẤN</div>
-            <div className="text-center font-semibold text-[#0F172A]">{sample.education}</div>
+            )}
+            {sample.certificates && sample.certificates.length > 0 && (
+              <div>
+                <div className="mb-0.5 font-bold uppercase tracking-wider" style={{ color: accentColor }}>CHỨNG CHỈ</div>
+                <div className="text-[#475569]">{sample.certificates.join(', ')}</div>
+              </div>
+            )}
+            <div>
+              <div className="mb-0.5 font-bold uppercase tracking-wider" style={{ color: accentColor }}>LIÊN HỆ</div>
+              <div className="text-[#475569]">{sample.email}<br />{sample.phone}</div>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  if (id === 'tpl-compact') {
+  // 3. ELEGANT: Full-width Header Banner
+  if (layout === 'elegant') {
     return (
-      <div className="flex h-full w-full flex-col overflow-hidden rounded-[6px] border border-solid border-[#E2E8F0] bg-white p-3.5 text-left text-[6.5px] leading-[1.35] text-[#334155] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <div className="flex h-full w-full flex-col overflow-hidden rounded-[6px] border border-solid border-[#E2E8F0] bg-white text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        {/* Full-width colored banner */}
+        <div className="flex items-center gap-2.5 px-3 py-3 text-white" style={{ backgroundColor: accentColor }}>
+          <div className="h-8 w-8 shrink-0 rounded-full border-2 border-solid border-white/90 bg-white/20" />
+          <div className="min-w-0">
+            <div className="truncate text-[10px] font-bold text-white">{sample.fullName}</div>
+            <div className="truncate text-[7.5px] text-white/90">{sample.headline}</div>
+            <div className="truncate text-[5.8px] text-white/80">{sample.contact}</div>
+          </div>
+        </div>
+        <div className="space-y-2 p-2.5 text-[6.5px] leading-[1.35] text-[#334155]">
+          <div>
+            <div className="mb-0.5 text-center font-bold uppercase tracking-wider" style={{ color: accentColor }}>MỤC TIÊU NGHỀ NGHIỆP</div>
+            <div className="text-center text-[#475569]">{sample.summary}</div>
+          </div>
+          <div>
+            <div className="mb-0.5 text-center font-bold uppercase tracking-wider" style={{ color: accentColor }}>KINH NGHIỆM LÀM VIỆC</div>
+            {sample.experiences?.map((exp, idx) => (
+              <div key={idx} className="mb-1">
+                <div className="flex items-baseline justify-between font-bold text-[#0F172A]">
+                  <span>{exp.company}</span>
+                  <span className="font-normal text-[#64748B]">{exp.period}</span>
+                </div>
+                {exp.bullets.map((b, bIdx) => (
+                  <div key={bIdx} className="text-[#334155]">• {b}</div>
+                ))}
+              </div>
+            ))}
+          </div>
+          <div>
+            <div className="mb-0.5 text-center font-bold uppercase tracking-wider" style={{ color: accentColor }}>HỌC VẤN</div>
+            <div className="flex items-baseline justify-between font-bold text-[#0F172A]">
+              <span>{sample.education}</span>
+              <span className="font-normal text-[#64748B]">{sample.educationPeriod}</span>
+            </div>
+          </div>
+          <div>
+            <div className="mb-0.5 text-center font-bold uppercase tracking-wider" style={{ color: accentColor }}>KỸ NĂNG</div>
+            <div className="text-center text-[#334155]">{sample.skills}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 4. COMPACT: Creative Timeline
+  if (layout === 'compact') {
+    return (
+      <div className="flex h-full w-full flex-col overflow-hidden rounded-[6px] border border-solid border-[#E2E8F0] bg-white p-3 text-left text-[6.5px] leading-[1.35] text-[#334155] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
         <div className="mb-2 flex items-start justify-between border-0 border-b border-solid pb-1.5" style={{ borderColor: accentColor }}>
           <div>
             <div className="text-[10px] font-bold text-[#0F172A]">{sample.fullName}</div>
@@ -330,62 +422,40 @@ const TemplateMiniPreview: React.FC<{ template: BuiltInCvTemplate; accentColor: 
           </div>
         </div>
         <div className="space-y-2">
-          <div className="grid grid-cols-[48px_1fr] gap-2">
-            <div className="font-bold uppercase" style={{ color: accentColor }}>TÓM TẮT</div>
-            <div>{sample.summary}</div>
+          <div>
+            <div className="mb-0.5 font-bold uppercase tracking-wider" style={{ color: accentColor }}>MỤC TIÊU NGHỀ NGHIỆP</div>
+            <div className="text-[#475569]">{sample.summary}</div>
           </div>
-          <div className="grid grid-cols-[48px_1fr] gap-2">
-            <div className="font-bold uppercase" style={{ color: accentColor }}>KINH NGHIỆM</div>
-            <div className="space-y-1">
+          <div>
+            <div className="mb-1 font-bold uppercase tracking-wider" style={{ color: accentColor }}>KINH NGHIỆM (TIMELINE)</div>
+            <div className="relative space-y-1.5 border-0 border-l-[1.5px] border-solid pl-2.5" style={{ borderColor: accentColor }}>
               {sample.experiences?.map((exp, idx) => (
-                <div key={idx}>
+                <div key={idx} className="relative">
+                  {/* Timeline dot */}
+                  <span
+                    className="absolute -left-[14px] top-1 h-2 w-2 rounded-full border border-solid border-white"
+                    style={{ backgroundColor: accentColor }}
+                  />
                   <div className="font-bold text-[#0F172A]">{exp.company}</div>
+                  <div className="text-[6px] text-[#64748B]">{exp.period}</div>
                   {exp.bullets.map((b, bIdx) => (
-                    <div key={bIdx} className="text-[#475569]">{b}</div>
+                    <div key={bIdx} className="text-[#475569]">• {b}</div>
                   ))}
                 </div>
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-[48px_1fr] gap-2">
-            <div className="font-bold uppercase" style={{ color: accentColor }}>HỌC VẤN</div>
-            <div className="font-semibold text-[#0F172A]">{sample.education}</div>
-          </div>
-          <div className="grid grid-cols-[48px_1fr] gap-2">
-            <div className="font-bold uppercase" style={{ color: accentColor }}>KỸ NĂNG</div>
-            <div>{sample.skills}</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (id === 'tpl-fresh-grad') {
-    return (
-      <div className="flex h-full w-full flex-col overflow-hidden rounded-[6px] border border-solid border-[#E2E8F0] bg-white p-3.5 text-left text-[6.5px] leading-[1.35] text-[#334155] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-        <div className="mb-2 flex items-center gap-2.5 border-0 border-b border-solid border-[#E2E8F0] pb-2">
-          <div className="h-9 w-9 shrink-0 rounded-full bg-[#CBD5E1]/70" />
-          <div className="min-w-0 flex-1 text-center">
-            <div className="text-[10px] font-bold text-[#0F172A]">{sample.fullName}</div>
-            <div className="text-[7px] font-semibold" style={{ color: accentColor }}>{sample.headline}</div>
-            <div className="truncate text-[5.8px] text-[#64748B]">{sample.contact}</div>
-          </div>
-        </div>
-        <div className="space-y-2 text-center">
           <div>
-            <div className="mb-0.5 font-bold uppercase tracking-wider" style={{ color: accentColor }}>MỤC TIÊU NGHỀ NGHIỆP</div>
-            <div>{sample.summary}</div>
-          </div>
-          <div>
-            <div className="mb-0.5 font-bold uppercase tracking-wider" style={{ color: accentColor }}>HỌC VẤN</div>
-            <div className="font-semibold text-[#0F172A]">{sample.education}</div>
-          </div>
-          {sample.activity && (
-            <div>
-              <div className="mb-0.5 font-bold uppercase tracking-wider" style={{ color: accentColor }}>HOẠT ĐỘNG</div>
-              <div>{sample.activity}</div>
+            <div className="mb-1 font-bold uppercase tracking-wider" style={{ color: accentColor }}>HỌC VẤN</div>
+            <div className="relative border-0 border-l-[1.5px] border-solid pl-2.5" style={{ borderColor: accentColor }}>
+              <span
+                className="absolute -left-[14px] top-1 h-2 w-2 rounded-full border border-solid border-white"
+                style={{ backgroundColor: accentColor }}
+              />
+              <div className="font-semibold text-[#0F172A]">{sample.education}</div>
+              <div className="text-[6px] text-[#64748B]">{sample.educationPeriod}</div>
             </div>
-          )}
+          </div>
           <div>
             <div className="mb-0.5 font-bold uppercase tracking-wider" style={{ color: accentColor }}>KỸ NĂNG</div>
             <div>{sample.skills}</div>
@@ -395,40 +465,43 @@ const TemplateMiniPreview: React.FC<{ template: BuiltInCvTemplate; accentColor: 
     );
   }
 
-  if (id === 'tpl-classic') {
+  // 5. MINIMAL: Minimalist with hairline dividers
+  if (layout === 'minimal') {
     return (
-      <div className="flex h-full w-full flex-col overflow-hidden rounded-[6px] border border-solid border-[#E2E8F0] bg-white p-3.5 text-center text-[6.5px] leading-[1.35] text-[#334155] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-        <div className="mb-2 pb-1.5">
-          <div className="text-[10px] font-bold text-[#0F172A]">{sample.fullName}</div>
-          <div className="text-[7px] text-[#475569]">{sample.headline}</div>
-          <div className="text-[5.8px] text-[#64748B]">{sample.contact}</div>
+      <div className="flex h-full w-full flex-col overflow-hidden rounded-[6px] border border-solid border-[#E2E8F0] bg-white p-3 text-left text-[6.5px] leading-[1.35] text-[#334155] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <div className="mb-2 flex items-center gap-2 border-0 border-b border-solid border-[#F1F5F9] pb-2">
+          <div className="h-8 w-8 shrink-0 rounded-full bg-[#E2E8F0]" />
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] font-bold text-[#0F172A]">{sample.fullName}</div>
+            <div className="text-[7px] text-[#64748B]">{sample.headline}</div>
+            <div className="truncate text-[5.8px] text-[#94A3B8]">{sample.contact}</div>
+          </div>
         </div>
-        <div className="space-y-2">
-          <div>
-            <div className="mb-0.5 border-0 border-b border-solid border-[#CBD5E1] pb-0.5 font-bold uppercase tracking-wider text-[#0F172A]">MỤC TIÊU NGHỀ NGHIỆP</div>
-            <div>{sample.summary}</div>
+        <div className="space-y-1.5">
+          <div className="border-0 border-b border-solid border-[#F1F5F9] pb-1.5">
+            <div className="mb-0.5 font-semibold uppercase tracking-wider text-[#0F172A]">MỤC TIÊU NGHỀ NGHIỆP</div>
+            <div className="text-[#475569]">{sample.summary}</div>
           </div>
-          <div>
-            <div className="mb-0.5 border-0 border-b border-solid border-[#CBD5E1] pb-0.5 font-bold uppercase tracking-wider text-[#0F172A]">KINH NGHIỆM LÀM VIỆC</div>
-            {sample.experiences?.map((exp, idx) => (
-              <div key={idx}>
-                <div className="font-bold text-[#0F172A]">{exp.company}</div>
-                {exp.bullets.map((b, bIdx) => (
-                  <div key={bIdx}>{b}</div>
-                ))}
-              </div>
-            ))}
+          <div className="border-0 border-b border-solid border-[#F1F5F9] pb-1.5">
+            <div className="mb-0.5 font-semibold uppercase tracking-wider text-[#0F172A]">HỌC VẤN</div>
+            <div className="font-medium text-[#0F172A]">{sample.education}</div>
           </div>
+          {sample.activity && (
+            <div className="border-0 border-b border-solid border-[#F1F5F9] pb-1.5">
+              <div className="mb-0.5 font-semibold uppercase tracking-wider text-[#0F172A]">HOẠT ĐỘNG</div>
+              <div className="text-[#475569]">{sample.activity}</div>
+            </div>
+          )}
           <div>
-            <div className="mb-0.5 border-0 border-b border-solid border-[#CBD5E1] pb-0.5 font-bold uppercase tracking-wider text-[#0F172A]">HỌC VẤN</div>
-            <div className="font-semibold text-[#0F172A]">{sample.education}</div>
+            <div className="mb-0.5 font-semibold uppercase tracking-wider text-[#0F172A]">KỸ NĂNG</div>
+            <div className="text-[#475569]">{sample.skills}</div>
           </div>
         </div>
       </div>
     );
   }
 
-  // Default: tpl-standard (Page 24 Card 1 & Page 25 exact layout)
+  // 6. ATS / STANDARD: Classic 1-column layout
   return (
     <div className="flex h-full w-full flex-col overflow-hidden rounded-[6px] border border-solid border-[#E2E8F0] bg-white p-3.5 text-left text-[6.5px] leading-[1.35] text-[#334155] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
       <div className="mb-2 flex items-center gap-2.5 border-0 border-b-[1.5px] border-solid pb-2" style={{ borderColor: accentColor }}>
@@ -474,79 +547,306 @@ const TemplateMiniPreview: React.FC<{ template: BuiltInCvTemplate; accentColor: 
   );
 };
 
-/** Full A4 Sample Sheet matching PDF Page 25 ("Trần Bảo Ngọc") */
+/** Full A4 Sample Sheet matching template layout */
 export const CvSampleSheetPreview: React.FC<{ template: BuiltInCvTemplate; accentColor: string }> = ({
   template,
   accentColor,
 }) => {
-  const { sample } = template;
+  const { sample, layout } = template;
+  const isElegant = layout === 'elegant';
+
   return (
-    <div className="mx-auto w-full max-w-[780px] rounded-[8px] bg-white p-8 font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[#0F172A] shadow-sm sm:p-12">
-      <div
-        className="mb-6 flex items-center gap-6 border-0 border-b-[2px] border-solid pb-6"
-        style={{ borderColor: accentColor }}
-      >
-        {template.hasPhoto && (
-          <div className="h-[104px] w-[90px] shrink-0 rounded-[6px] bg-[#E2E8F0]" />
-        )}
-        <div>
-          <h2 className="m-0 text-[28px] font-bold leading-tight text-[#0F172A]">{sample.fullName}</h2>
-          <p className="m-0 mt-1 text-[16px] font-semibold" style={{ color: accentColor }}>
-            {sample.headline}
-          </p>
-          <p className="m-0 mt-2 text-[13px] text-[#475569]">{sample.contact}</p>
-        </div>
-      </div>
-
-      <div className="space-y-5 text-[14px] leading-[1.6] text-[#1E293B]">
-        <section>
-          <h3 className="m-0 mb-1.5 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
-            MỤC TIÊU NGHỀ NGHIỆP
-          </h3>
-          <p className="m-0">{sample.summary}</p>
-        </section>
-
-        {sample.experiences && sample.experiences.length > 0 && (
-          <section>
-            <h3 className="m-0 mb-2 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
-              KINH NGHIỆM LÀM VIỆC
-            </h3>
-            <div className="space-y-3.5">
-              {sample.experiences.map((exp, idx) => (
-                <div key={idx}>
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <strong className="font-bold text-[#0F172A]">{exp.company}</strong>
-                    {exp.period && <span className="text-[13px] text-[#64748B]">{exp.period}</span>}
-                  </div>
-                  <ul className="m-0 mt-1 list-disc space-y-1 pl-5">
-                    {exp.bullets.map((b, bIdx) => (
-                      <li key={bIdx}>{b}</li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <section>
-          <h3 className="m-0 mb-1.5 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
-            HỌC VẤN
-          </h3>
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <strong className="font-bold text-[#0F172A]">{sample.education}</strong>
-            {sample.educationPeriod && (
-              <span className="text-[13px] text-[#64748B]">{sample.educationPeriod}</span>
+    <div
+      className={`mx-auto w-full max-w-[780px] rounded-[8px] bg-white font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[#0F172A] shadow-sm ${
+        isElegant ? 'overflow-hidden p-0' : 'p-8 sm:p-12'
+      }`}
+    >
+      {/* Header */}
+      {isElegant ? (
+        <div className="p-8 sm:p-10 text-white" style={{ backgroundColor: accentColor }}>
+          <div className="flex items-center gap-6">
+            {template.hasPhoto && (
+              <div className="h-[104px] w-[90px] shrink-0 rounded-[8px] border-2 border-solid border-white/80 bg-white/20" />
             )}
+            <div>
+              <h2 className="m-0 text-[28px] font-bold leading-tight text-white">{sample.fullName}</h2>
+              <p className="m-0 mt-1 text-[16px] font-medium text-white/90">{sample.headline}</p>
+              <p className="m-0 mt-2 text-[13px] text-white/80">{sample.contact}</p>
+            </div>
           </div>
-        </section>
+        </div>
+      ) : (
+        <div
+          className="mb-6 flex items-center gap-6 border-0 border-b-[2px] border-solid pb-6"
+          style={{ borderColor: accentColor }}
+        >
+          {template.hasPhoto && (
+            <div className="h-[104px] w-[90px] shrink-0 rounded-[6px] bg-[#E2E8F0]" />
+          )}
+          <div>
+            <h2 className="m-0 text-[28px] font-bold leading-tight text-[#0F172A]">{sample.fullName}</h2>
+            <p className="m-0 mt-1 text-[16px] font-semibold" style={{ color: accentColor }}>
+              {sample.headline}
+            </p>
+            <p className="m-0 mt-2 text-[13px] text-[#475569]">{sample.contact}</p>
+          </div>
+        </div>
+      )}
 
-        <section>
-          <h3 className="m-0 mb-1.5 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
-            KỸ NĂNG
-          </h3>
-          <p className="m-0">{sample.skills}</p>
-        </section>
+      {/* Body Content */}
+      <div className={isElegant ? 'p-8 sm:p-10' : ''}>
+        {layout === 'modern' ? (
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-[0.35fr_0.65fr] text-[14px] leading-[1.6]">
+            {/* Left sidebar */}
+            <div className="space-y-5 rounded-[8px] bg-slate-50 p-4 border border-solid border-slate-200">
+              <section>
+                <h3 className="m-0 mb-1.5 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+                  KỸ NĂNG
+                </h3>
+                <p className="m-0 text-[13px] text-[#334155]">{sample.skills}</p>
+              </section>
+              {sample.languages && (
+                <section>
+                  <h3 className="m-0 mb-1.5 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+                    NGOẠI NGỮ
+                  </h3>
+                  <p className="m-0 text-[13px] text-[#334155]">{sample.languages}</p>
+                </section>
+              )}
+            </div>
+            {/* Right main */}
+            <div className="space-y-5">
+              <section>
+                <h3 className="m-0 mb-1.5 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+                  MỤC TIÊU NGHỀ NGHIỆP
+                </h3>
+                <p className="m-0 text-[#1E293B]">{sample.summary}</p>
+              </section>
+              {sample.experiences && (
+                <section>
+                  <h3 className="m-0 mb-2 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+                    KINH NGHIỆM LÀM VIỆC
+                  </h3>
+                  <div className="space-y-3.5">
+                    {sample.experiences.map((exp, idx) => (
+                      <div key={idx}>
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <strong className="font-bold text-[#0F172A]">{exp.company}</strong>
+                          {exp.period && <span className="text-[13px] text-[#64748B]">{exp.period}</span>}
+                        </div>
+                        <ul className="m-0 mt-1 list-disc space-y-1 pl-5 text-[#334155]">
+                          {exp.bullets.map((b, bIdx) => (
+                            <li key={bIdx}>{b}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+              <section>
+                <h3 className="m-0 mb-1.5 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+                  HỌC VẤN
+                </h3>
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <strong className="font-bold text-[#0F172A]">{sample.education}</strong>
+                  {sample.educationPeriod && (
+                    <span className="text-[13px] text-[#64748B]">{sample.educationPeriod}</span>
+                  )}
+                </div>
+              </section>
+            </div>
+          </div>
+        ) : layout === 'executive' ? (
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-[0.65fr_0.35fr] text-[14px] leading-[1.6]">
+            {/* Left main */}
+            <div className="space-y-5">
+              <section>
+                <h3 className="m-0 mb-1.5 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+                  MỤC TIÊU NGHỀ NGHIỆP
+                </h3>
+                <p className="m-0 text-[#1E293B]">{sample.summary}</p>
+              </section>
+              {sample.experiences && (
+                <section>
+                  <h3 className="m-0 mb-2 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+                    KINH NGHIỆM LÀM VIỆC
+                  </h3>
+                  <div className="space-y-3.5">
+                    {sample.experiences.map((exp, idx) => (
+                      <div key={idx}>
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <strong className="font-bold text-[#0F172A]">{exp.company}</strong>
+                          {exp.period && <span className="text-[13px] text-[#64748B]">{exp.period}</span>}
+                        </div>
+                        <ul className="m-0 mt-1 list-disc space-y-1 pl-5 text-[#334155]">
+                          {exp.bullets.map((b, bIdx) => (
+                            <li key={bIdx}>{b}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+              <section>
+                <h3 className="m-0 mb-1.5 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+                  HỌC VẤN
+                </h3>
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <strong className="font-bold text-[#0F172A]">{sample.education}</strong>
+                  {sample.educationPeriod && (
+                    <span className="text-[13px] text-[#64748B]">{sample.educationPeriod}</span>
+                  )}
+                </div>
+              </section>
+            </div>
+            {/* Right sidebar */}
+            <div className="space-y-5 rounded-[8px] border-0 border-l-2 border-solid border-slate-200 pl-5">
+              <section>
+                <h3 className="m-0 mb-1.5 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+                  KỸ NĂNG
+                </h3>
+                <p className="m-0 text-[13px] text-[#334155]">{sample.skills}</p>
+              </section>
+              {sample.languages && (
+                <section>
+                  <h3 className="m-0 mb-1.5 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+                    NGOẠI NGỮ
+                  </h3>
+                  <p className="m-0 text-[13px] text-[#334155]">{sample.languages}</p>
+                </section>
+              )}
+              {sample.certificates && sample.certificates.length > 0 && (
+                <section>
+                  <h3 className="m-0 mb-1.5 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+                    CHỨNG CHỈ
+                  </h3>
+                  <p className="m-0 text-[13px] text-[#334155]">{sample.certificates.join(', ')}</p>
+                </section>
+              )}
+            </div>
+          </div>
+        ) : layout === 'compact' ? (
+          <div className="space-y-5 text-[14px] leading-[1.6] text-[#1E293B]">
+            <section>
+              <h3 className="m-0 mb-1.5 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+                MỤC TIÊU NGHỀ NGHIỆP
+              </h3>
+              <p className="m-0">{sample.summary}</p>
+            </section>
+            {sample.experiences && (
+              <section>
+                <h3 className="m-0 mb-3 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+                  KINH NGHIỆM LÀM VIỆC (TIMELINE)
+                </h3>
+                <div className="relative space-y-4 border-0 border-l-2 border-solid pl-4" style={{ borderColor: accentColor }}>
+                  {sample.experiences.map((exp, idx) => (
+                    <div key={idx} className="relative">
+                      <span
+                        className="absolute -left-[23px] top-1.5 h-3.5 w-3.5 rounded-full border-2 border-solid border-white shadow-xs"
+                        style={{ backgroundColor: accentColor }}
+                      />
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <strong className="font-bold text-[#0F172A]">{exp.company}</strong>
+                        {exp.period && <span className="text-[13px] text-[#64748B]">{exp.period}</span>}
+                      </div>
+                      <ul className="m-0 mt-1 list-disc space-y-1 pl-5">
+                        {exp.bullets.map((b, bIdx) => (
+                          <li key={bIdx}>{b}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+            <section>
+              <h3 className="m-0 mb-3 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+                HỌC VẤN
+              </h3>
+              <div className="relative border-0 border-l-2 border-solid pl-4" style={{ borderColor: accentColor }}>
+                <span
+                  className="absolute -left-[23px] top-1.5 h-3.5 w-3.5 rounded-full border-2 border-solid border-white shadow-xs"
+                  style={{ backgroundColor: accentColor }}
+                />
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <strong className="font-bold text-[#0F172A]">{sample.education}</strong>
+                  {sample.educationPeriod && (
+                    <span className="text-[13px] text-[#64748B]">{sample.educationPeriod}</span>
+                  )}
+                </div>
+              </div>
+            </section>
+            <section>
+              <h3 className="m-0 mb-1.5 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+                KỸ NĂNG
+              </h3>
+              <p className="m-0">{sample.skills}</p>
+            </section>
+          </div>
+        ) : (
+          /* Default ATS / Standard & Minimal */
+          <div className="space-y-5 text-[14px] leading-[1.6] text-[#1E293B]">
+            <section>
+              <h3 className="m-0 mb-1.5 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+                MỤC TIÊU NGHỀ NGHIỆP
+              </h3>
+              <p className="m-0">{sample.summary}</p>
+            </section>
+
+            {sample.experiences && sample.experiences.length > 0 && (
+              <section>
+                <h3 className="m-0 mb-2 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+                  KINH NGHIỆM LÀM VIỆC
+                </h3>
+                <div className="space-y-3.5">
+                  {sample.experiences.map((exp, idx) => (
+                    <div key={idx}>
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <strong className="font-bold text-[#0F172A]">{exp.company}</strong>
+                        {exp.period && <span className="text-[13px] text-[#64748B]">{exp.period}</span>}
+                      </div>
+                      <ul className="m-0 mt-1 list-disc space-y-1 pl-5">
+                        {exp.bullets.map((b, bIdx) => (
+                          <li key={bIdx}>{b}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section>
+              <h3 className="m-0 mb-1.5 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+                HỌC VẤN
+              </h3>
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <strong className="font-bold text-[#0F172A]">{sample.education}</strong>
+                {sample.educationPeriod && (
+                  <span className="text-[13px] text-[#64748B]">{sample.educationPeriod}</span>
+                )}
+              </div>
+            </section>
+
+            {sample.activity && (
+              <section>
+                <h3 className="m-0 mb-1.5 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+                  HOẠT ĐỘNG
+                </h3>
+                <p className="m-0">{sample.activity}</p>
+              </section>
+            )}
+
+            <section>
+              <h3 className="m-0 mb-1.5 text-[13px] font-bold uppercase tracking-wide" style={{ color: accentColor }}>
+                KỸ NĂNG
+              </h3>
+              <p className="m-0">{sample.skills}</p>
+            </section>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -567,8 +867,12 @@ export const CvTemplateGalleryView: React.FC<CvTemplateGalleryViewProps> = ({
 }) => {
   const [category, setCategory] = useState<'all' | 'ats' | 'modern' | 'junior'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [cardColors, setCardColors] = useState<Record<string, string>>({
-    'tpl-standard': selectedColor || '#0284C7',
+  const [cardColors, setCardColors] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    BUILTIN_CV_TEMPLATES.forEach((t) => {
+      init[t.id] = selectedColor || t.defaultColor;
+    });
+    return init;
   });
   const [previewTemplate, setPreviewTemplate] = useState<BuiltInCvTemplate | null>(null);
 
@@ -684,7 +988,9 @@ export const CvTemplateGalleryView: React.FC<CvTemplateGalleryViewProps> = ({
         {/* 3x2 Template Grid */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {filteredTemplates.map((tpl) => {
-            const isSelected = tpl.code === selectedTemplateCode;
+            const isSelected =
+              tpl.code === selectedTemplateCode ||
+              (tpl.code.startsWith('MODERN') && selectedTemplateCode.startsWith('MODERN'));
             const currentColor = cardColors[tpl.id] || tpl.defaultColor;
 
             return (

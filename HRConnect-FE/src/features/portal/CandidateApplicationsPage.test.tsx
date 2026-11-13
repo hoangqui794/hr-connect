@@ -25,9 +25,25 @@ const renderPage = (route = '/candidate/applications') => {
   );
 };
 
-const application = (id: string, displayGroup: CandidateApplicationDisplayGroup, displayLabel: string, jobTitle = `Job ${id}`) => ({
-  applicationId: id, jobId: `job-${id}`, jobTitle, companyName: 'HR Connect', cvId: 'cv-1', cvTitle: 'CV',
-  displayGroup, displayLabel, aiStatus: 'COMPLETED', submissionSource: 'CANDIDATE' as const, appliedAt: '2026-10-17T13:20:00Z',
+const application = (
+  id: string,
+  displayGroup: CandidateApplicationDisplayGroup,
+  displayLabel: string,
+  jobTitle = `Job ${id}`,
+  status?: string
+) => ({
+  applicationId: id,
+  jobId: `job-${id}`,
+  jobTitle,
+  companyName: 'HR Connect',
+  cvId: 'cv-1',
+  cvTitle: 'CV',
+  displayGroup,
+  displayLabel,
+  status,
+  aiStatus: 'COMPLETED',
+  submissionSource: 'CANDIDATE' as const,
+  appliedAt: '2026-10-17T13:20:00Z',
 });
 
 const consent = {
@@ -89,6 +105,30 @@ describe('CandidateApplicationsPage', () => {
     expect(screen.queryByText('Frontend Developer')).not.toBeInTheDocument();
   });
 
+  it('places resigned applications in "Đã kết thúc" tab and shows active job banner', async () => {
+    listApplications([
+      application('active-1', 'HIRED', 'Đang làm việc', 'Senior Tech Lead', 'ONBOARDED'),
+      application('resigned-1', 'HIRED', 'Đã nghỉ việc', 'Junior Developer', 'RESIGNED'),
+    ]);
+    renderPage();
+
+    // Check banner for active hired job
+    expect(await screen.findByRole('region', { name: 'Thông tin công việc hiện tại' })).toHaveTextContent('Senior Tech Lead');
+    expect(screen.getByRole('tab', { name: 'Đang làm việc (1)' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Đã kết thúc (1)' })).toBeInTheDocument();
+
+    // Go to "Đã kết thúc" tab and verify the resigned job is there
+    fireEvent.click(screen.getByRole('tab', { name: 'Đã kết thúc (1)' }));
+    expect(screen.getByText('Junior Developer')).toBeInTheDocument();
+    expect(screen.getByText('Đã nghỉ việc')).toBeInTheDocument();
+    expect(screen.queryByText('Senior Tech Lead')).not.toBeInTheDocument();
+
+    // Go to "Đang làm việc" tab and verify active job is there
+    fireEvent.click(screen.getByRole('tab', { name: 'Đang làm việc (1)' }));
+    expect(screen.getByText('Senior Tech Lead')).toBeInTheDocument();
+    expect(screen.queryByText('Junior Developer')).not.toBeInTheDocument();
+  });
+
   it('asks the backend for the chosen source', async () => {
     renderPage();
     fireEvent.mouseDown(await screen.findByRole('combobox', { name: 'Nguồn' }));
@@ -124,7 +164,9 @@ describe('CandidateApplicationsPage', () => {
     vi.mocked(candidateConsentApi.respond).mockResolvedValue({ message: 'Đã ghi nhận' } as never);
     renderPage();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Từ chối' }));
+    const section = await screen.findByRole('region', { name: '1 lời giới thiệu đang chờ bạn xác nhận' });
+    const declineButton = within(section).getByRole('button', { name: 'Từ chối' });
+    fireEvent.click(declineButton);
     expect(candidateConsentApi.respond).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.getAllByRole('button', { name: 'Từ chối' })).toHaveLength(2));
     fireEvent.click(screen.getAllByRole('button', { name: 'Từ chối' })[1]);

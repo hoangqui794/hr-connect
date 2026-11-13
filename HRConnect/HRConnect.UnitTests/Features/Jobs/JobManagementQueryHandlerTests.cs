@@ -26,6 +26,34 @@ public class JobManagementQueryHandlerTests
     }
 
     [Fact]
+    public async Task GetMyJobs_ShouldPopulateSourcingCountedForCvSourcingJobs()
+    {
+        var user = Guid.NewGuid();
+        var company = Guid.NewGuid();
+        var sourcingJob = Job(company, "ACTIVE");
+        sourcingJob.ServiceType = new ServiceType { ServiceTypeId = sourcingJob.ServiceTypeId, Code = "CV_SOURCING", Name = "CV Sourcing" };
+        sourcingJob.SourcingTarget = 10;
+        var headhuntJob = Job(company, "ACTIVE");
+        headhuntJob.ServiceType = new ServiceType { ServiceTypeId = headhuntJob.ServiceTypeId, Code = "HEADHUNT_COD", Name = "Headhunt" };
+
+        var sourcingDeliveries = new Mock<ISourcingDeliveryRepository>();
+        sourcingDeliveries
+            .Setup(x => x.GetCountedCountsByJobIdsAsync(
+                It.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 1 && ids.Contains(sourcingJob.JobId)),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, int> { [sourcingJob.JobId] = 4 });
+
+        _members.Setup(x => x.GetByUserIdAsync(user, It.IsAny<CancellationToken>())).ReturnsAsync(Member(user, company));
+        _jobs.Setup(x => x.GetByCompanyIdAsync(company, It.IsAny<CancellationToken>())).ReturnsAsync([sourcingJob, headhuntJob]);
+
+        var result = await new GetMyJobsQueryHandler(_jobs.Object, _members.Object, sourcingDeliveries.Object)
+            .Handle(new GetMyJobsQuery(user, null), default);
+
+        result.Single(j => j.JobId == sourcingJob.JobId).SourcingCounted.Should().Be(4);
+        result.Single(j => j.JobId == headhuntJob.JobId).SourcingCounted.Should().BeNull();
+    }
+
+    [Fact]
     public async Task GetDetail_ShouldAllowReviewerAndRejectDifferentCompanyClient()
     {
         var job = Job(Guid.NewGuid(), "PENDING_REVIEW"); var user = Guid.NewGuid();
@@ -151,6 +179,56 @@ public class JobManagementQueryHandlerTests
         _jobs.Setup(x => x.GetForReviewAsync("ALL", It.IsAny<CancellationToken>())).ReturnsAsync([draft, pending]);
         var result = await new GetJobsForReviewQueryHandler(_jobs.Object).Handle(new GetJobsForReviewQuery("ALL"), default);
         result.Should().ContainSingle().Which.JobId.Should().Be(pending.JobId);
+    }
+
+    [Fact]
+    public async Task GetJobsForReview_ShouldPopulateSourcingCountedForCvSourcingJobs()
+    {
+        var active = Job(Guid.NewGuid(), JobStatuses.Active);
+        active.ServiceType = new ServiceType { ServiceTypeId = active.ServiceTypeId, Code = "CV_SOURCING", Name = "CV Sourcing" };
+        active.SourcingTarget = 20;
+
+        var sourcingDeliveries = new Mock<ISourcingDeliveryRepository>();
+        sourcingDeliveries
+            .Setup(x => x.GetCountedCountsByJobIdsAsync(
+                It.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(active.JobId)),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, int> { [active.JobId] = 7 });
+
+        _jobs.Setup(x => x.GetForReviewAsync("ACTIVE", It.IsAny<CancellationToken>())).ReturnsAsync([active]);
+        var result = await new GetJobsForReviewQueryHandler(_jobs.Object, sourcingDeliveries.Object)
+            .Handle(new GetJobsForReviewQuery("ACTIVE"), default);
+
+        result.Should().ContainSingle().Which.SourcingCounted.Should().Be(7);
+    }
+
+    [Fact]
+    public async Task GetDetail_ShouldPopulateSourcingCountedForAuthorizedRolesOnly()
+    {
+        var job = Job(Guid.NewGuid(), JobStatuses.Active);
+        job.ServiceType = new ServiceType { ServiceTypeId = job.ServiceTypeId, Code = "CV_SOURCING", Name = "CV Sourcing" };
+        job.SourcingTarget = 15;
+        var user = Guid.NewGuid();
+
+        var sourcingDeliveries = new Mock<ISourcingDeliveryRepository>();
+        sourcingDeliveries
+            .Setup(x => x.GetCountedCountsByJobIdsAsync(
+                It.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(job.JobId)),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, int> { [job.JobId] = 5 });
+
+        _jobs.Setup(x => x.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job);
+        _members.Setup(x => x.GetByUserIdAsync(user, It.IsAny<CancellationToken>())).ReturnsAsync((CompanyUser?)null);
+        _jobs.Setup(x => x.CanAnyRoleViewJobAsync(job.ServiceTypeId, It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var handler = new GetJobDetailQueryHandler(_jobs.Object, _members.Object, sourcingDeliveries: sourcingDeliveries.Object);
+
+        var affiliateDetail = await handler.Handle(new GetJobDetailQuery(job.JobId, user, false, ["AFFILIATE"]), default);
+        affiliateDetail.SourcingCounted.Should().Be(5);
+
+        var candidateDetail = await handler.Handle(new GetJobDetailQuery(job.JobId, user, false, ["CANDIDATE"]), default);
+        candidateDetail.SourcingCounted.Should().BeNull();
     }
 
     private static CompanyUser Member(Guid user, Guid company) => new() { CompanyUserId = Guid.NewGuid(), UserId = user, CompanyId = company, Status = "ACTIVE" };

@@ -71,7 +71,10 @@ export const candidateDisplayStage = (
     },
   };
   const stage = mapped[group] ?? mapped.IN_REVIEW;
-  const label = serverLabel?.trim() || stage.label;
+  let label = serverLabel?.trim() || stage.label;
+  if (group === 'HIRED' && (label === 'Đã tuyển' || label === 'Đã nhận việc' || label === 'Đi làm')) {
+    label = 'Đang làm việc';
+  }
   const step = group === 'OFFER' && label.toLocaleLowerCase('vi').includes('chuẩn bị') ? 4 : stage.step;
   return { ...stage, step, label };
 };

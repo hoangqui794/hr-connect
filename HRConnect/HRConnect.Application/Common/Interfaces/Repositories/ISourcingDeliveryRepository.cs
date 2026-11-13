@@ -13,6 +13,8 @@ public interface ISourcingDeliveryRepository
 
     Task<IReadOnlyList<SourcingDelivery>> GetByJobAsync(Guid jobId, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyDictionary<Guid, int>> GetCountedCountsByJobIdsAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default);
+
     /// <summary>Delivery with its job and application/candidate, tracked.</summary>
     Task<SourcingDelivery?> GetByIdAsync(Guid deliveryId, CancellationToken cancellationToken = default);
 

@@ -17,7 +17,7 @@ public sealed record ServiceFeeDto(
     decimal BaseSalary, decimal FeeMultiplier, decimal Amount, string CurrencyCode, DateOnly DueDate, string Status,
     DateTime? PaidAt, string? PaymentReference, DateTime CreatedAt, string Kind = "PLACEMENT", Guid? JobId = null,
     string? ReconciliationStatus = null, int? SourcingTarget = null, decimal? SourcingPricePerCv = null,
-    DateTime? ReplacementExpiredAt = null);
+    DateTime? ReplacementExpiredAt = null, int? SourcingCounted = null);
 
 /// <summary>PlacementId is set for HEADHUNT_COD; SourcingDeliveryId for CV_SOURCING (one per accepted CV).</summary>
 public sealed record CommissionDto(
@@ -60,11 +60,16 @@ public sealed class FinanceQueryHandlers :
 {
     private readonly IFinanceRepository _financeRepository;
     private readonly ICompanyUserRepository _companyUserRepository;
+    private readonly ISourcingDeliveryRepository? _sourcingDeliveries;
 
-    public FinanceQueryHandlers(IFinanceRepository financeRepository, ICompanyUserRepository companyUserRepository)
+    public FinanceQueryHandlers(
+        IFinanceRepository financeRepository,
+        ICompanyUserRepository companyUserRepository,
+        ISourcingDeliveryRepository? sourcingDeliveries = null)
     {
         _financeRepository = financeRepository;
         _companyUserRepository = companyUserRepository;
+        _sourcingDeliveries = sourcingDeliveries;
     }
 
     public async Task<PagedResult<ServiceFeeDto>> Handle(GetServiceFeesQuery request, CancellationToken cancellationToken)
@@ -94,6 +99,19 @@ public sealed class FinanceQueryHandlers :
             .OrderBy(slot => Math.Abs(((slot.ClosedAt ?? slot.UpdatedAt) - fee.CreatedAt).Ticks))
             .FirstOrDefault();
 
+        var sourcingJobIds = items
+            .Where(fee => fee.JobId.HasValue &&
+                (fee.Kind == ServiceFeeKinds.Deposit ||
+                 fee.Kind == ServiceFeeKinds.Settlement ||
+                 fee.Kind == ServiceFeeKinds.Credit ||
+                 fee.Job?.SourcingTarget > 0))
+            .Select(fee => fee.JobId!.Value)
+            .Distinct()
+            .ToHashSet();
+        var countedByJob = sourcingJobIds.Count == 0 || _sourcingDeliveries is null
+            ? null
+            : await _sourcingDeliveries.GetCountedCountsByJobIdsAsync(sourcingJobIds, cancellationToken);
+
         return new PagedResult<ServiceFeeDto>(items.Select(fee => new ServiceFeeDto(
             fee.ServiceFeeId, fee.PlacementId, fee.CompanyId, fee.Company?.CompanyName,
             fee.Job?.Title ?? fee.Placement?.Application?.Job?.Title,
@@ -104,7 +122,10 @@ public sealed class FinanceQueryHandlers :
             fee.Placement?.Reconciliation?.Status,
             // CV_SOURCING: lets the Client see how a deposit or settlement was worked out (CVs × price per CV).
             fee.Job?.SourcingTarget, fee.Job?.SourcingPricePerCv,
-            SlotOf(fee)?.ExpiresAt)).ToList(), total, page, pageSize);
+            SlotOf(fee)?.ExpiresAt,
+            fee.JobId is { } sJobId && countedByJob is not null && sourcingJobIds.Contains(sJobId)
+                ? countedByJob.GetValueOrDefault(sJobId, 0)
+                : null)).ToList(), total, page, pageSize);
     }
 
     public async Task<PagedResult<CommissionDto>> Handle(GetCommissionsQuery request, CancellationToken cancellationToken)

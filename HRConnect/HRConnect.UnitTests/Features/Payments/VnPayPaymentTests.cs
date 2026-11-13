@@ -162,7 +162,8 @@ public sealed class VnPayPaymentTests
             It.IsAny<CancellationToken>()), Times.Once);
         h.Notifier.Verify(n => n.NotifyRoleAsync(
             "PLATFORM_ADMIN",
-            It.Is<AppNotice>(notice => notice.Title == "Client đã thanh toán qua VNPay"
+            It.Is<AppNotice>(notice => notice.NotificationType == "SERVICE_FEE"
+                && notice.Title == "Client đã thanh toán qua VNPay"
                 && notice.Message.Contains("Công ty Sao Việt")
                 && notice.Message.Contains("Backend Developer")
                 && notice.Message.Contains("42,000,000")
