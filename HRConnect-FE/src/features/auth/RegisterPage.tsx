@@ -139,6 +139,8 @@ const TextField: React.FC<{
   error?: string;
   hint?: string;
   type?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
+  spellCheck?: boolean;
   autoComplete?: string;
   placeholder?: string;
   maxLength?: number;
@@ -153,6 +155,8 @@ const TextField: React.FC<{
   error,
   hint,
   type = 'text',
+  inputMode,
+  spellCheck,
   autoComplete,
   placeholder,
   maxLength,
@@ -166,13 +170,15 @@ const TextField: React.FC<{
 
   return (
     <div className={`flex min-w-0 flex-col gap-1.5 ${wide ? 'sm:col-span-2' : ''}`}>
-      <label htmlFor={id} className="text-xs font-bold uppercase tracking-wider text-slate-700">
+      <label htmlFor={id} className="text-[13px] font-semibold text-slate-700">
         {label}
       </label>
       <div className="relative">
         <input
           id={id}
           type={revealable && shown ? 'text' : type}
+          inputMode={inputMode}
+          spellCheck={spellCheck}
           value={value}
           autoComplete={autoComplete}
           placeholder={placeholder}
@@ -181,12 +187,12 @@ const TextField: React.FC<{
           aria-invalid={Boolean(error)}
           aria-describedby={describedBy}
           onChange={(event) => onChange(event.target.value)}
-          className={`block h-11 w-full rounded-xl border bg-slate-50/50 px-3.5 text-sm text-slate-900 shadow-2xs transition-all placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-sky-500/15 disabled:cursor-not-allowed disabled:bg-slate-100 ${
-            revealable ? 'pr-11' : ''
+          className={`block h-11 w-full rounded-xl border bg-white px-3.5 text-base sm:text-sm text-slate-900 transition-[border-color,box-shadow,background-color] duration-150 motion-reduce:transition-none placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#0369A1]/12 disabled:cursor-not-allowed disabled:bg-slate-50 ${
+            revealable ? 'pr-12' : ''
           } ${
             error
-              ? 'border-rose-400 focus:border-rose-500'
-              : 'border-slate-300 hover:border-slate-400 focus:border-sky-600'
+              ? 'border-rose-400 focus:border-rose-600 focus:ring-rose-500/12'
+              : 'border-[#CBD5E1] hover:border-slate-400 focus:border-[#0369A1]'
           }`}
         />
         {revealable && (
@@ -194,7 +200,7 @@ const TextField: React.FC<{
             type="button"
             aria-label={`${shown ? 'Ẩn' : 'Hiện'} ${String(label).toLowerCase()}`}
             onClick={() => setShown((current) => !current)}
-            className="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-slate-400 transition-colors hover:text-slate-600 focus:outline-none shadow-none"
+            className="absolute inset-y-0 right-0 flex min-w-[44px] min-h-[44px] touch-manipulation cursor-pointer items-center justify-center rounded-r-xl border-0 bg-transparent p-0 text-slate-400 transition-colors duration-150 hover:text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#0369A1] shadow-none"
           >
             <span aria-hidden="true" className="flex items-center justify-center">
               {shown ? <EyeOutlined className="text-base" /> : <EyeInvisibleOutlined className="text-base" />}
@@ -203,7 +209,7 @@ const TextField: React.FC<{
         )}
       </div>
       {error ? (
-        <span id={`${id}-error`} className="text-xs font-medium text-rose-600">
+        <span id={`${id}-error`} className="text-xs font-medium text-rose-700">
           {error}
         </span>
       ) : hint ? (
@@ -316,7 +322,20 @@ export const RegisterPage: React.FC = () => {
     event.preventDefault();
     const found = validate();
     setErrors(found);
-    if (Object.keys(found).length > 0) return;
+    if (Object.keys(found).length > 0) {
+      const order: [Field, string][] = [
+        ['companyName', 'reg-company'],
+        ['taxCode', 'reg-tax'],
+        ['fullName', 'reg-name'],
+        ['email', 'reg-email'],
+        ['phone', 'reg-phone'],
+        ['password', 'reg-password'],
+        ['confirmPassword', 'reg-confirm'],
+      ];
+      const firstMatch = order.find(([field]) => found[field]);
+      if (firstMatch) document.getElementById(firstMatch[1])?.focus();
+      return;
+    }
 
     setFormError(null);
     setSubmitting(true);
@@ -432,124 +451,110 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen w-full bg-[#F8FAFC] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-slate-800 antialiased max-lg:flex-col">
-      {/* ── Left Hero Branding Panel (Synced with LoginPage luxury aesthetic) ── */}
-      <aside className="relative flex flex-col justify-between overflow-hidden bg-[#072B42] p-8 text-white max-lg:min-h-[220px] max-lg:p-6 lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:w-[38%] xl:w-[36%] 2xl:w-[34%] lg:p-10 xl:p-12 shrink-0">
-        {/* Background photo & sapphire overlay */}
+    <div className="flex min-h-screen w-full bg-[#F4F7FA] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-slate-900 antialiased max-lg:flex-col">
+      {/* ── Left Hero Branding Panel — Midnight Ocean Palette ── */}
+      <aside className="relative flex flex-col justify-between overflow-hidden bg-[#08253C] p-8 text-white max-lg:min-h-[200px] max-lg:p-6 lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:w-[38%] xl:w-[36%] 2xl:w-[34%] lg:p-10 xl:p-12 shrink-0">
+        {/* Background photo & Midnight Ocean overlay */}
         <img
           src={REGISTER_HERO_IMAGE}
-          alt="Đội ngũ HR Connect"
+          alt=""
           aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-1000 ease-out hover:scale-105"
+          className="absolute inset-0 h-full w-full object-cover object-center opacity-35"
           loading="eager"
           decoding="async"
         />
         <div
-          className="absolute inset-0 bg-gradient-to-t from-[#021F35]/95 via-[#034A70]/85 to-[#0284C7]/50 backdrop-blur-[1.5px]"
+          className="absolute inset-0 bg-gradient-to-t from-[#061A2B]/98 via-[#08253C]/85 to-[#0C4A6E]/70"
           aria-hidden="true"
         />
-        <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-sky-400/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-20 -left-20 h-80 w-80 rounded-full bg-teal-400/15 blur-3xl" />
 
         {/* Brand Header */}
         <div className="relative z-10">
           <Link
             to="/"
-            className="inline-flex items-center gap-3 text-xl font-bold tracking-tight text-white no-underline transition-opacity hover:opacity-90 rounded-md"
+            className="inline-flex items-center gap-3 text-xl font-bold tracking-tight text-white no-underline transition-opacity duration-150 hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 rounded-lg"
           >
-            <BrandMark size={36} tone="light" className="drop-shadow-md" />
+            <BrandMark size={36} tone="light" className="shadow-sm" />
             <span className="font-extrabold tracking-tight">HR Connect</span>
           </Link>
         </div>
 
         {/* Dynamic Role Highlights */}
         <div className="relative z-10 my-auto py-8 max-lg:hidden">
-          <div className="inline-flex items-center gap-2 rounded-full border border-sky-300/30 bg-sky-400/15 px-3.5 py-1 text-xs font-semibold text-sky-100 backdrop-blur-md shadow-xs">
-            <span className="h-1.5 w-1.5 rounded-full bg-sky-300 animate-pulse" />
-            <span>{hero.tag}</span>
-          </div>
+          <p className="m-0 text-xs font-semibold tracking-wide text-sky-300">
+            {hero.tag}
+          </p>
 
-          <h2 className="mt-4 text-2xl font-extrabold leading-[1.3] tracking-tight text-white xl:text-3xl drop-shadow-sm">
+          <h2 className="mt-3 text-2xl font-extrabold leading-[1.28] tracking-tight text-white xl:text-[28px]">
             {hero.headline}
           </h2>
-          <p className="mt-3 text-sm font-normal leading-relaxed text-sky-100/90 max-w-md">
+          <p className="mt-3 max-w-md text-sm font-normal leading-relaxed text-slate-200/90">
             {hero.subhead}
           </p>
 
-          <div className="mt-7 space-y-3 max-w-md">
+          <div className="mt-7 max-w-md space-y-3">
             {hero.highlights.map((item, idx) => (
               <div
                 key={idx}
-                className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-md transition-all hover:bg-white/15 shadow-sm"
+                className="rounded-xl border border-white/12 bg-white/[0.07] p-4 backdrop-blur-sm"
               >
-                <div className="flex items-center gap-2 font-bold text-sm text-white mb-1">
-                  <CheckOutlined className="text-sky-300 text-xs" />
+                <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-white">
+                  <CheckOutlined aria-hidden="true" className="text-xs text-sky-300" />
                   <span>{item.title}</span>
                 </div>
-                <p className="text-xs text-sky-100/80 leading-relaxed m-0">{item.desc}</p>
+                <p className="m-0 text-xs leading-relaxed text-slate-200/85">{item.desc}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* Footer info */}
-        <div className="relative z-10 flex items-center justify-between text-xs text-sky-200/80 max-lg:hidden">
+        <div className="relative z-10 flex items-center justify-between border-t border-white/10 pt-5 text-xs text-slate-300/80 max-lg:hidden">
           <span>© {new Date().getFullYear()} HR Connect Vietnam</span>
-          <span className="font-mono text-[11px] text-sky-300/70">Secure Registration</span>
+          <span className="text-slate-300/70">Đăng ký bảo mật</span>
         </div>
       </aside>
 
       {/* ── Right Registration Form Section ────────────────────────────────── */}
-      <main className="flex flex-1 items-center justify-center bg-[#F8FAFC] px-4 py-8 sm:px-6 lg:px-8 xl:px-12 overflow-y-auto min-h-screen">
-        <div className="w-full max-w-[720px] xl:max-w-[760px] rounded-2xl border border-slate-200/90 bg-white p-6 shadow-[0_12px_36px_-6px_rgba(15,23,42,0.06)] sm:p-9 my-auto">
+      <main className="flex min-h-screen flex-1 items-center justify-center bg-[#F4F7FA] px-4 py-8 sm:px-6 lg:px-8 xl:px-12">
+        <div className="my-auto w-full max-w-[720px] xl:max-w-[760px] rounded-2xl border border-[#DCE3EC] bg-white p-6 shadow-[0_1px_2px_rgba(8,37,60,0.05),0_16px_36px_-12px_rgba(8,37,60,0.09)] sm:p-9">
           {/* Header */}
           <div className="text-left">
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-[26px]">
+                <p className="mb-1 text-xs font-semibold text-[#0369A1]">
+                  Khởi tạo tài khoản
+                </p>
+                <h1 className="m-0 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-[26px]">
                   Tạo tài khoản mới
                 </h1>
-                <p className="mt-1 text-xs sm:text-sm text-slate-500">
-                  Chọn nhóm vai trò để bắt đầu trải nghiệm hệ sinh thái tuyển dụng thông minh.
+                <p className="mt-1.5 mb-0 text-xs sm:text-sm text-slate-600">
+                  Chọn nhóm vai trò phù hợp để bắt đầu trải nghiệm hệ sinh thái HR Connect.
                 </p>
               </div>
               <Link
                 to="/login"
-                className="hidden sm:inline-flex items-center gap-1 text-xs font-semibold text-sky-700 hover:text-sky-800 bg-sky-50 px-3 py-1.5 rounded-lg border border-sky-200/70 transition-colors shrink-0"
+                className="hidden sm:inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#DCE3EC] bg-[#F8FAFC] px-3.5 py-2 text-xs font-semibold text-[#0369A1] no-underline transition-colors duration-150 hover:border-[#0369A1]/40 hover:bg-[#EEF6FB] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1]"
               >
                 <span>Đăng nhập</span>
-                <span aria-hidden="true">→</span>
+                <ArrowRightOutlined aria-hidden="true" className="text-[11px]" />
               </Link>
             </div>
           </div>
 
-          {/* 3-Card Role Selector */}
+          {/* 3-Card Role Selector — Unified Brand Cobalt */}
           <fieldset className="mt-6 mb-2 grid min-w-0 grid-cols-1 gap-3 border-0 p-0 sm:grid-cols-3">
             <legend className="sr-only">Loại tài khoản</legend>
             {ROLES.map((option) => {
               const selected = role === option.role;
-              const isCan = option.role === UserRole.CANDIDATE;
-              const isCli = option.role === UserRole.CLIENT;
-
-              const activeCardClass = isCan
-                ? 'border-sky-500 bg-sky-50/70 text-sky-950 shadow-xs ring-2 ring-sky-500/20'
-                : isCli
-                  ? 'border-indigo-500 bg-indigo-50/70 text-indigo-950 shadow-xs ring-2 ring-indigo-500/20'
-                  : 'border-emerald-500 bg-emerald-50/70 text-emerald-950 shadow-xs ring-2 ring-emerald-500/20';
-
-              const iconBg = isCan
-                ? selected ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-600 group-hover:bg-sky-100 group-hover:text-sky-700'
-                : isCli
-                  ? selected ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 group-hover:bg-indigo-100 group-hover:text-indigo-700'
-                  : selected ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 group-hover:bg-emerald-100 group-hover:text-emerald-700';
 
               return (
                 <label
                   key={option.role}
-                  className={`group relative flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-all select-none ${
+                  className={`group relative flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-[border-color,background-color,box-shadow] duration-150 motion-reduce:transition-none select-none touch-manipulation ${
                     selected
-                      ? activeCardClass
-                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/70 shadow-2xs'
+                      ? 'border-[#0284C7] bg-[#EEF6FB] text-[#08253C] ring-2 ring-[#0369A1]/15'
+                      : 'border-[#DCE3EC] bg-white hover:border-slate-300 hover:bg-slate-50/70'
                   }`}
                 >
                   <input
@@ -558,19 +563,25 @@ export const RegisterPage: React.FC = () => {
                     aria-label={option.title}
                     checked={selected}
                     onChange={() => chooseRole(option.role)}
-                    className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-sky-600"
+                    className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-[#0369A1]"
                   />
-                  <div className="flex flex-1 flex-col min-w-0">
+                  <div className="flex min-w-0 flex-1 flex-col">
                     <div className="flex items-center gap-2">
                       <span
                         aria-hidden="true"
-                        className={`flex h-6 w-6 items-center justify-center rounded-lg text-xs transition-colors shrink-0 ${iconBg}`}
+                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs transition-colors duration-150 ${
+                          selected
+                            ? 'bg-[#0369A1] text-white'
+                            : 'bg-slate-100 text-slate-600 group-hover:bg-sky-50 group-hover:text-[#0369A1]'
+                        }`}
                       >
                         {option.icon}
                       </span>
-                      <span className="text-[13px] font-bold text-slate-900 whitespace-nowrap">{option.title}</span>
+                      <span className="whitespace-nowrap text-[13px] font-bold text-slate-900">
+                        {option.title}
+                      </span>
                     </div>
-                    <span className="mt-1.5 text-[11px] text-slate-500 leading-snug line-clamp-2">
+                    <span className="mt-1.5 line-clamp-2 text-[11.5px] leading-snug text-slate-600">
                       {option.hint}
                     </span>
                   </div>
@@ -581,13 +592,19 @@ export const RegisterPage: React.FC = () => {
 
           {/* Role Context Notice */}
           {isClient && (
-            <div className="mt-3.5 rounded-xl border border-indigo-200 bg-indigo-50/70 p-3 text-xs text-indigo-900 leading-relaxed">
-              🏢 <strong>Doanh nghiệp:</strong> Sau khi kích hoạt tài khoản bằng mã OTP gửi về email, bạn có thể hoàn tất hồ sơ pháp nhân để đăng tin và tiếp cận kho ứng viên.
+            <div className="mt-3.5 flex items-start gap-2.5 rounded-xl border border-[#DCE3EC] bg-[#F8FAFC] p-3 text-xs leading-relaxed text-slate-700">
+              <BankOutlined aria-hidden="true" className="mt-0.5 shrink-0 text-[#0369A1]" />
+              <span>
+                <strong className="font-semibold text-slate-900">Doanh nghiệp:</strong> Sau khi kích hoạt tài khoản bằng mã OTP gửi về email, bạn có thể hoàn tất hồ sơ pháp nhân để đăng tin và tiếp cận kho ứng viên.
+              </span>
             </div>
           )}
           {isAffiliate && (
-            <div className="mt-3.5 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs text-emerald-900 leading-relaxed">
-              🤝 <strong>Đối tác Affiliate:</strong> Đăng ký trực tiếp tại đây. Sau khi xác minh email, bạn có thể giới thiệu ứng viên và nhận hoa hồng bảo hộ độc quyền.
+            <div className="mt-3.5 flex items-start gap-2.5 rounded-xl border border-[#DCE3EC] bg-[#F8FAFC] p-3 text-xs leading-relaxed text-slate-700">
+              <TeamOutlined aria-hidden="true" className="mt-0.5 shrink-0 text-[#0369A1]" />
+              <span>
+                <strong className="font-semibold text-slate-900">Đối tác Affiliate:</strong> Đăng ký trực tiếp tại đây. Sau khi xác minh email, bạn có thể giới thiệu ứng viên và nhận hoa hồng bảo hộ độc quyền.
+              </span>
             </div>
           )}
 
@@ -600,7 +617,7 @@ export const RegisterPage: React.FC = () => {
                     id="reg-company"
                     label="Tên doanh nghiệp"
                     autoComplete="organization"
-                    placeholder="Công ty Cổ phần..."
+                    placeholder="Công ty Cổ phần…"
                     value={values.companyName}
                     error={errors.companyName}
                     disabled={submitting}
@@ -609,6 +626,8 @@ export const RegisterPage: React.FC = () => {
                   <TextField
                     id="reg-tax"
                     label="Mã số thuế"
+                    inputMode="numeric"
+                    spellCheck={false}
                     maxLength={14}
                     placeholder="0123456789"
                     value={values.taxCode}
@@ -636,6 +655,7 @@ export const RegisterPage: React.FC = () => {
                 <TextField
                   id="reg-phone"
                   type="tel"
+                  inputMode="tel"
                   label="Số điện thoại"
                   autoComplete="tel"
                   placeholder="0912 345 678"
@@ -650,6 +670,7 @@ export const RegisterPage: React.FC = () => {
               <TextField
                 id="reg-email"
                 type="email"
+                spellCheck={false}
                 wide={isClient}
                 label={isClient ? 'Email doanh nghiệp' : 'Email'}
                 autoComplete="email"
@@ -665,6 +686,7 @@ export const RegisterPage: React.FC = () => {
                 <TextField
                   id="reg-phone"
                   type="tel"
+                  inputMode="tel"
                   label={isAffiliate ? 'Số điện thoại' : 'Số điện thoại (tùy chọn)'}
                   autoComplete="tel"
                   placeholder="0912 345 678"
@@ -697,19 +719,19 @@ export const RegisterPage: React.FC = () => {
                       {[1, 2, 3, 4].map((step) => (
                         <div
                           key={step}
-                          className={`h-full flex-1 rounded-full transition-all duration-200 ${
+                          className={`h-full flex-1 rounded-full transition-colors duration-200 motion-reduce:transition-none ${
                             pwdStrength >= step
                               ? pwdStrength <= 2
                                 ? 'bg-amber-500'
                                 : pwdStrength === 3
-                                  ? 'bg-sky-500'
-                                  : 'bg-emerald-500'
+                                  ? 'bg-[#0284C7]'
+                                  : 'bg-teal-600'
                               : 'bg-slate-200'
                           }`}
                         />
                       ))}
                     </div>
-                    <span className="text-[10.5px] font-semibold text-slate-500">
+                    <span className="text-[11px] font-semibold text-slate-600 tabular-nums">
                       {pwdStrength <= 1
                         ? 'Yếu'
                         : pwdStrength === 2
@@ -736,8 +758,8 @@ export const RegisterPage: React.FC = () => {
               />
 
               {/* Terms and Policies */}
-              <div className="sm:col-span-2 pt-1">
-                <label className="flex cursor-pointer items-start gap-2.5 text-xs text-slate-600">
+              <div className="pt-1 sm:col-span-2">
+                <label className="flex min-h-[32px] cursor-pointer items-start gap-2.5 text-xs text-slate-600 select-none">
                   <input
                     type="checkbox"
                     checked={terms}
@@ -746,7 +768,7 @@ export const RegisterPage: React.FC = () => {
                       setTerms(event.target.checked);
                       setErrors((current) => ({ ...current, terms: undefined }));
                     }}
-                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-sky-600 focus:ring-sky-600 accent-sky-600 cursor-pointer"
+                    className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 text-[#0369A1] accent-[#0369A1] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1]"
                   />
                   <span>
                     Tôi đã đọc và đồng ý với{' '}
@@ -754,7 +776,7 @@ export const RegisterPage: React.FC = () => {
                       href="/terms"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-semibold text-sky-700 hover:underline"
+                      className="font-semibold text-[#0369A1] no-underline hover:underline"
                     >
                       Điều khoản dịch vụ
                     </a>{' '}
@@ -763,32 +785,33 @@ export const RegisterPage: React.FC = () => {
                       href="/privacy"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-semibold text-sky-700 hover:underline"
+                      className="font-semibold text-[#0369A1] no-underline hover:underline"
                     >
                       Chính sách bảo mật
                     </a>{' '}
                     của HR Connect.
                   </span>
                 </label>
-                {errors.terms && <p className="mt-1 text-xs font-medium text-rose-600">{errors.terms}</p>}
+                {errors.terms && <p className="mt-1 mb-0 text-xs font-medium text-rose-700">{errors.terms}</p>}
               </div>
 
               {/* Form Level Error Alert */}
               {formError && (
                 <div
                   role="alert"
-                  className="sm:col-span-2 rounded-xl border border-rose-200 bg-rose-50/90 p-3.5 text-xs font-medium text-rose-700"
+                  aria-live="polite"
+                  className="rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-medium text-rose-800 sm:col-span-2"
                 >
-                  <p className="leading-relaxed m-0">{formError}</p>
+                  <p className="m-0 leading-relaxed">{formError}</p>
                   {(formError.includes('đăng nhập') || formError.includes('Đăng nhập')) && (
-                    <div className="mt-2.5 pt-2.5 border-t border-rose-200/70 flex items-center justify-between text-xs">
-                      <span className="text-slate-600 font-normal">Bạn đã có tài khoản liên kết?</span>
+                    <div className="mt-2.5 flex items-center justify-between border-t border-rose-200/70 pt-2.5 text-xs">
+                      <span className="font-normal text-slate-600">Bạn đã có tài khoản liên kết?</span>
                       <Link
                         to={`/login?email=${encodeURIComponent(values.email.trim())}`}
-                        className="font-semibold text-sky-700 hover:text-sky-800 underline underline-offset-2 flex items-center gap-1"
+                        className="flex items-center gap-1 font-semibold text-[#0369A1] underline underline-offset-2 hover:text-[#075985]"
                       >
                         <span>Đăng nhập ngay</span>
-                        <span aria-hidden="true">→</span>
+                        <ArrowRightOutlined aria-hidden="true" className="text-[11px]" />
                       </Link>
                     </div>
                   )}
@@ -796,15 +819,15 @@ export const RegisterPage: React.FC = () => {
               )}
 
               {/* Submit CTA */}
-              <div className="sm:col-span-2 pt-2">
+              <div className="pt-2 sm:col-span-2">
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="group relative flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-0 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="group relative flex h-12 w-full touch-manipulation cursor-pointer items-center justify-center gap-2 rounded-xl border-0 bg-[#0369A1] text-sm font-semibold text-white shadow-[0_1px_2px_rgba(3,105,161,0.3)] transition-[background-color,transform] duration-150 motion-reduce:transition-none hover:bg-[#075985] active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {submitting ? (
                     <span className="inline-flex items-center gap-2">
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white motion-reduce:animate-none" />
                       <span>Đang khởi tạo tài khoản…</span>
                     </span>
                   ) : (
@@ -812,7 +835,7 @@ export const RegisterPage: React.FC = () => {
                       <span>Tạo tài khoản</span>
                       <ArrowRightOutlined
                         aria-hidden="true"
-                        className="transition-transform group-hover:translate-x-1"
+                        className="transition-transform duration-150 group-hover:translate-x-0.5 motion-reduce:transition-none"
                       />
                     </>
                   )}
@@ -824,7 +847,7 @@ export const RegisterPage: React.FC = () => {
           {/* Mobile Back to Login */}
           <div className="mt-6 text-center text-xs text-slate-600 sm:hidden">
             Đã có tài khoản?{' '}
-            <Link to="/login" className="font-bold text-sky-600 hover:underline">
+            <Link to="/login" className="font-semibold text-[#0369A1] hover:underline">
               Đăng nhập ngay
             </Link>
           </div>
@@ -841,7 +864,7 @@ export const RegisterPage: React.FC = () => {
         className="[&_.ant-modal-content]:!rounded-2xl [&_.ant-modal-content]:!p-6"
       >
         <div className="p-1 text-slate-800">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-700">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EEF6FB] text-[#0369A1]">
             <TeamOutlined className="text-2xl" />
           </div>
 
@@ -850,21 +873,21 @@ export const RegisterPage: React.FC = () => {
           </h3>
 
           {!splitModal.otpSent ? (
-            <div className="mt-3 text-center text-sm text-slate-600 space-y-3">
+            <div className="mt-3 space-y-3 text-center text-sm text-slate-600">
               <p>
                 Email <span className="font-semibold text-slate-800">{splitModal.email}</span> hiện đang là email phụ của tài khoản{' '}
-                <span className="font-semibold text-sky-800">{splitModal.maskedPrimaryEmail || 'khác'}</span>.
+                <span className="font-semibold text-[#0369A1]">{splitModal.maskedPrimaryEmail || 'khác'}</span>.
               </p>
               <p className="text-xs text-slate-500">
                 Bạn có thể đăng nhập ngay bằng email này với mật khẩu của bạn, hoặc tách ra để tạo tài khoản riêng độc lập.
               </p>
 
-              <div className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800 text-left border border-amber-200">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-left text-xs text-amber-900">
                 <span className="font-semibold">Lưu ý về dữ liệu:</span> Khi tách thành tài khoản riêng, bạn sẽ bắt đầu với hồ sơ mới. Lịch sử ứng tuyển và CV trước đây thuộc về tài khoản cũ sẽ không được chuyển sang tài khoản mới nhằm bảo mật dữ liệu.
               </div>
 
               {splitModal.error && (
-                <div className="rounded-xl bg-rose-50 p-2.5 text-xs text-rose-700 font-medium">
+                <div className="rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs font-medium text-rose-800">
                   {splitModal.error}
                 </div>
               )}
@@ -874,31 +897,32 @@ export const RegisterPage: React.FC = () => {
                   type="button"
                   disabled={splitModal.loading}
                   onClick={handleRequestSplitOtp}
-                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700 transition-all disabled:opacity-60 cursor-pointer shadow-xs"
+                  className="flex h-11 w-full touch-manipulation cursor-pointer items-center justify-center gap-2 rounded-xl border-0 bg-[#0369A1] px-4 text-sm font-semibold text-white transition-colors duration-150 hover:bg-[#075985] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1] disabled:opacity-60"
                 >
-                  {splitModal.loading ? 'Đang gửi mã...' : 'Tách thành tài khoản riêng (Gửi OTP)'}
+                  {splitModal.loading ? 'Đang gửi mã…' : 'Tách thành tài khoản riêng (Gửi OTP)'}
                 </button>
 
                 <Link
                   to={`/login?email=${encodeURIComponent(splitModal.email)}`}
-                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all"
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#DCE3EC] bg-white px-4 text-sm font-semibold text-slate-700 no-underline transition-colors duration-150 hover:bg-slate-50"
                 >
                   Đăng nhập với email này
                 </Link>
               </div>
             </div>
           ) : (
-            <div className="mt-3 text-sm text-slate-600 space-y-3">
+            <div className="mt-3 space-y-3 text-sm text-slate-600">
               <p className="text-center">
                 Mã OTP 6 số đã được gửi tới <span className="font-semibold text-slate-800">{splitModal.email}</span>. Vui lòng kiểm tra hộp thư.
               </p>
 
               <div className="mt-4">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                <label className="mb-1.5 block text-[13px] font-semibold text-slate-700">
                   Mã OTP (6 chữ số)
                 </label>
                 <input
                   type="text"
+                  inputMode="numeric"
                   maxLength={6}
                   placeholder="123456"
                   autoComplete="one-time-code"
@@ -911,12 +935,12 @@ export const RegisterPage: React.FC = () => {
                       handleConfirmSplitRegister();
                     }
                   }}
-                  className="h-12 w-full rounded-xl border border-slate-300 px-3.5 text-center text-2xl font-mono font-bold tracking-widest text-slate-900 focus:border-sky-600 focus:outline-none focus:ring-4 focus:ring-sky-500/15"
+                  className="h-12 w-full rounded-xl border border-[#CBD5E1] px-3.5 text-center font-mono text-2xl font-bold tracking-widest text-slate-900 focus:border-[#0369A1] focus:outline-none focus:ring-4 focus:ring-[#0369A1]/12"
                 />
               </div>
 
               {splitModal.error && (
-                <div className="rounded-xl bg-rose-50 p-2.5 text-xs text-rose-700 font-medium">
+                <div className="rounded-xl border border-rose-200 bg-rose-50 p-2.5 text-xs font-medium text-rose-800">
                   {splitModal.error}
                 </div>
               )}
@@ -926,16 +950,16 @@ export const RegisterPage: React.FC = () => {
                   type="button"
                   disabled={splitModal.loading || splitModal.otp.length < 6}
                   onClick={handleConfirmSplitRegister}
-                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700 transition-all disabled:opacity-60 cursor-pointer shadow-xs"
+                  className="flex h-11 w-full touch-manipulation cursor-pointer items-center justify-center gap-2 rounded-xl border-0 bg-[#0369A1] px-4 text-sm font-semibold text-white transition-colors duration-150 hover:bg-[#075985] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1] disabled:opacity-60"
                 >
-                  {splitModal.loading ? 'Đang xác thực...' : 'Xác nhận & Tạo tài khoản'}
+                  {splitModal.loading ? 'Đang xác thực…' : 'Xác nhận & Tạo tài khoản'}
                 </button>
 
                 <button
                   type="button"
                   disabled={splitModal.loading}
                   onClick={handleRequestSplitOtp}
-                  className="text-xs text-sky-700 hover:text-sky-800 underline text-center cursor-pointer py-1"
+                  className="cursor-pointer border-0 bg-transparent py-1 text-center text-xs font-medium text-[#0369A1] underline hover:text-[#075985]"
                 >
                   Gửi lại mã OTP
                 </button>
