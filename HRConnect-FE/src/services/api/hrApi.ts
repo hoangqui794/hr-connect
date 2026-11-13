@@ -158,7 +158,15 @@ export const placementReconciliationApi = {
 };
 
 export const pipelineApi = {
-  async interviews(params: { status?: string; page: number; pageSize: number }): Promise<PagedItems<InterviewItem>> {
+  async interviews(params: {
+    status?: string;
+    /** ISO date-time; only interviews scheduled at or after it (BE filter). */
+    fromDate?: string;
+    toDate?: string;
+    sortDirection?: 'ASC' | 'DESC';
+    page: number;
+    pageSize: number;
+  }): Promise<PagedItems<InterviewItem>> {
     const res = await apiClient.get<ApiEnvelope<PagedItems<InterviewItem>>>('/interviews', { params: cleanParams(params) });
     return res.data.data;
   },

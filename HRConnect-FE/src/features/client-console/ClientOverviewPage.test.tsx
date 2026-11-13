@@ -72,20 +72,28 @@ describe('ClientOverviewPage', () => {
     );
     vi.mocked(pipelineApi.interviews).mockResolvedValue({
       items: [
-        interview({ candidateName: 'Đã qua', scheduledAt: hoursFromNow(-48) }),
-        interview({ candidateName: 'Trực tuyến', scheduledAt: hoursFromNow(5), meetingLink: 'https://meet.example/abc' }),
         interview({ candidateName: 'Trực tiếp', scheduledAt: hoursFromNow(2), interviewType: 'OFFLINE', location: 'Tầng 5, 12 Lê Lợi' }),
+        interview({ candidateName: 'Trực tuyến', scheduledAt: hoursFromNow(5), meetingLink: 'https://meet.example/abc' }),
         interview({ candidateName: 'Gọi điện', scheduledAt: hoursFromNow(8), interviewType: 'PHONE', meetingLink: 'https://khong-hien.example' }),
+        interview({ candidateName: 'Chưa có ngày', scheduledAt: null }),
       ],
       totalCount: 4,
     } as never);
   });
 
-  it('lists only upcoming interviews, nearest first, with their type and place', async () => {
+  it('asks BE for upcoming interviews only, nearest first, and shows their type and place', async () => {
     renderPage();
 
+    await waitFor(() =>
+      expect(pipelineApi.interviews).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'SCHEDULED', sortDirection: 'ASC', pageSize: 4, fromDate: expect.any(String) })
+      )
+    );
+    const from = new Date(vi.mocked(pipelineApi.interviews).mock.calls[0][0].fromDate!).getTime();
+    expect(Math.abs(from - Date.now())).toBeLessThan(60_000);
+
     const offline = await screen.findByText('Trực tiếp');
-    expect(screen.queryByText('Đã qua')).toBeNull();
+    expect(screen.queryByText('Chưa có ngày')).toBeNull();
     expect(screen.getByText('Trực tiếp · Tầng 5, 12 Lê Lợi')).toBeInTheDocument();
     expect(screen.getByText('Trực tuyến · https://meet.example/abc')).toBeInTheDocument();
     expect(screen.getByText('3 buổi')).toBeInTheDocument();

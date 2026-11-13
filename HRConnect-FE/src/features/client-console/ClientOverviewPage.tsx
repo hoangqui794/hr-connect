@@ -93,18 +93,20 @@ export const ClientOverviewPage: React.FC = () => {
   });
   const perJob = shownJobIds.map((id) => ({ data: jobCounts.data?.[id] ?? 0, isLoading: jobCounts.isLoading }));
 
-  // "Sắp tới" = SCHEDULED and not in the past: a past SCHEDULED interview only lacks its result.
-  // The API has no date filter, so fetch a page, keep future ones, nearest first, show 4.
+  // "Sắp tới" = SCHEDULED and not in the past (a past SCHEDULED interview only lacks its result).
+  // BE filters from now and sorts nearest first; an interview without a date is left out.
   const interviews = useQuery({
     queryKey: ['client-overview', 'interviews'],
-    queryFn: async () => {
-      const items = (await pipelineApi.interviews({ status: 'SCHEDULED', page: 1, pageSize: 50 })).items;
-      const now = Date.now();
-      return items
-        .filter((iv) => iv.scheduledAt && new Date(iv.scheduledAt).getTime() >= now)
-        .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime())
-        .slice(0, 4);
-    },
+    queryFn: async () =>
+      (
+        await pipelineApi.interviews({
+          status: 'SCHEDULED',
+          fromDate: new Date().toISOString(),
+          sortDirection: 'ASC',
+          page: 1,
+          pageSize: 4,
+        })
+      ).items.filter((iv) => iv.scheduledAt),
   });
 
   const n = (code: (typeof FUNNEL)[number]['code']) => stageCounts.data?.[code] ?? 0;
