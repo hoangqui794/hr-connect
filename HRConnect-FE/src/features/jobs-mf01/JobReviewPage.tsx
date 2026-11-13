@@ -384,15 +384,7 @@ export const JobReviewPage: React.FC = () => {
 
   const isJobDeposited = (targetJob?: Job | null): boolean => {
     if (!targetJob) return false;
-    if (targetJob.hasSubmittedDeposit) return true;
-    try {
-      const raw = JSON.parse(localStorage.getItem('hrconnect_deposited_jobs') || '[]');
-      if (Array.isArray(raw)) return raw.includes(targetJob.jobId);
-      if (typeof raw === 'object' && raw !== null) return Boolean((raw as Record<string, any>)[targetJob.jobId]);
-      return false;
-    } catch {
-      return false;
-    }
+    return Boolean(targetJob.hasSubmittedDeposit);
   };
 
   const storedChangeMap = useMemo(() => {
@@ -622,18 +614,6 @@ export const JobReviewPage: React.FC = () => {
             } catch (fallbackErr) {
               console.warn('Approve fallback error', fallbackErr);
             }
-          }
-          try {
-            const raw = JSON.parse(localStorage.getItem('hrconnect_deposited_jobs') || '[]');
-            if (Array.isArray(raw)) {
-              const filtered = raw.filter((id) => id !== jobToConfirm.jobId);
-              localStorage.setItem('hrconnect_deposited_jobs', JSON.stringify(filtered));
-            } else if (typeof raw === 'object' && raw !== null) {
-              delete (raw as Record<string, any>)[jobToConfirm.jobId];
-              localStorage.setItem('hrconnect_deposited_jobs', JSON.stringify(raw));
-            }
-          } catch {
-            // ignore
           }
           message.success('Đã xác nhận nhận cọc! Tin tuyển dụng đã được công bố công khai.');
           useAlertStore.getState().addAlert({

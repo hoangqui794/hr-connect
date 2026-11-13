@@ -93,6 +93,7 @@ export const ClientOverviewPage: React.FC = () => {
   const shortlistedCount = n('SHORTLISTED');
   const interviewCount = n('INTERVIEW');
   const offerCount = n('OFFER_PENDING') + n('OFFER_ACCEPTED');
+  const passedScreeningCount = shortlistedCount + interviewCount + offerCount + n('PLACED');
 
   return (
     <div className={`${FONT} space-y-7 max-w-full animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
@@ -147,7 +148,9 @@ export const ClientOverviewPage: React.FC = () => {
               <span className="flex items-center gap-1.5">
                 <ThunderboltFilled className="text-amber-300" /> Nhịp độ tuyển dụng
               </span>
-              <span className="rounded-full bg-emerald-400/20 border border-emerald-300/40 px-2 py-0.5 text-[10px] text-emerald-200 font-bold">Live</span>
+              <span className="rounded-full bg-emerald-400/20 border border-emerald-300/40 px-2 py-0.5 text-[10px] text-emerald-200 font-bold">
+                {stageCounts.dataUpdatedAt ? `Cập nhật ${dayjs(stageCounts.dataUpdatedAt).format('HH:mm')}` : '—'}
+              </span>
             </div>
 
             <div className="grid grid-cols-3 gap-2.5 py-1 text-center">
@@ -168,7 +171,9 @@ export const ClientOverviewPage: React.FC = () => {
             </div>
 
             <div className="text-xs text-sky-100/90 leading-tight">
-              Tỷ lệ hồ sơ đạt chuẩn đi tiếp phỏng vấn đạt mức tích cực.
+              {totalCandidates > 0
+                ? `${passedScreeningCount}/${totalCandidates} hồ sơ đã qua vòng sàng lọc`
+                : 'Chưa có hồ sơ để đánh giá'}
             </div>
           </div>
         </div>

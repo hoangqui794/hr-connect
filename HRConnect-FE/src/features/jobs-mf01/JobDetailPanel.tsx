@@ -392,8 +392,9 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const [showSourcingDrawer, setShowSourcingDrawer] = useState(false);
   const feeInfo = useJobFeeInfo(isApplicant ? null : job);
   const awaitingDeposit = isAwaitingSourcingDeposit(job);
+  const depositAmount = sourcingDepositAmount(job);
   const feeText = awaitingDeposit
-    ? formatMoney(sourcingDepositAmount(job) ?? 0, 'VND')
+    ? (depositAmount != null ? formatMoney(depositAmount, 'VND') : 'Chưa chốt số tiền cọc')
     : formatMoney(feeInfo.amount, feeInfo.currencyCode);
   const mustHave = job.requirements.filter((r) => r.requirementType === 'MUST_HAVE');
   const shouldHave = job.requirements.filter((r) => r.requirementType === 'SHOULD_HAVE');
@@ -610,7 +611,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             message={
               awaitingDeposit
                 ? job.hasSubmittedDeposit
-                  ? `Tin đã duyệt · Đã nộp tiền cọc (${feeText})`
+                  ? `Tin đã duyệt · Đã nộp tiền cọc${depositAmount != null ? ` (${feeText})` : ''}`
                   : `Tin đã duyệt · Chờ đặt cọc dịch vụ (${feeText})`
                 : `Tin đã duyệt · Chờ thanh toán phí gói (${feeText})`
             }
@@ -638,7 +639,9 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                       size="small"
                       icon={<CreditCardOutlined />}
                       className="!bg-[#0C4A6E] hover:!bg-[#075985] !border-0 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium"
-                      onClick={() => setShowPaymentModal(true)}
+                      disabled={depositAmount == null}
+                      title={depositAmount == null ? 'Chưa chốt số tiền cọc' : undefined}
+                      onClick={() => depositAmount != null && setShowPaymentModal(true)}
                     >
                       Nộp cọc
                     </Button>
@@ -972,7 +975,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         jobId={job.jobId}
         jobTitle={job.title}
         isDeposit={awaitingDeposit}
-        depositAmount={sourcingDepositAmount(job) ?? 200000}
+        depositAmount={depositAmount}
         onClose={() => setShowPaymentModal(false)}
         onPaymentSuccess={() => {
           setShowPaymentModal(false);

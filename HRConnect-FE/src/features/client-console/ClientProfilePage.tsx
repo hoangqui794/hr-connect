@@ -182,9 +182,13 @@ export const ClientProfilePage: React.FC = () => {
               </div>
               <div className="flex items-center justify-between text-slate-600">
                 <span className="text-slate-400">Xác thực email:</span>
-                <span className="inline-flex items-center gap-1 font-semibold text-emerald-600">
-                  <CheckCircleFilled className="text-xs" /> Đã xác thực
-                </span>
+                {userData.emailVerified === true ? (
+                  <span className="inline-flex items-center gap-1 font-semibold text-emerald-600">
+                    <CheckCircleFilled className="text-xs" /> Đã xác thực
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 font-semibold text-amber-800">Chưa xác thực</span>
+                )}
               </div>
               <div className="flex items-center justify-between text-slate-600">
                 <span className="text-slate-400">Điện thoại:</span>

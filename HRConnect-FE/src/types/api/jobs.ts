@@ -424,6 +424,8 @@ export interface ServiceAgreementDto {
   pricePerQualifiedCv?: number | null;
   sourcingTarget?: number | null;
   reviewDays?: number | null;
+  /** Tỷ lệ cọc (%) của CV_SOURCING, BE map từ Job.DepositPercent. */
+  depositPercent?: number | null;
   agreementNote?: string | null;
   changeRequestReason?: string | null;
 
