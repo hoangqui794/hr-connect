@@ -96,45 +96,45 @@ export const ClientOverviewPage: React.FC = () => {
 
   return (
     <div className={`${FONT} space-y-7 max-w-full animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
-      {/* ── 1. Executive Studio Hero Banner ──────────────────────────── */}
-      <section className="relative overflow-hidden rounded-3xl bg-[#08253C] p-6 sm:p-7 text-white shadow-lg shadow-sky-900/10">
+      {/* ── 1. Executive Studio Hero Banner — Light SaaS Shell ───────── */}
+      <section className="relative overflow-hidden rounded-2xl border border-[#DCE3EC] bg-gradient-to-br from-white via-white to-[#EEF6FB]/75 p-6 shadow-[0_1px_2px_rgba(8,37,60,0.04),0_12px_28px_-12px_rgba(8,37,60,0.08)] sm:p-7">
         <div className="relative z-10 flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
-          <div className="flex-1 min-w-0 max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/15 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md">
-              <span className="h-2 w-2 rounded-full bg-emerald-300 animate-pulse" />
+          <div className="min-w-0 max-w-2xl flex-1">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#DCE3EC] bg-[#F4F7FA] px-3 py-1 text-xs font-semibold text-slate-600">
+              <span className="h-2 w-2 rounded-full bg-teal-600" />
               <span>{dayjs().format('dddd, DD/MM/YYYY')}</span>
-              <span className="text-white/40">·</span>
-              <span>Cổng quản trị tuyển dụng</span>
+              <span className="text-slate-300">·</span>
+              <span className="text-[#0369A1]">Cổng quản trị tuyển dụng</span>
             </div>
 
-            <h1 className="m-0 mt-3 text-2xl font-black tracking-tight text-white sm:text-[26px] leading-snug">
+            <h1 className="m-0 mt-3 text-2xl font-extrabold leading-snug tracking-tight text-slate-900 sm:text-[26px]">
               Chào {firstName}, chúc một ngày tuyển dụng hiệu quả!
             </h1>
 
-            <p className="m-0 mt-2 text-sm leading-relaxed text-sky-100/90">
+            <p className="m-0 mt-2 text-sm leading-relaxed text-slate-600">
               {jobs.isLoading || stagesLoading ? (
-                'Đang đồng bộ nhịp thở dữ liệu tuyển dụng...'
+                'Đang đồng bộ nhịp thở dữ liệu tuyển dụng…'
               ) : (
                 <>
-                  Doanh nghiệp đang vận hành <b className="text-white font-bold">{activeJobs.length} tin tuyển dụng</b> đang mở
+                  Doanh nghiệp đang vận hành <b className="font-bold text-slate-900">{activeJobs.length} tin tuyển dụng</b> đang mở
                   {pendingReview > 0 ? `, ${pendingReview} tin đang chờ duyệt` : ''}. Có{' '}
-                  <b className="text-amber-300 font-extrabold">{pendingCVCount} ứng viên mới</b> sẵn sàng để bạn đánh giá.
+                  <b className="font-bold text-[#0369A1]">{pendingCVCount} ứng viên mới</b> sẵn sàng để bạn đánh giá.
                 </>
               )}
             </p>
 
-            <div className="mt-4.5 flex flex-wrap items-center gap-3">
+            <div className="mt-5 flex flex-wrap items-center gap-3">
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
                 onClick={() => navigate('/client/jobs/create')}
-                className="!h-10.5 !rounded-xl !border-0 !bg-white hover:!bg-sky-50 !px-5 text-sm font-bold !text-[#0284C7] shadow-md shadow-sky-950/15 transition-all active:scale-[0.98]"
+                className="!h-10.5 !rounded-xl !border-0 !bg-[#0369A1] hover:!bg-[#075985] !px-5 text-sm font-semibold !text-white shadow-[0_1px_2px_rgba(3,105,161,0.3)] transition-colors active:scale-[0.98]"
               >
                 Đăng tin tuyển dụng mới
               </Button>
               <Button
                 onClick={() => navigate('/client/candidates')}
-                className="!h-10.5 !rounded-xl !border !border-white/25 !bg-white/10 hover:!bg-white/20 !px-4.5 text-sm font-semibold !text-white backdrop-blur-md shadow-2xs transition-all active:scale-[0.98]"
+                className="!h-10.5 !rounded-xl !border !border-[#DCE3EC] !bg-white hover:!border-[#0369A1]/40 hover:!bg-[#EEF6FB] !px-4.5 text-sm font-semibold !text-slate-700 transition-colors active:scale-[0.98]"
               >
                 Xem tất cả hồ sơ ({totalCandidates})
               </Button>
@@ -142,32 +142,34 @@ export const ClientOverviewPage: React.FC = () => {
           </div>
 
           {/* Mini Health Pulse Card */}
-          <div className="flex shrink-0 flex-col gap-3 rounded-2xl border border-white/20 bg-white/10 p-4.5 backdrop-blur-md lg:w-72 shadow-inner">
-            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-sky-100">
+          <div className="flex shrink-0 flex-col gap-3 rounded-2xl border border-[#DCE3EC] bg-white p-4.5 shadow-[0_1px_2px_rgba(8,37,60,0.04)] lg:w-72">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-700">
               <span className="flex items-center gap-1.5">
-                <ThunderboltFilled className="text-amber-300" /> Nhịp độ tuyển dụng
+                <ThunderboltFilled className="text-[#0369A1]" /> Nhịp độ tuyển dụng
               </span>
-              <span className="rounded-full bg-emerald-400/20 border border-emerald-300/40 px-2 py-0.5 text-[10px] text-emerald-200 font-bold">Live</span>
+              <span className="rounded-full border border-teal-200 bg-teal-50 px-2 py-0.5 text-[10px] font-bold text-teal-700">
+                Live
+              </span>
             </div>
 
             <div className="grid grid-cols-3 gap-2.5 py-1 text-center">
-              <div className="rounded-xl border border-white/15 bg-white/10 p-2.5 backdrop-blur-xs">
-                <div className="text-xl font-black text-white tabular-nums">{activeJobs.length}</div>
-                <div className="text-[11px] text-sky-100 font-medium">Tin mở</div>
+              <div className="rounded-xl border border-[#DCE3EC] bg-[#F4F7FA] p-2.5">
+                <div className="text-xl font-black text-slate-900 tabular-nums">{activeJobs.length}</div>
+                <div className="text-[11px] font-medium text-slate-600">Tin mở</div>
               </div>
-              <div className="rounded-xl border border-white/15 bg-white/10 p-2.5 backdrop-blur-xs">
-                <div className={`text-xl font-black tabular-nums ${pendingCVCount > 0 ? 'text-amber-300' : 'text-white'}`}>
+              <div className="rounded-xl border border-[#DCE3EC] bg-[#F4F7FA] p-2.5">
+                <div className={`text-xl font-black tabular-nums ${pendingCVCount > 0 ? 'text-amber-700' : 'text-slate-900'}`}>
                   {pendingCVCount}
                 </div>
-                <div className="text-[11px] text-sky-100 font-medium">Chờ duyệt</div>
+                <div className="text-[11px] font-medium text-slate-600">Chờ duyệt</div>
               </div>
-              <div className="rounded-xl border border-white/15 bg-white/10 p-2.5 backdrop-blur-xs">
-                <div className="text-xl font-black text-sky-200 tabular-nums">{interviewCount}</div>
-                <div className="text-[11px] text-sky-100 font-medium">Phỏng vấn</div>
+              <div className="rounded-xl border border-[#DCE3EC] bg-[#F4F7FA] p-2.5">
+                <div className="text-xl font-black text-[#0369A1] tabular-nums">{interviewCount}</div>
+                <div className="text-[11px] font-medium text-slate-600">Phỏng vấn</div>
               </div>
             </div>
 
-            <div className="text-xs text-sky-100/90 leading-tight">
+            <div className="text-xs leading-tight text-slate-500">
               Tỷ lệ hồ sơ đạt chuẩn đi tiếp phỏng vấn đạt mức tích cực.
             </div>
           </div>
