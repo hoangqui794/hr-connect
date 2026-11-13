@@ -20,6 +20,7 @@ vi.mock('@/services/api/financeApi', () => ({
     resolveResignation: vi.fn(),
     getPlacements: vi.fn().mockResolvedValue({ items: [], totalCount: 0 }),
     getReplacementSlots: vi.fn().mockResolvedValue([]),
+    replacementSlots: vi.fn().mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 100 }),
     cancelReplacementSlot: vi.fn(),
   },
 }));
@@ -147,6 +148,7 @@ describe('MF-05 HR warranty verification', () => {
     vi.mocked(financeApi.warranties).mockResolvedValue(page([claimed]));
     vi.mocked(financeApi.getPlacements).mockResolvedValue({ items: [], totalCount: 0 });
     vi.mocked(financeApi.getReplacementSlots).mockResolvedValue([]);
+    vi.mocked(financeApi.replacementSlots).mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 100 } as never);
     vi.mocked(financeApi.resolveResignation).mockReset().mockResolvedValue({
       placementId: 'p1',
       warrantyStatus: 'VOIDED',

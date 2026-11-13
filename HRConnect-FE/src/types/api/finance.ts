@@ -180,6 +180,9 @@ export interface ReplacementSlotDto {
   cancelReason: string | null;
   concurrencyToken: string;
   createdAt: string;
+  /** Tên tin và doanh nghiệp, BE trả kèm từ GET /replacement-slots và /jobs/{id}/replacement-slots. */
+  jobTitle?: string | null;
+  companyName?: string | null;
 }
 
 /** Short slot summary returned when resolving a resignation */

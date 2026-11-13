@@ -55,12 +55,23 @@ describe('Affiliate › Hoa hồng và chi trả', () => {
     renderPage();
 
     await screen.findByText('Nguyễn Văn An');
-    expect(within(screen.getByRole('region', { name: 'Chờ chi' })).getByText(/9\.000\.000/)).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Chờ chuyển khoản' })).getByText(/9\.000\.000/)).toBeInTheDocument();
 
     const warranty = screen.getByText('Nguyễn Văn An').closest('tr')!;
     expect(within(warranty).getByText(/Còn (17|18) ngày/)).toBeInTheDocument();
     expect(within(warranty).getByText(/Trên phí 45\.000\.000/)).toBeInTheDocument();
-    expect(within(warranty).getByText('Trong bảo hành')).toBeInTheDocument();
+    expect(within(warranty).getByText('Đang bảo hành')).toBeInTheDocument();
+  });
+
+  it('shows Hoa hồng tuyển dụng for Headhunt when baseAmount is hidden', async () => {
+    vi.mocked(financeApi.commissions).mockResolvedValue(page([
+      commission({ commissionId: 'hh-hidden', placementId: 'p1', baseAmount: null, status: 'IN_WARRANTY' }),
+    ]));
+    renderPage();
+
+    const row = (await screen.findByText('Nguyễn Văn An')).closest('tr')!;
+    expect(within(row).getByText('Hoa hồng tuyển dụng')).toBeInTheDocument();
+    expect(within(row).queryByText('Theo CV được nhận')).not.toBeInTheDocument();
   });
 
   it('explains a commission on hold instead of showing a raw status', async () => {

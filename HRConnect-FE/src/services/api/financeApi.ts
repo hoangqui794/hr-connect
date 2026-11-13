@@ -12,6 +12,7 @@ import type {
   Payout,
   PlacementListItem,
   ReplacementSlotDto,
+  ReplacementSlotStatus,
   ServiceFee,
   ServiceFeeKind,
   ServiceFeeStatus,
@@ -115,6 +116,19 @@ export const financeApi = {
     if (Array.isArray(res.data?.data)) return res.data.data;
     if (Array.isArray(res.data)) return res.data as unknown as ReplacementSlotDto[];
     return [];
+  },
+
+  /**
+   * MF-05 replacement slots across jobs, paged. Client gets only its own company's slots;
+   * Internal HR / Admin get every company. Each slot carries jobTitle and companyName.
+   */
+  async replacementSlots(params: {
+    jobId?: string;
+    status?: ReplacementSlotStatus;
+    page: number;
+    pageSize: number;
+  }): Promise<FinancePage<ReplacementSlotDto>> {
+    return (await apiClient.get<ApiEnvelope<FinancePage<ReplacementSlotDto>>>('/replacement-slots', { params: clean(params) })).data.data;
   },
 
   /** Internal HR cancels a WAITING_PAYMENT or OPEN slot */

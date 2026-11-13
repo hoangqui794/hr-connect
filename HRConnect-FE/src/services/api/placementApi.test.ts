@@ -69,29 +69,18 @@ describe('placementApi', () => {
         allowedActions: ['VIEW_PLACEMENT', 'VIEW_PROBATION', 'VIEW_WARRANTY'],
         createdAt: '2026-10-15T08:30:00Z',
         updatedAt: '2026-10-15T08:30:00Z',
+        financial: {
+          serviceFeeAmount: 40000000,
+          serviceFeeStatus: 'PAID',
+          commissionAmount: 12000000,
+          commissionStatus: 'APPROVED',
+        },
       };
 
       vi.mocked(apiClient.get).mockResolvedValueOnce({
         data: {
           success: true,
           data: mockRaw,
-        },
-      } as any);
-
-      // Secondary warranty call
-      vi.mocked(apiClient.get).mockResolvedValueOnce({
-        data: {
-          data: {
-            items: [
-              {
-                placementId: 'plc-1',
-                serviceFeeAmount: 40000000,
-                serviceFeeStatus: 'PAID',
-                commissionAmount: 12000000,
-                commissionStatus: 'APPROVED',
-              },
-            ],
-          },
         },
       } as any);
 
@@ -106,6 +95,9 @@ describe('placementApi', () => {
       expect(result.probation?.result).toBe('IN_PROGRESS');
       expect(result.warranty?.status).toBe('ACTIVE');
       expect(result.financial?.serviceFeeAmount).toBe(40000000);
+      expect(result.financial?.commissionStatus).toBe('APPROVED');
+      // Không còn gọi thêm /warranties để dò khối tiền.
+      expect(apiClient.get).toHaveBeenCalledTimes(1);
     });
 
     it('throws error when request fails or returns null', async () => {

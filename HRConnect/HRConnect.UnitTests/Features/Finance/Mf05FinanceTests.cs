@@ -1136,6 +1136,78 @@ public class Mf05FinanceTests
     }
 
     [Fact]
+    public async Task Replacement_slot_list_is_scoped_to_the_client_company_and_carries_job_names()
+    {
+        var (placement, _) = await ResignationReportedAsync(feePaid: true);
+        await ConfirmResignationAsync(placement.PlacementId);
+        var ownCompanyUser = new Mock<ICompanyUserRepository>();
+        ownCompanyUser.Setup(r => r.GetByUserIdAsync(_actor, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { CompanyId = _companyId, UserId = _actor, Status = "ACTIVE" });
+        var otherCompanyUser = new Mock<ICompanyUserRepository>();
+        otherCompanyUser.Setup(r => r.GetByUserIdAsync(_actor, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { CompanyId = Guid.NewGuid(), UserId = _actor, Status = "ACTIVE" });
+
+        var own = await new GetReplacementSlotsQueryHandler(Repository, ownCompanyUser.Object)
+            .Handle(new GetReplacementSlotsQuery(_actor, null, null, 1, 20), default);
+        own.TotalCount.Should().Be(1);
+        var slot = own.Items.Should().ContainSingle().Subject;
+        slot.JobId.Should().Be(placement.Application.JobId);
+        slot.JobTitle.Should().Be(".NET Developer");
+        slot.CompanyName.Should().Be("ABC Technology");
+        slot.OriginalCandidateName.Should().Be("Nguyễn Văn Nam");
+
+        var other = await new GetReplacementSlotsQueryHandler(Repository, otherCompanyUser.Object)
+            .Handle(new GetReplacementSlotsQuery(_actor, null, null, 1, 20), default);
+        other.TotalCount.Should().Be(0);
+        other.Items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Replacement_slot_list_lets_platform_roles_see_every_company_and_filters_by_job_and_status()
+    {
+        var (placement, _) = await ResignationReportedAsync(feePaid: true);
+        await ConfirmResignationAsync(placement.PlacementId);
+        var handler = new GetReplacementSlotsQueryHandler(Repository, new Mock<ICompanyUserRepository>().Object);
+
+        var all = await handler.Handle(new GetReplacementSlotsQuery(null, null, null, 1, 20), default);
+        all.Items.Should().ContainSingle().Which.CompanyName.Should().Be("ABC Technology");
+
+        var byJob = await handler.Handle(new GetReplacementSlotsQuery(null, placement.Application.JobId, null, 1, 20), default);
+        byJob.Items.Should().ContainSingle();
+
+        var otherJob = await handler.Handle(new GetReplacementSlotsQuery(null, Guid.NewGuid(), null, 1, 20), default);
+        otherJob.Items.Should().BeEmpty();
+
+        var status = all.Items[0].Status;
+        var sameStatus = await handler.Handle(new GetReplacementSlotsQuery(null, null, status.ToLowerInvariant(), 1, 20), default);
+        sameStatus.Items.Should().ContainSingle();
+        var cancelled = await handler.Handle(new GetReplacementSlotsQuery(null, null, ReplacementSlotStates.Cancelled, 1, 20), default);
+        cancelled.Items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Replacement_slot_list_rejects_a_client_without_a_company_and_clamps_paging()
+    {
+        var noCompany = new Mock<ICompanyUserRepository>();
+        noCompany.Setup(r => r.GetByUserIdAsync(_actor, It.IsAny<CancellationToken>())).ReturnsAsync((CompanyUser?)null);
+        var denied = () => new GetReplacementSlotsQueryHandler(Repository, noCompany.Object)
+            .Handle(new GetReplacementSlotsQuery(_actor, null, null, 1, 20), default);
+        await denied.Should().ThrowAsync<ForbiddenException>();
+
+        var inactive = new Mock<ICompanyUserRepository>();
+        inactive.Setup(r => r.GetByUserIdAsync(_actor, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { CompanyId = _companyId, UserId = _actor, Status = "INACTIVE" });
+        var deactivated = () => new GetReplacementSlotsQueryHandler(Repository, inactive.Object)
+            .Handle(new GetReplacementSlotsQuery(_actor, null, null, 1, 20), default);
+        await deactivated.Should().ThrowAsync<ForbiddenException>();
+
+        var paged = await new GetReplacementSlotsQueryHandler(Repository, noCompany.Object)
+            .Handle(new GetReplacementSlotsQuery(null, null, null, 0, 1000), default);
+        paged.Page.Should().Be(1);
+        paged.PageSize.Should().Be(100);
+    }
+
+    [Fact]
     public void Fill_window_is_a_configurable_setting()
     {
         var setting = BusinessSettingKeys.All.Single(s => s.Key == BusinessSettingKeys.ReplacementFillWindowDays);

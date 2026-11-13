@@ -300,4 +300,98 @@ public class GetPlacementDetailQueryHandlerTests
 
         result.AllowedActions.Should().ContainSingle().Which.Should().Be("VIEW_PLACEMENT");
     }
+
+    private static Placement PlacementWithMoney(Guid placementId, Guid companyId, Guid candidateUserId) => new()
+    {
+        PlacementId = placementId,
+        Status = "STARTED",
+        Application = new HRConnect.Domain.Entities.Application
+        {
+            Candidate = new Candidate { UserId = candidateUserId },
+            Job = new Job { CompanyId = companyId, Company = new Company() }
+        },
+        Offer = new Offer(),
+        ServiceFee = new ServiceFee { Amount = 36000000m, Status = "PAID" },
+        Commissions =
+        {
+            new Commission { Amount = 1000000m, Status = "PAID", CreatedAt = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Commission { Amount = 12000000m, Status = "EARNED", CreatedAt = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc) }
+        }
+    };
+
+    [Fact]
+    public async Task Handle_WhenInternalHr_ShouldReturnServiceFeeAndLatestCommission()
+    {
+        var placementId = Guid.NewGuid();
+        _placementRepositoryMock
+            .Setup(r => r.GetByIdWithDetailsAsync(placementId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(PlacementWithMoney(placementId, Guid.NewGuid(), Guid.NewGuid()));
+
+        var result = await CreateHandler().Handle(
+            new GetPlacementDetailQuery(placementId, Guid.NewGuid(), IsInternalHrOrAdmin: true), CancellationToken.None);
+
+        result.Financial.Should().NotBeNull();
+        result.Financial!.ServiceFeeAmount.Should().Be(36000000m);
+        result.Financial.ServiceFeeStatus.Should().Be("PAID");
+        result.Financial.CommissionAmount.Should().Be(12000000m);
+        result.Financial.CommissionStatus.Should().Be("EARNED");
+    }
+
+    [Fact]
+    public async Task Handle_WhenClient_ShouldReturnServiceFeeButNeverCommission()
+    {
+        var placementId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        _placementRepositoryMock
+            .Setup(r => r.GetByIdWithDetailsAsync(placementId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(PlacementWithMoney(placementId, companyId, Guid.NewGuid()));
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
+
+        var result = await CreateHandler().Handle(
+            new GetPlacementDetailQuery(placementId, userId, IsClientCompanyUser: true), CancellationToken.None);
+
+        result.Financial.Should().NotBeNull();
+        result.Financial!.ServiceFeeAmount.Should().Be(36000000m);
+        result.Financial.ServiceFeeStatus.Should().Be("PAID");
+        result.Financial.CommissionAmount.Should().BeNull();
+        result.Financial.CommissionStatus.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_WhenCandidate_ShouldNotReturnFinancial()
+    {
+        var placementId = Guid.NewGuid();
+        var candidateUserId = Guid.NewGuid();
+        _placementRepositoryMock
+            .Setup(r => r.GetByIdWithDetailsAsync(placementId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(PlacementWithMoney(placementId, Guid.NewGuid(), candidateUserId));
+
+        var result = await CreateHandler().Handle(
+            new GetPlacementDetailQuery(placementId, candidateUserId, IsCandidate: true), CancellationToken.None);
+
+        result.Financial.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_WhenNoServiceFeeOrCommission_ShouldNotReturnFinancial()
+    {
+        var placementId = Guid.NewGuid();
+        _placementRepositoryMock
+            .Setup(r => r.GetByIdWithDetailsAsync(placementId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Placement
+            {
+                PlacementId = placementId,
+                Status = "STARTED",
+                Application = new HRConnect.Domain.Entities.Application { Candidate = new Candidate(), Job = new Job { Company = new Company() } },
+                Offer = new Offer()
+            });
+
+        var result = await CreateHandler().Handle(
+            new GetPlacementDetailQuery(placementId, Guid.NewGuid(), IsInternalHrOrAdmin: true), CancellationToken.None);
+
+        result.Financial.Should().BeNull();
+    }
 }

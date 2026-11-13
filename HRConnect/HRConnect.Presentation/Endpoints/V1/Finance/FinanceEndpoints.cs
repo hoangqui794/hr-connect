@@ -66,6 +66,18 @@ public static class FinanceEndpoints
             .WithSummary("Danh sách suất tuyển thay thế của job")
             .WithDescription("Internal HR / Admin xem mọi job; Client (placement.confirm) chỉ xem job của doanh nghiệp mình. Trạng thái: WAITING_PAYMENT, OPEN, FILLED, CANCELLED, EXPIRED.");
 
+        group.MapGet("/replacement-slots", (
+                ClaimsPrincipal user, [FromServices] ISender sender, CancellationToken ct,
+                [FromQuery] Guid? jobId, [FromQuery] string? status, [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
+            Execute(user, [WarrantyManage, CommissionManage, CommissionView, PlacementConfirm], userId =>
+            {
+                var platform = Has(user, WarrantyManage) || Has(user, CommissionManage) || Has(user, CommissionView);
+                return sender.Send(new GetReplacementSlotsQuery(platform ? null : userId, jobId, status, page, pageSize), ct);
+            }))
+            .WithName("GetReplacementSlots")
+            .WithSummary("Danh sách suất tuyển thay thế (có phân trang)")
+            .WithDescription("Internal HR / Admin xem mọi doanh nghiệp; Client (placement.confirm) chỉ xem suất thay thế của job thuộc doanh nghiệp mình. Lọc theo jobId và status (WAITING_PAYMENT, OPEN, FILLED, CANCELLED, EXPIRED). Mỗi suất có jobTitle và companyName. Sắp xếp: OPEN, WAITING_PAYMENT, FILLED, EXPIRED, CANCELLED, mới nhất trước. pageSize tối đa 100.");
+
         group.MapPost("/internal/replacement-slots/{replacementSlotId:guid}/cancel", (
                 Guid replacementSlotId, [FromBody] CancelReplacementSlotRequest body, ClaimsPrincipal user, [FromServices] ISender sender, CancellationToken ct) =>
             Execute(user, [WarrantyManage], userId => sender.Send(

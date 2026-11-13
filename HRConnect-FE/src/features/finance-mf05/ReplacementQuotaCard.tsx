@@ -34,7 +34,6 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { financeApi } from '@/services/api/financeApi';
-import { jobsApi } from '@/services/api/jobsApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { ReplacementSlotDto, ReplacementSlotStatus } from '@/types/api/finance';
 import { FilterPills, Initials, Surface } from '@/features/admin-console/ui';
@@ -92,69 +91,21 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
   const slotsQuery = useQuery({
     queryKey: ['mf05-replacement-slots', mode, selectedJobId],
     queryFn: async (): Promise<ReplacementSlotWithMeta[]> => {
-      const jobMetaMap = new Map<string, { jobTitle: string; companyName?: string }>();
-      // Jobs that can have a slot; null means "unknown, ask every job" (the old behaviour).
-      let jobsWithSlots: Set<string> | null = null;
-
-      if (selectedJobId) {
-        jobMetaMap.set(selectedJobId, { jobTitle: selectedJobId });
-      } else {
-        const [placementsRes, clientJobsRes, voidedRes] = await Promise.all([
-          financeApi.getPlacements({ pageSize: 100 }).catch(() => ({ items: [], totalCount: 0 })),
-          mode === 'client' ? jobsApi.getMine().catch(() => []) : Promise.resolve([]),
-          financeApi.warranties({ status: 'VOIDED', page: 1, pageSize: 100 }).catch(() => null),
-        ]);
-
-        // A slot is opened only when Internal HR confirms a resignation, which voids the warranty
-        // (main-flows MF-05). So only jobs of placements with a VOIDED warranty need asking. If any
-        // voided warranty cannot be matched to a loaded placement, fall back to asking every job.
-        if (voidedRes && voidedRes.totalCount <= voidedRes.items.length) {
-          const voidedPlacements = new Set(voidedRes.items.map((w) => w.placementId));
-          const matched = (placementsRes?.items ?? []).filter((p) => voidedPlacements.has(p.placementId) && p.job?.jobId);
-          if (matched.length === voidedPlacements.size) {
-            jobsWithSlots = new Set(matched.map((p) => p.job.jobId));
-          }
-        }
-
-        if (Array.isArray(clientJobsRes)) {
-          clientJobsRes.forEach((j) => {
-            if (!j.serviceTypeCode || j.serviceTypeCode === 'HEADHUNT_COD') {
-              jobMetaMap.set(j.jobId, { jobTitle: j.title });
-            }
-          });
-        }
-
-        if (placementsRes?.items) {
-          placementsRes.items.forEach((p) => {
-            if (p.job?.jobId) {
-              jobMetaMap.set(p.job.jobId, {
-                jobTitle: p.job.title,
-                companyName: p.job.companyName,
-              });
-            }
-          });
-        }
-      }
-
-      const jobIds = Array.from(jobMetaMap.keys()).filter((jid) => !jobsWithSlots || jobsWithSlots.has(jid));
-      if (jobIds.length === 0) return [];
-
-      // Query replacement slots for all relevant jobs in parallel
+      // One paged endpoint: BE scopes a Client to its own company and returns job/company names,
+      // so the card no longer fans out over placements, jobs and warranties.
+      const pageSize = 100;
       const slotResults: ReplacementSlotWithMeta[][] = [];
-      for (let i = 0; i < jobIds.length; i += 4) {
-        const batch = jobIds.slice(i, i + 4);
-        const batchRes = await Promise.all(
-          batch.map(async (jid) => {
-            const slots = await financeApi.getReplacementSlots(jid);
-            const meta = jobMetaMap.get(jid);
-            return slots.map((slot) => ({
-              ...slot,
-              jobTitle: meta?.jobTitle || slot.jobId,
-              companyName: meta?.companyName,
-            }));
-          })
+      for (let page = 1; ; page += 1) {
+        const res = await financeApi.replacementSlots({ jobId: selectedJobId, page, pageSize });
+        const items = res?.items ?? [];
+        slotResults.push(
+          items.map((slot) => ({
+            ...slot,
+            jobTitle: slot.jobTitle ?? undefined,
+            companyName: slot.companyName ?? undefined,
+          }))
         );
-        slotResults.push(...batchRes);
+        if (items.length < pageSize || page * pageSize >= (res?.totalCount ?? 0)) break;
       }
       const allSlots = slotResults.flat();
       return allSlots.sort((a, b) => {
