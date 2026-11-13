@@ -7,6 +7,7 @@ using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace HRConnect.Application.Features.Payments;
 
@@ -40,7 +41,8 @@ public sealed class VnPayPaymentCommandHandlers(
     IJobRepository jobs,
     IUnitOfWork unitOfWork,
     ISender sender,
-    IAppNotifier notifier) :
+    IAppNotifier notifier,
+    ILogger<VnPayPaymentCommandHandlers>? logger = null) :
     IRequestHandler<CreateVnPayPaymentCommand, VnPayPaymentLinkResponse>,
     IRequestHandler<ConfirmVnPayPaymentCommand, VnPayConfirmResult>
 {
@@ -154,7 +156,10 @@ public sealed class VnPayPaymentCommandHandlers(
         if (!await payments.TryClaimAsync(
                 payment.OnlinePaymentId, now, now.Subtract(ProcessingClaimTimeout), cancellationToken))
         {
-            return new VnPayConfirmResult("02", "Order already confirmed", ToDto(payment));
+            var latest = callback.TxnRef is null
+                ? null
+                : await payments.GetByTxnRefAsync(callback.TxnRef, cancellationToken);
+            return new VnPayConfirmResult("02", "Order already confirmed", ToDto(latest ?? payment));
         }
 
         payment.Status = OnlinePaymentStates.Processing;
@@ -216,7 +221,14 @@ public sealed class VnPayPaymentCommandHandlers(
                 }
             }
 
-            await NotifyPlatformAdminsAsync(payment, noticeContext, reference, cancellationToken);
+            try
+            {
+                await NotifyPlatformAdminsAsync(payment, noticeContext, reference, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger?.LogWarning(ex, "Không thể gửi thông báo thanh toán VNPay {OnlinePaymentId} tới Admin.", payment.OnlinePaymentId);
+            }
             payment.UpdatedAt = DateTime.UtcNow;
             await unitOfWork.SaveChangesAsync(cancellationToken);
             return new VnPayConfirmResult("00", "Confirm Success", ToDto(payment));

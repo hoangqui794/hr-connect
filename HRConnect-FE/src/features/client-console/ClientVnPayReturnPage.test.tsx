@@ -40,6 +40,17 @@ describe('ClientVnPayReturnPage', () => {
     expect(await screen.findByText('Bạn đã hủy thanh toán')).toBeTruthy();
   });
 
+  it('shows pending timeline and transaction details while waiting for VNPay confirmation', async () => {
+    vi.mocked(vnPayApi.confirmReturn).mockResolvedValue(payment({ status: 'PENDING', providerTransactionNo: null, paidAt: null }));
+    renderPage('?vnp_TxnRef=abc&vnp_Amount=4200000000&vnp_BankCode=NCB&vnp_CardType=ATM&vnp_BankTranNo=VNP15736274&vnp_SecureHash=x');
+
+    expect(await screen.findByText('Đang chờ VNPay xác nhận')).toBeTruthy();
+    expect(screen.getByText('Đối soát & xác nhận giao dịch')).toBeTruthy();
+    expect(screen.getByText('NCB · ATM')).toBeTruthy();
+    expect(screen.getByText('VNP15736274')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Kiểm tra lại ngay/ })).toBeTruthy();
+  });
+
   it('does not call the backend without a VNPay query', () => {
     vi.mocked(vnPayApi.confirmReturn).mockClear();
     renderPage('');
