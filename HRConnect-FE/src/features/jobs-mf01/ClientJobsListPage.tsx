@@ -566,7 +566,7 @@ export const ClientJobsListPage: React.FC = () => {
                   >
                     <div>
                       {isHighlighted && (
-                        <div className="mb-3.5 flex items-center justify-between rounded-xl bg-gradient-to-r from-[#0284C7] to-[#2563EB] px-3.5 py-2 text-xs font-bold text-white shadow-sm">
+                        <div className="mb-3.5 flex items-center justify-between rounded-xl bg-[#0369A1] px-3.5 py-2 text-xs font-bold text-white shadow-sm">
                           <span className="flex items-center gap-1.5">
                             <span>🔔</span> Đang xem tin từ thông báo
                           </span>

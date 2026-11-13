@@ -97,7 +97,7 @@ export const ClientOverviewPage: React.FC = () => {
   return (
     <div className={`${FONT} space-y-7 max-w-full animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
       {/* ── 1. Executive Studio Hero Banner ──────────────────────────── */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#0284C7] via-[#0369A1] to-[#0284C7] p-6 sm:p-7 text-white shadow-lg shadow-sky-900/10">
+      <section className="relative overflow-hidden rounded-3xl bg-[#08253C] p-6 sm:p-7 text-white shadow-lg shadow-sky-900/10">
         <div className="relative z-10 flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
           <div className="flex-1 min-w-0 max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/15 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md">
@@ -627,7 +627,7 @@ export const ClientOverviewPage: React.FC = () => {
             </p>
             <Button
               type="primary"
-              className="mt-4 !h-10 !rounded-xl !border-0 !bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] px-5 font-bold text-white shadow-sm shadow-sky-500/20 transition-all active:scale-[0.98]"
+              className="mt-4 !h-10 !rounded-xl !border-0 !bg-[#0369A1] hover:!bg-[#075985] px-5 font-bold text-white shadow-sm shadow-sky-500/20 transition-all active:scale-[0.98]"
               icon={<PlusOutlined />}
               onClick={() => navigate('/client/jobs/create')}
             >

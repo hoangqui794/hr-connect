@@ -337,7 +337,7 @@ export const SearchForm: React.FC<{ defaultKeyword?: string; defaultLocation?: s
         </Dropdown>
       </div>
 
-      <button type="submit" className="h-11 flex-none cursor-pointer rounded-xl border-0 bg-gradient-to-r from-sky-500 to-blue-600 px-7 text-[15px] font-bold text-white shadow-sm shadow-blue-500/20 transition-all hover:from-sky-400 hover:to-blue-500 hover:shadow-md hover:shadow-blue-500/30 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 max-sm:w-full">
+      <button type="submit" className="h-11 flex-none cursor-pointer rounded-xl border-0 bg-[#0369A1] px-7 text-[15px] font-bold text-white shadow-sm shadow-blue-500/20 transition-all hover:bg-[#075985] hover:shadow-md hover:shadow-blue-500/30 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 max-sm:w-full">
         Tìm việc
       </button>
     </form>

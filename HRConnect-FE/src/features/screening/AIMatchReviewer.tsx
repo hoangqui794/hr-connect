@@ -247,7 +247,7 @@ export const AIMatchReviewer: React.FC<AIMatchReviewerProps> = ({
         {/* ============================================================== */}
         <div className="lg:col-span-7 flex flex-col">
           {/* Thanh công cụ PDF Viewer */}
-          <div className="flex items-center justify-between bg-slate-900 text-white px-4 py-2.5 rounded-t-xl text-xs font-medium border-x border-t border-slate-800">
+          <div className="flex items-center justify-between rounded-t-xl border-x border-t border-[#08253C] bg-[#08253C] px-4 py-2.5 text-xs font-medium text-white">
             <div className="flex items-center gap-2">
               <FilePdfOutlined className="text-rose-400 text-base" />
               <span className="font-semibold text-slate-200 truncate max-w-[240px]">
@@ -317,7 +317,7 @@ export const AIMatchReviewer: React.FC<AIMatchReviewerProps> = ({
                 <div className="flex items-start gap-4">
                   <Avatar
                     size={64}
-                    className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-black text-2xl flex-shrink-0 border-2 border-emerald-200"
+                    className="flex-shrink-0 border-2 border-[#DCE3EC] bg-[#0369A1] text-2xl font-black text-white"
                   >
                     {candidate.name.charAt(0)}
                   </Avatar>
@@ -325,7 +325,7 @@ export const AIMatchReviewer: React.FC<AIMatchReviewerProps> = ({
                     <h2 className="text-2xl font-black text-slate-900 tracking-tight m-0">
                       {candidate.name}
                     </h2>
-                    <div className="text-sm font-bold text-emerald-700 mt-0.5">
+                    <div className="mt-0.5 text-sm font-bold text-[#0369A1]">
                       {candidate.currentTitle}
                     </div>
                     <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-slate-500 mt-2">

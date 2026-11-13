@@ -191,7 +191,7 @@ export const AffiliateHomePage: React.FC = () => {
           <div className="flex justify-between gap-3"><dt className="text-gray-500">Trạng thái</dt><dd className="m-0 font-semibold">{accountState.label}</dd></div>
         </dl>
         <div className="mt-5 flex flex-wrap justify-center gap-2.5">
-          <Button type="primary" size="large" className="!bg-gradient-to-r from-[#0284C7] to-[#2563EB] !border-0 text-white font-semibold shadow-md shadow-sky-500/20" onClick={() => navigate(accountState.ctaHref)}>{accountState.cta}</Button>
+          <Button type="primary" size="large" className="!bg-[#0369A1] !border-0 text-white font-semibold shadow-md shadow-sky-500/20" onClick={() => navigate(accountState.ctaHref)}>{accountState.cta}</Button>
           <Button size="large" onClick={() => navigate('/affiliate/jobs')}>Xem việc làm</Button>
         </div>
       </section>
@@ -308,7 +308,7 @@ export const AffiliateHomePage: React.FC = () => {
                     </td>
                     <td className="px-4 py-3 text-[13px] text-gray-600">{job.applicationDeadline ? dayjs(job.applicationDeadline).format('DD/MM/YYYY') : '—'}</td>
                     <td className="px-4 py-3 text-right">
-                      <Button type="primary" disabled={!verified} className="!bg-gradient-to-r from-[#0284C7] to-[#2563EB] hover:from-[#0369A1] hover:to-[#1D4ED8] !border-0 text-white font-semibold shadow-sm shadow-sky-500/20" onClick={() => navigate(`/affiliate/submit-candidate?job=${job.jobId}`)}>Giới thiệu</Button>
+                      <Button type="primary" disabled={!verified} className="!bg-[#0369A1] hover:bg-[#075985] !border-0 text-white font-semibold shadow-sm shadow-sky-500/20" onClick={() => navigate(`/affiliate/submit-candidate?job=${job.jobId}`)}>Giới thiệu</Button>
                     </td>
                   </tr>
                 );
@@ -1422,7 +1422,7 @@ export const AffiliateCandidatesPage: React.FC = () => {
             if (!e.target.value) setSearch('');
           }}
         />
-        <Button type="primary" htmlType="submit" className="!bg-gradient-to-r from-[#0284C7] to-[#2563EB] !border-0 text-white font-semibold shadow-sm shadow-sky-500/20 hover:opacity-95 !h-10 px-5">Tìm</Button>
+        <Button type="primary" htmlType="submit" className="!bg-[#0369A1] !border-0 text-white font-semibold shadow-sm shadow-sky-500/20 hover:opacity-95 !h-10 px-5">Tìm</Button>
       </form>
       <p className="m-0 mb-3 mt-4 text-sm text-slate-600">{list.isLoading ? 'Đang tải…' : `${list.data?.total ?? 0} ứng viên · CV lưu theo từng lượt giới thiệu`}</p>
       {list.isError ? (
@@ -1456,7 +1456,7 @@ export const AffiliateCandidatesPage: React.FC = () => {
                   {c.activeCvCount > 0 ? `${c.activeCvCount} CV` : 'Chưa có CV'} · {c.acceptedSubmissionCount} lượt
                   {c.lastSubmittedAt ? ` · ${dayjs(c.lastSubmittedAt).fromNow()}` : ''}
                 </span>
-                <Button size="small" type="primary" className="!bg-gradient-to-r from-[#0284C7] to-[#2563EB] !border-0 text-white font-semibold shadow-sm shadow-sky-500/20 hover:opacity-95" onClick={() => navigate(`/affiliate/submit-candidate?candidate=${c.candidateId}`)}>
+                <Button size="small" type="primary" className="!bg-[#0369A1] !border-0 text-white font-semibold shadow-sm shadow-sky-500/20 hover:opacity-95" onClick={() => navigate(`/affiliate/submit-candidate?candidate=${c.candidateId}`)}>
                   Giới thiệu
                 </Button>
               </div>

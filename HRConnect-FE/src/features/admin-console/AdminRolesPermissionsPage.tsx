@@ -1224,10 +1224,10 @@ export const AdminRolesPermissionsPage: React.FC = () => {
                     )}
 
                     {/* Bottom Save Action Bar */}
-                    <div className="sticky bottom-0 z-10 mt-6 flex items-center justify-between rounded-xl bg-slate-900 p-4 text-white shadow-xl">
+                    <div className="sticky bottom-0 z-10 mt-6 flex items-center justify-between rounded-xl border border-[#0369A1]/25 bg-white/95 p-4 text-slate-900 shadow-[0_-4px_24px_-4px_rgba(8,37,60,0.08)] backdrop-blur-md">
                       <div>
-                        <div className="text-sm font-semibold">Cập nhật ma trận phân quyền</div>
-                        <div className="text-xs text-slate-300">
+                        <div className="text-sm font-semibold text-slate-900">Cập nhật ma trận phân quyền</div>
+                        <div className="text-xs text-slate-600">
                           {stagedPermissionIds.length} quyền sẽ được áp dụng cho vai trò này.
                         </div>
                       </div>

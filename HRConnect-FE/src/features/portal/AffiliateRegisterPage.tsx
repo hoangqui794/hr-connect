@@ -116,7 +116,7 @@ export const AffiliateRegisterPage: React.FC = () => {
               >
                 <Checkbox>Tôi đồng ý với điều khoản Affiliate và chỉ giới thiệu ứng viên đồng ý chia sẻ hồ sơ.</Checkbox>
               </Form.Item>
-              <Button type="primary" size="large" block htmlType="submit" loading={submitting} className="!bg-gradient-to-r from-[#0284C7] to-[#2563EB] hover:from-[#0369A1] hover:to-[#1D4ED8] !border-0 text-white font-semibold shadow-md shadow-sky-500/20 !h-11">Gửi đăng ký</Button>
+              <Button type="primary" size="large" block htmlType="submit" loading={submitting} className="!bg-[#0369A1] hover:bg-[#075985] !border-0 text-white font-semibold shadow-md shadow-sky-500/20 !h-11">Gửi đăng ký</Button>
             </Form>
             <p className="m-0 mt-3 text-center text-xs text-gray-500">Admin duyệt hồ sơ trước khi bạn giới thiệu được ứng viên.</p>
           </section>

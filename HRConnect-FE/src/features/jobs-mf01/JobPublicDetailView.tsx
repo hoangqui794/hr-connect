@@ -159,7 +159,7 @@ const JobContent: React.FC<{ job: Job }> = ({ job }) => {
     `${size} ${FONT} inline-flex items-center justify-center whitespace-nowrap cursor-pointer rounded-xl font-bold transition-all disabled:cursor-not-allowed disabled:bg-[#9CA3AF] disabled:text-white ` +
     (applyAction?.applied
       ? 'border border-solid border-emerald-200 bg-emerald-50 text-emerald-700 shadow-2xs hover:bg-emerald-100 hover:text-emerald-800'
-      : 'border-0 bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md shadow-blue-500/25 hover:from-sky-400 hover:to-blue-500 hover:shadow-lg hover:shadow-blue-500/35 active:scale-[0.98]');
+      : 'border-0 bg-[#0369A1] text-white shadow-md shadow-blue-500/25 hover:bg-[#075985] hover:shadow-lg hover:shadow-blue-500/35 active:scale-[0.98]');
 
   const saved = isCandidate && isSaved(job.jobId);
   const canSave = !isAuthenticated || isCandidate;

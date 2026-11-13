@@ -7,7 +7,7 @@ import { Modal } from 'antd';
 
 export const DIALOG_FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 export const DIALOG_CANCEL = `${DIALOG_FONT} h-11 cursor-pointer rounded-md border border-solid border-[#D1D5DB] bg-white px-[18px] text-[14px] font-medium text-[#1F2937] hover:bg-[#F9FAFB]`;
-export const DIALOG_PRIMARY = `${DIALOG_FONT} h-11 cursor-pointer rounded-xl border-0 bg-gradient-to-r from-sky-500 to-blue-600 px-[22px] text-[14px] font-bold text-white shadow-sm shadow-blue-500/20 hover:from-sky-400 hover:to-blue-500 hover:shadow-md hover:shadow-blue-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-none disabled:bg-[#9CA3AF] disabled:shadow-none`;
+export const DIALOG_PRIMARY = `${DIALOG_FONT} h-11 cursor-pointer rounded-xl border-0 bg-[#0369A1] px-[22px] text-[14px] font-bold text-white shadow-sm shadow-blue-500/20 hover:bg-[#075985] hover:shadow-md hover:shadow-blue-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-none disabled:bg-[#9CA3AF] disabled:shadow-none`;
 export const DIALOG_DANGER = `${DIALOG_FONT} h-11 cursor-pointer rounded-md border-0 bg-[#B91C1C] px-[22px] text-[14px] font-semibold text-white hover:bg-[#991B1B] disabled:cursor-not-allowed disabled:bg-[#9CA3AF]`;
 
 /** The shared modal CSS adds a border, large corners and its own shadow, so the mockup's are forced here. */
