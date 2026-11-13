@@ -93,6 +93,7 @@ export const ClientOverviewPage: React.FC = () => {
   const shortlistedCount = n('SHORTLISTED');
   const interviewCount = n('INTERVIEW');
   const offerCount = n('OFFER_PENDING') + n('OFFER_ACCEPTED');
+  const passedScreeningCount = shortlistedCount + interviewCount + offerCount + n('PLACED');
 
   return (
     <div className={`${FONT} space-y-7 max-w-full animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
@@ -148,7 +149,7 @@ export const ClientOverviewPage: React.FC = () => {
                 <ThunderboltFilled className="text-[#0369A1]" /> Nhịp độ tuyển dụng
               </span>
               <span className="rounded-full border border-teal-200 bg-teal-50 px-2 py-0.5 text-[10px] font-bold text-teal-700">
-                Live
+                {stageCounts.dataUpdatedAt ? `Cập nhật ${dayjs(stageCounts.dataUpdatedAt).format('HH:mm')}` : '—'}
               </span>
             </div>
 
@@ -170,7 +171,9 @@ export const ClientOverviewPage: React.FC = () => {
             </div>
 
             <div className="text-xs leading-tight text-slate-500">
-              Tỷ lệ hồ sơ đạt chuẩn đi tiếp phỏng vấn đạt mức tích cực.
+              {totalCandidates > 0
+                ? `${passedScreeningCount}/${totalCandidates} hồ sơ đã qua vòng sàng lọc`
+                : 'Chưa có hồ sơ để đánh giá'}
             </div>
           </div>
         </div>

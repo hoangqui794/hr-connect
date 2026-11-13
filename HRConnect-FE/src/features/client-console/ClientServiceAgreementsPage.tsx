@@ -349,10 +349,13 @@ export const ClientServiceAgreementsPage: React.FC = () => {
     return count * price;
   }, [currentAgreement, activeJob]);
 
+  // Tỷ lệ cọc thật: ưu tiên điều khoản thương mại của job, sau đó tới thỏa thuận (BE map từ Job.DepositPercent).
+  const depositPercent = activeJob?.commercialTerms?.depositPercent ?? currentAgreement?.depositPercent ?? null;
+
   const sourcingEstimatedDeposit = useMemo(() => {
-    if (!sourcingEstimatedTotal) return null;
-    return Math.round((sourcingEstimatedTotal * 30) / 100);
-  }, [sourcingEstimatedTotal]);
+    if (!sourcingEstimatedTotal || !depositPercent) return null;
+    return Math.round((sourcingEstimatedTotal * depositPercent) / 100);
+  }, [sourcingEstimatedTotal, depositPercent]);
 
   const isPendingResponse =
     currentAgreement?.status === 'SENT_TO_CLIENT' ||
@@ -360,16 +363,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
     currentAgreement?.status === 'AWAITING_SIGNATURE';
 
   // Helper kiểm tra trạng thái cọc
-  const isDeposited = (j?: Job | null) => {
-    if (!j) return false;
-    if (j.hasSubmittedDeposit) return true;
-    try {
-      const list: string[] = JSON.parse(localStorage.getItem('hrconnect_deposited_jobs') || '[]');
-      return list.includes(j.jobId);
-    } catch {
-      return false;
-    }
-  };
+  const isDeposited = (j?: Job | null) => Boolean(j?.hasSubmittedDeposit);
 
   // Detection of pending deposit or posting fee
   const isAwaitingDeposit = Boolean(
@@ -382,14 +376,15 @@ export const ClientServiceAgreementsPage: React.FC = () => {
   );
   const isPendingPayment = isAwaitingDeposit || isAwaitingPostingPayment;
 
-  const depositAmount = useMemo(() => {
+  const depositAmount = useMemo<number | null>(() => {
     if (activeJob) {
       const amt = sourcingDepositAmount(activeJob);
       if (amt) return amt;
     }
-    if (sourcingEstimatedDeposit) return sourcingEstimatedDeposit;
-    return 6000000;
+    return sourcingEstimatedDeposit ?? null;
   }, [activeJob, sourcingEstimatedDeposit]);
+  const DEPOSIT_PENDING_TEXT = 'HR Connect đang chốt số tiền cọc';
+  const depositText = depositAmount != null ? formatMoney(depositAmount, 'VND') : null;
 
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
@@ -784,7 +779,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           {isDeposited(activeJob)
                             ? 'Đã nộp cọc (Chờ HR duyệt)'
                             : isAwaitingDeposit
-                            ? `Đặt cọc (${formatMoney(depositAmount, 'VND')})`
+                            ? (depositText ? `Đặt cọc (${depositText})` : 'Đặt cọc')
                             : 'Thanh toán phí đăng tin'}
                         </Button>
                       )}
@@ -821,7 +816,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                               <span className="m-0 font-bold text-xs px-2 py-0.5 rounded border border-blue-200 bg-blue-50 text-blue-700">Chờ HR xác nhận</span>
                             </div>
                             <div className="text-xs text-blue-800 leading-relaxed">
-                              Doanh nghiệp đã hoàn tất gửi thông tin nộp cọc ({formatMoney(depositAmount, 'VND')}). Đội ngũ HR Connect đang đối soát và sẽ kích hoạt tin tuyển dụng trong thời gian sớm nhất.
+                              Doanh nghiệp đã hoàn tất gửi thông tin nộp cọc{depositText ? ` (${depositText})` : ''}. Đội ngũ HR Connect đang đối soát và sẽ kích hoạt tin tuyển dụng trong thời gian sớm nhất.
                             </div>
                           </div>
                         </div>
@@ -843,7 +838,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                             </div>
                             <div className="text-xs text-amber-800 leading-relaxed">
                               {isAwaitingDeposit
-                                ? `Hợp đồng đã được ký kết. Quý doanh nghiệp vui lòng nộp tiền cọc (${formatMoney(depositAmount, 'VND')}) để mở nguồn ứng viên và tiến hành săn đón hồ sơ.`
+                                ? `Hợp đồng đã được ký kết. Quý doanh nghiệp vui lòng nộp tiền cọc (${depositText ?? DEPOSIT_PENDING_TEXT}) để mở nguồn ứng viên và tiến hành săn đón hồ sơ.`
                                 : 'Nội dung tin đã được duyệt. Quý doanh nghiệp vui lòng hoàn tất thanh toán phí gói đăng tin để công khai tin tuyển dụng.'}
                             </div>
                           </div>
@@ -929,7 +924,8 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           </div>
                           <div className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/70">
                             <span className="text-xs text-slate-500 font-medium block">Đổi người thay thế</span>
-                            <span className="text-base font-black text-emerald-700">Miễn phí 1 lần</span>
+                            {/* TODO(ReplacementPolicy): ServiceAgreementDto chưa có chính sách thay thế; hiển thị theo hợp đồng cho tới khi BE trả về. */}
+                            <span className="text-base font-black text-emerald-700">Theo điều khoản hợp đồng</span>
                           </div>
                         </>
                       ) : (
@@ -955,9 +951,11 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                             </span>
                           </div>
                           <div className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/70">
-                            <span className="text-xs text-slate-500 font-medium block">Tiền cọc ban đầu (30%)</span>
+                            <span className="text-xs text-slate-500 font-medium block">
+                              Tiền cọc ban đầu{depositPercent ? ` (${depositPercent}%)` : ''}
+                            </span>
                             <span className="text-base font-black text-[#0284C7]">
-                              {formatMoney(depositAmount, 'VND')}
+                              {depositText ?? DEPOSIT_PENDING_TEXT}
                             </span>
                           </div>
                         </>

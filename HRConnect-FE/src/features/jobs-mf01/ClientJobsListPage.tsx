@@ -670,26 +670,34 @@ export const ClientJobsListPage: React.FC = () => {
                         <div className="flex flex-col gap-2 rounded-xl bg-amber-50/70 border border-amber-200/90 p-3 text-xs text-slate-800 mb-3.5 shadow-2xs">
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-amber-950 text-xs">
-                              Chờ cọc: <span className="text-amber-800 font-extrabold">{formatMoney(sourcingDepositAmount(job) ?? 200000, 'VND')}</span>
+                              Chờ cọc: <span className="text-amber-800 font-extrabold">{sourcingDepositAmount(job) != null ? formatMoney(sourcingDepositAmount(job)!, 'VND') : 'Chưa chốt số tiền cọc'}</span>
                             </span>
                             <span className="text-[11px] text-amber-700 font-medium">Kích hoạt tin khi nhận cọc</span>
                           </div>
                           <div className="flex items-center gap-2 pt-1 border-0 border-t border-solid border-slate-200/60">
+                            {job.hasSubmittedDeposit === true ? (
+                              <span className="text-[11px] text-amber-700 font-medium">Đã báo nộp cọc · chờ HR Connect xác nhận</span>
+                            ) : (
                             <Button
                               type="primary"
                               size="small"
                               className="!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 text-white rounded-lg shadow-sm font-bold !text-xs !h-8"
-                              onClick={() =>
+                              disabled={sourcingDepositAmount(job) == null}
+                              title={sourcingDepositAmount(job) == null ? 'Chưa chốt số tiền cọc' : undefined}
+                              onClick={() => {
+                                const amount = sourcingDepositAmount(job);
+                                if (amount == null) return;
                                 setPaymentModalJob({
                                    jobId: job.jobId,
                                    title: job.title,
                                    isDeposit: true,
-                                   depositAmount: sourcingDepositAmount(job) ?? 200000,
-                                })
-                              }
+                                   depositAmount: amount,
+                                });
+                              }}
                             >
                               Đặt cọc ngay
                             </Button>
+                            )}
                             <Button
                               size="small"
                               className="!text-xs !h-8 border-slate-300 text-slate-700 hover:text-slate-900 rounded-lg font-medium"

@@ -78,11 +78,11 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
   const [cancelForm] = Form.useForm<{ reason: string }>();
 
   // Query replacement slots and associated job metadata
-  // Client: refunds created when a slot ran out, so an expired slot can say how much comes back.
+  // Refunds created when a slot ran out, so an expired slot can say how much comes back.
+  // Client sees its own company's; Internal HR (commission.view) sees all.
   const refundsQuery = useQuery({
-    queryKey: ['mf05-replacement-refunds'],
+    queryKey: ['mf05-replacement-refunds', mode],
     queryFn: () => financeApi.serviceFees({ kind: 'REPLACEMENT_REFUND', page: 1, pageSize: 100 }),
-    enabled: mode === 'client',
   });
   const refundOf = (slot: ReplacementSlotWithMeta) =>
     (refundsQuery.data?.items ?? []).find(
@@ -360,10 +360,14 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
           return <span className="text-xs font-semibold text-amber-700">Mở sau khi bạn thanh toán phí tuyển</span>;
         }
         if (slot.status === 'EXPIRED') {
+          const refund = refundOf(slot);
           return (
             <div className="text-xs leading-snug">
               <span className="font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 inline-flex items-center gap-1">
-                <CheckCircleOutlined /> Đã hoàn 30% phí
+                <CheckCircleOutlined />{' '}
+                {refund
+                  ? `${refund.status === 'PAID' ? 'Đã hoàn' : 'Sẽ hoàn'} ${refund.feeMultiplier != null ? `${Number((refund.feeMultiplier * 100).toFixed(2))}% ` : ''}phí (${money(refund.amount)})`
+                  : 'Đang xử lý hoàn phí'}
               </span>
               <div className="text-slate-500 mt-1">Đã chuyển sang Công nợ</div>
             </div>
@@ -523,13 +527,13 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
           showIcon
           message={
             <span className="font-semibold text-emerald-900 text-sm">
-              Suất tuyển thay thế đã hết hạn & được hoàn 30% phí dịch vụ
+              Suất tuyển thay thế đã hết hạn & được hoàn một phần phí dịch vụ theo hợp đồng
             </span>
           }
           description={
             <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-emerald-800 mt-1">
               <span>
-                Theo chính sách bảo hành MF-05, khi suất thay thế hết hạn mà chưa tuyển được ứng viên mới, HR Connect tự động áp dụng chính sách <strong>hoàn 30% phí dịch vụ</strong> vào tài khoản công nợ của doanh nghiệp.
+                Theo chính sách bảo hành, khi suất thay thế hết hạn mà chưa tuyển được ứng viên mới, HR Connect tự động <strong>hoàn một phần phí dịch vụ theo hợp đồng</strong> vào tài khoản công nợ của doanh nghiệp.
               </span>
               <Button
                 size="small"

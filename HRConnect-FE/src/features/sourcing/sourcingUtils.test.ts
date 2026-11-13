@@ -91,7 +91,7 @@ describe('sourcingUtils', () => {
       expect(info.isExpired).toBe(true);
       expect(info.canDecide).toBe(false);
       expect(info.daysLeft).toBe(0);
-      expect(info.countdownText).toContain('Quá hạn 7 ngày');
+      expect(info.countdownText).toBe('Quá hạn phản hồi nên hệ thống tự chấp nhận');
       expect(info.badgeTone).toBe('error');
     });
 
@@ -104,7 +104,7 @@ describe('sourcingUtils', () => {
       const info = getSourcingReviewDeadlineInfo(delivery, baseNow);
 
       expect(info.canDecide).toBe(false);
-      expect(info.countdownText).toBe('Tự động chấp nhận (quá 7 ngày)');
+      expect(info.countdownText).toBe('Quá hạn phản hồi nên hệ thống tự chấp nhận');
     });
 
     it('disables decision for ACCEPTED deliveries', () => {

@@ -20,6 +20,8 @@ public class ServiceAgreementDto
     public decimal? PricePerQualifiedCv { get; set; }
     public int? SourcingTarget { get; set; }
     public int? ReviewDays { get; set; }
+    /// <summary>Tỷ lệ cọc (%) của dịch vụ CV_SOURCING, lấy từ điều khoản thương mại của job.</summary>
+    public decimal? DepositPercent { get; set; }
     public string? AgreementNote { get; set; }
     public string? ChangeRequestReason { get; set; }
 
@@ -63,6 +65,7 @@ public class ServiceAgreementDto
         PricePerQualifiedCv = a.PricePerQualifiedCv,
         SourcingTarget = a.SourcingTarget,
         ReviewDays = a.ReviewDays,
+        DepositPercent = a.Job?.DepositPercent,
         AgreementNote = a.AgreementNote,
         ChangeRequestReason = a.ChangeRequestReason,
         CompanyName = a.CompanyNameSnapshot,
