@@ -1,3 +1,4 @@
+using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
@@ -62,11 +63,11 @@ public class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswordComman
             }
         }
 
-        // 3. Phòng chống Account Enumeration: Luôn trả về phản hồi chung
+        // 3. Thông báo rõ nếu email không tồn tại trong hệ thống
         if (user == null)
         {
             _logger.LogInformation("Yêu cầu đặt lại mật khẩu cho email không tồn tại trong hệ thống: {Email}", normalizedEmail);
-            return new ForgotPasswordResponse();
+            throw new NotFoundException("Tài khoản với email này không tồn tại trong hệ thống.");
         }
 
         // 4. Kiểm tra điều kiện đặt lại mật khẩu cục bộ (không hỗ trợ tài khoản Google-only hoặc tài khoản bị khóa)
