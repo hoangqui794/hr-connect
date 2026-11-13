@@ -131,4 +131,46 @@ describe('CandidateApplicationsPage', () => {
 
     await waitFor(() => expect(candidateConsentApi.respond).toHaveBeenCalledWith('submission-1', 'DECLINE', false));
   });
+
+  it('renders aligned search filter bar and clears filters on reset button click', async () => {
+    listApplications([
+      application('1', 'SUBMITTED', 'Đã nộp', 'Frontend Engineer'),
+      application('2', 'INTERVIEW', 'Phỏng vấn', 'Backend Engineer'),
+    ]);
+    renderPage('/candidate/applications?search=Frontend');
+
+    expect(await screen.findByText('Tìm đơn ứng tuyển')).toBeInTheDocument();
+    expect(screen.getByText('Công việc hoặc doanh nghiệp')).toBeInTheDocument();
+    expect(screen.getByText('Trạng thái hiện tại')).toBeInTheDocument();
+    expect(screen.getByText('Nguồn ứng tuyển')).toBeInTheDocument();
+    expect(screen.getByText('Ngày ứng tuyển')).toBeInTheDocument();
+
+    const resetButton = screen.getByRole('button', { name: /Xóa bộ lọc/i });
+    expect(resetButton).toBeInTheDocument();
+    fireEvent.click(resetButton);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /Xóa bộ lọc/i })).not.toBeInTheDocument();
+    });
+  });
+
+  it('filters applications list by job title search input', async () => {
+    listApplications([
+      application('fe', 'SUBMITTED', 'Đã nộp', 'Frontend Developer React'),
+      application('be', 'SUBMITTED', 'Đã nộp', 'Backend Golang Specialist'),
+    ]);
+    renderPage();
+
+    expect(await screen.findByText('Frontend Developer React')).toBeInTheDocument();
+    expect(screen.getByText('Backend Golang Specialist')).toBeInTheDocument();
+
+    const searchInput = screen.getByRole('textbox', { name: 'Tìm theo công việc hoặc doanh nghiệp' });
+    fireEvent.change(searchInput, { target: { value: 'Golang' } });
+    fireEvent.keyDown(searchInput, { key: 'Enter', code: 'Enter' });
+
+    await waitFor(() => {
+      expect(screen.getByText('Backend Golang Specialist')).toBeInTheDocument();
+      expect(screen.queryByText('Frontend Developer React')).not.toBeInTheDocument();
+    });
+  });
 });
