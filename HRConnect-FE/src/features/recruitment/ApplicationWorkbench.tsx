@@ -27,7 +27,7 @@ import {
   Tag,
   Tooltip,
 } from 'antd';
-import { CheckCircleOutlined, CheckOutlined, CloseOutlined, EditOutlined, ExperimentOutlined, FileOutlined, HeartFilled, HistoryOutlined, LoadingOutlined, LockOutlined, SendOutlined, VideoCameraOutlined, WarningOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, CheckOutlined, CloseOutlined, EditOutlined, ExperimentOutlined, FileOutlined, HeartFilled, HistoryOutlined, InfoCircleOutlined, LoadingOutlined, LockOutlined, SendOutlined, VideoCameraOutlined, WarningOutlined } from '@ant-design/icons';
 import { MATCH_TIER_STYLE, matchTierOf } from '@/features/screening/matchTierStyle';
 import dayjs, { type Dayjs } from 'dayjs';
 import { clientActionsApi, interviewHistoryApi, screeningApi, type ConfirmStartWorkInput } from '@/services/api/hrApi';
@@ -62,6 +62,10 @@ const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 
 const fmt = (v?: string | null, f = 'HH:mm DD/MM/YYYY') => (v ? dayjs(v).format(f) : '—');
 const money = (v: number | null, c: string) => (v == null ? '—' : `${new Intl.NumberFormat('vi-VN').format(v)} ${c === 'VND' ? '₫' : c}`);
+const formatOfferSalary = (amount: number | null | undefined, currency: string = 'VND') => {
+  if (amount == null) return '—';
+  return `${new Intl.NumberFormat('vi-VN').format(amount)} ${currency === 'VND' ? 'VNĐ' : currency}`;
+};
 const REQUIRED = [{ required: true, whitespace: true, message: 'Vui lòng nhập lý do.' }];
 
 export const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
@@ -469,48 +473,64 @@ export const ApplicationWorkbench: React.FC<{
 
   const confirmSendOffer = () =>
     modal.confirm({
-      icon: <SendOutlined className="text-[#0284c7] text-lg" />,
-      title: 'Gửi offer cho ứng viên',
-      width: 480,
+      icon: (
+        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600 -mt-0.5">
+          <SendOutlined className="text-base" />
+        </span>
+      ),
+      title: 'Xác nhận gửi thư mời nhận việc (Offer)',
+      width: 520,
+      centered: true,
       content: (
-        <div className="mt-3 space-y-3 text-[13px]">
-          <div className="rounded-lg border border-solid border-slate-200 bg-slate-50/80 p-3.5 space-y-2">
-            <div className="flex justify-between items-center gap-2">
-              <span className="text-slate-500">Ứng viên:</span>
-              <span className="font-semibold text-slate-800 text-right">{d?.candidateFullName}</span>
+        <div className="mt-3 space-y-3.5 text-[13.5px]">
+          <p className="m-0 text-sm text-slate-600 leading-relaxed">
+            Vui lòng kiểm tra lại thông tin trước khi gửi thư mời chính thức đến ứng viên{' '}
+            <strong className="font-semibold text-slate-900">{d?.candidateFullName || 'ứng viên'}</strong>:
+          </p>
+          <div className="rounded-xl border border-solid border-slate-200/80 bg-slate-50 p-4 space-y-2.5">
+            <div className="flex justify-between items-center gap-3">
+              <span className="text-slate-500 font-normal">Ứng viên:</span>
+              <span className="font-semibold text-slate-900 text-right">{d?.candidateFullName || '—'}</span>
             </div>
-            <div className="flex justify-between items-center gap-2">
-              <span className="text-slate-500">Vị trí:</span>
-              <span className="font-semibold text-slate-800 text-right">{d?.jobTitle}</span>
+            <div className="flex justify-between items-center gap-3">
+              <span className="text-slate-500 font-normal">Vị trí tuyển dụng:</span>
+              <span className="font-semibold text-slate-900 text-right">{d?.jobTitle || '—'}</span>
             </div>
-            <div className="flex justify-between items-center gap-2">
-              <span className="text-slate-500">Mức lương:</span>
-              <span className="font-semibold text-[#0284c7] text-right">
-                {money(offer?.salary ?? null, offer?.currencyCode ?? 'VND')}
+            <div className="flex justify-between items-center gap-3">
+              <span className="text-slate-500 font-normal">Mức lương đề xuất:</span>
+              <span className="font-bold text-blue-600 text-right">
+                {formatOfferSalary(offer?.salary ?? null, offer?.currencyCode ?? 'VND')}
                 {offer?.salaryBasis ? ` (${offer.salaryBasis})` : ''}
               </span>
             </div>
             {offer?.startDate && (
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-slate-500">Ngày dự kiến nhận việc:</span>
-                <span className="font-semibold text-slate-800">{fmt(offer.startDate, 'DD/MM/YYYY')}</span>
+              <div className="flex justify-between items-center gap-3">
+                <span className="text-slate-500 font-normal">Ngày nhận việc dự kiến:</span>
+                <span className="font-semibold text-slate-800 text-right">{fmt(offer.startDate, 'DD/MM/YYYY')}</span>
               </div>
             )}
             {offer?.expiryDate && (
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-slate-500">Hạn phản hồi:</span>
-                <span className="font-semibold text-slate-800">{fmt(offer.expiryDate, 'DD/MM/YYYY')}</span>
+              <div className="flex justify-between items-center gap-3">
+                <span className="text-slate-500 font-normal">Hạn phản hồi:</span>
+                <span className="font-semibold text-slate-800 text-right">{fmt(offer.expiryDate, 'DD/MM/YYYY')}</span>
               </div>
             )}
           </div>
-          <p className="m-0 text-xs text-slate-500 leading-relaxed">
-            Hệ thống sẽ gửi email và thông báo kèm lời mời nhận việc đến ứng viên. Sau khi gửi, bạn không thể chỉnh sửa nội dung cho đến khi ứng viên phản hồi.
-          </p>
+          <div className="flex items-start gap-1.5 text-xs text-slate-500 leading-relaxed">
+            <InfoCircleOutlined className="text-slate-400 mt-0.5 shrink-0 text-xs" />
+            <span>Lưu ý: Sau khi gửi, thông tin Offer sẽ được gửi trực tiếp cho ứng viên và không thể chỉnh sửa (chỉ có thể thu hồi).</span>
+          </div>
         </div>
       ),
-      okText: 'Gửi offer',
-      cancelText: 'Hủy',
-      okButtonProps: { loading: run.isPending || pendingAction === 'send' },
+      okText: 'Xác nhận & Gửi Offer',
+      cancelText: 'Quay lại chỉnh sửa',
+      okButtonProps: {
+        loading: run.isPending || pendingAction === 'send',
+        className: 'bg-blue-600 hover:bg-blue-700 text-white font-medium border-transparent shadow-xs',
+      },
+      cancelButtonProps: {
+        className: 'border-slate-200 text-slate-700 hover:text-slate-900 hover:border-slate-300 font-medium',
+      },
       onOk: async () => {
         setPendingAction('send');
         try {
