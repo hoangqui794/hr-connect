@@ -481,4 +481,69 @@ public class SourcingFinanceTests
         fee.JobTitle.Should().Be("Frontend ReactJS");
         fee.PlacementId.Should().BeNull();
     }
+
+    [Fact]
+    public async Task GetCommissions_SourcingAfterDepositAndSettlementPaid_ShouldReturnPaidServiceFeeStatus()
+    {
+        var job = SeedJob(target: 1);
+        var deposit = await CreateDepositAsync(job);
+        deposit.Status = ServiceFeeStates.Paid;
+        var delivery = SeedDelivery(job);
+        await AcceptAsync(job, delivery);
+        SeedAffiliateForJob();
+
+        var settlement = _context.ServiceFees.Single(f => f.JobId == job.JobId && f.Kind == ServiceFeeKinds.Settlement);
+        settlement.Status = ServiceFeeStates.Paid;
+        await _context.SaveChangesAsync();
+
+        var handler = new FinanceQueryHandlers(Repository, _companyUsers.Object);
+        var result = await handler.Handle(new GetCommissionsQuery(null, null, 1, 20), default);
+
+        result.Items.Single().ServiceFeeStatus.Should().Be(ServiceFeeStates.Paid);
+    }
+
+    [Fact]
+    public async Task GetCommissions_SourcingWithPendingOrOverdueFee_ShouldReflectPendingOrOverdue()
+    {
+        var pendingJob = SeedJob(target: 1);
+        var pendingDeposit = await CreateDepositAsync(pendingJob);
+        pendingDeposit.Status = ServiceFeeStates.Paid;
+        await AcceptAsync(pendingJob, SeedDelivery(pendingJob));
+
+        var overdueJob = SeedJob(target: 1);
+        var overdueDeposit = await CreateDepositAsync(overdueJob);
+        overdueDeposit.Status = ServiceFeeStates.Overdue;
+        await AcceptAsync(overdueJob, SeedDelivery(overdueJob));
+        SeedAffiliateForJob();
+        await _context.SaveChangesAsync();
+
+        var handler = new FinanceQueryHandlers(Repository, _companyUsers.Object);
+        var result = await handler.Handle(new GetCommissionsQuery(null, null, 1, 20), default);
+
+        result.Items.Single(c => c.JobId == pendingJob.JobId).ServiceFeeStatus.Should().Be(ServiceFeeStates.Pending);
+        result.Items.Single(c => c.JobId == overdueJob.JobId).ServiceFeeStatus.Should().Be(ServiceFeeStates.Overdue);
+    }
+
+    private void SeedAffiliateForJob()
+    {
+        var now = DateTime.UtcNow;
+        foreach (var attr in _context.Attributions.Local)
+        {
+            if (!_context.AffiliateProfiles.Local.Any(a => a.AffiliateId == attr.AffiliateId))
+            {
+                var userId = Guid.NewGuid();
+                _context.Add(new AppUser { UserId = userId, Email = $"{userId:N}@test.local", PasswordHash = "x", Status = "ACTIVE", CreatedAt = now, UpdatedAt = now });
+                _context.Add(new AffiliateProfile
+                {
+                    AffiliateId = attr.AffiliateId,
+                    UserId = userId,
+                    DisplayName = "Demo Affiliate",
+                    AffiliateType = "STANDARD",
+                    Status = "ACTIVE",
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                });
+            }
+        }
+    }
 }

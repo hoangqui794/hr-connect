@@ -100,6 +100,10 @@ public interface IFinanceRepository
     /// <summary>DEPOSIT, SETTLEMENT and CREDIT fees of a job, tracked for update.</summary>
     Task<IReadOnlyList<ServiceFee>> GetJobServiceFeesForUpdateAsync(Guid jobId, CancellationToken cancellationToken = default);
 
+    /// <summary>DEPOSIT, SETTLEMENT and CREDIT fees of multiple jobs (read-only), for sourcing commission fee status.</summary>
+    Task<IReadOnlyList<ServiceFee>> GetJobServiceFeesAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<ServiceFee>>(Array.Empty<ServiceFee>());
+
     /// <summary>Approved CV_SOURCING jobs with a deposit percent above zero and no DEPOSIT fee yet.</summary>
     Task<IReadOnlyList<Guid>> GetSourcingJobIdsAwaitingDepositAsync(int take, CancellationToken cancellationToken = default);
 
