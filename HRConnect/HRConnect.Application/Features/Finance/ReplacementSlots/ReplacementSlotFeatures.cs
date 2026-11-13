@@ -3,6 +3,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Finance.Queries;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using MediatR;
@@ -97,8 +98,13 @@ public sealed class GetReplacementSlotsQueryHandler : IRequestHandler<GetReplace
         Guid? companyId = null;
         if (request.ClientUserId is Guid clientUserId)
         {
-            var companyUser = await _companyUserRepository.GetByUserIdAsync(clientUserId, cancellationToken)
-                ?? throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
+            // A deactivated member keeps its company_user row, so membership must be ACTIVE to read slots.
+            var companyUser = await _companyUserRepository.GetByUserIdAsync(clientUserId, cancellationToken);
+            if (!CompanyMembershipPolicy.IsActive(companyUser))
+            {
+                throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
+            }
+
             companyId = companyUser.CompanyId;
         }
 
