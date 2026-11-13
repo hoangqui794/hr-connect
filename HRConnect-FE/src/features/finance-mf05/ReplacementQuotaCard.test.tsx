@@ -10,8 +10,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReplacementQuotaCard } from './ReplacementQuotaCard';
 import { financeApi } from '@/services/api/financeApi';
-import { jobsApi } from '@/services/api/jobsApi';
-import type { PlacementListItem, ReplacementSlotDto } from '@/types/api/finance';
+import type { ReplacementSlotDto } from '@/types/api/finance';
 
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
@@ -24,10 +23,9 @@ vi.mock('react-router-dom', async () => {
 
 vi.mock('@/services/api/financeApi', () => ({
   financeApi: {
-    getPlacements: vi.fn(),
-    getReplacementSlots: vi.fn(),
+    replacementSlots: vi.fn(),
     cancelReplacementSlot: vi.fn(),
-    warranties: vi.fn(),
+    serviceFees: vi.fn(),
   },
 }));
 
@@ -38,36 +36,6 @@ vi.mock('./PlacementDetailDrawer', () => ({
     return props.open ? <div data-testid="placement-drawer">{props.placementId}</div> : null;
   },
 }));
-
-vi.mock('@/services/api/jobsApi', () => ({
-  jobsApi: {
-    getMine: vi.fn(),
-  },
-}));
-
-const mockPlacements: PlacementListItem[] = [
-  {
-    placementId: 'pl-1',
-    applicationId: 'app-1',
-    offerId: 'off-1',
-    actualStartDate: '2026-09-01',
-    position: 'Senior Java Engineer',
-    department: 'Backend',
-    status: 'RESIGNED',
-    candidate: {
-      candidateId: 'cand-1',
-      fullName: 'Trần Văn An',
-      email: 'an@example.com',
-      phoneNumber: '0901234567',
-    },
-    job: {
-      jobId: 'job-101',
-      title: 'Senior Java Engineer',
-      companyId: 'comp-1',
-      companyName: 'FPT Software',
-    },
-  },
-];
 
 const mockSlots: ReplacementSlotDto[] = [
   {
@@ -86,6 +54,8 @@ const mockSlots: ReplacementSlotDto[] = [
     cancelReason: null,
     concurrencyToken: 'token-abc-1',
     createdAt: '2026-10-10T00:00:00Z',
+    jobTitle: 'Senior Java Engineer',
+    companyName: 'FPT Software',
   },
   {
     replacementSlotId: 'slot-uuid-2',
@@ -103,6 +73,8 @@ const mockSlots: ReplacementSlotDto[] = [
     cancelReason: null,
     concurrencyToken: 'token-abc-2',
     createdAt: '2026-10-12T00:00:00Z',
+    jobTitle: 'Senior Java Engineer',
+    companyName: 'FPT Software',
   },
 ];
 
@@ -127,59 +99,55 @@ const renderComponent = (props: { mode?: 'client' | 'hr'; selectedJobId?: string
   );
 };
 
+const slotPage = (items: ReplacementSlotDto[], totalCount = items.length) =>
+  ({ items, totalCount, page: 1, pageSize: 100 }) as never;
+
 describe('ReplacementQuotaCard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default: the warranty list is unavailable, so the card asks every job (the old behaviour).
-    vi.mocked(financeApi.warranties).mockRejectedValue(new Error('not loaded'));
+    vi.mocked(financeApi.serviceFees).mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 100 } as never);
   });
 
-  const warrantyPage = (items: Array<{ placementId: string; status: string }>) =>
-    ({ items, totalCount: items.length, page: 1, pageSize: 100 }) as never;
-
-  it('asks for slots only on jobs whose warranty was voided by a confirmed resignation', async () => {
-    vi.mocked(financeApi.getPlacements).mockResolvedValue({ items: mockPlacements, totalCount: mockPlacements.length });
-    vi.mocked(jobsApi.getMine).mockResolvedValue([
-      { jobId: 'job-101', title: 'Senior Java Engineer', serviceTypeCode: 'HEADHUNT_COD' },
-      { jobId: 'job-other', title: 'Tin khác', serviceTypeCode: 'HEADHUNT_COD' },
-    ] as never);
-    vi.mocked(financeApi.warranties).mockResolvedValue(warrantyPage([{ placementId: 'pl-1', status: 'VOIDED' }]));
-    vi.mocked(financeApi.getReplacementSlots).mockResolvedValue([mockSlots[0]]);
+  it('loads every slot from one paged endpoint and shows the job title returned by the backend', async () => {
+    vi.mocked(financeApi.replacementSlots).mockResolvedValue(slotPage([mockSlots[0]]));
 
     renderComponent({ mode: 'client' });
 
     expect(await screen.findByText('Trần Văn An', {}, { timeout: 10000 })).toBeInTheDocument();
-    expect(financeApi.getReplacementSlots).toHaveBeenCalledTimes(1);
-    expect(financeApi.getReplacementSlots).toHaveBeenCalledWith('job-101');
+    expect(financeApi.replacementSlots).toHaveBeenCalledTimes(1);
+    expect(financeApi.replacementSlots).toHaveBeenCalledWith({ jobId: undefined, page: 1, pageSize: 100 });
+    expect(screen.getAllByText('Senior Java Engineer').length).toBeGreaterThan(0);
   });
 
-  it('asks no job when no warranty was voided', async () => {
-    vi.mocked(financeApi.getPlacements).mockResolvedValue({ items: mockPlacements, totalCount: mockPlacements.length });
-    vi.mocked(jobsApi.getMine).mockResolvedValue([{ jobId: 'job-other', title: 'Tin khác', serviceTypeCode: 'HEADHUNT_COD' }] as never);
-    vi.mocked(financeApi.warranties).mockResolvedValue(warrantyPage([]));
+  it('filters by the selected job and never shows the job id as its title', async () => {
+    vi.mocked(financeApi.replacementSlots).mockResolvedValue(slotPage([mockSlots[0]]));
 
-    renderComponent({ mode: 'client' });
+    renderComponent({ mode: 'client', selectedJobId: 'job-101' });
 
-    expect(await screen.findByText('Chưa có suất tuyển thay thế nào', {}, { timeout: 10000 })).toBeInTheDocument();
-    expect(financeApi.getReplacementSlots).not.toHaveBeenCalled();
+    expect(await screen.findByText('Trần Văn An', {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(financeApi.replacementSlots).toHaveBeenCalledWith({ jobId: 'job-101', page: 1, pageSize: 100 });
+    expect(screen.queryByText('job-101')).toBeNull();
+    expect(screen.getAllByText('Senior Java Engineer').length).toBeGreaterThan(0);
   });
 
-  it('falls back to every job when a voided warranty cannot be matched to a loaded placement', async () => {
-    vi.mocked(financeApi.getPlacements).mockResolvedValue({ items: mockPlacements, totalCount: mockPlacements.length });
-    vi.mocked(jobsApi.getMine).mockResolvedValue([{ jobId: 'job-other', title: 'Tin khác', serviceTypeCode: 'HEADHUNT_COD' }] as never);
-    vi.mocked(financeApi.warranties).mockResolvedValue(warrantyPage([{ placementId: 'pl-unknown', status: 'VOIDED' }]));
-    vi.mocked(financeApi.getReplacementSlots).mockResolvedValue([]);
+  it('follows the pages until every slot is loaded', async () => {
+    const many = Array.from({ length: 100 }, (_, i) => ({
+      ...mockSlots[1],
+      replacementSlotId: `slot-p1-${i}`,
+      originalCandidateName: `Ứng viên ${i}`,
+    }));
+    vi.mocked(financeApi.replacementSlots)
+      .mockResolvedValueOnce(slotPage(many, 101))
+      .mockResolvedValueOnce(slotPage([mockSlots[0]], 101));
 
-    renderComponent({ mode: 'client' });
+    renderComponent({ mode: 'hr' });
 
-    await screen.findByText('Chưa có suất tuyển thay thế nào', {}, { timeout: 10000 });
-    expect(financeApi.getReplacementSlots).toHaveBeenCalledWith('job-other');
-    expect(financeApi.getReplacementSlots).toHaveBeenCalledWith('job-101');
+    await waitFor(() => expect(financeApi.replacementSlots).toHaveBeenCalledTimes(2), { timeout: 10000 });
+    expect(financeApi.replacementSlots).toHaveBeenLastCalledWith({ jobId: undefined, page: 2, pageSize: 100 });
   });
 
   it('renders loading skeleton when fetching data', () => {
-    vi.mocked(financeApi.getPlacements).mockReturnValue(new Promise(() => {}));
-    vi.mocked(jobsApi.getMine).mockReturnValue(new Promise(() => {}));
+    vi.mocked(financeApi.replacementSlots).mockReturnValue(new Promise(() => {}));
 
     renderComponent();
 
@@ -187,12 +155,7 @@ describe('ReplacementQuotaCard', () => {
   });
 
   it('renders error state with retry button when query fails', async () => {
-    vi.mocked(financeApi.getPlacements).mockResolvedValue({
-      items: mockPlacements,
-      totalCount: 1,
-    });
-    vi.mocked(jobsApi.getMine).mockResolvedValue([]);
-    vi.mocked(financeApi.getReplacementSlots).mockRejectedValue(new Error('Network error'));
+    vi.mocked(financeApi.replacementSlots).mockRejectedValue(new Error('Network error'));
 
     renderComponent();
 
@@ -201,12 +164,7 @@ describe('ReplacementQuotaCard', () => {
   });
 
   it('renders empty state when there are no replacement slots', async () => {
-    vi.mocked(financeApi.getPlacements).mockResolvedValue({
-      items: mockPlacements,
-      totalCount: 1,
-    });
-    vi.mocked(jobsApi.getMine).mockResolvedValue([]);
-    vi.mocked(financeApi.getReplacementSlots).mockResolvedValue([]);
+    vi.mocked(financeApi.replacementSlots).mockResolvedValue(slotPage([]));
 
     renderComponent();
 
@@ -214,12 +172,7 @@ describe('ReplacementQuotaCard', () => {
   });
 
   it('renders replacement slot items with countdown and status badges', async () => {
-    vi.mocked(financeApi.getPlacements).mockResolvedValue({
-      items: mockPlacements,
-      totalCount: 1,
-    });
-    vi.mocked(jobsApi.getMine).mockResolvedValue([]);
-    vi.mocked(financeApi.getReplacementSlots).mockResolvedValue(mockSlots);
+    vi.mocked(financeApi.replacementSlots).mockResolvedValue(slotPage(mockSlots));
 
     renderComponent({ mode: 'client' });
 
@@ -230,12 +183,7 @@ describe('ReplacementQuotaCard', () => {
   });
 
   it('gives the Client no "use slot" step: the open slot fills itself, the Client follows the job and its candidates', async () => {
-    vi.mocked(financeApi.getPlacements).mockResolvedValue({
-      items: mockPlacements,
-      totalCount: 1,
-    });
-    vi.mocked(jobsApi.getMine).mockResolvedValue([]);
-    vi.mocked(financeApi.getReplacementSlots).mockResolvedValue([mockSlots[0]]); // OPEN
+    vi.mocked(financeApi.replacementSlots).mockResolvedValue(slotPage([mockSlots[0]])); // OPEN
 
     renderComponent({ mode: 'client' });
 
@@ -250,11 +198,7 @@ describe('ReplacementQuotaCard', () => {
   });
 
   it('allows Internal HR to cancel a slot with a reason', async () => {
-    vi.mocked(financeApi.getPlacements).mockResolvedValue({
-      items: mockPlacements,
-      totalCount: 1,
-    });
-    vi.mocked(financeApi.getReplacementSlots).mockResolvedValue([mockSlots[0]]);
+    vi.mocked(financeApi.replacementSlots).mockResolvedValue(slotPage([mockSlots[0]]));
     vi.mocked(financeApi.cancelReplacementSlot).mockResolvedValue({
       ...mockSlots[0],
       status: 'CANCELLED',
@@ -287,11 +231,10 @@ describe('ReplacementQuotaCard', () => {
   });
   // HR feedback 29/10: the "Pipeline" button led to an unfiltered page; HR now opens the placement itself.
   it('lets Internal HR open the replacement placement, or the original one while the slot is not filled', async () => {
-    vi.mocked(financeApi.getPlacements).mockResolvedValue({ items: mockPlacements, totalCount: 1 });
-    vi.mocked(financeApi.getReplacementSlots).mockResolvedValue([
+    vi.mocked(financeApi.replacementSlots).mockResolvedValue(slotPage([
       { ...mockSlots[0], status: 'FILLED', filledByPlacementId: 'pl-new', replacementCandidateName: 'Ứng Viên e2e5' },
       mockSlots[1],
-    ]);
+    ]));
 
     renderComponent({ mode: 'hr' });
 

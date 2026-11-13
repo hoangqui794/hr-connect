@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
@@ -111,6 +112,26 @@ public class GetPlacementDetailQueryHandler : IRequestHandler<GetPlacementDetail
             );
         }
 
+        // Ứng viên không xem tiền; Client xem phí dịch vụ của mình nhưng không bao giờ thấy hoa hồng Affiliate.
+        PlacementDetailFinancialDto? financialDto = null;
+        // Không có phí lẫn hoa hồng (chưa tính phí) thì không trả khối này, FE ẩn khối tiền như trước.
+        if (!request.IsCandidate)
+        {
+            var showCommission = request.IsInternalHrOrAdmin && !request.IsClientCompanyUser;
+            var commission = showCommission
+                ? placement.Commissions?.OrderByDescending(c => c.CreatedAt).FirstOrDefault()
+                : null;
+            if (placement.ServiceFee != null || commission != null)
+            {
+                financialDto = new PlacementDetailFinancialDto(
+                    placement.ServiceFee?.Amount,
+                    placement.ServiceFee?.Status,
+                    commission?.Amount,
+                    commission?.Status
+                );
+            }
+        }
+
         return new GetPlacementDetailResponse(
             placement.PlacementId,
             placement.ApplicationId,
@@ -151,7 +172,8 @@ public class GetPlacementDetailQueryHandler : IRequestHandler<GetPlacementDetail
             warrantyDto,
             allowedActions,
             placement.CreatedAt,
-            placement.UpdatedAt
+            placement.UpdatedAt,
+            financialDto
         );
     }
 }

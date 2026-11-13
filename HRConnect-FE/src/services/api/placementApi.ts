@@ -93,40 +93,16 @@ export const placementApi = {
         allowedActions: Array.isArray(raw.allowedActions) ? raw.allowedActions : ['VIEW_PLACEMENT'],
         createdAt: raw.createdAt ?? '',
         updatedAt: raw.updatedAt ?? '',
-        financial: raw.financial ?? null,
+        // BE trả sẵn khối tiền: Client chỉ có phí dịch vụ (hoa hồng luôn null), ứng viên không có khối này.
+        financial: raw.financial
+          ? ({
+              serviceFeeAmount: raw.financial.serviceFeeAmount ?? null,
+              serviceFeeStatus: raw.financial.serviceFeeStatus ?? null,
+              commissionAmount: raw.financial.commissionAmount ?? null,
+              commissionStatus: raw.financial.commissionStatus ?? null,
+            } satisfies PlacementFinancialDto)
+          : null,
       };
-
-      // Try to load linked warranty & financial info if not yet attached
-      if (!detail.financial) {
-        try {
-          const wRes = await apiClient.get<any>('/warranties', {
-            params: { page: 1, pageSize: 20 },
-          });
-          const wItems = wRes.data?.data?.items ?? wRes.data?.items ?? [];
-          const matchedWarranty = wItems.find((w: any) => w.placementId === placementId);
-          if (matchedWarranty) {
-            const financial: PlacementFinancialDto = {
-              serviceFeeAmount: matchedWarranty.serviceFeeAmount ?? null,
-              serviceFeeStatus: matchedWarranty.serviceFeeStatus ?? null,
-              commissionAmount: matchedWarranty.commissionAmount ?? null,
-              commissionStatus: matchedWarranty.commissionStatus ?? null,
-            };
-            detail.financial = financial;
-
-            if (!detail.warranty && matchedWarranty.warrantyId) {
-              detail.warranty = {
-                warrantyId: matchedWarranty.warrantyId,
-                startDate: matchedWarranty.startDate,
-                endDate: matchedWarranty.endDate ?? null,
-                status: matchedWarranty.status ?? 'ACTIVE',
-                resultNote: matchedWarranty.resultNote ?? null,
-              };
-            }
-          }
-        } catch {
-          // Ignore secondary financial lookup failures
-        }
-      }
 
       return detail;
     } catch (err) {
