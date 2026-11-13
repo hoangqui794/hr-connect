@@ -180,7 +180,7 @@ flowchart LR
 | Client Job | `POST /api/v1/jobs/{jobId}/pause` | Tạm dừng nhận hồ sơ. |
 | Client Job | `POST /api/v1/jobs/{jobId}/resume` | Mở lại Job. |
 | Client Job | `POST /api/v1/jobs/{jobId}/close` | Đóng Job. |
-| Query | `GET /api/v1/jobs/mine` | Job của doanh nghiệp hiện tại. |
+| Query | `GET /api/v1/jobs/mine` | Job của doanh nghiệp hiện tại. Mỗi job có `submittedAt` (lần gửi duyệt gần nhất), `statusChangedAt` và `statusReasonCode` (lần đổi trạng thái gần nhất), `depositSubmittedAt` (doanh nghiệp báo đã nộp cọc; `hasSubmittedDeposit` đọc từ cột này), và với CV_SOURCING: `depositAmount`, `paymentDueAt` lấy từ phiếu DEPOSIT thật (null khi chưa có phiếu; `paymentDueAt` null khi phiếu đã trả). |
 | Query | `GET /api/v1/jobs/{jobId}` | Chi tiết Job theo quyền truy cập. |
 | Public | `GET /api/v1/public/jobs` | Danh sách Job công khai. |
 | Internal HR | `GET /api/v1/internal/jobs/review` | Hàng đợi duyệt Job. |
@@ -370,7 +370,7 @@ Các nhánh kết thúc có thể gồm `REJECTED`, `INTERVIEW_FAILED`, `OFFER_D
 | Application | `GET /api/v1/recruitment/applications/{id}` |
 | Application | CV masked/download, timeline, withdraw, backup decision dưới cùng route family. |
 | Interview | `POST /api/v1/recruitment/applications/{applicationId}/interviews` |
-| Interview | `/api/v1/interviews`: list/detail/update/reschedule/cancel/no-show/result/history. |
+| Interview | `/api/v1/interviews`: list/detail/update/reschedule/cancel/no-show/result/history. List nhận `fromDate`, `toDate` (ISO, quy về UTC), `sortDirection` (`ASC`/`DESC`, theo `scheduledAt`). |
 | Candidate | `POST /api/v1/interviews/{id}/candidate-confirm` |
 | Offer | `/api/v1/offers`: list/detail/update/send/response/withdraw. |
 | Placement | `/api/v1/placements`: list/detail và sửa ngày bắt đầu. |
@@ -423,6 +423,9 @@ Các route dưới `/api/v1`:
 | `GET /replacement-slots` | Danh sách lượt thay thế có phân trang (`jobId`, `status`, `page`, `pageSize` ≤ 100), mỗi lượt có `jobTitle` và `companyName`. Client (thành viên ACTIVE) chỉ thấy lượt của doanh nghiệp mình; Internal HR/Admin thấy tất cả. |
 | `GET /jobs/{jobId}/replacement-slots` | Các lượt thay thế của Job. |
 | `POST /internal/replacement-slots/{id}/cancel` | Hủy lượt thay thế hợp lệ. |
+| `GET /placements/{placementId}` | Chi tiết nhận việc, kèm khối `financial`: Client chỉ thấy phí dịch vụ (`serviceFeeAmount`, `serviceFeeStatus`), hoa hồng Affiliate chỉ trả cho Internal HR/Admin, Candidate không nhận khối này; `null` khi chưa có phí lẫn hoa hồng. |
+| `GET /replacement-slots` | Danh sách lượt thay thế có phân trang (`jobId`, `status`, `page`, `pageSize` ≤ 100), mỗi lượt có `jobTitle` và `companyName`. Client (thành viên ACTIVE) chỉ thấy lượt của doanh nghiệp mình; Internal HR/Admin thấy tất cả. |
+| `GET /client/dashboard/summary` | Client (placement.confirm, thành viên ACTIVE), chỉ doanh nghiệp mình: tổng phí chưa trả (PLACEMENT, DEPOSIT, SETTLEMENT) và phần quá hạn, hạn phí gần nhất, khoản hoàn/credit đang nợ doanh nghiệp, số CV Sourcing chờ phản hồi và hạn gần nhất, số bảo hành ACTIVE kết thúc trong `warrantyWithinDays` ngày (mặc định 7, tối đa 90), số suất thay thế OPEN/WAITING_PAYMENT. |
 | `GET /warranties` | Theo dõi bảo hành. |
 | `GET /service-fees` | Theo dõi công nợ/phí. |
 | `POST /jobs/{jobId}/sourcing-settlement` | Chốt phí dịch vụ Sourcing. |

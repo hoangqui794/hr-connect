@@ -27,6 +27,18 @@ public class GetInterviewsQueryHandler : IRequestHandler<GetInterviewsQuery, Get
         _logger = logger;
     }
 
+    /// <summary>
+    /// scheduled_at is timestamptz: a query-string date may arrive as Local or Unspecified, which Npgsql
+    /// refuses to compare. Local is converted; Unspecified is read as UTC (what the FE sends as ISO "Z").
+    /// </summary>
+    public static DateTime? ToUtc(DateTime? value) => value?.Kind switch
+    {
+        null => null,
+        DateTimeKind.Utc => value,
+        DateTimeKind.Local => value.Value.ToUniversalTime(),
+        _ => DateTime.SpecifyKind(value!.Value, DateTimeKind.Utc),
+    };
+
     public async Task<GetInterviewsResponse> Handle(GetInterviewsQuery request, CancellationToken cancellationToken)
     {
         Guid? companyId = null;
@@ -63,8 +75,8 @@ public class GetInterviewsQueryHandler : IRequestHandler<GetInterviewsQuery, Get
             request.InterviewerId,
             request.Status,
             request.Result,
-            request.FromDate,
-            request.ToDate,
+            ToUtc(request.FromDate),
+            ToUtc(request.ToDate),
             page,
             pageSize,
             request.SortDirection,

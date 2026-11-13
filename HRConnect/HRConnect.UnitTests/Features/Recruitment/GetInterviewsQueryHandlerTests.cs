@@ -294,4 +294,16 @@ public class GetInterviewsQueryHandlerTests
             ConcurrencyToken = Guid.NewGuid()
         };
     }
+
+    [Fact]
+    public void ToUtc_ShouldGiveNpgsqlAUtcDateWhateverKindTheQueryStringProduced()
+    {
+        var utc = new DateTime(2026, 11, 13, 8, 0, 0, DateTimeKind.Utc);
+        GetInterviewsQueryHandler.ToUtc(null).Should().BeNull();
+        GetInterviewsQueryHandler.ToUtc(utc).Should().Be(utc);
+        GetInterviewsQueryHandler.ToUtc(utc.ToLocalTime())!.Value.Should().Be(utc).And.Subject!.Value.Kind.Should().Be(DateTimeKind.Utc);
+        var unspecified = DateTime.SpecifyKind(utc, DateTimeKind.Unspecified);
+        GetInterviewsQueryHandler.ToUtc(unspecified)!.Value.Kind.Should().Be(DateTimeKind.Utc);
+        GetInterviewsQueryHandler.ToUtc(unspecified)!.Value.Should().Be(utc);
+    }
 }

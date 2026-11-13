@@ -78,6 +78,13 @@ public static class FinanceEndpoints
             .WithSummary("Danh sách suất tuyển thay thế (có phân trang)")
             .WithDescription("Internal HR / Admin xem mọi doanh nghiệp; Client (placement.confirm) chỉ xem suất thay thế của job thuộc doanh nghiệp mình. Lọc theo jobId và status (WAITING_PAYMENT, OPEN, FILLED, CANCELLED, EXPIRED). Mỗi suất có jobTitle và companyName. Sắp xếp: OPEN, WAITING_PAYMENT, FILLED, EXPIRED, CANCELLED, mới nhất trước. pageSize tối đa 100.");
 
+        group.MapGet("/client/dashboard/summary", (
+                ClaimsPrincipal user, [FromServices] ISender sender, CancellationToken ct, [FromQuery] int warrantyWithinDays = 7) =>
+            Execute(user, [PlacementConfirm], userId => sender.Send(new GetClientDashboardSummaryQuery(userId, warrantyWithinDays), ct)))
+            .WithName("GetClientDashboardSummary")
+            .WithSummary("Tiền và cam kết của doanh nghiệp (trang Tổng quan Client)")
+            .WithDescription("Chỉ Client (placement.confirm, thành viên ACTIVE) xem của doanh nghiệp mình: tổng phí chưa trả (PLACEMENT, DEPOSIT, SETTLEMENT) và phần quá hạn, hạn phí gần nhất, khoản hoàn/credit HR Connect đang nợ doanh nghiệp, số CV Sourcing chờ phản hồi và hạn phản hồi gần nhất, số bảo hành ACTIVE kết thúc trong warrantyWithinDays ngày (mặc định 7, tối đa 90), số suất thay thế OPEN hoặc WAITING_PAYMENT.");
+
         group.MapPost("/internal/replacement-slots/{replacementSlotId:guid}/cancel", (
                 Guid replacementSlotId, [FromBody] CancelReplacementSlotRequest body, ClaimsPrincipal user, [FromServices] ISender sender, CancellationToken ct) =>
             Execute(user, [WarrantyManage], userId => sender.Send(

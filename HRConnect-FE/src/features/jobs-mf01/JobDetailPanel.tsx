@@ -809,7 +809,14 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             : []),
           { label: 'Ngày đăng', value: job.postedAt ? formatDate(job.postedAt) : 'Chưa công bố' },
           ...(!isApplicant && job.postingPackageName
-            ? [{ label: 'Gói đăng tin', value: formatPostingPackage(job.postingPackageCode, job.postingPackageName) }]
+            ? [{
+              label: 'Gói đăng tin',
+              value: `${formatPostingPackage(job.postingPackageCode, job.postingPackageName)}${job.postingFee ? ` · ${formatMoney(job.postingFee.amount, job.postingFee.currencyCode)}` : ''}`,
+            }]
+            : []),
+          // Hạn nhận hồ sơ do doanh nghiệp đặt khi tạo tin (khác hạn hiển thị của gói đăng tin).
+          ...(!isApplicant && job.applicationDeadline
+            ? [{ label: 'Hạn nhận hồ sơ', value: formatDate(job.applicationDeadline) }]
             : []),
           ...(job.maxApplications ? [{ label: 'Hạn mức tiếp nhận', value: `Tối đa ${job.maxApplications} hồ sơ` }] : []),
           ...(job.sourcingTarget && job.serviceTypeCode === 'CV_SOURCING'

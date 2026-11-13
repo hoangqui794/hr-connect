@@ -88,6 +88,15 @@ export interface RecruitmentApplicationItem {
   aiMatchTier: string | null;
   aiStatus: string | null;
   latestInterviewRound: number | null;
+  /** Latest interview of the application (SCHEDULED, COMPLETED, CANCELLED, NO_SHOW). */
+  latestInterviewStatus?: string | null;
+  /** PASS, FAIL or BACKUP once the interview has a result. */
+  latestInterviewResult?: string | null;
+  latestInterviewScheduledAt?: string | null;
+  totalInterviews?: number;
+  /** Latest offer (DRAFT, SENT, ACCEPTED, DECLINED, WITHDRAWN, EXPIRED) and its salary. */
+  latestOfferStatus?: string | null;
+  latestOfferSalary?: number | null;
   serviceTypeCode?: string | null;
   /** CV_SOURCING: latest delivery status (DELIVERED, ACCEPTED, AUTO_ACCEPTED, REJECTED, ...). */
   sourcingDeliveryStatus?: string | null;

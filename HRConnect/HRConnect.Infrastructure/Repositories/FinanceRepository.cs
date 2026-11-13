@@ -169,6 +169,40 @@ public class FinanceRepository : IFinanceRepository
         return (items, total);
     }
 
+    public async Task<HRConnect.Application.Features.Finance.Queries.ClientDashboardSnapshot> GetClientDashboardSnapshotAsync(
+        Guid companyId, DateOnly today, DateOnly warrantyUntil, CancellationToken cancellationToken = default)
+    {
+        string[] unpaid = [ServiceFeeStates.Pending, ServiceFeeStates.Due, ServiceFeeStates.Overdue];
+        string[] owedByClient = [ServiceFeeKinds.Placement, ServiceFeeKinds.Deposit, ServiceFeeKinds.Settlement];
+        string[] owedToClient = [ServiceFeeKinds.Credit, ServiceFeeKinds.ReplacementRefund];
+
+        var fees = await _context.ServiceFees.AsNoTracking()
+            .Where(f => f.CompanyId == companyId && unpaid.Contains(f.Status))
+            .Select(f => new { f.Kind, f.Amount, f.Status, f.DueDate, f.CurrencyCode })
+            .ToListAsync(cancellationToken);
+
+        var reviewDueAts = await _context.SourcingDeliveries.AsNoTracking()
+            .Where(d => d.Job.CompanyId == companyId && d.Status == SourcingDeliveryStates.Delivered)
+            .Select(d => d.ReviewDueAt)
+            .ToListAsync(cancellationToken);
+
+        var warrantiesEndingSoon = await _context.Warranties.AsNoTracking()
+            .CountAsync(w => w.Placement.Application.Job.CompanyId == companyId
+                             && w.Status == WarrantyStates.Active
+                             && w.EndDate != null && w.EndDate >= today && w.EndDate <= warrantyUntil, cancellationToken);
+
+        var openSlots = await _context.ReplacementSlots.AsNoTracking()
+            .CountAsync(s => s.Job.CompanyId == companyId
+                             && (s.Status == ReplacementSlotStates.Open || s.Status == ReplacementSlotStates.WaitingPayment), cancellationToken);
+
+        return new HRConnect.Application.Features.Finance.Queries.ClientDashboardSnapshot(
+            fees.Where(f => owedByClient.Contains(f.Kind)).Select(f => new HRConnect.Application.Features.Finance.Queries.ClientDashboardFee(f.Amount, f.Status, f.DueDate, f.CurrencyCode)).ToList(),
+            fees.Where(f => owedToClient.Contains(f.Kind)).Select(f => new HRConnect.Application.Features.Finance.Queries.ClientDashboardFee(f.Amount, f.Status, f.DueDate, f.CurrencyCode)).ToList(),
+            reviewDueAts,
+            warrantiesEndingSoon,
+            openSlots);
+    }
+
     public Task<Guid?> GetJobCompanyIdAsync(Guid jobId, CancellationToken cancellationToken = default) =>
         _context.Jobs.AsNoTracking().Where(j => j.JobId == jobId).Select(j => (Guid?)j.CompanyId).FirstOrDefaultAsync(cancellationToken);
 

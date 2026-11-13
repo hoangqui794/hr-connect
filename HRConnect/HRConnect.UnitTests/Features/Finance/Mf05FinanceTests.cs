@@ -857,6 +857,124 @@ public class Mf05FinanceTests
         reminder.Max.Should().Be(30m);
     }
 
+    // ---- Client dashboard summary ------------------------------------------------------------
+
+    private readonly Guid _otherCompanyId = Guid.NewGuid();
+
+    private Mock<ICompanyUserRepository> ClientOf(Guid companyId, string status = "ACTIVE")
+    {
+        var members = new Mock<ICompanyUserRepository>();
+        members.Setup(r => r.GetByUserIdAsync(_actor, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { CompanyId = companyId, UserId = _actor, Status = status });
+        return members;
+    }
+
+    /// <summary>
+    /// One company with: an overdue placement fee, a deposit due in 5 days, a paid fee, a credit owed to it,
+    /// two delivered CVs, a warranty ending in 3 days and an open replacement slot; plus another company's fee.
+    /// </summary>
+    private async Task<Placement> DashboardDataAsync()
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        await InitializeAsync(placement, offer);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var now = DateTime.UtcNow;
+
+        var placementFee = await _context.ServiceFees.SingleAsync();
+        placementFee.Status = ServiceFeeStates.Pending;
+        placementFee.Amount = 6_000_000m;
+        placementFee.DueDate = today.AddDays(-1);
+
+        ServiceFee Fee(string kind, string status, decimal amount, DateOnly due, Guid? company = null) => new()
+        {
+            ServiceFeeId = Guid.NewGuid(), JobId = placement.Application.JobId, Kind = kind, CompanyId = company ?? _companyId,
+            BaseSalary = amount, FeeMultiplier = 1m, Amount = amount, CurrencyCode = "VND", DueDate = due, Status = status,
+            CreatedAt = now, UpdatedAt = now,
+        };
+        _context.AddRange(
+            Fee(ServiceFeeKinds.Deposit, ServiceFeeStates.Pending, 1_000_000m, today.AddDays(5)),
+            Fee(ServiceFeeKinds.Settlement, ServiceFeeStates.Paid, 9_000_000m, today.AddDays(1)),
+            Fee(ServiceFeeKinds.Credit, ServiceFeeStates.Pending, 500_000m, today.AddDays(10)),
+            Fee(ServiceFeeKinds.Placement, ServiceFeeStates.Pending, 7_777_777m, today.AddDays(2), company: _otherCompanyId));
+
+        SourcingDelivery Delivery(DateTime due, string status = SourcingDeliveryStates.Delivered) => new()
+        {
+            DeliveryId = Guid.NewGuid(), JobId = placement.Application.JobId, ApplicationId = placement.ApplicationId,
+            Status = status, DeliveredAt = now, DeliveredBy = _actor, ReviewDueAt = due, CreatedAt = now, UpdatedAt = now,
+        };
+        _context.AddRange(Delivery(now.AddDays(5)), Delivery(now.AddDays(2)), Delivery(now.AddDays(1), SourcingDeliveryStates.Accepted));
+
+        var warranty = await _context.Warranties.SingleAsync();
+        warranty.Status = WarrantyStates.Active;
+        warranty.EndDate = today.AddDays(3);
+
+        _context.Add(new ReplacementSlot
+        {
+            ReplacementSlotId = Guid.NewGuid(), JobId = placement.Application.JobId, OriginalPlacementId = placement.PlacementId,
+            ServiceFeeId = placementFee.ServiceFeeId, Status = ReplacementSlotStates.Open, FillWindowDays = 30,
+            OpenedAt = now, ExpiresAt = now.AddDays(30), CreatedAt = now, UpdatedAt = now,
+        });
+        await _context.SaveChangesAsync();
+        return placement;
+    }
+
+    [Fact]
+    public async Task Client_dashboard_summary_adds_up_its_own_company_only()
+    {
+        await DashboardDataAsync();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        var summary = await new GetClientDashboardSummaryQueryHandler(Repository, ClientOf(_companyId).Object)
+            .Handle(new GetClientDashboardSummaryQuery(_actor), default);
+
+        summary.PendingFeesAmount.Should().Be(7_000_000m, "unpaid placement 6M + deposit 1M; the paid fee and other company are left out");
+        summary.PendingFeesCount.Should().Be(2);
+        summary.OverdueFeesAmount.Should().Be(6_000_000m, "the placement fee is past its due date");
+        summary.OverdueFeesCount.Should().Be(1);
+        summary.NextFeeDueDate.Should().Be(today.AddDays(5));
+        summary.RefundsOwedAmount.Should().Be(500_000m);
+        summary.RefundsOwedCount.Should().Be(1);
+        summary.SourcingPendingReviewCount.Should().Be(2, "an accepted CV no longer waits for the Client");
+        summary.SourcingNearestReviewDueAt.Should().BeCloseTo(DateTime.UtcNow.AddDays(2), TimeSpan.FromMinutes(1));
+        summary.WarrantiesEndingSoonCount.Should().Be(1);
+        summary.WarrantyWithinDays.Should().Be(7);
+        summary.OpenReplacementSlotsCount.Should().Be(1);
+        summary.CurrencyCode.Should().Be("VND");
+    }
+
+    [Fact]
+    public async Task Client_dashboard_summary_shows_nothing_of_another_company_and_respects_the_warranty_window()
+    {
+        await DashboardDataAsync();
+
+        var other = await new GetClientDashboardSummaryQueryHandler(Repository, ClientOf(_otherCompanyId).Object)
+            .Handle(new GetClientDashboardSummaryQuery(_actor), default);
+        other.PendingFeesAmount.Should().Be(7_777_777m, "only that company's own fee");
+        other.SourcingPendingReviewCount.Should().Be(0);
+        other.WarrantiesEndingSoonCount.Should().Be(0);
+        other.OpenReplacementSlotsCount.Should().Be(0);
+        other.RefundsOwedAmount.Should().Be(0m);
+
+        var narrow = await new GetClientDashboardSummaryQueryHandler(Repository, ClientOf(_companyId).Object)
+            .Handle(new GetClientDashboardSummaryQuery(_actor, WarrantyWithinDays: 2), default);
+        narrow.WarrantiesEndingSoonCount.Should().Be(0, "the warranty ends in 3 days");
+    }
+
+    [Fact]
+    public async Task Client_dashboard_summary_rejects_a_user_without_an_active_membership()
+    {
+        await DashboardDataAsync();
+
+        var inactive = () => new GetClientDashboardSummaryQueryHandler(Repository, ClientOf(_companyId, "INACTIVE").Object)
+            .Handle(new GetClientDashboardSummaryQuery(_actor), default);
+        await inactive.Should().ThrowAsync<ForbiddenException>();
+
+        var none = new Mock<ICompanyUserRepository>();
+        var noMember = () => new GetClientDashboardSummaryQueryHandler(Repository, none.Object)
+            .Handle(new GetClientDashboardSummaryQuery(_actor), default);
+        await noMember.Should().ThrowAsync<ForbiddenException>();
+    }
+
     // ---- replacement slots (docs/main-flows.md (MF-05, suất thay thế)) -----------------------
 
     /// <summary>Placement started, Client reported the resignation; the fee is paid when <paramref name="feePaid"/>.</summary>

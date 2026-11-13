@@ -1,5 +1,22 @@
 /** MF-05 finance and Admin business settings, mirroring HRConnect.Application Features/Finance and Features/Settings. */
 
+/** GET /client/dashboard/summary: the Client company's open money and commitments. */
+export interface ClientDashboardSummary {
+  pendingFeesAmount: number;
+  pendingFeesCount: number;
+  overdueFeesAmount: number;
+  overdueFeesCount: number;
+  nextFeeDueDate: string | null;
+  refundsOwedAmount: number;
+  refundsOwedCount: number;
+  sourcingPendingReviewCount: number;
+  sourcingNearestReviewDueAt: string | null;
+  warrantiesEndingSoonCount: number;
+  warrantyWithinDays: number;
+  openReplacementSlotsCount: number;
+  currencyCode: string;
+}
+
 export interface FinancePage<T> {
   items: T[];
   totalCount: number;
