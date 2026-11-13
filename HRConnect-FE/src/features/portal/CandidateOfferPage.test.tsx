@@ -116,6 +116,14 @@ describe('CandidateOfferPage', () => {
     renderPage();
 
     expect(await screen.findByRole('region', { name: 'Xác nhận chuyển việc' })).toHaveTextContent('Công ty hiện tại');
+    expect(screen.getByRole('link', { name: /Liên hệ bộ phận hỗ trợ/i })).toHaveAttribute(
+      'href',
+      expect.stringContaining('/contact')
+    );
+    expect(screen.getByRole('link', { name: /Xem công việc hiện tại/i })).toHaveAttribute(
+      'href',
+      '/candidate/applications/old-app'
+    );
     expect(screen.queryByRole('link', { name: 'Liên hệ hỗ trợ' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Gửi trả lời' })).toBeDisabled();
 
