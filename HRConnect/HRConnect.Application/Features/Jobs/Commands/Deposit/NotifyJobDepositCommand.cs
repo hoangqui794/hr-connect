@@ -62,7 +62,10 @@ public sealed class NotifyJobDepositCommandHandler : IRequestHandler<NotifyJobDe
             ? $"DEP-{job.JobId.ToString("N")[..8].ToUpper()}"
             : request.PaymentReference.Trim();
 
+        // Kept for older readers; HasSubmittedDeposit now reads DepositSubmittedAt.
         job.StatusReason = "DEPOSIT_SUBMITTED";
+        job.StatusReasonCode = "DEPOSIT_SUBMITTED";
+        job.DepositSubmittedAt = now;
         job.UpdatedAt = now;
 
         // Cập nhật ServiceFee (Kind == DEPOSIT) nếu đã tồn tại

@@ -40,6 +40,8 @@ internal static class ReplacementSlotLifecycle
             });
             job.Status = JobStatuses.Active;
             job.ClosedAt = null;
+            job.StatusReasonCode = ReplacementSlotErrorCodes.JobReopenedReason;
+            job.StatusChangedAt = now;
             job.ConcurrencyToken = Guid.NewGuid();
             job.UpdatedAt = now;
         }

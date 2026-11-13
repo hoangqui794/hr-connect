@@ -279,4 +279,16 @@ describe('PlacementDetailPage & PlacementDetailView', () => {
     expect(screen.queryByText('Hoa hồng Cộng tác viên') !== null).toBe(commission);
     expect(screen.queryByText(/10\.800\.000/) !== null).toBe(commission);
   });
+
+  it('labels a replacement hire and leaves a regular hire unlabeled', async () => {
+    vi.mocked(placementApi.getPlacementDetail).mockResolvedValueOnce({ ...mockPlacement, isReplacement: true } as any);
+    const { unmount } = renderWithProviders(<PlacementDetailPage />, '/client/placements/plc-1');
+    expect(await screen.findByText('Người thay thế – không tính phí mới')).toBeInTheDocument();
+    unmount();
+
+    vi.mocked(placementApi.getPlacementDetail).mockResolvedValueOnce(mockPlacement as any);
+    renderWithProviders(<PlacementDetailPage />, '/client/placements/plc-1');
+    await screen.findByTestId('placement-detail-content');
+    expect(screen.queryByText('Người thay thế – không tính phí mới')).toBeNull();
+  });
 });

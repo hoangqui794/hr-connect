@@ -3149,6 +3149,10 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasColumnType("numeric(5,2)")
                         .HasColumnName("deposit_percent");
 
+                    b.Property<DateTime?>("DepositSubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deposit_submitted_at");
+
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description");
@@ -3274,9 +3278,22 @@ namespace HRConnect.Infrastructure.Migrations
                         .HasDefaultValueSql("'DRAFT'::character varying")
                         .HasComment("Allowed Job states. Exact transition graph is enforced by application service until Business Rule state machine is formally baselined.");
 
+                    b.Property<DateTime?>("StatusChangedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("status_changed_at");
+
                     b.Property<string>("StatusReason")
                         .HasColumnType("text")
                         .HasColumnName("status_reason");
+
+                    b.Property<string>("StatusReasonCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("status_reason_code");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
 
                     b.Property<Guid?>("TemplateId")
                         .HasColumnType("uuid")

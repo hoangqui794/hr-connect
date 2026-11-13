@@ -108,6 +108,8 @@ public class CreateJobCommandHandler : IRequestHandler<CreateJobCommand, CreateJ
             UpdatedAt = now,
             ConcurrencyToken = Guid.NewGuid(),
             StatusReason = null,
+            StatusReasonCode = JobReasonCodes.DraftCreated,
+            StatusChangedAt = now,
             SourcingTarget = request.SourcingTarget,
             SourcingPricePerCv = null,
             FeeMultiplier = null,

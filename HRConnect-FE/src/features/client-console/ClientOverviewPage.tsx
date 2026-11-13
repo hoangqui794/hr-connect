@@ -24,6 +24,8 @@ import {
   InboxOutlined,
   PlusOutlined,
   RocketOutlined,
+  RollbackOutlined,
+  SafetyCertificateOutlined,
   SolutionOutlined,
   TeamOutlined,
   ThunderboltFilled,
@@ -32,6 +34,8 @@ import dayjs from 'dayjs';
 import relativeTimePlugin from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
 import { pipelineApi, screeningApi } from '@/services/api/hrApi';
+import { financeApi } from '@/services/api/financeApi';
+import { money } from '@/features/finance-mf05/financeLabels';
 import { useMyJobs } from '@/features/jobs-mf01/useJobQueries';
 import { useAuthStore } from '@/stores/authStore';
 import { SERVICE_TYPE_LABEL, formatSalary } from '@/features/jobs-mf01/jobDisplay';
@@ -52,6 +56,53 @@ const FUNNEL = [
   { code: 'PLACED', label: 'Đã đi làm', color: 'from-emerald-500 to-emerald-600', bg: 'bg-emerald-50 text-emerald-700' },
 ] as const;
 
+const INTERVIEW_TYPE_LABEL: Record<string, string> = { ONLINE: 'Trực tuyến', OFFLINE: 'Trực tiếp', PHONE: 'Điện thoại' };
+
+/**
+ * "Trực tuyến · link" or "Trực tiếp · địa điểm"; null when the interview has none of these.
+ * A meeting link belongs to an online interview only; other types show their location.
+ */
+const interviewPlace = (iv: { interviewType: string | null; location: string | null; meetingLink: string | null }): string | null => {
+  const type = iv.interviewType ? INTERVIEW_TYPE_LABEL[iv.interviewType] ?? iv.interviewType : null;
+  const where = iv.interviewType === 'ONLINE' ? iv.meetingLink ?? iv.location : iv.location;
+  const parts = [type, where].filter(Boolean);
+  return parts.length ? parts.join(' · ') : null;
+};
+
+/** One money/commitment figure, styled like the KPI tiles above it. */
+const CommitmentTile: React.FC<{
+  title: string;
+  icon: React.ReactNode;
+  value: string;
+  note: string;
+  link: string;
+  loading?: boolean;
+  danger?: boolean;
+  onClick: () => void;
+}> = ({ title, icon, value, note, link, loading, danger, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="group flex cursor-pointer flex-col justify-between rounded-2xl border border-solid border-slate-200/90 bg-white p-5 text-left shadow-[0_2px_10px_rgba(15,23,42,0.02)] transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0284C7]"
+  >
+    <span className="flex w-full items-center justify-between">
+      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{title}</span>
+      <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-700 text-lg transition-transform group-hover:scale-105">
+        {icon}
+      </span>
+    </span>
+    <span className="my-3 block">
+      <span className="text-2xl font-black tracking-tight text-slate-900 tabular-nums">
+        {loading ? '…' : value}
+      </span>
+    </span>
+    <span className="flex w-full items-center justify-between gap-2 border-0 border-t border-solid border-slate-100 pt-3 text-xs">
+      <span className={danger ? 'font-semibold text-rose-700' : 'text-slate-500'}>{note}</span>
+      <span className="shrink-0 font-semibold text-[#0284C7]">{link}</span>
+    </span>
+  </button>
+);
+
 export const ClientOverviewPage: React.FC = () => {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -66,7 +117,9 @@ export const ClientOverviewPage: React.FC = () => {
 
   const list = jobs.data ?? [];
   const activeJobs = list.filter((j) => j.status === 'ACTIVE');
-  const needFix = list.filter((j) => j.status === 'DRAFT' || j.status === 'REJECTED').length;
+  const draftCount = list.filter((j) => j.status === 'DRAFT').length;
+  const rejectedCount = list.filter((j) => j.status === 'REJECTED').length;
+  const needFix = draftCount + rejectedCount;
   const pendingReview = list.filter((j) => j.status === 'PENDING_REVIEW').length;
   const pendingAgreements = list.filter((j) => j.status === 'PENDING_AGREEMENT').length;
 
@@ -78,10 +131,27 @@ export const ClientOverviewPage: React.FC = () => {
   });
   const perJob = shownJobIds.map((id) => ({ data: jobCounts.data?.[id] ?? 0, isLoading: jobCounts.isLoading }));
 
+  // "Sắp tới" = SCHEDULED and not in the past (a past SCHEDULED interview only lacks its result).
+  // BE filters from now and sorts nearest first; an interview without a date is left out.
   const interviews = useQuery({
     queryKey: ['client-overview', 'interviews'],
-    queryFn: async () => (await pipelineApi.interviews({ status: 'SCHEDULED', page: 1, pageSize: 4 })).items,
+    queryFn: async () =>
+      (
+        await pipelineApi.interviews({
+          status: 'SCHEDULED',
+          fromDate: new Date().toISOString(),
+          sortDirection: 'ASC',
+          page: 1,
+          pageSize: 4,
+        })
+      ).items.filter((iv) => iv.scheduledAt),
   });
+
+  const commitments = useQuery({
+    queryKey: ['client-overview', 'commitments'],
+    queryFn: () => financeApi.clientDashboardSummary(),
+  });
+  const c = commitments.data;
 
   const n = (code: (typeof FUNNEL)[number]['code']) => stageCounts.data?.[code] ?? 0;
   const totalCandidates = FUNNEL.reduce((acc, f) => acc + n(f.code), 0);
@@ -162,7 +232,7 @@ export const ClientOverviewPage: React.FC = () => {
                 <div className={`text-xl font-black tabular-nums ${pendingCVCount > 0 ? 'text-amber-700' : 'text-slate-900'}`}>
                   {pendingCVCount}
                 </div>
-                <div className="text-[11px] font-medium text-slate-600">Chờ duyệt</div>
+                <div className="text-[11px] font-medium text-slate-600">CV chờ duyệt</div>
               </div>
               <div className="rounded-xl border border-[#DCE3EC] bg-[#F4F7FA] p-2.5">
                 <div className="text-xl font-black text-[#0369A1] tabular-nums">{interviewCount}</div>
@@ -290,10 +360,10 @@ export const ClientOverviewPage: React.FC = () => {
                   </span>
                 </div>
                 <h3 className="m-0 mt-3.5 text-[15px] font-bold text-slate-900 group-hover:text-[#0284C7] transition-colors leading-snug">
-                  Phát hành Offer
+                  Offer & ngày đi làm
                 </h3>
                 <p className="m-0 mt-1.5 text-xs text-slate-500 leading-relaxed">
-                  Ứng viên phỏng vấn đạt cần gửi đề nghị hoặc xác nhận ngày đi làm.
+                  {n('OFFER_PENDING')} offer chờ ứng viên trả lời · {n('OFFER_ACCEPTED')} ứng viên đã nhận offer cần bạn xác nhận ngày đi làm.
                 </p>
               </div>
               <div className="mt-4 flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-3 text-xs font-semibold text-[#0284C7]">
@@ -307,7 +377,9 @@ export const ClientOverviewPage: React.FC = () => {
               onClick={() =>
                 pendingAgreements > 0
                   ? navigate('/client/agreements')
-                  : needFix > 0
+                  : rejectedCount > 0
+                  ? navigate('/client/jobs?status=REJECTED')
+                  : draftCount > 0
                   ? navigate('/client/jobs?status=DRAFT')
                   : navigate('/client/jobs')
               }
@@ -336,6 +408,8 @@ export const ClientOverviewPage: React.FC = () => {
                 <p className="m-0 mt-1.5 text-xs text-slate-500 leading-relaxed">
                   {pendingAgreements > 0
                     ? 'Có hợp đồng cần bạn kiểm tra và ký kết để mở tin tuyển dụng.'
+                    : needFix > 0
+                    ? `${rejectedCount} tin bị từ chối cần sửa · ${draftCount} tin nháp chưa gửi duyệt.`
                     : 'Các tin nháp hoặc tin bị yêu cầu sửa đổi cần gửi lại duyệt.'}
                 </p>
               </div>
@@ -422,7 +496,7 @@ export const ClientOverviewPage: React.FC = () => {
 
           {/* KPI 4 */}
           <div
-            onClick={() => navigate('/client/candidates?status=PLACED')}
+            onClick={() => navigate('/client/warranty')}
             className="group flex cursor-pointer flex-col justify-between rounded-2xl border border-slate-200/90 bg-white p-5 shadow-[0_2px_10px_rgba(15,23,42,0.02)] transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
           >
             <div className="flex items-center justify-between">
@@ -444,6 +518,78 @@ export const ClientOverviewPage: React.FC = () => {
         </div>
       </section>
 
+      {/* ── 3b. Money & commitments (GET /client/dashboard/summary) ──── */}
+      <section aria-labelledby="commitments-title" className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="commitments-title" className="m-0 text-base font-bold text-slate-900">
+            Tiền & cam kết
+          </h2>
+          <span className="text-xs text-slate-500">Số liệu của doanh nghiệp bạn, cập nhật khi mở trang</span>
+        </div>
+        {commitments.isError ? (
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-4 text-sm text-slate-500">
+            Chưa tải được số liệu tiền và cam kết. Vui lòng tải lại trang.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <CommitmentTile
+              title="Phí cần thanh toán"
+              icon={<DollarCircleOutlined />}
+              loading={commitments.isLoading}
+              value={c ? money(c.pendingFeesAmount, c.currencyCode) : '—'}
+              note={
+                !c || c.pendingFeesCount === 0
+                  ? 'Không có khoản phí chờ thanh toán'
+                  : c.overdueFeesCount > 0
+                  ? `${c.overdueFeesCount} khoản quá hạn · ${money(c.overdueFeesAmount, c.currencyCode)}`
+                  : c.nextFeeDueDate
+                  ? `${c.pendingFeesCount} khoản · hạn gần nhất ${dayjs(c.nextFeeDueDate).format('DD/MM/YYYY')}`
+                  : `${c.pendingFeesCount} khoản`
+              }
+              danger={Boolean(c && c.overdueFeesCount > 0)}
+              link="Công nợ →"
+              onClick={() => navigate('/client/billing')}
+            />
+            <CommitmentTile
+              title="HR Connect hoàn cho bạn"
+              icon={<RollbackOutlined />}
+              loading={commitments.isLoading}
+              value={c ? money(c.refundsOwedAmount, c.currencyCode) : '—'}
+              note={!c || c.refundsOwedCount === 0 ? 'Không có khoản hoàn đang chờ' : `${c.refundsOwedCount} khoản đang chờ chuyển`}
+              link="Công nợ →"
+              onClick={() => navigate('/client/billing')}
+            />
+            <CommitmentTile
+              title="CV Sourcing chờ phản hồi"
+              icon={<FileTextOutlined />}
+              loading={commitments.isLoading}
+              value={c ? String(c.sourcingPendingReviewCount) : '—'}
+              note={
+                c?.sourcingNearestReviewDueAt
+                  ? `Hạn phản hồi gần nhất ${dayjs(c.sourcingNearestReviewDueAt).format('DD/MM HH:mm')}`
+                  : 'Không có CV chờ phản hồi'
+              }
+              danger={Boolean(c?.sourcingNearestReviewDueAt && dayjs(c.sourcingNearestReviewDueAt).diff(dayjs(), 'hour') < 24)}
+              link="Xem CV →"
+              onClick={() => navigate('/client/candidates?service=CV_SOURCING')}
+            />
+            <CommitmentTile
+              title="Bảo hành & suất thay thế"
+              icon={<SafetyCertificateOutlined />}
+              loading={commitments.isLoading}
+              value={c ? String(c.warrantiesEndingSoonCount) : '—'}
+              note={
+                c
+                  ? `bảo hành kết thúc trong ${c.warrantyWithinDays} ngày · ${c.openReplacementSlotsCount} suất thay thế đang mở`
+                  : '—'
+              }
+              link="Bảo hành →"
+              onClick={() => navigate('/client/warranty')}
+            />
+          </div>
+        )}
+      </section>
+
       {/* ── 4. Funnel & Upcoming Interviews ──────────────────────────── */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* Phễu ứng viên (7 cols) */}
@@ -451,7 +597,7 @@ export const ClientOverviewPage: React.FC = () => {
           <div className="mb-5 flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="m-0 text-base font-bold text-slate-900">Phễu chuyển đổi tuyển dụng</h2>
+                <h2 className="m-0 text-base font-bold text-slate-900">Phân bổ hồ sơ theo giai đoạn</h2>
                 <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-[#0284C7] border border-sky-100">
                   Toàn bộ chiến dịch
                 </span>
@@ -586,6 +732,11 @@ export const ClientOverviewPage: React.FC = () => {
                       <span>·</span>
                       <span className="truncate">{iv.jobTitle}</span>
                     </div>
+                    {interviewPlace(iv) && (
+                      <div className="mt-0.5 truncate text-xs text-slate-500" title={interviewPlace(iv) ?? undefined}>
+                        {interviewPlace(iv)}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -702,14 +853,15 @@ export const ClientOverviewPage: React.FC = () => {
                         Xem hồ sơ →
                       </span>
                     </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-                      <div
-                        className="h-full rounded-full bg-[#0284C7] transition-all duration-300"
-                        style={{
-                          width: `${Math.min(100, Math.max(10, Math.round((count / (job.quantity * 5 || 10)) * 100)))}%`,
-                        }}
-                      />
-                    </div>
+                    {/* Only a job with a real application cap has a meaningful progress bar. */}
+                    {job.maxApplications ? (
+                      <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className="h-full rounded-full bg-[#0284C7] transition-all duration-300"
+                          style={{ width: `${Math.min(100, Math.round((count / job.maxApplications) * 100))}%` }}
+                        />
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               );

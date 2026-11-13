@@ -115,7 +115,7 @@ public sealed record JobListItemDto(
             hasSignedAgreement,
             agreement?.Status,
             agreement?.ChangeRequestReason,
-            job.Status == JobStatuses.Active || (job.StatusReason != null && (job.StatusReason.Contains("DEPOSIT_SUBMITTED") || job.StatusReason.Contains("Đã nộp cọc"))))
+            JobTransitions.HasSubmittedDeposit(job))
         {
             Company = PublicCompanyDto.From(job.Company, logoUrlResolver)
         };
@@ -154,6 +154,24 @@ public sealed record JobDto(
 
     /// <summary>The job's latest posting fee, so the Client billing page needs no request per job (C-07).</summary>
     public JobPostingFeeSummaryDto? PostingFee { get; init; }
+
+    /// <summary>When the Client last sent the job for review.</summary>
+    public DateTime? SubmittedAt { get; init; }
+
+    /// <summary>When the job last changed status.</summary>
+    public DateTime? StatusChangedAt { get; init; }
+
+    /// <summary>Reason code of the last status change (JobReasonCodes), e.g. PAUSED_BY_CLIENT, CLOSED_EXPIRED.</summary>
+    public string? StatusReasonCode { get; init; }
+
+    /// <summary>When the Client reported paying the CV_SOURCING deposit.</summary>
+    public DateTime? DepositSubmittedAt { get; init; }
+
+    /// <summary>CV_SOURCING: amount of the deposit fee BE issued (ServiceFee DEPOSIT); null until it exists.</summary>
+    public decimal? DepositAmount { get; init; }
+
+    /// <summary>CV_SOURCING: due date of the open deposit fee; null when nothing is due.</summary>
+    public DateOnly? PaymentDueAt { get; init; }
 
     /// <summary>Count of accepted/auto-accepted CV deliveries for CV_SOURCING jobs.</summary>
     public int? SourcingCounted { get; init; }
@@ -227,10 +245,14 @@ public sealed record JobDto(
                 (!string.IsNullOrWhiteSpace(a.SignedDocumentStorageKey) || a.SignedAt != null || a.Status == "SIGNED"),
             (job.CurrentServiceAgreement ?? job.ServiceAgreements?.FirstOrDefault(x => x.IsCurrent))?.Status,
             (job.CurrentServiceAgreement ?? job.ServiceAgreements?.FirstOrDefault(x => x.IsCurrent))?.ChangeRequestReason,
-            job.Status == JobStatuses.Active || (job.StatusReason != null && (job.StatusReason.Contains("DEPOSIT_SUBMITTED") || job.StatusReason.Contains("Đã nộp cọc"))))
+            JobTransitions.HasSubmittedDeposit(job))
         {
             CompanyLogoUrl = job.Company is null ? null : logoUrlResolver?.Resolve(job.Company) ?? job.Company.LogoUrl,
             PostingFee = JobPostingFeeSummaryDto.From(job.JobPostingFees?.OrderByDescending(x => x.CreatedAt).FirstOrDefault(), job.PostingPackage?.Name),
+            SubmittedAt = job.SubmittedAt,
+            StatusChangedAt = job.StatusChangedAt,
+            StatusReasonCode = job.StatusReasonCode,
+            DepositSubmittedAt = job.DepositSubmittedAt,
         };
     }
 }
@@ -352,7 +374,7 @@ public sealed record JobDetailDto(
                 (!string.IsNullOrWhiteSpace(ag.SignedDocumentStorageKey) || ag.SignedAt != null || ag.Status == "SIGNED"),
             (job.CurrentServiceAgreement ?? job.ServiceAgreements?.FirstOrDefault(x => x.IsCurrent))?.Status,
             (job.CurrentServiceAgreement ?? job.ServiceAgreements?.FirstOrDefault(x => x.IsCurrent))?.ChangeRequestReason,
-            job.Status == JobStatuses.Active || (job.StatusReason != null && (job.StatusReason.Contains("DEPOSIT_SUBMITTED") || job.StatusReason.Contains("Đã nộp cọc"))));
+            JobTransitions.HasSubmittedDeposit(job));
     }
 }
 
@@ -428,6 +450,15 @@ public static class JobTransitions
             }
         };
 
+    /// <summary>
+    /// True once the job is live or the Client has reported paying the deposit. Reads the persisted
+    /// DepositSubmittedAt; the StatusReason text check only covers rows written before that column existed.
+    /// </summary>
+    public static bool HasSubmittedDeposit(Job job) =>
+        job.Status == JobStatuses.Active
+        || job.DepositSubmittedAt != null
+        || (job.StatusReason != null && (job.StatusReason.Contains("DEPOSIT_SUBMITTED") || job.StatusReason.Contains("Đã nộp cọc")));
+
     public static bool IsAllowed(string currentStatus, string newStatus) =>
         AllowedTransitions.TryGetValue(currentStatus, out var allowed) && allowed.Contains(newStatus);
 
@@ -440,6 +471,12 @@ public static class JobTransitions
         var now = DateTime.UtcNow;
         job.Status = newStatus;
         job.StatusReason = reasonText;
+        job.StatusReasonCode = reasonCode;
+        job.StatusChangedAt = now;
+        if (newStatus == JobStatuses.PendingReview)
+        {
+            job.SubmittedAt = now;
+        }
         job.UpdatedAt = now;
         job.ConcurrencyToken = Guid.NewGuid();
         job.JobStatusHistories.Add(new JobStatusHistory

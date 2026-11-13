@@ -1,6 +1,6 @@
 # Hướng dẫn Test Luồng MF-05 trên Máy Cá Nhân (Cho Tester)
 
-Tài liệu này hướng dẫn Tester tự thiết lập dữ liệu **4 Job Headhunt mới**, danh sách **tài khoản Ứng viên & các vai trò**, và các bước kiểm thử đầy đủ cho **luồng MF-05** (Nhận việc, Bảo hành, Công nợ phí, Suất thay thế, Hoàn phí 30% và Hoa hồng Affiliate) ngay trên máy cá nhân.
+Tài liệu này hướng dẫn Tester tự thiết lập dữ liệu **4 Job Headhunt mới**, danh sách **tài khoản Ứng viên & các vai trò**, và các bước kiểm thử đầy đủ cho **luồng MF-05** (Nhận việc, Bảo hành, Công nợ phí, Suất thay thế, Hoàn phí khi hết hạn suất thay thế và Hoa hồng Affiliate) ngay trên máy cá nhân.
 
 > **🤖 Nếu Tester gửi file này cho AI Assistant / Chat để tự động setup:**  
 > Hãy thực hiện tuần tự các bước sau:
@@ -104,7 +104,7 @@ Khi Affiliate giới thiệu ứng viên vào Job Headhunt, hệ thống bắt b
    - Sau 1 ngày (hoặc cập nhật `end_date = NOW() - INTERVAL '1 hour'` trong bảng `warranty` để test ngay mà không phải chờ), Worker chạy sẽ chuyển bảo hành sang `PASSED`, hoa hồng Affiliate chuyển sang `EARNED` và bắn thông báo realtime cho Admin.
    - Admin vào `/admin/payouts` -> **Duyệt** và **Chi trả** hoa hồng cho Affiliate.
 
-### Kịch bản 2: Nhánh Ứng viên nghỉ việc -> Suất thay thế -> Hoàn phí 30%
+### Kịch bản 2: Nhánh Ứng viên nghỉ việc -> Suất thay thế -> Hoàn phí
 1. Thực hiện các bước 1 → 5 ở Kịch bản 1 trên Job thứ 2 (`[Headhunt] Staff Frontend Architect`) với ứng viên `candidate@gmail.com` (`0900000001`).
 2. Khi đang trong thời gian bảo hành (`WARRANTY_ACTIVE`) và **Client đã thanh toán phí dịch vụ**:
    - **Client** vào `/client/warranty` -> bấm **Báo ứng viên nghỉ việc** (chọn lý do).
@@ -112,4 +112,6 @@ Khi Affiliate giới thiệu ứng viên vào Job Headhunt, hệ thống bắt b
    - Hệ thống mở **Suất tuyển người thay thế** (thời hạn 1 ngày, tự gia hạn 1 ngày).
 3. Kiểm tra 2 nhánh con:
    - **Nhánh thay thế thành công:** Affiliate giới thiệu ứng viên khác (`candidate2@gmail.com` / `0900000011`) vào chính Job đó -> đi hết quy trình đến khi nhận việc -> Suất thay thế được lấp đầy.
-   - **Nhánh hết hạn suất thay thế (Hoàn phí 30%):** Để suất thay thế hết hạn (hoặc tua `expires_at = NOW() - INTERVAL '1 hour'` trong bảng `replacement_slot` — nếu chưa gia hạn thì cần qua 2 chu kỳ worker hoặc set `extended_at` kèm `expires_at` về quá khứ) -> Hệ thống tự động tạo khoản **Hoàn phí 30%** (`REPLACEMENT_REFUND`), hiển thị badge *"Đã hoàn 30% phí"* tại `/client/warranty`, chi tiết ứng viên + ngày hết hạn tại `/client/billing`, và bắn thông báo realtime cho **Platform Admin**.
+   - **Nhánh hết hạn suất thay thế (Hoàn phí):** Để suất thay thế hết hạn (hoặc tua `expires_at = NOW() - INTERVAL '1 hour'` trong bảng `replacement_slot` — nếu chưa gia hạn thì cần qua 2 chu kỳ worker hoặc set `extended_at` kèm `expires_at` về quá khứ) -> Hệ thống tự động tạo khoản **Hoàn phí** (`REPLACEMENT_REFUND`) theo tỷ lệ cấu hình `mf05.replacement.refund_percent` (mặc định 30%, Admin đổi được tại `/admin/settings`), chi tiết ứng viên + ngày hết hạn tại `/client/billing`, và bắn thông báo realtime cho **Platform Admin**.
+     - Tại `/client/warranty`, cột trạng thái của suất hết hạn hiện badge lấy từ khoản hoàn thật: *"Chờ hoàn {x}% ({số tiền})"* khi khoản hoàn còn `PENDING`, đổi thành *"Đã hoàn {x}% ({số tiền})"* khi đã `PAID`. Nếu chưa có khoản hoàn thì hiện *"Đang xử lý hoàn phí"*.
+     - Banner phía Client ghi *"Suất tuyển thay thế đã hết hạn & được hoàn một phần phí dịch vụ theo hợp đồng"* (không còn ghi cứng 30%).

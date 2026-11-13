@@ -91,6 +91,15 @@ public interface IFinanceRepository
     Task<IReadOnlyList<ReplacementSlot>> GetReplacementSlotsByJobAsync(Guid jobId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// One company's open money and commitments for the Client dashboard: unpaid fees it owes
+    /// (PLACEMENT, DEPOSIT, SETTLEMENT), refunds/credits owed to it, delivered sourcing CVs awaiting its
+    /// answer, ACTIVE warranties ending between today and <paramref name="warrantyUntil"/>, and OPEN or
+    /// WAITING_PAYMENT replacement slots.
+    /// </summary>
+    Task<HRConnect.Application.Features.Finance.Queries.ClientDashboardSnapshot> GetClientDashboardSnapshotAsync(
+        Guid companyId, DateOnly today, DateOnly warrantyUntil, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Slots across jobs, paged, with job/company and candidate names loaded. <paramref name="companyId"/>
     /// limits to one company (Client caller). Ordered OPEN, WAITING_PAYMENT, FILLED, EXPIRED, CANCELLED, newest first.
     /// </summary>

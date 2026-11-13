@@ -51,6 +51,9 @@ export const placementApi = {
         confirmedBy: raw.confirmedBy ?? null,
         confirmedByName: raw.confirmedByName ?? null,
         confirmationNote: raw.confirmationNote ?? null,
+        isReplacement: Boolean(raw.isReplacement),
+        replacementSlotId: raw.replacementSlotId ?? null,
+        replacesPlacementId: raw.replacesPlacementId ?? null,
         candidate: {
           candidateId: raw.candidate?.candidateId ?? '',
           fullName: raw.candidate?.fullName ?? 'Ứng viên',

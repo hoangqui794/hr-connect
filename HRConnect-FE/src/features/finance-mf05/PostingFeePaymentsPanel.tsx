@@ -72,6 +72,7 @@ export const PostingFeePaymentsPanel: React.FC<{ enabled: boolean }> = ({ enable
     <>
       {jobs.isError && <Alert className="mb-4" type="error" showIcon message={getApiErrorMessage(jobs.error)} />}
       <Table
+        className="admin-soft-table"
         rowKey="jobId"
         columns={columns}
         dataSource={jobs.data}

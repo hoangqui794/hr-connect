@@ -51,6 +51,7 @@ Tin đi từ Nháp → Chờ duyệt → Đang tuyển (hoặc Bị từ chối)
 | 01-16 | Khách, Candidate, Affiliate | Trang chủ, /candidate/jobs, /affiliate/jobs | Xem danh sách việc làm của từng vai trò; mở thẳng URL tin không được xem | Khách và Candidate chỉ thấy tin AP; Affiliate chỉ thấy tin HH và SS. URL không được xem bị chặn | Đạt |
 | 01-17 | Internal HR | /hr/job-templates | Tạo, sửa, ẩn một mẫu JD (mẫu phải có ít nhất 1 yêu cầu Bắt buộc) | Client không còn tìm thấy mẫu đã ẩn; tin tạo từ mẫu trước đó không đổi | Đạt |
 | 01-18 | Client | /client/company | Đổi logo công ty bằng ảnh 8–10 MB, rồi thử file trên 10 MB | Ảnh ≤ 10 MB lưu được và hiển thị ở tin; trên 10 MB báo lỗi ngay | |
+| 01-19 | Client | /client/jobs → mở chi tiết tin | Mở chi tiết tin đã chọn gói đăng tin và có đặt hạn nhận hồ sơ | Dòng Gói đăng tin hiện thêm số tiền phí (lấy từ phí đăng tin của tin). Có dòng Hạn nhận hồ sơ đúng ngày đã đặt; tin không đặt hạn thì không có dòng này | |
 
 ## MF-02 Nộp hồ sơ và giới thiệu ứng viên
 
@@ -99,6 +100,7 @@ Mọi hồ sơ được AI chấm điểm theo yêu cầu Bắt buộc và Ưu t
 | 03-14 | Client | /client/jobs/:id/sourcing | Từ chối CV: bỏ trống lý do → chọn mã lý do; thêm một lần chọn lý do Khác | Thiếu lý do bị chặn. Lý do Khác chuyển HR xác minh | |
 | 03-15 | Internal HR | /hr/screening | Xác minh lý do Khác: một lần bác bỏ, một lần chấp nhận → thay CV bằng CV dự phòng | Bác bỏ = tính như đã chấp nhận. Chấp nhận: CV cũ Đã thay, CV mới có hạn xem xét mới | |
 | 03-16 | Internal HR | Drawer hồ sơ | Thu nhỏ cửa sổ về 800px và 375px | Drawer không tràn màn hình, nút bấm được | |
+| 03-17 | Client | /client/candidates (danh sách và ?view=board) | Xem hồ sơ đã có lịch phỏng vấn, hồ sơ đã có offer và hồ sơ chưa có gì | Hồ sơ có offer: dòng "Offer: {trạng thái} · {lương}". Hồ sơ chỉ có phỏng vấn: dòng "PV vòng {n} · dd/MM HH:mm · {trạng thái hoặc kết quả}". Hồ sơ chưa có gì: không có dòng này | |
 
 ## MF-04 Phỏng vấn, offer và đi làm
 
@@ -163,6 +165,7 @@ Client thanh toán từng khoản qua VNPay, khoản phí tự chuyển Đã tha
 | 05-23 | Client | /client/billing | Mở Thanh toán, xem mục Hoặc chuyển khoản, bấm sao chép số tài khoản và nội dung chuyển khoản | Có ngân hàng, số tài khoản, chủ tài khoản, nội dung; sao chép báo thành công; không có nút tự xác nhận đã trả | Đạt |
 | 05-24 | Admin | /admin/finance › Công nợ phí | Ghi nhận đã thu một phí dịch vụ HH hoặc cọc SS (trước 30/10 lỗi 500) | Lưu thành công, Client nhận thông báo, /client/billing đổi Đã thanh toán | |
 | 05-25 | Client, Internal HR | /client/warranty, /hr/screening | Báo ứng viên nghỉ trong bảo hành; HR giao CV Sourcing (cả hai từng lỗi 500) | Thao tác thành công và người nhận có thông báo | |
+| 05-26 | Client, Internal HR | /client/placements/:id, /hr/placements/:id | Mở chi tiết nhận việc của người thay thế (đã lấp suất thay thế) và của người tuyển mới | Người thay thế có nhãn tím "Người thay thế – không tính phí mới"; người tuyển mới không có nhãn | |
 
 ## Kiểm tra chung
 
