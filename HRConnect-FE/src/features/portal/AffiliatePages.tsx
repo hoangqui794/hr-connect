@@ -411,31 +411,143 @@ export const AffiliateSubmitPage: React.FC = () => {
     },
   });
 
+  const submittedId = submit.isSuccess ? submit.data.data.submissionId : undefined;
+  const initialStatus = submit.isSuccess ? submit.data.data.status : undefined;
+
+  const liveSubmission = useQuery({
+    queryKey: [...keys.submissions, 'detail', submittedId],
+    queryFn: () => affiliateApi.submissionDetail(submittedId!),
+    enabled: Boolean(submittedId),
+    refetchInterval: (query) => {
+      const st = query.state.data?.status ?? initialStatus;
+      return st && WAITING_STATUSES.includes(st) ? 2500 : false;
+    },
+  });
+
+  const liveStatus = liveSubmission.data?.status ?? initialStatus;
+
+  useEffect(() => {
+    if (!submittedId || !liveStatus || WAITING_STATUSES.includes(liveStatus)) return;
+    void queryClient.invalidateQueries({ queryKey: keys.submissions });
+    void queryClient.invalidateQueries({ queryKey: ['aff-attributions'] });
+    void queryClient.invalidateQueries({ queryKey: ['aff-referrals'] });
+  }, [submittedId, liveStatus, queryClient]);
+
   if (submit.isSuccess) {
     const d = submit.data.data;
+    const live = liveSubmission.data;
+    const status = live?.status ?? d.status;
+    const resetToAnother = () => {
+      submit.reset();
+      setFile(null);
+      form.resetFields(['fullName', 'email', 'phone', 'candidateId', 'cvId', 'note']);
+    };
+
+    if (status === 'ACCEPTED') {
+      return (
+        <Surface className="mx-auto max-w-2xl p-6">
+          <Result
+            status="success"
+            icon={<CheckCircleOutlined className="!text-emerald-600" />}
+            title="Ứng viên đã đồng ý xác nhận!"
+            subTitle={
+              live
+                ? `Hồ sơ của ${live.candidateName} cho vị trí "${live.jobTitle}" đã được chuyển vào quy trình tuyển dụng và kích hoạt quyền ghi nhận của bạn.`
+                : 'Hồ sơ đã được chuyển vào quy trình tuyển dụng và quyền ghi nhận của bạn đã được kích hoạt.'
+            }
+            extra={[
+              <Button key="detail" type="primary" onClick={() => navigate(`/affiliate/submissions/${d.submissionId}`)}>
+                Xem chi tiết lượt giới thiệu
+              </Button>,
+              <Button key="list" onClick={() => navigate('/affiliate/submissions')}>
+                Danh sách giới thiệu
+              </Button>,
+              <Button key="again" onClick={resetToAnother}>
+                Giới thiệu người khác
+              </Button>,
+            ]}
+          />
+          {live && (
+            <div className="mt-2 grid grid-cols-1 gap-2 rounded-xl border border-solid border-emerald-200 bg-emerald-50/50 p-4 text-xs sm:grid-cols-3">
+              <div>
+                <div className="text-slate-500">Ứng viên</div>
+                <div className="mt-0.5 font-semibold text-slate-900">{live.candidateName}</div>
+              </div>
+              <div>
+                <div className="text-slate-500">Vị trí</div>
+                <div className="mt-0.5 font-semibold text-slate-900">{live.jobTitle}</div>
+              </div>
+              <div>
+                <div className="text-slate-500">Xác nhận lúc</div>
+                <div className="mt-0.5 font-semibold tabular-nums text-slate-900">{fmt(live.consentRespondedAt ?? live.updatedAt)}</div>
+              </div>
+            </div>
+          )}
+        </Surface>
+      );
+    }
+
+    if (status === 'CONSENT_REJECTED' || status === 'CONSENT_EXPIRED' || status === 'BLOCKED_DUPLICATE') {
+      const rejected = status === 'CONSENT_REJECTED';
+      const expired = status === 'CONSENT_EXPIRED';
+      return (
+        <Surface className="mx-auto max-w-2xl p-6">
+          <Result
+            status="warning"
+            icon={rejected ? <CloseCircleOutlined className="!text-rose-600" /> : <ClockCircleOutlined className="!text-amber-600" />}
+            title={
+              rejected
+                ? 'Ứng viên đã từ chối xác nhận'
+                : expired
+                  ? 'Yêu cầu xác nhận đã hết hạn'
+                  : 'Lượt giới thiệu bị chặn do trùng lặp'
+            }
+            subTitle={live?.reason || 'Hồ sơ này không thể tiếp tục quy trình ứng tuyển.'}
+            extra={[
+              <Button key="list" type="primary" onClick={() => navigate('/affiliate/submissions')}>
+                Xem lượt giới thiệu
+              </Button>,
+              <Button key="again" onClick={resetToAnother}>
+                Giới thiệu người khác
+              </Button>,
+            ]}
+          />
+        </Surface>
+      );
+    }
+
     return (
       <Surface className="mx-auto max-w-2xl p-6">
         <Result
           status="success"
           icon={<MailOutlined className="!text-[color:var(--console-accent)]" />}
-          title={d.emailDeliveryStatus === 'FAILED' ? 'Đã lưu hồ sơ, cần gửi lại email xác nhận' : 'Đã gửi yêu cầu xác nhận cho ứng viên'}
-          subTitle={`Lượt giới thiệu đang chờ ứng viên xác nhận${d.consentExpiresAt ? ` đến ${fmt(d.consentExpiresAt)}` : ''}. Quy trình ứng tuyển và quyền ghi nhận của bạn sẽ bắt đầu sau khi ứng viên đồng ý.`}
+          title={
+            status === 'PENDING_IDENTITY_REVIEW'
+              ? 'Đang chờ Admin xác minh định danh ứng viên'
+              : d.emailDeliveryStatus === 'FAILED'
+                ? 'Đã lưu hồ sơ, cần gửi lại email xác nhận'
+                : 'Đã gửi yêu cầu xác nhận cho ứng viên'
+          }
+          subTitle={
+            status === 'PENDING_IDENTITY_REVIEW'
+              ? 'Ứng viên đã phản hồi nhưng phát hiện trùng khớp định danh cần Admin kiểm tra trước khi chuyển tiếp.'
+              : `Lượt giới thiệu đang chờ ứng viên xác nhận${d.consentExpiresAt ? ` đến ${fmt(d.consentExpiresAt)}` : ''}. Quy trình ứng tuyển và quyền ghi nhận của bạn sẽ bắt đầu sau khi ứng viên đồng ý.`
+          }
           extra={[
             <Button key="list" type="primary" onClick={() => navigate('/affiliate/submissions')}>
               Xem lượt giới thiệu
             </Button>,
-            <Button
-              key="again"
-              onClick={() => {
-                submit.reset();
-                setFile(null);
-                form.resetFields(['fullName', 'email', 'phone', 'candidateId', 'cvId', 'note']);
-              }}
-            >
+            <Button key="again" onClick={resetToAnother}>
               Giới thiệu người khác
             </Button>,
           ]}
         />
+        <div className="mb-3 flex justify-center">
+          <span className="inline-flex items-center gap-2 rounded-full border border-solid border-sky-200 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-800">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-sky-500" />
+            Đang theo dõi phản hồi từ ứng viên theo thời gian thực…
+          </span>
+        </div>
         {d.emailDeliveryStatus === 'FAILED' && (
           <Alert
             type="warning"
