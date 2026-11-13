@@ -289,7 +289,7 @@ export const ClientVnPayReturnPage: React.FC = () => {
     return (
       <div className={`${FONT} mx-auto max-w-[600px] py-6 animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
         <div className="overflow-hidden rounded-2xl border border-solid border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-solid border-slate-100 bg-sky-50/60 px-6 py-6 text-center">
+          <div className="border-0 border-b border-solid border-slate-100 bg-sky-50/60 px-6 py-6 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0369A1] text-white shadow-sm">
               <LoadingOutlined spin className="text-xl" />
             </div>
@@ -319,7 +319,7 @@ export const ClientVnPayReturnPage: React.FC = () => {
     return (
       <div className={`${FONT} mx-auto max-w-[600px] py-6 animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
         <div className="overflow-hidden rounded-2xl border border-solid border-red-200 bg-white shadow-sm">
-          <div className="border-b border-solid border-red-100 bg-red-50/60 px-6 py-6 text-center">
+          <div className="border-0 border-b border-solid border-red-100 bg-red-50/60 px-6 py-6 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-red-600">
               <CloseCircleFilled className="text-2xl" />
             </div>
@@ -352,7 +352,7 @@ export const ClientVnPayReturnPage: React.FC = () => {
     return (
       <div className={`${FONT} mx-auto max-w-[600px] py-6 animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
         <div className="overflow-hidden rounded-2xl border border-solid border-emerald-200 bg-white shadow-sm">
-          <div className="border-b border-solid border-emerald-100 bg-emerald-50/60 px-6 py-6 text-center">
+          <div className="border-0 border-b border-solid border-emerald-100 bg-emerald-50/60 px-6 py-6 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-sm">
               <CheckCircleFilled className="text-2xl" />
             </div>
@@ -392,7 +392,7 @@ export const ClientVnPayReturnPage: React.FC = () => {
     return (
       <div className={`${FONT} mx-auto max-w-[600px] py-6 animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
         <div className="overflow-hidden rounded-2xl border border-solid border-sky-200 bg-white shadow-sm">
-          <div className="border-b border-solid border-sky-100 bg-sky-50/60 px-6 py-6 text-center">
+          <div className="border-0 border-b border-solid border-sky-100 bg-sky-50/60 px-6 py-6 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0369A1] text-white shadow-sm">
               {pollingExhausted ? <ClockCircleFilled className="text-2xl" /> : <LoadingOutlined spin className="text-xl" />}
             </div>
@@ -433,7 +433,7 @@ export const ClientVnPayReturnPage: React.FC = () => {
     return (
       <div className={`${FONT} mx-auto max-w-[600px] py-6 animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
         <div className="overflow-hidden rounded-2xl border border-solid border-amber-200 bg-white shadow-sm">
-          <div className="border-b border-solid border-amber-100 bg-amber-50/70 px-6 py-6 text-center">
+          <div className="border-0 border-b border-solid border-amber-100 bg-amber-50/70 px-6 py-6 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-sm">
               <ExclamationCircleFilled className="text-2xl" />
             </div>
@@ -462,7 +462,7 @@ export const ClientVnPayReturnPage: React.FC = () => {
   return (
     <div className={`${FONT} mx-auto max-w-[600px] py-6 animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
       <div className="overflow-hidden rounded-2xl border border-solid border-red-200 bg-white shadow-sm">
-        <div className="border-b border-solid border-red-100 bg-red-50/60 px-6 py-6 text-center">
+        <div className="border-0 border-b border-solid border-red-100 bg-red-50/60 px-6 py-6 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-red-600 text-white shadow-sm">
             <CloseCircleFilled className="text-2xl" />
           </div>
