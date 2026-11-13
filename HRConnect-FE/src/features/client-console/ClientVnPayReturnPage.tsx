@@ -3,7 +3,7 @@
  * @description Where VNPay sends the Client back after paying (/client/billing/vnpay-return?vnp_...). The signed query
  * goes to the backend, which confirms the payment if VNPay's IPN has not already, and the page shows the outcome.
  */
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation } from 'react-router-dom';
 import { Button, Result, Spin } from 'antd';
@@ -15,23 +15,41 @@ const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 
 // VNPay response code 24 = the customer cancelled on VNPay.
 const CANCELLED = '24';
+const MAX_PENDING_POLLS = 15;
+const PENDING_POLL_INTERVAL_MS = 2000;
 
 export const ClientVnPayReturnPage: React.FC = () => {
   const { search } = useLocation();
   const queryClient = useQueryClient();
+  const pollCountRef = useRef(0);
+
+  useEffect(() => {
+    pollCountRef.current = 0;
+  }, [search]);
+
   const result = useQuery({
     queryKey: ['vnpay-return', search],
     queryFn: () => vnPayApi.confirmReturn(search),
     enabled: search.includes('vnp_'),
-    retry: false,
+    retry: 1,
+    retryDelay: 1000,
     staleTime: Infinity,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      if ((status === 'PENDING' || status === 'PROCESSING') && pollCountRef.current < MAX_PENDING_POLLS) {
+        pollCountRef.current += 1;
+        return PENDING_POLL_INTERVAL_MS;
+      }
+      return false;
+    },
   });
 
   useEffect(() => {
-    if (result.data) {
+    const status = result.data?.status;
+    if (status === 'SUCCEEDED' || status === 'NEEDS_REVIEW' || status === 'FAILED') {
       void queryClient.invalidateQueries({ queryKey: ['client-billing'] });
     }
-  }, [result.data, queryClient]);
+  }, [result.data?.status, queryClient]);
 
   const back = (
     <Link to="/client/billing">
