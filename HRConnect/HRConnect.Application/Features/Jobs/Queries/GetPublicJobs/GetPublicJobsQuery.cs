@@ -32,9 +32,13 @@ public sealed class GetPublicJobsQueryHandler : IRequestHandler<GetPublicJobsQue
 {
     private readonly IJobRepository _jobs;
     private readonly ICompanyLogoUrlResolver? _logoUrlResolver;
+    private readonly ISourcingDeliveryRepository? _sourcingDeliveries;
 
-    public GetPublicJobsQueryHandler(IJobRepository jobs, ICompanyLogoUrlResolver? logoUrlResolver = null)
-        => (_jobs, _logoUrlResolver) = (jobs, logoUrlResolver);
+    public GetPublicJobsQueryHandler(
+        IJobRepository jobs,
+        ICompanyLogoUrlResolver? logoUrlResolver = null,
+        ISourcingDeliveryRepository? sourcingDeliveries = null)
+        => (_jobs, _logoUrlResolver, _sourcingDeliveries) = (jobs, logoUrlResolver, sourcingDeliveries);
 
     public async Task<JobPageDto> Handle(GetPublicJobsQuery request, CancellationToken cancellationToken)
     {
@@ -88,8 +92,27 @@ public sealed class GetPublicJobsQueryHandler : IRequestHandler<GetPublicJobsQue
             cancellationToken,
             request.IndustryId);
 
+        var canSeeSourcingProgress = request.HasInternalAccess ||
+            roleCodes.Any(r => string.Equals(r, "AFFILIATE", StringComparison.OrdinalIgnoreCase));
+        var sourcingJobIds = canSeeSourcingProgress && _sourcingDeliveries is not null
+            ? items
+                .Where(j => string.Equals(j.ServiceType?.Code, "CV_SOURCING", StringComparison.OrdinalIgnoreCase))
+                .Select(j => j.JobId)
+                .Distinct()
+                .ToHashSet()
+            : [];
+        var countedByJob = sourcingJobIds.Count == 0 || _sourcingDeliveries is null
+            ? null
+            : await _sourcingDeliveries.GetCountedCountsByJobIdsAsync(sourcingJobIds, cancellationToken);
+
         return new JobPageDto(
-            items.Select(job => JobDto.From(job, logoUrlResolver: _logoUrlResolver)).ToList(),
+            items.Select(job =>
+            {
+                var dto = JobDto.From(job, logoUrlResolver: _logoUrlResolver);
+                return countedByJob is not null && sourcingJobIds.Contains(job.JobId)
+                    ? dto with { SourcingCounted = countedByJob.GetValueOrDefault(job.JobId, 0) }
+                    : dto;
+            }).ToList(),
             page,
             pageSize,
             totalCount,

@@ -871,6 +871,14 @@ export const ApplicationWorkbench: React.FC<{
           {/* Sourcing Delivery Info (MF-03) */}
           {isCvSourcing && (
             <Panel title="Dịch vụ CV Sourcing">
+              {sourcingDeliveries.data?.summary?.sourcingTarget ? (
+                <div className="mb-2.5 flex items-center justify-between rounded-lg bg-sky-50/80 border border-sky-200/70 px-3 py-1.5 text-xs">
+                  <span className="text-slate-600 font-medium">Tiến độ đã nhận của tin</span>
+                  <span className="font-semibold text-sky-700 tabular-nums">
+                    {sourcingDeliveries.data.summary.counted}/{sourcingDeliveries.data.summary.sourcingTarget} CV
+                  </span>
+                </div>
+              ) : null}
               {sourcingDelivery ? (
                 <div className="space-y-2 text-sm">
                   <Row label="Trạng thái bàn giao">

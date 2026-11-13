@@ -279,6 +279,9 @@ public sealed record JobDetailDto(
     string? AgreementChangeRequestReason = null,
     bool HasSubmittedDeposit = false)
 {
+    /// <summary>Count of accepted/auto-accepted CV deliveries for CV_SOURCING jobs.</summary>
+    public int? SourcingCounted { get; init; }
+
     public static JobDetailDto From(Job job, bool includeStatusHistories = false, bool isReviewer = false,
         ICompanyLogoUrlResolver? logoUrlResolver = null)
     {
