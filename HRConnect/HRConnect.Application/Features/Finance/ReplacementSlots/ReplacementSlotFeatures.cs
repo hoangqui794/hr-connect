@@ -2,6 +2,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.Finance.Queries;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using MediatR;
@@ -27,13 +28,22 @@ public sealed record ReplacementSlotDto(
     DateTime? ClosedAt,
     string? CancelReason,
     Guid ConcurrencyToken,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string? JobTitle = null,
+    string? CompanyName = null);
 
 /// <summary>
 /// Slots of one job. <paramref name="ClientUserId"/> is set for a Client caller, who may only
 /// see jobs of their own company.
 /// </summary>
 public sealed record GetJobReplacementSlotsQuery(Guid JobId, Guid? ClientUserId) : IRequest<IReadOnlyList<ReplacementSlotDto>>;
+
+/// <summary>
+/// Slots across jobs, paged. <paramref name="ClientUserId"/> is set for a Client caller, who only
+/// sees slots of their own company's jobs; platform roles see every company.
+/// </summary>
+public sealed record GetReplacementSlotsQuery(Guid? ClientUserId, Guid? JobId, string? Status, int Page, int PageSize)
+    : IRequest<PagedResult<ReplacementSlotDto>>;
 
 /// <summary>Internal HR cancels a WAITING_PAYMENT or OPEN slot (S4), e.g. the Client no longer needs a replacement. No refund.</summary>
 public sealed record CancelReplacementSlotCommand(
@@ -66,6 +76,36 @@ public sealed class GetJobReplacementSlotsQueryHandler : IRequestHandler<GetJobR
 
         var slots = await _financeRepository.GetReplacementSlotsByJobAsync(request.JobId, cancellationToken);
         return slots.Select(ReplacementSlotMapping.ToDto).ToList();
+    }
+}
+
+public sealed class GetReplacementSlotsQueryHandler : IRequestHandler<GetReplacementSlotsQuery, PagedResult<ReplacementSlotDto>>
+{
+    private readonly IFinanceRepository _financeRepository;
+    private readonly ICompanyUserRepository _companyUserRepository;
+
+    public GetReplacementSlotsQueryHandler(IFinanceRepository financeRepository, ICompanyUserRepository companyUserRepository)
+    {
+        _financeRepository = financeRepository;
+        _companyUserRepository = companyUserRepository;
+    }
+
+    public async Task<PagedResult<ReplacementSlotDto>> Handle(GetReplacementSlotsQuery request, CancellationToken cancellationToken)
+    {
+        var page = Math.Max(1, request.Page);
+        var pageSize = Math.Clamp(request.PageSize, 1, 100);
+        Guid? companyId = null;
+        if (request.ClientUserId is Guid clientUserId)
+        {
+            var companyUser = await _companyUserRepository.GetByUserIdAsync(clientUserId, cancellationToken)
+                ?? throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
+            companyId = companyUser.CompanyId;
+        }
+
+        var status = string.IsNullOrWhiteSpace(request.Status) ? null : request.Status.Trim().ToUpperInvariant();
+        var (items, total) = await _financeRepository.GetReplacementSlotsAsync(
+            companyId, request.JobId, status, page, pageSize, cancellationToken);
+        return new PagedResult<ReplacementSlotDto>(items.Select(ReplacementSlotMapping.ToDto).ToList(), total, page, pageSize);
     }
 }
 
@@ -145,7 +185,9 @@ internal static class ReplacementSlotMapping
         slot.ClosedAt,
         slot.CancelReason,
         slot.ConcurrencyToken,
-        slot.CreatedAt);
+        slot.CreatedAt,
+        slot.Job?.Title,
+        slot.Job?.Company?.CompanyName);
 
     public static ReplacementSummaryDto ToSummary(ReplacementSlot slot) =>
         new(slot.ReplacementSlotId, slot.JobId, slot.Status, slot.ExpiresAt);

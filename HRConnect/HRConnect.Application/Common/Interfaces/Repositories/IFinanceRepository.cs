@@ -90,6 +90,13 @@ public interface IFinanceRepository
     /// <summary>The job's slots with leaver and replacement candidate names (read-only), newest first.</summary>
     Task<IReadOnlyList<ReplacementSlot>> GetReplacementSlotsByJobAsync(Guid jobId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Slots across jobs, paged, with job/company and candidate names loaded. <paramref name="companyId"/>
+    /// limits to one company (Client caller). Ordered OPEN, WAITING_PAYMENT, FILLED, EXPIRED, CANCELLED, newest first.
+    /// </summary>
+    Task<(IReadOnlyList<ReplacementSlot> Items, int TotalCount)> GetReplacementSlotsAsync(
+        Guid? companyId, Guid? jobId, string? status, int page, int pageSize, CancellationToken cancellationToken = default);
+
     Task<Guid?> GetJobCompanyIdAsync(Guid jobId, CancellationToken cancellationToken = default);
 
     // ---- CV_SOURCING deposit, settlement and per-CV commission (docs/MF05 section E8) ----

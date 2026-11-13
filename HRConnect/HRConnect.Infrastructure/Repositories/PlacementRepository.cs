@@ -112,6 +112,8 @@ public class PlacementRepository : IPlacementRepository
             .Include(p => p.ReplacementSlot)
             .Include(p => p.Probation)
             .Include(p => p.Warranty)
+            .Include(p => p.ServiceFee)
+            .Include(p => p.Commissions)
             .AsSplitQuery()
             .FirstOrDefaultAsync(p => p.PlacementId == placementId, cancellationToken);
     }

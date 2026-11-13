@@ -127,9 +127,47 @@ public class FinanceRepository : IFinanceRepository
         await _context.ReplacementSlots.AsNoTracking()
             .Include(s => s.OriginalPlacement).ThenInclude(p => p.Application).ThenInclude(a => a.Candidate)
             .Include(s => s.FilledByPlacement!).ThenInclude(p => p.Application).ThenInclude(a => a.Candidate)
+            .Include(s => s.Job).ThenInclude(j => j.Company)
             .Where(s => s.JobId == jobId)
             .OrderByDescending(s => s.CreatedAt)
             .ToListAsync(cancellationToken);
+
+    public async Task<(IReadOnlyList<ReplacementSlot> Items, int TotalCount)> GetReplacementSlotsAsync(
+        Guid? companyId, Guid? jobId, string? status, int page, int pageSize, CancellationToken cancellationToken = default)
+    {
+        var query = _context.ReplacementSlots.AsNoTracking();
+        if (companyId.HasValue)
+        {
+            query = query.Where(s => s.Job.CompanyId == companyId.Value);
+        }
+
+        if (jobId.HasValue)
+        {
+            query = query.Where(s => s.JobId == jobId.Value);
+        }
+
+        if (status != null)
+        {
+            query = query.Where(s => s.Status == status);
+        }
+
+        var total = await query.CountAsync(cancellationToken);
+        var items = await query
+            .Include(s => s.OriginalPlacement).ThenInclude(p => p.Application).ThenInclude(a => a.Candidate)
+            .Include(s => s.FilledByPlacement!).ThenInclude(p => p.Application).ThenInclude(a => a.Candidate)
+            .Include(s => s.Job).ThenInclude(j => j.Company)
+            .OrderBy(s => s.Status == ReplacementSlotStates.Open ? 0
+                : s.Status == ReplacementSlotStates.WaitingPayment ? 1
+                : s.Status == ReplacementSlotStates.Filled ? 2
+                : s.Status == ReplacementSlotStates.Expired ? 3
+                : 4)
+            .ThenByDescending(s => s.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .AsSplitQuery()
+            .ToListAsync(cancellationToken);
+        return (items, total);
+    }
 
     public Task<Guid?> GetJobCompanyIdAsync(Guid jobId, CancellationToken cancellationToken = default) =>
         _context.Jobs.AsNoTracking().Where(j => j.JobId == jobId).Select(j => (Guid?)j.CompanyId).FirstOrDefaultAsync(cancellationToken);

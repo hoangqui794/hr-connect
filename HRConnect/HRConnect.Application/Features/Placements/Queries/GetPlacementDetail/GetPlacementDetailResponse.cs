@@ -25,7 +25,19 @@ public record GetPlacementDetailResponse(
     PlacementDetailWarrantyDto? Warranty,
     IReadOnlyList<string> AllowedActions,
     DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    PlacementDetailFinancialDto? Financial = null
+);
+
+/// <summary>
+/// Phí dịch vụ của placement (HEADHUNT_COD) và hoa hồng Affiliate. Client chỉ thấy phí dịch vụ;
+/// hoa hồng chỉ trả cho Internal HR/Admin. Ứng viên không nhận khối này.
+/// </summary>
+public record PlacementDetailFinancialDto(
+    decimal? ServiceFeeAmount,
+    string? ServiceFeeStatus,
+    decimal? CommissionAmount,
+    string? CommissionStatus
 );
 
 public record PlacementDetailCandidateDto(
