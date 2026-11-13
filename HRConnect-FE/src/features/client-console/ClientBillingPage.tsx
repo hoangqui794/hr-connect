@@ -339,7 +339,7 @@ export const ClientBillingPage: React.FC = () => {
             <Button
               type="primary"
               size="small"
-              className="!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white w-[100px] !h-8 text-xs font-semibold rounded-lg shadow-sm transition-all active:scale-[0.98]"
+              className="!bg-[#0369A1] hover:!bg-[#075985] !border-0 text-white w-[100px] !h-8 text-xs font-semibold rounded-lg shadow-sm transition-all active:scale-[0.98]"
               onClick={() => setPaying(r)}
               aria-label={`Thanh toán: ${r.item} · ${r.jobTitle}`}
             >

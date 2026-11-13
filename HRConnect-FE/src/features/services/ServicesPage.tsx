@@ -204,36 +204,34 @@ export const ServicesPage: React.FC = () => {
   return (
     <div className="svc-page bg-white font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[#0F172A]">
       {/* Hero */}
-      <section className="bg-gradient-to-br from-[#0B132B] via-[#0369A1] to-[#0284C7] text-white">
+      <section className="bg-[#08253C] text-white">
         <div className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-10 px-6 py-14 lg:py-20">
           <div className="svc-hero min-w-0 flex-[1_1_520px]">
-            <p className="m-0 mb-3.5 text-[13px] font-semibold text-[#7DD3FC]">Dịch vụ tuyển dụng cho doanh nghiệp</p>
+            <p className="m-0 mb-3.5 text-[13px] font-semibold text-sky-300">Dịch vụ tuyển dụng cho doanh nghiệp</p>
             <h1 className="m-0 text-[32px] font-extrabold leading-tight tracking-[-0.02em] sm:text-[38px]" style={{ textWrap: 'balance' } as React.CSSProperties}>
               Chọn cách tuyển theo <span className="whitespace-nowrap">từng vị trí.</span>
               <br />
               Trả tiền theo <span className="whitespace-nowrap">kết quả bạn nhận.</span>
             </h1>
-            <p className="m-0 mt-4 max-w-[560px] text-[16px] leading-relaxed text-[#E0F2FE]">
+            <p className="m-0 mt-4 max-w-[560px] text-[16px] leading-relaxed text-slate-200/90">
               Tự đăng tin khi cần nhiều ứng viên, mua CV đã sàng lọc khi cần nguồn nhanh, hoặc để mạng lưới Affiliate tìm người cho vị trí khó và chỉ trả phí khi ứng viên đi làm.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <a href="#svc-compare" className="svc-btn inline-flex min-h-[48px] items-center rounded-lg bg-gradient-to-r from-[#0284C7] to-[#2563EB] px-6 font-bold text-white no-underline shadow-md shadow-sky-500/25 hover:from-[#0369A1] hover:to-[#1D4ED8] hover:text-white">
+              <a href="#svc-compare" className="svc-btn inline-flex min-h-[48px] items-center rounded-xl bg-[#0284C7] px-6 font-bold text-white no-underline shadow-[0_1px_2px_rgba(2,132,199,0.3)] transition-colors duration-150 hover:bg-[#0369A1] hover:text-white">
                 So sánh 3 dịch vụ
               </a>
-              <Link to="/contact" className="svc-btn inline-flex min-h-[48px] items-center rounded-lg border border-solid border-white/50 px-6 font-semibold text-white no-underline hover:bg-white/10 hover:text-white">
+              <Link to="/contact" className="svc-btn inline-flex min-h-[48px] items-center rounded-xl border border-solid border-white/30 bg-white/5 px-6 font-semibold text-white no-underline transition-colors duration-150 hover:bg-white/15 hover:text-white">
                 Nhận tư vấn
               </Link>
             </div>
           </div>
           <div className="svc-hero-media relative aspect-[3/2] w-full max-w-[520px] flex-[1_1_380px]" aria-hidden="true">
             {/* Product illustration of the three services (no photo, no invented numbers). */}
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#0E5A85] to-[#0B3A57] ring-1 ring-white/10" />
-            <div className="absolute -right-6 -top-6 h-40 w-40 rounded-full bg-[#0284C7]/25 blur-2xl" />
-            <div className="absolute -bottom-8 left-6 h-36 w-36 rounded-full bg-[#38BDF8]/20 blur-2xl" />
+            <div className="absolute inset-0 rounded-2xl bg-[#0C3554] ring-1 ring-white/12" />
 
-            <div className="svc-float-a absolute left-[7%] top-[10%] w-[52%] rounded-xl bg-white p-4 text-[#0F172A] shadow-[0_18px_40px_rgba(2,22,40,0.35)]">
+            <div className="svc-float-a absolute left-[7%] top-[10%] w-[52%] rounded-xl border border-[#DCE3EC] bg-white p-4 text-[#0F172A] shadow-[0_18px_40px_rgba(2,22,40,0.35)]">
               <div className="flex items-center gap-2.5">
-                <span className="grid h-9 w-9 place-items-center rounded-lg bg-[#E0F2FE] text-[#0369A1]">
+                <span className="grid h-9 w-9 place-items-center rounded-lg bg-[#EEF6FB] text-[#0369A1]">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>
                 </span>
                 <div>
@@ -248,27 +246,27 @@ export const ServicesPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="svc-float-b absolute right-[6%] top-[30%] w-[54%] rounded-xl bg-[#0369A1] p-4 text-white shadow-[0_22px_48px_rgba(2,22,40,0.45)] ring-1 ring-white/15">
-              <span className="absolute inset-x-0 top-0 h-1 rounded-t-xl bg-gradient-to-r from-[#0284C7] to-[#2563EB]" />
+            <div className="svc-float-b absolute right-[6%] top-[30%] w-[54%] rounded-xl bg-[#0369A1] p-4 text-white shadow-[0_22px_48px_rgba(2,22,40,0.45)] ring-1 ring-white/20">
+              <span className="absolute inset-x-0 top-0 h-1 rounded-t-xl bg-[#38BDF8]" />
               <div className="flex items-center gap-2.5">
-                <span className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white">
+                <span className="grid h-9 w-9 place-items-center rounded-lg bg-white/15 text-white">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0113 0" /><path d="M17 11l2 2 3.5-4" /></svg>
                 </span>
                 <div>
                   <div className="text-[13px] font-bold">Tuyển qua Affiliate</div>
-                  <div className="text-[11px] text-[#BAE6FD]">Trả phí khi tuyển được</div>
+                  <div className="text-[11px] text-sky-100">Trả phí khi tuyển được</div>
                 </div>
               </div>
               <div className="mt-3 flex -space-x-2">
-                {['#7DD3FC', '#FDBA74', '#A7F3D0', '#C4B5FD'].map((c) => (
+                {['#7DD3FC', '#BAE6FD', '#99F6E4', '#E0F2FE'].map((c) => (
                   <span key={c} className="h-7 w-7 rounded-full ring-2 ring-[#0369A1]" style={{ background: c }} />
                 ))}
               </div>
             </div>
 
-            <div className="svc-float-c absolute bottom-[9%] left-[14%] w-[50%] rounded-xl bg-white p-4 text-[#0F172A] shadow-[0_18px_40px_rgba(2,22,40,0.35)]">
+            <div className="svc-float-c absolute bottom-[9%] left-[14%] w-[50%] rounded-xl border border-[#DCE3EC] bg-white p-4 text-[#0F172A] shadow-[0_18px_40px_rgba(2,22,40,0.35)]">
               <div className="flex items-center gap-2.5">
-                <span className="grid h-9 w-9 place-items-center rounded-lg bg-[#ECFDF5] text-[#047857]">
+                <span className="grid h-9 w-9 place-items-center rounded-lg bg-teal-50 text-teal-700">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 7h16M4 12h16M4 17h10" /><path d="M17 15l2 2 3-3.5" /></svg>
                 </span>
                 <div>
@@ -287,7 +285,7 @@ export const ServicesPage: React.FC = () => {
       </section>
 
       {stats.length > 0 && (
-        <div className="border-0 border-t border-solid border-white/15 bg-[#0369A1]">
+        <div className="border-0 border-t border-solid border-white/10 bg-[#061D30]">
           <dl
             ref={statsRef.ref}
             className={`${statsRef.className} m-0 mx-auto grid max-w-[1200px] gap-px px-6 pb-8`}
@@ -302,36 +300,44 @@ export const ServicesPage: React.FC = () => {
 
       {/* Plans */}
       <Reveal aria-labelledby="svc-plans" className="mx-auto max-w-[1200px] px-6 pb-6 pt-16">
-        <h2 id="svc-plans" className="m-0 text-[28px] font-extrabold tracking-[-0.01em]">Ba dịch vụ, ba cách trả phí</h2>
-        <p className="m-0 mb-8 mt-2 text-[15px] text-[#475569]">Mỗi tin tuyển dụng chọn một dịch vụ. Bạn có thể dùng cả ba cho các vị trí khác nhau.</p>
+        <h2 id="svc-plans" className="m-0 text-[28px] font-extrabold tracking-[-0.01em] text-slate-900">Ba dịch vụ, ba cách trả phí</h2>
+        <p className="m-0 mb-8 mt-2 text-[15px] text-slate-600">Mỗi tin tuyển dụng chọn một dịch vụ. Bạn có thể dùng cả ba cho các vị trí khác nhau.</p>
         <div className="svc-stagger grid grid-cols-1 gap-5 lg:grid-cols-3">
           {plans.map((p) => (
             <article
               key={p.code}
-              className={`svc-card relative flex flex-col gap-5 overflow-hidden rounded-xl p-7 ${p.featured ? 'bg-[#0369A1] text-white' : 'border border-solid border-[#E2E8F0] bg-white'}`}
+              className={`svc-card relative flex flex-col gap-5 overflow-hidden rounded-2xl p-7 ${
+                p.featured
+                  ? 'border-2 border-solid border-[#0369A1] bg-[#F8FBFE] shadow-[0_12px_32px_-8px_rgba(3,105,161,0.16)]'
+                  : 'border border-solid border-[#DCE3EC] bg-white shadow-[0_1px_2px_rgba(8,37,60,0.04)]'
+              }`}
             >
-              {p.featured && <span aria-hidden="true" className="svc-bar absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#0284C7] to-[#2563EB]" />}
+              {p.featured && <span aria-hidden="true" className="svc-bar absolute inset-x-0 top-0 h-1 bg-[#0369A1]" />}
               <div className="flex items-baseline justify-between gap-3">
-                <span className={`text-[40px] font-extrabold leading-none ${p.featured ? 'text-[#7DD3FC]' : 'text-[#CBD5E1]'}`}>{p.num}</span>
-                <span className={`rounded-full px-2.5 py-1 text-[12px] font-bold ${p.featured ? 'bg-[#0284C7] text-white' : 'bg-[#F1F5F9] text-[#334155]'}`}>{p.tag}</span>
+                <span className={`text-[40px] font-extrabold leading-none ${p.featured ? 'text-[#0369A1]' : 'text-slate-300'}`}>{p.num}</span>
+                <span className={`rounded-full px-3 py-1 text-[12px] font-semibold ${p.featured ? 'bg-[#0369A1] text-white' : 'bg-[#F1F5F9] text-slate-700'}`}>{p.tag}</span>
               </div>
               <div>
-                <h3 className="m-0 text-[22px] font-extrabold leading-snug">{p.title}</h3>
-                <p className={`m-0 mt-2 text-[14px] leading-relaxed ${p.featured ? 'text-[#BAE6FD]' : 'text-[#475569]'}`}>{p.lead}</p>
+                <h3 className="m-0 text-[22px] font-extrabold leading-snug text-slate-900">{p.title}</h3>
+                <p className="m-0 mt-2 text-[14px] leading-relaxed text-slate-600">{p.lead}</p>
               </div>
-              <div className={`rounded-lg p-4 ${p.featured ? 'bg-white/10' : 'bg-[#F8FAFC]'}`}>
-                <p className={`m-0 text-[12px] ${p.featured ? 'text-[#BAE6FD]' : 'text-[#475569]'}`}>Bạn trả</p>
-                <p className="m-0 mt-1 text-[18px] font-extrabold">{p.price}</p>
-                <p className={`m-0 mt-1 text-[13px] ${p.featured ? 'text-[#BAE6FD]' : 'text-[#475569]'}`}>{p.priceNote}</p>
+              <div className={`rounded-xl p-4 ${p.featured ? 'border border-[#DCE3EC] bg-white' : 'bg-[#F4F7FA]'}`}>
+                <p className="m-0 text-[12px] text-slate-500">Bạn trả</p>
+                <p className="m-0 mt-1 text-[18px] font-extrabold text-slate-900">{p.price}</p>
+                <p className="m-0 mt-1 text-[13px] text-slate-600">{p.priceNote}</p>
               </div>
-              <ul className="m-0 flex list-none flex-col gap-2.5 p-0 text-[14px] leading-relaxed">
+              <ul className="m-0 flex list-none flex-col gap-2.5 p-0 text-[14px] leading-relaxed text-slate-700">
                 {p.points.map((pt) => (
                   <li key={pt} className="pl-4 [text-indent:-1rem]">— {pt}</li>
                 ))}
               </ul>
               <Link
                 to={p.href}
-                className={`svc-btn mt-auto flex min-h-[48px] items-center justify-center rounded-lg font-bold no-underline ${p.featured ? 'bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white hover:from-[#0369A1] hover:to-[#1D4ED8] hover:text-white shadow-md shadow-sky-500/25' : 'border border-solid border-[#0284C7] text-[#0284C7] hover:bg-[#F0F9FF]'}`}
+                className={`svc-btn mt-auto flex min-h-[48px] items-center justify-center rounded-xl font-bold no-underline transition-colors duration-150 ${
+                  p.featured
+                    ? 'bg-[#0369A1] text-white hover:bg-[#075985] hover:text-white shadow-[0_1px_2px_rgba(3,105,161,0.3)]'
+                    : 'border border-solid border-[#0369A1] bg-white text-[#0369A1] hover:bg-[#EEF6FB]'
+                }`}
               >
                 {p.cta}
               </Link>
@@ -342,24 +348,24 @@ export const ServicesPage: React.FC = () => {
 
       {/* Compare */}
       <Reveal id="svc-compare" aria-labelledby="svc-compare-h" className="mx-auto max-w-[1200px] scroll-mt-24 px-6 py-12">
-        <h2 id="svc-compare-h" className="m-0 mb-5 text-[22px] font-extrabold">So sánh nhanh</h2>
-        <div className="overflow-x-auto rounded-lg border border-solid border-[#E2E8F0] bg-white">
+        <h2 id="svc-compare-h" className="m-0 mb-5 text-[22px] font-extrabold text-slate-900">So sánh nhanh</h2>
+        <div className="overflow-x-auto rounded-2xl border border-solid border-[#DCE3EC] bg-white">
           <table className="w-full min-w-[760px] border-collapse text-[14px]">
             <thead>
-              <tr className="bg-[#F8FAFC] text-left">
-                <th scope="col" className="w-[22%] px-4 py-3.5 font-semibold text-[#475569]"><span className="sr-only">Tiêu chí</span></th>
-                <th scope="col" className="px-4 py-3.5 font-bold">Đăng tin tuyển dụng</th>
-                <th scope="col" className="px-4 py-3.5 font-bold text-[#9A3412]">Tuyển qua Affiliate</th>
-                <th scope="col" className="px-4 py-3.5 font-bold">Mua CV theo số lượng</th>
+              <tr className="bg-[#F4F7FA] text-left">
+                <th scope="col" className="w-[22%] px-4 py-3.5 font-semibold text-slate-600"><span className="sr-only">Tiêu chí</span></th>
+                <th scope="col" className="px-4 py-3.5 font-bold text-slate-900">Đăng tin tuyển dụng</th>
+                <th scope="col" className="px-4 py-3.5 font-bold text-[#0369A1]">Tuyển qua Affiliate</th>
+                <th scope="col" className="px-4 py-3.5 font-bold text-slate-900">Mua CV theo số lượng</th>
               </tr>
             </thead>
             <tbody>
               {COMPARE.map((r) => (
-                <tr key={r.k} className="border-0 border-t border-solid border-[#E2E8F0]">
-                  <th scope="row" className="px-4 py-3.5 text-left font-semibold text-[#475569]">{r.k}</th>
-                  <td className="px-4 py-3.5">{r.a}</td>
-                  <td className="bg-[#FFFBF7] px-4 py-3.5">{r.b}</td>
-                  <td className="px-4 py-3.5">{r.c}</td>
+                <tr key={r.k} className="border-0 border-t border-solid border-[#DCE3EC]">
+                  <th scope="row" className="px-4 py-3.5 text-left font-semibold text-slate-600">{r.k}</th>
+                  <td className="px-4 py-3.5 text-slate-700">{r.a}</td>
+                  <td className="bg-[#EEF6FB]/50 px-4 py-3.5 font-medium text-slate-900">{r.b}</td>
+                  <td className="px-4 py-3.5 text-slate-700">{r.c}</td>
                 </tr>
               ))}
             </tbody>
@@ -368,16 +374,16 @@ export const ServicesPage: React.FC = () => {
       </Reveal>
 
       {/* Steps */}
-      <section aria-labelledby="svc-steps" className="border-0 border-y border-solid border-[#E2E8F0] bg-[#F8FAFC]">
+      <section aria-labelledby="svc-steps" className="border-0 border-y border-solid border-[#DCE3EC] bg-[#F4F7FA]">
         <Reveal as="div" className="mx-auto max-w-[1200px] px-6 py-14">
-          <h2 id="svc-steps" className="m-0 mb-7 text-[22px] font-extrabold">Từ lúc đăng ký đến khi ứng viên đi làm</h2>
+          <h2 id="svc-steps" className="m-0 mb-7 text-[22px] font-extrabold text-slate-900">Từ lúc đăng ký đến khi ứng viên đi làm</h2>
           <ol className="svc-stagger svc-steps m-0 grid list-none grid-cols-1 gap-5 p-0 sm:grid-cols-2 lg:grid-cols-6">
             {STEPS.map((s, i) => (
               <li key={s.t} className="relative pt-3.5">
-                <span aria-hidden="true" className="svc-line absolute inset-x-0 top-0 h-0.5 bg-[#0284C7]" style={{ transitionDelay: `${i * 90}ms` }} />
-                <span className="text-[13px] font-extrabold text-[#0284C7]">{String(i + 1).padStart(2, '0')}</span>
-                <p className="m-0 mt-1.5 text-[15px] font-bold">{s.t}</p>
-                <p className="m-0 mt-1.5 text-[13px] leading-relaxed text-[#475569]">{s.d}</p>
+                <span aria-hidden="true" className="svc-line absolute inset-x-0 top-0 h-0.5 bg-[#0369A1]" style={{ transitionDelay: `${i * 90}ms` }} />
+                <span className="text-[13px] font-extrabold text-[#0369A1]">{String(i + 1).padStart(2, '0')}</span>
+                <p className="m-0 mt-1.5 text-[15px] font-bold text-slate-900">{s.t}</p>
+                <p className="m-0 mt-1.5 text-[13px] leading-relaxed text-slate-600">{s.d}</p>
               </li>
             ))}
           </ol>
@@ -387,19 +393,19 @@ export const ServicesPage: React.FC = () => {
       {/* FAQ */}
       <Reveal aria-labelledby="svc-faq" className="mx-auto flex max-w-[1200px] flex-wrap gap-12 px-6 py-14">
         <div className="flex-[1_1_280px]">
-          <h2 id="svc-faq" className="m-0 text-[22px] font-extrabold">Câu hỏi thường gặp</h2>
-          <p className="m-0 mt-2.5 text-[14px] leading-relaxed text-[#475569]">Chưa thấy câu trả lời? Đội HR Connect sẽ gọi lại cho bạn trong giờ làm việc.</p>
+          <h2 id="svc-faq" className="m-0 text-[22px] font-extrabold text-slate-900">Câu hỏi thường gặp</h2>
+          <p className="m-0 mt-2.5 text-[14px] leading-relaxed text-slate-600">Chưa thấy câu trả lời? Đội HR Connect sẽ gọi lại cho bạn trong giờ làm việc.</p>
         </div>
-        <div className="svc-stagger flex-[2_1_560px] border-0 border-t border-solid border-[#E2E8F0]">
+        <div className="svc-stagger flex-[2_1_560px] border-0 border-t border-solid border-[#DCE3EC]">
           {FAQ.map((f) => (
-            <details key={f.q} className="svc-faq border-0 border-b border-solid border-[#E2E8F0]">
-              <summary className="flex min-h-[56px] cursor-pointer list-none items-center justify-between gap-4 py-3 text-[15px] font-bold [&::-webkit-details-marker]:hidden">
+            <details key={f.q} className="svc-faq border-0 border-b border-solid border-[#DCE3EC]">
+              <summary className="flex min-h-[56px] cursor-pointer list-none items-center justify-between gap-4 py-3 text-[15px] font-bold text-slate-900 [&::-webkit-details-marker]:hidden">
                 {f.q}
                 <svg className="svc-chevron shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
               </summary>
               <div className="svc-faq-body">
                 <div className="overflow-hidden">
-                  <p className="m-0 pb-4 text-[14px] leading-relaxed text-[#475569]">{f.a}</p>
+                  <p className="m-0 pb-4 text-[14px] leading-relaxed text-slate-600">{f.a}</p>
                 </div>
               </div>
             </details>
@@ -408,15 +414,15 @@ export const ServicesPage: React.FC = () => {
       </Reveal>
 
       {/* Closing band */}
-      <Reveal className="bg-gradient-to-br from-[#0B132B] via-[#0369A1] to-[#0284C7] text-white">
+      <Reveal className="bg-[#08253C] text-white">
         <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-6 px-6 py-12">
           <div>
             <h2 className="m-0 text-[24px] font-extrabold">Chưa biết chọn dịch vụ nào?</h2>
-            <p className="m-0 mt-2 text-[15px] text-[#E0F2FE]">Gửi vị trí bạn cần tuyển, chúng tôi đề xuất dịch vụ và mức phí phù hợp.</p>
+            <p className="m-0 mt-2 text-[15px] text-slate-200/90">Gửi vị trí bạn cần tuyển, chúng tôi đề xuất dịch vụ và mức phí phù hợp.</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link to="/contact" className="svc-btn inline-flex min-h-[48px] items-center rounded-lg bg-gradient-to-r from-[#0284C7] to-[#2563EB] px-6 font-bold text-white no-underline shadow-md shadow-sky-500/25 hover:from-[#0369A1] hover:to-[#1D4ED8] hover:text-white">Nhận tư vấn</Link>
-            <Link to="/client/jobs/create" className="svc-btn inline-flex min-h-[48px] items-center rounded-lg border border-solid border-white/50 px-6 font-semibold text-white no-underline hover:bg-white/10 hover:text-white">Đăng tin ngay</Link>
+            <Link to="/contact" className="svc-btn inline-flex min-h-[48px] items-center rounded-xl bg-[#0284C7] px-6 font-bold text-white no-underline shadow-[0_1px_2px_rgba(2,132,199,0.3)] transition-colors duration-150 hover:bg-[#0369A1] hover:text-white">Nhận tư vấn</Link>
+            <Link to="/client/jobs/create" className="svc-btn inline-flex min-h-[48px] items-center rounded-xl border border-solid border-white/30 bg-white/5 px-6 font-semibold text-white no-underline transition-colors duration-150 hover:bg-white/15 hover:text-white">Đăng tin ngay</Link>
           </div>
         </div>
       </Reveal>

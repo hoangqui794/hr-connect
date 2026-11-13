@@ -7,7 +7,8 @@
 import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App as AntApp, Pagination, Popconfirm, Select, Skeleton } from 'antd';
+import { Alert, App as AntApp, DatePicker, Input, Pagination, Popconfirm, Select, Skeleton } from 'antd';
+import { CloseCircleOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { CompanyMark } from '@/features/landing/components/SiteParts';
 import { candidateApplicationsApi, candidateConsentApi } from '@/services/api/mf02Api';
@@ -105,7 +106,7 @@ const PendingReferral: React.FC<{ consent: CandidateSubmissionConsent }> = ({ co
           Từ chối
         </button>
       </Popconfirm>
-      <button type="button" disabled={respond.isPending} onClick={() => respond.mutate('CONFIRM')} className={`${FONT} h-10 cursor-pointer rounded-xl border-0 bg-gradient-to-r from-sky-500 to-blue-600 px-4 text-[14px] font-bold text-white shadow-sm shadow-blue-500/20 transition-all hover:from-sky-400 hover:to-blue-500 hover:shadow-md hover:shadow-blue-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`}>
+      <button type="button" disabled={respond.isPending} onClick={() => respond.mutate('CONFIRM')} className={`${FONT} h-10 cursor-pointer rounded-xl border-0 bg-[#0369A1] px-4 text-[14px] font-bold text-white shadow-sm shadow-blue-500/20 transition-all hover:bg-[#075985] hover:shadow-md hover:shadow-blue-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`}>
         Đồng ý
       </button>
     </div>
@@ -149,11 +150,57 @@ const ApplicationRow: React.FC<{ application: CandidateApplication }> = ({ appli
 export const CandidateApplicationsPage: React.FC = () => {
   const [params, setParams] = useSearchParams();
   const [page, setPage] = useState(1);
-  const tab = tabFromParam(params.get('status'));
+  const statusParam = params.get('status') || undefined;
+  const tab = tabFromParam(statusParam || null);
   const source = (params.get('submissionSource') || undefined) as 'CANDIDATE' | 'AFFILIATE' | undefined;
   const jobId = params.get('jobId') || undefined;
+  const searchParam = params.get('search') || undefined;
+  const fromDateParam = params.get('fromDate') || undefined;
+  const toDateParam = params.get('toDate') || undefined;
 
-  const filters = { jobId, submissionSource: source, page: 1, pageSize: MAX_APPLICATIONS };
+  const [searchDraft, setSearchDraft] = useState(searchParam ?? '');
+
+  // Đồng bộ searchDraft khi query param thay đổi từ ngoài (VD reset bộ lọc hoặc back/forward URL)
+  React.useEffect(() => {
+    setSearchDraft(searchParam ?? '');
+  }, [searchParam]);
+
+  const updateFilters = (updates: Record<string, string | undefined>) => {
+    const next = new URLSearchParams(params);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) next.set(key, value);
+      else next.delete(key);
+    });
+    setParams(next);
+    setPage(1);
+  };
+
+  const handleResetFilters = () => {
+    setSearchDraft('');
+    const next = new URLSearchParams();
+    setParams(next);
+    setPage(1);
+  };
+
+  const hasActiveFilters = Boolean(
+    searchParam ||
+    (statusParam && statusParam !== 'ALL') ||
+    source ||
+    fromDateParam ||
+    toDateParam ||
+    jobId
+  );
+
+  const filters = {
+    jobId,
+    submissionSource: source,
+    search: searchParam,
+    fromDate: fromDateParam,
+    toDate: toDateParam,
+    page: 1,
+    pageSize: MAX_APPLICATIONS,
+  };
+
   const applications = useQuery({
     queryKey: [...candidateKeys.applications, filters],
     queryFn: () => candidateApplicationsApi.list(filters),
@@ -167,19 +214,27 @@ export const CandidateApplicationsPage: React.FC = () => {
   const all = applications.data?.items ?? [];
   const inTab = (key: Tab) => {
     const groups = TABS.find((item) => item.key === key)?.groups;
-    return groups ? all.filter((a) => groups.includes(a.displayGroup)) : all;
+    const base = groups ? all.filter((a) => groups.includes(a.displayGroup)) : all;
+    return base.filter((a) => {
+      if (searchParam) {
+        const q = searchParam.toLowerCase().trim();
+        const matchTitle = a.jobTitle?.toLowerCase().includes(q);
+        const matchCompany = a.companyName?.toLowerCase().includes(q);
+        if (!matchTitle && !matchCompany) return false;
+      }
+      if (fromDateParam && dayjs(a.appliedAt).isBefore(dayjs(fromDateParam), 'day')) {
+        return false;
+      }
+      if (toDateParam && dayjs(a.appliedAt).isAfter(dayjs(toDateParam), 'day')) {
+        return false;
+      }
+      return true;
+    });
   };
+
   const shown = inTab(tab);
   const visible = shown.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const pendingCount = pending.data?.total ?? 0;
-
-  const setFilter = (key: string, value?: string) => {
-    const next = new URLSearchParams(params);
-    if (value) next.set(key, value);
-    else next.delete(key);
-    setParams(next);
-    setPage(1);
-  };
 
   return (
     <CandidateAccountFrame>
@@ -199,7 +254,131 @@ export const CandidateApplicationsPage: React.FC = () => {
         </section>
       )}
 
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-0 border-b border-solid border-[#E5E7EB]">
+      {/* Khối card bộ lọc "Tìm đơn ứng tuyển" */}
+      <section aria-label="Tìm đơn ứng tuyển" className="mb-5 rounded-2xl border border-solid border-slate-200/80 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-0 border-b border-solid border-slate-100 pb-3">
+          <div>
+            <h2 className="m-0 text-base font-bold text-slate-800">Tìm đơn ứng tuyển</h2>
+            <p className="m-0 mt-0.5 text-xs text-slate-500 sm:text-sm">Lọc theo công việc, trạng thái hoặc thời gian bạn đã nộp hồ sơ.</p>
+          </div>
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-solid border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 active:scale-95"
+            >
+              <CloseCircleOutlined className="text-xs text-slate-400" />
+              <span>Xóa bộ lọc</span>
+            </button>
+          )}
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 items-end gap-4 sm:grid-cols-2 lg:grid-cols-12">
+          {/* 1. Công việc hoặc doanh nghiệp (lg:col-span-4) */}
+          <div className="flex flex-col gap-1.5 lg:col-span-4">
+            <label htmlFor="candidate-app-search" className="text-xs font-semibold text-slate-700">
+              Công việc hoặc doanh nghiệp
+            </label>
+            <Input
+              id="candidate-app-search"
+              aria-label="Tìm theo công việc hoặc doanh nghiệp"
+              allowClear
+              placeholder="Ví dụ: Backend Developer"
+              prefix={<SearchOutlined className="mr-1 text-slate-400" />}
+              value={searchDraft}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSearchDraft(val);
+                if (!val) {
+                  updateFilters({ search: undefined });
+                }
+              }}
+              onPressEnter={() => {
+                updateFilters({ search: searchDraft.trim() || undefined });
+              }}
+              className="!h-10 w-full !rounded-xl !border-slate-200/80 text-sm shadow-none hover:!border-sky-400 focus:!border-sky-500"
+            />
+          </div>
+
+          {/* 2. Trạng thái hiện tại (lg:col-span-3) */}
+          <div className="flex flex-col gap-1.5 lg:col-span-3">
+            <label htmlFor="candidate-app-status" className="text-xs font-semibold text-slate-700">
+              Trạng thái hiện tại
+            </label>
+            <Select
+              id="candidate-app-status"
+              aria-label="Lọc theo trạng thái"
+              allowClear
+              placeholder="Tất cả trạng thái"
+              value={tab === 'ALL' ? undefined : tab}
+              onChange={(value) => updateFilters({ status: value || undefined })}
+              options={[
+                { value: '', label: 'Tất cả trạng thái' },
+                { value: 'PROCESSING', label: 'Đang xử lý' },
+                { value: 'INTERVIEW', label: 'Phỏng vấn' },
+                { value: 'OFFER', label: 'Offer' },
+                { value: 'HIRED', label: 'Đang làm việc' },
+                { value: 'ENDED', label: 'Đã kết thúc' },
+              ]}
+              className="!h-10 w-full [&_.ant-select-selector]:!h-10 [&_.ant-select-selector]:!rounded-xl [&_.ant-select-selector]:!border-slate-200/80 [&_.ant-select-selection-item]:!leading-[38px] [&_.ant-select-selection-placeholder]:!leading-[38px] hover:[&_.ant-select-selector]:!border-sky-400"
+              popupMatchSelectWidth={false}
+            />
+          </div>
+
+          {/* 3. Nguồn ứng tuyển (lg:col-span-2) */}
+          <div className="flex flex-col gap-1.5 lg:col-span-2">
+            <label htmlFor="candidate-app-source" className="text-xs font-semibold text-slate-700">
+              Nguồn ứng tuyển
+            </label>
+            <Select
+              id="candidate-app-source"
+              aria-label="Nguồn"
+              allowClear
+              placeholder="Tất cả nguồn"
+              value={source || undefined}
+              onChange={(value) => updateFilters({ submissionSource: value || undefined })}
+              options={[
+                { value: '', label: 'Tất cả nguồn' },
+                { value: 'CANDIDATE', label: 'Tôi tự ứng tuyển' },
+                { value: 'AFFILIATE', label: 'Affiliate giới thiệu' },
+              ]}
+              className="!h-10 w-full [&_.ant-select-selector]:!h-10 [&_.ant-select-selector]:!rounded-xl [&_.ant-select-selector]:!border-slate-200/80 [&_.ant-select-selection-item]:!leading-[38px] [&_.ant-select-selection-placeholder]:!leading-[38px] hover:[&_.ant-select-selector]:!border-sky-400"
+              popupMatchSelectWidth={false}
+            />
+          </div>
+
+          {/* 4. Ngày ứng tuyển (lg:col-span-3) */}
+          <div className="flex flex-col gap-1.5 lg:col-span-3">
+            <label htmlFor="candidate-app-dates" className="text-xs font-semibold text-slate-700">
+              Ngày ứng tuyển
+            </label>
+            <DatePicker.RangePicker
+              id="candidate-app-dates"
+              aria-label="Lọc theo khoảng ngày nộp hồ sơ"
+              placeholder={['Ngày bắt đầu', 'Ngày kết thúc']}
+              format="DD/MM/YYYY"
+              value={fromDateParam && toDateParam ? [dayjs(fromDateParam), dayjs(toDateParam)] : null}
+              onChange={(dates) => {
+                if (dates && dates[0] && dates[1]) {
+                  updateFilters({
+                    fromDate: dates[0].startOf('day').toISOString(),
+                    toDate: dates[1].endOf('day').toISOString(),
+                  });
+                } else {
+                  updateFilters({
+                    fromDate: undefined,
+                    toDate: undefined,
+                  });
+                }
+              }}
+              className="!h-10 w-full !rounded-xl !border-slate-200/80 hover:!border-sky-400 [&_.ant-picker-input_input]:!text-sm"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Tabs trạng thái */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-0 border-b border-solid border-[#E5E7EB]">
         <div role="tablist" aria-label="Lọc theo trạng thái" className="flex flex-wrap gap-1">
           {TABS.map((item) => {
             const selected = item.key === tab;
@@ -209,28 +388,13 @@ export const CandidateApplicationsPage: React.FC = () => {
                 type="button"
                 role="tab"
                 aria-selected={selected}
-                onClick={() => setFilter('status', item.key === 'ALL' ? undefined : item.key)}
+                onClick={() => updateFilters({ status: item.key === 'ALL' ? undefined : item.key })}
                 className={`${FONT} h-11 cursor-pointer border-0 bg-transparent px-3 text-[14px] transition-colors ${selected ? 'border-b-2 border-solid border-sky-600 font-bold text-sky-700' : 'text-slate-600 hover:text-sky-600'}`}
               >
                 {item.label} ({inTab(item.key).length})
               </button>
             );
           })}
-        </div>
-        <div className="flex items-center gap-2 pb-1.5 text-[#4B5563]">
-          <span id="source-label">Nguồn</span>
-          <Select
-            aria-labelledby="source-label"
-            value={source ?? ''}
-            onChange={(value) => setFilter('submissionSource', value || undefined)}
-            options={[
-              { value: '', label: 'Tất cả' },
-              { value: 'CANDIDATE', label: 'Tôi tự ứng tuyển' },
-              { value: 'AFFILIATE', label: 'Affiliate giới thiệu' },
-            ]}
-            className={`${FONT} h-9 w-[150px] [&_.ant-select-selection-item]:!text-[#1F2937] [&_.ant-select-selector]:!rounded-md [&_.ant-select-selector]:!border-[#D1D5DB]`}
-            popupMatchSelectWidth={false}
-          />
         </div>
       </div>
 
@@ -243,9 +407,23 @@ export const CandidateApplicationsPage: React.FC = () => {
           <button type="button" onClick={() => applications.refetch()} className={`${FONT} mt-3 cursor-pointer border-0 bg-transparent p-0 font-semibold ${LINK}`}>Thử lại</button>
         </div>
       ) : shown.length === 0 ? (
-        <div className="rounded-lg border border-solid border-[#E5E7EB] bg-white px-6 py-12 text-center">
-          <h2 className="m-0 text-[16px] font-bold">{all.length === 0 && !source && !jobId ? 'Bạn chưa ứng tuyển việc nào' : 'Không có đơn nào phù hợp bộ lọc'}</h2>
-          <Link to="/jobs" className={`mt-3 inline-block font-semibold ${LINK}`}>Tìm việc làm</Link>
+        <div className="rounded-2xl border border-solid border-slate-200/80 bg-white px-6 py-12 text-center shadow-sm">
+          <h2 className="m-0 text-[16px] font-bold text-slate-800">
+            {all.length === 0 && !hasActiveFilters ? 'Bạn chưa ứng tuyển việc nào' : 'Không có đơn nào phù hợp bộ lọc'}
+          </h2>
+          {hasActiveFilters ? (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className={`mt-3 inline-block cursor-pointer border-0 bg-transparent p-0 font-semibold ${LINK}`}
+            >
+              Xóa bộ lọc để xem tất cả
+            </button>
+          ) : (
+            <Link to="/jobs" className={`mt-3 inline-block font-semibold ${LINK}`}>
+              Tìm việc làm
+            </Link>
+          )}
         </div>
       ) : (
         <>

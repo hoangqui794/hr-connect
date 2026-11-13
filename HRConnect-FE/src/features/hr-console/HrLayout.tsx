@@ -15,6 +15,7 @@ import {
   DashboardOutlined,
   FileSearchOutlined,
   FileTextOutlined,
+  KeyOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuOutlined,
@@ -29,6 +30,7 @@ import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
 import { AccountAvatar } from '@/components/common/AccountAvatar';
 import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from '@/features/admin-console/AdminRouteProgress';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { ChangePasswordModal } from '@/components/common/ChangePasswordModal';
 import '@/features/admin-console/admin-console.css';
 import { BrandMark } from '@/components/common/BrandMark';
 
@@ -68,6 +70,7 @@ export const HrLayout: React.FC = () => {
   const compact = useCompactLayout();
   const collapsed = collapsedPref && !compact;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
@@ -238,10 +241,15 @@ export const HrLayout: React.FC = () => {
             menu={{
               items: [
                 { key: 'profile', icon: <UserOutlined />, label: 'Hồ sơ của tôi' },
+                { key: 'change-password', icon: <KeyOutlined />, label: 'Đổi mật khẩu' },
                 { type: 'divider' },
                 { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true },
               ],
-              onClick: ({ key }) => (key === 'logout' ? signOut() : navigate('/hr/profile')),
+              onClick: ({ key }) => {
+                if (key === 'logout') void signOut();
+                else if (key === 'change-password') setChangePasswordOpen(true);
+                else navigate('/hr/profile');
+              },
             }}
           >
             <button
@@ -268,6 +276,11 @@ export const HrLayout: React.FC = () => {
           </AdminPageEnter>
         </main>
       </div>
+
+      <ChangePasswordModal
+        open={changePasswordOpen}
+        onClose={() => setChangePasswordOpen(false)}
+      />
     </div>
   );
 };

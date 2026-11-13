@@ -245,7 +245,7 @@ export const CvTopbar: React.FC<CvTopbarProps> = ({
               type="button"
               disabled={isSaving}
               onClick={onSave}
-              className="h-[34px] cursor-pointer rounded-[7px] border-0 bg-gradient-to-r from-sky-500 to-blue-600 px-3.5 font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[13px] font-semibold text-white shadow-xs transition-all duration-150 hover:from-sky-600 hover:to-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="h-[34px] cursor-pointer rounded-[7px] border-0 bg-[#0369A1] px-3.5 font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[13px] font-semibold text-white shadow-xs transition-all duration-150 hover:bg-[#075985] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSaving ? 'Đang lưu…' : 'Lưu vào Kho CV'}
             </button>

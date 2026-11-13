@@ -28,7 +28,7 @@ import { ApplyModal } from './JobApplyActions';
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
 const CARD = 'rounded-lg border border-solid border-[#E5E7EB] bg-white';
-const PRIMARY = `${FONT} block h-[42px] w-full cursor-pointer rounded-xl border-0 bg-gradient-to-r from-sky-500 to-blue-600 px-3 text-center text-[14px] font-bold leading-[42px] text-white no-underline shadow-sm shadow-blue-500/20 hover:from-sky-400 hover:to-blue-500 hover:text-white active:scale-[0.98]`;
+const PRIMARY = `${FONT} block h-[42px] w-full cursor-pointer rounded-xl border-0 bg-[#0369A1] px-3 text-center text-[14px] font-bold leading-[42px] text-white no-underline shadow-sm shadow-blue-500/20 hover:bg-[#075985] hover:text-white active:scale-[0.98]`;
 
 /** Steps shown to the candidate, and which one each internal stage (0–6) reaches. */
 const STEPS = ['Đã nộp', 'Sàng lọc', 'Phỏng vấn', 'Offer', 'Nhận việc'];

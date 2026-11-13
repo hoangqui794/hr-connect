@@ -154,7 +154,7 @@ export const CandidateCvsPage: React.FC = () => {
             <button type="button" onClick={() => navigate('/candidate/cv-builder')} className={`${FONT} h-[42px] cursor-pointer rounded-xl border border-solid border-sky-600 bg-white px-4 text-[14px] font-semibold text-sky-700 transition-all hover:bg-sky-50 active:scale-[0.98]`}>
               Tạo CV với CV Builder
             </button>
-            <button type="button" disabled={upload.isPending} onClick={() => fileInput.current?.click()} className={`${FONT} h-[42px] cursor-pointer rounded-xl border-0 bg-gradient-to-r from-sky-500 to-blue-600 px-4 text-[14px] font-bold text-white shadow-sm shadow-blue-500/20 transition-all hover:from-sky-400 hover:to-blue-500 hover:shadow-md hover:shadow-blue-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`}>
+            <button type="button" disabled={upload.isPending} onClick={() => fileInput.current?.click()} className={`${FONT} h-[42px] cursor-pointer rounded-xl border-0 bg-[#0369A1] px-4 text-[14px] font-bold text-white shadow-sm shadow-blue-500/20 transition-all hover:bg-[#075985] hover:shadow-md hover:shadow-blue-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`}>
               {upload.isPending ? 'Đang tải lên…' : 'Tải CV lên'}
             </button>
           </div>

@@ -282,7 +282,7 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                 icon={<CheckOutlined />}
                 onClick={() => setResultModalOpen(true)}
                 disabled={busy}
-                className="!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white font-semibold rounded-lg shadow-sm transition-all active:scale-[0.98] !h-9 px-4"
+                className="!bg-[#0369A1] hover:!bg-[#075985] !border-0 text-white font-semibold rounded-lg shadow-sm transition-all active:scale-[0.98] !h-9 px-4"
               >
                 Ghi kết quả
               </Button>
@@ -292,7 +292,7 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
               <Button
                 type="primary"
                 onClick={() => onOpenApplication(interview.applicationId)}
-                className="!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white font-semibold rounded-lg shadow-sm transition-all active:scale-[0.98] !h-9 px-4"
+                className="!bg-[#0369A1] hover:!bg-[#075985] !border-0 text-white font-semibold rounded-lg shadow-sm transition-all active:scale-[0.98] !h-9 px-4"
               >
                 Xem hồ sơ ứng viên
               </Button>

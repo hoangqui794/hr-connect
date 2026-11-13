@@ -493,7 +493,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
           >
             <Button
               type="primary"
-              className="!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 rounded-xl font-bold !h-10 px-5 text-white shadow-sm shadow-sky-500/20"
+              className="!bg-[#0369A1] hover:!bg-[#075985] !border-0 rounded-xl font-bold !h-10 px-5 text-white shadow-sm shadow-sky-500/20"
               onClick={() => navigate('/client/jobs/create')}
             >
               Đăng tin tuyển dụng mới
@@ -777,7 +777,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           className={
                             isDeposited(activeJob)
                               ? '!bg-slate-100 !text-slate-400 !border-slate-200 cursor-not-allowed rounded-xl font-bold h-10'
-                              : '!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white rounded-xl shadow-2xs font-bold h-10 px-4'
+                              : '!bg-[#0369A1] hover:!bg-[#075985] !border-0 text-white rounded-xl shadow-2xs font-bold h-10 px-4'
                           }
                           onClick={() => !isDeposited(activeJob) && setPaymentModalOpen(true)}
                         >
@@ -852,7 +852,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           type="primary"
                           size="large"
                           icon={<CreditCardOutlined />}
-                          className="!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white rounded-xl shadow-2xs font-bold !h-10 px-5 shrink-0 self-start sm:self-center transition-all active:scale-[0.98]"
+                          className="!bg-[#0369A1] hover:!bg-[#075985] !border-0 text-white rounded-xl shadow-2xs font-bold !h-10 px-5 shrink-0 self-start sm:self-center transition-all active:scale-[0.98]"
                           onClick={() => setPaymentModalOpen(true)}
                         >
                           {isAwaitingDeposit ? 'Đặt cọc ngay' : 'Thanh toán ngay'}
@@ -1048,7 +1048,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                             className={
                               isDeposited(activeJob)
                                 ? '!bg-slate-100 !text-slate-400 !border-slate-200 cursor-not-allowed rounded-xl font-semibold'
-                                : '!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white rounded-xl shadow-2xs font-bold !h-9 px-4 transition-all active:scale-[0.98]'
+                                : '!bg-[#0369A1] hover:!bg-[#075985] !border-0 text-white rounded-xl shadow-2xs font-bold !h-9 px-4 transition-all active:scale-[0.98]'
                             }
                             onClick={() => !isDeposited(activeJob) && setPaymentModalOpen(true)}
                           >
@@ -1066,7 +1066,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                             className={
                               currentAgreement.hasSignedDocument
                                 ? '!h-9 rounded-xl font-semibold text-slate-700 border-slate-200'
-                                : '!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white rounded-xl shadow-2xs transition-all active:scale-[0.98] font-bold !h-9 px-4'
+                                : '!bg-[#0369A1] hover:!bg-[#075985] !border-0 text-white rounded-xl shadow-2xs transition-all active:scale-[0.98] font-bold !h-9 px-4'
                             }
                             onClick={() => setUploadModalOpen(true)}
                           >

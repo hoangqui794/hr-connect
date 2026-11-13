@@ -333,7 +333,7 @@ export const ClientProfilePage: React.FC = () => {
                     htmlType="submit"
                     loading={saveMutation.isPending}
                     icon={<SaveOutlined />}
-                    className="!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white rounded-xl shadow-2xs font-bold !h-10 px-5 transition-all active:scale-[0.98]"
+                    className="!bg-[#0369A1] hover:!bg-[#075985] !border-0 text-white rounded-xl shadow-2xs font-bold !h-10 px-5 transition-all active:scale-[0.98]"
                   >
                     Lưu thay đổi
                   </Button>

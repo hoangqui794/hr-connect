@@ -391,22 +391,22 @@ export const DisputeResolutionTable: React.FC<DisputeResolutionTableProps> = ({
             </div>
 
             {/* Bằng chứng mã băm SHA-256 bất biến */}
-            <div className="bg-slate-900 text-slate-200 p-3.5 rounded-xl border border-slate-800">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            <div className="rounded-xl border border-[#DCE3EC] bg-[#F4F7FA] p-3.5 text-slate-800">
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-slate-600">
                   Mã băm chứng thực bất biến (SHA-256 Genesis Hash):
                 </span>
                 <Button
                   size="small"
                   type="text"
-                  icon={copiedHash ? <CheckOutlined className="text-emerald-400" /> : <CopyOutlined className="text-slate-300" />}
+                  icon={copiedHash ? <CheckOutlined className="text-teal-600" /> : <CopyOutlined className="text-slate-600" />}
                   onClick={() => handleCopyProof(selectedDispute.sha256Proof)}
-                  className="text-xs text-slate-300 hover:text-white"
+                  className="text-xs text-slate-600 hover:text-slate-900"
                 >
                   {copiedHash ? 'Đã chép' : 'Sao chép'}
                 </Button>
               </div>
-              <div className="font-mono text-xs text-emerald-400 break-all select-all">
+              <div className="select-all break-all font-mono text-xs font-medium text-[#0369A1]">
                 {selectedDispute.sha256Proof}
               </div>
             </div>
