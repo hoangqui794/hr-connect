@@ -73,11 +73,11 @@ const DetailRow: React.FC<{
 }> = ({ label, value, mono, copyKey, copiedKey, onCopy }) => {
   const isCopied = Boolean(copyKey && copiedKey === copyKey);
   return (
-    <div className="flex items-start justify-between gap-4 py-2.5">
-      <dt className="shrink-0 text-[13px] text-slate-500">{label}</dt>
-      <dd className="m-0 flex min-w-0 items-center justify-end gap-2 text-right">
+    <div className="flex flex-col gap-1 py-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      <dt className="text-[13px] text-slate-500 sm:shrink-0">{label}</dt>
+      <dd className="m-0 flex min-w-0 items-center justify-between gap-2 sm:justify-end sm:text-right">
         <span
-          className={`break-words text-[13px] font-semibold text-slate-900 ${
+          className={`min-w-0 break-all text-[13px] font-semibold text-slate-900 sm:break-words ${
             mono ? 'font-mono tracking-wide tabular-nums' : ''
           }`}
         >

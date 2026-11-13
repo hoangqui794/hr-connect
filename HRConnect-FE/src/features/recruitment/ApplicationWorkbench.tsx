@@ -451,20 +451,36 @@ export const ApplicationWorkbench: React.FC<{
 
   const confirmShortlist = () =>
     modal.confirm({
-      title: audience === 'hr' ? 'Chọn hồ sơ này gửi Client?' : 'Chọn ứng viên này để phỏng vấn?',
+      title:
+        audience !== 'hr'
+          ? 'Chọn ứng viên này để phỏng vấn?'
+          : isCvSourcing
+            ? 'Chọn và giao CV này cho Client?'
+            : 'Chọn hồ sơ này gửi Client?',
       content:
         audience !== 'hr'
           ? `${d?.candidateFullName} sẽ chuyển sang bước phỏng vấn.`
           : isCvSourcing
-            ? `Hồ sơ của ${d?.candidateFullName} được chọn. Bấm "Giao CV cho khách hàng" ở bước tiếp theo để Client chấp nhận hoặc từ chối CV.`
+            ? `Hồ sơ của ${d?.candidateFullName} sẽ được chọn và bàn giao ngay cho Doanh nghiệp. Doanh nghiệp có 7 ngày để chấp nhận hoặc từ chối CV.`
             : `Client sẽ thấy hồ sơ của ${d?.candidateFullName} (đã che liên hệ) và có thể lên lịch phỏng vấn.`,
-      okText: audience === 'hr' ? 'Chọn gửi Client' : 'Chọn ứng viên',
+      okText: audience !== 'hr' ? 'Chọn ứng viên' : isCvSourcing ? 'Chọn & giao Client' : 'Chọn gửi Client',
       cancelText: 'Hủy',
       okButtonProps: { loading: run.isPending || pendingAction === 'short' },
       onOk: async () => {
         setPendingAction('short');
         try {
-          await run.mutateAsync(() => screeningApi.updateStatus(d!.jobId, d!.applicationId, { targetStatus: 'SHORTLISTED', concurrencyToken: token }));
+          if (audience === 'hr' && isCvSourcing) {
+            const jobId = d!.jobId;
+            const appId = d!.applicationId;
+            await run.mutateAsync(async () => {
+              await screeningApi.updateStatus(jobId, appId, { targetStatus: 'SHORTLISTED', concurrencyToken: token });
+              await sourcingApi.deliverCvs(jobId, [appId]);
+              return { message: 'Đã chọn và giao CV cho khách hàng thành công. Doanh nghiệp có 7 ngày để phản hồi.' };
+            });
+            await queryClient.invalidateQueries({ queryKey: ['sourcing-deliveries', jobId] });
+          } else {
+            await run.mutateAsync(() => screeningApi.updateStatus(d!.jobId, d!.applicationId, { targetStatus: 'SHORTLISTED', concurrencyToken: token }));
+          }
         } finally {
           setPendingAction(null);
         }
@@ -875,6 +891,14 @@ export const ApplicationWorkbench: React.FC<{
           {/* Sourcing Delivery Info (MF-03) */}
           {isCvSourcing && (
             <Panel title="Dịch vụ CV Sourcing">
+              {sourcingDeliveries.data?.summary?.sourcingTarget ? (
+                <div className="mb-2.5 flex items-center justify-between rounded-lg bg-sky-50/80 border border-sky-200/70 px-3 py-1.5 text-xs">
+                  <span className="text-slate-600 font-medium">Tiến độ đã nhận của tin</span>
+                  <span className="font-semibold text-sky-700 tabular-nums">
+                    {sourcingDeliveries.data.summary.counted}/{sourcingDeliveries.data.summary.sourcingTarget} CV
+                  </span>
+                </div>
+              ) : null}
               {sourcingDelivery ? (
                 <div className="space-y-2 text-sm">
                   <Row label="Trạng thái bàn giao">
