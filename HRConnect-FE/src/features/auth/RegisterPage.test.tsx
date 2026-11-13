@@ -90,7 +90,7 @@ describe('RegisterPage', () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(screen.getByRole('radio', { name: /^Affiliate/ }));
+    await user.click(screen.getByRole('radio', { name: /^Cộng tác viên/ }));
     await fillPerson(user);
 
     await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }));

@@ -67,7 +67,7 @@ const ROLES: RoleOption[] = [
   },
   {
     role: UserRole.AFFILIATE,
-    title: 'Affiliate',
+    title: 'Cộng tác viên',
     badge: 'Đối tác CTV',
     hint: 'Giới thiệu ứng viên, nhận hoa hồng bảo hộ độc quyền',
     icon: <TeamOutlined className="text-lg" />,
@@ -570,7 +570,7 @@ export const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({
             <div className="mt-3.5 flex items-start gap-2.5 rounded-xl border border-[#DCE3EC] bg-[#F8FAFC] p-3 text-xs leading-relaxed text-slate-700">
               <TeamOutlined aria-hidden="true" className="mt-0.5 shrink-0 text-[#0369A1]" />
               <span>
-                <strong className="font-semibold text-slate-900">Đối tác Affiliate:</strong> Đăng ký trực tiếp tại đây. Sau khi xác minh email, bạn có thể giới thiệu ứng viên và nhận hoa hồng bảo hộ độc quyền.
+                <strong className="font-semibold text-slate-900">Cộng tác viên tuyển dụng:</strong> Đăng ký trực tiếp tại đây. Sau khi xác minh email, bạn có thể giới thiệu ứng viên và nhận hoa hồng bảo hộ độc quyền.
               </span>
             </div>
           )}

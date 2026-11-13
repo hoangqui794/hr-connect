@@ -114,7 +114,7 @@ export const LoginPage: React.FC = () => {
     transitionTimerRef.current = window.setTimeout(() => {
       setExitingPanel(null);
       transitionTimerRef.current = null;
-    }, 280);
+    }, 420);
   };
 
   useEffect(() => {
@@ -777,20 +777,20 @@ export const LoginPage: React.FC = () => {
     <div className="flex min-h-screen w-full bg-[#F4F7FA] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-slate-900 antialiased max-lg:flex-col">
       <style>{`
         @keyframes authSlideInFromRight {
-          from { opacity: 0; transform: translate3d(44px, 0, 0); }
-          to { opacity: 1; transform: translate3d(0, 0, 0); }
+          0% { opacity: 0.92; transform: translate3d(100%, 0, 0); }
+          100% { opacity: 1; transform: translate3d(0, 0, 0); }
         }
         @keyframes authSlideInFromLeft {
-          from { opacity: 0; transform: translate3d(-44px, 0, 0); }
-          to { opacity: 1; transform: translate3d(0, 0, 0); }
+          0% { opacity: 0.35; transform: translate3d(-24%, 0, 0) scale(0.96); }
+          100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
         }
         @keyframes authSlideOutToLeft {
-          from { opacity: 1; transform: translate3d(0, 0, 0); }
-          to { opacity: 0; transform: translate3d(-44px, 0, 0); }
+          0% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+          100% { opacity: 0; transform: translate3d(-28%, 0, 0) scale(0.96); }
         }
         @keyframes authSlideOutToRight {
-          from { opacity: 1; transform: translate3d(0, 0, 0); }
-          to { opacity: 0; transform: translate3d(44px, 0, 0); }
+          0% { opacity: 1; transform: translate3d(0, 0, 0); }
+          100% { opacity: 0.85; transform: translate3d(100%, 0, 0); }
         }
         @media (prefers-reduced-motion: reduce) {
           .auth-slide-panel { animation: none !important; }
@@ -864,7 +864,7 @@ export const LoginPage: React.FC = () => {
       {/* LOGIN FORM SECTION (Right) — Porcelain Mist Canvas & Pure White Surface */}
       <main className="flex flex-1 items-center justify-center bg-[#F4F7FA] px-5 py-10 sm:px-10 lg:px-14 xl:px-20">
         <div
-          className={`w-full rounded-2xl border border-[#DCE3EC] bg-white p-7 shadow-[0_1px_2px_rgba(8,37,60,0.05),0_16px_36px_-12px_rgba(8,37,60,0.09)] transition-[max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none sm:p-9 ${
+          className={`w-full overflow-hidden rounded-2xl border border-[#DCE3EC] bg-white p-7 shadow-[0_1px_2px_rgba(8,37,60,0.05),0_16px_36px_-12px_rgba(8,37,60,0.09)] transition-[max-width] duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none sm:p-9 ${
             panelMode === 'register' ? 'max-w-[720px] xl:max-w-[760px]' : 'max-w-[440px]'
           }`}
         >
@@ -873,11 +873,16 @@ export const LoginPage: React.FC = () => {
               <div
                 key={`exit-${exitingPanel}`}
                 aria-hidden="true"
-                className="auth-slide-panel pointer-events-none absolute inset-x-0 top-0"
+                className={`auth-slide-panel pointer-events-none absolute inset-x-0 top-0 min-h-full bg-white ${
+                  slideDirection === 'forward' ? 'z-10' : 'z-20'
+                }`}
                 style={{
+                  willChange: 'transform, opacity',
                   animation: `${
-                    slideDirection === 'forward' ? 'authSlideOutToLeft' : 'authSlideOutToRight'
-                  } 280ms cubic-bezier(0.22, 1, 0.36, 1) both`,
+                    slideDirection === 'forward'
+                      ? 'authSlideOutToLeft 260ms cubic-bezier(0.32, 0.72, 0, 1)'
+                      : 'authSlideOutToRight 380ms cubic-bezier(0.32, 0.72, 0, 1)'
+                  } both`,
                 }}
               >
                 {renderPanelContent(exitingPanel)}
@@ -886,13 +891,16 @@ export const LoginPage: React.FC = () => {
 
             <div
               key={`active-${panelMode}`}
-              className="auth-slide-panel relative"
+              className={`auth-slide-panel relative bg-white ${
+                slideDirection === 'forward' ? 'z-20' : 'z-10'
+              }`}
               style={
                 exitingPanel
                   ? {
+                      willChange: 'transform, opacity',
                       animation: `${
                         slideDirection === 'forward' ? 'authSlideInFromRight' : 'authSlideInFromLeft'
-                      } 280ms cubic-bezier(0.22, 1, 0.36, 1) both`,
+                      } 420ms cubic-bezier(0.22, 1, 0.36, 1) both`,
                     }
                   : undefined
               }
