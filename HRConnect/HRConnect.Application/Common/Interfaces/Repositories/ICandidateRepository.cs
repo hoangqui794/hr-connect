@@ -34,6 +34,8 @@ public interface ICandidateRepository
 
     Task<Candidate?> GetByNormalizedEmailAsync(string normalizedEmail, CancellationToken cancellationToken = default);
 
+    Task<Candidate?> GetArchivedMergedSourceAsync(Guid targetCandidateId, CancellationToken cancellationToken = default);
+
     Task<Candidate?> GetByNormalizedPhoneAsync(string normalizedPhone, CancellationToken cancellationToken = default);
 
     /// <summary>Atomically claim an unlinked candidate after ownership of its email has been verified.</summary>
