@@ -8,8 +8,10 @@ import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { App as AntApp, Skeleton } from 'antd';
+import { ArrowRightOutlined, CustomerServiceOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { CompanyMark } from '@/features/landing/components/SiteParts';
+import { candidateApplicationsApi } from '@/services/api/mf02Api';
 import { isCandidateOfferRespondable, mf04Api } from '@/services/api/mf04Api';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import type { OfferAcceptanceAction } from '@/types/api/mf04';
@@ -75,6 +77,21 @@ export const CandidateOfferPage: React.FC = () => {
   });
   const conflict = impact.data;
   const hasActivePlacement = Boolean(conflict?.isFullTime && conflict.activeFullTimePlacement);
+
+  const candidateApplications = useQuery({
+    queryKey: candidateKeys.applications,
+    queryFn: () => candidateApplicationsApi.list({ page: 1, pageSize: 50 }),
+    enabled: Boolean(conflict?.activeFullTimePlacement && !conflict.activeFullTimePlacement.applicationId),
+  });
+
+  const activePlacementAppId =
+    conflict?.activeFullTimePlacement?.applicationId ||
+    candidateApplications.data?.items.find(
+      (a) =>
+        (a.companyName === conflict?.activeFullTimePlacement?.companyName ||
+          a.jobTitle === conflict?.activeFullTimePlacement?.jobTitle) &&
+        (a.displayGroup === 'HIRED' || a.status === 'HIRED' || a.status === 'PLACED' || a.status === 'ONBOARDED')
+    )?.applicationId;
   // Switching away from an accepted full-time offer is the only way to accept this one, so nothing to choose.
   const replacesAccepted = Boolean(conflict?.isFullTime && conflict.acceptedFullTimeOffer && !conflict.activeFullTimePlacement);
   const acceptanceAction: OfferAcceptanceAction = hasActivePlacement
@@ -251,22 +268,54 @@ export const CandidateOfferPage: React.FC = () => {
             <div
               role="region"
               aria-label="Xác nhận chuyển việc"
-              className="mt-3 rounded-lg border border-solid border-[#FED7AA] bg-[#FFF7ED] p-3.5 text-[13px] text-[#9A3412]"
+              className="mt-3 rounded-xl border border-solid border-rose-200 bg-rose-50/80 p-4 text-[13px] text-rose-950 shadow-2xs"
             >
-              <div className="mb-2 leading-relaxed">
-                Hệ thống ghi nhận bạn đang có công việc toàn thời gian: <b>{conflict.activeFullTimePlacement.jobTitle}</b> tại <b>{conflict.activeFullTimePlacement.companyName}</b>.
-              </div>
-              <label className="flex cursor-pointer items-start gap-2 rounded-md border border-solid border-[#FDBA74] bg-white/90 px-3 py-2 font-medium text-[#7C2D12]">
-                <input
-                  type="checkbox"
-                  checked={transitionConfirmed}
-                  onChange={(e) => setTransitionConfirmed(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-amber-600"
-                />
-                <span>
-                  Tôi xác nhận đã nghỉ việc hoặc sẽ hoàn tất bàn giao tại <b>{conflict.activeFullTimePlacement.companyName}</b> trước ngày bắt đầu công việc mới.
+              <div className="flex items-start gap-3">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-700">
+                  <ExclamationCircleOutlined className="text-base" />
                 </span>
-              </label>
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-rose-900">
+                    Cảnh báo trùng công việc toàn thời gian
+                  </div>
+                  <div className="mt-1 leading-relaxed text-rose-800">
+                    Hệ thống ghi nhận bạn đang có công việc toàn thời gian: <b>{conflict.activeFullTimePlacement.jobTitle}</b> tại <b>{conflict.activeFullTimePlacement.companyName}</b>. Vui lòng liên hệ bộ phận hỗ trợ nếu thông tin này không còn chính xác.
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-3 sm:pl-11">
+                <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-solid border-rose-200 bg-white/95 p-3 text-xs font-medium text-rose-900 shadow-2xs transition-colors hover:bg-white">
+                  <input
+                    type="checkbox"
+                    checked={transitionConfirmed}
+                    onChange={(e) => setTransitionConfirmed(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-rose-600"
+                  />
+                  <span className="leading-snug">
+                    Tôi xác nhận đã nghỉ việc hoặc sẽ hoàn tất bàn giao tại <b>{conflict.activeFullTimePlacement.companyName}</b> trước ngày bắt đầu công việc mới.
+                  </span>
+                </label>
+
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <Link
+                    to="/contact?service=OTHER&subject=update-employment-status"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-solid border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 shadow-2xs transition-colors hover:bg-rose-50 hover:text-rose-800 no-underline"
+                  >
+                    <CustomerServiceOutlined className="text-sm" />
+                    <span>Liên hệ bộ phận hỗ trợ</span>
+                  </Link>
+                  {activePlacementAppId && (
+                    <Link
+                      to={`/candidate/applications/${activePlacementAppId}`}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-rose-700 hover:text-rose-900 hover:underline"
+                    >
+                      <span>Xem công việc hiện tại</span>
+                      <ArrowRightOutlined className="text-[10px]" />
+                    </Link>
+                  )}
+                </div>
+              </div>
             </div>
           )}
           {!declining && replacesAccepted && conflict?.acceptedFullTimeOffer && (
