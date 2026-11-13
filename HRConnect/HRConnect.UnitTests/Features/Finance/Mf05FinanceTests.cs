@@ -1194,6 +1194,13 @@ public class Mf05FinanceTests
             .Handle(new GetReplacementSlotsQuery(_actor, null, null, 1, 20), default);
         await denied.Should().ThrowAsync<ForbiddenException>();
 
+        var inactive = new Mock<ICompanyUserRepository>();
+        inactive.Setup(r => r.GetByUserIdAsync(_actor, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { CompanyId = _companyId, UserId = _actor, Status = "INACTIVE" });
+        var deactivated = () => new GetReplacementSlotsQueryHandler(Repository, inactive.Object)
+            .Handle(new GetReplacementSlotsQuery(_actor, null, null, 1, 20), default);
+        await deactivated.Should().ThrowAsync<ForbiddenException>();
+
         var paged = await new GetReplacementSlotsQueryHandler(Repository, noCompany.Object)
             .Handle(new GetReplacementSlotsQuery(null, null, null, 0, 1000), default);
         paged.Page.Should().Be(1);
