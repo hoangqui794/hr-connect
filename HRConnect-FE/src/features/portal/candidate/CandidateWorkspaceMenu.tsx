@@ -5,7 +5,6 @@
  */
 import React, { useState } from 'react';
 import { Dropdown } from 'antd';
-import { KeyOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { authService } from '@/services/authService';
@@ -14,7 +13,6 @@ import { AccountAvatar } from '@/components/common/AccountAvatar';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
 import { candidateApplicationsApi } from '@/services/api/mf02Api';
 import { prefetchRoute } from '@/app/routePrefetch';
-import { ChangePasswordModal } from '@/components/common/ChangePasswordModal';
 
 interface CandidateWorkspaceMenuProps {
   showWorkspaceButton?: boolean;
@@ -25,7 +23,6 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({ 
   const { user, logout } = useAuthStore();
   const { savedJobsCount } = useSavedJobs();
   const [open, setOpen] = useState(false);
-  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const applications = useQuery({
     queryKey: ['candidate-menu', 'applications-count'],
     queryFn: async () => (await candidateApplicationsApi.list({ page: 1, pageSize: 1 })).total,
@@ -82,20 +79,6 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({ 
                   {Boolean(item.count) && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11.5px] font-semibold text-slate-600">{item.count}</span>}
                 </Link>
               ))}
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setOpen(false);
-                  setPasswordModalOpen(true);
-                }}
-                className="flex w-full cursor-pointer items-center justify-between gap-3 border-0 bg-transparent px-4 py-2 text-left text-[13.5px] font-medium text-slate-700 no-underline transition-colors hover:bg-sky-50 hover:text-sky-700"
-              >
-                <span className="flex items-center gap-2">
-                  <KeyOutlined className="text-[14px] text-slate-400" />
-                  <span>Đổi mật khẩu</span>
-                </span>
-              </button>
             </div>
             <div className="border-0 border-t border-solid border-slate-100 pt-1">
               <button type="button" role="menuitem" onClick={() => void signOut()} className="flex w-full cursor-pointer items-center justify-between gap-3 border-0 bg-transparent px-4 py-2 text-left text-[13.5px] font-semibold text-rose-600 transition-colors hover:bg-rose-50">
@@ -120,7 +103,6 @@ export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({ 
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="hidden text-sky-200 sm:block"><path d="M6 9l6 6 6-6" /></svg>
         </button>
       </Dropdown>
-      <ChangePasswordModal open={passwordModalOpen} onClose={() => setPasswordModalOpen(false)} />
     </>
   );
 };

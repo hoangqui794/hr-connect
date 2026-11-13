@@ -6,7 +6,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { KeyOutlined } from '@ant-design/icons';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
 import { candidateApplicationsApi } from '@/services/api/mf02Api';
 import { ChangePasswordModal } from '@/components/common/ChangePasswordModal';
@@ -65,7 +64,6 @@ export const CandidateAccountFrame: React.FC<{ children: React.ReactNode }> = ({
           onClick={() => setPasswordModalOpen(true)}
           className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border-0 bg-[#F3F4F6] px-3.5 py-1.5 text-[13px] text-[#374151] transition-all duration-200 hover:bg-[#E5E7EB]"
         >
-          <KeyOutlined className="text-[12px] text-slate-500" />
           <span>Đổi mật khẩu</span>
         </button>
       </nav>
@@ -99,10 +97,7 @@ export const CandidateAccountFrame: React.FC<{ children: React.ReactNode }> = ({
           onClick={() => setPasswordModalOpen(true)}
           className="flex w-full cursor-pointer items-center justify-between rounded-md border-0 bg-transparent px-3 py-2.5 text-left text-[14px] text-[#1F2937] transition-all duration-200 hover:bg-slate-50 hover:text-sky-700"
         >
-          <span className="flex items-center gap-2">
-            <KeyOutlined className="text-[14px] text-slate-400" />
-            <span>Đổi mật khẩu</span>
-          </span>
+          <span>Đổi mật khẩu</span>
         </button>
       </nav>
       <div className="min-w-0 w-full flex-1">

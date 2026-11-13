@@ -8,7 +8,7 @@ import { AdminFinancePage } from './AdminFinancePage';
 import { ClientWarrantyPage, HrWarrantyPage } from './WarrantyPages';
 import { financeApi } from '@/services/api/financeApi';
 import { placementReconciliationApi } from '@/services/api/hrApi';
-import type { Commission, ServiceFee, Warranty } from '@/types/api/finance';
+import type { Commission, ReplacementSlotDto, ServiceFee, Warranty } from '@/types/api/finance';
 
 vi.mock('@/services/api/financeApi', () => ({
   financeApi: {
@@ -135,6 +135,42 @@ describe('MF-05 admin finance', () => {
     const blocked = await screen.findByRole('button', { name: 'Chờ đối soát' }, { timeout: 10000 });
     expect((blocked as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it('distinguishes Headhunt vs CV Sourcing, handles null serviceFeeStatus, and navigates to Công nợ phí', async () => {
+    const sourcingRow: Commission = {
+      commissionId: 'c-src',
+      placementId: null,
+      sourcingDeliveryId: 'sd-1',
+      attributionId: 'a2',
+      affiliateId: 'af1',
+      affiliateName: 'Demo Affiliate',
+      jobTitle: 'Lập trình viên Backend .NET',
+      candidateName: 'Cao Hữu Trí',
+      amount: 360_000,
+      status: 'ON_HOLD',
+      serviceFeeStatus: null,
+      warrantyEndDate: null,
+      createdAt: '2026-11-13',
+    };
+    const headhuntUnpaid = earned('PENDING');
+    vi.mocked(financeApi.commissions).mockResolvedValue(page([sourcingRow, headhuntUnpaid]));
+
+    renderWith(<AdminFinancePage />);
+
+    expect(await screen.findByText('CV Sourcing', {}, { timeout: 10000 })).toBeTruthy();
+    expect(screen.getByText('Headhunt')).toBeTruthy();
+    expect(screen.getByText('Không áp dụng')).toBeTruthy();
+    expect(screen.getByText('Chưa phát sinh phí')).toBeTruthy();
+
+    const moreBtn = screen.getByRole('button', { name: /Thao tác khác: Nguyễn Văn Nam/i });
+    fireEvent.click(moreBtn);
+
+    const viewFeesItem = await screen.findByText('Xem công nợ phí');
+    fireEvent.click(viewFeesItem);
+
+    const feesTab = screen.getByRole('tab', { name: 'Công nợ phí' });
+    expect(feesTab.getAttribute('aria-selected')).toBe('true');
+  });
 });
 
 describe('MF-05 HR warranty verification', () => {
@@ -197,5 +233,69 @@ describe('MF-05 Client warranty page', () => {
     for (const [params] of vi.mocked(financeApi.serviceFees).mock.calls) {
       expect(['PLACEMENT', 'REPLACEMENT_REFUND']).toContain(params.kind);
     }
+  });
+
+  it('shows clear refund status, replacement semantics, and linked slot ID on voided warranty', async () => {
+    const expiredSlot: ReplacementSlotDto = {
+      replacementSlotId: '68ef9a24-1234-5678-9012-000000000000',
+      jobId: 'job-1',
+      jobTitle: '[Headhunt] Principal Solutions Architect',
+      companyName: 'HR Connect Demo Company',
+      status: 'EXPIRED',
+      originalPlacementId: 'p-void-1',
+      originalCandidateName: 'Demo Candidate 2',
+      serviceFeeId: 'fee-orig',
+      fillWindowDays: 30,
+      openedAt: '2026-11-12',
+      expiresAt: '2026-11-12',
+      extendedAt: '2026-11-12',
+      filledByPlacementId: null,
+      replacementCandidateName: null,
+      closedAt: '2026-11-12',
+      cancelReason: null,
+      concurrencyToken: 'tok-1',
+      createdAt: '2026-11-12',
+    };
+    const pendingRefund: ServiceFee = {
+      serviceFeeId: 'fee-refund-1',
+      placementId: 'p-void-1',
+      jobId: 'job-1',
+      kind: 'REPLACEMENT_REFUND',
+      companyId: 'company-1',
+      baseSalary: 18_000_000,
+      amount: 5_400_000,
+      feeMultiplier: 0.3,
+      currencyCode: 'VND',
+      dueDate: '2026-11-13',
+      status: 'PENDING',
+      createdAt: '2026-11-12',
+    };
+    const voidedWarranty: Warranty = {
+      warrantyId: 'w-void-1',
+      placementId: 'p-void-1',
+      companyName: 'HR Connect Demo Company',
+      jobTitle: '[Headhunt] Principal Solutions Architect',
+      candidateName: 'Demo Candidate 2',
+      startDate: '2026-11-12',
+      endDate: '2026-11-13',
+      status: 'VOIDED',
+      placementStatus: 'RESIGNED',
+      serviceFeeStatus: 'PAID',
+      serviceFeeAmount: 18_000_000,
+    };
+
+    vi.mocked(financeApi.replacementSlots).mockResolvedValue({ items: [expiredSlot], totalCount: 1, page: 1, pageSize: 100 } as never);
+    vi.mocked(financeApi.warranties).mockResolvedValue(page([voidedWarranty]));
+    vi.mocked(financeApi.serviceFees).mockImplementation(async (params) => {
+      if (params?.kind === 'REPLACEMENT_REFUND') return page([pendingRefund]);
+      return page<ServiceFee>([]);
+    });
+
+    renderWith(<ClientWarrantyPage />);
+
+    expect(await screen.findByText('Chưa tuyển được người thay', {}, { timeout: 10000 })).toBeTruthy();
+    expect(screen.getByText(/Chờ hoàn 30%/)).toBeTruthy();
+    expect(screen.getByText('Suất #68EF9A24 · Mở 12/11/2026')).toBeTruthy();
+    expect(screen.queryByText('Xem Công nợ')).toBeNull();
   });
 });

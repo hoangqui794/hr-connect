@@ -40,6 +40,16 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
     placeholderData: (previous) => previous,
   });
 
+  const replacementSlots = useQuery({
+    queryKey: ['mf05-replacement-slots-summary', mode],
+    queryFn: () => financeApi.replacementSlots({ page: 1, pageSize: 100 }),
+    staleTime: 30_000,
+  });
+
+  const slotByPlacementId = new Map(
+    (replacementSlots.data?.items ?? []).map((slot) => [slot.originalPlacementId, slot] as const)
+  );
+
   const highlightParam = searchParams.get('highlight');
   useEffect(() => {
     if (!highlightParam || list.isLoading || !list.data) return;
@@ -135,10 +145,19 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
       dataIndex: 'status',
       render: (v: WarrantyStatus, w) => {
         const s = labelOf(WARRANTY_STATUS, v);
+        const linkedSlot = v === 'VOIDED' || v === 'CLAIMED' ? slotByPlacementId.get(w.placementId) : undefined;
         return (
-          <Tooltip title={w.resultNote ?? undefined}>
-            <span><StatusDot tone={s.tone}>{s.label}</StatusDot></span>
-          </Tooltip>
+          <div>
+            <Tooltip title={w.resultNote ?? undefined}>
+              <span><StatusDot tone={s.tone}>{s.label}</StatusDot></span>
+            </Tooltip>
+            {linkedSlot && (
+              <div className="mt-0.5 text-xs text-slate-500">
+                Suất #{linkedSlot.replacementSlotId.slice(0, 8).toUpperCase()}
+                {linkedSlot.openedAt ? ` · Mở ${date(linkedSlot.openedAt)}` : ''}
+              </div>
+            )}
+          </div>
         );
       },
     },

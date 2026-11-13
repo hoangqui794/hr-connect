@@ -237,12 +237,36 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
       key: 'status',
       render: (_, slot) => {
         const conf = REPLACEMENT_STATUS_CONFIG[slot.status];
+        const refund = slot.status === 'EXPIRED' && mode === 'client' ? refundOf(slot) : undefined;
+        const pctLabel = refund?.feeMultiplier != null ? `${Number((refund.feeMultiplier * 100).toFixed(2))}% ` : '';
         return (
-          <Tooltip title={conf.description}>
-            <Tag color={conf.tagColor} className="m-0 font-medium">
-              {conf.label}
-            </Tag>
-          </Tooltip>
+          <div className="space-y-1">
+            <Tooltip title={conf.description}>
+              <Tag color={conf.tagColor} className="m-0 font-medium">
+                {conf.label}
+              </Tag>
+            </Tooltip>
+            {slot.status === 'EXPIRED' && mode === 'client' && (
+              <div>
+                {refund ? (
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+                      refund.status === 'PAID'
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                        : 'border-sky-200 bg-sky-50 text-sky-800'
+                    }`}
+                  >
+                    <CheckCircleOutlined />
+                    {refund.status === 'PAID' ? 'Đã hoàn' : 'Chờ hoàn'} {pctLabel}({money(refund.amount)})
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                    Đang xử lý hoàn phí
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         );
       },
     },
@@ -265,20 +289,6 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
             )}
             {slot.status === 'EXPIRED' && (
               <span className="text-xs text-red-600 font-medium">Đã hết hạn</span>
-            )}
-            {slot.status === 'EXPIRED' && mode === 'client' && refundOf(slot) && (
-              <div className="mt-1 text-xs leading-snug">
-                <span className="font-semibold text-emerald-700">
-                  {refundOf(slot)!.status === 'PAID' ? 'Đã hoàn' : 'Sẽ hoàn'} {money(refundOf(slot)!.amount)}
-                </span>{' '}
-                <button
-                  type="button"
-                  onClick={() => navigate('/client/billing')}
-                  className="cursor-pointer border-0 bg-transparent p-0 font-semibold text-[#0C4A6E] underline"
-                >
-                  Xem Công nợ
-                </button>
-              </div>
             )}
             {slot.extendedAt && <div className="mt-0.5 text-xs text-slate-500">Đã gia hạn ngày {date(slot.extendedAt)}</div>}
           </div>
@@ -311,18 +321,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
           return <span className="text-xs font-semibold text-amber-700">Mở sau khi bạn thanh toán phí tuyển</span>;
         }
         if (slot.status === 'EXPIRED') {
-          const refund = refundOf(slot);
-          return (
-            <div className="text-xs leading-snug">
-              <span className="font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 inline-flex items-center gap-1">
-                <CheckCircleOutlined />{' '}
-                {refund
-                  ? `${refund.status === 'PAID' ? 'Đã hoàn' : 'Sẽ hoàn'} ${refund.feeMultiplier != null ? `${Number((refund.feeMultiplier * 100).toFixed(2))}% ` : ''}phí (${money(refund.amount)})`
-                  : 'Đang xử lý hoàn phí'}
-              </span>
-              <div className="text-slate-500 mt-1">Đã chuyển sang Công nợ</div>
-            </div>
-          );
+          return <span className="text-xs text-slate-500">Chưa tuyển được người thay</span>;
         }
         return <span className="text-slate-400">—</span>;
       },
@@ -469,35 +468,6 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
           </div>
         </div>
       </Surface>
-
-      {/* Expired Slot Refund Policy Banner for Client */}
-      {mode === 'client' && allSlots.some((s) => s.status === 'EXPIRED') && (
-        <Alert
-          className="mb-4 rounded-xl border-emerald-200 bg-emerald-50/80 shadow-xs"
-          type="success"
-          showIcon
-          message={
-            <span className="font-semibold text-emerald-900 text-sm">
-              Suất tuyển thay thế đã hết hạn & được hoàn một phần phí dịch vụ theo hợp đồng
-            </span>
-          }
-          description={
-            <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-emerald-800 mt-1">
-              <span>
-                Theo chính sách bảo hành, khi suất thay thế hết hạn mà chưa tuyển được ứng viên mới, HR Connect tự động <strong>hoàn một phần phí dịch vụ theo hợp đồng</strong> vào tài khoản công nợ của doanh nghiệp.
-              </span>
-              <Button
-                size="small"
-                type="primary"
-                className="bg-emerald-600 hover:bg-emerald-500 font-semibold shadow-xs"
-                onClick={() => navigate('/client/billing')}
-              >
-                Xem chi tiết hoàn tiền trên trang Công nợ
-              </Button>
-            </div>
-          }
-        />
-      )}
 
       {/* 3 UI States: Loading, Error, Empty, and Content */}
       {isLoading ? (

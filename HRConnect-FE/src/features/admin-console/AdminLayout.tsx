@@ -210,7 +210,9 @@ export const AdminLayout: React.FC = () => {
               </button>
             )}
           <nav aria-label="Vị trí hiện tại" className="flex min-w-0 items-center gap-2 text-sm">
-            <span className="hidden text-slate-500 sm:inline">{current?.group ?? 'Quản trị'}</span>
+            <span className="hidden text-slate-500 sm:inline">
+              {current?.group && current.group !== current.label ? current.group : 'Quản trị'}
+            </span>
             {current && (
               <>
                 <span className="hidden text-slate-300 sm:inline" aria-hidden>/</span>
