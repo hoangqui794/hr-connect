@@ -1,4 +1,5 @@
 using FluentAssertions;
+using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
@@ -64,7 +65,7 @@ public class ForgotPasswordCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldReturnGenericSuccess_WhenEmailDoesNotExist()
+    public async Task Handle_ShouldThrowNotFoundException_WhenEmailDoesNotExist()
     {
         // Arrange
         var command = new ForgotPasswordCommand("nonexistent@example.com");
@@ -73,12 +74,11 @@ public class ForgotPasswordCommandHandlerTests
             .ReturnsAsync((AppUser?)null);
 
         // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
+        var act = () => _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        result.Should().NotBeNull();
-        result.Success.Should().BeTrue();
-        result.Message.Should().Be("Nếu email đã được đăng ký, mã đặt lại mật khẩu sẽ được gửi đến email đó.");
+        var error = await act.Should().ThrowAsync<NotFoundException>();
+        error.Which.Message.Should().Be("Tài khoản với email này không tồn tại trong hệ thống.");
 
         // Must not create tokens or send emails
         _userTokenRepositoryMock.Verify(x => x.AddAsync(It.IsAny<UserToken>(), It.IsAny<CancellationToken>()), Times.Never);
