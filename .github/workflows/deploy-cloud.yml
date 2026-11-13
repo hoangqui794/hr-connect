@@ -36,7 +36,7 @@ jobs:
       DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
       - name: Checkout approved commit history
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
           fetch-depth: 2
@@ -90,7 +90,7 @@ jobs:
 
     steps:
       - name: Checkout the approved commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
           persist-credentials: false
@@ -139,7 +139,7 @@ jobs:
 
     steps:
       - name: Checkout the approved commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
           persist-credentials: false
