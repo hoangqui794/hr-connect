@@ -11,6 +11,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { App, Modal } from 'antd';
 import {
+  ArrowLeftOutlined,
   ArrowRightOutlined,
   BankOutlined,
   CheckCircleFilled,
@@ -221,7 +222,17 @@ const TextField: React.FC<{
   );
 };
 
-export const RegisterPage: React.FC = () => {
+export interface RegisterFormPanelProps {
+  initialEmail?: string;
+  onSwitchToLogin?: (prefillEmail?: string) => void;
+  onRoleChange?: (role: RegisterableRole) => void;
+}
+
+export const RegisterFormPanel: React.FC<RegisterFormPanelProps> = ({
+  initialEmail,
+  onSwitchToLogin,
+  onRoleChange,
+}) => {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -239,7 +250,7 @@ export const RegisterPage: React.FC = () => {
     companyName: '',
     taxCode: '',
     fullName: '',
-    email: '',
+    email: initialEmail?.trim() ?? '',
     phone: '',
     password: '',
     confirmPassword: '',
@@ -268,17 +279,24 @@ export const RegisterPage: React.FC = () => {
 
   const isClient = role === UserRole.CLIENT;
   const isAffiliate = role === UserRole.AFFILIATE;
-  const hero = HERO_CONTENT[role];
 
   useEffect(() => {
     const requested = searchParams.get('role')?.toUpperCase();
-    if (requested === 'CLIENT') setRole(UserRole.CLIENT);
-    else if (requested === 'AFFILIATE') setRole(UserRole.AFFILIATE);
-    else if (requested === 'CANDIDATE') setRole(UserRole.CANDIDATE);
-  }, [searchParams]);
+    if (requested === 'CLIENT') {
+      setRole(UserRole.CLIENT);
+      onRoleChange?.(UserRole.CLIENT);
+    } else if (requested === 'AFFILIATE') {
+      setRole(UserRole.AFFILIATE);
+      onRoleChange?.(UserRole.AFFILIATE);
+    } else if (requested === 'CANDIDATE') {
+      setRole(UserRole.CANDIDATE);
+      onRoleChange?.(UserRole.CANDIDATE);
+    }
+  }, [searchParams, onRoleChange]);
 
   const chooseRole = (next: RegisterableRole) => {
     setRole(next);
+    onRoleChange?.(next);
     setErrors({});
     setFormError(null);
   };
@@ -436,7 +454,11 @@ export const RegisterPage: React.FC = () => {
         duration: 5,
       });
       setSplitModal((prev) => ({ ...prev, visible: false }));
-      navigate(`/login?email=${encodeURIComponent(splitModal.email)}&verified=true`, { replace: true });
+      if (onSwitchToLogin) {
+        onSwitchToLogin(splitModal.email);
+      } else {
+        navigate(`/login?email=${encodeURIComponent(splitModal.email)}&verified=true`, { replace: true });
+      }
     } catch (err: any) {
       const rawMsg = getApiErrorMessage(err, 'Mã OTP không chính xác hoặc đã hết hạn.');
       const friendlyMsg = rawMsg.toLowerCase().includes('an error occurred')
@@ -451,73 +473,7 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen w-full bg-[#F4F7FA] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-slate-900 antialiased max-lg:flex-col">
-      {/* ── Left Hero Branding Panel — Midnight Ocean Palette ── */}
-      <aside className="relative flex flex-col justify-between overflow-hidden bg-[#08253C] p-8 text-white max-lg:min-h-[200px] max-lg:p-6 lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:w-[38%] xl:w-[36%] 2xl:w-[34%] lg:p-10 xl:p-12 shrink-0">
-        {/* Background photo & Midnight Ocean overlay */}
-        <img
-          src={REGISTER_HERO_IMAGE}
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-cover object-center opacity-35"
-          loading="eager"
-          decoding="async"
-        />
-        <div
-          className="absolute inset-0 bg-gradient-to-t from-[#061A2B]/98 via-[#08253C]/85 to-[#0C4A6E]/70"
-          aria-hidden="true"
-        />
-
-        {/* Brand Header */}
-        <div className="relative z-10">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-3 text-xl font-bold tracking-tight text-white no-underline transition-opacity duration-150 hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 rounded-lg"
-          >
-            <BrandMark size={36} tone="light" className="shadow-sm" />
-            <span className="font-extrabold tracking-tight">HR Connect</span>
-          </Link>
-        </div>
-
-        {/* Dynamic Role Highlights */}
-        <div className="relative z-10 my-auto py-8 max-lg:hidden">
-          <p className="m-0 text-xs font-semibold tracking-wide text-sky-300">
-            {hero.tag}
-          </p>
-
-          <h2 className="mt-3 text-2xl font-extrabold leading-[1.28] tracking-tight text-white xl:text-[28px]">
-            {hero.headline}
-          </h2>
-          <p className="mt-3 max-w-md text-sm font-normal leading-relaxed text-slate-200/90">
-            {hero.subhead}
-          </p>
-
-          <div className="mt-7 max-w-md space-y-3">
-            {hero.highlights.map((item, idx) => (
-              <div
-                key={idx}
-                className="rounded-xl border border-white/12 bg-white/[0.07] p-4 backdrop-blur-sm"
-              >
-                <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-white">
-                  <CheckOutlined aria-hidden="true" className="text-xs text-sky-300" />
-                  <span>{item.title}</span>
-                </div>
-                <p className="m-0 text-xs leading-relaxed text-slate-200/85">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Footer info */}
-        <div className="relative z-10 flex items-center justify-between border-t border-white/10 pt-5 text-xs text-slate-300/80 max-lg:hidden">
-          <span>© {new Date().getFullYear()} HR Connect Vietnam</span>
-          <span className="text-slate-300/70">Đăng ký bảo mật</span>
-        </div>
-      </aside>
-
-      {/* ── Right Registration Form Section ────────────────────────────────── */}
-      <main className="flex min-h-screen flex-1 items-center justify-center bg-[#F4F7FA] px-4 py-8 sm:px-6 lg:px-8 xl:px-12">
-        <div className="my-auto w-full max-w-[720px] xl:max-w-[760px] rounded-2xl border border-[#DCE3EC] bg-white p-6 shadow-[0_1px_2px_rgba(8,37,60,0.05),0_16px_36px_-12px_rgba(8,37,60,0.09)] sm:p-9">
+    <>
           {/* Header */}
           <div className="text-left">
             <div className="flex items-start justify-between gap-4">
@@ -532,13 +488,24 @@ export const RegisterPage: React.FC = () => {
                   Chọn nhóm vai trò phù hợp để bắt đầu trải nghiệm hệ sinh thái HR Connect.
                 </p>
               </div>
-              <Link
-                to="/login"
-                className="hidden sm:inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#DCE3EC] bg-[#F8FAFC] px-3.5 py-2 text-xs font-semibold text-[#0369A1] no-underline transition-colors duration-150 hover:border-[#0369A1]/40 hover:bg-[#EEF6FB] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1]"
-              >
-                <span>Đăng nhập</span>
-                <ArrowRightOutlined aria-hidden="true" className="text-[11px]" />
-              </Link>
+              {onSwitchToLogin ? (
+                <button
+                  type="button"
+                  onClick={() => onSwitchToLogin(values.email.trim() || undefined)}
+                  className="hidden sm:inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-[#DCE3EC] bg-[#F8FAFC] px-3.5 py-2 text-xs font-semibold text-[#0369A1] transition-colors duration-150 hover:border-[#0369A1]/40 hover:bg-[#EEF6FB] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1]"
+                >
+                  <ArrowLeftOutlined aria-hidden="true" className="text-[11px]" />
+                  <span>Đăng nhập</span>
+                </button>
+              ) : (
+                <Link
+                  to="/login"
+                  className="hidden sm:inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#DCE3EC] bg-[#F8FAFC] px-3.5 py-2 text-xs font-semibold text-[#0369A1] no-underline transition-colors duration-150 hover:border-[#0369A1]/40 hover:bg-[#EEF6FB] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1]"
+                >
+                  <span>Đăng nhập</span>
+                  <ArrowRightOutlined aria-hidden="true" className="text-[11px]" />
+                </Link>
+              )}
             </div>
           </div>
 
@@ -806,13 +773,24 @@ export const RegisterPage: React.FC = () => {
                   {(formError.includes('đăng nhập') || formError.includes('Đăng nhập')) && (
                     <div className="mt-2.5 flex items-center justify-between border-t border-rose-200/70 pt-2.5 text-xs">
                       <span className="font-normal text-slate-600">Bạn đã có tài khoản liên kết?</span>
-                      <Link
-                        to={`/login?email=${encodeURIComponent(values.email.trim())}`}
-                        className="flex items-center gap-1 font-semibold text-[#0369A1] underline underline-offset-2 hover:text-[#075985]"
-                      >
-                        <span>Đăng nhập ngay</span>
-                        <ArrowRightOutlined aria-hidden="true" className="text-[11px]" />
-                      </Link>
+                      {onSwitchToLogin ? (
+                        <button
+                          type="button"
+                          onClick={() => onSwitchToLogin(values.email.trim())}
+                          className="flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 font-semibold text-[#0369A1] underline underline-offset-2 hover:text-[#075985]"
+                        >
+                          <span>Đăng nhập ngay</span>
+                          <ArrowRightOutlined aria-hidden="true" className="text-[11px]" />
+                        </button>
+                      ) : (
+                        <Link
+                          to={`/login?email=${encodeURIComponent(values.email.trim())}`}
+                          className="flex items-center gap-1 font-semibold text-[#0369A1] underline underline-offset-2 hover:text-[#075985]"
+                        >
+                          <span>Đăng nhập ngay</span>
+                          <ArrowRightOutlined aria-hidden="true" className="text-[11px]" />
+                        </Link>
+                      )}
                     </div>
                   )}
                 </div>
@@ -847,12 +825,20 @@ export const RegisterPage: React.FC = () => {
           {/* Mobile Back to Login */}
           <div className="mt-6 text-center text-xs text-slate-600 sm:hidden">
             Đã có tài khoản?{' '}
-            <Link to="/login" className="font-semibold text-[#0369A1] hover:underline">
-              Đăng nhập ngay
-            </Link>
+            {onSwitchToLogin ? (
+              <button
+                type="button"
+                onClick={() => onSwitchToLogin(values.email.trim() || undefined)}
+                className="cursor-pointer border-0 bg-transparent p-0 font-semibold text-[#0369A1] hover:underline"
+              >
+                Đăng nhập ngay
+              </button>
+            ) : (
+              <Link to="/login" className="font-semibold text-[#0369A1] hover:underline">
+                Đăng nhập ngay
+              </Link>
+            )}
           </div>
-        </div>
-      </main>
 
       {/* ── Modal Tách tài khoản riêng bằng OTP ────────────────────────────────── */}
       <Modal
@@ -902,12 +888,25 @@ export const RegisterPage: React.FC = () => {
                   {splitModal.loading ? 'Đang gửi mã…' : 'Tách thành tài khoản riêng (Gửi OTP)'}
                 </button>
 
-                <Link
-                  to={`/login?email=${encodeURIComponent(splitModal.email)}`}
-                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#DCE3EC] bg-white px-4 text-sm font-semibold text-slate-700 no-underline transition-colors duration-150 hover:bg-slate-50"
-                >
-                  Đăng nhập với email này
-                </Link>
+                {onSwitchToLogin ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSplitModal((prev) => ({ ...prev, visible: false }));
+                      onSwitchToLogin(splitModal.email);
+                    }}
+                    className="flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#DCE3EC] bg-white px-4 text-sm font-semibold text-slate-700 transition-colors duration-150 hover:bg-slate-50"
+                  >
+                    Đăng nhập với email này
+                  </button>
+                ) : (
+                  <Link
+                    to={`/login?email=${encodeURIComponent(splitModal.email)}`}
+                    className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#DCE3EC] bg-white px-4 text-sm font-semibold text-slate-700 no-underline transition-colors duration-150 hover:bg-slate-50"
+                  >
+                    Đăng nhập với email này
+                  </Link>
+                )}
               </div>
             </div>
           ) : (
@@ -968,6 +967,93 @@ export const RegisterPage: React.FC = () => {
           )}
         </div>
       </Modal>
+    </>
+  );
+};
+
+export const RegisterPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const initialRole: RegisterableRole = (() => {
+    const r = searchParams.get('role')?.toUpperCase();
+    if (r === 'CLIENT') return UserRole.CLIENT;
+    if (r === 'AFFILIATE') return UserRole.AFFILIATE;
+    return UserRole.CANDIDATE;
+  })();
+
+  const [heroRole, setHeroRole] = useState<RegisterableRole>(initialRole);
+  const hero = HERO_CONTENT[heroRole];
+
+  return (
+    <div className="flex min-h-screen w-full bg-[#F4F7FA] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-slate-900 antialiased max-lg:flex-col">
+      {/* ── Left Hero Branding Panel — Midnight Ocean Palette ── */}
+      <aside className="relative flex flex-col justify-between overflow-hidden bg-[#08253C] p-8 text-white max-lg:min-h-[200px] max-lg:p-6 lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:w-[38%] xl:w-[36%] 2xl:w-[34%] lg:p-10 xl:p-12 shrink-0">
+        {/* Background photo & Midnight Ocean overlay */}
+        <img
+          src={REGISTER_HERO_IMAGE}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover object-center opacity-35"
+          loading="eager"
+          decoding="async"
+        />
+        <div
+          className="absolute inset-0 bg-gradient-to-t from-[#061A2B]/98 via-[#08253C]/85 to-[#0C4A6E]/70"
+          aria-hidden="true"
+        />
+
+        {/* Brand Header */}
+        <div className="relative z-10">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-3 text-xl font-bold tracking-tight text-white no-underline transition-opacity duration-150 hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 rounded-lg"
+          >
+            <BrandMark size={36} tone="light" className="shadow-sm" />
+            <span className="font-extrabold tracking-tight">HR Connect</span>
+          </Link>
+        </div>
+
+        {/* Dynamic Role Highlights */}
+        <div className="relative z-10 my-auto py-8 max-lg:hidden">
+          <p className="m-0 text-xs font-semibold tracking-wide text-sky-300">
+            {hero.tag}
+          </p>
+
+          <h2 className="mt-3 text-2xl font-extrabold leading-[1.28] tracking-tight text-white xl:text-[28px]">
+            {hero.headline}
+          </h2>
+          <p className="mt-3 max-w-md text-sm font-normal leading-relaxed text-slate-200/90">
+            {hero.subhead}
+          </p>
+
+          <div className="mt-7 max-w-md space-y-3">
+            {hero.highlights.map((item, idx) => (
+              <div
+                key={idx}
+                className="rounded-xl border border-white/12 bg-white/[0.07] p-4 backdrop-blur-sm"
+              >
+                <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-white">
+                  <CheckOutlined aria-hidden="true" className="text-xs text-sky-300" />
+                  <span>{item.title}</span>
+                </div>
+                <p className="m-0 text-xs leading-relaxed text-slate-200/85">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer info */}
+        <div className="relative z-10 flex items-center justify-between border-t border-white/10 pt-5 text-xs text-slate-300/80 max-lg:hidden">
+          <span>© {new Date().getFullYear()} HR Connect Vietnam</span>
+          <span className="text-slate-300/70">Đăng ký bảo mật</span>
+        </div>
+      </aside>
+
+      {/* ── Right Registration Form Section ────────────────────────────────── */}
+      <main className="flex min-h-screen flex-1 items-center justify-center bg-[#F4F7FA] px-4 py-8 sm:px-6 lg:px-8 xl:px-12">
+        <div className="my-auto w-full max-w-[720px] xl:max-w-[760px] rounded-2xl border border-[#DCE3EC] bg-white p-6 shadow-[0_1px_2px_rgba(8,37,60,0.05),0_16px_36px_-12px_rgba(8,37,60,0.09)] sm:p-9">
+          <RegisterFormPanel onRoleChange={setHeroRole} />
+        </div>
+      </main>
     </div>
   );
 };
