@@ -82,6 +82,10 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
             request.Department,
             Mf04InputPolicy.PlacementDepartmentMaxLength,
             "Bộ phận tiếp nhận");
+        var confirmationNote = Mf04InputPolicy.NormalizeOptionalText(
+            request.ConfirmationNote,
+            Mf04InputPolicy.PlacementConfirmationNoteMaxLength,
+            "Ghi chú xác nhận đi làm");
 
         var application = await _applicationRepository.GetByIdAsync(request.ApplicationId, cancellationToken);
         if (application == null)
@@ -130,6 +134,15 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
         {
             throw new BadRequestException(
                 "Ngày thực tế đi làm không được sớm hơn ngày ứng viên chấp nhận offer.",
+                PlacementStartDateErrorCodes.InvalidStartDate);
+        }
+
+        if (application.PlannedStartDate.HasValue &&
+            request.ActualStartDate != application.PlannedStartDate.Value &&
+            confirmationNote == null)
+        {
+            throw new BadRequestException(
+                "Phải nhập lý do khi ngày thực tế đi làm khác ngày nhận việc đã dự kiến.",
                 PlacementStartDateErrorCodes.InvalidStartDate);
         }
 
@@ -253,7 +266,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
                 Status = PlacementStates.Started,
                 ConfirmedBy = request.CurrentUserId,
                 ConfirmedAt = now,
-                ConfirmationNote = request.ConfirmationNote?.Trim(),
+                ConfirmationNote = confirmationNote,
                 CreatedAt = now,
                 UpdatedAt = now,
                 ReplacementSlotId = replacementSlot?.ReplacementSlotId
@@ -341,7 +354,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
                 NewStatus = ApplicationStates.Placed,
                 ChangedBy = request.CurrentUserId,
                 ChangedAt = now,
-                Reason = request.ConfirmationNote?.Trim() ?? "Xác nhận ứng viên đã bắt đầu làm việc (Placement started)."
+                Reason = confirmationNote ?? "Xác nhận ứng viên đã bắt đầu làm việc (Placement started)."
             });
 
             _applicationRepository.Update(application);

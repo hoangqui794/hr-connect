@@ -17,6 +17,7 @@ vi.mock('@/services/api/hrApi', async () => {
       rescheduleInterview: vi.fn(),
       recordResult: vi.fn(),
       cancelInterview: vi.fn(),
+      recordNoShow: vi.fn(),
     },
     interviewHistoryApi: {
       get: vi.fn(),
@@ -100,7 +101,7 @@ describe('ClientInterviewDetailDrawer', () => {
     expect(screen.getByRole('button', { name: /dời lịch/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /ghi kết quả/i })).toBeInTheDocument();
     expect(screen.getByText('Chưa xác nhận')).toBeInTheDocument();
-    expect(screen.getByText(/chưa xác nhận không đồng nghĩa ứng viên từ chối/i)).toBeInTheDocument();
+    expect(screen.getByText(/lịch vẫn được giữ nguyên/i)).toBeInTheDocument();
   });
 
   it('shows when the Candidate confirmed attendance', async () => {
@@ -114,6 +115,22 @@ describe('ClientInterviewDetailDrawer', () => {
 
     expect(await screen.findByText('Đã xác nhận tham gia')).toBeInTheDocument();
     expect(screen.getByText(/Phản hồi lúc:/i)).toBeInTheDocument();
+  });
+
+  it('shows overdue guidance and only post-interview actions after the scheduled window', async () => {
+    vi.mocked(candidateInterviewApi.getClientInterviewDetail).mockResolvedValueOnce({
+      ...mockInterviewDetail,
+      scheduledAt: relativeIso(-2),
+    } as any);
+
+    renderComponent({ interviewId: 'iv-test-100', onClose: vi.fn() });
+
+    expect(await screen.findByText('Quá giờ · Chờ cập nhật')).toBeInTheDocument();
+    expect(screen.getByText(/thời gian phỏng vấn đã qua/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Vắng mặt' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /ghi kết quả/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Hủy lịch' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /sửa thông tin/i })).not.toBeInTheDocument();
   });
 
   it('switches to history tab and fetches interview history', async () => {

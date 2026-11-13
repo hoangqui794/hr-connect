@@ -43,6 +43,7 @@ import { clientActionsApi, interviewHistoryApi } from '@/services/api/hrApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { StatusDot } from '@/features/admin-console/ui';
 import { INTERVIEW_STATUS, INTERVIEW_RESULT, pick } from '@/features/hr-console/hrLabels';
+import { isInterviewOverdue } from '@/features/recruitment/interviewTiming';
 import type { CandidateInterviewDetailDto } from '@/types/api/candidateInterview';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
@@ -67,11 +68,13 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
   const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
   const [resultModalOpen, setResultModalOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [noShowModalOpen, setNoShowModalOpen] = useState(false);
 
   const [editForm] = Form.useForm();
   const [rescheduleForm] = Form.useForm();
   const [resultForm] = Form.useForm();
   const [cancelForm] = Form.useForm();
+  const [noShowForm] = Form.useForm();
   const selectedInterviewType = Form.useWatch('interviewType', editForm);
   const watchedResult = Form.useWatch('result', resultForm);
 
@@ -186,6 +189,24 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
     onError: (err) => message.error(getApiErrorMessage(err, 'Không thể hủy lịch phỏng vấn.')),
   });
 
+  // POST /api/v1/interviews/{id}/no-show
+  const noShowMutation = useMutation({
+    mutationFn: async (values: { reason: string }) => {
+      if (!interviewId || !interview) return;
+      return clientActionsApi.recordNoShow(interviewId, {
+        reason: values.reason.trim(),
+        concurrencyToken: interview.concurrencyToken || '',
+      });
+    },
+    onSuccess: async (res: any) => {
+      message.success(res?.message || 'Đã ghi nhận ứng viên vắng mặt.');
+      setNoShowModalOpen(false);
+      noShowForm.resetFields();
+      await invalidateAll();
+    },
+    onError: (err) => message.error(getApiErrorMessage(err, 'Không thể ghi nhận ứng viên vắng mặt.')),
+  });
+
   const handleOpenEdit = () => {
     if (!interview) return;
     editForm.setFieldsValue({
@@ -218,11 +239,13 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
 
   const st = interview ? pick(INTERVIEW_STATUS, interview.status) : null;
   const isScheduled = interview?.status === 'SCHEDULED';
+  const isOverdue = isInterviewOverdue(interview);
   const busy =
     updateMutation.isPending ||
     rescheduleMutation.isPending ||
     resultMutation.isPending ||
-    cancelMutation.isPending;
+    cancelMutation.isPending ||
+    noShowMutation.isPending;
 
   return (
     <>
@@ -237,15 +260,23 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
         footer={
           interview && isScheduled ? (
             <div className="flex flex-wrap justify-end gap-2 py-1">
-              <Button danger onClick={() => setCancelModalOpen(true)} disabled={busy} className="!h-9 rounded-lg font-medium">
-                Hủy lịch
-              </Button>
+              {!isOverdue && (
+                <Button danger onClick={() => setCancelModalOpen(true)} disabled={busy} className="!h-9 rounded-lg font-medium">
+                  Hủy lịch
+                </Button>
+              )}
               <Button onClick={handleOpenReschedule} disabled={busy} className="!h-9 rounded-lg border-slate-200 text-slate-700 hover:border-slate-300 font-medium">
                 Dời lịch
               </Button>
-              <Button icon={<EditOutlined />} onClick={handleOpenEdit} disabled={busy} className="!h-9 rounded-lg border-slate-200 text-slate-700 hover:border-slate-300 font-medium">
-                Sửa thông tin
-              </Button>
+              {isOverdue ? (
+                <Button danger onClick={() => setNoShowModalOpen(true)} disabled={busy} className="!h-9 rounded-lg font-medium">
+                  Vắng mặt
+                </Button>
+              ) : (
+                <Button icon={<EditOutlined />} onClick={handleOpenEdit} disabled={busy} className="!h-9 rounded-lg border-slate-200 text-slate-700 hover:border-slate-300 font-medium">
+                  Sửa thông tin
+                </Button>
+              )}
               <Button
                 type="primary"
                 icon={<CheckOutlined />}
@@ -287,7 +318,11 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                     <span className="text-xs font-semibold uppercase tracking-wider text-blue-600">
                       Phỏng vấn vòng {interview.interviewRound}
                     </span>
-                    {st && <StatusDot tone={st.tone}>{st.label}</StatusDot>}
+                    {isOverdue ? (
+                      <StatusDot tone="warning">Quá giờ · Chờ cập nhật</StatusDot>
+                    ) : st ? (
+                      <StatusDot tone={st.tone}>{st.label}</StatusDot>
+                    ) : null}
                   </div>
                   <h2 className="m-0 mt-1 text-xl font-bold text-slate-900">
                     {interview.candidateFullName || interview.candidateName || 'Ứng viên'}
@@ -340,6 +375,14 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                     ),
                     children: (
                       <div className="space-y-4 pt-2">
+                        {isOverdue && (
+                          <Alert
+                            type="warning"
+                            showIcon
+                            message="Buổi phỏng vấn đã quá giờ và chưa được cập nhật"
+                            description="Vui lòng ghi kết quả, đánh dấu ứng viên vắng mặt hoặc dời sang lịch mới. Hệ thống không tự suy đoán kết quả phỏng vấn."
+                          />
+                        )}
                         <div className="grid gap-4 sm:grid-cols-2">
                           <div className="rounded-xl bg-slate-50 p-4">
                             <span className="text-xs font-medium text-slate-500">Thời gian hẹn</span>
@@ -363,7 +406,7 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                                     : interview.interviewType || 'Trực tuyến'}
                             </div>
                             <div className="mt-1 text-xs text-slate-500">
-                              Trạng thái: {st?.label ?? interview.status}
+                              Trạng thái: {isOverdue ? 'Quá giờ · Chờ cập nhật' : (st?.label ?? interview.status)}
                             </div>
                           </div>
                         </div>
@@ -390,7 +433,9 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                           </div>
                           {interview.candidateAttendanceStatus !== 'CONFIRMED' && (
                             <div className="mt-1 text-xs text-slate-600">
-                              Lịch vẫn có hiệu lực; chưa xác nhận không đồng nghĩa ứng viên từ chối.
+                              {isOverdue
+                                ? 'Ứng viên chưa xác nhận tham gia và thời gian phỏng vấn đã qua. Vui lòng ghi kết quả hoặc đánh dấu vắng mặt.'
+                                : 'Ứng viên chưa xác nhận. Lịch vẫn được giữ nguyên cho đến khi Doanh nghiệp thay đổi hoặc hủy lịch.'}
                             </div>
                           )}
                         </div>
@@ -741,6 +786,34 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
             rules={[{ required: true, whitespace: true, message: 'Vui lòng nhập lý do hủy lịch.' }]}
           >
             <Input.TextArea rows={3} placeholder="Doanh nghiệp thay đổi kế hoạch tuyển dụng..." />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        open={noShowModalOpen}
+        title="Ghi nhận ứng viên vắng mặt"
+        okText="Xác nhận vắng mặt"
+        cancelText="Đóng"
+        okButtonProps={{ danger: true }}
+        onCancel={() => setNoShowModalOpen(false)}
+        onOk={() => noShowForm.submit()}
+        confirmLoading={noShowMutation.isPending}
+        destroyOnHidden
+      >
+        <Form form={noShowForm} layout="vertical" onFinish={(values) => noShowMutation.mutate(values)}>
+          <Alert
+            className="mb-4"
+            type="warning"
+            showIcon
+            message="Chỉ xác nhận khi ứng viên thực sự không tham gia buổi phỏng vấn."
+          />
+          <Form.Item
+            name="reason"
+            label="Ghi chú vắng mặt"
+            rules={[{ required: true, whitespace: true, message: 'Vui lòng nhập ghi chú vắng mặt.' }]}
+          >
+            <Input.TextArea rows={3} maxLength={1000} showCount placeholder="Không tham gia và không liên hệ được..." />
           </Form.Item>
         </Form>
       </Modal>
