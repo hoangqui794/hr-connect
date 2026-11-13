@@ -1,5 +1,6 @@
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Infrastructure.Persistence;
+using HRConnect.Infrastructure.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 
 namespace HRConnect.Presentation.Database;
@@ -33,7 +34,13 @@ public static class DatabaseMigrationRunner
             seedDemoAccounts: enableDemoAccounts,
             passwordHasher: passwordHasher,
             emailNormalizer: emailNormalizer,
-            phoneNormalizer: phoneNormalizer);
+            phoneNormalizer: phoneNormalizer,
+            cancellationToken: cancellationToken);
+
+        if (enableDemoAccounts)
+        {
+            await Mf05HeadhuntTestJobSeeder.SeedAsync(dbContext, logger, cancellationToken);
+        }
 
         logger.LogInformation(
             "Database migration completed. Demo data enabled: {DemoDataEnabled}",
