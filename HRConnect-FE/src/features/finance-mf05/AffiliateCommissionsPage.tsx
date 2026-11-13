@@ -100,7 +100,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
   });
   const account = useQuery({ queryKey: ['mf05-my-bank-account'], queryFn: () => affiliateBankApi.get() });
 
-  const items = commissions.data?.items ?? [];
+  const items = useMemo(() => commissions.data?.items ?? [], [commissions.data?.items]);
   const inStatus = (statuses: CommissionStatus[]) => items.filter((c) => statuses.includes(c.status));
   const sum = (statuses: CommissionStatus[]) => inStatus(statuses).reduce((t, c) => t + c.amount, 0);
   const count = (statuses: CommissionStatus[]) => `${inStatus(statuses).length} khoản`;
