@@ -1084,24 +1084,31 @@ export const ApplicationWorkbench: React.FC<{
                   </div>
                 );
               }
+              const code = matchTierOf(d.aiMatch.matchScore, d.aiMatch.matchTier);
+              const t = code ? MATCH_TIER_STYLE[code] : null;
+              const tierSurface: Record<NonNullable<typeof code>, string> = {
+                HIGH: 'border-rose-200/80 bg-rose-50/45',
+                MEDIUM_HIGH: 'border-teal-200/80 bg-teal-50/45',
+                MEDIUM: 'border-lime-200/80 bg-lime-50/45',
+                LOW: 'border-slate-200 bg-slate-50/80',
+              };
               return (
                 <div className="flex flex-col gap-5 sm:flex-row">
-                  <div className="flex shrink-0 flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-slate-50 to-sky-50/50 border border-sky-100/80 px-6 py-5 shadow-2xs">
-                    <span className="text-[38px] font-black leading-none tabular-nums text-[#0C4A6E]">
+                  <div
+                    className={`flex shrink-0 flex-col items-center justify-center rounded-2xl border px-6 py-5 shadow-2xs ${
+                      code ? tierSurface[code] : 'border-[#DCE3EC] bg-[#F4F7FA]'
+                    }`}
+                  >
+                    <span className={`text-[38px] font-black leading-none tabular-nums ${t ? t.text : 'text-[#08253C]'}`}>
                       {d.aiMatch.matchScore != null ? Math.round(d.aiMatch.matchScore) : '—'}
                     </span>
                     <span className="mt-1.5 text-xs font-medium text-slate-500">điểm phù hợp / 100</span>
-                    {(() => {
-                      const code = matchTierOf(d.aiMatch.matchScore, d.aiMatch.matchTier);
-                      if (!code) return null;
-                      const t = MATCH_TIER_STYLE[code];
-                      return (
-                        <span className={`mt-2 inline-flex items-center gap-1 rounded-full border px-3 py-0.5 text-xs font-bold ${t.badge}`}>
-                          {t.heart && <HeartFilled aria-hidden="true" />}
-                          {t.label}
-                        </span>
-                      );
-                    })()}
+                    {t && (
+                      <span className={`mt-2 inline-flex items-center gap-1 rounded-full border px-3 py-0.5 text-xs font-bold ${t.badge}`}>
+                        {t.heart && <HeartFilled aria-hidden="true" />}
+                        {t.label}
+                      </span>
+                    )}
                     {d.aiMatch.requiresManualReview && (
                       <span className="mt-2 inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800 border border-amber-200/80">
                         Cần xem tay
