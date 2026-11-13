@@ -52,6 +52,16 @@ const FUNNEL = [
   { code: 'PLACED', label: 'Đã đi làm', color: 'from-emerald-500 to-emerald-600', bg: 'bg-emerald-50 text-emerald-700' },
 ] as const;
 
+const INTERVIEW_TYPE_LABEL: Record<string, string> = { ONLINE: 'Trực tuyến', OFFLINE: 'Trực tiếp', PHONE: 'Điện thoại' };
+
+/** "Trực tuyến · link" or "Trực tiếp · địa điểm"; null when the interview has none of these. */
+const interviewPlace = (iv: { interviewType: string | null; location: string | null; meetingLink: string | null }): string | null => {
+  const type = iv.interviewType ? INTERVIEW_TYPE_LABEL[iv.interviewType] ?? iv.interviewType : null;
+  const where = iv.interviewType === 'ONLINE' ? iv.meetingLink ?? iv.location : iv.location ?? iv.meetingLink;
+  const parts = [type, where].filter(Boolean);
+  return parts.length ? parts.join(' · ') : null;
+};
+
 export const ClientOverviewPage: React.FC = () => {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -66,7 +76,9 @@ export const ClientOverviewPage: React.FC = () => {
 
   const list = jobs.data ?? [];
   const activeJobs = list.filter((j) => j.status === 'ACTIVE');
-  const needFix = list.filter((j) => j.status === 'DRAFT' || j.status === 'REJECTED').length;
+  const draftCount = list.filter((j) => j.status === 'DRAFT').length;
+  const rejectedCount = list.filter((j) => j.status === 'REJECTED').length;
+  const needFix = draftCount + rejectedCount;
   const pendingReview = list.filter((j) => j.status === 'PENDING_REVIEW').length;
   const pendingAgreements = list.filter((j) => j.status === 'PENDING_AGREEMENT').length;
 
@@ -78,9 +90,18 @@ export const ClientOverviewPage: React.FC = () => {
   });
   const perJob = shownJobIds.map((id) => ({ data: jobCounts.data?.[id] ?? 0, isLoading: jobCounts.isLoading }));
 
+  // "Sắp tới" = SCHEDULED and not in the past: a past SCHEDULED interview only lacks its result.
+  // The API has no date filter, so fetch a page, keep future ones, nearest first, show 4.
   const interviews = useQuery({
     queryKey: ['client-overview', 'interviews'],
-    queryFn: async () => (await pipelineApi.interviews({ status: 'SCHEDULED', page: 1, pageSize: 4 })).items,
+    queryFn: async () => {
+      const items = (await pipelineApi.interviews({ status: 'SCHEDULED', page: 1, pageSize: 50 })).items;
+      const now = Date.now();
+      return items
+        .filter((iv) => iv.scheduledAt && new Date(iv.scheduledAt).getTime() >= now)
+        .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime())
+        .slice(0, 4);
+    },
   });
 
   const n = (code: (typeof FUNNEL)[number]['code']) => stageCounts.data?.[code] ?? 0;
@@ -162,7 +183,7 @@ export const ClientOverviewPage: React.FC = () => {
                 <div className={`text-xl font-black tabular-nums ${pendingCVCount > 0 ? 'text-amber-700' : 'text-slate-900'}`}>
                   {pendingCVCount}
                 </div>
-                <div className="text-[11px] font-medium text-slate-600">Chờ duyệt</div>
+                <div className="text-[11px] font-medium text-slate-600">CV chờ duyệt</div>
               </div>
               <div className="rounded-xl border border-[#DCE3EC] bg-[#F4F7FA] p-2.5">
                 <div className="text-xl font-black text-[#0369A1] tabular-nums">{interviewCount}</div>
@@ -290,10 +311,10 @@ export const ClientOverviewPage: React.FC = () => {
                   </span>
                 </div>
                 <h3 className="m-0 mt-3.5 text-[15px] font-bold text-slate-900 group-hover:text-[#0284C7] transition-colors leading-snug">
-                  Phát hành Offer
+                  Offer & ngày đi làm
                 </h3>
                 <p className="m-0 mt-1.5 text-xs text-slate-500 leading-relaxed">
-                  Ứng viên phỏng vấn đạt cần gửi đề nghị hoặc xác nhận ngày đi làm.
+                  {n('OFFER_PENDING')} offer chờ ứng viên trả lời · {n('OFFER_ACCEPTED')} ứng viên đã nhận offer cần bạn xác nhận ngày đi làm.
                 </p>
               </div>
               <div className="mt-4 flex items-center justify-between border-0 border-t border-solid border-slate-100 pt-3 text-xs font-semibold text-[#0284C7]">
@@ -307,7 +328,9 @@ export const ClientOverviewPage: React.FC = () => {
               onClick={() =>
                 pendingAgreements > 0
                   ? navigate('/client/agreements')
-                  : needFix > 0
+                  : rejectedCount > 0
+                  ? navigate('/client/jobs?status=REJECTED')
+                  : draftCount > 0
                   ? navigate('/client/jobs?status=DRAFT')
                   : navigate('/client/jobs')
               }
@@ -336,6 +359,8 @@ export const ClientOverviewPage: React.FC = () => {
                 <p className="m-0 mt-1.5 text-xs text-slate-500 leading-relaxed">
                   {pendingAgreements > 0
                     ? 'Có hợp đồng cần bạn kiểm tra và ký kết để mở tin tuyển dụng.'
+                    : needFix > 0
+                    ? `${rejectedCount} tin bị từ chối cần sửa · ${draftCount} tin nháp chưa gửi duyệt.`
                     : 'Các tin nháp hoặc tin bị yêu cầu sửa đổi cần gửi lại duyệt.'}
                 </p>
               </div>
@@ -422,7 +447,7 @@ export const ClientOverviewPage: React.FC = () => {
 
           {/* KPI 4 */}
           <div
-            onClick={() => navigate('/client/candidates?status=PLACED')}
+            onClick={() => navigate('/client/warranty')}
             className="group flex cursor-pointer flex-col justify-between rounded-2xl border border-slate-200/90 bg-white p-5 shadow-[0_2px_10px_rgba(15,23,42,0.02)] transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
           >
             <div className="flex items-center justify-between">
@@ -451,7 +476,7 @@ export const ClientOverviewPage: React.FC = () => {
           <div className="mb-5 flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="m-0 text-base font-bold text-slate-900">Phễu chuyển đổi tuyển dụng</h2>
+                <h2 className="m-0 text-base font-bold text-slate-900">Phân bổ hồ sơ theo giai đoạn</h2>
                 <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-[#0284C7] border border-sky-100">
                   Toàn bộ chiến dịch
                 </span>
@@ -586,6 +611,11 @@ export const ClientOverviewPage: React.FC = () => {
                       <span>·</span>
                       <span className="truncate">{iv.jobTitle}</span>
                     </div>
+                    {interviewPlace(iv) && (
+                      <div className="mt-0.5 truncate text-xs text-slate-500" title={interviewPlace(iv) ?? undefined}>
+                        {interviewPlace(iv)}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -702,14 +732,15 @@ export const ClientOverviewPage: React.FC = () => {
                         Xem hồ sơ →
                       </span>
                     </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-                      <div
-                        className="h-full rounded-full bg-[#0284C7] transition-all duration-300"
-                        style={{
-                          width: `${Math.min(100, Math.max(10, Math.round((count / (job.quantity * 5 || 10)) * 100)))}%`,
-                        }}
-                      />
-                    </div>
+                    {/* Only a job with a real application cap has a meaningful progress bar. */}
+                    {job.maxApplications ? (
+                      <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className="h-full rounded-full bg-[#0284C7] transition-all duration-300"
+                          style={{ width: `${Math.min(100, Math.round((count / job.maxApplications) * 100))}%` }}
+                        />
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               );

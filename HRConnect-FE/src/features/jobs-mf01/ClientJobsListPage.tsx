@@ -186,15 +186,22 @@ export const ClientJobsListPage: React.FC = () => {
     }
   }, [highlightParam, openPaymentParam, openDetailParam, jobs, searchParams, setSearchParams]);
 
-  const expiredJobs = useMemo(
-    () =>
-      jobs.filter(
-        (j) =>
-          (j.expiresAt && new Date(j.expiresAt) <= new Date()) ||
-          (j.status === 'CLOSED' && Boolean(j.statusReason?.toLowerCase().includes('hết hạn')))
-      ),
-    [jobs]
-  );
+  // Only jobs that expired in the last 30 days: an old expired job should not warn forever.
+  const expiredJobs = useMemo(() => {
+    const now = Date.now();
+    const since = now - 30 * 24 * 60 * 60 * 1000;
+    return jobs.filter((j) => {
+      if (j.expiresAt) {
+        const t = new Date(j.expiresAt).getTime();
+        return t <= now && t >= since;
+      }
+      return (
+        j.status === 'CLOSED' &&
+        Boolean(j.statusReason?.toLowerCase().includes('hết hạn')) &&
+        new Date(j.updatedAt).getTime() >= since
+      );
+    });
+  }, [jobs]);
 
   const visibleJobs = useMemo(
     () =>
@@ -368,6 +375,11 @@ export const ClientJobsListPage: React.FC = () => {
           </div>
           {job.status === 'REJECTED' && job.statusReason && (
             <div className="text-xs text-red-700 mt-1 line-clamp-2">Lý do từ chối: {job.statusReason}</div>
+          )}
+          {(job.status === 'PAUSED' || job.status === 'CLOSED') && job.statusReason && (
+            <div className="text-xs text-slate-500 mt-1 line-clamp-2">
+              {job.status === 'PAUSED' ? 'Lý do tạm dừng' : 'Lý do đóng'}: {job.statusReason}
+            </div>
           )}
         </div>
       ),
@@ -560,8 +572,10 @@ export const ClientJobsListPage: React.FC = () => {
                 const count = applicationsOf(job.jobId);
                 const isHighlighted = highlightedJobId === job.jobId;
                 const totalApps = count?.data ?? 0;
-                const maxApps = job.maxApplications || (job.quantity * 5 || 10);
-                const progressPct = Math.min(100, Math.max(8, Math.round((totalApps / maxApps) * 100)));
+                // Only a real application cap gives a meaningful bar; no invented denominator.
+                const progressPct = job.maxApplications
+                  ? Math.min(100, Math.round((totalApps / job.maxApplications) * 100))
+                  : null;
 
                 return (
                   <article
@@ -652,6 +666,24 @@ export const ClientJobsListPage: React.FC = () => {
                               Xem hợp đồng
                             </Button>
                           </div>
+                        ) : job.agreementStatus === 'CHANGE_REQUESTED' ? (
+                          <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200/90 p-3 text-xs text-slate-800 mb-3.5 shadow-2xs">
+                            <span className="min-w-0">
+                              <span className="block font-semibold text-xs">Đã yêu cầu điều chỉnh · chờ HR Connect gửi lại hợp đồng</span>
+                              {job.agreementChangeRequestReason && (
+                                <span className="mt-0.5 block line-clamp-2 text-slate-500" title={job.agreementChangeRequestReason}>
+                                  Lý do: {job.agreementChangeRequestReason}
+                                </span>
+                              )}
+                            </span>
+                            <Button
+                              size="small"
+                              className="!text-xs !h-8 border-slate-300 text-slate-700 hover:text-slate-900 rounded-lg font-medium whitespace-nowrap ml-2"
+                              onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
+                            >
+                              Xem hợp đồng
+                            </Button>
+                          </div>
                         ) : (
                           <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200/90 p-3 text-xs text-slate-800 mb-3.5 shadow-2xs">
                             <span className="font-semibold text-xs">Hợp đồng dịch vụ sẵn sàng ký kết</span>
@@ -711,13 +743,22 @@ export const ClientJobsListPage: React.FC = () => {
 
                       {job.status === 'PENDING_PAYMENT' && !isAwaitingSourcingDeposit(job) && (
                         <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200/90 px-3 py-2 text-xs text-slate-700 mb-3.5">
-                          <span className="font-semibold text-xs">Chờ thanh toán phí đăng để công bố tin</span>
+                          <span className="font-semibold text-xs">
+                            Chờ thanh toán phí đăng tin{job.postingFee ? ` (${formatMoney(job.postingFee.amount, job.postingFee.currencyCode)})` : ''} để công bố tin
+                          </span>
                         </div>
                       )}
 
                       {job.status === 'REJECTED' && job.statusReason && (
                         <div className="rounded-xl bg-rose-50 border border-rose-200/80 p-3 text-xs text-rose-800 mb-3.5">
                           <div className="font-bold text-rose-900 mb-0.5">Lý do từ chối:</div>
+                          <div className="line-clamp-2 leading-relaxed">{job.statusReason}</div>
+                        </div>
+                      )}
+
+                      {(job.status === 'PAUSED' || job.status === 'CLOSED') && job.statusReason && (
+                        <div className="rounded-xl bg-slate-50 border border-slate-200/90 p-3 text-xs text-slate-700 mb-3.5">
+                          <div className="font-bold text-slate-800 mb-0.5">{job.status === 'PAUSED' ? 'Lý do tạm dừng:' : 'Lý do đóng tin:'}</div>
                           <div className="line-clamp-2 leading-relaxed">{job.statusReason}</div>
                         </div>
                       )}
@@ -731,12 +772,14 @@ export const ClientJobsListPage: React.FC = () => {
                               {totalApps} {job.maxApplications ? `/ ${job.maxApplications}` : 'hồ sơ'}
                             </span>
                           </div>
-                          <div className="h-1.5 overflow-hidden rounded-full bg-slate-200/70">
-                            <div
-                              className="h-full rounded-full bg-[#0284C7] transition-all duration-300"
-                              style={{ width: `${progressPct}%` }}
-                            />
-                          </div>
+                          {progressPct != null && (
+                            <div className="h-1.5 overflow-hidden rounded-full bg-slate-200/70">
+                              <div
+                                className="h-full rounded-full bg-[#0284C7] transition-all duration-300"
+                                style={{ width: `${progressPct}%` }}
+                              />
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

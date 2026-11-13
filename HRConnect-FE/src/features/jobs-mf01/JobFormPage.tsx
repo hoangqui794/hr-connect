@@ -76,6 +76,7 @@ import {
   SERVICE_TYPE_LABEL,
   REQUIREMENT_CATEGORY_OPTIONS,
   clientActions,
+  JOB_STATUS,
   formatMultilineText,
   formatSalary,
 } from './jobDisplay';
@@ -99,6 +100,16 @@ import {
   type WorkMode,
   salaryRangeOf,
 } from './jobFormOptions';
+
+/** What the Client can do instead when the job can no longer be edited. */
+const LOCKED_JOB_NEXT_STEP: Partial<Record<string, string>> = {
+  PENDING_REVIEW: 'HR Connect đang duyệt tin. Nếu cần sửa nội dung, hãy liên hệ HR Connect.',
+  PENDING_AGREEMENT: 'Tin đã được duyệt và đang chờ ký hợp đồng. Muốn đổi điều khoản, vào Hợp đồng dịch vụ và bấm Yêu cầu điều chỉnh.',
+  PENDING_PAYMENT: 'Tin đang chờ thanh toán hoặc đặt cọc. Hoàn tất thanh toán ở trang Tin tuyển dụng để công bố tin.',
+  ACTIVE: 'Tin đang tuyển. Bạn có thể tạm dừng hoặc đóng tin ở trang Tin tuyển dụng; muốn đổi nội dung, hãy tạo tin mới.',
+  PAUSED: 'Tin đang tạm dừng. Bạn có thể mở lại hoặc đóng tin ở trang Tin tuyển dụng; muốn đổi nội dung, hãy tạo tin mới.',
+  CLOSED: 'Tin đã đóng. Muốn tuyển tiếp, hãy tạo tin mới (có thể dùng mẫu JD để điền nhanh).',
+};
 
 interface ExperienceSelectInputProps {
   value?: number | null;
@@ -1260,8 +1271,8 @@ export const JobFormPage: React.FC = () => {
             <Alert
               type="info"
               showIcon
-              message="Tin này không sửa được ở trạng thái hiện tại"
-              description="Chỉ sửa được tin ở trạng thái Bản nháp hoặc Bị từ chối."
+              message={`Tin đang ở trạng thái "${JOB_STATUS[existing.data.status]?.label ?? existing.data.status}" nên không sửa được nội dung`}
+              description={LOCKED_JOB_NEXT_STEP[existing.data.status] ?? 'Chỉ sửa được tin ở trạng thái Bản nháp hoặc Bị từ chối.'}
             />
           )}
           {existing.data?.status === 'REJECTED' && existing.data.statusReason && (
