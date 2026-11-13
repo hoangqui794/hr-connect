@@ -340,7 +340,7 @@ public sealed class VnPayPaymentCommandHandlers(
             : $"VNPay đã báo nhận {payment.Amount:N0} {payment.CurrencyCode} từ {context.CompanyName} cho tin \"{context.JobTitle}\", nhưng công nợ chưa thể tự cập nhật. Mã giao dịch: {reference}.";
 
         return notifier.NotifyRoleAsync("PLATFORM_ADMIN", new AppNotice(
-            "FINANCE",
+            payment.TargetType == OnlinePaymentTargets.PostingFee ? "JOB" : "SERVICE_FEE",
             title,
             message,
             "ONLINE_PAYMENT",

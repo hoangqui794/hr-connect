@@ -7,6 +7,7 @@
  */
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Dropdown, Tooltip } from 'antd';
 import {
   AuditOutlined,
@@ -26,6 +27,9 @@ import {
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/authStore';
 import { authService } from '@/services/authService';
+import { jobsApi } from '@/services/api/jobsApi';
+import { HR_SCREENED_SERVICE_TYPES, placementReconciliationApi, screeningApi } from '@/services/api/hrApi';
+import { contactApi } from '@/services/api/contactApi';
 import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
 import { AccountAvatar } from '@/components/common/AccountAvatar';
 import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from '@/features/admin-console/AdminRouteProgress';
@@ -85,6 +89,43 @@ export const HrLayout: React.FC = () => {
   }, [menuOpen]);
 
   const canManageTemplates = useAuthStore((s) => s.hasPermission('job_template.manage'));
+
+  const pendingJobs = useQuery({
+    queryKey: ['hr-overview', 'jobs'],
+    queryFn: async () => (await jobsApi.getReviewQueue()).length,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    retry: false,
+  });
+  const pendingScreening = useQuery({
+    queryKey: ['hr-overview', 'applications', 'SUBMITTED'],
+    queryFn: async () =>
+      (await screeningApi.list({ status: 'SUBMITTED', serviceTypeCode: HR_SCREENED_SERVICE_TYPES, page: 1, pageSize: 1 })).total,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    retry: false,
+  });
+  const pendingContacts = useQuery({
+    queryKey: ['hr-nav-counts', 'contact-requests'],
+    queryFn: async () => (await contactApi.list({ status: 'NEW', page: 1, pageSize: 1 })).totalCount,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    retry: false,
+  });
+  const pendingReconciliations = useQuery({
+    queryKey: ['hr-nav-counts', 'reconciliations'],
+    queryFn: async () => (await placementReconciliationApi.list({ status: 'PENDING', page: 1, pageSize: 1 }, false)).totalCount,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    retry: false,
+  });
+
+  const pendingCountByRoute: Record<string, number | undefined> = {
+    '/hr/jobs': pendingJobs.data,
+    '/hr/screening': pendingScreening.data,
+    '/hr/contact-requests': pendingContacts.data,
+    '/hr/placement-reconciliations': pendingReconciliations.data,
+  };
 
   const navGroups = useMemo(() => {
     return NAV.map((group) => {
@@ -165,16 +206,23 @@ export const HrLayout: React.FC = () => {
                 <div className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">{g.group}</div>
               )}
               <ul className="m-0 list-none space-y-0.5 p-0">
-                {g.items.map((item) => (
+                {g.items.map((item) => {
+                  const pendingCount = pendingCountByRoute[item.to] ?? 0;
+                  const tooltipTitle = collapsed
+                    ? pendingCount > 0
+                      ? `${item.label} (${pendingCount} chờ xử lý)`
+                      : item.label
+                    : '';
+                  return (
                   <li key={item.to}>
-                    <Tooltip title={collapsed ? item.label : ''} placement="right">
+                    <Tooltip title={tooltipTitle} placement="right">
                       <NavLink
                         to={item.to}
                         className={({ isActive }) =>
                           [
                             'flex h-10 items-center gap-3 rounded-lg px-3 text-[13.5px] font-medium no-underline transition-colors duration-150',
                             'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-blue-600',
-                            collapsed ? 'justify-center' : '',
+                            collapsed ? 'justify-center relative' : '',
                             isActive
                               ? 'bg-blue-50/70 font-semibold text-blue-900 border-l-2 border-blue-600 rounded-lg'
                               : item.muted
@@ -183,14 +231,35 @@ export const HrLayout: React.FC = () => {
                           ].join(' ')
                         }
                       >
-                        <span className="text-[16px]" aria-hidden>
-                          {item.icon}
-                        </span>
-                        {!collapsed && <span className="truncate">{item.label}</span>}
+                        {({ isActive }) => (
+                          <>
+                            <span className="text-[16px]" aria-hidden>
+                              {item.icon}
+                            </span>
+                            {!collapsed && <span className="min-w-0 flex-1 truncate">{item.label}</span>}
+                            {!collapsed && pendingCount > 0 && (
+                              <span
+                                aria-label={`${pendingCount} chờ xử lý`}
+                                className={`ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold tabular-nums leading-none ${
+                                  isActive ? 'bg-blue-600 text-white' : 'bg-sky-100 text-sky-800'
+                                }`}
+                              >
+                                {pendingCount > 99 ? '99+' : pendingCount}
+                              </span>
+                            )}
+                            {collapsed && pendingCount > 0 && (
+                              <span
+                                aria-hidden
+                                className="absolute right-2.5 top-2 h-2 w-2 rounded-full bg-sky-600 ring-2 ring-white"
+                              />
+                            )}
+                          </>
+                        )}
                       </NavLink>
                     </Tooltip>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             </div>
           ))}

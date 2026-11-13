@@ -80,6 +80,7 @@ export const feeBreakdown = (f: ServiceFee): BreakdownLine[] => {
       ...(f.sourcingTarget && price
         ? [
             { label: 'Số CV đặt mua', value: `${f.sourcingTarget} CV` },
+            ...(f.sourcingCounted != null ? [{ label: 'Đã nhận CV', value: `${f.sourcingCounted}/${f.sourcingTarget} CV` }] : []),
             { label: 'Đơn giá mỗi CV', value: money(price, cur) },
           ]
         : []),
@@ -173,6 +174,9 @@ const useBillingRows = () => {
         payable: !reconciling && (bucket === 'UNPAID' || bucket === 'OVERDUE'),
         payTarget: { type: 'SERVICE_FEE', id: f.serviceFeeId },
         breakdown: feeBreakdown(f),
+        sourcingProgress: f.sourcingTarget && f.sourcingTarget > 0
+          ? { counted: f.sourcingCounted ?? 0, target: f.sourcingTarget }
+          : null,
       };
     });
     const postingRows: BillingRow[] = (postingFees.data ?? []).map(({ job, fee }) => {
@@ -277,6 +281,14 @@ export const ClientBillingPage: React.FC = () => {
           {r.candidateName ? (
             <div className="truncate text-xs text-slate-500 mt-0.5">
               Ứng viên: <span className="font-medium text-slate-700">{r.candidateName}</span>
+            </div>
+          ) : null}
+          {r.sourcingProgress ? (
+            <div className="truncate text-xs text-slate-500 mt-0.5 tabular-nums">
+              Đã nhận:{' '}
+              <span className="font-semibold text-sky-700">
+                {r.sourcingProgress.counted}/{r.sourcingProgress.target} CV
+              </span>
             </div>
           ) : null}
           {r.note && <div className="mt-0.5 whitespace-normal text-[11.5px] font-medium leading-snug text-emerald-700">{r.note}</div>}

@@ -412,7 +412,16 @@ export const ClientJobsListPage: React.FC = () => {
         const count = applicationsOf(job.jobId);
         return (
           <div className="text-xs space-y-0.5">
-            <div>{job.serviceTypeCode === 'CV_SOURCING' ? 'Cần nhận' : 'Tuyển'}: <span className="font-semibold text-slate-800">{formatHeadcount(job)}</span></div>
+            {job.serviceTypeCode === 'CV_SOURCING' && job.sourcingTarget && job.sourcingTarget > 0 ? (
+              <div>
+                Đã nhận:{' '}
+                <span className="font-semibold text-sky-700 tabular-nums">
+                  {job.sourcingCounted ?? 0}/{job.sourcingTarget} CV
+                </span>
+              </div>
+            ) : (
+              <div>{job.serviceTypeCode === 'CV_SOURCING' ? 'Cần nhận' : 'Tuyển'}: <span className="font-semibold text-slate-800">{formatHeadcount(job)}</span></div>
+            )}
             {job.maxApplications && (
               <div className="text-slate-500">
                 Hồ sơ: <span className="font-semibold text-emerald-700">{count?.data ?? 0}/{job.maxApplications}</span>

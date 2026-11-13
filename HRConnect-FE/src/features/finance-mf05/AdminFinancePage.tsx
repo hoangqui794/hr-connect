@@ -240,6 +240,14 @@ export const AdminFinancePage: React.FC = () => {
                 {labelOf(SERVICE_FEE_KIND, kind).label} · {f.jobTitle ?? '—'}
                 {kind === 'PLACEMENT' && f.candidateName ? ` · ${f.candidateName}` : ''}
               </div>
+              {f.sourcingTarget && f.sourcingTarget > 0 ? (
+                <div className="text-xs text-slate-500 tabular-nums mt-0.5">
+                  Đã nhận:{' '}
+                  <span className="font-semibold text-sky-700">
+                    {f.sourcingCounted ?? 0}/{f.sourcingTarget} CV
+                  </span>
+                </div>
+              ) : null}
             </div>
           </div>
         );

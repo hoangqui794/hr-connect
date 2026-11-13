@@ -166,6 +166,7 @@ export interface Job {
   concurrencyToken: string;
   sourcingTarget?: number | null;
   sourcingPricePerCv?: number | null;
+  sourcingCounted?: number | null;
   feeMultiplier?: number | null;
   warrantyDays?: number | null;
   paymentDueDays?: number | null;

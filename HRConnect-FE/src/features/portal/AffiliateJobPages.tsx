@@ -55,7 +55,11 @@ const ServiceChip: React.FC<{ code?: string | null }> = ({ code }) => (
 
 /** One line about how much of the job is left to fill. */
 const progressLine = (job: Job) => {
-  if (job.serviceTypeCode === 'CV_SOURCING' && job.sourcingTarget) return `Cần ${job.sourcingTarget} CV`;
+  if (job.serviceTypeCode === 'CV_SOURCING' && job.sourcingTarget) {
+    return job.sourcingCounted != null
+      ? `Đã nhận ${job.sourcingCounted}/${job.sourcingTarget} CV`
+      : `Cần ${job.sourcingTarget} CV`;
+  }
   const parts = [`Cần ${job.quantity} người`];
   if (job.warrantyDays != null) parts.push(`bảo hành ${job.warrantyDays} ngày`);
   return parts.join(' · ');
