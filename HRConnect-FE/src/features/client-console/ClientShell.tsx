@@ -130,7 +130,7 @@ export const ClientShell: React.FC = () => {
             <NavLink
               to="/client/jobs/create"
               aria-label={collapsed ? 'Đăng tin' : undefined}
-              className={`flex h-11 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-sm font-bold text-white no-underline shadow-sm shadow-sky-500/25 transition-[all,transform] duration-150 hover:from-[#0369A1] hover:to-[#1D4ED8] hover:text-white hover:shadow-md hover:shadow-sky-500/30 active:scale-[0.97] ${focusRing}`}
+              className={`flex h-11 items-center justify-center gap-2 rounded-lg bg-[#0369A1] text-sm font-bold text-white no-underline shadow-sm shadow-sky-500/25 transition-[all,transform] duration-150 hover:from-[#0369A1] hover:to-[#1D4ED8] hover:text-white hover:shadow-md hover:shadow-sky-500/30 active:scale-[0.97] ${focusRing}`}
             >
               <PlusOutlined aria-hidden />
               {!collapsed && <span>Đăng tin</span>}

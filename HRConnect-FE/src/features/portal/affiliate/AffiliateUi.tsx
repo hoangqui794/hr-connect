@@ -93,7 +93,7 @@ export const AffiliateFlowSteps: React.FC<{ active?: 1 | 2 | 3 }> = ({ active = 
                   isDone
                     ? 'bg-emerald-600 text-white shadow-sm ring-4 ring-emerald-50'
                     : isCurrent
-                    ? 'bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white shadow-md shadow-sky-500/25 ring-4 ring-sky-100'
+                    ? 'bg-[#0369A1] text-white shadow-md shadow-sky-500/25 ring-4 ring-sky-100'
                     : 'bg-slate-100 text-slate-500 border border-slate-200'
                 }`}
               >

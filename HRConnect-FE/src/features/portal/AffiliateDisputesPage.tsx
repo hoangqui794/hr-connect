@@ -140,7 +140,7 @@ export const AffiliateDisputesPage: React.FC = () => {
               <Input.TextArea rows={2} placeholder="Ví dụ: email trao đổi với ứng viên ngày..." />
             </Form.Item>
             <p className="m-0 mb-3.5 text-xs leading-relaxed text-gray-500">Admin xem xét và thông báo kết quả. Bạn không thấy thông tin của Affiliate bên kia. Hoa hồng liên quan được giữ đến khi có kết quả.</p>
-            <Button type="primary" htmlType="submit" block size="large" loading={createMutation.isPending} className="!bg-gradient-to-r from-[#0284C7] to-[#2563EB] hover:from-[#0369A1] hover:to-[#1D4ED8] !border-0 text-white font-semibold shadow-md shadow-sky-500/20">
+            <Button type="primary" htmlType="submit" block size="large" loading={createMutation.isPending} className="!bg-[#0369A1] hover:bg-[#075985] !border-0 text-white font-semibold shadow-md shadow-sky-500/20">
               Gửi khiếu nại
             </Button>
           </Form>

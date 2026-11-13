@@ -176,7 +176,7 @@ const JobRow: React.FC<{ job: Job; fit?: number; canSave: boolean; saved: boolea
             className={`inline-flex h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-xl px-4 text-[13.5px] font-bold no-underline transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 ${
               applied
                 ? 'border border-solid border-emerald-200 bg-emerald-50 text-emerald-700 shadow-2xs hover:bg-emerald-100 hover:text-emerald-800'
-                : 'bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-sm shadow-blue-500/20 hover:from-sky-400 hover:to-blue-500 hover:shadow-md hover:shadow-blue-500/30 hover:text-white active:scale-[0.98]'
+                : 'bg-[#0369A1] text-white shadow-sm shadow-blue-500/20 hover:bg-[#075985] hover:shadow-md hover:shadow-blue-500/30 hover:text-white active:scale-[0.98]'
             }`}
           >
             {applied ? (
@@ -445,7 +445,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                 popupMatchSelectWidth={false}
               />
             </div>
-            <button type="submit" className={`${FONT} h-[44px] cursor-pointer border-0 bg-gradient-to-r from-sky-500 to-blue-600 px-[24px] text-[14px] font-bold text-white shadow-sm shadow-blue-500/20 transition-all hover:from-sky-400 hover:to-blue-500 hover:shadow-md hover:shadow-blue-500/30 active:scale-[0.98] max-sm:w-full`}>Tìm việc</button>
+            <button type="submit" className={`${FONT} h-[44px] cursor-pointer border-0 bg-[#0369A1] px-[24px] text-[14px] font-bold text-white shadow-sm shadow-blue-500/20 transition-all hover:bg-[#075985] hover:shadow-md hover:shadow-blue-500/30 active:scale-[0.98] max-sm:w-full`}>Tìm việc</button>
           </form>
           {popularSkills.length > 0 && (
             <p className="m-0 mt-2.5 flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[13px] leading-none text-[#475569]">
@@ -559,7 +559,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                 </label>
               ))}
             </fieldset>
-            <button type="button" onClick={applyFilters} className={`${FONT} h-11 cursor-pointer rounded-xl border-0 bg-gradient-to-r from-sky-500 to-blue-600 px-5 text-[14px] font-bold text-white shadow-sm shadow-blue-500/25 transition-all hover:from-sky-400 hover:to-blue-500 hover:shadow-md hover:shadow-blue-500/35 active:scale-[0.98]`}>Áp dụng</button>
+            <button type="button" onClick={applyFilters} className={`${FONT} h-11 cursor-pointer rounded-xl border-0 bg-[#0369A1] px-5 text-[14px] font-bold text-white shadow-sm shadow-blue-500/25 transition-all hover:bg-[#075985] hover:shadow-md hover:shadow-blue-500/35 active:scale-[0.98]`}>Áp dụng</button>
           </aside>
 
           <section aria-labelledby="results" className="w-full min-w-0 flex-1">
@@ -624,7 +624,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
                       type="button"
                       aria-current={p === page ? 'page' : undefined}
                       onClick={() => goToPage(p)}
-                      className={`${FONT} ${p === page ? `${PAGE_BUTTON} h-10 w-10 cursor-pointer border-0 bg-gradient-to-r from-sky-500 to-blue-600 font-bold text-white shadow-xs` : PAGE_OTHER}`}
+                      className={`${FONT} ${p === page ? `${PAGE_BUTTON} h-10 w-10 cursor-pointer border-0 bg-[#0369A1] font-bold text-white shadow-xs` : PAGE_OTHER}`}
                     >
                       {p}
                     </button>

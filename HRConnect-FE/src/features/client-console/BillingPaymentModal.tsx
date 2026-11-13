@@ -111,7 +111,7 @@ export const BillingPaymentModal: React.FC<{ row: BillingRow | null; onClose: ()
                 icon={<CreditCardOutlined />}
                 loading={redirecting}
                 onClick={payWithVnPay}
-                className="!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white font-bold !h-11 rounded-xl shadow-sm shadow-sky-500/20 transition-all active:scale-[0.98]"
+                className="!bg-[#0369A1] hover:!bg-[#075985] !border-0 text-white font-bold !h-11 rounded-xl shadow-sm shadow-sky-500/20 transition-all active:scale-[0.98]"
               >
                 Thanh toán qua VNPay
               </Button>

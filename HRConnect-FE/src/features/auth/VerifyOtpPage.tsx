@@ -18,10 +18,10 @@ import { getApiErrorMessage } from '@/services/apiClient';
 import { appendCandidateReturnPath, getSafeCandidateReturnPath } from './authReturnPath';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
-const LINK = 'text-[#0369A1] no-underline transition-colors duration-200 hover:text-[#075985] hover:underline';
-const BUTTON = `${FONT} h-[46px] w-full cursor-pointer rounded-md border-0 bg-[#0C4A6E] text-[14px] font-semibold text-white transition-all duration-200 hover:bg-[#075985] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`;
-const SECONDARY_BTN = `${FONT} inline-flex h-[42px] cursor-pointer items-center justify-center rounded-md border border-solid border-[#D1D5DB] bg-white px-4 text-[14px] font-medium text-[#1F2937] transition-all duration-200 hover:bg-[#F9FAFB] active:scale-[0.98]`;
-const INPUT = `${FONT} box-border h-[44px] w-full rounded-md border border-solid border-[#D1D5DB] bg-white px-3 text-[14px] text-[#1F2937] outline-none transition-all duration-200 focus:border-[#0369A1] focus:ring-2 focus:ring-[#0369A1]/15`;
+const LINK = 'font-semibold text-[#0369A1] no-underline transition-colors duration-150 hover:text-[#075985] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1] rounded';
+const BUTTON = `${FONT} h-11 w-full touch-manipulation cursor-pointer rounded-xl border-0 bg-[#0369A1] text-sm font-semibold text-white shadow-[0_1px_2px_rgba(3,105,161,0.3)] transition-[background-color,transform] duration-150 motion-reduce:transition-none hover:bg-[#075985] active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0369A1] disabled:cursor-not-allowed disabled:opacity-60`;
+const SECONDARY_BTN = `${FONT} inline-flex h-11 touch-manipulation cursor-pointer items-center justify-center rounded-xl border border-solid border-[#DCE3EC] bg-white px-4 text-sm font-semibold text-slate-700 transition-colors duration-150 hover:bg-slate-50 active:scale-[0.99]`;
+const INPUT = `${FONT} box-border h-11 w-full rounded-xl border border-solid border-[#CBD5E1] bg-white px-3.5 text-base sm:text-sm text-slate-900 outline-none transition-[border-color,box-shadow] duration-150 motion-reduce:transition-none hover:border-slate-400 focus:border-[#0369A1] focus:ring-4 focus:ring-[#0369A1]/12`;
 
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 
@@ -223,19 +223,19 @@ export const VerifyOtpPage: React.FC = () => {
   };
 
   return (
-    <div className={`${FONT} min-h-screen bg-[#F7F8FA] text-[14px] text-[#1F2937] [line-height:normal]`}>
-      <header className="bg-[#0C4A6E] text-white">
+    <div className={`${FONT} min-h-screen bg-[#F4F7FA] text-sm text-slate-900 antialiased [line-height:normal]`}>
+      <header className="bg-[#08253C] text-white">
         <div className="mx-auto flex h-16 max-w-[1248px] items-center px-6">
-          <Link to="/" className="flex items-center gap-2 text-[18px] font-bold text-white no-underline hover:text-white hover:no-underline">
+          <Link to="/" className="flex items-center gap-2.5 text-[18px] font-bold text-white no-underline transition-opacity hover:opacity-90">
             <BrandMark size={32} tone="light" className="block" /> HR Connect
           </Link>
         </div>
       </header>
 
-      <main className="mx-auto flex max-w-[1048px] justify-center px-4 py-10 sm:px-6">
+      <main className="mx-auto flex max-w-[1048px] justify-center px-4 py-12 sm:px-6">
         <section
           aria-labelledby="verify-email-title"
-          className="w-full max-w-[488px] rounded-lg border border-solid border-[#E5E7EB] bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)] sm:p-7 animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]"
+          className="w-full max-w-[488px] rounded-2xl border border-solid border-[#DCE3EC] bg-white p-6 shadow-[0_1px_2px_rgba(8,37,60,0.05),0_16px_36px_-12px_rgba(8,37,60,0.09)] sm:p-8 animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]"
         >
           {approvalPending ? (
             <div className="text-center">
@@ -340,10 +340,10 @@ export const VerifyOtpPage: React.FC = () => {
                     onKeyDown={(event) => handleKeyDown(index, event)}
                     onPaste={handlePaste}
                     disabled={isVerifying}
-                    className={`${FONT} h-[56px] w-full rounded-md border border-solid bg-white text-center text-[20px] font-bold text-[#111827] outline-none transition-all duration-150 ${
+                    className={`${FONT} h-[56px] w-full rounded-xl border border-solid bg-white text-center text-[20px] font-bold text-slate-900 outline-none transition-[border-color,box-shadow,background-color] duration-150 motion-reduce:transition-none ${
                       value
-                        ? 'border-[#0369A1] ring-1 ring-[#0369A1]/20'
-                        : 'border-[#D1D5DB] hover:border-[#94A3B8] focus:border-[#0369A1] focus:ring-2 focus:ring-[#0369A1]/20'
+                        ? 'border-[#0369A1] bg-[#EEF6FB]/40 ring-2 ring-[#0369A1]/15'
+                        : 'border-[#CBD5E1] hover:border-slate-400 focus:border-[#0369A1] focus:ring-4 focus:ring-[#0369A1]/12'
                     }`}
                   />
                 ))}
@@ -352,7 +352,7 @@ export const VerifyOtpPage: React.FC = () => {
               {errorMessage && (
                 <p
                   role="alert"
-                  className="m-0 mt-3 rounded-md border border-solid border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-[13px] text-[#B91C1C]"
+                  className="m-0 mt-3 rounded-xl border border-solid border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium text-rose-800"
                 >
                   {errorMessage}
                 </p>

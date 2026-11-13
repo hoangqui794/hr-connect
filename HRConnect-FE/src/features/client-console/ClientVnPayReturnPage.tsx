@@ -37,7 +37,7 @@ export const ClientVnPayReturnPage: React.FC = () => {
     <Link to="/client/billing">
       <Button
         type="primary"
-        className="!bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white font-bold !h-10 px-5 rounded-xl shadow-sm transition-all active:scale-[0.98]"
+        className="!bg-[#0369A1] hover:!bg-[#075985] !border-0 text-white font-bold !h-10 px-5 rounded-xl shadow-sm transition-all active:scale-[0.98]"
       >
         Về trang Công nợ
       </Button>

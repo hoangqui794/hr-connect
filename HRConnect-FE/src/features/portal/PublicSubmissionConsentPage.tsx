@@ -18,7 +18,7 @@ const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
 const CARD = 'rounded-xl border border-solid border-slate-200/80 bg-white shadow-sm';
 const BUTTON = `${FONT} box-border flex h-11 cursor-pointer items-center justify-center rounded-xl px-5 text-[14px] font-semibold no-underline transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`;
-const PRIMARY = `${BUTTON} border-0 bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white shadow-md shadow-sky-500/20 hover:opacity-95 hover:text-white`;
+const PRIMARY = `${BUTTON} border-0 bg-[#0369A1] text-white shadow-md shadow-sky-500/20 hover:opacity-95 hover:text-white`;
 const SECONDARY = `${BUTTON} border border-solid border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900`;
 
 const timeLeft = (expiresAt: string) => {

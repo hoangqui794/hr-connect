@@ -156,7 +156,7 @@ export const CandidateSavedJobsPage: React.FC = () => {
                     {isApplied(jobId) ? (
                       <Link to={applicationId ? `/candidate/applications/${applicationId}` : '/candidate/applications'} className={`${ACTION} whitespace-nowrap border border-solid border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800`}>Xem đơn</Link>
                     ) : isOpen(job) ? (
-                      <button type="button" aria-label={`Ứng tuyển ${title}`} onClick={() => setApplying(job)} className={`${ACTION} ${FONT} whitespace-nowrap cursor-pointer border-0 bg-gradient-to-r from-sky-500 to-blue-600 text-white transition-all hover:from-sky-400 hover:to-blue-500 shadow-sm shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/30 active:scale-[0.98]`}>Ứng tuyển</button>
+                      <button type="button" aria-label={`Ứng tuyển ${title}`} onClick={() => setApplying(job)} className={`${ACTION} ${FONT} whitespace-nowrap cursor-pointer border-0 bg-[#0369A1] text-white transition-all hover:bg-[#075985] shadow-sm shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/30 active:scale-[0.98]`}>Ứng tuyển</button>
                     ) : null}
                   </div>
                 </article>

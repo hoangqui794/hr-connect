@@ -306,7 +306,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
           <Button
             type="primary"
             size="small"
-            className="!h-8 !rounded-lg !border-0 !bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] text-white font-bold text-xs shadow-2xs transition-all active:scale-[0.98]"
+            className="!h-8 !rounded-lg !border-0 !bg-[#0369A1] hover:!bg-[#075985] text-white font-bold text-xs shadow-2xs transition-all active:scale-[0.98]"
             onClick={(e) => {
               e.stopPropagation();
               handleSetOpenInterviewId(r.interviewId);
@@ -403,7 +403,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
           <Button
             type="primary"
             size="small"
-            className="!h-8 !rounded-lg !border-0 !bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] text-white font-bold text-xs shadow-2xs transition-all active:scale-[0.98]"
+            className="!h-8 !rounded-lg !border-0 !bg-[#0369A1] hover:!bg-[#075985] text-white font-bold text-xs shadow-2xs transition-all active:scale-[0.98]"
             onClick={(e) => {
               e.stopPropagation();
               setOpen(r.applicationId);
@@ -509,7 +509,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             <Button
               type="primary"
               size="small"
-              className="!h-8 !rounded-lg !border-0 !bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] text-white font-bold text-xs shadow-2xs transition-all active:scale-[0.98]"
+              className="!h-8 !rounded-lg !border-0 !bg-[#0369A1] hover:!bg-[#075985] text-white font-bold text-xs shadow-2xs transition-all active:scale-[0.98]"
               onClick={() => setOpen(r.applicationId)}
             >
               Hồ sơ Onboard
@@ -555,7 +555,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
           <Button
             type="primary"
             icon={<TeamOutlined />}
-            className="!h-10 !rounded-xl !border-0 !bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] font-bold text-white shadow-sm shadow-sky-500/20 transition-all active:scale-[0.98] !px-4"
+            className="!h-10 !rounded-xl !border-0 !bg-[#0369A1] hover:!bg-[#075985] font-bold text-white shadow-sm shadow-sky-500/20 transition-all active:scale-[0.98] !px-4"
             onClick={() => navigate('/client/candidates')}
           >
             Xem hồ sơ ứng viên
@@ -578,7 +578,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <span
               className={`inline-flex h-8 w-8 items-center justify-center rounded-lg text-base ${
-                tab === 'interviews' ? 'bg-gradient-to-r from-[#0284C7] to-[#2563EB] text-white shadow-xs' : 'bg-sky-50 text-sky-700'
+                tab === 'interviews' ? 'bg-[#0369A1] text-white shadow-xs' : 'bg-sky-50 text-sky-700'
               }`}
             >
               <CalendarOutlined />
@@ -862,7 +862,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
               {tab === 'interviews' && (
                 <Button
                   type="primary"
-                  className="mt-2 !bg-gradient-to-r !from-[#0284C7] !to-[#2563EB] hover:!from-[#0369A1] hover:!to-[#1D4ED8] !border-0 text-white font-semibold !rounded-xl shadow-sm"
+                  className="mt-2 !bg-[#0369A1] hover:!bg-[#075985] !border-0 text-white font-semibold !rounded-xl shadow-sm"
                   onClick={() => navigate('/client/candidates?stage=shortlisted')}
                 >
                   Chọn ứng viên phỏng vấn

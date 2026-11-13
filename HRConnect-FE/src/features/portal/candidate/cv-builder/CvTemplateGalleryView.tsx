@@ -599,7 +599,7 @@ export const CvTemplateGalleryView: React.FC<CvTemplateGalleryViewProps> = ({
         {/* Stepper (1 Chọn mẫu — 2 Điền nội dung — 3 Tải PDF hoặc lưu vào Kho CV) */}
         <div className="mb-5 flex flex-wrap items-center gap-2.5 text-[13px]">
           <div className="flex items-center gap-2 font-semibold text-sky-700">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-blue-600 text-[12px] font-bold text-white shadow-xs">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#0369A1] text-[12px] font-bold text-white shadow-xs">
               1
             </span>
             <span>Chọn mẫu</span>
@@ -671,7 +671,7 @@ export const CvTemplateGalleryView: React.FC<CvTemplateGalleryViewProps> = ({
                 onClick={() => setCategory(cat.key)}
                 className={`h-[36px] cursor-pointer rounded-[8px] px-4 font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[13px] font-medium transition-all duration-200 focus:outline-none ${
                   active
-                    ? 'border border-solid border-sky-600 bg-gradient-to-r from-sky-500 to-blue-600 font-semibold text-white shadow-xs'
+                    ? 'border border-solid border-sky-600 bg-[#0369A1] font-semibold text-white shadow-xs'
                     : 'border border-solid border-[#CBD5E1] bg-white text-[#334155] hover:border-[#94A3B8] hover:bg-[#F8FAFC]'
                 }`}
               >
@@ -749,7 +749,7 @@ export const CvTemplateGalleryView: React.FC<CvTemplateGalleryViewProps> = ({
                   <button
                     type="button"
                     onClick={() => onSelectTemplateAndContinue(tpl, currentColor)}
-                    className="h-[38px] cursor-pointer rounded-[8px] border-0 bg-gradient-to-r from-sky-500 to-blue-600 font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[13px] font-semibold text-white shadow-sm shadow-sky-500/20 transition-all duration-200 hover:from-sky-600 hover:to-blue-700 active:scale-[0.99]"
+                    className="h-[38px] cursor-pointer rounded-[8px] border-0 bg-[#0369A1] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[13px] font-semibold text-white shadow-sm shadow-sky-500/20 transition-all duration-200 hover:bg-[#075985] active:scale-[0.99]"
                   >
                     Dùng mẫu này
                   </button>
@@ -785,7 +785,7 @@ export const CvTemplateGalleryView: React.FC<CvTemplateGalleryViewProps> = ({
                   setPreviewTemplate(null);
                   onSelectTemplateAndContinue(chosen, chosenColor);
                 }}
-                className="h-9 cursor-pointer rounded-[8px] border-0 bg-gradient-to-r from-sky-500 to-blue-600 px-4 font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[13px] font-semibold text-white shadow-sm hover:from-sky-600 hover:to-blue-700"
+                className="h-9 cursor-pointer rounded-[8px] border-0 bg-[#0369A1] px-4 font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[13px] font-semibold text-white shadow-sm hover:bg-[#075985]"
               >
                 Dùng mẫu này
               </button>
