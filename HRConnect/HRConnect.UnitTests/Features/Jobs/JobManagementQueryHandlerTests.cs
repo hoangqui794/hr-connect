@@ -231,6 +231,48 @@ public class JobManagementQueryHandlerTests
         candidateDetail.SourcingCounted.Should().BeNull();
     }
 
+    [Fact]
+    public async Task GetMyJobs_ShouldReturnTheIssuedDepositAmountAndOpenDueDate()
+    {
+        var user = Guid.NewGuid();
+        var company = Guid.NewGuid();
+        Job Sourcing()
+        {
+            var job = Job(company, "PENDING_PAYMENT");
+            job.ServiceType = new ServiceType { ServiceTypeId = job.ServiceTypeId, Code = "CV_SOURCING", Name = "CV Sourcing" };
+            return job;
+        }
+        var unpaid = Sourcing();
+        var paid = Sourcing();
+        var noFeeYet = Sourcing();
+        var due = new DateOnly(2026, 11, 20);
+
+        var finance = new Mock<IFinanceRepository>();
+        finance.Setup(x => x.GetJobServiceFeesAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ServiceFee>
+            {
+                new() { JobId = unpaid.JobId, Kind = "DEPOSIT", Status = "PENDING", Amount = 3_000_000m, DueDate = due, CreatedAt = DateTime.UtcNow },
+                new() { JobId = unpaid.JobId, Kind = "DEPOSIT", Status = "CANCELLED", Amount = 9_999_999m, DueDate = due, CreatedAt = DateTime.UtcNow.AddDays(1) },
+                new() { JobId = paid.JobId, Kind = "DEPOSIT", Status = "PAID", Amount = 2_000_000m, DueDate = due, CreatedAt = DateTime.UtcNow },
+                new() { JobId = paid.JobId, Kind = "SETTLEMENT", Status = "PENDING", Amount = 5_000_000m, DueDate = due, CreatedAt = DateTime.UtcNow },
+            });
+        _members.Setup(x => x.GetByUserIdAsync(user, It.IsAny<CancellationToken>())).ReturnsAsync(Member(user, company));
+        _jobs.Setup(x => x.GetByCompanyIdAsync(company, It.IsAny<CancellationToken>())).ReturnsAsync([unpaid, paid, noFeeYet]);
+
+        var result = await new GetMyJobsQueryHandler(_jobs.Object, _members.Object, null, finance.Object)
+            .Handle(new GetMyJobsQuery(user, null), default);
+
+        var u = result.Single(j => j.JobId == unpaid.JobId);
+        u.DepositAmount.Should().Be(3_000_000m, "a cancelled deposit is ignored");
+        u.PaymentDueAt.Should().Be(due);
+        var p = result.Single(j => j.JobId == paid.JobId);
+        p.DepositAmount.Should().Be(2_000_000m);
+        p.PaymentDueAt.Should().BeNull("a paid deposit has nothing due");
+        var n = result.Single(j => j.JobId == noFeeYet.JobId);
+        n.DepositAmount.Should().BeNull();
+        n.PaymentDueAt.Should().BeNull();
+    }
+
     private static CompanyUser Member(Guid user, Guid company) => new() { CompanyUserId = Guid.NewGuid(), UserId = user, CompanyId = company, Status = "ACTIVE" };
     private static Job Job(Guid company, string status) => new() { JobId = Guid.NewGuid(), CompanyId = company, ServiceTypeId = Guid.NewGuid(), CreatedBy = Guid.NewGuid(), Title = "Job", Benefits = "Insurance and training", CurrencyCode = "VND", Quantity = 1, Status = status, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
 }
