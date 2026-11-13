@@ -28,8 +28,54 @@ defaults:
     shell: bash
 
 jobs:
+  changes:
+    name: Detect changed areas
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      ai: ${{ steps.filter.outputs.ai }}
+      delivery: ${{ steps.filter.outputs.delivery }}
+      security: ${{ steps.filter.outputs.security }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Filter changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'HRConnect/**'
+              - '.github/workflows/ci.yml'
+              - '.github/workflows/deploy-cloud.yml'
+              - 'deploy/**'
+            frontend:
+              - 'HRConnect-FE/**'
+              - '.github/workflows/ci.yml'
+            ai:
+              - 'ai-service-v2/**'
+              - '.github/workflows/ci.yml'
+              - '.github/workflows/deploy-cloud.yml'
+              - 'deploy/**'
+            delivery:
+              - 'deploy/**'
+              - '.github/scripts/**'
+              - '.github/workflows/**'
+            security:
+              - 'HRConnect/**'
+              - 'HRConnect-FE/**'
+              - 'ai-service-v2/**'
+              - '.github/workflows/ci.yml'
+
   delivery-scripts:
     name: Delivery / Validate deployment scripts
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.delivery == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -44,6 +90,8 @@ jobs:
 
   backend:
     name: Backend / Build & test
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -98,6 +146,8 @@ jobs:
 
   frontend:
     name: Frontend / Lint & build
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -137,6 +187,8 @@ jobs:
 
   frontend-tests:
     name: Frontend / Tests (shard ${{ matrix.shard }}/2)
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -185,6 +237,8 @@ jobs:
 
   frontend-coverage:
     name: Frontend / Critical coverage
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -222,6 +276,8 @@ jobs:
 
   ai-service:
     name: AI service / Test
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.ai == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -272,6 +328,8 @@ jobs:
 
   security:
     name: Security / Dependency and filesystem scan
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.security == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -359,7 +417,10 @@ jobs:
 
   backend-container:
     name: Backend / Validate production image
-    needs: backend
+    needs:
+      - changes
+      - backend
+    if: ${{ github.event_name == 'workflow_dispatch' || (needs.changes.outputs.backend == 'true' && needs.backend.result == 'success') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -386,6 +447,7 @@ jobs:
     name: CI / Required gate
     if: always()
     needs:
+      - changes
       - backend
       - frontend
       - frontend-tests
@@ -398,6 +460,7 @@ jobs:
     steps:
       - name: Verify every quality gate passed
         env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
           BACKEND_RESULT: ${{ needs.backend.result }}
           FRONTEND_BUILD_RESULT: ${{ needs.frontend.result }}
           FRONTEND_TEST_RESULT: ${{ needs.frontend-tests.result }}
@@ -407,19 +470,27 @@ jobs:
           CONTAINER_RESULT: ${{ needs.backend-container.result }}
           DELIVERY_RESULT: ${{ needs.delivery-scripts.result }}
         run: |
-          printf 'Backend: %s\nFrontend build: %s\nFrontend tests: %s\nFrontend coverage: %s\nAI service: %s\nSecurity: %s\nContainer: %s\nDelivery scripts: %s\n' \
-            "$BACKEND_RESULT" "$FRONTEND_BUILD_RESULT" "$FRONTEND_TEST_RESULT" \
+          printf 'Changes: %s\nBackend: %s\nFrontend build: %s\nFrontend tests: %s\nFrontend coverage: %s\nAI service: %s\nSecurity: %s\nContainer: %s\nDelivery scripts: %s\n' \
+            "$CHANGES_RESULT" "$BACKEND_RESULT" "$FRONTEND_BUILD_RESULT" "$FRONTEND_TEST_RESULT" \
             "$FRONTEND_COVERAGE_RESULT" "$AI_RESULT" \
             "$SECURITY_RESULT" "$CONTAINER_RESULT" "$DELIVERY_RESULT"
 
-          if [[ "$BACKEND_RESULT" != success \
-            || "$FRONTEND_BUILD_RESULT" != success \
-            || "$FRONTEND_TEST_RESULT" != success \
-            || "$FRONTEND_COVERAGE_RESULT" != success \
-            || "$AI_RESULT" != success \
-            || "$SECURITY_RESULT" != success \
-            || "$CONTAINER_RESULT" != success \
-            || "$DELIVERY_RESULT" != success ]]; then
-            echo '::error::At least one required quality gate failed.'
+          if [[ "$CHANGES_RESULT" != success ]]; then
+            echo '::error::Path change detection failed.'
             exit 1
           fi
+
+          for result in \
+            "$BACKEND_RESULT" \
+            "$FRONTEND_BUILD_RESULT" \
+            "$FRONTEND_TEST_RESULT" \
+            "$FRONTEND_COVERAGE_RESULT" \
+            "$AI_RESULT" \
+            "$SECURITY_RESULT" \
+            "$CONTAINER_RESULT" \
+            "$DELIVERY_RESULT"; do
+            if [[ "$result" != success && "$result" != skipped ]]; then
+              echo '::error::At least one required quality gate failed.'
+              exit 1
+            fi
+          done
