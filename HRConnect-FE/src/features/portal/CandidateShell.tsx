@@ -114,7 +114,7 @@ export const CandidateShell: React.FC = () => {
       : 'candidate-main mx-auto w-full max-w-[1440px] flex-1 px-4 py-6 pb-24 sm:px-6 lg:px-8 lg:py-8';
 
   return (
-    <div className="candidate-console flex min-h-screen flex-col bg-[#F7F8FA] text-slate-900">
+    <div className={`candidate-console flex ${isEditorRoute ? 'h-screen overflow-hidden' : 'min-h-screen'} flex-col bg-[#F7F8FA] text-slate-900`}>
       {/* Unified top Navbar matching Homepage & public portal (hidden only in CV editor mode) */}
       {!isEditorRoute && <Navbar />}
       <AdminTopProgress offsetLeft={0} />

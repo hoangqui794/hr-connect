@@ -294,4 +294,62 @@ describe('ApplicationWorkbench MF-04', () => {
     expect(screen.queryByRole('button', { name: 'Hủy lịch' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Sửa thông tin lịch/i })).not.toBeInTheDocument();
   });
+
+  it('renders polished send offer confirmation modal with offer summary and sends offer on confirm', async () => {
+    vi.mocked(clientActionsApi.sendOffer).mockResolvedValue({ message: 'Đã gửi offer cho ứng viên.' });
+
+    renderWorkbench({
+      ...baseApplication,
+      allowedActions: ['SEND_OFFER'],
+      offers: [
+        {
+          offerId: 'offer-1',
+          offerVersion: 1,
+          salary: 40000000,
+          currencyCode: 'VND',
+          salaryBasis: 'GROSS',
+          salaryPeriod: 'MONTHLY',
+          monthlyGrossSalary: 40000000,
+          startDate: '2026-12-01',
+          expiryDate: '2026-11-20',
+          status: 'DRAFT',
+          offerDocumentUrl: null,
+          sentAt: null,
+          respondedAt: null,
+          declineReason: null,
+          concurrencyToken: 'offer-token',
+        },
+      ],
+    });
+
+    const sendBtn = await screen.findByRole('button', { name: 'Gửi offer' });
+    fireEvent.click(sendBtn);
+
+    const titles = await screen.findAllByText('Xác nhận gửi thư mời nhận việc (Offer)');
+    expect(titles.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Vui lòng kiểm tra lại thông tin trước khi gửi thư mời chính thức đến ứng viên/)).toBeInTheDocument();
+    expect(screen.getAllByText('Nguyễn Văn A').length).toBeGreaterThanOrEqual(1);
+
+    expect(screen.getByText('Vị trí tuyển dụng:')).toBeInTheDocument();
+    expect(screen.getByText('Mức lương đề xuất:')).toBeInTheDocument();
+    expect(screen.getByText(/40\.000\.000 VNĐ/)).toBeInTheDocument();
+    expect(screen.getByText('Ngày nhận việc dự kiến:')).toBeInTheDocument();
+    expect(screen.getByText('01/12/2026')).toBeInTheDocument();
+    expect(screen.getByText('Hạn phản hồi:')).toBeInTheDocument();
+    expect(screen.getByText('20/11/2026')).toBeInTheDocument();
+
+    expect(
+      screen.getByText('Lưu ý: Sau khi gửi, thông tin Offer sẽ được gửi trực tiếp cho ứng viên và không thể chỉnh sửa (chỉ có thể thu hồi).')
+    ).toBeInTheDocument();
+
+    expect(screen.getByRole('button', { name: 'Quay lại chỉnh sửa' })).toBeInTheDocument();
+    const confirmBtn = screen.getByRole('button', { name: 'Xác nhận & Gửi Offer' });
+    expect(confirmBtn).toBeInTheDocument();
+
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(clientActionsApi.sendOffer).toHaveBeenCalledWith('offer-1', 'offer-token');
+    });
+  }, 60000);
 });

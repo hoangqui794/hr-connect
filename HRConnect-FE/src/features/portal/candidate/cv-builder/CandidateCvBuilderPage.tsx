@@ -100,6 +100,7 @@ const inferTemplateLayout = (code?: string): CvLayoutStyle => {
   if (normalized.includes('EXECUTIVE')) return 'executive';
   if (normalized.includes('ELEGANT')) return 'elegant';
   if (normalized.includes('MINIMAL')) return 'minimal';
+  if (normalized.includes('CLASSIC')) return 'elegant';
   return 'ats';
 };
 
@@ -645,7 +646,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
 
   // ── STEP 2: TRÌNH SOẠN THẢO CV (PDF Page 20) ──
   return (
-    <div className="candidate-cv-builder-page flex min-h-screen w-full flex-1 flex-col bg-[#EEF2F6] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[#0F172A]">
+    <div className="candidate-cv-builder-page flex h-full max-h-screen w-full flex-1 flex-col overflow-hidden bg-[#EEF2F6] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-[#0F172A]">
       {/* 1. TOPBAR + FORMATTING SUB-BAR */}
       <CvTopbar
         title={title}
@@ -662,8 +663,11 @@ export const CandidateCvBuilderPage: React.FC = () => {
         completeness={completeness}
         mode={mode}
         templateName={
-          BUILTIN_CV_TEMPLATES.find((t) => t.code === selectedTemplateCode)?.name ||
-          selectedTemplateName
+          BUILTIN_CV_TEMPLATES.find(
+            (t) =>
+              t.code === selectedTemplateCode ||
+              (t.code.startsWith('MODERN') && selectedTemplateCode.startsWith('MODERN'))
+          )?.name || selectedTemplateName
         }
         onOpenTemplateGallery={() => handleJumpToStep('templates')}
         accentColor={accentColor}
@@ -701,7 +705,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
       )}
 
       {/* 2. MAIN WORKSPACE: LEFT SECTION CARD + LIVE A4 PAPER */}
-      <div className="flex-1 w-full overflow-y-auto">
+      <div className="flex-1 min-h-0 w-full overflow-y-auto overscroll-contain">
         <div className="mx-auto flex w-full max-w-[1440px] flex-col items-start gap-6 px-4 py-5 pb-24 sm:px-6 lg:flex-row lg:gap-10">
           {/* Left Floating Card: "Các mục trong CV" */}
           <CvSidebarTools
