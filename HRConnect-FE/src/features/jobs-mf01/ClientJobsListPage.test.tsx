@@ -118,4 +118,19 @@ describe('ClientJobsListPage', () => {
 
     expect(await screen.findByText('Bạn có 1 tin tuyển dụng đã hết hạn hiển thị')).toBeInTheDocument();
   });
+
+  it('shows when a job was sent for review, and the issued deposit with its due date', async () => {
+    jobs.data = [
+      job({ title: 'Chờ duyệt', status: 'PENDING_REVIEW', submittedAt: '2026-11-12T03:30:00Z' }),
+      job({ title: 'Chờ cọc', status: 'PENDING_PAYMENT', serviceTypeCode: 'CV_SOURCING', depositAmount: 3_000_000,
+        paymentDueAt: '2026-11-20', commercialTerms: { sourcingTarget: 10, pricePerCv: 500_000, depositPercent: 30 } }),
+    ];
+    renderPage();
+
+    expect(await screen.findByText(/^Gửi duyệt lúc /)).toBeInTheDocument();
+    // The deposit BE issued (3.000.000) wins over the estimate from the terms (1.500.000).
+    expect(screen.getByText(/3\.000\.000/)).toBeInTheDocument();
+    expect(screen.queryByText(/1\.500\.000/)).toBeNull();
+    expect(screen.getByText('Hạn nộp cọc 20/11/2026')).toBeInTheDocument();
+  });
 });

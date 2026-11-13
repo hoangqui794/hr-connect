@@ -52,6 +52,7 @@ import {
   SERVICE_TYPE_LABEL,
   clientActions,
   formatDate,
+  formatDateTime,
   formatSalary,
   isAwaitingSourcingDeposit,
   sourcingDepositAmount,
@@ -60,6 +61,9 @@ import {
 
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
+
+/** The deposit BE actually issued wins over the estimate from the agreed terms. */
+const depositOf = (job: Job): number | null => job.depositAmount ?? sourcingDepositAmount(job);
 
 type StatusFilter = 'ALL' | JobStatus;
 const FILTER_ORDER: JobStatus[] = ['DRAFT', 'PENDING_REVIEW', 'PENDING_AGREEMENT', 'PENDING_PAYMENT', 'ACTIVE', 'PAUSED', 'CLOSED', 'REJECTED'];
@@ -702,9 +706,11 @@ export const ClientJobsListPage: React.FC = () => {
                         <div className="flex flex-col gap-2 rounded-xl bg-amber-50/70 border border-amber-200/90 p-3 text-xs text-slate-800 mb-3.5 shadow-2xs">
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-amber-950 text-xs">
-                              Chờ cọc: <span className="text-amber-800 font-extrabold">{sourcingDepositAmount(job) != null ? formatMoney(sourcingDepositAmount(job)!, 'VND') : 'Chưa chốt số tiền cọc'}</span>
+                              Chờ cọc: <span className="text-amber-800 font-extrabold">{depositOf(job) != null ? formatMoney(depositOf(job)!, 'VND') : 'Chưa chốt số tiền cọc'}</span>
                             </span>
-                            <span className="text-[11px] text-amber-700 font-medium">Kích hoạt tin khi nhận cọc</span>
+                            <span className="text-[11px] text-amber-700 font-medium">
+                              {job.paymentDueAt ? `Hạn nộp cọc ${formatDate(job.paymentDueAt)}` : 'Kích hoạt tin khi nhận cọc'}
+                            </span>
                           </div>
                           <div className="flex items-center gap-2 pt-1 border-0 border-t border-solid border-slate-200/60">
                             {job.hasSubmittedDeposit === true ? (
@@ -714,10 +720,10 @@ export const ClientJobsListPage: React.FC = () => {
                               type="primary"
                               size="small"
                               className="!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 text-white rounded-lg shadow-sm font-bold !text-xs !h-8"
-                              disabled={sourcingDepositAmount(job) == null}
-                              title={sourcingDepositAmount(job) == null ? 'Chưa chốt số tiền cọc' : undefined}
+                              disabled={depositOf(job) == null}
+                              title={depositOf(job) == null ? 'Chưa chốt số tiền cọc' : undefined}
                               onClick={() => {
-                                const amount = sourcingDepositAmount(job);
+                                const amount = depositOf(job);
                                 if (amount == null) return;
                                 setPaymentModalJob({
                                    jobId: job.jobId,
@@ -746,6 +752,13 @@ export const ClientJobsListPage: React.FC = () => {
                           <span className="font-semibold text-xs">
                             Chờ thanh toán phí đăng tin{job.postingFee ? ` (${formatMoney(job.postingFee.amount, job.postingFee.currencyCode)})` : ''} để công bố tin
                           </span>
+                        </div>
+                      )}
+
+                      {job.status === 'PENDING_REVIEW' && job.submittedAt && (
+                        <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200/90 px-3 py-2 text-xs text-slate-700 mb-3.5">
+                          <span className="font-semibold text-xs">Gửi duyệt lúc {formatDateTime(job.submittedAt)}</span>
+                          <span className="text-[11px] text-slate-500">HR Connect đang duyệt</span>
                         </div>
                       )}
 

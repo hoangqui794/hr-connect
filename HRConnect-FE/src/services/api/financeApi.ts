@@ -1,6 +1,7 @@
 import { apiClient } from '../apiClient';
 import type { ApiEnvelope } from '@/types/api/admin';
 import type {
+  ClientDashboardSummary,
   AffiliateBankAccount,
   BusinessSetting,
   CancelReplacementSlotRequest,
@@ -66,6 +67,10 @@ export const vnPayApi = {
 };
 
 export const financeApi = {
+  /** Client dashboard: fees owed, refunds owed, sourcing CVs to answer, warranties ending, open slots. */
+  async clientDashboardSummary(warrantyWithinDays = 7): Promise<ClientDashboardSummary> {
+    return (await apiClient.get<ApiEnvelope<ClientDashboardSummary>>('/client/dashboard/summary', { params: { warrantyWithinDays } })).data.data;
+  },
   /** kind: PLACEMENT (HEADHUNT_COD), DEPOSIT, SETTLEMENT or CREDIT (CV_SOURCING); omit for every kind. */
   async serviceFees(params: {
     status?: ServiceFeeStatus | 'all';

@@ -24,6 +24,8 @@ import {
   InboxOutlined,
   PlusOutlined,
   RocketOutlined,
+  RollbackOutlined,
+  SafetyCertificateOutlined,
   SolutionOutlined,
   TeamOutlined,
   ThunderboltFilled,
@@ -32,6 +34,8 @@ import dayjs from 'dayjs';
 import relativeTimePlugin from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
 import { pipelineApi, screeningApi } from '@/services/api/hrApi';
+import { financeApi } from '@/services/api/financeApi';
+import { money } from '@/features/finance-mf05/financeLabels';
 import { useMyJobs } from '@/features/jobs-mf01/useJobQueries';
 import { useAuthStore } from '@/stores/authStore';
 import { SERVICE_TYPE_LABEL, formatSalary } from '@/features/jobs-mf01/jobDisplay';
@@ -64,6 +68,40 @@ const interviewPlace = (iv: { interviewType: string | null; location: string | n
   const parts = [type, where].filter(Boolean);
   return parts.length ? parts.join(' · ') : null;
 };
+
+/** One money/commitment figure, styled like the KPI tiles above it. */
+const CommitmentTile: React.FC<{
+  title: string;
+  icon: React.ReactNode;
+  value: string;
+  note: string;
+  link: string;
+  loading?: boolean;
+  danger?: boolean;
+  onClick: () => void;
+}> = ({ title, icon, value, note, link, loading, danger, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="group flex cursor-pointer flex-col justify-between rounded-2xl border border-solid border-slate-200/90 bg-white p-5 text-left shadow-[0_2px_10px_rgba(15,23,42,0.02)] transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0284C7]"
+  >
+    <span className="flex w-full items-center justify-between">
+      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{title}</span>
+      <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-700 text-lg transition-transform group-hover:scale-105">
+        {icon}
+      </span>
+    </span>
+    <span className="my-3 block">
+      <span className="text-2xl font-black tracking-tight text-slate-900 tabular-nums">
+        {loading ? <Skeleton.Input active size="small" /> : value}
+      </span>
+    </span>
+    <span className="flex w-full items-center justify-between gap-2 border-0 border-t border-solid border-slate-100 pt-3 text-xs">
+      <span className={danger ? 'font-semibold text-rose-700' : 'text-slate-500'}>{note}</span>
+      <span className="shrink-0 font-semibold text-[#0284C7]">{link}</span>
+    </span>
+  </button>
+);
 
 export const ClientOverviewPage: React.FC = () => {
   const navigate = useNavigate();
@@ -108,6 +146,12 @@ export const ClientOverviewPage: React.FC = () => {
         })
       ).items.filter((iv) => iv.scheduledAt),
   });
+
+  const commitments = useQuery({
+    queryKey: ['client-overview', 'commitments'],
+    queryFn: () => financeApi.clientDashboardSummary(),
+  });
+  const c = commitments.data;
 
   const n = (code: (typeof FUNNEL)[number]['code']) => stageCounts.data?.[code] ?? 0;
   const totalCandidates = FUNNEL.reduce((acc, f) => acc + n(f.code), 0);
@@ -472,6 +516,78 @@ export const ClientOverviewPage: React.FC = () => {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* ── 3b. Money & commitments (GET /client/dashboard/summary) ──── */}
+      <section aria-labelledby="commitments-title" className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="commitments-title" className="m-0 text-base font-bold text-slate-900">
+            Tiền & cam kết
+          </h2>
+          <span className="text-xs text-slate-500">Số liệu của doanh nghiệp bạn, cập nhật khi mở trang</span>
+        </div>
+        {commitments.isError ? (
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-4 text-sm text-slate-500">
+            Chưa tải được số liệu tiền và cam kết. Vui lòng tải lại trang.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <CommitmentTile
+              title="Phí cần thanh toán"
+              icon={<DollarCircleOutlined />}
+              loading={commitments.isLoading}
+              value={c ? money(c.pendingFeesAmount, c.currencyCode) : '—'}
+              note={
+                !c || c.pendingFeesCount === 0
+                  ? 'Không có khoản phí chờ thanh toán'
+                  : c.overdueFeesCount > 0
+                  ? `${c.overdueFeesCount} khoản quá hạn · ${money(c.overdueFeesAmount, c.currencyCode)}`
+                  : c.nextFeeDueDate
+                  ? `${c.pendingFeesCount} khoản · hạn gần nhất ${dayjs(c.nextFeeDueDate).format('DD/MM/YYYY')}`
+                  : `${c.pendingFeesCount} khoản`
+              }
+              danger={Boolean(c && c.overdueFeesCount > 0)}
+              link="Công nợ →"
+              onClick={() => navigate('/client/billing')}
+            />
+            <CommitmentTile
+              title="HR Connect hoàn cho bạn"
+              icon={<RollbackOutlined />}
+              loading={commitments.isLoading}
+              value={c ? money(c.refundsOwedAmount, c.currencyCode) : '—'}
+              note={!c || c.refundsOwedCount === 0 ? 'Không có khoản hoàn đang chờ' : `${c.refundsOwedCount} khoản đang chờ chuyển`}
+              link="Công nợ →"
+              onClick={() => navigate('/client/billing')}
+            />
+            <CommitmentTile
+              title="CV Sourcing chờ phản hồi"
+              icon={<FileTextOutlined />}
+              loading={commitments.isLoading}
+              value={c ? String(c.sourcingPendingReviewCount) : '—'}
+              note={
+                c?.sourcingNearestReviewDueAt
+                  ? `Hạn phản hồi gần nhất ${dayjs(c.sourcingNearestReviewDueAt).format('DD/MM HH:mm')}`
+                  : 'Không có CV chờ phản hồi'
+              }
+              danger={Boolean(c?.sourcingNearestReviewDueAt && dayjs(c.sourcingNearestReviewDueAt).diff(dayjs(), 'hour') < 24)}
+              link="Xem CV →"
+              onClick={() => navigate('/client/candidates?service=CV_SOURCING')}
+            />
+            <CommitmentTile
+              title="Bảo hành & suất thay thế"
+              icon={<SafetyCertificateOutlined />}
+              loading={commitments.isLoading}
+              value={c ? String(c.warrantiesEndingSoonCount) : '—'}
+              note={
+                c
+                  ? `bảo hành kết thúc trong ${c.warrantyWithinDays} ngày · ${c.openReplacementSlotsCount} suất thay thế đang mở`
+                  : '—'
+              }
+              link="Bảo hành →"
+              onClick={() => navigate('/client/warranty')}
+            />
+          </div>
+        )}
       </section>
 
       {/* ── 4. Funnel & Upcoming Interviews ──────────────────────────── */}

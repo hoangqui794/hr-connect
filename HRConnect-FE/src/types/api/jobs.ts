@@ -190,6 +190,16 @@ export interface Job {
   agreementStatus?: string | null;
   agreementChangeRequestReason?: string | null;
   hasSubmittedDeposit?: boolean;
+  /** When the Client last sent the job for review. */
+  submittedAt?: string | null;
+  /** When the job last changed status, and the reason code of that change. */
+  statusChangedAt?: string | null;
+  statusReasonCode?: string | null;
+  /** When the Client reported paying the CV_SOURCING deposit. */
+  depositSubmittedAt?: string | null;
+  /** CV_SOURCING: deposit amount BE issued and the due date while it is unpaid (Client job list). */
+  depositAmount?: number | null;
+  paymentDueAt?: string | null;
 }
 
 export interface JobPostingEligibility {

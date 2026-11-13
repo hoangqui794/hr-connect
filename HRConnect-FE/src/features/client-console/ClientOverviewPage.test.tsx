@@ -11,12 +11,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ClientOverviewPage } from './ClientOverviewPage';
 import { pipelineApi, screeningApi } from '@/services/api/hrApi';
+import { financeApi } from '@/services/api/financeApi';
 
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => ({
   ...(await vi.importActual<typeof import('react-router-dom')>('react-router-dom')),
   useNavigate: () => mockNavigate,
 }));
+
+vi.mock('@/services/api/financeApi', () => ({ financeApi: { clientDashboardSummary: vi.fn() } }));
 
 vi.mock('@/services/api/hrApi', () => ({
   screeningApi: { counts: vi.fn() },
@@ -59,6 +62,12 @@ const renderPage = () =>
 describe('ClientOverviewPage', () => {
   beforeEach(() => {
     mockNavigate.mockReset();
+    vi.mocked(financeApi.clientDashboardSummary).mockResolvedValue({
+      pendingFeesAmount: 7_000_000, pendingFeesCount: 2, overdueFeesAmount: 6_000_000, overdueFeesCount: 1,
+      nextFeeDueDate: '2026-11-20', refundsOwedAmount: 500_000, refundsOwedCount: 1,
+      sourcingPendingReviewCount: 2, sourcingNearestReviewDueAt: null,
+      warrantiesEndingSoonCount: 1, warrantyWithinDays: 7, openReplacementSlotsCount: 3, currencyCode: 'VND',
+    });
     jobs.data = [
       { jobId: 'j-cap', title: 'Tin có hạn mức', status: 'ACTIVE', quantity: 2, maxApplications: 40, serviceTypeCode: 'CV_APPLICATION' },
       { jobId: 'j-nocap', title: 'Tin không hạn mức', status: 'ACTIVE', quantity: 2, maxApplications: null, serviceTypeCode: 'HEADHUNT_COD' },
@@ -127,6 +136,24 @@ describe('ClientOverviewPage', () => {
     expect(mockNavigate).toHaveBeenLastCalledWith('/client/jobs?status=REJECTED');
 
     fireEvent.click(within(screen.getByText('Tuyển thành công').closest('div[class*="cursor-pointer"]') as HTMLElement).getByText('Bảo hành →'));
+    expect(mockNavigate).toHaveBeenLastCalledWith('/client/warranty');
+  });
+
+  it('shows the company money and commitments from the summary API and links each to its page', async () => {
+    renderPage();
+
+    expect(await screen.findByText('7.000.000 đ')).toBeInTheDocument();
+    expect(screen.getByText('1 khoản quá hạn · 6.000.000 đ')).toBeInTheDocument();
+    expect(screen.getByText('500.000 đ')).toBeInTheDocument();
+    expect(screen.getByText('1 khoản đang chờ chuyển')).toBeInTheDocument();
+    expect(screen.getByText('Không có CV chờ phản hồi')).toBeInTheDocument();
+    expect(screen.getByText('bảo hành kết thúc trong 7 ngày · 3 suất thay thế đang mở')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Phí cần thanh toán/ }));
+    expect(mockNavigate).toHaveBeenLastCalledWith('/client/billing');
+    fireEvent.click(screen.getByRole('button', { name: /CV Sourcing chờ phản hồi/ }));
+    expect(mockNavigate).toHaveBeenLastCalledWith('/client/candidates?service=CV_SOURCING');
+    fireEvent.click(screen.getByRole('button', { name: /Bảo hành & suất thay thế/ }));
     expect(mockNavigate).toHaveBeenLastCalledWith('/client/warranty');
   });
 });
