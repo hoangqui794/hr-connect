@@ -341,5 +341,148 @@ public class SplitAccountCommandHandlersTests
             It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task ConfirmSplitRegister_ShouldReject_WhenPhoneMatchesPreviousOwnerPhone()
+    {
+        var handler = new ConfirmSplitRegisterCommandHandler(
+            _userRepositoryMock.Object,
+            _userEmailIdentityRepositoryMock.Object,
+            _candidateRepositoryMock.Object,
+            _roleRepositoryMock.Object,
+            _userRoleRepositoryMock.Object,
+            _userTokenRepositoryMock.Object,
+            _auditLogServiceMock.Object,
+            _passwordHasherMock.Object,
+            _otpServiceMock.Object,
+            _emailNormalizerMock.Object,
+            _phoneNormalizerMock.Object,
+            _unitOfWorkMock.Object,
+            Mock.Of<ILogger<ConfirmSplitRegisterCommandHandler>>());
+
+        var email = "alias-aff@example.com";
+        var oldUserId = Guid.NewGuid();
+        var command = new ConfirmSplitRegisterCommand(email, "NewPass@123", "Split Candidate", "0909111222", "123456");
+
+        _emailNormalizerMock.Setup(x => x.Normalize(email)).Returns(email);
+        _phoneNormalizerMock.Setup(x => x.Normalize(command.Phone)).Returns("+84909111222");
+
+        _userEmailIdentityRepositoryMock.Setup(x => x.GetActiveByNormalizedEmailAsync(email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserEmailIdentity
+            {
+                EmailIdentityId = Guid.NewGuid(),
+                UserId = oldUserId,
+                Email = email,
+                NormalizedEmail = email,
+                Kind = "ALIAS",
+                Status = "VERIFIED"
+            });
+
+        _userTokenRepositoryMock.Setup(x => x.GetLatestActiveOtpAsync(oldUserId, "SPLIT_EMAIL_OTP", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserToken
+            {
+                TokenId = Guid.NewGuid(),
+                UserId = oldUserId,
+                TokenType = "SPLIT_EMAIL_OTP",
+                TokenHash = "hash_123456",
+                ExpiresAt = DateTime.UtcNow.AddMinutes(10)
+            });
+
+        _otpServiceMock.Setup(x => x.VerifyOtp("123456", "hash_123456")).Returns(true);
+
+        var swappedCandidate = new Candidate
+        {
+            CandidateId = Guid.NewGuid(),
+            UserId = oldUserId,
+            NormalizedEmail = email,
+            Status = "ACTIVE"
+        };
+        _candidateRepositoryMock.Setup(x => x.GetByNormalizedEmailAsync(email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(swappedCandidate);
+        _userRepositoryMock.Setup(x => x.GetByIdAsync(oldUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AppUser
+            {
+                UserId = oldUserId,
+                Email = "owner@example.com",
+                NormalizedPhone = "+84909111222"
+            });
+
+        var act = () => handler.Handle(command, CancellationToken.None);
+        var error = await act.Should().ThrowAsync<ConflictException>();
+        error.Which.ErrorCode.Should().Be("PHONE_ALREADY_REGISTERED");
+        _unitOfWorkMock.Verify(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ConfirmSplitRegister_ShouldReject_WhenPhoneBelongsToAnotherActiveCandidate()
+    {
+        var handler = new ConfirmSplitRegisterCommandHandler(
+            _userRepositoryMock.Object,
+            _userEmailIdentityRepositoryMock.Object,
+            _candidateRepositoryMock.Object,
+            _roleRepositoryMock.Object,
+            _userRoleRepositoryMock.Object,
+            _userTokenRepositoryMock.Object,
+            _auditLogServiceMock.Object,
+            _passwordHasherMock.Object,
+            _otpServiceMock.Object,
+            _emailNormalizerMock.Object,
+            _phoneNormalizerMock.Object,
+            _unitOfWorkMock.Object,
+            Mock.Of<ILogger<ConfirmSplitRegisterCommandHandler>>());
+
+        var email = "alias-aff@example.com";
+        var oldUserId = Guid.NewGuid();
+        var command = new ConfirmSplitRegisterCommand(email, "NewPass@123", "Split Candidate", "0909333444", "123456");
+
+        _emailNormalizerMock.Setup(x => x.Normalize(email)).Returns(email);
+        _phoneNormalizerMock.Setup(x => x.Normalize(command.Phone)).Returns("+84909333444");
+
+        _userEmailIdentityRepositoryMock.Setup(x => x.GetActiveByNormalizedEmailAsync(email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserEmailIdentity
+            {
+                EmailIdentityId = Guid.NewGuid(),
+                UserId = oldUserId,
+                Email = email,
+                NormalizedEmail = email,
+                Kind = "ALIAS",
+                Status = "VERIFIED"
+            });
+
+        _userTokenRepositoryMock.Setup(x => x.GetLatestActiveOtpAsync(oldUserId, "SPLIT_EMAIL_OTP", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserToken
+            {
+                TokenId = Guid.NewGuid(),
+                UserId = oldUserId,
+                TokenType = "SPLIT_EMAIL_OTP",
+                TokenHash = "hash_123456",
+                ExpiresAt = DateTime.UtcNow.AddMinutes(10)
+            });
+
+        _otpServiceMock.Setup(x => x.VerifyOtp("123456", "hash_123456")).Returns(true);
+
+        var candidateToSplit = new Candidate
+        {
+            CandidateId = Guid.NewGuid(),
+            UserId = null,
+            NormalizedEmail = email,
+            Status = "ARCHIVED"
+        };
+        _candidateRepositoryMock.Setup(x => x.GetByNormalizedEmailAsync(email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candidateToSplit);
+        _candidateRepositoryMock.Setup(x => x.GetByNormalizedPhoneAsync("+84909333444", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Candidate
+            {
+                CandidateId = Guid.NewGuid(),
+                UserId = oldUserId,
+                NormalizedPhone = "+84909333444",
+                Status = "ACTIVE"
+            });
+
+        var act = () => handler.Handle(command, CancellationToken.None);
+        var error = await act.Should().ThrowAsync<ConflictException>();
+        error.Which.ErrorCode.Should().Be("PHONE_ALREADY_REGISTERED");
+        _unitOfWorkMock.Verify(x => x.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
 }
 

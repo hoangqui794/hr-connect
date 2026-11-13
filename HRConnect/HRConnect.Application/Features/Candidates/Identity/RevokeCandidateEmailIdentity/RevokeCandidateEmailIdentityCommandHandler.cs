@@ -4,6 +4,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Domain.Entities;
 using MediatR;
 
 namespace HRConnect.Application.Features.Candidates.Identity.RevokeCandidateEmailIdentity;
@@ -12,7 +13,9 @@ public sealed class RevokeCandidateEmailIdentityCommandHandler(
     ICandidateRepository candidateRepository,
     IUserEmailIdentityRepository identityRepository,
     IAuditLogService auditLogService,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    IUserRepository? userRepository = null,
+    IEmailNormalizer? emailNormalizer = null)
     : IRequestHandler<RevokeCandidateEmailIdentityCommand, RevokeCandidateEmailIdentityResponse>
 {
     public async Task<RevokeCandidateEmailIdentityResponse> Handle(
@@ -46,6 +49,23 @@ public sealed class RevokeCandidateEmailIdentityCommandHandler(
             identity.UpdatedAt = now;
             identity.ConcurrencyToken = newToken;
             identityRepository.Update(identity);
+
+            // Nếu Candidate hiện tại của tài khoản chính vốn là hồ sơ mang email phụ (được tráo lúc claim),
+            // nhả UserId để email phụ có thể đăng ký mới bình thường và khôi phục/tạo hồ sơ cho tài khoản chính.
+            if (string.Equals(candidate.NormalizedEmail, identity.NormalizedEmail, StringComparison.Ordinal))
+            {
+                candidate.UserId = null;
+                candidate.UpdatedAt = now;
+                candidateRepository.Update(candidate);
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+
+                await RestoreOrCreateCandidateForOwnerAsync(
+                    request.UserId,
+                    candidate.CandidateId,
+                    candidate.NormalizedPhone,
+                    now,
+                    cancellationToken);
+            }
             await auditLogService.AddAsync(new AuditEntry
             {
                 Action = AuditActions.CandidateEmailIdentityRevoked,
@@ -82,4 +102,79 @@ public sealed class RevokeCandidateEmailIdentityCommandHandler(
 
     private static string Hash(string value) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
+
+    private async Task RestoreOrCreateCandidateForOwnerAsync(
+        Guid ownerUserId,
+        Guid releasedCandidateId,
+        string? releasedNormalizedPhone,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var archivedPlaceholder = await candidateRepository.GetArchivedMergedSourceAsync(
+            releasedCandidateId, cancellationToken);
+        if (archivedPlaceholder != null)
+        {
+            if (!string.IsNullOrWhiteSpace(archivedPlaceholder.NormalizedEmail))
+            {
+                var emailOwner = await candidateRepository.GetByNormalizedEmailAsync(
+                    archivedPlaceholder.NormalizedEmail, cancellationToken);
+                if (emailOwner != null &&
+                    emailOwner.CandidateId != archivedPlaceholder.CandidateId &&
+                    (string.Equals(emailOwner.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(emailOwner.Status, "INACTIVE", StringComparison.OrdinalIgnoreCase)))
+                {
+                    archivedPlaceholder.Email = null;
+                    archivedPlaceholder.NormalizedEmail = null;
+                }
+            }
+
+            archivedPlaceholder.Status = "ACTIVE";
+            archivedPlaceholder.MergedIntoCandidateId = null;
+            archivedPlaceholder.UserId = ownerUserId;
+            if (!string.IsNullOrWhiteSpace(releasedNormalizedPhone) &&
+                string.Equals(archivedPlaceholder.NormalizedPhone, releasedNormalizedPhone, StringComparison.Ordinal))
+            {
+                archivedPlaceholder.Phone = null;
+                archivedPlaceholder.NormalizedPhone = null;
+            }
+            archivedPlaceholder.UpdatedAt = now;
+            candidateRepository.Update(archivedPlaceholder);
+            return;
+        }
+
+        var ownerUser = userRepository != null
+            ? await userRepository.GetByIdAsync(ownerUserId, cancellationToken)
+            : null;
+        var ownerNormalizedEmail = ownerUser != null
+            ? (emailNormalizer?.Normalize(ownerUser.Email) ?? ownerUser.Email.Trim().ToLowerInvariant())
+            : null;
+        if (!string.IsNullOrWhiteSpace(ownerNormalizedEmail))
+        {
+            var emailOwner = await candidateRepository.GetByNormalizedEmailAsync(ownerNormalizedEmail, cancellationToken);
+            if (emailOwner != null &&
+                (string.Equals(emailOwner.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(emailOwner.Status, "INACTIVE", StringComparison.OrdinalIgnoreCase)))
+            {
+                ownerNormalizedEmail = null;
+            }
+        }
+
+        var hasPhoneConflict = !string.IsNullOrWhiteSpace(releasedNormalizedPhone) &&
+            string.Equals(ownerUser?.NormalizedPhone, releasedNormalizedPhone, StringComparison.Ordinal);
+
+        await candidateRepository.AddAsync(new Candidate
+        {
+            CandidateId = Guid.NewGuid(),
+            UserId = ownerUserId,
+            FullName = string.IsNullOrWhiteSpace(ownerUser?.DisplayName) ? "Ứng viên" : ownerUser.DisplayName,
+            Email = ownerNormalizedEmail != null ? ownerUser?.Email : null,
+            NormalizedEmail = ownerNormalizedEmail,
+            Phone = hasPhoneConflict ? null : ownerUser?.Phone,
+            NormalizedPhone = hasPhoneConflict ? null : ownerUser?.NormalizedPhone,
+            ProfileVisibility = "PRIVATE",
+            Status = "ACTIVE",
+            CreatedAt = now,
+            UpdatedAt = now
+        }, cancellationToken);
+    }
 }

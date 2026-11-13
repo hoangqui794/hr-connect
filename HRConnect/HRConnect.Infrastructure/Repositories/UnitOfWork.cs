@@ -173,6 +173,14 @@ public class UnitOfWork : IUnitOfWork
                 message = "Email này đã được sử dụng cho một tài khoản khác.";
                 errorCode = "EMAIL_ALREADY_REGISTERED";
                 return true;
+            case "uq_candidate_identity_email":
+                message = "Email này đã được liên kết với một hồ sơ ứng viên khác.";
+                errorCode = "EMAIL_ALREADY_REGISTERED";
+                return true;
+            case "uq_candidate_identity_phone":
+                message = "Số điện thoại này đã được liên kết với một hồ sơ ứng viên khác.";
+                errorCode = "PHONE_ALREADY_REGISTERED";
+                return true;
             case "uq_company_tax_code":
                 message = "Mã số thuế này đã được đăng ký cho một doanh nghiệp khác.";
                 errorCode = "TAX_CODE_ALREADY_REGISTERED";

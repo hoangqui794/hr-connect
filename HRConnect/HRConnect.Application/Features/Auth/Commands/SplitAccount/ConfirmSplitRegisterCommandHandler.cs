@@ -97,6 +97,35 @@ public class ConfirmSplitRegisterCommandHandler : IRequestHandler<ConfirmSplitRe
             throw new BadRequestException($"Mã OTP không chính xác. Bạn còn {remaining} lần thử lại.");
         }
 
+        var existingCandidate = await _candidateRepository.GetByNormalizedEmailAsync(normalizedEmail, cancellationToken);
+        if (!string.IsNullOrWhiteSpace(normalizedPhone))
+        {
+            var phoneOwner = await _candidateRepository.GetByNormalizedPhoneAsync(normalizedPhone, cancellationToken);
+            if (phoneOwner != null &&
+                phoneOwner.CandidateId != existingCandidate?.CandidateId &&
+                (string.Equals(phoneOwner.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(phoneOwner.Status, "INACTIVE", StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new ConflictException(
+                    "Số điện thoại này đã được sử dụng bởi một tài khoản khác. Vui lòng nhập số khác hoặc để trống.",
+                    "PHONE_ALREADY_REGISTERED");
+            }
+
+            if (existingCandidate != null && existingCandidate.UserId == activeIdentity.UserId)
+            {
+                var archivedSource = await _candidateRepository.GetArchivedMergedSourceAsync(
+                    existingCandidate.CandidateId, cancellationToken);
+                var oldUser = await _userRepository.GetByIdAsync(activeIdentity.UserId, cancellationToken);
+                if ((archivedSource != null && string.Equals(archivedSource.NormalizedPhone, normalizedPhone, StringComparison.Ordinal)) ||
+                    (oldUser != null && string.Equals(oldUser.NormalizedPhone, normalizedPhone, StringComparison.Ordinal)))
+                {
+                    throw new ConflictException(
+                        "Số điện thoại này đang được sử dụng bởi tài khoản gốc. Vui lòng nhập số khác hoặc để trống.",
+                        "PHONE_ALREADY_REGISTERED");
+                }
+            }
+        }
+
         var now = DateTime.UtcNow;
         token.UsedAt = now;
         _userTokenRepository.Update(token);
@@ -163,7 +192,6 @@ public class ConfirmSplitRegisterCommandHandler : IRequestHandler<ConfirmSplitRe
             await _userRoleRepository.AddAsync(userRole, cancellationToken);
 
             // 5. Khôi phục hoặc tạo hồ sơ Candidate
-            var existingCandidate = await _candidateRepository.GetByNormalizedEmailAsync(normalizedEmail, cancellationToken);
             if (existingCandidate != null)
             {
                 var previousOwnerUserId = existingCandidate.UserId;
@@ -256,6 +284,20 @@ public class ConfirmSplitRegisterCommandHandler : IRequestHandler<ConfirmSplitRe
         var archivedPlaceholder = await _candidateRepository.GetArchivedMergedSourceAsync(splitCandidateId, cancellationToken);
         if (archivedPlaceholder != null)
         {
+            if (!string.IsNullOrWhiteSpace(archivedPlaceholder.NormalizedEmail))
+            {
+                var emailOwner = await _candidateRepository.GetByNormalizedEmailAsync(
+                    archivedPlaceholder.NormalizedEmail, cancellationToken);
+                if (emailOwner != null &&
+                    emailOwner.CandidateId != archivedPlaceholder.CandidateId &&
+                    (string.Equals(emailOwner.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(emailOwner.Status, "INACTIVE", StringComparison.OrdinalIgnoreCase)))
+                {
+                    archivedPlaceholder.Email = null;
+                    archivedPlaceholder.NormalizedEmail = null;
+                }
+            }
+
             archivedPlaceholder.Status = "ACTIVE";
             archivedPlaceholder.MergedIntoCandidateId = null;
             archivedPlaceholder.UserId = previousOwnerUserId;
