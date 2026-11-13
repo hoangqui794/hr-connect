@@ -98,6 +98,8 @@ describe('placementApi', () => {
       expect(result.financial?.commissionStatus).toBe('APPROVED');
       // Không còn gọi thêm /warranties để dò khối tiền.
       expect(apiClient.get).toHaveBeenCalledTimes(1);
+      expect(result.isReplacement).toBe(false);
+      expect(result.replacesPlacementId).toBeNull();
     });
 
     it('throws error when request fails or returns null', async () => {

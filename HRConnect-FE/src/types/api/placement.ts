@@ -65,6 +65,11 @@ export interface PlacementDetailDto {
   confirmedBy?: string | null;
   confirmedByName?: string | null;
   confirmationNote?: string | null;
+  /** True when this hire filled a replacement slot (warranty replacement, no new fee). */
+  isReplacement?: boolean;
+  replacementSlotId?: string | null;
+  /** The original placement this hire replaces. */
+  replacesPlacementId?: string | null;
   candidate: PlacementCandidateDto;
   job: PlacementJobDto;
   offer: PlacementOfferDto;

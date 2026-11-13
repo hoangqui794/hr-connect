@@ -252,6 +252,11 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
                 {placement.position}
               </Tag>
             )}
+            {placement.isReplacement && (
+              <Tag color="purple" className="font-medium">
+                Người thay thế – không tính phí mới
+              </Tag>
+            )}
           </div>
           <Title level={4} className="!m-0 text-slate-900 font-extrabold">
             {placement.candidate.fullName}

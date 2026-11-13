@@ -36,7 +36,8 @@ import type { RecruitmentApplicationItem } from '@/types/api/hr';
 import { useMyJobs } from '@/features/jobs-mf01/useJobQueries';
 import { Initials, StatusDot, Surface } from '@/features/admin-console/ui';
 import { ApplicationWorkbench } from '@/features/recruitment/ApplicationWorkbench';
-import { applicationStatusOf, SERVICE_TYPE } from '@/features/hr-console/hrLabels';
+import { applicationStatusOf, INTERVIEW_RESULT, INTERVIEW_STATUS, OFFER_STATUS, SERVICE_TYPE } from '@/features/hr-console/hrLabels';
+import { money } from '@/features/finance-mf05/financeLabels';
 import { SERVICE_TYPE_LABEL } from '@/features/jobs-mf01/jobDisplay';
 import type { ServiceTypeCode } from '@/types/api/jobs';
 
@@ -233,6 +234,23 @@ export const ClientCandidatesPage: React.FC = () => {
     enabled: view === 'list',
   });
 
+  /** One short line on the latest offer, else the latest interview; null when neither exists. */
+  const progressOf = (a: RecruitmentApplicationItem): string | null => {
+    if (a.latestOfferStatus) {
+      const label = OFFER_STATUS[a.latestOfferStatus]?.label ?? a.latestOfferStatus;
+      return `Offer: ${label}${a.latestOfferSalary != null ? ` · ${money(a.latestOfferSalary)}` : ''}`;
+    }
+    if (a.latestInterviewScheduledAt) {
+      const outcome = a.latestInterviewResult
+        ? INTERVIEW_RESULT[a.latestInterviewResult] ?? a.latestInterviewResult
+        : a.latestInterviewStatus
+          ? INTERVIEW_STATUS[a.latestInterviewStatus]?.label ?? a.latestInterviewStatus
+          : null;
+      return `PV vòng ${a.latestInterviewRound ?? 1} · ${dayjs(a.latestInterviewScheduledAt).format('DD/MM HH:mm')}${outcome ? ` · ${outcome}` : ''}`;
+    }
+    return null;
+  };
+
   const columns: ColumnsType<RecruitmentApplicationItem> = [
     {
       title: 'Ứng viên',
@@ -290,9 +308,13 @@ export const ClientCandidatesPage: React.FC = () => {
       width: 170,
       render: (v: string, r) => {
         const st = applicationStatusOf(v, r.serviceTypeCode, r.sourcingDeliveryStatus);
+        const progress = progressOf(r);
         return (
-          <div className="py-1 inline-flex items-center">
-            <StatusDot tone={st.tone}>{st.label}</StatusDot>
+          <div className="py-1">
+            <div className="inline-flex items-center">
+              <StatusDot tone={st.tone}>{st.label}</StatusDot>
+            </div>
+            {progress && <div className="mt-1 text-[12px] text-slate-600">{progress}</div>}
           </div>
         );
       },
@@ -572,6 +594,11 @@ export const ClientCandidatesPage: React.FC = () => {
                                     {a.candidateName}
                                   </span>
                                   <span className="block truncate text-xs text-slate-500">{a.jobTitle}</span>
+                                  {progressOf(a) && (
+                                    <span className="mt-0.5 block truncate text-xs font-medium text-slate-600" title={progressOf(a) ?? undefined}>
+                                      {progressOf(a)}
+                                    </span>
+                                  )}
                                 </span>
                               </span>
                               <span className="flex items-center justify-between pt-1 border-t border-slate-100">

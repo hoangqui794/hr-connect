@@ -77,6 +77,30 @@ describe('Client › Hồ sơ ứng viên', () => {
     expect(within(failed).queryByText('Lỗi AI')).not.toBeInTheDocument();
   });
 
+  it('shows the latest offer, else the latest interview, under the stage', async () => {
+    listMock.mockImplementation(async (p) => {
+      if (p.pageSize === 1) return { items: [], total: 1, page: 1, pageSize: 1 } as never;
+      return {
+        items: [
+          row({ candidateName: 'Có Offer', status: 'OFFER_PENDING', latestOfferStatus: 'SENT', latestOfferSalary: 25000000,
+            latestInterviewRound: 2, latestInterviewScheduledAt: '2026-11-10T09:00:00', latestInterviewResult: 'PASS' }),
+          row({ candidateName: 'Có Phỏng Vấn', status: 'INTERVIEW', latestInterviewRound: 1,
+            latestInterviewScheduledAt: '2026-11-14T14:30:00', latestInterviewStatus: 'SCHEDULED' }),
+          row({ candidateName: 'Chưa Gì' }),
+        ],
+        total: 3, page: 1, pageSize: 10,
+      } as never;
+    });
+    renderPage();
+
+    const offer = (await screen.findByText('Có Offer')).closest('tr')!;
+    expect(within(offer).getByText(/^Offer: Đã gửi · 25\.000\.000/)).toBeInTheDocument();
+    const interview = screen.getByText('Có Phỏng Vấn').closest('tr')!;
+    expect(within(interview).getByText('PV vòng 1 · 14/11 14:30 · Đã lên lịch')).toBeInTheDocument();
+    const none = screen.getByText('Chưa Gì').closest('tr')!;
+    expect(within(none).queryByText(/^(Offer:|PV vòng)/)).toBeNull();
+  });
+
   it('a strip cell filters by every status it groups', async () => {
     renderPage();
     await screen.findByText('Ứng Viên e2e5');
