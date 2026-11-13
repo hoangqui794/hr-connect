@@ -21,7 +21,7 @@ export const SOURCING_STATUS_CONFIG: Record<SourcingDeliveryStatus, SourcingStat
     label: 'Chờ phản hồi',
     tagColor: 'processing',
     badgeTone: 'processing',
-    description: 'CV đã bàn giao, đang chờ Doanh nghiệp xem xét (thời hạn 7 ngày).',
+    description: 'CV đã bàn giao, đang chờ Doanh nghiệp xem xét trước hạn phản hồi.',
   },
   ACCEPTED: {
     label: 'Đã chấp nhận',
@@ -33,7 +33,7 @@ export const SOURCING_STATUS_CONFIG: Record<SourcingDeliveryStatus, SourcingStat
     label: 'Tự động chấp nhận',
     tagColor: 'green',
     badgeTone: 'success',
-    description: 'Quá 7 ngày chưa phản hồi, hệ thống tự động tính là đã chấp nhận.',
+    description: 'Quá hạn phản hồi nên hệ thống tự chấp nhận.',
   },
   REJECTED: {
     label: 'Đã từ chối',
@@ -95,7 +95,7 @@ export const calculateDaysLeft = (reviewDueAt: string | Date, now: Date = new Da
 };
 
 /**
- * Checks whether the 7-day review window has closed (now > reviewDueAt).
+ * Checks whether the review window has closed (now > reviewDueAt).
  */
 export const isReviewWindowClosed = (reviewDueAt: string | Date, now: Date = new Date()): boolean => {
   return dayjs(now).isAfter(dayjs(reviewDueAt));
@@ -130,7 +130,7 @@ export const getSourcingReviewDeadlineInfo = (
       isExpired,
       daysLeft,
       formattedDueAt,
-      countdownText: delivery.status === 'AUTO_ACCEPTED' ? 'Tự động chấp nhận (quá 7 ngày)' : 'Đã kết thúc xem xét',
+      countdownText: delivery.status === 'AUTO_ACCEPTED' ? 'Quá hạn phản hồi nên hệ thống tự chấp nhận' : 'Đã kết thúc xem xét',
       badgeTone: 'default',
       canDecide: false,
     };
@@ -141,7 +141,7 @@ export const getSourcingReviewDeadlineInfo = (
       isExpired: true,
       daysLeft: 0,
       formattedDueAt,
-      countdownText: 'Quá hạn 7 ngày (Tự động chấp nhận)',
+      countdownText: 'Quá hạn phản hồi nên hệ thống tự chấp nhận',
       badgeTone: 'error',
       canDecide: false,
     };

@@ -251,7 +251,7 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
       render: (v) => <span className="tabular-nums text-slate-700">{dayjs(v).format('HH:mm DD/MM/YYYY')}</span>,
     },
     {
-      title: 'Trạng thái & Thời hạn phản hồi (7 ngày)',
+      title: 'Trạng thái & Thời hạn phản hồi',
       key: 'status',
       width: 290,
       render: (_, r) => {
@@ -277,7 +277,8 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
 
             {r.status === 'DELIVERED' && (
               <div className="text-xs text-slate-500">
-                Hạn chót: <span className="font-medium text-slate-700">{deadline.formattedDueAt}</span>
+                Hạn phản hồi: <span className="font-medium text-slate-700">{dayjs(r.reviewDueAt).format('DD/MM/YYYY')}</span>
+                {deadline.isExpired ? '' : ` (còn ${deadline.daysLeft} ngày)`}
               </div>
             )}
 
@@ -309,7 +310,7 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
           if (r.status === 'DELIVERED') {
             if (deadline.isExpired) {
               return (
-                <Tooltip title="Đã hết thời hạn xem xét 7 ngày. Theo quy tắc CV Sourcing, hồ sơ tự động được chấp nhận.">
+                <Tooltip title="Quá hạn phản hồi nên hệ thống tự chấp nhận hồ sơ.">
                   <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-1 rounded">
                     Quá hạn xem xét
                   </span>
@@ -410,7 +411,7 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
               </div>
               <p className="m-0 text-xs text-slate-500">
                 {role === 'client'
-                  ? 'Quý doanh nghiệp có 7 ngày để chấp nhận hoặc từ chối mỗi CV kể từ ngày bàn giao.'
+                  ? 'Quý doanh nghiệp vui lòng chấp nhận hoặc từ chối mỗi CV trước hạn phản hồi ghi ở từng hồ sơ.'
                   : 'Theo dõi tiến độ bàn giao và phản hồi từ Doanh nghiệp.'}
               </p>
             </div>
@@ -703,7 +704,7 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
       >
         <p className="text-xs text-slate-600 mb-3">
           Nhập mã hồ sơ ứng viên (Application ID) đạt yêu cầu dự phòng để bàn giao thay thế cho ứng viên{' '}
-          <strong>{replaceModalItem?.candidateName}</strong>. CV mới sẽ có thời hạn xem xét 7 ngày mới.
+          <strong>{replaceModalItem?.candidateName}</strong>. CV mới sẽ có hạn phản hồi mới do hệ thống tính.
         </p>
 
         <Form form={replaceForm} layout="vertical" onFinish={handleReplaceSubmit}>

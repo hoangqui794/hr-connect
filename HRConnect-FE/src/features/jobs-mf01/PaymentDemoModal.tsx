@@ -52,7 +52,7 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
   const [paying, setPaying] = useState(false);
 
   const isDepositMode = Boolean(isDeposit || serviceTypeCode === 'CV_SOURCING' || (!fee.data && depositAmount));
-  const finalDepositAmount = depositAmount ?? 200000;
+  const finalDepositAmount = depositAmount ?? null;
   const depositFee = useQuery({
     queryKey: ['service-fees', 'deposit', jobId],
     queryFn: () => financeApi.serviceFees({ jobId, kind: 'DEPOSIT', page: 1, pageSize: 10 }),
@@ -62,7 +62,7 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
   const payableDeposit = depositFee.data?.items.find((item) =>
     item.kind === 'DEPOSIT' && ['PENDING', 'DUE', 'OVERDUE'].includes(item.status)
   );
-  const displayedAmount = isDepositMode ? (payableDeposit?.amount ?? finalDepositAmount) : (fee.data?.amount ?? 1_500_000);
+  const displayedAmount = isDepositMode ? (payableDeposit?.amount ?? finalDepositAmount) : (fee.data?.amount ?? null);
 
   const handleConfirmPayment = async () => {
     setPaying(true);
@@ -125,7 +125,9 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
           <div className="flex items-baseline justify-between pt-2 border-t border-dashed border-slate-200">
             <span className="text-xs text-slate-600">Số tiền cần thanh toán:</span>
             <span className="text-xl font-bold text-[#0C4A6E] tabular-nums">
-              {formatMoney(displayedAmount, isDepositMode ? (payableDeposit?.currencyCode ?? 'VND') : (fee.data?.currencyCode ?? 'VND'))}
+              {displayedAmount == null
+                ? (isDepositMode ? 'HR Connect đang chốt số tiền cọc' : '—')
+                : formatMoney(displayedAmount, isDepositMode ? (payableDeposit?.currencyCode ?? 'VND') : (fee.data?.currencyCode ?? 'VND'))}
             </span>
           </div>
 

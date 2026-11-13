@@ -7,9 +7,9 @@
  */
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App, Button, DatePicker, Form, Input, InputNumber, Modal, Radio, Select, Space, Table, Tag, Tooltip } from 'antd';
+import { Alert, App, Button, DatePicker, Dropdown, Form, Input, InputNumber, Modal, Radio, Select, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { ReloadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, MoreOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import { financeApi } from '@/services/api/financeApi';
@@ -122,9 +122,9 @@ export const AdminFinancePage: React.FC = () => {
 
   const approve = (c: Commission) =>
     modal.confirm({
-      title: 'Duyệt hoa hồng để chi trả?',
-      content: `${c.affiliateName ?? 'Affiliate'} — ${money(c.amount)}. Chỉ duyệt được khi Client đã thanh toán phí dịch vụ.`,
-      okText: 'Duyệt',
+      title: 'Duyệt chi hoa hồng?',
+      content: `${c.affiliateName ?? 'Affiliate'} — ${money(c.amount)}. Xác nhận đủ điều kiện để chuyển sang bước Ghi nhận chi trả.`,
+      okText: 'Duyệt chi',
       cancelText: 'Hủy',
       onOk: () => action.mutateAsync(() => financeApi.approveCommission(c.commissionId)),
     });
@@ -163,24 +163,27 @@ export const AdminFinancePage: React.FC = () => {
         </div>
       ),
     },
-    { title: 'Affiliate', dataIndex: 'affiliateName', render: (v) => v ?? '—' },
-    { title: 'Hoa hồng', dataIndex: 'amount', align: 'right', render: (v: number) => <span className="font-semibold tabular-nums">{money(v)}</span> },
+    { title: 'Affiliate', dataIndex: 'affiliateName', width: 140, render: (v) => <span className="text-slate-800 whitespace-nowrap">{v ?? '—'}</span> },
+    { title: 'Hoa hồng', dataIndex: 'amount', align: 'right', width: 120, render: (v: number) => <span className="font-semibold tabular-nums whitespace-nowrap">{money(v)}</span> },
     {
-      title: 'Hết bảo hành',
+      title: <span className="whitespace-nowrap">Hết bảo hành</span>,
       dataIndex: 'warrantyEndDate',
+      width: 130,
       sorter: (a, b) => byDateDesc(b.warrantyEndDate, a.warrantyEndDate),
-      render: (v) => <span className="tabular-nums">{date(v)}</span>,
+      render: (v) => <span className="tabular-nums whitespace-nowrap">{date(v)}</span>,
     },
     {
-      title: 'Ngày duyệt',
+      title: <span className="whitespace-nowrap">Ngày duyệt</span>,
       dataIndex: 'approvedAt',
+      width: 120,
       sorter: (a, b) => byDateDesc(b.approvedAt, a.approvedAt),
-      render: (v) => <span className="tabular-nums">{date(v)}</span>,
+      render: (v) => <span className="tabular-nums whitespace-nowrap">{date(v)}</span>,
     },
-    { title: 'Phí Client', dataIndex: 'serviceFeeStatus', render: (v: ServiceFeeStatus | null) => { const s = labelOf(SERVICE_FEE_STATUS, v); return <StatusDot tone={s.tone}>{s.label}</StatusDot>; } },
+    { title: <span className="whitespace-nowrap">Phí Client</span>, dataIndex: 'serviceFeeStatus', width: 150, render: (v: ServiceFeeStatus | null) => { const s = labelOf(SERVICE_FEE_STATUS, v); return <StatusDot tone={s.tone}>{s.label}</StatusDot>; } },
     {
       title: 'Trạng thái',
       dataIndex: 'status',
+      width: 220,
       render: (v: CommissionStatus, c: Commission) => {
         let s = labelOf(COMMISSION_STATUS, v);
         if (v === 'EARNED') {
@@ -199,28 +202,71 @@ export const AdminFinancePage: React.FC = () => {
       title: 'Thao tác',
       key: 'actions',
       align: 'right',
-      width: 112,
-      className: 'w-28 text-right pr-4',
-      render: (_, c) => (
-        <Space size={4} wrap>
-          {c.status === 'EARNED' && (
-            <Tooltip title={c.serviceFeeStatus !== 'PAID' ? 'Client chưa thanh toán phí dịch vụ' : undefined}>
-              <Button size="small" type="primary" disabled={c.serviceFeeStatus !== 'PAID'} onClick={() => approve(c)}>Duyệt</Button>
-            </Tooltip>
-          )}
-          {c.status === 'PAYABLE' && (
-            <Button size="small" type="primary" onClick={() => { form.setFieldsValue({ result: 'success', payoutDate: dayjs() }); setDialog({ kind: 'payout', commission: c }); }}>
-              Ghi nhận chi
-            </Button>
-          )}
-          {!['PAID', 'CANCELLED'].includes(c.status) && (
-            <>
-              <Button size="small" onClick={() => { form.setFieldsValue({ newAmount: c.amount }); setDialog({ kind: 'adjust', commission: c }); }}>Điều chỉnh</Button>
-              <Button size="small" danger onClick={() => setDialog({ kind: 'cancel', commission: c })}>Hủy</Button>
-            </>
-          )}
-        </Space>
-      ),
+      width: 168,
+      className: 'text-right pr-4',
+      render: (_, c) => {
+        const canModify = !['PAID', 'CANCELLED'].includes(c.status);
+        if (c.status !== 'EARNED' && c.status !== 'PAYABLE' && !canModify) {
+          return <span className="text-slate-400 text-xs">—</span>;
+        }
+        return (
+          <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+            {c.status === 'EARNED' && (
+              <Tooltip title={c.serviceFeeStatus !== 'PAID' ? 'Client chưa thanh toán phí dịch vụ' : 'Duyệt cho phép chi trả hoa hồng này'}>
+                <Button
+                  size="small"
+                  type="primary"
+                  className="!h-8 px-3 text-xs font-semibold rounded-lg"
+                  disabled={c.serviceFeeStatus !== 'PAID'}
+                  onClick={() => approve(c)}
+                >
+                  Duyệt chi
+                </Button>
+              </Tooltip>
+            )}
+            {c.status === 'PAYABLE' && (
+              <Button
+                size="small"
+                type="primary"
+                className="!h-8 px-3 text-xs font-semibold rounded-lg"
+                onClick={() => { form.setFieldsValue({ result: 'success', payoutDate: dayjs() }); setDialog({ kind: 'payout', commission: c }); }}
+              >
+                Ghi nhận chi
+              </Button>
+            )}
+            {canModify && (
+              <Dropdown
+                trigger={['click']}
+                placement="bottomRight"
+                menu={{
+                  items: [
+                    {
+                      key: 'adjust',
+                      icon: <EditOutlined />,
+                      label: 'Điều chỉnh số tiền',
+                      onClick: () => { form.setFieldsValue({ newAmount: c.amount }); setDialog({ kind: 'adjust', commission: c }); },
+                    },
+                    {
+                      key: 'cancel',
+                      icon: <DeleteOutlined />,
+                      label: 'Hủy hoa hồng',
+                      danger: true,
+                      onClick: () => setDialog({ kind: 'cancel', commission: c }),
+                    },
+                  ],
+                }}
+              >
+                <Button
+                  size="small"
+                  icon={<MoreOutlined />}
+                  aria-label={`Thao tác khác: ${c.candidateName ?? c.commissionId}`}
+                  className="!h-8 !w-8 rounded-lg"
+                />
+              </Dropdown>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -313,10 +359,12 @@ export const AdminFinancePage: React.FC = () => {
       title: 'Thao tác',
       key: 'actions',
       align: 'right',
-      width: 112,
-      className: 'w-28 text-right pr-4',
+      width: 168,
+      className: 'text-right pr-4',
       render: (_, f) => {
-        if (f.status !== 'PENDING' && f.status !== 'DUE' && f.status !== 'OVERDUE') return null;
+        if (f.status !== 'PENDING' && f.status !== 'DUE' && f.status !== 'OVERDUE') {
+          return <span className="text-slate-400 text-xs">—</span>;
+        }
         const waitingForReconciliation = Boolean(f.reconciliationStatus && f.reconciliationStatus !== 'CONFIRMED');
         return (
           <Tooltip title={waitingForReconciliation ? 'Chờ Internal HR hoàn tất đối soát nhận việc' : undefined}>
@@ -324,6 +372,7 @@ export const AdminFinancePage: React.FC = () => {
               <Button
                 size="small"
                 type="primary"
+                className="!h-8 px-3 text-xs font-semibold rounded-lg whitespace-nowrap"
                 disabled={waitingForReconciliation}
                 onClick={() => { form.setFieldsValue({ paidAt: dayjs() }); setDialog({ kind: 'fee', fee: f }); }}
               >

@@ -66,7 +66,7 @@ describe('MF-05 admin finance', () => {
 
     renderWith(<AdminFinancePage />);
 
-    const approve = await screen.findByRole('button', { name: 'Duyệt' }, { timeout: 10000 });
+    const approve = await screen.findByRole('button', { name: 'Duyệt chi' }, { timeout: 10000 });
     expect((approve as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -75,7 +75,7 @@ describe('MF-05 admin finance', () => {
 
     renderWith(<AdminFinancePage />);
 
-    const approve = await screen.findByRole('button', { name: 'Duyệt' }, { timeout: 10000 });
+    const approve = await screen.findByRole('button', { name: 'Duyệt chi' }, { timeout: 10000 });
     expect((approve as HTMLButtonElement).disabled).toBe(false);
   });
 

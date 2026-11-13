@@ -431,12 +431,14 @@ public sealed class SettlementCommandHandlers :
 
         if (_deliveries != null)
         {
-            var lastReviewDue = (await _deliveries.GetByJobAsync(jobId, cancellationToken))
-                .Select(d => (DateTime?)d.ReviewDueAt).Max();
-            if (lastReviewDue > now)
+            var pendingReviewDue = (await _deliveries.GetByJobAsync(jobId, cancellationToken))
+                .Where(d => d.Status == SourcingDeliveryStates.Delivered)
+                .Select(d => (DateTime?)d.ReviewDueAt)
+                .Max();
+            if (pendingReviewDue > now)
             {
                 throw new ConflictException(
-                    $"Còn trong thời hạn tranh chấp đến {lastReviewDue:dd/MM/yyyy HH:mm} UTC (hạn xem xét của CV giao cuối).",
+                    $"Còn CV đang chờ Client xem xét đến {pendingReviewDue:dd/MM/yyyy HH:mm} UTC.",
                     "SOURCING_DISPUTE_WINDOW_OPEN");
             }
         }

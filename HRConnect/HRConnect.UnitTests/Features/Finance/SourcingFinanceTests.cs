@@ -375,12 +375,14 @@ public class SourcingFinanceTests
     }
 
     [Fact]
-    public async Task ApproveSourcingCommission_InsideDisputeWindow_ShouldBeRejected()
+    public async Task ApproveSourcingCommission_WithPendingDeliveryInsideReviewWindow_ShouldBeRejected()
     {
-        var job = SeedJob(target: 1);
+        var job = SeedJob(target: 2);
         await CreateDepositAsync(job);
-        var delivery = SeedDelivery(job, reviewDueAt: DateTime.UtcNow.AddDays(3));
-        await AcceptAsync(job, delivery);
+        var accepted = SeedDelivery(job, reviewDueAt: DateTime.UtcNow.AddDays(3));
+        await AcceptAsync(job, accepted);
+        SeedDelivery(job, reviewDueAt: DateTime.UtcNow.AddDays(3)); // still DELIVERED
+        await Settlement().Handle(new SettleSourcingJobCommand(job.JobId, _actor), default);
         PayAll();
 
         var act = () => Settlement().Handle(new ApproveCommissionCommand(_context.Commissions.Single().CommissionId, _actor), default);
@@ -389,15 +391,13 @@ public class SourcingFinanceTests
     }
 
     [Fact]
-    public async Task ApproveSourcingCommission_PaidAndWindowOver_ShouldBecomePayable()
+    public async Task ApproveSourcingCommission_AcceptedAndPaidBeforeReviewDue_ShouldBecomePayable()
     {
         var job = SeedJob(target: 1);
         await CreateDepositAsync(job);
-        var delivery = SeedDelivery(job, reviewDueAt: DateTime.UtcNow.AddSeconds(2));
+        var delivery = SeedDelivery(job, reviewDueAt: DateTime.UtcNow.AddDays(3));
         await AcceptAsync(job, delivery);
         PayAll();
-        delivery.ReviewDueAt = DateTime.UtcNow.AddMinutes(-1);
-        _context.SaveChanges();
 
         var result = await Settlement().Handle(new ApproveCommissionCommand(_context.Commissions.Single().CommissionId, _actor), default);
 
