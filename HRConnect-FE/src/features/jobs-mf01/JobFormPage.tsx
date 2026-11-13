@@ -104,6 +104,7 @@ import {
 /** What the Client can do instead when the job can no longer be edited. */
 const LOCKED_JOB_NEXT_STEP: Partial<Record<string, string>> = {
   PENDING_REVIEW: 'HR Connect đang duyệt tin. Nếu cần sửa nội dung, hãy liên hệ HR Connect.',
+  PENDING_APPROVAL: 'HR Connect đang duyệt tin. Nếu cần sửa nội dung, hãy liên hệ HR Connect.',
   PENDING_AGREEMENT: 'Tin đã được duyệt và đang chờ ký hợp đồng. Muốn đổi điều khoản, vào Hợp đồng dịch vụ và bấm Yêu cầu điều chỉnh.',
   PENDING_PAYMENT: 'Tin đang chờ thanh toán hoặc đặt cọc. Hoàn tất thanh toán ở trang Tin tuyển dụng để công bố tin.',
   ACTIVE: 'Tin đang tuyển. Bạn có thể tạm dừng hoặc đóng tin ở trang Tin tuyển dụng; muốn đổi nội dung, hãy tạo tin mới.',

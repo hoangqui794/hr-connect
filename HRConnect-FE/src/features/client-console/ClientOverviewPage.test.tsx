@@ -75,8 +75,9 @@ describe('ClientOverviewPage', () => {
         interview({ candidateName: 'Đã qua', scheduledAt: hoursFromNow(-48) }),
         interview({ candidateName: 'Trực tuyến', scheduledAt: hoursFromNow(5), meetingLink: 'https://meet.example/abc' }),
         interview({ candidateName: 'Trực tiếp', scheduledAt: hoursFromNow(2), interviewType: 'OFFLINE', location: 'Tầng 5, 12 Lê Lợi' }),
+        interview({ candidateName: 'Gọi điện', scheduledAt: hoursFromNow(8), interviewType: 'PHONE', meetingLink: 'https://khong-hien.example' }),
       ],
-      totalCount: 3,
+      totalCount: 4,
     } as never);
   });
 
@@ -87,7 +88,10 @@ describe('ClientOverviewPage', () => {
     expect(screen.queryByText('Đã qua')).toBeNull();
     expect(screen.getByText('Trực tiếp · Tầng 5, 12 Lê Lợi')).toBeInTheDocument();
     expect(screen.getByText('Trực tuyến · https://meet.example/abc')).toBeInTheDocument();
-    expect(screen.getByText('2 buổi')).toBeInTheDocument();
+    expect(screen.getByText('3 buổi')).toBeInTheDocument();
+    // A meeting link is only shown for an online interview.
+    expect(within(screen.getByText('Gọi điện').closest('div[class*="cursor-pointer"]') as HTMLElement).getByText('Điện thoại')).toBeInTheDocument();
+    expect(screen.queryByText(/khong-hien\.example/)).toBeNull();
     // nearest (2h) before 5h
     const online = screen.getByText('Trực tuyến');
     expect(offline.compareDocumentPosition(online) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

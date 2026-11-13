@@ -54,10 +54,13 @@ const FUNNEL = [
 
 const INTERVIEW_TYPE_LABEL: Record<string, string> = { ONLINE: 'Trực tuyến', OFFLINE: 'Trực tiếp', PHONE: 'Điện thoại' };
 
-/** "Trực tuyến · link" or "Trực tiếp · địa điểm"; null when the interview has none of these. */
+/**
+ * "Trực tuyến · link" or "Trực tiếp · địa điểm"; null when the interview has none of these.
+ * A meeting link belongs to an online interview only; other types show their location.
+ */
 const interviewPlace = (iv: { interviewType: string | null; location: string | null; meetingLink: string | null }): string | null => {
   const type = iv.interviewType ? INTERVIEW_TYPE_LABEL[iv.interviewType] ?? iv.interviewType : null;
-  const where = iv.interviewType === 'ONLINE' ? iv.meetingLink ?? iv.location : iv.location ?? iv.meetingLink;
+  const where = iv.interviewType === 'ONLINE' ? iv.meetingLink ?? iv.location : iv.location;
   const parts = [type, where].filter(Boolean);
   return parts.length ? parts.join(' · ') : null;
 };
