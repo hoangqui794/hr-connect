@@ -12,6 +12,7 @@ export interface CvInlineFieldProps {
   readOnly?: boolean;
   maxLength?: number;
   autoFocus?: boolean;
+  onBlur?: () => void;
 }
 
 /**
@@ -19,6 +20,7 @@ export interface CvInlineFieldProps {
  * - Displays naturally as clean text.
  * - Displays subtle dashed border on hover.
  * - Displays gentle focus outline when clicked/focused.
+ * - Fully isolates keyboard (Space, Enter, Arrows) and pointer events from outer drag/button handlers.
  */
 export const CvInlineField: React.FC<CvInlineFieldProps> = ({
   value,
@@ -32,6 +34,7 @@ export const CvInlineField: React.FC<CvInlineFieldProps> = ({
   readOnly = false,
   maxLength,
   autoFocus = false,
+  onBlur,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -42,6 +45,23 @@ export const CvInlineField: React.FC<CvInlineFieldProps> = ({
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
   }, [value, multiline]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    // Crucial: stop propagation for Space, Enter, and Arrow keys so outer drag handlers,
+    // buttons, or document listeners never capture or prevent them
+    if (e.key === ' ' || e.code === 'Space' || e.key === 'Enter' || e.key.startsWith('Arrow')) {
+      e.stopPropagation();
+    }
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    // Prevent drag libraries or parent drag handlers from initiating drag when clicking inside inputs
+    e.stopPropagation();
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    e.stopPropagation();
+  };
 
   const baseClasses =
     'w-full transition-all duration-150 rounded px-1.5 py-0.5 border border-transparent outline-none bg-transparent ' +
@@ -56,6 +76,10 @@ export const CvInlineField: React.FC<CvInlineFieldProps> = ({
         rows={rows}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onPointerDown={handlePointerDown}
+        onMouseDown={handleMouseDown}
+        onBlur={onBlur}
         placeholder={placeholder}
         aria-label={ariaLabel || placeholder}
         readOnly={readOnly}
@@ -72,6 +96,10 @@ export const CvInlineField: React.FC<CvInlineFieldProps> = ({
       type="text"
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      onKeyDown={handleKeyDown}
+      onPointerDown={handlePointerDown}
+      onMouseDown={handleMouseDown}
+      onBlur={onBlur}
       placeholder={placeholder}
       aria-label={ariaLabel || placeholder}
       readOnly={readOnly}
