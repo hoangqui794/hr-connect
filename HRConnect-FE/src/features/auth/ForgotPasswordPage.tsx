@@ -134,14 +134,22 @@ export const ForgotPasswordPage: React.FC = () => {
 
   return (
     <div className={`${FONT} flex min-h-screen w-full bg-white text-sm text-slate-900 antialiased [line-height:normal] max-lg:flex-col`}>
-      {/* Left Hero Panel — Midnight Ocean */}
-      <aside className="relative flex flex-col justify-between overflow-hidden bg-[#08253C] p-8 text-white max-lg:hidden lg:sticky lg:top-0 lg:h-screen lg:w-[41%] xl:w-[39%] lg:p-11 xl:p-14 shrink-0">
+      {/* Left Hero Panel — Bright Ocean Cobalt */}
+      <aside className="relative flex flex-col justify-between overflow-hidden bg-[#075985] p-8 text-white max-lg:hidden lg:sticky lg:top-0 lg:h-screen lg:w-[41%] xl:w-[39%] lg:p-11 xl:p-14 shrink-0">
         <div
-          className="absolute inset-0 bg-gradient-to-b from-[#08253C] via-[#071F33] to-[#051523]"
+          className="absolute inset-0 bg-gradient-to-br from-[#0369A1] via-[#075985] to-[#0C4A6E]"
           aria-hidden="true"
         />
         <div
-          className="pointer-events-none absolute -top-24 -right-24 h-80 w-80 rounded-full bg-[#0EA5E9]/15 blur-3xl"
+          className="pointer-events-none absolute inset-0 opacity-20"
+          style={{
+            backgroundImage: 'radial-gradient(rgba(255,255,255,0.45) 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
+          }}
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute -top-24 -right-24 h-96 w-96 rounded-full bg-[#38BDF8]/30 blur-3xl"
           aria-hidden="true"
         />
 

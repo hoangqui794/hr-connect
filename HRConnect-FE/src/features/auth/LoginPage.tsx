@@ -179,8 +179,8 @@ export const LoginPage: React.FC = () => {
       enterTimerRef.current = window.setTimeout(() => {
         setTransitionStage('idle');
         enterTimerRef.current = null;
-      }, 320);
-    }, 140);
+      }, 440);
+    }, 115);
   };
 
   useEffect(() => {
@@ -849,56 +849,68 @@ export const LoginPage: React.FC = () => {
   const hero = HERO_META[panelMode];
   const stageAnimation =
     transitionStage === 'exiting'
-      ? `${slideDirection === 'forward' ? 'authExitLeft' : 'authExitRight'} 140ms cubic-bezier(0.4, 0, 1, 1) forwards`
+      ? `${slideDirection === 'forward' ? 'authExitLeft' : 'authExitRight'} 115ms cubic-bezier(0.4, 0, 1, 1) forwards`
       : transitionStage === 'entering'
-        ? `${slideDirection === 'forward' ? 'authEnterFromRight' : 'authEnterFromLeft'} 320ms cubic-bezier(0.22, 1, 0.36, 1) both`
+        ? `${slideDirection === 'forward' ? 'authEnterFromRight' : 'authEnterFromLeft'} 440ms cubic-bezier(0.16, 1, 0.3, 1) both`
         : undefined;
 
   return (
     <div className="flex min-h-screen w-full bg-white font-['Be_Vietnam_Pro',system-ui,sans-serif] text-slate-900 antialiased max-lg:flex-col">
       <style>{`
         @keyframes authExitLeft {
-          0% { opacity: 1; transform: translate3d(0, 0, 0); }
-          100% { opacity: 0; transform: translate3d(-28px, 0, 0); }
+          0% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+          100% { opacity: 0; transform: translate3d(-20px, 0, 0) scale(0.985); }
         }
         @keyframes authExitRight {
-          0% { opacity: 1; transform: translate3d(0, 0, 0); }
-          100% { opacity: 0; transform: translate3d(28px, 0, 0); }
+          0% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+          100% { opacity: 0; transform: translate3d(20px, 0, 0) scale(0.985); }
         }
         @keyframes authEnterFromRight {
-          0% { opacity: 0; transform: translate3d(40px, 0, 0); }
-          100% { opacity: 1; transform: translate3d(0, 0, 0); }
+          0% { opacity: 0; filter: blur(2px); transform: translate3d(56px, 0, 0) scale(0.985); }
+          100% { opacity: 1; filter: blur(0px); transform: translate3d(0, 0, 0) scale(1); }
         }
         @keyframes authEnterFromLeft {
-          0% { opacity: 0; transform: translate3d(-40px, 0, 0); }
-          100% { opacity: 1; transform: translate3d(0, 0, 0); }
+          0% { opacity: 0; filter: blur(2px); transform: translate3d(-56px, 0, 0) scale(0.985); }
+          100% { opacity: 1; filter: blur(0px); transform: translate3d(0, 0, 0) scale(1); }
         }
         @keyframes authHeroSwap {
-          0% { opacity: 0; transform: translate3d(0, 8px, 0); }
+          0% { opacity: 0; transform: translate3d(0, 14px, 0); }
           100% { opacity: 1; transform: translate3d(0, 0, 0); }
         }
         @media (prefers-reduced-motion: reduce) {
           .auth-motion-stage, .auth-hero-stage { animation: none !important; }
         }
       `}</style>
-      {/* BRANDING HERO PANEL (Left) — Midnight Ocean Editorial Canvas */}
-      <aside className="relative flex flex-col justify-between overflow-hidden bg-[#08253C] p-8 text-white max-lg:hidden lg:sticky lg:top-0 lg:h-screen lg:w-[41%] xl:w-[39%] lg:p-11 xl:p-14 shrink-0">
+      {/* BRANDING HERO PANEL (Left) — Bright Ocean Cobalt Editorial Canvas */}
+      <aside className="relative flex flex-col justify-between overflow-hidden bg-[#075985] p-8 text-white max-lg:hidden lg:sticky lg:top-0 lg:h-screen lg:w-[41%] xl:w-[39%] lg:p-11 xl:p-14 shrink-0">
         {/* Background photo */}
         <img
           src={LOGIN_HERO_IMAGE}
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-cover object-center opacity-25"
+          className="absolute inset-0 h-full w-full object-cover object-center opacity-35 brightness-110"
           loading="eager"
           decoding="async"
         />
-        {/* Layered Midnight Ocean gradient + subtle sky glow */}
+        {/* Layered Ocean Cobalt gradient + subtle grid & sky glow */}
         <div
-          className="absolute inset-0 bg-gradient-to-b from-[#08253C]/85 via-[#071F33]/92 to-[#051523]/98"
+          className="absolute inset-0 bg-gradient-to-br from-[#0369A1]/88 via-[#075985]/86 to-[#0C4A6E]/92"
           aria-hidden="true"
         />
         <div
-          className="pointer-events-none absolute -top-24 -right-24 h-80 w-80 rounded-full bg-[#0EA5E9]/15 blur-3xl"
+          className="pointer-events-none absolute inset-0 opacity-20"
+          style={{
+            backgroundImage: 'radial-gradient(rgba(255,255,255,0.45) 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
+          }}
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute -top-24 -right-24 h-96 w-96 rounded-full bg-[#38BDF8]/30 blur-3xl"
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute -bottom-28 -left-20 h-80 w-80 rounded-full bg-[#0EA5E9]/20 blur-3xl"
           aria-hidden="true"
         />
 
@@ -917,17 +929,17 @@ export const LoginPage: React.FC = () => {
         <div
           key={`hero-${panelMode}`}
           className="auth-hero-stage relative z-10 my-auto py-8"
-          style={{ animation: 'authHeroSwap 280ms cubic-bezier(0.22, 1, 0.36, 1) both' }}
+          style={{ animation: 'authHeroSwap 440ms cubic-bezier(0.16, 1, 0.3, 1) both' }}
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1 text-xs font-semibold tracking-wide text-sky-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-sky-300" aria-hidden="true" />
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3.5 py-1 text-xs font-semibold tracking-wide text-sky-100 backdrop-blur-sm">
+            <span className="h-1.5 w-1.5 rounded-full bg-sky-200" aria-hidden="true" />
             {hero.eyebrow}
           </span>
 
           <h2 className="mt-4 text-3xl font-extrabold leading-[1.22] tracking-tight text-white xl:text-[34px]">
             {hero.title}
           </h2>
-          <p className="mt-3.5 max-w-md text-[15px] font-normal leading-relaxed text-slate-200/85">
+          <p className="mt-3.5 max-w-md text-[15px] font-normal leading-relaxed text-sky-50/90">
             {hero.description}
           </p>
 
@@ -935,13 +947,13 @@ export const LoginPage: React.FC = () => {
             {hero.cards.map((card, index) => (
               <div
                 key={card.title}
-                className="rounded-xl border border-white/12 bg-white/[0.06] p-4 backdrop-blur-sm"
+                className="rounded-xl border border-white/22 bg-white/[0.12] p-4 shadow-[0_8px_24px_-10px_rgba(8,37,60,0.35)] backdrop-blur-md"
               >
                 <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-white">
-                  <CheckCircleFilled aria-hidden="true" className="text-xs text-sky-300" />
+                  <CheckCircleFilled aria-hidden="true" className="text-xs text-sky-200" />
                   <span>{card.title}</span>
                 </div>
-                <p className="mb-0 text-xs leading-relaxed text-slate-200/80">
+                <p className="mb-0 text-xs leading-relaxed text-sky-50/90">
                   {panelMode === 'login' && index === 0 && openJobs > 0
                     ? `${openJobs.toLocaleString('vi-VN')} việc làm đang mở từ các công ty đã xác minh`
                     : card.desc}
@@ -952,7 +964,7 @@ export const LoginPage: React.FC = () => {
         </div>
 
         {/* Footer info */}
-        <div className="relative z-10 flex items-center justify-between border-t border-white/10 pt-5 text-xs text-slate-300/75">
+        <div className="relative z-10 flex items-center justify-between border-t border-white/15 pt-5 text-xs text-sky-100/80">
           <span>© {new Date().getFullYear()} HR Connect Vietnam</span>
           <span>Kết nối đúng người, đúng cơ hội</span>
         </div>
@@ -961,7 +973,7 @@ export const LoginPage: React.FC = () => {
       {/* FORM CANVAS SECTION (Right) — Full-Height Pure White Surface */}
       <main className="flex min-h-screen flex-1 items-center justify-center bg-white px-6 py-10 sm:px-10 lg:px-14 xl:px-20">
         <div
-          className={`w-full overflow-x-clip transition-[max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
+          className={`w-full overflow-x-clip transition-[max-width] duration-[440ms] ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none ${
             panelMode === 'register' ? 'max-w-[600px]' : 'max-w-[420px]'
           }`}
         >

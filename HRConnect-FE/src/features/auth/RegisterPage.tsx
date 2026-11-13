@@ -999,19 +999,31 @@ export const RegisterPage: React.FC = () => {
 
   return (
     <div className="flex min-h-screen w-full bg-[#F4F7FA] font-['Be_Vietnam_Pro',system-ui,sans-serif] text-slate-900 antialiased max-lg:flex-col">
-      {/* ── Left Hero Branding Panel — Midnight Ocean Palette ── */}
-      <aside className="relative flex flex-col justify-between overflow-hidden bg-[#08253C] p-8 text-white max-lg:min-h-[200px] max-lg:p-6 lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:w-[38%] xl:w-[36%] 2xl:w-[34%] lg:p-10 xl:p-12 shrink-0">
-        {/* Background photo & Midnight Ocean overlay */}
+      {/* ── Left Hero Branding Panel — Bright Ocean Cobalt Palette ── */}
+      <aside className="relative flex flex-col justify-between overflow-hidden bg-[#075985] p-8 text-white max-lg:min-h-[200px] max-lg:p-6 lg:sticky lg:top-0 lg:h-screen lg:max-h-screen lg:w-[41%] xl:w-[39%] lg:p-11 xl:p-14 shrink-0">
+        {/* Background photo & Ocean Cobalt overlay */}
         <img
           src={REGISTER_HERO_IMAGE}
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-cover object-center opacity-35"
+          className="absolute inset-0 h-full w-full object-cover object-center opacity-35 brightness-110"
           loading="eager"
           decoding="async"
         />
         <div
-          className="absolute inset-0 bg-gradient-to-t from-[#061A2B]/98 via-[#08253C]/85 to-[#0C4A6E]/70"
+          className="absolute inset-0 bg-gradient-to-br from-[#0369A1]/88 via-[#075985]/86 to-[#0C4A6E]/92"
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute inset-0 opacity-20"
+          style={{
+            backgroundImage: 'radial-gradient(rgba(255,255,255,0.45) 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
+          }}
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute -top-24 -right-24 h-96 w-96 rounded-full bg-[#38BDF8]/30 blur-3xl"
           aria-hidden="true"
         />
 
