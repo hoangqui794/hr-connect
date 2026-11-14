@@ -9,6 +9,7 @@ using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationDetail;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -25,8 +26,10 @@ public class GetCandidateRecruitmentApplicationDetailQueryHandlerTests
         public override DateTimeOffset GetUtcNow() => utcNow;
     }
 
-    private GetCandidateRecruitmentApplicationDetailQueryHandler CreateHandler(TimeProvider? timeProvider = null) =>
-        new(_applicationRepositoryMock.Object, _loggerMock.Object, timeProvider);
+    private GetCandidateRecruitmentApplicationDetailQueryHandler CreateHandler(
+        TimeProvider? timeProvider = null,
+        ICompanyUserRepository? companyUserRepository = null) =>
+        new(_applicationRepositoryMock.Object, _loggerMock.Object, timeProvider, companyUserRepository);
 
     [Fact]
     public async Task Handle_WhenApplicationNotFound_ShouldThrowNotFoundException()
@@ -235,5 +238,247 @@ public class GetCandidateRecruitmentApplicationDetailQueryHandlerTests
 
         result.Data!.Offers.Should().ContainSingle();
         result.Data.Offers[0].CanRespond.Should().Be(expectedCanRespond);
+    }
+
+    private static Domain.Entities.Application CreateEmployerContactApp(
+        Guid appId,
+        Guid candidateUserId,
+        string status,
+        string companyUserStatus = "ACTIVE",
+        string? website = "https://concentrix.example.com")
+    {
+        var companyId = Guid.NewGuid();
+        return new Domain.Entities.Application
+        {
+            ApplicationId = appId,
+            JobId = Guid.NewGuid(),
+            Job = new Job
+            {
+                JobId = Guid.NewGuid(),
+                Title = "Team Leader Telesales",
+                CompanyId = companyId,
+                Company = new Company
+                {
+                    CompanyId = companyId,
+                    CompanyName = "Vietnam Concentrix Services",
+                    Website = website,
+                    Address = "Q.12, TP.HCM",
+                    CompanyUser = new CompanyUser
+                    {
+                        Status = companyUserStatus,
+                        RoleInCompany = "Talent Acquisition Lead",
+                        User = new AppUser
+                        {
+                            UserId = Guid.NewGuid(),
+                            DisplayName = "Nguyễn Minh HR",
+                            Email = "hr@concentrix.example.com",
+                            Phone = "0909123456"
+                        }
+                    }
+                }
+            },
+            CandidateId = Guid.NewGuid(),
+            Candidate = new Candidate { CandidateId = Guid.NewGuid(), UserId = candidateUserId, FullName = "Hoàng Thị Hà Phương" },
+            Status = status,
+            AppliedAt = DateTime.UtcNow.AddDays(-5),
+            UpdatedAt = DateTime.UtcNow,
+            ConcurrencyToken = Guid.NewGuid()
+        };
+    }
+
+    [Theory]
+    [InlineData(ApplicationStates.OfferAccepted)]
+    [InlineData(ApplicationStates.Placed)]
+    public async Task Handle_WhenStatusIsOfferAcceptedOrPlacedAndCompanyUserActive_ShouldReturnEmployerContact(string status)
+    {
+        var appId = Guid.NewGuid();
+        var candidateUserId = Guid.NewGuid();
+        var app = CreateEmployerContactApp(appId, candidateUserId, status, website: "concentrix.example.com");
+
+        _applicationRepositoryMock
+            .Setup(r => r.GetRecruitmentApplicationDetailAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+
+        var result = await CreateHandler().Handle(
+            new GetCandidateRecruitmentApplicationDetailQuery(appId, candidateUserId),
+            CancellationToken.None);
+
+        result.Data!.EmployerContact.Should().NotBeNull();
+        result.Data.EmployerContact!.ContactName.Should().Be("Nguyễn Minh HR");
+        result.Data.EmployerContact.RoleInCompany.Should().Be("Talent Acquisition Lead");
+        result.Data.EmployerContact.Email.Should().Be("hr@concentrix.example.com");
+        result.Data.EmployerContact.Phone.Should().Be("0909123456");
+        result.Data.EmployerContact.Website.Should().Be("https://concentrix.example.com");
+        result.Data.EmployerContact.Address.Should().Be("Q.12, TP.HCM");
+    }
+
+    [Theory]
+    [InlineData(ApplicationStates.Shortlisted)]
+    [InlineData(ApplicationStates.OfferPending)]
+    [InlineData(ApplicationStates.OfferDeclined)]
+    public async Task Handle_WhenStatusIsBeforeOfferAccepted_ShouldNotExposeEmployerContact(string status)
+    {
+        var appId = Guid.NewGuid();
+        var candidateUserId = Guid.NewGuid();
+        var app = CreateEmployerContactApp(appId, candidateUserId, status);
+
+        _applicationRepositoryMock
+            .Setup(r => r.GetRecruitmentApplicationDetailAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+
+        var result = await CreateHandler().Handle(
+            new GetCandidateRecruitmentApplicationDetailQuery(appId, candidateUserId),
+            CancellationToken.None);
+
+        result.Data!.EmployerContact.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_WhenCompanyUserIsNotActive_ShouldNotExposeCompanyUserEmailOrPhone()
+    {
+        var appId = Guid.NewGuid();
+        var candidateUserId = Guid.NewGuid();
+        var app = CreateEmployerContactApp(appId, candidateUserId, ApplicationStates.OfferAccepted, companyUserStatus: "INACTIVE");
+
+        _applicationRepositoryMock
+            .Setup(r => r.GetRecruitmentApplicationDetailAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+
+        var result = await CreateHandler().Handle(
+            new GetCandidateRecruitmentApplicationDetailQuery(appId, candidateUserId),
+            CancellationToken.None);
+
+        result.Data!.EmployerContact.Should().NotBeNull();
+        result.Data.EmployerContact!.ContactName.Should().BeNull();
+        result.Data.EmployerContact.RoleInCompany.Should().BeNull();
+        result.Data.EmployerContact.Email.Should().BeNull();
+        result.Data.EmployerContact.Phone.Should().BeNull();
+        result.Data.EmployerContact.Website.Should().Be("https://concentrix.example.com");
+        result.Data.EmployerContact.Address.Should().Be("Q.12, TP.HCM");
+    }
+
+    [Fact]
+    public async Task Handle_WhenCompanyUserRepositoryResolvesActivePrimaryContact_ShouldUseRepositoryContactAndGateBeforeAcceptance()
+    {
+        var appId = Guid.NewGuid();
+        var candidateUserId = Guid.NewGuid();
+        var companyUserRepo = new Mock<ICompanyUserRepository>();
+        var app = CreateEmployerContactApp(
+            appId,
+            candidateUserId,
+            ApplicationStates.OfferAccepted,
+            companyUserStatus: "INACTIVE",
+            website: "javascript:alert(1)");
+
+        var activePrimary = new CompanyUser
+        {
+            Status = "ACTIVE",
+            IsPrimaryContact = true,
+            RoleInCompany = "HR Director",
+            User = new AppUser
+            {
+                UserId = Guid.NewGuid(),
+                Status = "ACTIVE",
+                DisplayName = "Lê Thu Hà",
+                Email = "primary@concentrix.example.com",
+                Phone = "0988777666"
+            }
+        };
+
+        _applicationRepositoryMock
+            .Setup(r => r.GetRecruitmentApplicationDetailAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+        companyUserRepo
+            .Setup(r => r.GetPrimaryActiveByCompanyIdAsync(app.Job!.CompanyId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(activePrimary);
+
+        var acceptedResult = await CreateHandler(companyUserRepository: companyUserRepo.Object).Handle(
+            new GetCandidateRecruitmentApplicationDetailQuery(appId, candidateUserId),
+            CancellationToken.None);
+
+        acceptedResult.Data!.EmployerContact.Should().NotBeNull();
+        acceptedResult.Data.EmployerContact!.ContactName.Should().Be("Lê Thu Hà");
+        acceptedResult.Data.EmployerContact.RoleInCompany.Should().Be("HR Director");
+        acceptedResult.Data.EmployerContact.Email.Should().Be("primary@concentrix.example.com");
+        acceptedResult.Data.EmployerContact.Phone.Should().Be("0988777666");
+        acceptedResult.Data.EmployerContact.Website.Should().BeNull();
+
+        app.Status = ApplicationStates.Shortlisted;
+        var shortlistedResult = await CreateHandler(companyUserRepository: companyUserRepo.Object).Handle(
+            new GetCandidateRecruitmentApplicationDetailQuery(appId, candidateUserId),
+            CancellationToken.None);
+
+        shortlistedResult.Data!.EmployerContact.Should().BeNull();
+        companyUserRepo.Verify(
+            r => r.GetPrimaryActiveByCompanyIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenCompanyUserAppUserStatusIsInactive_ShouldNotExposeUserContact()
+    {
+        var appId = Guid.NewGuid();
+        var candidateUserId = Guid.NewGuid();
+        var app = CreateEmployerContactApp(appId, candidateUserId, ApplicationStates.Placed, companyUserStatus: "ACTIVE");
+        app.Job!.Company!.CompanyUser!.User.Status = "INACTIVE";
+
+        _applicationRepositoryMock
+            .Setup(r => r.GetRecruitmentApplicationDetailAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+
+        var result = await CreateHandler().Handle(
+            new GetCandidateRecruitmentApplicationDetailQuery(appId, candidateUserId),
+            CancellationToken.None);
+
+        result.Data!.EmployerContact.Should().NotBeNull();
+        result.Data.EmployerContact!.ContactName.Should().BeNull();
+        result.Data.EmployerContact.Email.Should().BeNull();
+        result.Data.EmployerContact.Phone.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_WhenResolvedFromDependencyInjectionWithoutTimeProvider_ShouldInjectCompanyUserRepository()
+    {
+        var appId = Guid.NewGuid();
+        var candidateUserId = Guid.NewGuid();
+        var companyUserRepo = new Mock<ICompanyUserRepository>();
+        var app = CreateEmployerContactApp(appId, candidateUserId, ApplicationStates.OfferAccepted, companyUserStatus: "INACTIVE");
+
+        _applicationRepositoryMock
+            .Setup(r => r.GetRecruitmentApplicationDetailAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+        companyUserRepo
+            .Setup(r => r.GetPrimaryActiveByCompanyIdAsync(app.Job!.CompanyId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser
+            {
+                Status = "ACTIVE",
+                IsPrimaryContact = true,
+                RoleInCompany = "Talent Partner",
+                User = new AppUser
+                {
+                    UserId = Guid.NewGuid(),
+                    Status = "ACTIVE",
+                    DisplayName = "DI Resolved Contact",
+                    Email = "di@concentrix.example.com",
+                    Phone = "0911222333"
+                }
+            });
+
+        var services = new ServiceCollection();
+        services.AddSingleton(_applicationRepositoryMock.Object);
+        services.AddSingleton(_loggerMock.Object);
+        services.AddSingleton(companyUserRepo.Object);
+        services.AddTransient<GetCandidateRecruitmentApplicationDetailQueryHandler>();
+
+        using var provider = services.BuildServiceProvider();
+        var handler = provider.GetRequiredService<GetCandidateRecruitmentApplicationDetailQueryHandler>();
+
+        var result = await handler.Handle(
+            new GetCandidateRecruitmentApplicationDetailQuery(appId, candidateUserId),
+            CancellationToken.None);
+
+        result.Data!.EmployerContact.Should().NotBeNull();
+        result.Data.EmployerContact!.ContactName.Should().Be("DI Resolved Contact");
+        result.Data.EmployerContact.Email.Should().Be("di@concentrix.example.com");
     }
 }

@@ -26,6 +26,22 @@ public class CompanyUserRepository : ICompanyUserRepository
             .FirstOrDefaultAsync(cu => cu.UserId == userId, cancellationToken);
     }
 
+    public async Task<CompanyUser?> GetPrimaryActiveByCompanyIdAsync(
+        Guid companyId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.CompanyUsers
+            .AsNoTracking()
+            .Include(cu => cu.User)
+            .Where(cu =>
+                cu.CompanyId == companyId &&
+                cu.Status == "ACTIVE" &&
+                cu.User.Status == "ACTIVE")
+            .OrderByDescending(cu => cu.IsPrimaryContact)
+            .ThenBy(cu => cu.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<CompanyUser>> GetActiveByUserIdsAsync(
         Guid companyId,
         IReadOnlyCollection<Guid> userIds,

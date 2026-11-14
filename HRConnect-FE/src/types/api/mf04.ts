@@ -141,6 +141,15 @@ export interface CandidatePlacementSummaryDto {
   status: string;
 }
 
+export interface CandidateEmployerContactDto {
+  contactName?: string | null;
+  roleInCompany?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  address?: string | null;
+}
+
 export interface CandidateRecruitmentApplicationDetailDto {
   applicationId: string;
   jobId: string;
@@ -174,6 +183,7 @@ export interface CandidateRecruitmentApplicationDetailDto {
   offers: CandidateOfferSummaryDto[];
   placement?: CandidatePlacementSummaryDto | null;
   allowedActions: string[];
+  employerContact?: CandidateEmployerContactDto | null;
 }
 
 export interface ApplicationTimelineEventDto {

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using HRConnect.Application.Common;
@@ -19,15 +20,18 @@ public class GetCandidateRecruitmentApplicationDetailQueryHandler
     private readonly IApplicationRepository _applicationRepository;
     private readonly ILogger<GetCandidateRecruitmentApplicationDetailQueryHandler> _logger;
     private readonly TimeProvider _timeProvider;
+    private readonly ICompanyUserRepository? _companyUserRepository;
 
     public GetCandidateRecruitmentApplicationDetailQueryHandler(
         IApplicationRepository applicationRepository,
         ILogger<GetCandidateRecruitmentApplicationDetailQueryHandler> logger,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        ICompanyUserRepository? companyUserRepository = null)
     {
         _applicationRepository = applicationRepository;
         _logger = logger;
         _timeProvider = timeProvider ?? TimeProvider.System;
+        _companyUserRepository = companyUserRepository;
     }
 
     public async Task<CandidateRecruitmentApplicationDetailResponse> Handle(
@@ -118,6 +122,7 @@ public class GetCandidateRecruitmentApplicationDetailQueryHandler
         }
 
         var allowedActions = ComputeCandidateAllowedActions(app.Status, interviews, offers);
+        var employerContact = await BuildEmployerContactAsync(app, cancellationToken);
 
         var data = new CandidateRecruitmentApplicationDetailDto
         {
@@ -161,7 +166,8 @@ public class GetCandidateRecruitmentApplicationDetailQueryHandler
             Interviews = interviews,
             Offers = offers,
             Placement = placement,
-            AllowedActions = allowedActions
+            AllowedActions = allowedActions,
+            EmployerContact = employerContact
         };
 
         return new CandidateRecruitmentApplicationDetailResponse
@@ -171,6 +177,100 @@ public class GetCandidateRecruitmentApplicationDetailQueryHandler
             Data = data
         };
     }
+
+    private async Task<CandidateEmployerContactDto?> BuildEmployerContactAsync(
+        Domain.Entities.Application app,
+        CancellationToken cancellationToken)
+    {
+        if (!string.Equals(app.Status, ApplicationStates.OfferAccepted, StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(app.Status, ApplicationStates.Placed, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var company = app.Job?.Company;
+        if (company == null)
+        {
+            return null;
+        }
+
+        var candidateCompanyUser = _companyUserRepository != null
+            ? await _companyUserRepository.GetPrimaryActiveByCompanyIdAsync(company.CompanyId, cancellationToken)
+            : company.CompanyUser;
+
+        var activeCompanyUser = IsActiveContact(candidateCompanyUser)
+            ? candidateCompanyUser
+            : null;
+
+        var contactName = TrimOrNull(activeCompanyUser?.User.DisplayName);
+        var roleInCompany = TrimOrNull(activeCompanyUser?.RoleInCompany);
+        var email = TrimOrNull(activeCompanyUser?.User.Email);
+        var phone = TrimOrNull(activeCompanyUser?.User.Phone);
+        var website = NormalizeWebsiteUrl(company.Website);
+        var address = TrimOrNull(company.Address);
+
+        if (contactName == null && roleInCompany == null && email == null && phone == null && website == null && address == null)
+        {
+            return null;
+        }
+
+        return new CandidateEmployerContactDto
+        {
+            ContactName = contactName,
+            RoleInCompany = roleInCompany,
+            Email = email,
+            Phone = phone,
+            Website = website,
+            Address = address
+        };
+    }
+
+    private static bool IsActiveContact(Domain.Entities.CompanyUser? companyUser)
+    {
+        if (companyUser?.User == null)
+        {
+            return false;
+        }
+
+        if (!string.Equals(companyUser.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        // Legacy/in-memory fixtures may omit AppUser.Status; if populated, require ACTIVE.
+        return companyUser.User.Status == null ||
+            string.Equals(companyUser.User.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? NormalizeWebsiteUrl(string? value)
+    {
+        var website = TrimOrNull(value);
+        if (website == null)
+        {
+            return null;
+        }
+
+        if (!website.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+            !website.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            if (Uri.TryCreate(website, UriKind.Absolute, out var explicitUri) &&
+                explicitUri.Scheme is not ("http" or "https") &&
+                !Regex.IsMatch(website, @"^[^/:]+:\d+($|/)"))
+            {
+                return null;
+            }
+
+            website = "https://" + website;
+        }
+
+        return Uri.TryCreate(website, UriKind.Absolute, out var uri) &&
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+                ? website
+                : null;
+    }
+
+    private static string? TrimOrNull(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static List<string> ComputeCandidateAllowedActions(
         string status,

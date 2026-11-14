@@ -14,14 +14,22 @@ import { CandidateInterviewDetailModal } from '@/features/candidates/CandidateIn
 import { candidateApplicationsApi } from '@/services/api/mf02Api';
 import { isCandidateOfferRespondable, mf04Api } from '@/services/api/mf04Api';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
-import type { CandidateOfferSummaryDto } from '@/types/api/mf04';
+import type { CandidateEmployerContactDto, CandidateOfferSummaryDto } from '@/types/api/mf04';
 import { useCandidateInterviewDetail } from '@/hooks/useCandidateInterviewDetail';
 import { CandidateAccountFrame } from './candidate/CandidateAccountFrame';
 import { CandidateDialog, DIALOG_CANCEL, DIALOG_DANGER, DIALOG_FONT } from './candidate/CandidateDialog';
 import { candidateInterviewType, candidateOfferStatus, candidateStage, candidateTimelineEventCopy } from './mf02Labels';
 import { candidateKeys, useOpenSignedUrl } from './CandidatePages';
 import { CandidateResignModal } from './components/CandidateResignModal';
-import { RedoOutlined } from '@ant-design/icons';
+import {
+  CopyOutlined,
+  EnvironmentOutlined,
+  GlobalOutlined,
+  MailOutlined,
+  PhoneOutlined,
+  RedoOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
 import { useJobDetail } from '@/features/jobs-mf01/useJobQueries';
 import { ApplyModal } from './JobApplyActions';
 
@@ -94,6 +102,21 @@ export const CandidateApplicationDetailPage: React.FC = () => {
   const [withdrawReason, setWithdrawReason] = useState('');
   const [interviewId, setInterviewId] = useState<string | null>(null);
   const [resignOpen, setResignOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
+
+  const copyContact = async (value: string, label: string) => {
+    if (!navigator.clipboard?.writeText) {
+      message.error(`Trình duyệt không hỗ trợ sao chép ${label}`);
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(value);
+      message.success(`Đã sao chép ${label}`);
+    } catch {
+      message.error(`Không thể sao chép ${label}`);
+    }
+  };
 
   const detail = useQuery({
     queryKey: candidateKeys.applicationDetail(applicationId),
@@ -198,6 +221,10 @@ export const CandidateApplicationDetailPage: React.FC = () => {
 
   const events = [...(timeline.data?.events ?? [])].sort((a, b) => dayjs(b.timestamp).valueOf() - dayjs(a.timestamp).valueOf());
   const placement = application.placement;
+  const employerContact: CandidateEmployerContactDto | null | undefined =
+    'employerContact' in application ? application.employerContact : undefined;
+  const contactWebsite = webLink(employerContact?.website);
+  const hasDirectChannel = Boolean(employerContact?.email || employerContact?.phone || contactWebsite);
 
   return (
     <CandidateAccountFrame>
@@ -228,15 +255,6 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                 )}
               </div>
             </div>
-            {application.status === 'OFFER_ACCEPTED' && application.plannedStartDate && (
-              <Alert
-                className="mt-4"
-                type="info"
-                showIcon
-                message="Muốn thay đổi ngày nhận việc?"
-                description="Vui lòng liên hệ trực tiếp doanh nghiệp để thỏa thuận. Ngày mới sẽ được cập nhật và thông báo trên HR Connect."
-              />
-            )}
             <div className="flex flex-wrap items-center gap-2">
               <span role="status" className="rounded px-2.5 py-1 text-[13px] font-semibold" style={{ color: color.text, background: color.background }}>{stage.label}</span>
               {isPlaced && (
@@ -287,6 +305,25 @@ export const CandidateApplicationDetailPage: React.FC = () => {
               )}
             </div>
           </div>
+          {application.status === 'OFFER_ACCEPTED' && application.plannedStartDate && (
+            <Alert
+              className="mt-4 flex-wrap gap-y-2 [&_.ant-alert-content]:min-w-[220px]"
+              type="info"
+              showIcon
+              message="Muốn thay đổi ngày nhận việc?"
+              description="Vui lòng liên hệ trực tiếp doanh nghiệp để thỏa thuận. Ngày mới sẽ được cập nhật và thông báo trên HR Connect."
+              action={(
+                <button
+                  type="button"
+                  onClick={() => setContactOpen(true)}
+                  className={`${FONT} inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-solid border-sky-600 bg-white px-3.5 py-2 text-[13px] font-semibold text-[#0369A1] hover:bg-sky-50 active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap`}
+                >
+                  <PhoneOutlined aria-hidden="true" />
+                  Liên hệ doanh nghiệp
+                </button>
+              )}
+            />
+          )}
           <ol aria-label={`Tiến trình: ${stage.label}`} className={`m-0 mt-5 grid list-none ${gridColsClass} gap-1.5 p-0`}>
             {stepsToShow.map((step, index) => {
               const isLastResignedStep = isResigned && index === 5;
@@ -519,6 +556,119 @@ export const CandidateApplicationDetailPage: React.FC = () => {
         startDate={placement?.actualStartDate || application.plannedStartDate}
         onSuccess={refresh}
       />
+
+      <CandidateDialog
+        open={contactOpen}
+        onClose={() => setContactOpen(false)}
+        title="Liên hệ doanh nghiệp"
+        subtitle={[application.companyName, application.jobTitle].filter(Boolean).join(' · ')}
+        footer={(
+          <>
+            {application.companyId && (
+              <Link
+                to={`/companies/${application.companyId}`}
+                onClick={() => setContactOpen(false)}
+                className={`${FONT} inline-flex h-11 items-center rounded-lg border border-solid border-sky-600 bg-white px-3.5 text-[13px] font-semibold text-[#0369A1] no-underline hover:bg-sky-50`}
+              >
+                Xem trang doanh nghiệp
+              </Link>
+            )}
+            <button type="button" onClick={() => setContactOpen(false)} className={DIALOG_CANCEL}>Đóng</button>
+          </>
+        )}
+      >
+        <div className="flex flex-col gap-3">
+          {application.plannedStartDate && (
+            <p className="m-0 rounded-md border border-solid border-[#E0F2FE] bg-[#F0F9FF] px-3 py-2 text-[13px] text-[#075985]">
+              Ngày nhận việc dự kiến hiện tại: <strong>{dayjs(application.plannedStartDate).format('DD/MM/YYYY')}</strong>. Khi liên hệ, vui lòng nêu rõ vị trí <strong>{application.jobTitle}</strong> để được hỗ trợ nhanh nhất.
+            </p>
+          )}
+
+          {(employerContact?.contactName || employerContact?.roleInCompany) && (
+            <div className="flex items-start gap-2.5 rounded-lg border border-solid border-[#E5E7EB] bg-[#F9FAFB] px-3.5 py-2.5">
+              <UserOutlined aria-hidden="true" className="mt-1 text-[#0369A1]" />
+              <div className="min-w-0">
+                <div className="text-[12px] text-[#6B7280]">Người phụ trách tuyển dụng</div>
+                <div className="text-[14px] font-semibold text-[#111827]">
+                  {[employerContact.contactName, employerContact.roleInCompany].filter(Boolean).join(' · ')}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {employerContact?.email && (
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-solid border-[#E5E7EB] px-3.5 py-2.5">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <MailOutlined aria-hidden="true" className="text-[#0369A1]" />
+                <div className="min-w-0">
+                  <div className="text-[12px] text-[#6B7280]">Email liên hệ</div>
+                  <a href={`mailto:${employerContact.email}`} className={`break-all text-[14px] font-medium ${LINK}`}>
+                    {employerContact.email}
+                  </a>
+                </div>
+              </div>
+              <button
+                type="button"
+                aria-label="Sao chép email"
+                onClick={() => void copyContact(employerContact.email!, 'email')}
+                className={`${FONT} inline-flex h-11 min-w-[44px] shrink-0 items-center justify-center rounded-md border border-solid border-[#D1D5DB] bg-white px-2.5 text-[12px] font-medium text-[#374151] hover:bg-[#F3F4F6] cursor-pointer`}
+              >
+                <CopyOutlined aria-hidden="true" />
+              </button>
+            </div>
+          )}
+
+          {employerContact?.phone && (
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-solid border-[#E5E7EB] px-3.5 py-2.5">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <PhoneOutlined aria-hidden="true" className="text-[#0369A1]" />
+                <div className="min-w-0">
+                  <div className="text-[12px] text-[#6B7280]">Số điện thoại</div>
+                  <a href={`tel:${employerContact.phone.replace(/\s+/g, '')}`} className={`text-[14px] font-medium ${LINK}`}>
+                    {employerContact.phone}
+                  </a>
+                </div>
+              </div>
+              <button
+                type="button"
+                aria-label="Sao chép số điện thoại"
+                onClick={() => void copyContact(employerContact.phone!, 'số điện thoại')}
+                className={`${FONT} inline-flex h-11 min-w-[44px] shrink-0 items-center justify-center rounded-md border border-solid border-[#D1D5DB] bg-white px-2.5 text-[12px] font-medium text-[#374151] hover:bg-[#F3F4F6] cursor-pointer`}
+              >
+                <CopyOutlined aria-hidden="true" />
+              </button>
+            </div>
+          )}
+
+          {contactWebsite && (
+            <div className="flex items-start gap-2.5 rounded-lg border border-solid border-[#E5E7EB] px-3.5 py-2.5">
+              <GlobalOutlined aria-hidden="true" className="mt-1 text-[#0369A1]" />
+              <div className="min-w-0">
+                <div className="text-[12px] text-[#6B7280]">Website</div>
+                <a href={contactWebsite} target="_blank" rel="noopener noreferrer" className={`break-all text-[14px] font-medium ${LINK}`}>
+                  {employerContact?.website}
+                </a>
+              </div>
+            </div>
+          )}
+
+          {employerContact?.address && (
+            <div className="flex items-start gap-2.5 rounded-lg border border-solid border-[#E5E7EB] px-3.5 py-2.5">
+              <EnvironmentOutlined aria-hidden="true" className="mt-1 text-[#0369A1]" />
+              <div className="min-w-0">
+                <div className="text-[12px] text-[#6B7280]">Địa chỉ</div>
+                <div className="text-[14px] text-[#1F2937]">{employerContact.address}</div>
+              </div>
+            </div>
+          )}
+
+          {!hasDirectChannel && (
+            <p className="m-0 rounded-md border border-solid border-[#BFDBFE] bg-[#EFF6FF] px-3.5 py-3 text-[13px] text-[#1E40AF]">
+              Doanh nghiệp chưa công khai email, số điện thoại hoặc website liên hệ trực tiếp. Bạn có thể xem trang thông tin doanh nghiệp hoặc liên hệ bộ phận hỗ trợ HR Connect để được kết nối.
+            </p>
+          )}
+        </div>
+      </CandidateDialog>
 
       {job && (
         <ApplyModal

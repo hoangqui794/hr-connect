@@ -457,4 +457,87 @@ describe('CandidateApplicationDetailPage', () => {
     expect(screen.queryByText(/chuyên môn còn thiếu/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/system design/i)).not.toBeInTheDocument();
   });
+
+  it('shows employer contact button and modal with contact details when offer is accepted with plannedStartDate', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+
+    vi.spyOn(mf04Api, 'getApplicationDetail').mockResolvedValueOnce({
+      ...mockMf04Application,
+      status: 'OFFER_ACCEPTED',
+      currentStage: 'OFFER',
+      plannedStartDate: '2026-11-20',
+      offers: [],
+      interviews: [],
+      employerContact: {
+        contactName: 'Trần Minh Anh',
+        roleInCompany: 'HR Manager',
+        email: 'hr@concentrix.vn',
+        phone: '0901234567',
+        website: 'https://concentrix.vn',
+        address: 'Quận 12, TP. Hồ Chí Minh',
+      },
+    } as any);
+    vi.spyOn(mf04Api, 'getApplicationTimeline').mockResolvedValueOnce({
+      applicationId: 'application-1',
+      candidateName: 'Nguyễn Văn A',
+      jobTitle: 'Senior .NET Developer',
+      currentStatus: 'OFFER_ACCEPTED',
+      events: [],
+    });
+
+    renderComponent();
+
+    expect(await screen.findByText('Muốn thay đổi ngày nhận việc?')).toBeInTheDocument();
+    const contactBtn = screen.getByRole('button', { name: /Liên hệ doanh nghiệp/i });
+    await userEvent.click(contactBtn);
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByText('Trần Minh Anh · HR Manager')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'hr@concentrix.vn' })).toHaveAttribute('href', 'mailto:hr@concentrix.vn');
+    expect(screen.getByRole('link', { name: '0901234567' })).toHaveAttribute('href', 'tel:0901234567');
+    expect(screen.getByRole('link', { name: 'https://concentrix.vn' })).toHaveAttribute('href', 'https://concentrix.vn');
+    expect(screen.getByText('Quận 12, TP. Hồ Chí Minh')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Xem trang doanh nghiệp' })).toHaveAttribute('href', '/companies/company-1');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Sao chép email' }));
+    expect(writeText).toHaveBeenCalledWith('hr@concentrix.vn');
+  });
+
+  it('shows fallback guidance in employer contact modal when email, phone, and website are absent', async () => {
+    vi.spyOn(mf04Api, 'getApplicationDetail').mockResolvedValueOnce({
+      ...mockMf04Application,
+      status: 'OFFER_ACCEPTED',
+      currentStage: 'OFFER',
+      plannedStartDate: '2026-11-20',
+      offers: [],
+      interviews: [],
+      employerContact: {
+        contactName: null,
+        roleInCompany: null,
+        email: null,
+        phone: null,
+        website: null,
+        address: 'TP. Hồ Chí Minh',
+      },
+    } as any);
+    vi.spyOn(mf04Api, 'getApplicationTimeline').mockResolvedValueOnce({
+      applicationId: 'application-1',
+      candidateName: 'Nguyễn Văn A',
+      jobTitle: 'Senior .NET Developer',
+      currentStatus: 'OFFER_ACCEPTED',
+      events: [],
+    });
+
+    renderComponent();
+
+    await userEvent.click(await screen.findByRole('button', { name: /Liên hệ doanh nghiệp/i }));
+
+    expect(await screen.findByText(/Doanh nghiệp chưa công khai email, số điện thoại hoặc website liên hệ trực tiếp/i)).toBeInTheDocument();
+    expect(screen.getByText('TP. Hồ Chí Minh')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Xem trang doanh nghiệp' })).toHaveAttribute('href', '/companies/company-1');
+  });
 });
