@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentApplicationDetail;
@@ -19,8 +20,13 @@ public class GetCandidateRecruitmentApplicationDetailQueryHandlerTests
     private readonly Mock<IApplicationRepository> _applicationRepositoryMock = new();
     private readonly Mock<ILogger<GetCandidateRecruitmentApplicationDetailQueryHandler>> _loggerMock = new();
 
-    private GetCandidateRecruitmentApplicationDetailQueryHandler CreateHandler() =>
-        new(_applicationRepositoryMock.Object, _loggerMock.Object);
+    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
+    }
+
+    private GetCandidateRecruitmentApplicationDetailQueryHandler CreateHandler(TimeProvider? timeProvider = null) =>
+        new(_applicationRepositoryMock.Object, _loggerMock.Object, timeProvider);
 
     [Fact]
     public async Task Handle_WhenApplicationNotFound_ShouldThrowNotFoundException()
@@ -124,7 +130,7 @@ public class GetCandidateRecruitmentApplicationDetailQueryHandlerTests
                     OfferVersion = 1,
                     Status = OfferStates.Draft, // DRAFT offer - should be excluded
                     Salary = 20000000,
-                    ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(3))
+                    ExpiryDate = VietnamTime.Today().AddDays(3)
                 },
                 new Offer
                 {
@@ -133,8 +139,8 @@ public class GetCandidateRecruitmentApplicationDetailQueryHandlerTests
                     Status = OfferStates.Sent, // SENT offer - should be included
                     Salary = 25000000,
                     CurrencyCode = "VND",
-                    StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(14)),
-                    ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7)),
+                    StartDate = VietnamTime.Today().AddDays(14),
+                    ExpiryDate = VietnamTime.Today().AddDays(7),
                     ConcurrencyToken = Guid.NewGuid()
                 }
             }
@@ -175,5 +181,59 @@ public class GetCandidateRecruitmentApplicationDetailQueryHandlerTests
         data.AllowedActions.Should().Contain("WITHDRAW_APPLICATION");
         data.AllowedActions.Should().Contain("VIEW_INTERVIEW");
         data.AllowedActions.Should().Contain("RESPOND_OFFER");
+    }
+
+    [Theory]
+    [InlineData(13, false)]
+    [InlineData(14, true)]
+    public async Task Handle_AtEarlyMorningVietnamTime_ShouldComputeCanRespondAgainstVietnamDate(
+        int expiryDay,
+        bool expectedCanRespond)
+    {
+        var earlyMorningVn = new FixedTimeProvider(new DateTimeOffset(2026, 11, 13, 20, 34, 0, TimeSpan.Zero));
+        var appId = Guid.NewGuid();
+        var candidateUserId = Guid.NewGuid();
+        var app = new Domain.Entities.Application
+        {
+            ApplicationId = appId,
+            JobId = Guid.NewGuid(),
+            Job = new Job
+            {
+                JobId = Guid.NewGuid(),
+                Title = "Backend Engineer",
+                CompanyId = Guid.NewGuid(),
+                Company = new Company { CompanyId = Guid.NewGuid(), CompanyName = "Tech Corp" }
+            },
+            CandidateId = Guid.NewGuid(),
+            Candidate = new Candidate { CandidateId = Guid.NewGuid(), UserId = candidateUserId, FullName = "Nguyen Van A" },
+            Status = ApplicationStates.OfferPending,
+            AppliedAt = DateTime.UtcNow.AddDays(-5),
+            UpdatedAt = DateTime.UtcNow,
+            ConcurrencyToken = Guid.NewGuid(),
+            Offers = new List<Offer>
+            {
+                new Offer
+                {
+                    OfferId = Guid.NewGuid(),
+                    OfferVersion = 1,
+                    Status = OfferStates.Sent,
+                    Salary = 25000000,
+                    CurrencyCode = "VND",
+                    ExpiryDate = new DateOnly(2026, 11, expiryDay),
+                    ConcurrencyToken = Guid.NewGuid()
+                }
+            }
+        };
+
+        _applicationRepositoryMock
+            .Setup(r => r.GetRecruitmentApplicationDetailAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+
+        var result = await CreateHandler(earlyMorningVn).Handle(
+            new GetCandidateRecruitmentApplicationDetailQuery(appId, candidateUserId),
+            CancellationToken.None);
+
+        result.Data!.Offers.Should().ContainSingle();
+        result.Data.Offers[0].CanRespond.Should().Be(expectedCanRespond);
     }
 }

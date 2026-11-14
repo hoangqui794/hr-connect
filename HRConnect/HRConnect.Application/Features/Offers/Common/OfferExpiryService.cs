@@ -1,4 +1,5 @@
 using System.Text.Json;
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
@@ -36,7 +37,7 @@ public sealed class OfferExpiryService : IOfferExpiryService
 
     public async Task<bool> ExpireAsync(Offer offer, DateTime now, CancellationToken cancellationToken = default)
     {
-        var today = DateOnly.FromDateTime(now);
+        var today = VietnamTime.Today(now);
         if (offer.Status != OfferStates.Sent || !offer.ExpiryDate.HasValue || offer.ExpiryDate.Value >= today)
         {
             return false;

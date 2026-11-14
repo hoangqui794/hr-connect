@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
@@ -24,6 +25,7 @@ public class RespondToOfferCommandHandler : IRequestHandler<RespondToOfferComman
     private readonly INotificationRepository? _notificationRepository;
     private readonly IPlacementRepository? _placementRepository;
     private readonly ICandidateTransactionLock? _candidateLock;
+    private readonly TimeProvider _timeProvider;
 
     public RespondToOfferCommandHandler(
         IOfferRepository offerRepository,
@@ -33,7 +35,8 @@ public class RespondToOfferCommandHandler : IRequestHandler<RespondToOfferComman
         IAuditLogService auditLogService,
         INotificationRepository? notificationRepository = null,
         IPlacementRepository? placementRepository = null,
-        ICandidateTransactionLock? candidateLock = null)
+        ICandidateTransactionLock? candidateLock = null,
+        TimeProvider? timeProvider = null)
     {
         _offerRepository = offerRepository;
         _applicationRepository = applicationRepository;
@@ -43,6 +46,7 @@ public class RespondToOfferCommandHandler : IRequestHandler<RespondToOfferComman
         _notificationRepository = notificationRepository;
         _placementRepository = placementRepository;
         _candidateLock = candidateLock;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public async Task<RespondToOfferResponse> Handle(RespondToOfferCommand request, CancellationToken cancellationToken)
@@ -119,7 +123,7 @@ public class RespondToOfferCommandHandler : IRequestHandler<RespondToOfferComman
                 throw new BadRequestException($"Chỉ có thể phản hồi khi offer đang ở trạng thái SENT. Trạng thái hiện tại: {offer.Status}.");
             }
 
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var today = VietnamTime.Today(_timeProvider);
             if (offer.ExpiryDate.HasValue && offer.ExpiryDate.Value < today)
             {
                 _logger.LogWarning("Offer {OfferId} đã hết hạn vào ngày {ExpiryDate}.", offer.OfferId, offer.ExpiryDate);

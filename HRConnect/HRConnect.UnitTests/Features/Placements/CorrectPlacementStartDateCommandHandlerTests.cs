@@ -1,4 +1,5 @@
 using FluentAssertions;
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
@@ -18,17 +19,23 @@ public sealed class CorrectPlacementStartDateCommandHandlerTests
     private readonly Mock<IAuditLogService> _auditLog = new();
     private readonly Mock<ILogger<CorrectPlacementStartDateCommandHandler>> _logger = new();
 
-    private CorrectPlacementStartDateCommandHandler CreateHandler() => new(
+    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
+    }
+
+    private CorrectPlacementStartDateCommandHandler CreateHandler(TimeProvider? timeProvider = null) => new(
         _financeRepository.Object,
         _unitOfWork.Object,
         _auditLog.Object,
-        _logger.Object);
+        _logger.Object,
+        timeProvider);
 
     [Fact]
     public async Task Handle_WhenActorIsNotInternalHrOrAdmin_ShouldReject()
     {
         var act = () => CreateHandler().Handle(
-            new CorrectPlacementStartDateCommand(Guid.NewGuid(), DateOnly.FromDateTime(DateTime.UtcNow), "Nhập nhầm", Guid.NewGuid()),
+            new CorrectPlacementStartDateCommand(Guid.NewGuid(), VietnamTime.Today(), "Nhập nhầm", Guid.NewGuid()),
             default);
 
         await act.Should().ThrowAsync<ForbiddenException>();
@@ -45,7 +52,7 @@ public sealed class CorrectPlacementStartDateCommandHandlerTests
         var act = () => CreateHandler().Handle(
             new CorrectPlacementStartDateCommand(
                 placement.PlacementId,
-                DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2)),
+                VietnamTime.Today().AddDays(-2),
                 "   ",
                 _actorId,
                 IsInternalHrOrAdmin: true),
@@ -65,7 +72,7 @@ public sealed class CorrectPlacementStartDateCommandHandlerTests
             .ReturnsAsync(placement);
 
         var act = () => CreateHandler().Handle(
-            CommandFor(placement, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1))),
+            CommandFor(placement, VietnamTime.Today().AddDays(1)),
             default);
 
         var exception = await act.Should().ThrowAsync<BadRequestException>();
@@ -80,7 +87,7 @@ public sealed class CorrectPlacementStartDateCommandHandlerTests
         _financeRepository.Setup(r => r.GetPlacementForFinanceAsync(placement.PlacementId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(placement);
 
-        var act = () => CreateHandler().Handle(CommandFor(placement, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2))), default);
+        var act = () => CreateHandler().Handle(CommandFor(placement, VietnamTime.Today().AddDays(-2)), default);
 
         var exception = await act.Should().ThrowAsync<ConflictException>();
         exception.Which.ErrorCode.Should().Be(PlacementStartDateErrorCodes.StartDateLocked);
@@ -94,7 +101,7 @@ public sealed class CorrectPlacementStartDateCommandHandlerTests
         _financeRepository.Setup(r => r.GetPlacementForFinanceAsync(placement.PlacementId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(placement);
 
-        var act = () => CreateHandler().Handle(CommandFor(placement, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2))), default);
+        var act = () => CreateHandler().Handle(CommandFor(placement, VietnamTime.Today().AddDays(-2)), default);
 
         var exception = await act.Should().ThrowAsync<ConflictException>();
         exception.Which.ErrorCode.Should().Be(PlacementStartDateErrorCodes.StartDateLocked);
@@ -108,7 +115,7 @@ public sealed class CorrectPlacementStartDateCommandHandlerTests
         _financeRepository.Setup(r => r.GetPlacementForFinanceAsync(placement.PlacementId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(placement);
 
-        var act = () => CreateHandler().Handle(CommandFor(placement, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-4))), default);
+        var act = () => CreateHandler().Handle(CommandFor(placement, VietnamTime.Today().AddDays(-4)), default);
 
         var exception = await act.Should().ThrowAsync<BadRequestException>();
         exception.Which.ErrorCode.Should().Be(PlacementStartDateErrorCodes.InvalidStartDate);
@@ -138,6 +145,50 @@ public sealed class CorrectPlacementStartDateCommandHandlerTests
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Fact]
+    public async Task Handle_AtEarlyMorningVietnamTime_ShouldAllowCorrectingToVietnamToday()
+    {
+        var earlyMorningVn = new FixedTimeProvider(new DateTimeOffset(2026, 11, 13, 20, 34, 0, TimeSpan.Zero));
+        var placement = CreatePlacement();
+        placement.ActualStartDate = new DateOnly(2026, 11, 14);
+        placement.Offer.RespondedAt = new DateTime(2026, 11, 13, 20, 32, 0, DateTimeKind.Utc);
+        _financeRepository.Setup(r => r.GetPlacementForFinanceAsync(placement.PlacementId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(placement);
+        _unitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        var result = await CreateHandler(earlyMorningVn).Handle(CommandFor(placement, new DateOnly(2026, 11, 14)), default);
+
+        result.ActualStartDate.Should().Be(new DateOnly(2026, 11, 14));
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_AtEarlyMorningVietnamTime_WhenCorrectedToUtcDateBeforeVietnamAcceptance_ShouldReject()
+    {
+        var earlyMorningVn = new FixedTimeProvider(new DateTimeOffset(2026, 11, 13, 20, 34, 0, TimeSpan.Zero));
+        var placement = CreatePlacement();
+        placement.Offer.RespondedAt = new DateTime(2026, 11, 13, 20, 32, 0, DateTimeKind.Utc);
+        _financeRepository.Setup(r => r.GetPlacementForFinanceAsync(placement.PlacementId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(placement);
+
+        var act = () => CreateHandler(earlyMorningVn).Handle(CommandFor(placement, new DateOnly(2026, 11, 13)), default);
+
+        var exception = await act.Should().ThrowAsync<BadRequestException>();
+        exception.Which.ErrorCode.Should().Be(PlacementStartDateErrorCodes.InvalidStartDate);
+    }
+
+    [Fact]
+    public async Task Handle_AtEarlyMorningVietnamTime_WhenCorrectedAfterVietnamToday_ShouldReject()
+    {
+        var earlyMorningVn = new FixedTimeProvider(new DateTimeOffset(2026, 11, 13, 20, 34, 0, TimeSpan.Zero));
+        var placement = CreatePlacement();
+
+        var act = () => CreateHandler(earlyMorningVn).Handle(CommandFor(placement, new DateOnly(2026, 11, 15)), default);
+
+        var exception = await act.Should().ThrowAsync<BadRequestException>();
+        exception.Which.ErrorCode.Should().Be(PlacementStartDateErrorCodes.InvalidStartDate);
+    }
+
     private readonly Guid _actorId = Guid.NewGuid();
 
     private CorrectPlacementStartDateCommand CommandFor(Placement placement, DateOnly actualStartDate) => new(
@@ -149,7 +200,7 @@ public sealed class CorrectPlacementStartDateCommandHandlerTests
 
     private static Placement CreatePlacement(DateTime? confirmedAt = null)
     {
-        var startDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-5));
+        var startDate = VietnamTime.Today().AddDays(-5);
         return new Placement
         {
             PlacementId = Guid.NewGuid(),

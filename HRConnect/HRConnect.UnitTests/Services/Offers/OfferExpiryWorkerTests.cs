@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FluentAssertions;
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
@@ -23,7 +24,7 @@ public sealed class OfferExpiryWorkerTests
     {
         var services = CreateServices(Guid.NewGuid().ToString());
         await using var provider = services.BuildServiceProvider();
-        var fixture = CreateOffer(DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)));
+        var fixture = CreateOffer(VietnamTime.Today().AddDays(-1));
 
         await using (var scope = provider.CreateAsyncScope())
         {
@@ -66,7 +67,7 @@ public sealed class OfferExpiryWorkerTests
     {
         var services = CreateServices(Guid.NewGuid().ToString());
         await using var provider = services.BuildServiceProvider();
-        var fixture = CreateOffer(DateOnly.FromDateTime(DateTime.UtcNow));
+        var fixture = CreateOffer(VietnamTime.Today());
 
         await using (var scope = provider.CreateAsyncScope())
         {
@@ -85,6 +86,41 @@ public sealed class OfferExpiryWorkerTests
         (await verification.Offers.SingleAsync()).Status.Should().Be("SENT");
         (await verification.Notifications.AnyAsync()).Should().BeFalse();
         (await verification.AuditLogs.AnyAsync()).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(13, "EXPIRED")]
+    [InlineData(14, "SENT")]
+    public async Task ExpireBatchAsync_AtEarlyMorningVietnamTime_ShouldExpireAgainstVietnamDate(
+        int expiryDay,
+        string expectedStatus)
+    {
+        var earlyMorningVn = new FixedTimeProvider(new DateTimeOffset(2026, 11, 13, 20, 34, 0, TimeSpan.Zero));
+        var services = CreateServices(Guid.NewGuid().ToString());
+        await using var provider = services.BuildServiceProvider();
+        var fixture = CreateOffer(new DateOnly(2026, 11, expiryDay));
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            db.Offers.Add(fixture.Offer);
+            await db.SaveChangesAsync();
+        }
+
+        var worker = new OfferExpiryWorker(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<OfferExpiryWorker>.Instance,
+            earlyMorningVn);
+        await worker.ExpireBatchAsync(CancellationToken.None);
+
+        await using var verificationScope = provider.CreateAsyncScope();
+        var verification = verificationScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        (await verification.Offers.SingleAsync()).Status.Should().Be(expectedStatus);
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
     }
 
     private static ServiceCollection CreateServices(string databaseName)

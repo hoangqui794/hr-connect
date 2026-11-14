@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
@@ -24,14 +25,20 @@ public class CreateOfferDraftCommandHandlerTests
     private readonly Mock<ILogger<CreateOfferDraftCommandHandler>> _loggerMock = new();
     private readonly Mock<IAuditLogService> _auditLogServiceMock = new();
 
-    private CreateOfferDraftCommandHandler CreateHandler() =>
+    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
+    }
+
+    private CreateOfferDraftCommandHandler CreateHandler(TimeProvider? timeProvider = null) =>
         new(
             _offerRepositoryMock.Object,
             _applicationRepositoryMock.Object,
             _companyUserRepositoryMock.Object,
             _unitOfWorkMock.Object,
             _loggerMock.Object,
-            _auditLogServiceMock.Object);
+            _auditLogServiceMock.Object,
+            timeProvider);
 
     [Fact]
     public async Task Handle_WhenSalaryIsNegative_ShouldThrowBadRequestException()
@@ -56,7 +63,7 @@ public class CreateOfferDraftCommandHandlerTests
     [Fact]
     public async Task Handle_WhenExpiryDateIsInThePast_ShouldThrowBadRequestException()
     {
-        var pastDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
+        var pastDate = VietnamTime.Today().AddDays(-1);
         var command = new CreateOfferDraftCommand(
             ApplicationId: Guid.NewGuid(),
             Salary: 10000000,
@@ -77,7 +84,7 @@ public class CreateOfferDraftCommandHandlerTests
     [Fact]
     public async Task Handle_WhenStartDateIsBeforeExpiryDate_ShouldThrowBadRequestException()
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = VietnamTime.Today();
         var expiryDate = today.AddDays(10);
         var startDate = today.AddDays(5);
 
@@ -342,7 +349,7 @@ public class CreateOfferDraftCommandHandlerTests
             .Setup(r => r.GetByApplicationIdAsync(appId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingOffers);
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = VietnamTime.Today();
         var command = new CreateOfferDraftCommand(
             ApplicationId: appId,
             Salary: 25000000,
@@ -392,5 +399,26 @@ public class CreateOfferDraftCommandHandlerTests
         _offerRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Offer>(), It.IsAny<CancellationToken>()), Times.Once);
         _applicationRepositoryMock.Verify(r => r.Update(app), Times.Once);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_AtEarlyMorningVietnamTime_WhenExpiryDateIsUtcTodayButYesterdayInVietnam_ShouldReject()
+    {
+        var earlyMorningVn = new FixedTimeProvider(new DateTimeOffset(2026, 11, 13, 20, 34, 0, TimeSpan.Zero));
+        var command = new CreateOfferDraftCommand(
+            ApplicationId: Guid.NewGuid(),
+            Salary: 10000000,
+            CurrencyCode: "VND",
+            StartDate: null,
+            ExpiryDate: new DateOnly(2026, 11, 13),
+            OfferDocumentUrl: null,
+            ConcurrencyToken: null,
+            CurrentUserId: Guid.NewGuid(),
+            IsInternalHrOrAdmin: true);
+
+        var act = () => CreateHandler(earlyMorningVn).Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*Hạn phản hồi offer không được ở quá khứ*");
     }
 }

@@ -1,3 +1,4 @@
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.Offers.Common;
 using HRConnect.Domain.Constants;
@@ -13,13 +14,16 @@ public sealed class OfferExpiryWorker : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<OfferExpiryWorker> _logger;
+    private readonly TimeProvider _timeProvider;
 
     public OfferExpiryWorker(
         IServiceScopeFactory scopeFactory,
-        ILogger<OfferExpiryWorker> logger)
+        ILogger<OfferExpiryWorker> logger,
+        TimeProvider? timeProvider = null)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -46,8 +50,8 @@ public sealed class OfferExpiryWorker : BackgroundService
 
     internal async Task ExpireBatchAsync(CancellationToken cancellationToken)
     {
-        var now = DateTime.UtcNow;
-        var today = DateOnly.FromDateTime(now);
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+        var today = VietnamTime.Today(now);
         List<Guid> expiredOfferIds;
 
         await using (var discoveryScope = _scopeFactory.CreateAsyncScope())

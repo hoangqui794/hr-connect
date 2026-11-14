@@ -1,3 +1,4 @@
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
@@ -18,17 +19,20 @@ public sealed class CorrectPlacementStartDateCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _auditLogService;
     private readonly ILogger<CorrectPlacementStartDateCommandHandler> _logger;
+    private readonly TimeProvider _timeProvider;
 
     public CorrectPlacementStartDateCommandHandler(
         IFinanceRepository financeRepository,
         IUnitOfWork unitOfWork,
         IAuditLogService auditLogService,
-        ILogger<CorrectPlacementStartDateCommandHandler> logger)
+        ILogger<CorrectPlacementStartDateCommandHandler> logger,
+        TimeProvider? timeProvider = null)
     {
         _financeRepository = financeRepository;
         _unitOfWork = unitOfWork;
         _auditLogService = auditLogService;
         _logger = logger;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public async Task<CorrectPlacementStartDateResponse> Handle(
@@ -41,7 +45,7 @@ public sealed class CorrectPlacementStartDateCommandHandler
         }
 
         var reason = NormalizeReason(request.Reason);
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = VietnamTime.Today(_timeProvider);
         if (request.ActualStartDate > today)
         {
             throw new BadRequestException(
@@ -57,7 +61,7 @@ public sealed class CorrectPlacementStartDateCommandHandler
 
         var offerRespondedAt = placement.Offer?.RespondedAt ??
             (placement.Offer?.UpdatedAt == default ? (DateTime?)null : placement.Offer?.UpdatedAt);
-        if (offerRespondedAt.HasValue && request.ActualStartDate < DateOnly.FromDateTime(offerRespondedAt.Value))
+        if (offerRespondedAt.HasValue && request.ActualStartDate < VietnamTime.ToDateOnly(offerRespondedAt.Value))
         {
             throw new BadRequestException(
                 "Ngày thực tế đi làm không được sớm hơn ngày ứng viên chấp nhận offer.",

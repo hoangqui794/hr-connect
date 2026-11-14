@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Offers.Common;
@@ -17,13 +18,16 @@ public class GetCandidateRecruitmentApplicationDetailQueryHandler
 {
     private readonly IApplicationRepository _applicationRepository;
     private readonly ILogger<GetCandidateRecruitmentApplicationDetailQueryHandler> _logger;
+    private readonly TimeProvider _timeProvider;
 
     public GetCandidateRecruitmentApplicationDetailQueryHandler(
         IApplicationRepository applicationRepository,
-        ILogger<GetCandidateRecruitmentApplicationDetailQueryHandler> logger)
+        ILogger<GetCandidateRecruitmentApplicationDetailQueryHandler> logger,
+        TimeProvider? timeProvider = null)
     {
         _applicationRepository = applicationRepository;
         _logger = logger;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public async Task<CandidateRecruitmentApplicationDetailResponse> Handle(
@@ -56,7 +60,7 @@ public class GetCandidateRecruitmentApplicationDetailQueryHandler
             };
         }
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = VietnamTime.Today(_timeProvider);
 
         var interviews = (app.Interviews ?? new List<Domain.Entities.Interview>())
             .OrderBy(i => i.InterviewRound)

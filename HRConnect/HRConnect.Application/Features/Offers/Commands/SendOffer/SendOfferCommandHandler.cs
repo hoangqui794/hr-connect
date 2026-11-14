@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
@@ -23,6 +24,7 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
     private readonly IAuditLogService _auditLogService;
     private readonly INotificationRepository? _notificationRepository;
     private readonly ICandidateRecruitmentDeliveryService? _candidateDeliveryService;
+    private readonly TimeProvider _timeProvider;
 
     public SendOfferCommandHandler(
         IOfferRepository offerRepository,
@@ -32,7 +34,8 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
         ILogger<SendOfferCommandHandler> logger,
         IAuditLogService auditLogService,
         INotificationRepository? notificationRepository = null,
-        ICandidateRecruitmentDeliveryService? candidateDeliveryService = null)
+        ICandidateRecruitmentDeliveryService? candidateDeliveryService = null,
+        TimeProvider? timeProvider = null)
     {
         _offerRepository = offerRepository;
         _applicationRepository = applicationRepository;
@@ -42,6 +45,7 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
         _auditLogService = auditLogService;
         _notificationRepository = notificationRepository;
         _candidateDeliveryService = candidateDeliveryService;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public async Task<SendOfferResponse> Handle(SendOfferCommand request, CancellationToken cancellationToken)
@@ -62,7 +66,7 @@ public class SendOfferCommandHandler : IRequestHandler<SendOfferCommand, SendOff
             throw new BadRequestException($"Chỉ có thể gửi offer khi đang ở trạng thái DRAFT. Trạng thái hiện tại: {offer.Status}.");
         }
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = VietnamTime.Today(_timeProvider);
         if (offer.ExpiryDate.HasValue && offer.ExpiryDate.Value < today)
         {
             throw new BadRequestException("Offer đã quá hạn phản hồi, không thể gửi. Vui lòng cập nhật hạn phản hồi trước khi gửi.");

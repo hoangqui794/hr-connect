@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
@@ -85,7 +86,7 @@ public class MarkNotStartedCommandHandler : IRequestHandler<MarkNotStartedComman
             throw new BadRequestException($"Chỉ có thể đánh dấu không nhận việc sau khi ứng viên chấp nhận offer ({ApplicationStates.OfferAccepted}). Trạng thái hiện tại: {application.Status}.");
         }
 
-        var vietnamToday = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        var vietnamToday = VietnamTime.Today();
         if (reasonCode == ApplicationReasonCodes.CandidateNoShow &&
             (!application.PlannedStartDate.HasValue || vietnamToday < application.PlannedStartDate.Value))
         {

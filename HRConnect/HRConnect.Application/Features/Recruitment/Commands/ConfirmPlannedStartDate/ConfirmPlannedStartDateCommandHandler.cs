@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
@@ -46,7 +47,7 @@ public class ConfirmPlannedStartDateCommandHandler : IRequestHandler<ConfirmPlan
 
     public async Task<ConfirmPlannedStartDateResponse> Handle(ConfirmPlannedStartDateCommand request, CancellationToken cancellationToken)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        var today = VietnamTime.Today();
         if (request.PlannedStartDate < today)
         {
             throw new BadRequestException("Ngày dự kiến nhận việc không được ở quá khứ.");
