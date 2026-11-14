@@ -146,3 +146,55 @@ describe('getNotificationRoute for ADMIN', () => {
     expect(jobPaidRoute).not.toContain('/hr/');
   });
 });
+
+describe('getNotificationRoute for AFFILIATE', () => {
+  it('routes replacement slot notifications to submit-candidate inside affiliate portal', () => {
+    const withRouteHint = getNotificationRoute(
+      {
+        notificationId: 'n-aff-1',
+        notificationType: 'WARRANTY',
+        title: 'Đã mở suất tuyển người thay thế',
+        message: 'Vị trí Backend đã mở lại suất tuyển người thay thế.',
+        relatedEntityType: 'REPLACEMENT_SLOT',
+        relatedEntityId: 'slot-1',
+        routeHint: `/affiliate/submit-candidate?job=${JOB}`,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      },
+      UserRole.AFFILIATE
+    );
+    expect(withRouteHint).toBe(`/affiliate/submit-candidate?job=${JOB}`);
+
+    const fromMeta = getNotificationRoute(
+      {
+        notificationId: 'n-aff-2',
+        notificationType: 'WARRANTY',
+        title: 'Suất tuyển người thay thế được gia hạn',
+        message: 'Vị trí Backend được gia hạn.',
+        relatedEntityType: 'REPLACEMENT_SLOT',
+        relatedEntityId: 'slot-2',
+        metadata: JSON.stringify({ jobId: JOB }),
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      },
+      UserRole.AFFILIATE
+    );
+    expect(fromMeta).toBe(`/affiliate/submit-candidate?job=${JOB}`);
+
+    const fallback = getNotificationRoute(
+      {
+        notificationId: 'n-aff-3',
+        notificationType: 'COMMISSION',
+        title: 'Hoa hồng đã bị hủy',
+        message: 'Ứng viên đã nghỉ việc.',
+        relatedEntityType: 'WARRANTY',
+        relatedEntityId: 'w-1',
+        routeHint: '/hr/warranty-tracking?highlight=w-1',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      },
+      UserRole.AFFILIATE
+    );
+    expect(fallback).toBe('/affiliate/commissions');
+  });
+});

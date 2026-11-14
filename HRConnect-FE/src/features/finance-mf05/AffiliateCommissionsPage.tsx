@@ -3,14 +3,14 @@
  * and payouts. A commission is earned once the warranty passes (Headhunt) or the CV is accepted
  * (CV Sourcing), and paid out after the Client settles the service fee and Admin approves payout.
  */
-import React, { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Pagination, Skeleton, Tag } from 'antd';
 import { affiliateBankApi, financeApi } from '@/services/api/financeApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { Commission, CommissionStatus } from '@/types/api/finance';
-import { COMMISSION_STATUS, PAYOUT_STATUS, date, labelOf, money } from './financeLabels';
+import { COMMISSION_STATUS, PAYOUT_STATUS, date, labelOf, money, replacementCountdownText } from './financeLabels';
 import { StatusChip } from '@/features/portal/affiliate/AffiliateUi';
 
 const PAGE_SIZE = 20;
@@ -58,8 +58,29 @@ const statusNote = (c: Commission): string | null => {
       return 'Chờ ứng viên bắt đầu đi làm';
     case 'ON_HOLD':
       return 'Đang tạm giữ, bộ phận vận hành đang xác minh';
-    case 'CANCELLED':
+    case 'CANCELLED': {
+      if (c.warrantyStatus === 'VOIDED') {
+        switch (c.replacementSlotStatus) {
+          case 'OPEN': {
+            const countdown = replacementCountdownText(c.replacementExpiresAt);
+            return c.replacementExpiresAt && countdown
+              ? `Đã mở suất thay thế · ${countdown} · hết ${date(c.replacementExpiresAt)}`
+              : 'Đã mở suất thay thế';
+          }
+          case 'WAITING_PAYMENT':
+            return 'Đang chờ doanh nghiệp thanh toán phí để mở suất thay thế';
+          case 'FILLED':
+            return 'Suất thay thế đã có người đi làm';
+          case 'EXPIRED':
+            return 'Đã hết hạn suất thay thế';
+          case 'CANCELLED':
+            return 'Suất thay thế đã hủy';
+          default:
+            return 'Ứng viên nghỉ trong bảo hành · Không còn suất thay thế';
+        }
+      }
       return labelOf(COMMISSION_STATUS, c.status).hint ?? null;
+    }
     default:
       return null;
   }
@@ -86,8 +107,17 @@ const FILTER_TABS: { key: FilterTab; label: string; matches: (s: CommissionStatu
 const lastDigits = (account: string) => `••• ${account.slice(-4)}`;
 
 export const AffiliateCommissionsPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab')?.toUpperCase();
+  const defaultFilter: FilterTab = FILTER_TABS.some((t) => t.key === initialTab) ? (initialTab as FilterTab) : 'ALL';
   const [payoutPage, setPayoutPage] = useState(1);
-  const [filter, setFilter] = useState<FilterTab>('ALL');
+  const [filter, setFilter] = useState<FilterTab>(defaultFilter);
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')?.toUpperCase();
+    if (tabParam && FILTER_TABS.some((t) => t.key === tabParam)) {
+      setFilter(tabParam as FilterTab);
+    }
+  }, [searchParams]);
   // One page of up to 100 (the API maximum) covers an affiliate's commissions; the totals need all of them.
   const commissions = useQuery({
     queryKey: ['mf05-my-commissions'],
@@ -215,7 +245,11 @@ export const AffiliateCommissionsPage: React.FC = () => {
                 {visibleItems.map((c) => {
                   const chip = statusChipFor(c);
                   const note = statusNote(c);
-                  const canReplace = c.status === 'CANCELLED' && c.warrantyStatus === 'VOIDED' && Boolean(c.jobId);
+                  const canReplace =
+                    c.status === 'CANCELLED' &&
+                    c.warrantyStatus === 'VOIDED' &&
+                    c.replacementSlotStatus === 'OPEN' &&
+                    Boolean(c.jobId);
                   return (
                     <tr key={c.commissionId} className="border-0 border-t border-solid border-slate-100 align-middle hover:bg-slate-50/50">
                       <td className="px-4 py-3.5">

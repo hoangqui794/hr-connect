@@ -59,6 +59,18 @@ public interface IFinanceRepository
     /// <summary>The slot granted under a service fee, with its job, tracked for update.</summary>
     Task<ReplacementSlot?> GetReplacementSlotByServiceFeeForUpdateAsync(Guid serviceFeeId, CancellationToken cancellationToken = default);
 
+    /// <summary>Replacement slots matching the given original placement ids (read-only, ordered newest first).</summary>
+    Task<IReadOnlyList<ReplacementSlot>> GetReplacementSlotsByOriginalPlacementIdsAsync(
+        IReadOnlyCollection<Guid> originalPlacementIds,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<ReplacementSlot>>(Array.Empty<ReplacementSlot>());
+
+    /// <summary>Distinct affiliate user ids credited on commissions for an original placement.</summary>
+    Task<IReadOnlyList<Guid>> GetAffiliateUserIdsByPlacementAsync(
+        Guid placementId,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>());
+
     /// <summary>Expired replacement slots of these jobs, with the candidate who left and the fee the refund is a share of (read only).</summary>
     Task<IReadOnlyList<ReplacementSlot>> GetExpiredReplacementSlotsForJobsAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default);
 

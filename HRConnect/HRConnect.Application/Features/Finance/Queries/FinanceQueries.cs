@@ -24,7 +24,8 @@ public sealed record CommissionDto(
     Guid CommissionId, Guid? PlacementId, Guid AttributionId, Guid AffiliateId, string? AffiliateName, string? JobTitle,
     string? CandidateName, decimal Amount, decimal? BaseAmount, string Status, string? MilestoneType,
     DateOnly? WarrantyEndDate, string? WarrantyStatus, string? ServiceFeeStatus, DateTime? ApprovedAt, DateTime CreatedAt,
-    AffiliateBankDto? AffiliateBank = null, Guid? SourcingDeliveryId = null, Guid? JobId = null);
+    AffiliateBankDto? AffiliateBank = null, Guid? SourcingDeliveryId = null, Guid? JobId = null,
+    Guid? ReplacementSlotId = null, string? ReplacementSlotStatus = null, DateTime? ReplacementExpiresAt = null);
 
 /// <summary>Where to transfer the commission. Only returned to users who record payouts.</summary>
 public sealed record AffiliateBankDto(string? BankName, string? BankAccountNumber, string? BankAccountHolder, string? BankBranch);
@@ -144,24 +145,41 @@ public sealed class FinanceQueryHandlers :
                 .Where(f => f.JobId.HasValue)
                 .GroupBy(f => f.JobId!.Value)
                 .ToDictionary(g => g.Key, g => ResolveSourcingFeeStatus(g));
+        var placementIds = items
+            .Where(c => c.PlacementId.HasValue)
+            .Select(c => c.PlacementId!.Value)
+            .Distinct()
+            .ToList();
+        var replacementSlotsByPlacement = placementIds.Count == 0
+            ? new Dictionary<Guid, Domain.Entities.ReplacementSlot>()
+            : (await _financeRepository.GetReplacementSlotsByOriginalPlacementIdsAsync(placementIds, cancellationToken))
+                .GroupBy(slot => slot.OriginalPlacementId)
+                .ToDictionary(g => g.Key, g => g.First());
 
         // An Affiliate sees its own commission but never the Client's fee: BaseAmount is the service fee
         // (percent rules) or the Client's price per CV (CV_SOURCING), so it is only returned to platform roles.
         var hideClientFee = request.AffiliateUserId.HasValue;
-        return new PagedResult<CommissionDto>(items.Select(c => new CommissionDto(
-            c.CommissionId, c.PlacementId, c.AttributionId, c.Attribution.AffiliateId, c.Attribution.Affiliate?.DisplayName ?? c.Attribution.Affiliate?.User?.DisplayName,
-            c.Placement?.Application?.Job?.Title ?? c.SourcingDelivery?.Job?.Title,
-            c.Placement?.Application?.Candidate?.FullName ?? c.SourcingDelivery?.Application?.Candidate?.FullName,
-            c.Amount, hideClientFee ? null : c.BaseAmount, c.Status, c.MilestoneType,
-            c.Placement?.Warranty?.EndDate, c.Placement?.Warranty?.Status,
-            c.Placement?.ServiceFee?.Status ?? (c.SourcingDelivery?.JobId is { } sJobId ? sourcingFeeStatusByJob.GetValueOrDefault(sJobId, ServiceFeeStates.Pending) : null),
-            c.ApprovedAt, c.CreatedAt,
-            request.IncludeBankDetails && c.Attribution.Affiliate is { } affiliate
-                ? new AffiliateBankDto(affiliate.BankName, affiliate.BankAccountNumber, affiliate.BankAccountHolder, affiliate.BankBranch)
-                : null,
-            c.SourcingDeliveryId,
-            // Lets the Affiliate refer a replacement to the same job when the warranty was voided.
-            c.Placement?.Application?.JobId ?? c.SourcingDelivery?.JobId)).ToList(), total, page, pageSize);
+        return new PagedResult<CommissionDto>(items.Select(c =>
+        {
+            var slot = c.PlacementId.HasValue ? replacementSlotsByPlacement.GetValueOrDefault(c.PlacementId.Value) : null;
+            return new CommissionDto(
+                c.CommissionId, c.PlacementId, c.AttributionId, c.Attribution.AffiliateId, c.Attribution.Affiliate?.DisplayName ?? c.Attribution.Affiliate?.User?.DisplayName,
+                c.Placement?.Application?.Job?.Title ?? c.SourcingDelivery?.Job?.Title,
+                c.Placement?.Application?.Candidate?.FullName ?? c.SourcingDelivery?.Application?.Candidate?.FullName,
+                c.Amount, hideClientFee ? null : c.BaseAmount, c.Status, c.MilestoneType,
+                c.Placement?.Warranty?.EndDate, c.Placement?.Warranty?.Status,
+                c.Placement?.ServiceFee?.Status ?? (c.SourcingDelivery?.JobId is { } sJobId ? sourcingFeeStatusByJob.GetValueOrDefault(sJobId, ServiceFeeStates.Pending) : null),
+                c.ApprovedAt, c.CreatedAt,
+                request.IncludeBankDetails && c.Attribution.Affiliate is { } affiliate
+                    ? new AffiliateBankDto(affiliate.BankName, affiliate.BankAccountNumber, affiliate.BankAccountHolder, affiliate.BankBranch)
+                    : null,
+                c.SourcingDeliveryId,
+                // Lets the Affiliate refer a replacement to the same job when the warranty was voided.
+                c.Placement?.Application?.JobId ?? c.SourcingDelivery?.JobId,
+                slot?.ReplacementSlotId,
+                slot?.Status,
+                slot?.ExpiresAt);
+        }).ToList(), total, page, pageSize);
     }
 
     private static string ResolveSourcingFeeStatus(IEnumerable<ServiceFee> fees)

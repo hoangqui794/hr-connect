@@ -216,17 +216,37 @@ public sealed class ResolveResignationCommandHandler : IRequestHandler<ResolveRe
             }
         }
 
-        await AffiliateCommissionNotice.SendAsync(_financeRepository, _notifier, held, request.Confirmed
-            ? new AppNotice(
+        if (request.Confirmed)
+        {
+            var cancelledMessage = replacement?.Status switch
+            {
+                ReplacementSlotStates.Open =>
+                    $"HR Connect xác nhận ứng viên bạn giới thiệu cho vị trí \"{jobTitle}\" đã nghỉ trong thời gian bảo hành, nên hoa hồng của lượt này bị hủy. Vị trí \"{jobTitle}\" đã mở lại suất tuyển người thay thế (hạn tới {replacement.ExpiresAt:dd/MM/yyyy}).",
+                ReplacementSlotStates.WaitingPayment =>
+                    $"HR Connect xác nhận ứng viên bạn giới thiệu cho vị trí \"{jobTitle}\" đã nghỉ trong thời gian bảo hành, nên hoa hồng của lượt này bị hủy. Suất tuyển người thay thế sẽ mở ngay sau khi doanh nghiệp hoàn tất thanh toán phí dịch vụ.",
+                _ =>
+                    $"HR Connect xác nhận ứng viên bạn giới thiệu cho vị trí \"{jobTitle}\" đã nghỉ trong thời gian bảo hành, nên hoa hồng của lượt này bị hủy.",
+            };
+            await AffiliateCommissionNotice.SendAsync(_financeRepository, _notifier, held, new AppNotice(
                 "COMMISSION",
                 "Hoa hồng đã bị hủy",
-                $"HR Connect xác nhận ứng viên bạn giới thiệu cho vị trí \"{jobTitle}\" đã nghỉ trong thời gian bảo hành, nên hoa hồng của lượt này bị hủy.",
-                "WARRANTY", warranty.WarrantyId, "/affiliate/commissions")
-            : new AppNotice(
+                cancelledMessage,
+                "WARRANTY", warranty.WarrantyId, "/affiliate/commissions"), cancellationToken);
+
+            if (replacement?.Status == ReplacementSlotStates.Open)
+            {
+                await ReplacementSlotLifecycle.NotifyAffiliateOpenAsync(
+                    replacement, placement.Application?.Job, extended: false, _financeRepository, _notifier, cancellationToken);
+            }
+        }
+        else
+        {
+            await AffiliateCommissionNotice.SendAsync(_financeRepository, _notifier, held, new AppNotice(
                 "COMMISSION",
                 "Hoa hồng tiếp tục được bảo hành",
                 $"HR Connect xác nhận ứng viên bạn giới thiệu cho vị trí \"{jobTitle}\" vẫn đi làm. Hoa hồng trở lại trạng thái trong bảo hành.",
                 "WARRANTY", warranty.WarrantyId, "/affiliate/commissions"), cancellationToken);
+        }
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return WarrantyClaimMapping.ToResponse(placement) with

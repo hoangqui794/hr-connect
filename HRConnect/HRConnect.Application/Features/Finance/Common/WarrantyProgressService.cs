@@ -318,6 +318,8 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
         await ReplacementSlotLifecycle.NotifyClientAsync(slot.Job, slot, "Suất tuyển người thay thế được gia hạn",
             $"Chưa có người đi làm cho job \"{slot.Job.Title}\", HR Connect gia hạn suất thay thế miễn phí tới {slot.ExpiresAt:dd/MM/yyyy}.",
             now, _financeRepository, _notificationRepository, cancellationToken);
+        await ReplacementSlotLifecycle.NotifyAffiliateOpenAsync(
+            slot, slot.Job, extended: true, _financeRepository, _notifier, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return true;

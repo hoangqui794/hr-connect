@@ -1395,4 +1395,170 @@ public class Mf05FinanceTests
         adjustment.OldAmount.Should().Be(9_000_000m);
         adjustment.NewAmount.Should().Be(8_000_000m);
     }
+
+    // ---- Affiliate replacement slot visibility & notifications -----------------------------
+
+    private async Task<Guid> SeedAffiliateUserForPlacementAsync()
+    {
+        var attribution = await _context.Attributions.SingleAsync();
+        var affiliateUser = new AppUser
+        {
+            UserId = Guid.NewGuid(),
+            Email = $"aff-{Guid.NewGuid():N}@example.com",
+            PasswordHash = "x",
+            Status = "ACTIVE",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        _context.Add(affiliateUser);
+        _context.Add(new AffiliateProfile
+        {
+            AffiliateId = attribution.AffiliateId,
+            UserId = affiliateUser.UserId,
+            AffiliateType = "STANDARD",
+            Status = "ACTIVE",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        });
+        await _context.SaveChangesAsync();
+        return affiliateUser.UserId;
+    }
+
+    [Fact]
+    public async Task GetCommissions_includes_replacement_slot_status_matching_original_placement()
+    {
+        var (placementWithSlot, fee) = await ResignationReportedAsync(feePaid: true);
+        var affiliateUserId = await SeedAffiliateUserForPlacementAsync();
+        await ConfirmResignationAsync(placementWithSlot.PlacementId);
+        var slot = await _context.ReplacementSlots.SingleAsync();
+
+        var (placementWithoutSlot, offerWithoutSlot) = await SeedPlacementAsync();
+        var attribution2 = await _context.Attributions
+            .FirstAsync(a => a.ApplicationId == placementWithoutSlot.ApplicationId);
+        var profile = await _context.Set<AffiliateProfile>().SingleAsync(p => p.UserId == affiliateUserId);
+        attribution2.AffiliateId = profile.AffiliateId;
+        await _context.SaveChangesAsync();
+        await InitializeAsync(placementWithoutSlot, offerWithoutSlot);
+
+        var handlers = new FinanceQueryHandlers(Repository, Mock.Of<ICompanyUserRepository>());
+        var result = await handlers.Handle(new GetCommissionsQuery(affiliateUserId, null, 1, 20), default);
+
+        var withSlotDto = result.Items.Single(c => c.PlacementId == placementWithSlot.PlacementId);
+        withSlotDto.ReplacementSlotId.Should().Be(slot.ReplacementSlotId);
+        withSlotDto.ReplacementSlotStatus.Should().Be(ReplacementSlotStates.Open);
+        withSlotDto.ReplacementExpiresAt.Should().Be(slot.ExpiresAt);
+
+        var withoutSlotDto = result.Items.Single(c => c.PlacementId == placementWithoutSlot.PlacementId);
+        withoutSlotDto.ReplacementSlotId.Should().BeNull();
+        withoutSlotDto.ReplacementSlotStatus.Should().BeNull();
+        withoutSlotDto.ReplacementExpiresAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ResolveResignation_notifies_affiliate_with_submit_route_only_when_slot_is_open()
+    {
+        var (placement, _) = await ResignationReportedAsync(feePaid: true);
+        var affiliateUserId = await SeedAffiliateUserForPlacementAsync();
+        var notifier = new Mock<IAppNotifier>();
+
+        await new ResolveResignationCommandHandler(
+                Repository, UnitOfWork, _audit.Object, new BusinessSettingsService(new SystemSettingRepository(_context)), notifier: notifier.Object)
+            .Handle(new ResolveResignationCommand(placement.PlacementId, true, "Đã xác minh", _actor), default);
+
+        var jobId = placement.Application.JobId;
+        notifier.Verify(n => n.NotifyUsersAsync(
+            It.Is<IEnumerable<Guid>>(ids => ids.Single() == affiliateUserId),
+            It.Is<AppNotice>(a =>
+                a.NotificationType == "WARRANTY" &&
+                a.RelatedEntityType == "REPLACEMENT_SLOT" &&
+                a.RouteHint == $"/affiliate/submit-candidate?job={jobId}" &&
+                a.Message.Contains("mở lại suất tuyển người thay thế")),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ResolveResignation_explains_waiting_payment_and_omits_open_notice_when_unpaid_or_no_slot()
+    {
+        // Unpaid fee -> WAITING_PAYMENT (no /affiliate/submit-candidate open notice yet)
+        var (placement, _) = await ResignationReportedAsync(feePaid: false);
+        var affiliateUserId = await SeedAffiliateUserForPlacementAsync();
+        var notifier = new Mock<IAppNotifier>();
+
+        await new ResolveResignationCommandHandler(
+                Repository, UnitOfWork, _audit.Object, new BusinessSettingsService(new SystemSettingRepository(_context)), notifier: notifier.Object)
+            .Handle(new ResolveResignationCommand(placement.PlacementId, true, "Đã xác minh", _actor), default);
+
+        notifier.Verify(n => n.NotifyUsersAsync(
+            It.Is<IEnumerable<Guid>>(ids => ids.Single() == affiliateUserId),
+            It.Is<AppNotice>(a =>
+                a.Title == "Hoa hồng đã bị hủy" &&
+                a.RouteHint == "/affiliate/commissions" &&
+                a.Message.Contains("thanh toán phí dịch vụ")),
+            It.IsAny<CancellationToken>()), Times.Once);
+        notifier.Verify(n => n.NotifyUsersAsync(
+            It.IsAny<IEnumerable<Guid>>(),
+            It.Is<AppNotice>(a => a.RelatedEntityType == "REPLACEMENT_SLOT"),
+            It.IsAny<CancellationToken>()), Times.Never);
+
+        // Replacement leaver (replacement == null) -> only commission cancelled, no replacement wording
+        var (secondLeaver, offer2) = await SeedPlacementAsync();
+        secondLeaver.ReplacementSlotId = Guid.NewGuid();
+        var attr2 = await _context.Attributions.FirstAsync(a => a.ApplicationId == secondLeaver.ApplicationId);
+        var profile = await _context.Set<AffiliateProfile>().SingleAsync(p => p.UserId == affiliateUserId);
+        attr2.AffiliateId = profile.AffiliateId;
+        await _context.SaveChangesAsync();
+        await InitializeAsync(secondLeaver, offer2);
+        await ReportHandler().Handle(new ReportResignationCommand(secondLeaver.PlacementId, Start.AddDays(5), "Nghỉ", _actor), default);
+
+        var notifier2 = new Mock<IAppNotifier>();
+        await new ResolveResignationCommandHandler(
+                Repository, UnitOfWork, _audit.Object, new BusinessSettingsService(new SystemSettingRepository(_context)), notifier: notifier2.Object)
+            .Handle(new ResolveResignationCommand(secondLeaver.PlacementId, true, "Đã xác minh", _actor), default);
+
+        notifier2.Verify(n => n.NotifyUsersAsync(
+            It.Is<IEnumerable<Guid>>(ids => ids.Single() == affiliateUserId),
+            It.Is<AppNotice>(a => a.Title == "Hoa hồng đã bị hủy" && !a.Message.Contains("suất tuyển người thay thế")),
+            It.IsAny<CancellationToken>()), Times.Once);
+        notifier2.Verify(n => n.NotifyUsersAsync(
+            It.IsAny<IEnumerable<Guid>>(),
+            It.Is<AppNotice>(a => a.RelatedEntityType == "REPLACEMENT_SLOT"),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Paying_fee_and_extending_slot_notify_originating_affiliate_with_submit_route()
+    {
+        var (placement, fee) = await ResignationReportedAsync(feePaid: false);
+        var affiliateUserId = await SeedAffiliateUserForPlacementAsync();
+        await ConfirmResignationAsync(placement.PlacementId);
+
+        var settlementNotifier = new Mock<IAppNotifier>();
+        await new SettlementCommandHandlers(Repository, UnitOfWork, _audit.Object, notifier: settlementNotifier.Object)
+            .Handle(new RecordServiceFeePaymentCommand(fee.ServiceFeeId, DateTime.UtcNow, "VCB-REPL-AFF", _actor), default);
+
+        var slot = await _context.ReplacementSlots.SingleAsync();
+        settlementNotifier.Verify(n => n.NotifyUsersAsync(
+            It.Is<IEnumerable<Guid>>(ids => ids.Single() == affiliateUserId),
+            It.Is<AppNotice>(a =>
+                a.NotificationType == "WARRANTY" &&
+                a.RelatedEntityType == "REPLACEMENT_SLOT" &&
+                a.RouteHint == $"/affiliate/submit-candidate?job={slot.JobId}"),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        var workerNotifier = new Mock<IAppNotifier>();
+        var settings = new Mock<IAdminBusinessSettings>();
+        settings.Setup(s => s.GetIntAsync(BusinessSettingKeys.ReplacementExtensionDays, It.IsAny<CancellationToken>())).ReturnsAsync(15);
+        settings.Setup(s => s.GetDecimalAsync(BusinessSettingKeys.ReplacementRefundPercent, It.IsAny<CancellationToken>())).ReturnsAsync(30m);
+        settings.Setup(s => s.GetIntAsync(BusinessSettingKeys.HeadhuntPaymentDueDays, It.IsAny<CancellationToken>())).ReturnsAsync(20);
+        await new WarrantyProgressService(Repository, UnitOfWork, _audit.Object, settings: settings.Object, notifier: workerNotifier.Object)
+            .ExpireReplacementSlotAsync(slot.ReplacementSlotId, slot.ExpiresAt!.Value);
+
+        workerNotifier.Verify(n => n.NotifyUsersAsync(
+            It.Is<IEnumerable<Guid>>(ids => ids.Single() == affiliateUserId),
+            It.Is<AppNotice>(a =>
+                a.Title == "Suất tuyển người thay thế được gia hạn" &&
+                a.NotificationType == "WARRANTY" &&
+                a.RouteHint == $"/affiliate/submit-candidate?job={slot.JobId}"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
 }

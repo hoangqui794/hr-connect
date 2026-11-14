@@ -1,3 +1,4 @@
+using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Constants;
@@ -76,5 +77,40 @@ internal static class ReplacementSlotLifecycle
                 CreatedAt = now,
             }, cancellationToken);
         }
+    }
+
+    /// <summary>
+    /// Notifies originating Affiliates (credited on the resigned placement) when a replacement slot
+    /// is OPEN or extended, linking directly to the candidate submission page for the job.
+    /// </summary>
+    public static async Task NotifyAffiliateOpenAsync(
+        ReplacementSlot slot, Job? job, bool extended,
+        IFinanceRepository financeRepository, IAppNotifier? notifier, CancellationToken cancellationToken)
+    {
+        if (notifier == null)
+        {
+            return;
+        }
+
+        var userIds = await financeRepository.GetAffiliateUserIdsByPlacementAsync(slot.OriginalPlacementId, cancellationToken);
+        if (userIds.Count == 0)
+        {
+            return;
+        }
+
+        var jobTitle = job?.Title ?? "Vị trí tuyển dụng";
+        var title = extended
+            ? "Suất tuyển người thay thế được gia hạn"
+            : "Đã mở suất tuyển người thay thế";
+        var message = extended
+            ? $"Vị trí \"{jobTitle}\" được gia hạn suất tuyển người thay thế tới {slot.ExpiresAt:dd/MM/yyyy}. Hãy giới thiệu ứng viên thay thế kịp thời."
+            : $"Vị trí \"{jobTitle}\" đã mở lại suất tuyển người thay thế (hạn tới {slot.ExpiresAt:dd/MM/yyyy}). Bạn có thể giới thiệu ứng viên thay thế ngay.";
+        await notifier.NotifyUsersAsync(userIds, new AppNotice(
+            "WARRANTY",
+            title,
+            message,
+            "REPLACEMENT_SLOT",
+            slot.ReplacementSlotId,
+            $"/affiliate/submit-candidate?job={slot.JobId}"), cancellationToken);
     }
 }

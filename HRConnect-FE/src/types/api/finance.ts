@@ -104,6 +104,9 @@ export interface Commission {
   sourcingDeliveryId?: string | null;
   /** Job of the placement or delivery; used to refer a replacement after a voided warranty. */
   jobId?: string | null;
+  replacementSlotId?: string | null;
+  replacementSlotStatus?: 'WAITING_PAYMENT' | 'OPEN' | 'FILLED' | 'CANCELLED' | 'EXPIRED' | string | null;
+  replacementExpiresAt?: string | null;
   attributionId: string;
   affiliateId: string;
   affiliateName?: string | null;

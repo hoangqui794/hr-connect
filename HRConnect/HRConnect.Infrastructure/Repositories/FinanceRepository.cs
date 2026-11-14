@@ -237,6 +237,30 @@ public class FinanceRepository : IFinanceRepository
             .Select(a => (Guid?)a.Affiliate.UserId)
             .FirstOrDefaultAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<ReplacementSlot>> GetReplacementSlotsByOriginalPlacementIdsAsync(
+        IReadOnlyCollection<Guid> originalPlacementIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (originalPlacementIds.Count == 0)
+        {
+            return Array.Empty<ReplacementSlot>();
+        }
+
+        return await _context.ReplacementSlots.AsNoTracking()
+            .Where(slot => originalPlacementIds.Contains(slot.OriginalPlacementId))
+            .OrderByDescending(slot => slot.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetAffiliateUserIdsByPlacementAsync(
+        Guid placementId,
+        CancellationToken cancellationToken = default) =>
+        await _context.Commissions.AsNoTracking()
+            .Where(c => c.PlacementId == placementId)
+            .Select(c => c.Attribution.Affiliate.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
     public Task<ServiceFee?> GetServiceFeeForUpdateAsync(Guid serviceFeeId, CancellationToken cancellationToken = default) =>
         _context.ServiceFees
             .Include(fee => fee.Company)

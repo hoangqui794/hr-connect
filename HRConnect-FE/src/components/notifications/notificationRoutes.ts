@@ -324,6 +324,26 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
     }
   }
 
+  // Affiliate: keep inside Affiliate portal and never route to /hr or /admin fallback hints.
+  if (normRole === 'AFFILIATE') {
+    if (route && (route.startsWith('/affiliate') || PUBLIC_JOB_ROUTE.test(route))) {
+      return portalRoute(route, role as UserRole);
+    }
+    if (
+      entityType === 'REPLACEMENT_SLOT' ||
+      titleLower.includes('suất tuyển người thay thế') ||
+      titleLower.includes('suất thay thế')
+    ) {
+      if (meta?.jobId && typeof meta.jobId === 'string') {
+        return `/affiliate/submit-candidate?job=${encodeURIComponent(meta.jobId)}`;
+      }
+      return '/affiliate/commissions';
+    }
+    if (entityType === 'COMMISSION' || entityType === 'WARRANTY' || entityType === 'PAYOUT') {
+      return '/affiliate/commissions';
+    }
+  }
+
   // If explicit route was resolved
   if (route) {
     return portalRoute(route, role as UserRole);

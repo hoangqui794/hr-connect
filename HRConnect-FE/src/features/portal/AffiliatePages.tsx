@@ -50,7 +50,7 @@ import {
   SafetyCertificateOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { UploadCloud, Building2, MapPin, DollarSign, ExternalLink, Briefcase } from 'lucide-react';
+import { UploadCloud, Building2, MapPin, DollarSign, ExternalLink, Briefcase, AlertTriangle } from 'lucide-react';
 import dayjs from 'dayjs';
 import relativeTimePlugin from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
@@ -65,12 +65,8 @@ import { Initials, StatusDot, Surface } from '@/features/admin-console/ui';
 import { ATTRIBUTION_STATUS, MAX_CV_MB, cvFileError, fileSize, submissionStatus } from './mf02Labels';
 import { useOpenSignedUrl } from './CandidatePages';
 import { salaryText, jobHref } from '@/features/landing/components/SiteParts';
-import {
-  AffiliatePageHeader,
-  AffiliateSectionHeading,
-  StatusChip,
-  AffiliateStatCard,
-} from './affiliate/AffiliateUi';
+import { AffiliatePageHeader, AffiliateSectionHeading, StatusChip, AffiliateStatCard } from './affiliate/AffiliateUi';
+import { replacementCountdownText } from '@/features/finance-mf05/financeLabels';
 import { isValidVietnamPhoneNumber, VIETNAM_PHONE_VALIDATION_MESSAGE } from '@/constants/phoneValidation';
 
 dayjs.extend(relativeTimePlugin);
@@ -158,7 +154,24 @@ export const AffiliateHomePage: React.FC = () => {
   const verified = profile.data?.status === 'ACTIVE' || Boolean(profile.data?.verifiedAt);
   const p = perf.data;
   const accountState = profile.data ? ACCOUNT_STATES[profile.data.status] : undefined;
-  const items = commissions.data?.items ?? [];
+  const items = useMemo(() => commissions.data?.items ?? [], [commissions.data?.items]);
+  const openReplacements = useMemo(() => {
+    const seen = new Set<string>();
+    return items.filter((c) => {
+      if (
+        c.status !== 'CANCELLED' ||
+        c.warrantyStatus !== 'VOIDED' ||
+        c.replacementSlotStatus !== 'OPEN' ||
+        !c.jobId
+      ) {
+        return false;
+      }
+      const key = c.replacementSlotId ?? c.jobId;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [items]);
   const sum = (statuses: string[]) => items.filter((c) => statuses.includes(c.status)).reduce((t, c) => t + c.amount, 0);
   const loading = (q: { isLoading: boolean }, v: React.ReactNode) => (q.isLoading ? <Skeleton.Input active size="small" /> : v);
 
@@ -214,6 +227,68 @@ export const AffiliateHomePage: React.FC = () => {
           </section>
         ))}
       </div>
+
+      {openReplacements.length > 0 && (
+        <section
+          aria-labelledby="aff-replacements"
+          className="rounded-xl border border-solid border-amber-300 bg-amber-50/90 p-4 shadow-sm"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="flex items-start gap-2.5">
+              <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-800">
+                <AlertTriangle className="h-4 w-4" aria-hidden />
+              </span>
+              <div>
+                <h2 id="aff-replacements" className="m-0 text-[15px] font-bold text-amber-950">
+                  Cần giới thiệu ứng viên thay thế ({openReplacements.length} vị trí)
+                </h2>
+                <p className="m-0 mt-0.5 text-xs text-amber-900/90">
+                  Ứng viên trước đó đã nghỉ trong thời gian bảo hành và suất thay thế đang mở. Hãy giới thiệu ứng viên mới trước hạn nhé.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="link"
+              className="!h-auto !px-0 !text-xs !font-semibold !text-[#C2410C]"
+              onClick={() => navigate('/affiliate/commissions?tab=cancelled')}
+            >
+              Xem tại Hoa hồng
+            </Button>
+          </div>
+
+          <ul className="m-0 mt-3 list-none space-y-2 p-0">
+            {openReplacements.map((c) => {
+              const countdown = replacementCountdownText(c.replacementExpiresAt);
+              const expiryLabel =
+                c.replacementExpiresAt && countdown
+                  ? `${countdown} · hạn ${dayjs(c.replacementExpiresAt).format('DD/MM/YYYY')}`
+                  : 'Suất thay thế đang mở';
+              return (
+                <li
+                  key={c.replacementSlotId ?? c.commissionId}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-solid border-amber-200/90 bg-white px-3.5 py-2.5"
+                >
+                  <div className="min-w-0">
+                    <div className="font-semibold text-slate-900">{c.jobTitle ?? 'Vị trí cần tuyển thay thế'}</div>
+                    <div className="mt-0.5 text-xs text-slate-600">
+                      Ứng viên nghỉ bảo hành: <strong className="font-medium text-slate-800">{c.candidateName ?? '—'}</strong> ·{' '}
+                      <span className="font-medium text-amber-800">{expiryLabel}</span>
+                    </div>
+                  </div>
+                  <Button
+                    type="primary"
+                    disabled={!verified}
+                    className="!min-h-[36px] !rounded-lg !border-0 !bg-[#C2410C] !px-3.5 !text-xs !font-semibold !text-white hover:!bg-[#9A3412] disabled:!opacity-50"
+                    onClick={() => navigate(`/affiliate/submit-candidate?job=${c.jobId}`)}
+                  >
+                    Giới thiệu thay thế
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
         <section aria-labelledby="aff-todo" className="rounded-lg border border-solid border-gray-200 bg-white">

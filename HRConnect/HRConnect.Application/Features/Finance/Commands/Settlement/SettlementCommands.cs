@@ -127,6 +127,8 @@ public sealed class SettlementCommandHandlers :
         {
             await ReplacementSlotLifecycle.OpenAsync(
                 slot, slot.Job, fee.UpdatedAt, request.CurrentUserId, _financeRepository, _notificationRepository, cancellationToken);
+            await ReplacementSlotLifecycle.NotifyAffiliateOpenAsync(
+                slot, slot.Job, extended: false, _financeRepository, _notifier, cancellationToken);
             await AuditAsync(AuditActions.ReplacementSlotOpened, "REPLACEMENT_SLOT", slot.ReplacementSlotId, request.CurrentUserId,
                 new { status = ReplacementSlotStates.WaitingPayment }, new { slot.Status, slot.OpenedAt, slot.ExpiresAt }, cancellationToken);
         }
