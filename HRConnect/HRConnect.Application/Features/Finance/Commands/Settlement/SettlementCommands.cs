@@ -4,6 +4,7 @@ using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Finance.Common;
 using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Application.Features.Recruitment.Sourcing;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using MediatR;
@@ -424,11 +425,67 @@ public sealed class SettlementCommandHandlers :
             throw new InvalidOperationException("ISourcingFinanceService is not registered.");
         }
 
+        if (_deliveries == null)
+        {
+            throw new InvalidOperationException("ISourcingDeliveryRepository is not registered.");
+        }
+
         var job = await _financeRepository.GetJobForFinanceAsync(request.JobId, cancellationToken)
             ?? throw new NotFoundException("Không tìm thấy công việc.");
+        await EnsureCanManuallySettleSourcingJobAsync(job, cancellationToken);
+
         var fee = await _sourcingFinance.SettleAsync(job, request.CurrentUserId, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return new SourcingSettlementResponse(fee.ServiceFeeId, job.JobId, fee.Kind, fee.Amount, fee.Status, fee.DueDate);
+    }
+
+    private async Task EnsureCanManuallySettleSourcingJobAsync(Job job, CancellationToken cancellationToken)
+    {
+        if (!string.Equals(job.ServiceType?.Code, ServiceTypeCodes.CvSourcing, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictException("Chỉ job CV_SOURCING mới quyết toán theo số CV.", "JOB_NOT_SOURCING");
+        }
+
+        if (job.SourcingPricePerCv is not > 0m)
+        {
+            throw new ConflictException("Job chưa có giá mỗi CV đã chốt nên chưa quyết toán được.", "SOURCING_TERMS_MISSING");
+        }
+
+        var deliveries = await _deliveries!.GetByJobAsync(job.JobId, cancellationToken);
+        var counted = deliveries.Count(d => SourcingDeliveryStates.Counted.Contains(d.Status));
+        var isClosed = string.Equals(job.Status, JobStatuses.Closed, StringComparison.OrdinalIgnoreCase);
+        var targetReached = job.SourcingTarget is > 0 && counted >= job.SourcingTarget.Value;
+
+        if (!isClosed && !targetReached)
+        {
+            var targetHint = job.SourcingTarget is > 0
+                ? $"hoặc đã đủ {job.SourcingTarget.Value} CV được chấp nhận (hiện {counted}/{job.SourcingTarget.Value})"
+                : $"(hiện có {counted} CV được chấp nhận)";
+            throw new ConflictException(
+                $"Chỉ quyết toán job CV Sourcing khi job đã CLOSED {targetHint}. Trạng thái hiện tại: {job.Status}.",
+                "SOURCING_NOT_CLOSED_OR_TARGET_NOT_REACHED");
+        }
+
+        var pendingClientCount = deliveries.Count(d => d.Status == SourcingDeliveryStates.Delivered);
+        if (pendingClientCount > 0)
+        {
+            throw new ConflictException(
+                $"Không thể quyết toán vì còn {pendingClientCount} CV đang chờ Client phản hồi (DELIVERED).",
+                "SOURCING_DELIVERIES_PENDING_CLIENT_REVIEW");
+        }
+
+        var rejectedOther = deliveries.Where(SourcingDeliveryRules.RequiresHrRejectionReview).ToList();
+        if (rejectedOther.Count > 0)
+        {
+            var reviews = await SourcingDeliveryRules.LoadRejectionReviewsAsync(_deliveries, rejectedOther, cancellationToken);
+            var pendingHrCount = rejectedOther.Count(d => SourcingDeliveryRules.IsPendingHrRejectionReview(d, reviews));
+            if (pendingHrCount > 0)
+            {
+                throw new ConflictException(
+                    $"Không thể quyết toán vì còn {pendingHrCount} CV bị từ chối với lý do OTHER đang chờ Internal HR xác minh.",
+                    "SOURCING_REJECTIONS_PENDING_HR_REVIEW");
+            }
+        }
     }
 
     /// <summary>

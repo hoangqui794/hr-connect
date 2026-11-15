@@ -97,6 +97,97 @@ internal static class SourcingDeliveryRules
 {
     public const string ConsentConfirmed = "CONFIRMED";
 
+    public static bool RequiresHrRejectionReview(SourcingDelivery delivery) =>
+        delivery.Status == SourcingDeliveryStates.Rejected
+        && string.Equals(delivery.RejectReasonCode, SourcingRejectReasons.Other, StringComparison.OrdinalIgnoreCase);
+
+    public static bool IsPendingHrRejectionReview(
+        SourcingDelivery delivery,
+        IReadOnlyDictionary<Guid, RejectionReviewInfo> reviewsByDeliveryId) =>
+        RequiresHrRejectionReview(delivery) && !reviewsByDeliveryId.ContainsKey(delivery.DeliveryId);
+
+    public static async Task<Dictionary<Guid, RejectionReviewInfo>> LoadRejectionReviewsAsync(
+        ISourcingDeliveryRepository deliveries,
+        IReadOnlyList<SourcingDelivery> items,
+        CancellationToken cancellationToken)
+    {
+        var deliveryIds = items.Select(d => d.DeliveryId).Distinct().ToList();
+        var result = new Dictionary<Guid, RejectionReviewInfo>();
+        if (deliveryIds.Count == 0)
+        {
+            return result;
+        }
+
+        var logs = await deliveries.GetRejectionReviewAuditLogsAsync(deliveryIds, cancellationToken);
+        foreach (var log in logs
+            .Where(l => l.EntityId.HasValue)
+            .OrderByDescending(l => l.CreatedAt)
+            .ThenByDescending(l => l.AuditLogId))
+        {
+            var deliveryId = log.EntityId!.Value;
+            if (result.ContainsKey(deliveryId))
+            {
+                continue;
+            }
+
+            var parsed = ParseRejectionReview(log);
+            if (parsed != null)
+            {
+                result[deliveryId] = parsed;
+            }
+        }
+
+        return result;
+    }
+
+    private static RejectionReviewInfo? ParseRejectionReview(AuditLog log)
+    {
+        if (string.IsNullOrWhiteSpace(log.NewValues))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(log.NewValues);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            bool? upheld = null;
+            string? note = null;
+            foreach (var prop in doc.RootElement.EnumerateObject())
+            {
+                if (string.Equals(prop.Name, "upheld", StringComparison.OrdinalIgnoreCase)
+                    && prop.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                {
+                    upheld = prop.Value.GetBoolean();
+                }
+                else if (string.Equals(prop.Name, "note", StringComparison.OrdinalIgnoreCase)
+                         && prop.Value.ValueKind == JsonValueKind.String)
+                {
+                    var text = prop.Value.GetString()?.Trim();
+                    note = string.IsNullOrWhiteSpace(text) ? null : text;
+                }
+            }
+
+            if (!upheld.HasValue)
+            {
+                return null;
+            }
+
+            var status = upheld.Value
+                ? SourcingRejectionReviewStates.Upheld
+                : SourcingRejectionReviewStates.Overturned;
+            return new RejectionReviewInfo(status, note, log.CreatedAt);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     public static SourcingDeliveryDto ToDto(
         SourcingDelivery d,
         DateTime now,
@@ -104,10 +195,9 @@ internal static class SourcingDeliveryRules
         string? replacementCandidateName = null)
     {
         var reviewStatus = review?.Status
-            ?? (d.Status == SourcingDeliveryStates.Rejected
-                && string.Equals(d.RejectReasonCode, SourcingRejectReasons.Other, StringComparison.OrdinalIgnoreCase)
-                    ? SourcingRejectionReviewStates.PendingHrReview
-                    : null);
+            ?? (RequiresHrRejectionReview(d)
+                ? SourcingRejectionReviewStates.PendingHrReview
+                : null);
         var aiMatchScore = d.Application?.AiMatchResults?
             .OrderByDescending(r => r.AttemptNo)
             .FirstOrDefault()?.MatchScore;
@@ -639,7 +729,7 @@ public sealed class GetSourcingDeliveriesQueryHandler : IRequestHandler<GetSourc
             d => d.DeliveryId,
             d => d.Application?.Candidate?.FullName);
 
-        var reviewsByDeliveryId = await LoadRejectionReviewsAsync(all, cancellationToken);
+        var reviewsByDeliveryId = await SourcingDeliveryRules.LoadRejectionReviewsAsync(_deliveries, all, cancellationToken);
 
         var status = request.Status?.Trim().ToUpperInvariant();
         var now = DateTime.UtcNow;
@@ -662,87 +752,6 @@ public sealed class GetSourcingDeliveriesQueryHandler : IRequestHandler<GetSourc
         return new SourcingDeliveriesResponse(
             SourcingDeliveryRules.Summarize(job, all, reviewDays, depositPaidAmount),
             items);
-    }
-
-    private async Task<Dictionary<Guid, RejectionReviewInfo>> LoadRejectionReviewsAsync(
-        IReadOnlyList<SourcingDelivery> all,
-        CancellationToken cancellationToken)
-    {
-        var deliveryIds = all.Select(d => d.DeliveryId).Distinct().ToList();
-        var result = new Dictionary<Guid, RejectionReviewInfo>();
-        if (deliveryIds.Count == 0)
-        {
-            return result;
-        }
-
-        var logs = await _deliveries.GetRejectionReviewAuditLogsAsync(deliveryIds, cancellationToken);
-        foreach (var log in logs
-            .Where(l => l.EntityId.HasValue)
-            .OrderByDescending(l => l.CreatedAt)
-            .ThenByDescending(l => l.AuditLogId))
-        {
-            var deliveryId = log.EntityId!.Value;
-            if (result.ContainsKey(deliveryId))
-            {
-                continue;
-            }
-
-            var parsed = ParseRejectionReview(log);
-            if (parsed != null)
-            {
-                result[deliveryId] = parsed;
-            }
-        }
-
-        return result;
-    }
-
-    private static RejectionReviewInfo? ParseRejectionReview(AuditLog log)
-    {
-        if (string.IsNullOrWhiteSpace(log.NewValues))
-        {
-            return null;
-        }
-
-        try
-        {
-            using var doc = JsonDocument.Parse(log.NewValues);
-            if (doc.RootElement.ValueKind != JsonValueKind.Object)
-            {
-                return null;
-            }
-
-            bool? upheld = null;
-            string? note = null;
-            foreach (var prop in doc.RootElement.EnumerateObject())
-            {
-                if (string.Equals(prop.Name, "upheld", StringComparison.OrdinalIgnoreCase)
-                    && prop.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)
-                {
-                    upheld = prop.Value.GetBoolean();
-                }
-                else if (string.Equals(prop.Name, "note", StringComparison.OrdinalIgnoreCase)
-                         && prop.Value.ValueKind == JsonValueKind.String)
-                {
-                    var text = prop.Value.GetString()?.Trim();
-                    note = string.IsNullOrWhiteSpace(text) ? null : text;
-                }
-            }
-
-            if (!upheld.HasValue)
-            {
-                return null;
-            }
-
-            var status = upheld.Value
-                ? SourcingRejectionReviewStates.Upheld
-                : SourcingRejectionReviewStates.Overturned;
-            return new RejectionReviewInfo(status, note, log.CreatedAt);
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
     }
 }
 

@@ -2,11 +2,13 @@ using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Finance.Commands.Settlement;
 using HRConnect.Application.Features.Finance.Common;
 using HRConnect.Application.Features.Finance.Queries;
 using HRConnect.Application.Features.Jobs.Commands.ApproveJob;
 using HRConnect.Application.Features.Jobs.Commands.RecordJobPostingFeePayment;
+using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Application.Features.Recruitment.Sourcing;
 using HRConnect.Application.Features.Settings;
 using HRConnect.Domain.Constants;
@@ -264,7 +266,7 @@ public class SourcingFinanceTests
     [Fact]
     public async Task Settle_SevenCountedOfTen_ShouldBillBalanceAfterDeposit()
     {
-        var job = SeedJob(target: 10);
+        var job = SeedJob(target: 10, status: JobStatuses.Closed);
         await CreateDepositAsync(job, paid: true);
         MarkCounted(Enumerable.Range(0, 7).Select(_ => SeedDelivery(job)).ToList());
 
@@ -279,7 +281,7 @@ public class SourcingFinanceTests
     [Fact]
     public async Task Settle_UnderDelivered_ShouldCreditTheUnusedDeposit()
     {
-        var job = SeedJob(target: 10);
+        var job = SeedJob(target: 10, status: JobStatuses.Closed);
         await CreateDepositAsync(job, paid: true);
         MarkCounted(Enumerable.Range(0, 4).Select(_ => SeedDelivery(job)).ToList());
 
@@ -293,7 +295,7 @@ public class SourcingFinanceTests
     [Fact]
     public async Task Settle_DepositCoversExactly_ShouldRecordPaidZeroSettlement()
     {
-        var job = SeedJob(target: 10);
+        var job = SeedJob(target: 10, status: JobStatuses.Closed);
         await CreateDepositAsync(job, paid: true);
         MarkCounted(Enumerable.Range(0, 5).Select(_ => SeedDelivery(job)).ToList());
 
@@ -307,7 +309,7 @@ public class SourcingFinanceTests
     [Fact]
     public async Task Settle_CalledTwice_ShouldReturnTheSameFee()
     {
-        var job = SeedJob(target: 10);
+        var job = SeedJob(target: 10, status: JobStatuses.Closed);
         await CreateDepositAsync(job, paid: true);
         MarkCounted([SeedDelivery(job)]);
 
@@ -415,6 +417,133 @@ public class SourcingFinanceTests
         (await act.Should().ThrowAsync<ConflictException>()).Which.ErrorCode.Should().Be("JOB_NOT_SOURCING");
     }
 
+    [Theory]
+    [InlineData(JobStatuses.Active)]
+    [InlineData(JobStatuses.Paused)]
+    public async Task Settle_NonClosedJobBelowTarget_ShouldBeRejectedWith409(string status)
+    {
+        var job = SeedJob(target: 10, status: status);
+        await CreateDepositAsync(job, paid: true);
+        MarkCounted(Enumerable.Range(0, 4).Select(_ => SeedDelivery(job)).ToList());
+
+        var act = () => Settlement().Handle(new SettleSourcingJobCommand(job.JobId, _actor), default);
+
+        (await act.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be("SOURCING_NOT_CLOSED_OR_TARGET_NOT_REACHED");
+        _context.ServiceFees.Any(f => f.JobId == job.JobId && ServiceFeeKinds.Closing.Contains(f.Kind)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Settle_ActiveJobAtTargetWithoutPendingDeliveries_ShouldSucceed()
+    {
+        var job = SeedJob(target: 2, status: JobStatuses.Active);
+        await CreateDepositAsync(job, paid: true);
+        var d1 = SeedDelivery(job);
+        var d2 = SeedDelivery(job);
+        d1.Status = SourcingDeliveryStates.Accepted;
+        d2.Status = SourcingDeliveryStates.AutoAccepted;
+        await _context.SaveChangesAsync();
+
+        var result = await Settlement().Handle(new SettleSourcingJobCommand(job.JobId, _actor), default);
+
+        // 2 × 600,000 = 1,200,000 − deposit 600,000.
+        result.Kind.Should().Be(ServiceFeeKinds.Settlement);
+        result.Amount.Should().Be(600_000m);
+        result.Status.Should().Be(ServiceFeeStates.Pending);
+    }
+
+    [Fact]
+    public async Task Settle_ClosedJobWithDeliveredCvPendingClient_ShouldBeRejectedWith409()
+    {
+        var job = SeedJob(target: 10, status: JobStatuses.Closed);
+        await CreateDepositAsync(job, paid: true);
+        MarkCounted([SeedDelivery(job)]);
+        SeedDelivery(job); // still DELIVERED
+
+        var act = () => Settlement().Handle(new SettleSourcingJobCommand(job.JobId, _actor), default);
+
+        (await act.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be("SOURCING_DELIVERIES_PENDING_CLIENT_REVIEW");
+        _context.ServiceFees.Any(f => f.JobId == job.JobId && ServiceFeeKinds.Closing.Contains(f.Kind)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Settle_ClosedJobWithOtherRejectionPendingHrReview_ShouldBeRejectedWith409()
+    {
+        var job = SeedJob(target: 10, status: JobStatuses.Closed);
+        await CreateDepositAsync(job, paid: true);
+        MarkCounted([SeedDelivery(job)]);
+        var rejectedOther = SeedDelivery(job);
+        rejectedOther.Status = SourcingDeliveryStates.Rejected;
+        rejectedOther.RejectReasonCode = SourcingRejectReasons.Other;
+        rejectedOther.RejectNote = "Cần HR kiểm tra thêm";
+        await _context.SaveChangesAsync();
+
+        var act = () => Settlement().Handle(new SettleSourcingJobCommand(job.JobId, _actor), default);
+
+        (await act.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be("SOURCING_REJECTIONS_PENDING_HR_REVIEW");
+        _context.ServiceFees.Any(f => f.JobId == job.JobId && ServiceFeeKinds.Closing.Contains(f.Kind)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Settle_ClosedJobAfterHrUpheldOtherAndStandardRejections_ShouldSucceed()
+    {
+        var job = SeedJob(target: 10, status: JobStatuses.Closed);
+        await CreateDepositAsync(job, paid: true);
+        MarkCounted([SeedDelivery(job)]);
+
+        var wrongJobRejected = SeedDelivery(job);
+        wrongJobRejected.Status = SourcingDeliveryStates.Rejected;
+        wrongJobRejected.RejectReasonCode = SourcingRejectReasons.WrongJob;
+
+        var upheldOther = SeedDelivery(job);
+        upheldOther.Status = SourcingDeliveryStates.Rejected;
+        upheldOther.RejectReasonCode = SourcingRejectReasons.Other;
+        upheldOther.RejectNote = "Không đạt tiêu chí chuyên môn";
+
+        var replaced = SeedDelivery(job);
+        replaced.Status = SourcingDeliveryStates.Replaced;
+
+        _context.AuditLogs.Add(new AuditLog
+        {
+            Action = SourcingDeliveryAudit.RejectionReviewed,
+            EntityType = SourcingDeliveryAudit.EntityType,
+            EntityId = upheldOther.DeliveryId,
+            ActorType = AuditActorTypes.User,
+            ActorUserId = _actor,
+            Source = AuditSources.Application,
+            NewValues = "{\"status\":\"REJECTED\",\"upheld\":true,\"note\":\"Đã xác minh\"}",
+            CreatedAt = DateTime.UtcNow,
+        });
+        await _context.SaveChangesAsync();
+
+        var result = await Settlement().Handle(new SettleSourcingJobCommand(job.JobId, _actor), default);
+
+        // 1 × 600,000 = 600,000 < deposit 3,000,000 => CREDIT 2,400,000.
+        result.Kind.Should().Be(ServiceFeeKinds.Credit);
+        result.Amount.Should().Be(2_400_000m);
+    }
+
+    [Fact]
+    public async Task Settle_ManualGateDoesNotAffectWorkerSettleAsyncOrTargetAutoSettle()
+    {
+        var job = SeedJob(target: 2, status: JobStatuses.Closed);
+        await CreateDepositAsync(job, paid: true);
+        MarkCounted([SeedDelivery(job)]);
+        SeedDelivery(job); // still DELIVERED
+
+        var manualAct = () => Settlement().Handle(new SettleSourcingJobCommand(job.JobId, _actor), default);
+        (await manualAct.Should().ThrowAsync<ConflictException>()).Which.ErrorCode
+            .Should().Be("SOURCING_DELIVERIES_PENDING_CLIENT_REVIEW");
+
+        var workerFee = await Finance().SettleAsync(job, null);
+        await UnitOfWork.SaveChangesAsync();
+        workerFee.Kind.Should().Be(ServiceFeeKinds.Settlement);
+        workerFee.Amount.Should().Be(0m);
+        workerFee.Status.Should().Be(ServiceFeeStates.Paid);
+    }
+
     // ---- payout gate ---------------------------------------------------------------------
 
     [Fact]
@@ -453,7 +582,9 @@ public class SourcingFinanceTests
         var accepted = SeedDelivery(job, reviewDueAt: DateTime.UtcNow.AddDays(3));
         await AcceptAsync(job, accepted);
         SeedDelivery(job, reviewDueAt: DateTime.UtcNow.AddDays(3)); // still DELIVERED
-        await Settlement().Handle(new SettleSourcingJobCommand(job.JobId, _actor), default);
+        job.Status = JobStatuses.Closed;
+        await Finance().SettleAsync(job, _actor);
+        await UnitOfWork.SaveChangesAsync();
         PayAll();
 
         var act = () => Settlement().Handle(new ApproveCommissionCommand(_context.Commissions.Single().CommissionId, _actor), default);
