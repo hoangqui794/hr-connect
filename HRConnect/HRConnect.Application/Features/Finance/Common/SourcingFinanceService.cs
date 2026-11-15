@@ -62,6 +62,8 @@ public static class FinanceCurrency
 
 public sealed class SourcingFinanceService : ISourcingFinanceService
 {
+    public const string SourcingDepositCancelledAction = "SOURCING_DEPOSIT_CANCELLED";
+
     private const string DefaultCurrency = "VND";
     private static readonly JsonSerializerOptions SnapshotJson = new(JsonSerializerDefaults.Web);
 
@@ -197,11 +199,37 @@ public sealed class SourcingFinanceService : ISourcingFinanceService
         var deliveries = await _deliveries.GetByJobAsync(job.JobId, cancellationToken);
         var counted = deliveries.Count(d => SourcingDeliveryStates.Counted.Contains(d.Status));
         var total = counted * job.SourcingPricePerCv.Value;
-        var deposit = fees.Where(fee => fee.Kind == ServiceFeeKinds.Deposit && fee.Status != ServiceFeeStates.Cancelled)
+
+        var now = DateTime.UtcNow;
+        foreach (var unpaidDeposit in fees.Where(fee =>
+                     fee.Kind == ServiceFeeKinds.Deposit
+                     && fee.Status != ServiceFeeStates.Paid
+                     && fee.Status != ServiceFeeStates.Cancelled))
+        {
+            var oldStatus = unpaidDeposit.Status;
+            unpaidDeposit.Status = ServiceFeeStates.Cancelled;
+            unpaidDeposit.UpdatedAt = now;
+
+            await _auditLogService.AddAsync(new AuditEntry
+            {
+                Action = SourcingDepositCancelledAction,
+                EntityType = "SERVICE_FEE",
+                EntityId = unpaidDeposit.ServiceFeeId,
+                ActorUserId = actorUserId,
+                OldValues = new { status = oldStatus },
+                NewValues = new
+                {
+                    status = unpaidDeposit.Status,
+                    jobId = job.JobId,
+                    reason = "UNPAID_AT_SETTLEMENT"
+                }
+            }, cancellationToken);
+        }
+
+        var deposit = fees.Where(fee => fee.Kind == ServiceFeeKinds.Deposit && fee.Status == ServiceFeeStates.Paid)
             .Sum(fee => fee.Amount);
         var balance = Round(total - deposit);
 
-        var now = DateTime.UtcNow;
         var fee = new ServiceFee
         {
             ServiceFeeId = Guid.NewGuid(),

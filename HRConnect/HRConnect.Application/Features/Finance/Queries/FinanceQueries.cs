@@ -344,7 +344,7 @@ public sealed class FinanceQueryHandlers :
 
         var hasClosing = list.Any(f => ServiceFeeKinds.Closing.Contains(f.Kind));
         var allCollectiblesPaid = list
-            .Where(f => f.Kind is ServiceFeeKinds.Deposit or ServiceFeeKinds.Settlement)
+            .Where(f => f.Kind is ServiceFeeKinds.Deposit or ServiceFeeKinds.Settlement && f.Status != ServiceFeeStates.Cancelled)
             .All(f => f.Status == ServiceFeeStates.Paid);
         return hasClosing && allCollectiblesPaid ? ServiceFeeStates.Paid : ServiceFeeStates.Pending;
     }

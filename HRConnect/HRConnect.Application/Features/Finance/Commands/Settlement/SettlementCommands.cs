@@ -448,7 +448,10 @@ public sealed class SettlementCommandHandlers :
                 "SOURCING_NOT_SETTLED");
         }
 
-        if (fees.Any(fee => fee.Kind is ServiceFeeKinds.Deposit or ServiceFeeKinds.Settlement && fee.Status != ServiceFeeStates.Paid))
+        if (fees.Any(fee =>
+                fee.Kind is ServiceFeeKinds.Deposit or ServiceFeeKinds.Settlement
+                && fee.Status != ServiceFeeStates.Cancelled
+                && fee.Status != ServiceFeeStates.Paid))
         {
             throw new ConflictException(
                 "Client chưa thanh toán đủ cọc và phần quyết toán của job này; hoa hồng chỉ được duyệt sau khi đã thu phí.",

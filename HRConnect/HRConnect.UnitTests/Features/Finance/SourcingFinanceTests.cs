@@ -129,16 +129,21 @@ public class SourcingFinanceTests
         Decide().Handle(new DecideSourcingDeliveryCommand(
             job.JobId, delivery.DeliveryId, DecideSourcingDeliveryCommandHandler.DecisionAccepted, null, null, _clientUserId), default);
 
-    private async Task<ServiceFee> CreateDepositAsync(Job job)
+    private async Task<ServiceFee> CreateDepositAsync(Job job, bool paid = false)
     {
         var deposit = await Finance().EnsureDepositAsync(job, _actor);
+        if (paid && deposit != null)
+        {
+            deposit.Status = ServiceFeeStates.Paid;
+            deposit.PaidAt = DateTime.UtcNow;
+        }
         await UnitOfWork.SaveChangesAsync();
         return deposit!;
     }
 
     private void PayAll()
     {
-        foreach (var fee in _context.ServiceFees.Where(f => f.Status != ServiceFeeStates.Paid))
+        foreach (var fee in _context.ServiceFees.Where(f => f.Status != ServiceFeeStates.Paid && f.Status != ServiceFeeStates.Cancelled))
         {
             fee.Status = ServiceFeeStates.Paid;
             fee.PaidAt = DateTime.UtcNow;
@@ -260,7 +265,7 @@ public class SourcingFinanceTests
     public async Task Settle_SevenCountedOfTen_ShouldBillBalanceAfterDeposit()
     {
         var job = SeedJob(target: 10);
-        await CreateDepositAsync(job);
+        await CreateDepositAsync(job, paid: true);
         MarkCounted(Enumerable.Range(0, 7).Select(_ => SeedDelivery(job)).ToList());
 
         var result = await Settlement().Handle(new SettleSourcingJobCommand(job.JobId, _actor), default);
@@ -275,7 +280,7 @@ public class SourcingFinanceTests
     public async Task Settle_UnderDelivered_ShouldCreditTheUnusedDeposit()
     {
         var job = SeedJob(target: 10);
-        await CreateDepositAsync(job);
+        await CreateDepositAsync(job, paid: true);
         MarkCounted(Enumerable.Range(0, 4).Select(_ => SeedDelivery(job)).ToList());
 
         var result = await Settlement().Handle(new SettleSourcingJobCommand(job.JobId, _actor), default);
@@ -289,7 +294,7 @@ public class SourcingFinanceTests
     public async Task Settle_DepositCoversExactly_ShouldRecordPaidZeroSettlement()
     {
         var job = SeedJob(target: 10);
-        await CreateDepositAsync(job);
+        await CreateDepositAsync(job, paid: true);
         MarkCounted(Enumerable.Range(0, 5).Select(_ => SeedDelivery(job)).ToList());
 
         var result = await Settlement().Handle(new SettleSourcingJobCommand(job.JobId, _actor), default);
@@ -303,7 +308,7 @@ public class SourcingFinanceTests
     public async Task Settle_CalledTwice_ShouldReturnTheSameFee()
     {
         var job = SeedJob(target: 10);
-        await CreateDepositAsync(job);
+        await CreateDepositAsync(job, paid: true);
         MarkCounted([SeedDelivery(job)]);
 
         var first = await Settlement().Handle(new SettleSourcingJobCommand(job.JobId, _actor), default);
@@ -317,7 +322,7 @@ public class SourcingFinanceTests
     public async Task ReachingTarget_ShouldSettleAutomatically()
     {
         var job = SeedJob(target: 2);
-        await CreateDepositAsync(job);
+        await CreateDepositAsync(job, paid: true);
         var first = SeedDelivery(job);
         var second = SeedDelivery(job);
 
@@ -330,6 +335,72 @@ public class SourcingFinanceTests
         var settlement = _context.ServiceFees.Single(f => f.JobId == job.JobId && f.Kind == ServiceFeeKinds.Settlement);
         settlement.Amount.Should().Be(600_000m);
         _context.Commissions.Count().Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Settle_UnpaidDepositWithZeroCountedCvs_ShouldCancelDepositAndNotCreateCredit()
+    {
+        var job = SeedJob(target: 10, status: "CLOSED");
+        var deposit = await CreateDepositAsync(job, paid: false);
+
+        var result = await Settlement().Handle(new SettleSourcingJobCommand(job.JobId, _actor), default);
+
+        result.Kind.Should().Be(ServiceFeeKinds.Settlement);
+        result.Amount.Should().Be(0m);
+        result.Status.Should().Be(ServiceFeeStates.Paid);
+
+        _context.ServiceFees.Any(f => f.JobId == job.JobId && f.Kind == ServiceFeeKinds.Credit).Should().BeFalse();
+        var updatedDeposit = _context.ServiceFees.Single(f => f.ServiceFeeId == deposit.ServiceFeeId);
+        updatedDeposit.Status.Should().Be(ServiceFeeStates.Cancelled);
+
+        _audit.Verify(a => a.AddAsync(
+            It.Is<HRConnect.Application.Common.Models.AuditEntry>(e =>
+                e.Action == SourcingFinanceService.SourcingDepositCancelledAction
+                && e.EntityType == "SERVICE_FEE"
+                && e.EntityId == deposit.ServiceFeeId),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        // Once settled, the background worker will no longer pick this closed job up again.
+        var awaiting = await Repository.GetClosedSourcingJobIdsAwaitingSettlementAsync(100);
+        awaiting.Should().NotContain(job.JobId);
+    }
+
+    [Fact]
+    public async Task Settle_UnpaidDepositWithCountedCvs_ShouldCancelDepositAndBillFullCountedTotalWithoutDeductingDeposit()
+    {
+        var job = SeedJob(target: 10, status: "CLOSED");
+        var deposit = await CreateDepositAsync(job, paid: false);
+        deposit.Status = ServiceFeeStates.Overdue;
+        var delivery1 = SeedDelivery(job);
+        var delivery2 = SeedDelivery(job);
+        var delivery3 = SeedDelivery(job);
+        await AcceptAsync(job, delivery1);
+        await AcceptAsync(job, delivery2);
+        await AcceptAsync(job, delivery3);
+
+        var result = await Settlement().Handle(new SettleSourcingJobCommand(job.JobId, _actor), default);
+
+        // 3 × 600,000 = 1,800,000; unpaid deposit (3,000,000) is cancelled and NOT deducted.
+        result.Kind.Should().Be(ServiceFeeKinds.Settlement);
+        result.Amount.Should().Be(1_800_000m);
+        result.Status.Should().Be(ServiceFeeStates.Pending);
+
+        _context.ServiceFees.Any(f => f.JobId == job.JobId && f.Kind == ServiceFeeKinds.Credit).Should().BeFalse();
+        var updatedDeposit = _context.ServiceFees.Single(f => f.ServiceFeeId == deposit.ServiceFeeId);
+        updatedDeposit.Status.Should().Be(ServiceFeeStates.Cancelled);
+
+        _audit.Verify(a => a.AddAsync(
+            It.Is<HRConnect.Application.Common.Models.AuditEntry>(e =>
+                e.Action == SourcingFinanceService.SourcingDepositCancelledAction
+                && e.EntityType == "SERVICE_FEE"
+                && e.EntityId == deposit.ServiceFeeId),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        // Once Client pays the full SETTLEMENT, the cancelled deposit does not block commission approval.
+        PayAll();
+        var commission = _context.Commissions.First(c => c.SourcingDeliveryId == delivery1.DeliveryId);
+        var approveResult = await Settlement().Handle(new ApproveCommissionCommand(commission.CommissionId, _actor), default);
+        approveResult.Status.Should().Be(CommissionStates.Payable);
     }
 
     [Fact]
@@ -510,7 +581,7 @@ public class SourcingFinanceTests
         pendingDeposit.Status = ServiceFeeStates.Paid;
         await AcceptAsync(pendingJob, SeedDelivery(pendingJob));
 
-        var overdueJob = SeedJob(target: 1);
+        var overdueJob = SeedJob(target: 2);
         var overdueDeposit = await CreateDepositAsync(overdueJob);
         overdueDeposit.Status = ServiceFeeStates.Overdue;
         await AcceptAsync(overdueJob, SeedDelivery(overdueJob));
