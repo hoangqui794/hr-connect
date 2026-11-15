@@ -195,7 +195,22 @@ export const ClientVnPayReturnPage: React.FC = () => {
   useEffect(() => {
     const status = result.data?.status;
     if (status === 'SUCCEEDED' || status === 'NEEDS_REVIEW' || status === 'FAILED') {
-      void queryClient.invalidateQueries({ queryKey: ['client-billing'] });
+      for (const queryKey of [
+        ['client-billing'],
+        ['client-overview'],
+        ['mf01-jobs'],
+        ['mf05-warranties'],
+        ['mf05-replacement-slots'],
+        ['mf05-replacement-slots-summary'],
+        ['mf05-replacement-refunds'],
+        ['mf05-client-fees'],
+        ['mf05-posting-fees'],
+        ['mf05-fees'],
+        ['mf05-count'],
+        ['placements'],
+      ]) {
+        void queryClient.invalidateQueries({ queryKey });
+      }
     }
   }, [result.data?.status, queryClient]);
 

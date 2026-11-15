@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { ClientVnPayReturnPage } from './ClientVnPayReturnPage';
@@ -14,10 +14,13 @@ const payment = (over: Partial<OnlinePaymentResult>): OnlinePaymentResult => ({
   status: 'SUCCEEDED', providerTransactionNo: '14123456', responseCode: '00', paidAt: '2026-10-30T11:00:00Z', ...over,
 });
 
-const renderPage = (query = search) =>
+const renderPage = (
+  query = search,
+  queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+) =>
   render(
     <MemoryRouter initialEntries={[`/client/billing/vnpay-return${query}`]}>
-      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <QueryClientProvider client={queryClient}>
         <ClientVnPayReturnPage />
       </QueryClientProvider>
     </MemoryRouter>
@@ -57,5 +60,44 @@ describe('ClientVnPayReturnPage', () => {
 
     expect(screen.getByText('Không có kết quả thanh toán')).toBeTruthy();
     expect(vnPayApi.confirmReturn).not.toHaveBeenCalled();
+  });
+
+  it('invalidates billing, job, warranty, slot, fee, count, and placement queries on settled status', async () => {
+    vi.mocked(vnPayApi.confirmReturn).mockResolvedValue(payment({ status: 'SUCCEEDED' }));
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    renderPage(search, queryClient);
+
+    expect(await screen.findByText('Thanh toán thành công')).toBeTruthy();
+    await waitFor(() => {
+      for (const key of [
+        ['client-billing'],
+        ['client-overview'],
+        ['mf01-jobs'],
+        ['mf05-warranties'],
+        ['mf05-replacement-slots'],
+        ['mf05-replacement-slots-summary'],
+        ['mf05-replacement-refunds'],
+        ['mf05-client-fees'],
+        ['mf05-posting-fees'],
+        ['mf05-fees'],
+        ['mf05-count'],
+        ['placements'],
+      ]) {
+        expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: key });
+      }
+    });
+  });
+
+  it('does not invalidate caches while payment confirmation is still PENDING', async () => {
+    vi.mocked(vnPayApi.confirmReturn).mockResolvedValue(payment({ status: 'PENDING', providerTransactionNo: null, paidAt: null }));
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    renderPage(search, queryClient);
+
+    expect(await screen.findByText('Đang chờ VNPay xác nhận')).toBeTruthy();
+    expect(invalidateSpy).not.toHaveBeenCalled();
   });
 });

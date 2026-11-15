@@ -37,8 +37,16 @@ export const PostingFeePaymentsPanel: React.FC<{ enabled: boolean }> = ({ enable
       message.success('Đã ghi nhận thanh toán. Tin tuyển dụng đã được công bố.');
       setSelected(null);
       form.resetFields();
-      queryClient.invalidateQueries({ queryKey: [POSTING_FEE_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      for (const queryKey of [
+        [POSTING_FEE_QUERY_KEY],
+        ['mf01-jobs'],
+        ['mf05-count'],
+        ['client-billing'],
+        ['client-overview'],
+        ['hr-overview'],
+      ]) {
+        void queryClient.invalidateQueries({ queryKey });
+      }
     },
     onError: (error) => message.error(getApiErrorMessage(error)),
   });

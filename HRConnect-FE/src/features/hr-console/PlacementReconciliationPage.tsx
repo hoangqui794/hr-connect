@@ -82,10 +82,27 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
     setActionOpen(false);
     setSelected(null);
     form.resetFields();
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['placement-reconciliations'] }),
-      queryClient.invalidateQueries({ queryKey: ['mf05-client-fees'] }),
-    ]);
+    await Promise.all(
+      [
+        ['placement-reconciliations'],
+        ['hr-nav-counts'],
+        ['hr-pipeline'],
+        ['hr-overview'],
+        ['client-pipeline'],
+        ['client-candidates'],
+        ['client-overview'],
+        ['mf05-client-fees'],
+        ['mf05-fees'],
+        ['mf05-commissions'],
+        ['mf05-warranties'],
+        ['mf05-replacement-slots'],
+        ['mf05-replacement-slots-summary'],
+        ['mf05-replacement-refunds'],
+        ['mf05-count'],
+        ['client-billing'],
+        ['placements'],
+      ].map((queryKey) => queryClient.invalidateQueries({ queryKey }))
+    );
   };
 
   const reconcile = useMutation({

@@ -151,7 +151,16 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
       message.success('Đã hủy suất tuyển thay thế thành công.');
       setCancelTarget(null);
       cancelForm.resetFields();
-      void queryClient.invalidateQueries({ queryKey: ['mf05-replacement-slots'] });
+      for (const queryKey of [
+        ['mf05-replacement-slots'],
+        ['mf05-replacement-slots-summary'],
+        ['mf05-replacement-refunds'],
+        ['mf05-warranties'],
+        ['placements'],
+        ['client-overview'],
+      ]) {
+        void queryClient.invalidateQueries({ queryKey });
+      }
     },
     onError: (err) => {
       message.error(getApiErrorMessage(err));

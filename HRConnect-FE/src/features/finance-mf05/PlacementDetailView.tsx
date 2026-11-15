@@ -678,7 +678,16 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
             label="Ngày làm việc cuối cùng"
             rules={[{ required: true, message: 'Vui lòng chọn ngày làm việc cuối cùng' }]}
           >
-            <DatePicker className="w-full" format="YYYY-MM-DD" />
+            <DatePicker
+              className="w-full"
+              format="YYYY-MM-DD"
+              disabledDate={(d) =>
+                Boolean(
+                  (placement.warranty?.startDate && d.isBefore(dayjs(placement.warranty.startDate), 'day')) ||
+                    (placement.warranty?.endDate && !d.isBefore(dayjs(placement.warranty.endDate), 'day'))
+                )
+              }
+            />
           </Form.Item>
 
           <Form.Item

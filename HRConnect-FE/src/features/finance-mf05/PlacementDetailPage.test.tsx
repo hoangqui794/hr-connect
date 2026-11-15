@@ -1,4 +1,5 @@
 import React from 'react';
+import dayjs from 'dayjs';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
@@ -216,6 +217,57 @@ describe('PlacementDetailPage & PlacementDetailView', () => {
         reason: 'Ứng viên tìm được cơ hội mới',
       }));
     });
+  });
+
+  it('disables lastWorkingDate dates outside [warranty.startDate, warranty.endDate)', async () => {
+    const monthStart = dayjs().startOf('month');
+    const warrantyStart = monthStart.add(9, 'day'); // 10th of current month
+    const warrantyEnd = monthStart.add(19, 'day'); // 20th of current month
+    const beforeStart = warrantyStart.subtract(1, 'day').format('YYYY-MM-DD');
+    const onStart = warrantyStart.format('YYYY-MM-DD');
+    const inRangeDay = warrantyEnd.subtract(dayjs().date() === 19 ? 2 : 1, 'day').format('YYYY-MM-DD');
+    const onEnd = warrantyEnd.format('YYYY-MM-DD');
+    const afterEnd = warrantyEnd.add(1, 'day').format('YYYY-MM-DD');
+
+    vi.mocked(placementApi.getPlacementDetail).mockResolvedValueOnce({
+      ...mockPlacement,
+      warranty: {
+        ...mockPlacement.warranty,
+        startDate: onStart,
+        endDate: onEnd,
+      },
+    } as any);
+
+    renderWithProviders(
+      <PlacementDetailView placementId="plc-1" mode="client" />,
+      '/client/placements/plc-1'
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: /Báo nghỉ việc/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/Báo ứng viên nghỉ việc trong thời gian bảo hành/i)).toBeInTheDocument();
+    });
+
+    const dateInput = screen.getByLabelText('Ngày làm việc cuối cùng') as HTMLInputElement;
+    fireEvent.mouseDown(dateInput);
+    fireEvent.click(dateInput);
+
+    const cellFor = (iso: string) =>
+      document.body.querySelector(`.ant-picker-dropdown:not(.ant-picker-dropdown-hidden) td[title="${iso}"]`);
+
+    await waitFor(() => expect(cellFor(onStart)).not.toBeNull());
+    expect(cellFor(beforeStart)).toHaveClass('ant-picker-cell-disabled');
+    expect(cellFor(onStart)).not.toHaveClass('ant-picker-cell-disabled');
+    expect(cellFor(inRangeDay)).not.toHaveClass('ant-picker-cell-disabled');
+    expect(cellFor(onEnd)).toHaveClass('ant-picker-cell-disabled');
+    expect(cellFor(afterEnd)).toHaveClass('ant-picker-cell-disabled');
+
+    const initialValue = dateInput.value;
+    fireEvent.click(cellFor(onEnd)!);
+    expect(dateInput.value).toBe(initialValue);
+
+    fireEvent.click(cellFor(inRangeDay)!);
+    await waitFor(() => expect(dateInput.value).toBe(inRangeDay));
   });
 
   it('allows internal HR to resolve resignation when warranty is claimed', async () => {

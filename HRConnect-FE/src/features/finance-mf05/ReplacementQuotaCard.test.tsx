@@ -229,6 +229,47 @@ describe('ReplacementQuotaCard', () => {
       });
     });
   });
+
+  it('invalidates related replacement slot, warranty, refund, and placement queries after cancelling a slot', async () => {
+    vi.mocked(financeApi.replacementSlots).mockResolvedValue(slotPage([mockSlots[0]]));
+    vi.mocked(financeApi.cancelReplacementSlot).mockResolvedValue({
+      ...mockSlots[0],
+      status: 'CANCELLED',
+      cancelReason: 'Hủy để đối soát lại',
+    });
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <AntApp>
+            <ReplacementQuotaCard mode="hr" />
+          </AntApp>
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: /Hủy suất/i }, { timeout: 10000 }));
+    fireEvent.change(screen.getByPlaceholderText(/Ví dụ: Doanh nghiệp đã cơ cấu lại phòng ban/i), {
+      target: { value: 'Hủy để đối soát lại' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận hủy' }));
+
+    await waitFor(() => {
+      for (const queryKey of [
+        ['mf05-replacement-slots'],
+        ['mf05-replacement-slots-summary'],
+        ['mf05-replacement-refunds'],
+        ['mf05-warranties'],
+        ['placements'],
+        ['client-overview'],
+      ]) {
+        expect(invalidateSpy).toHaveBeenCalledWith({ queryKey });
+      }
+    });
+  });
   // HR feedback 29/10: the "Pipeline" button led to an unfiltered page; HR now opens the placement itself.
   it('lets Internal HR open the replacement placement, or the original one while the slot is not filled', async () => {
     vi.mocked(financeApi.replacementSlots).mockResolvedValue(slotPage([

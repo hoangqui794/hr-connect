@@ -38,8 +38,7 @@ const pending = {
   reviewedAt: null,
 };
 
-const renderPage = (admin = false) => {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+const renderPage = (admin = false, queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })) => {
   return render(
     <MemoryRouter>
       <QueryClientProvider client={queryClient}>
@@ -135,5 +134,40 @@ describe('PlacementReconciliationPage', () => {
       note: 'Đã xác minh ứng viên thực tế đi làm.',
       concurrencyToken: 'token-1',
     }));
+  });
+
+  it('invalidates reconciliation and related MF-05/billing queries after completion', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    renderPage(false, queryClient);
+    await screen.findByText('Xem');
+    await userEvent.click(exactButton('Xem'));
+    await userEvent.click(exactButton('Xác nhận đúng'));
+    await userEvent.click(exactButton('Xác nhận đúng', true));
+
+    await waitFor(() => {
+      for (const key of [
+        ['placement-reconciliations'],
+        ['hr-nav-counts'],
+        ['hr-pipeline'],
+        ['hr-overview'],
+        ['client-pipeline'],
+        ['client-candidates'],
+        ['client-overview'],
+        ['mf05-client-fees'],
+        ['mf05-fees'],
+        ['mf05-commissions'],
+        ['mf05-warranties'],
+        ['mf05-replacement-slots'],
+        ['mf05-replacement-slots-summary'],
+        ['mf05-replacement-refunds'],
+        ['mf05-count'],
+        ['client-billing'],
+        ['placements'],
+      ]) {
+        expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: key });
+      }
+    });
   });
 });
