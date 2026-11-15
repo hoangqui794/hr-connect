@@ -1,9 +1,10 @@
+import { App as AntApp } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { jobsApi } from '@/services/api/jobsApi';
+import { jobsApi, serviceAgreementsApi } from '@/services/api/jobsApi';
 import { JobReviewPage } from './JobReviewPage';
 
 const mockPendingJobs = [
@@ -50,7 +51,7 @@ const mockAgreementJobs = [
     companyName: 'Tech Corp',
     companyId: 'comp-3',
     serviceTypeId: 'srv-1',
-    serviceTypeCode: 'RECRUITMENT',
+    serviceTypeCode: 'HEADHUNT_COD',
     currencyCode: 'VND',
     quantity: 1,
     status: 'PENDING_AGREEMENT',
@@ -60,6 +61,7 @@ const mockAgreementJobs = [
     requirements: [],
     skills: [],
     statusHistories: [],
+    hasSignedAgreement: true,
   },
 ];
 
@@ -87,6 +89,8 @@ describe('JobReviewPage tab switching with highlight query param', () => {
       const found = mockAllJobs.find((j) => j.jobId === id);
       return found as any;
     });
+
+    vi.spyOn(serviceAgreementsApi, 'getCurrent').mockResolvedValue(null);
   });
 
   it('allows user to switch tab cleanly when arriving with a highlight param matching a pending review job', async () => {
@@ -162,6 +166,90 @@ describe('JobReviewPage tab switching with highlight query param', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Senior Developer')).toBeInTheDocument();
+    });
+  });
+  it('sends negotiated commercial terms and agreement reference from currentAgreement when HR confirms signed agreement', async () => {
+    let capturedModalConfig: any = null;
+    vi.spyOn(AntApp, 'useApp').mockReturnValue({
+      message: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn(), loading: vi.fn() } as any,
+      modal: {
+        confirm: vi.fn((config: any) => {
+          capturedModalConfig = config;
+          config.onOk();
+        }),
+      } as any,
+      notification: {} as any,
+    });
+
+    vi.spyOn(serviceAgreementsApi, 'getCurrent').mockResolvedValue({
+      serviceAgreementId: 'agr-1',
+      jobId: 'job-agreement-1',
+      companyId: 'comp-3',
+      version: 1,
+      serviceTypeCode: 'HEADHUNT_COD',
+      status: 'SIGNED',
+      concurrencyToken: 'agr-token-1',
+      isCurrent: true,
+      feeMultiplier: 1.5,
+      warrantyDays: 30,
+      paymentDueDays: 14,
+      pricePerQualifiedCv: 250000,
+      sourcingTarget: 10,
+      reviewDays: 7,
+      depositPercent: 30,
+      agreementNote: 'Thoa thuan VIP',
+      verificationCode: 'AGR-2026-XYZ',
+      hasSignedDocument: true,
+      hasUnsignedDocument: true,
+      companyName: 'Tech Corp',
+      createdByUserId: 'user-1',
+      createdAt: '2026-11-01T10:00:00Z',
+    } as any);
+
+    const approveSpy = vi.spyOn(jobsApi, 'approve').mockResolvedValue({
+      jobId: 'job-agreement-1',
+      status: 'ACTIVE',
+      message: 'Công khai tin tuyển dụng thành công.',
+    } as any);
+
+    render(
+      <MemoryRouter initialEntries={['/hr/jobs?status=PENDING_AGREEMENT']}>
+        <QueryClientProvider client={queryClient}>
+          <Routes>
+            <Route path="/hr/jobs" element={<JobReviewPage />} />
+          </Routes>
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Senior Developer')).toBeInTheDocument();
+    });
+
+    const confirmBtn = await screen.findByRole('button', { name: /Công khai tin tuyển dụng/i });
+    fireEvent.click(confirmBtn);
+
+    expect(capturedModalConfig).not.toBeNull();
+    expect(capturedModalConfig.title).toBe('Xác nhận duyệt hợp đồng và công khai tin tuyển dụng?');
+
+    await waitFor(() => {
+      expect(approveSpy).toHaveBeenCalledWith(
+        'job-agreement-1',
+        'token-3',
+        expect.objectContaining({
+          commercialTerms: expect.objectContaining({
+            feeMultiplier: 1.5,
+            warrantyDays: 30,
+            paymentDueDays: 14,
+            pricePerCv: 250000,
+            sourcingTarget: 10,
+            reviewDays: 7,
+            depositPercent: 30,
+          }),
+          agreementReference: 'AGR-2026-XYZ',
+          note: 'Thoa thuan VIP',
+        })
+      );
     });
   });
 });
