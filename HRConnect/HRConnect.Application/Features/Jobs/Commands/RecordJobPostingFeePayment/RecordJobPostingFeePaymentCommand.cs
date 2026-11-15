@@ -17,6 +17,9 @@ public sealed record RecordJobPostingFeePaymentCommand : IRequest<JobPostingFeeD
     [JsonIgnore]
     public Guid UserId { get; set; }
 
+    [JsonIgnore]
+    public bool IsBackofficeOrSystem { get; set; }
+
     public string PaymentReference { get; set; } = null!;
 
     public DateTime? PaidAt { get; set; }
@@ -43,6 +46,11 @@ public sealed class RecordJobPostingFeePaymentCommandHandler : IRequestHandler<R
 
     public async Task<JobPostingFeeDto> Handle(RecordJobPostingFeePaymentCommand request, CancellationToken cancellationToken)
     {
+        if (!request.IsBackofficeOrSystem)
+        {
+            throw new ForbiddenException("Chỉ Internal HR, Platform Admin hoặc cổng thanh toán hợp lệ mới được ghi nhận thanh toán phí đăng tin.");
+        }
+
         var job = await _jobRepository.GetByIdAsync(request.JobId, cancellationToken);
         if (job == null)
         {
@@ -77,6 +85,7 @@ public sealed class RecordJobPostingFeePaymentCommandHandler : IRequestHandler<R
                 throw new NotFoundException("Tin tuyển dụng chưa có gói đăng tin hợp lệ.");
             }
 
+            var currencyCode = string.IsNullOrWhiteSpace(job.CurrencyCode) ? "VND" : job.CurrencyCode;
             fee = new JobPostingFee
             {
                 PostingFeeId = Guid.NewGuid(),
@@ -84,7 +93,7 @@ public sealed class RecordJobPostingFeePaymentCommandHandler : IRequestHandler<R
                 PackageId = package.PackageId,
                 CompanyId = job.CompanyId,
                 Amount = package.Price,
-                CurrencyCode = "VND",
+                CurrencyCode = currencyCode,
                 Status = JobPostingFeeStatuses.Pending,
                 CreatedAt = now,
                 UpdatedAt = now,

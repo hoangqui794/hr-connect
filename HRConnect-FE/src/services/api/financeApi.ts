@@ -17,6 +17,7 @@ import type {
   ServiceFee,
   ServiceFeeKind,
   ServiceFeeStatus,
+  ServiceFeeSummary,
   Warranty,
   WarrantyClaimResponse,
   WarrantyStatus,
@@ -81,6 +82,9 @@ export const financeApi = {
   }): Promise<FinancePage<ServiceFee>> {
     return (await apiClient.get<ApiEnvelope<FinancePage<ServiceFee>>>('/service-fees', { params: clean(params) })).data.data;
   },
+  async serviceFeesSummary(params?: { jobId?: string; companyId?: string }): Promise<ServiceFeeSummary> {
+    return (await apiClient.get<ApiEnvelope<ServiceFeeSummary>>('/service-fees/summary', { params: clean(params ?? {}) })).data.data;
+  },
   async recordFeePayment(serviceFeeId: string, input: { paidAt: string; paymentReference: string }) {
     return (await apiClient.post<ApiEnvelope<unknown>>(`/admin/service-fees/${serviceFeeId}/record-payment`, input)).data;
   },
@@ -134,6 +138,16 @@ export const financeApi = {
     pageSize: number;
   }): Promise<FinancePage<ReplacementSlotDto>> {
     return (await apiClient.get<ApiEnvelope<FinancePage<ReplacementSlotDto>>>('/replacement-slots', { params: clean(params) })).data.data;
+  },
+
+  /** Client-scoped replacement slots endpoint (GET /client/replacement-slots). */
+  async clientReplacementSlots(params: {
+    jobId?: string;
+    status?: ReplacementSlotStatus;
+    page: number;
+    pageSize: number;
+  }): Promise<FinancePage<ReplacementSlotDto>> {
+    return (await apiClient.get<ApiEnvelope<FinancePage<ReplacementSlotDto>>>('/client/replacement-slots', { params: clean(params) })).data.data;
   },
 
   /** Internal HR cancels a WAITING_PAYMENT or OPEN slot */

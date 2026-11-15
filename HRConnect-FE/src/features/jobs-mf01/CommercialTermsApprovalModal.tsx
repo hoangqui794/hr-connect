@@ -122,11 +122,17 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({
     return target * price;
   }, [isSourcing, values.sourcingTarget, values.pricePerCv]);
 
+  const effectiveDepositPercent =
+    values.depositPercent ??
+    currentAgreement?.depositPercent ??
+    data?.prefill?.depositPercent ??
+    data?.adminDefaults?.depositPercent ??
+    null;
+
   const estimatedDeposit = useMemo(() => {
-    if (estimatedTotal == null) return null;
-    const percent = values.depositPercent ?? 30;
-    return Math.round((estimatedTotal * percent) / 100);
-  }, [estimatedTotal, values.depositPercent]);
+    if (estimatedTotal == null || effectiveDepositPercent == null) return null;
+    return Math.round((estimatedTotal * effectiveDepositPercent) / 100);
+  }, [estimatedTotal, effectiveDepositPercent]);
 
   const generateContractCode = () => {
     const now = new Date();
@@ -145,6 +151,7 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({
         if (currentAgreement.paymentDueDays != null) baseValues.paymentDueDays = currentAgreement.paymentDueDays;
         if (currentAgreement.sourcingTarget != null) baseValues.sourcingTarget = currentAgreement.sourcingTarget;
         if (currentAgreement.pricePerQualifiedCv != null) baseValues.pricePerCv = currentAgreement.pricePerQualifiedCv;
+        if (currentAgreement.depositPercent != null) baseValues.depositPercent = currentAgreement.depositPercent;
         if (currentAgreement.reviewDays != null) baseValues.reviewDays = currentAgreement.reviewDays;
       }
       const nextVer = (currentAgreement?.version || 1) + 1;
@@ -325,7 +332,9 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({
                     <div className="text-base font-bold text-slate-900">{estimatedTotal.toLocaleString('vi-VN')} đ</div>
                   </div>
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <div className="text-xs text-slate-600">Tiền cọc cần thu ({values.depositPercent ?? 30}%)</div>
+                    <div className="text-xs text-slate-600">
+                      {effectiveDepositPercent != null ? `Tiền cọc cần thu (${effectiveDepositPercent}%)` : 'Tiền cọc cần thu'}
+                    </div>
                     <div className="text-base font-bold text-indigo-700">
                       {estimatedDeposit != null ? `${estimatedDeposit.toLocaleString('vi-VN')} đ` : '—'}
                     </div>

@@ -427,4 +427,106 @@ public class SourcingDeliveryTests
             [ApplicationStates.Rejected] = 1,
         });
     }
+
+    [Fact]
+    public async Task List_ShouldReturnEnrichedSummaryFinanceReviewHistoryReplacementAndAiScore()
+    {
+        var now = DateTime.UtcNow;
+        var job = SeedJob(sourcingTarget: 4);
+        job.ReviewDays = 5;
+        job.SourcingPricePerCv = 1_500_000m;
+        job.DepositPercent = 30m;
+
+        _context.ServiceFees.Add(new ServiceFee
+        {
+            ServiceFeeId = Guid.NewGuid(),
+            JobId = job.JobId,
+            CompanyId = _companyId,
+            Kind = ServiceFeeKinds.Deposit,
+            BaseSalary = 6_000_000m,
+            FeeMultiplier = 0.3m,
+            Amount = 1_800_000m,
+            CurrencyCode = "VND",
+            DueDate = DateOnly.FromDateTime(now.AddDays(7)),
+            Status = ServiceFeeStates.Paid,
+            CreatedAt = now,
+            UpdatedAt = now,
+        });
+
+        var appOverturned = SeedApplication(job);
+        appOverturned.Candidate.FullName = "Ứng Viên Bị Bác Từ Chối";
+        _context.AiMatchResults.AddRange(
+            new AiMatchResult { MatchResultId = Guid.NewGuid(), ApplicationId = appOverturned.ApplicationId, AttemptNo = 1, MatchScore = 65m, Status = "COMPLETED", RequestedAt = now.AddMinutes(-5) },
+            new AiMatchResult { MatchResultId = Guid.NewGuid(), ApplicationId = appOverturned.ApplicationId, AttemptNo = 2, MatchScore = 88.5m, Status = "COMPLETED", RequestedAt = now }
+        );
+
+        var appPendingOther = SeedApplication(job);
+        appPendingOther.Candidate.FullName = "Ứng Viên Chờ Xác Minh";
+
+        var appReplaced = SeedApplication(job);
+        appReplaced.Candidate.FullName = "Ứng Viên Đã Đổi";
+
+        var appBackup = SeedApplication(job);
+        appBackup.Candidate.FullName = "Ứng Viên Dự Phòng Mới";
+        await _context.SaveChangesAsync();
+
+        var dOverturned = await DeliverOneAsync(job, appOverturned);
+        await Decide().Handle(new DecideSourcingDeliveryCommand(job.JobId, dOverturned.DeliveryId, "REJECTED", SourcingRejectReasons.Other, "Không phù hợp văn hóa", _clientUserId), default);
+        var reviewResult = await ReviewRejection().Handle(new ReviewSourcingRejectionCommand(job.JobId, dOverturned.DeliveryId, false, "Lý do không thuộc phạm vi hợp đồng", _hrUserId), default);
+        reviewResult.RejectionReviewStatus.Should().Be(SourcingRejectionReviewStates.Overturned);
+        reviewResult.RejectionReviewNote.Should().Be("Lý do không thuộc phạm vi hợp đồng");
+        reviewResult.RejectionReviewedAt.Should().NotBeNull();
+
+        _context.AuditLogs.Add(new AuditLog
+        {
+            Action = SourcingDeliveryAudit.RejectionReviewed,
+            EntityType = SourcingDeliveryAudit.EntityType,
+            EntityId = dOverturned.DeliveryId,
+            ActorType = AuditActorTypes.User,
+            ActorUserId = _hrUserId,
+            Source = AuditSources.Application,
+            NewValues = "{\"status\":\"ACCEPTED\",\"upheld\":false,\"note\":\"Lý do không thuộc phạm vi hợp đồng\"}",
+            CreatedAt = now.AddMinutes(1),
+        });
+
+        var dPending = await DeliverOneAsync(job, appPendingOther);
+        await Decide().Handle(new DecideSourcingDeliveryCommand(job.JobId, dPending.DeliveryId, "REJECTED", SourcingRejectReasons.Other, "Cần thêm thông tin", _clientUserId), default);
+
+        var dOld = await DeliverOneAsync(job, appReplaced);
+        await Decide().Handle(new DecideSourcingDeliveryCommand(job.JobId, dOld.DeliveryId, "REJECTED", SourcingRejectReasons.WrongJob, "Thiếu chứng chỉ", _clientUserId), default);
+        await Replace().Handle(new ReplaceSourcingDeliveryCommand(job.JobId, dOld.DeliveryId, appBackup.ApplicationId, _hrUserId), default);
+        await _context.SaveChangesAsync();
+
+        var handler = new GetSourcingDeliveriesQueryHandler(
+            Repository,
+            _companyUsers.Object,
+            new FinanceRepository(_context),
+            Settings);
+
+        var res = await handler.Handle(new GetSourcingDeliveriesQuery(job.JobId, _clientUserId, null), default);
+
+        res.Summary.ReviewDays.Should().Be(5);
+        res.Summary.PricePerCv.Should().Be(1_500_000m);
+        res.Summary.Counted.Should().Be(1);
+        res.Summary.CountedAmount.Should().Be(1_500_000m);
+        res.Summary.DepositPaidAmount.Should().Be(1_800_000m);
+        // Occupying: dOverturned (ACCEPTED) + backup delivery (DELIVERED) = 2 out of target 4 => remaining 2.
+        res.Summary.RemainingToDeliver.Should().Be(2);
+        res.Summary.JobStatus.Should().Be("ACTIVE");
+
+        var overturnedItem = res.Items.Single(i => i.DeliveryId == dOverturned.DeliveryId);
+        overturnedItem.Status.Should().Be(SourcingDeliveryStates.Accepted);
+        overturnedItem.RejectionReviewStatus.Should().Be(SourcingRejectionReviewStates.Overturned);
+        overturnedItem.RejectionReviewNote.Should().Be("Lý do không thuộc phạm vi hợp đồng");
+        overturnedItem.RejectionReviewedAt.Should().NotBeNull();
+        overturnedItem.AiMatchScore.Should().Be(88.5m);
+
+        var pendingItem = res.Items.Single(i => i.DeliveryId == dPending.DeliveryId);
+        pendingItem.RejectionReviewStatus.Should().Be(SourcingRejectionReviewStates.PendingHrReview);
+        pendingItem.AiMatchScore.Should().BeNull();
+
+        var replacedItem = res.Items.Single(i => i.DeliveryId == dOld.DeliveryId);
+        replacedItem.Status.Should().Be(SourcingDeliveryStates.Replaced);
+        replacedItem.ReplacementCandidateName.Should().Be("Ứng Viên Dự Phòng Mới");
+    }
 }

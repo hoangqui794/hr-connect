@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Constants;
 using MediatR;
 
@@ -18,12 +19,18 @@ public sealed class AgreementDownloadUrlResponse
     public bool IsSigned { get; set; }
 }
 
-public sealed record GetServiceAgreementDownloadUrlQuery(Guid JobId, Guid AgreementId, bool? Signed = null) : IRequest<AgreementDownloadUrlResponse>;
+public sealed record GetServiceAgreementDownloadUrlQuery(
+    Guid JobId,
+    Guid AgreementId,
+    bool? Signed = null,
+    Guid UserId = default,
+    bool IsBackoffice = false) : IRequest<AgreementDownloadUrlResponse>;
 
 public sealed class GetServiceAgreementDownloadUrlQueryHandler : IRequestHandler<GetServiceAgreementDownloadUrlQuery, AgreementDownloadUrlResponse>
 {
     private readonly IServiceAgreementRepository _agreements;
     private readonly IJobRepository _jobs;
+    private readonly ICompanyUserRepository _companyUsers;
     private readonly IFileStorageService _storage;
     private readonly IAgreementPdfRenderer _pdfRenderer;
     private readonly IUnitOfWork _uow;
@@ -31,12 +38,14 @@ public sealed class GetServiceAgreementDownloadUrlQueryHandler : IRequestHandler
     public GetServiceAgreementDownloadUrlQueryHandler(
         IServiceAgreementRepository agreements,
         IJobRepository jobs,
+        ICompanyUserRepository companyUsers,
         IFileStorageService storage,
         IAgreementPdfRenderer pdfRenderer,
         IUnitOfWork uow)
     {
         _agreements = agreements;
         _jobs = jobs;
+        _companyUsers = companyUsers;
         _storage = storage;
         _pdfRenderer = pdfRenderer;
         _uow = uow;
@@ -49,6 +58,9 @@ public sealed class GetServiceAgreementDownloadUrlQueryHandler : IRequestHandler
         {
             throw new NotFoundException("Không tìm thấy thỏa thuận dịch vụ yêu cầu.");
         }
+
+        await CompanyMembershipPolicy.EnsureCompanyAccessAsync(
+            _companyUsers, request.UserId, request.IsBackoffice, agreement.CompanyId, ct);
 
         var isSigned = request.Signed ?? (agreement.Status == ServiceAgreementStatuses.Signed || !string.IsNullOrWhiteSpace(agreement.SignedDocumentStorageKey));
         var storageKey = (isSigned && !string.IsNullOrWhiteSpace(agreement.SignedDocumentStorageKey))

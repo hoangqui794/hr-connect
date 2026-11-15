@@ -9,6 +9,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Finance.Common;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Constants;
@@ -43,6 +44,7 @@ public sealed class SignServiceAgreementCommandHandler : IRequestHandler<SignSer
     private readonly INotificationRepository _notifications;
     private readonly IAuditLogService _audit;
     private readonly ISourcingFinanceService? _sourcingFinance;
+    private readonly IAdminBusinessSettings? _adminSettings;
     private readonly IUnitOfWork _uow;
 
     public SignServiceAgreementCommandHandler(
@@ -56,7 +58,8 @@ public sealed class SignServiceAgreementCommandHandler : IRequestHandler<SignSer
         INotificationRepository notifications,
         IAuditLogService audit,
         IUnitOfWork uow,
-        ISourcingFinanceService? sourcingFinance = null)
+        ISourcingFinanceService? sourcingFinance = null,
+        IAdminBusinessSettings? adminSettings = null)
     {
         _agreements = agreements;
         _jobs = jobs;
@@ -69,6 +72,7 @@ public sealed class SignServiceAgreementCommandHandler : IRequestHandler<SignSer
         _audit = audit;
         _uow = uow;
         _sourcingFinance = sourcingFinance;
+        _adminSettings = adminSettings;
     }
 
     public async Task<ServiceAgreementDto> Handle(SignServiceAgreementCommand request, CancellationToken ct)
@@ -234,14 +238,35 @@ public sealed class SignServiceAgreementCommandHandler : IRequestHandler<SignSer
                 request.UserId,
                 JobReasonCodes.AgreementSigned,
                 "Thỏa thuận dịch vụ Headhunt đã được ký kết thành công. Tin tuyển dụng đã được kích hoạt.");
+            await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct);
             job.PostedAt = now;
         }
         else if (string.Equals(serviceTypeCode, ServiceTypeCodes.CvSourcing, StringComparison.OrdinalIgnoreCase))
         {
+            if (job.DepositPercent is not > 0m)
+            {
+                job.DepositPercent = _adminSettings != null
+                    ? await _adminSettings.GetDecimalAsync(BusinessSettingKeys.CvSourcingDepositPercent, ct)
+                    : 50m;
+            }
+
+            if (job.DepositPercent is not > 0m)
+            {
+                throw new ConflictException(
+                    "Chưa cấu hình tỷ lệ đặt cọc hợp lệ cho dịch vụ CV Sourcing.",
+                    "SOURCING_DEPOSIT_TERMS_MISSING");
+            }
+
             // CV_SOURCING creates deposit and goes to PENDING_PAYMENT
             if (_sourcingFinance != null)
             {
-                await _sourcingFinance.EnsureDepositAsync(job, request.UserId, ct, serviceTypeCode);
+                var deposit = await _sourcingFinance.EnsureDepositAsync(job, request.UserId, ct, serviceTypeCode);
+                if (deposit == null)
+                {
+                    throw new ConflictException(
+                        "Không thể tạo công nợ tiền cọc CV Sourcing từ điều khoản thỏa thuận hiện tại.",
+                        "SOURCING_DEPOSIT_NOT_CREATED");
+                }
             }
 
             JobTransitions.ChangeStatus(
@@ -250,6 +275,7 @@ public sealed class SignServiceAgreementCommandHandler : IRequestHandler<SignSer
                 request.UserId,
                 JobReasonCodes.AgreementSigned,
                 "Thỏa thuận dịch vụ Sourcing đã được ký kết thành công. Tin tuyển dụng đang chờ thanh toán tiền cọc để kích hoạt.");
+            await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct);
         }
 
         // Send notifications

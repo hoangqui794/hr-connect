@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
@@ -32,6 +33,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
     private readonly IAppNotifier? _notifier;
     private readonly ICandidateRecruitmentDeliveryService? _candidateDeliveryService;
     private readonly ICandidateTransactionLock? _candidateLock;
+    private readonly TimeProvider _timeProvider;
 
     public ConfirmStartWorkCommandHandler(
         IApplicationRepository applicationRepository,
@@ -46,7 +48,8 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
         IPlacementReconciliationRepository reconciliationRepository,
         IAppNotifier? notifier = null,
         ICandidateRecruitmentDeliveryService? candidateDeliveryService = null,
-        ICandidateTransactionLock? candidateLock = null)
+        ICandidateTransactionLock? candidateLock = null,
+        TimeProvider? timeProvider = null)
     {
         _applicationRepository = applicationRepository;
         _offerRepository = offerRepository;
@@ -61,11 +64,12 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
         _notifier = notifier;
         _candidateDeliveryService = candidateDeliveryService;
         _candidateLock = candidateLock;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public async Task<ConfirmStartWorkResponse> Handle(ConfirmStartWorkCommand request, CancellationToken cancellationToken)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = VietnamTime.Today(_timeProvider);
         if (request.ActualStartDate > today)
         {
             throw new BadRequestException(
@@ -130,7 +134,7 @@ public class ConfirmStartWorkCommandHandler : IRequestHandler<ConfirmStartWorkCo
         // for legacy ACCEPTED offers created before that field was consistently populated.
         var acceptedAt = offer.RespondedAt ??
             (offer.UpdatedAt == default ? (DateTime?)null : offer.UpdatedAt);
-        if (acceptedAt.HasValue && request.ActualStartDate < DateOnly.FromDateTime(acceptedAt.Value))
+        if (acceptedAt.HasValue && request.ActualStartDate < VietnamTime.ToDateOnly(acceptedAt.Value))
         {
             throw new BadRequestException(
                 "Ngày thực tế đi làm không được sớm hơn ngày ứng viên chấp nhận offer.",

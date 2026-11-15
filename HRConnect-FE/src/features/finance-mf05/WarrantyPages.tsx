@@ -7,15 +7,16 @@ import React, { useEffect, useState } from 'react';
 import { a11yItemRender } from '@/components/common/paginationA11y';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App, Button, DatePicker, Form, Input, Modal, Radio, Space, Table, Tooltip } from 'antd';
+import { Alert, App, Button, DatePicker, Form, Input, Modal, Radio, Space, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { financeApi } from '@/services/api/financeApi';
 import { getApiErrorMessage } from '@/services/apiClient';
-import type { ServiceFee, ServiceFeeStatus, Warranty, WarrantyStatus } from '@/types/api/finance';
+import type { ReplacementSlotStatus, ServiceFee, ServiceFeeStatus, Warranty, WarrantyStatus } from '@/types/api/finance';
 import { FilterPills, PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
 import { COMMISSION_STATUS, SERVICE_FEE_STATUS, WARRANTY_STATUS, date, labelOf, money } from './financeLabels';
+import { REPLACEMENT_STATUS_CONFIG } from './replacementUtils';
 import { ReplacementQuotaCard } from './ReplacementQuotaCard';
 import { PlacementDetailDrawer } from './PlacementDetailDrawer';
 
@@ -42,7 +43,13 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
 
   const replacementSlots = useQuery({
     queryKey: ['mf05-replacement-slots-summary', mode],
-    queryFn: () => financeApi.replacementSlots({ page: 1, pageSize: 100 }),
+    queryFn: () => {
+      const fetchSlots =
+        mode === 'client' && typeof financeApi.clientReplacementSlots === 'function'
+          ? financeApi.clientReplacementSlots
+          : financeApi.replacementSlots;
+      return fetchSlots({ page: 1, pageSize: 100 });
+    },
     staleTime: 30_000,
   });
 
@@ -135,9 +142,21 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
       title: 'Bảo hành',
       key: 'period',
       render: (_, w) => (
-        <span className="tabular-nums">
-          {date(w.startDate)} → {date(w.endDate)}
-        </span>
+        <div>
+          <span className="tabular-nums">
+            {date(w.startDate)} → {date(w.endDate)}
+          </span>
+          {w.status === 'ACTIVE' && w.daysRemaining != null && (
+            <div className="mt-1">
+              <Tag
+                color={w.daysRemaining <= 7 ? 'warning' : 'success'}
+                className="m-0 rounded-full text-xs font-semibold tabular-nums"
+              >
+                {w.daysRemaining === 0 ? 'Hết hạn hôm nay' : `Còn ${w.daysRemaining} ngày`}
+              </Tag>
+            </div>
+          )}
+        </div>
       ),
     },
     {
@@ -146,16 +165,50 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
       render: (v: WarrantyStatus, w) => {
         const s = labelOf(WARRANTY_STATUS, v);
         const linkedSlot = v === 'VOIDED' || v === 'CLAIMED' ? slotByPlacementId.get(w.placementId) : undefined;
+        const slotId = w.replacementSlotId ?? linkedSlot?.replacementSlotId;
+        const openedAt = linkedSlot?.openedAt;
+        const slotStatus = (w.replacementSlotStatus ?? linkedSlot?.status) as ReplacementSlotStatus | undefined;
+        const slotStatusConf = slotStatus ? REPLACEMENT_STATUS_CONFIG[slotStatus] : undefined;
+        const expiresAt = w.replacementExpiresAt ?? linkedSlot?.expiresAt;
+        const showSlot = Boolean(slotId) && (v === 'VOIDED' || v === 'CLAIMED' || Boolean(w.replacementSlotId));
         return (
           <div>
             <Tooltip title={w.resultNote ?? undefined}>
               <span><StatusDot tone={s.tone}>{s.label}</StatusDot></span>
             </Tooltip>
-            {linkedSlot && (
-              <div className="mt-0.5 text-xs text-slate-500">
-                Suất #{linkedSlot.replacementSlotId.slice(0, 8).toUpperCase()}
-                {linkedSlot.openedAt ? ` · Mở ${date(linkedSlot.openedAt)}` : ''}
+            {(v === 'CLAIMED' || v === 'VOIDED') && (w.lastWorkingDate || w.claimReportedAt || w.resignationReason) && (
+              <div className="mt-0.5 space-y-0.5 text-xs text-slate-600">
+                {(w.lastWorkingDate || w.claimReportedAt) && (
+                  <div className="tabular-nums">
+                    {w.lastWorkingDate ? `Nghỉ ${date(w.lastWorkingDate)}` : ''}
+                    {w.lastWorkingDate && w.claimReportedAt ? ' · ' : ''}
+                    {w.claimReportedAt ? `Báo ${date(w.claimReportedAt)}` : ''}
+                  </div>
+                )}
+                {w.resignationReason && (
+                  <div className="line-clamp-2 text-slate-500" title={w.resignationReason}>
+                    Lý do: {w.resignationReason}
+                  </div>
+                )}
               </div>
+            )}
+            {showSlot && slotId && (
+              <>
+                <div className="mt-0.5 text-xs text-slate-500">
+                  Suất #{slotId.slice(0, 8).toUpperCase()}
+                  {openedAt ? ` · Mở ${date(openedAt)}` : ''}
+                </div>
+                {(w.replacementSlotStatus || w.replacementExpiresAt) && (
+                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+                    {slotStatusConf && (
+                      <Tag color={slotStatusConf.tagColor} className="m-0 text-[11px] font-medium">
+                        {slotStatusConf.label}
+                      </Tag>
+                    )}
+                    {expiresAt && <span className="tabular-nums">Hạn {date(expiresAt)}</span>}
+                  </div>
+                )}
+              </>
             )}
           </div>
         );
@@ -170,6 +223,9 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
           <div>
             <div className="tabular-nums">{money(w.serviceFeeAmount)}</div>
             {w.serviceFeeStatus && <StatusDot tone={s.tone}>{s.label}</StatusDot>}
+            {w.serviceFeeDueDate && w.serviceFeeStatus !== 'PAID' && w.serviceFeeStatus !== 'CANCELLED' && (
+              <div className="mt-0.5 text-xs text-slate-500 tabular-nums">Hạn TT: {date(w.serviceFeeDueDate)}</div>
+            )}
           </div>
         );
       },
@@ -206,10 +262,24 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
             Chi tiết
           </Button>
           {mode === 'client' ? (
-            w.status === 'ACTIVE' && (
+            w.status === 'ACTIVE' ? (
               <Button size="small" danger onClick={() => { form.setFieldsValue({ lastWorkingDate: dayjs() }); setTarget(w); }}>
                 Báo nghỉ việc
               </Button>
+            ) : (
+              <Tooltip
+                title={
+                  w.status === 'CLAIMED'
+                    ? 'Đang chờ HR Connect xác minh báo nghỉ việc.'
+                    : w.status === 'VOIDED'
+                    ? 'Bảo hành đã đóng sau khi xác minh nghỉ việc.'
+                    : 'Đã quá thời hạn bảo hành.'
+                }
+              >
+                <Tag className="m-0 cursor-help border-slate-200 bg-slate-50 text-xs text-slate-500">
+                  {w.status === 'CLAIMED' ? 'Chờ xác minh' : w.status === 'VOIDED' ? 'Đã đóng BH' : 'Hết hạn BH'}
+                </Tag>
+              </Tooltip>
             )
           ) : (
             w.status === 'CLAIMED' && (
@@ -395,12 +465,15 @@ export const ClientWarrantyPage: React.FC = () => (
     {/* ── Compact header: the top bar already shows the page title ── */}
     <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-1">
       <div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           <h1 className="sr-only">
             Chính sách & quản lý bảo hành
           </h1>
           <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0C4A6E] border border-sky-100">
             Tuyển dụng theo kết quả
+          </span>
+          <span className="text-xs text-slate-500">
+            Chỉ áp dụng cho Headhunt COD · Các gói Đăng tuyển (AP) &amp; Nguồn ứng viên (SS) không có bảo hành
           </span>
         </div>
       </div>

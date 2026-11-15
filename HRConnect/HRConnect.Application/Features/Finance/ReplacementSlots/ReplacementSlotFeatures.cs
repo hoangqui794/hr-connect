@@ -2,6 +2,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Finance.Queries;
 using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Constants;
@@ -31,7 +32,11 @@ public sealed record ReplacementSlotDto(
     Guid ConcurrencyToken,
     DateTime CreatedAt,
     string? JobTitle = null,
-    string? CompanyName = null);
+    string? CompanyName = null,
+    decimal? RefundPercent = null,
+    Guid? RefundServiceFeeId = null,
+    decimal? RefundAmount = null,
+    string? RefundStatus = null);
 
 /// <summary>
 /// Slots of one job. <paramref name="ClientUserId"/> is set for a Client caller, who may only
@@ -54,11 +59,16 @@ public sealed class GetJobReplacementSlotsQueryHandler : IRequestHandler<GetJobR
 {
     private readonly IFinanceRepository _financeRepository;
     private readonly ICompanyUserRepository _companyUserRepository;
+    private readonly IAdminBusinessSettings? _settings;
 
-    public GetJobReplacementSlotsQueryHandler(IFinanceRepository financeRepository, ICompanyUserRepository companyUserRepository)
+    public GetJobReplacementSlotsQueryHandler(
+        IFinanceRepository financeRepository,
+        ICompanyUserRepository companyUserRepository,
+        IAdminBusinessSettings? settings = null)
     {
         _financeRepository = financeRepository;
         _companyUserRepository = companyUserRepository;
+        _settings = settings;
     }
 
     public async Task<IReadOnlyList<ReplacementSlotDto>> Handle(GetJobReplacementSlotsQuery request, CancellationToken cancellationToken)
@@ -76,7 +86,7 @@ public sealed class GetJobReplacementSlotsQueryHandler : IRequestHandler<GetJobR
         }
 
         var slots = await _financeRepository.GetReplacementSlotsByJobAsync(request.JobId, cancellationToken);
-        return slots.Select(ReplacementSlotMapping.ToDto).ToList();
+        return await ReplacementSlotMapping.MapListAsync(slots, _financeRepository, _settings, cancellationToken);
     }
 }
 
@@ -84,11 +94,16 @@ public sealed class GetReplacementSlotsQueryHandler : IRequestHandler<GetReplace
 {
     private readonly IFinanceRepository _financeRepository;
     private readonly ICompanyUserRepository _companyUserRepository;
+    private readonly IAdminBusinessSettings? _settings;
 
-    public GetReplacementSlotsQueryHandler(IFinanceRepository financeRepository, ICompanyUserRepository companyUserRepository)
+    public GetReplacementSlotsQueryHandler(
+        IFinanceRepository financeRepository,
+        ICompanyUserRepository companyUserRepository,
+        IAdminBusinessSettings? settings = null)
     {
         _financeRepository = financeRepository;
         _companyUserRepository = companyUserRepository;
+        _settings = settings;
     }
 
     public async Task<PagedResult<ReplacementSlotDto>> Handle(GetReplacementSlotsQuery request, CancellationToken cancellationToken)
@@ -111,7 +126,8 @@ public sealed class GetReplacementSlotsQueryHandler : IRequestHandler<GetReplace
         var status = string.IsNullOrWhiteSpace(request.Status) ? null : request.Status.Trim().ToUpperInvariant();
         var (items, total) = await _financeRepository.GetReplacementSlotsAsync(
             companyId, request.JobId, status, page, pageSize, cancellationToken);
-        return new PagedResult<ReplacementSlotDto>(items.Select(ReplacementSlotMapping.ToDto).ToList(), total, page, pageSize);
+        var dtos = await ReplacementSlotMapping.MapListAsync(items, _financeRepository, _settings, cancellationToken);
+        return new PagedResult<ReplacementSlotDto>(dtos, total, page, pageSize);
     }
 }
 
@@ -175,25 +191,78 @@ public sealed class CancelReplacementSlotCommandHandler : IRequestHandler<Cancel
 
 internal static class ReplacementSlotMapping
 {
-    public static ReplacementSlotDto ToDto(ReplacementSlot slot) => new(
-        slot.ReplacementSlotId,
-        slot.JobId,
-        slot.Status,
-        slot.OriginalPlacementId,
-        slot.OriginalPlacement?.Application?.Candidate?.FullName,
-        slot.ServiceFeeId,
-        slot.FillWindowDays,
-        slot.OpenedAt,
-        slot.ExpiresAt,
-        slot.ExtendedAt,
-        slot.FilledByPlacementId,
-        slot.FilledByPlacement?.Application?.Candidate?.FullName,
-        slot.ClosedAt,
-        slot.CancelReason,
-        slot.ConcurrencyToken,
-        slot.CreatedAt,
-        slot.Job?.Title,
-        slot.Job?.Company?.CompanyName);
+    public static ReplacementSlotDto ToDto(ReplacementSlot slot) => ToDto(slot, null, null);
+
+    public static ReplacementSlotDto ToDto(ReplacementSlot slot, ServiceFee? refundFee, decimal? defaultRefundPercent)
+    {
+        var refundPercent = refundFee != null
+            ? decimal.Round(refundFee.FeeMultiplier * 100m, 2)
+            : defaultRefundPercent;
+        return new(
+            slot.ReplacementSlotId,
+            slot.JobId,
+            slot.Status,
+            slot.OriginalPlacementId,
+            slot.OriginalPlacement?.Application?.Candidate?.FullName,
+            slot.ServiceFeeId,
+            slot.FillWindowDays,
+            slot.OpenedAt,
+            slot.ExpiresAt,
+            slot.ExtendedAt,
+            slot.FilledByPlacementId,
+            slot.FilledByPlacement?.Application?.Candidate?.FullName,
+            slot.ClosedAt,
+            slot.CancelReason,
+            slot.ConcurrencyToken,
+            slot.CreatedAt,
+            slot.Job?.Title,
+            slot.Job?.Company?.CompanyName,
+            refundPercent,
+            refundFee?.ServiceFeeId,
+            refundFee?.Amount,
+            refundFee?.Status);
+    }
+
+    public static async Task<IReadOnlyList<ReplacementSlotDto>> MapListAsync(
+        IReadOnlyList<ReplacementSlot> slots,
+        IFinanceRepository financeRepository,
+        IAdminBusinessSettings? settings,
+        CancellationToken cancellationToken)
+    {
+        if (slots.Count == 0)
+        {
+            return Array.Empty<ReplacementSlotDto>();
+        }
+
+        var jobIds = slots.Select(s => s.JobId).Distinct().ToList();
+        var jobFees = await financeRepository.GetJobServiceFeesAsync(jobIds, cancellationToken) ?? Array.Empty<ServiceFee>();
+        var refundFees = jobFees.Where(f => f.Kind == ServiceFeeKinds.ReplacementRefund).ToList();
+        var defaultPercent = settings != null
+            ? await settings.GetDecimalAsync(BusinessSettingKeys.ReplacementRefundPercent, cancellationToken)
+            : (decimal?)null;
+
+        return slots.Select(slot =>
+        {
+            var refund = FindRefundForSlot(slot, refundFees);
+            return ToDto(slot, refund, defaultPercent);
+        }).ToList();
+    }
+
+    private static ServiceFee? FindRefundForSlot(ReplacementSlot slot, IReadOnlyList<ServiceFee> refundFees)
+    {
+        var sameJob = refundFees.Where(fee => fee.JobId == slot.JobId).ToList();
+        if (sameJob.Count == 0)
+        {
+            return null;
+        }
+
+        return sameJob
+            .Where(fee => slot.ServiceFee != null
+                ? fee.BaseSalary == slot.ServiceFee.Amount
+                : sameJob.Count == 1)
+            .OrderBy(fee => Math.Abs(((slot.ClosedAt ?? slot.UpdatedAt) - fee.CreatedAt).Ticks))
+            .FirstOrDefault();
+    }
 
     public static ReplacementSummaryDto ToSummary(ReplacementSlot slot) =>
         new(slot.ReplacementSlotId, slot.JobId, slot.Status, slot.ExpiresAt);

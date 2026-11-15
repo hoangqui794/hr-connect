@@ -117,6 +117,13 @@ public class GetInterviewsQueryHandler : IRequestHandler<GetInterviewsQuery, Get
                 Status = i.Status,
                 Result = request.IsCandidate ? null : i.Result,
                 Feedback = request.IsCandidate ? null : i.Feedback,
+                LastStatusReason = request.IsCandidate
+                    ? null
+                    : i.InterviewStatusHistories?
+                        .Where(h => !string.IsNullOrWhiteSpace(h.Reason))
+                        .OrderByDescending(h => h.ChangedAt)
+                        .Select(h => h.Reason!.Trim())
+                        .FirstOrDefault(),
                 CandidateAttendanceStatus = i.CandidateAttendanceStatus,
                 CandidateRespondedAt = i.CandidateRespondedAt,
                 Participants = participants,

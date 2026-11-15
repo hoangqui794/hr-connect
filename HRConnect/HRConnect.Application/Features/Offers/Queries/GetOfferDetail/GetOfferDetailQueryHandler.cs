@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Recruitment.Common;
@@ -17,15 +18,18 @@ public class GetOfferDetailQueryHandler : IRequestHandler<GetOfferDetailQuery, G
     private readonly IOfferRepository _offerRepository;
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly ILogger<GetOfferDetailQueryHandler> _logger;
+    private readonly TimeProvider _timeProvider;
 
     public GetOfferDetailQueryHandler(
         IOfferRepository offerRepository,
         ICompanyUserRepository companyUserRepository,
-        ILogger<GetOfferDetailQueryHandler> logger)
+        ILogger<GetOfferDetailQueryHandler> logger,
+        TimeProvider? timeProvider = null)
     {
         _offerRepository = offerRepository;
         _companyUserRepository = companyUserRepository;
         _logger = logger;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public async Task<GetOfferDetailResponse> Handle(GetOfferDetailQuery request, CancellationToken cancellationToken)
@@ -107,7 +111,7 @@ public class GetOfferDetailQueryHandler : IRequestHandler<GetOfferDetailQuery, G
             RespondedAt = offer.RespondedAt,
             DeclineReason = offer.DeclineReason,
             ConcurrencyToken = offer.ConcurrencyToken,
-            CanRespond = offer.Status == OfferStates.Sent && (!offer.ExpiryDate.HasValue || offer.ExpiryDate.Value >= DateOnly.FromDateTime(DateTime.UtcNow)),
+            CanRespond = offer.Status == OfferStates.Sent && (!offer.ExpiryDate.HasValue || offer.ExpiryDate.Value >= VietnamTime.Today(_timeProvider)),
             CreatedBy = offer.CreatedByNavigation != null
                 ? new CreatedByDto
                 {

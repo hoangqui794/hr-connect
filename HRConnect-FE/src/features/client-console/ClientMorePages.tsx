@@ -108,6 +108,30 @@ export const ClientCompanyPage: React.FC = () => {
 
   const c = company.data;
   const verified = c?.verificationStatus === 'VERIFIED';
+  const rejected = c?.verificationStatus === 'REJECTED';
+  const underReview = c?.verificationStatus === 'UNDER_REVIEW';
+  const verificationBadgeClass = verified
+    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+    : rejected
+    ? 'bg-rose-50 text-rose-700 border-rose-200/80'
+    : underReview
+    ? 'bg-sky-50 text-sky-700 border-sky-200/80'
+    : 'bg-amber-50 text-amber-700 border-amber-200/80';
+  const verificationHeadline = verified
+    ? '✓ Doanh nghiệp đã xác thực'
+    : rejected
+    ? '✕ Hồ sơ xác thực bị từ chối'
+    : underReview
+    ? 'Đang xét duyệt xác thực'
+    : 'Đang chờ xác thực';
+  const verificationTone = verified ? 'success' : rejected ? 'danger' : underReview ? 'info' : 'warning';
+  const verificationShortLabel = verified
+    ? 'Đã xác thực'
+    : rejected
+    ? 'Bị từ chối xác thực'
+    : underReview
+    ? 'Đang xét duyệt'
+    : 'Chưa xác thực';
 
   return (
     <div className={`${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
@@ -118,18 +142,31 @@ export const ClientCompanyPage: React.FC = () => {
             <h1 className="sr-only">
               Hồ sơ doanh nghiệp
             </h1>
-            <span
-              className={`rounded-full px-2.5 py-0.5 text-xs font-bold border ${
-                verified
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-                  : 'bg-amber-50 text-amber-700 border-amber-200/80'
-              }`}
-            >
-              {verified ? '✓ Doanh nghiệp đã xác thực' : 'Đang chờ xác thực'}
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold border ${verificationBadgeClass}`}>
+              {verificationHeadline}
             </span>
           </div>
         </div>
       </div>
+      {rejected && (
+        <Alert
+          type="error"
+          showIcon
+          className="mb-4 rounded-xl"
+          message="Hồ sơ xác thực doanh nghiệp bị từ chối"
+          description={
+            <div className="space-y-1 text-sm">
+              <div>
+                <span className="font-semibold">Lý do: </span>
+                {c?.verificationRejectedReason || 'Thông tin xác thực doanh nghiệp chưa đáp ứng yêu cầu.'}
+              </div>
+              <div className="text-xs text-slate-600">
+                Vui lòng kiểm tra lại Tên doanh nghiệp, Mã số thuế bên dưới và liên hệ đội ngũ HR Connect để gửi lại yêu cầu xác thực.
+              </div>
+            </div>
+          }
+        />
+      )}
       {company.isLoading ? (
         <Surface padded>
           <Skeleton active paragraph={{ rows: 6 }} />
@@ -151,7 +188,7 @@ export const ClientCompanyPage: React.FC = () => {
               <div className="mt-3 text-lg font-bold text-slate-900">{c.companyName}</div>
               <div className="text-sm text-slate-600">{c.industry || 'Chưa cập nhật ngành'}</div>
               <div className="mt-3">
-                <StatusDot tone={verified ? 'success' : 'warning'}>{verified ? 'Đã xác thực' : 'Chưa xác thực'}</StatusDot>
+                <StatusDot tone={verificationTone}>{verificationShortLabel}</StatusDot>
               </div>
               <input ref={logoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={selectLogo} aria-label="Chọn logo doanh nghiệp" />
               <div className="mt-4 flex w-full gap-2">
@@ -169,7 +206,19 @@ export const ClientCompanyPage: React.FC = () => {
                 [
                   ['Mã số thuế', c.taxCode || '—'],
                   ['Vai trò của bạn', String(c.roleInCompany ?? '—')],
-                  ['Xác thực lúc', c.verifiedAt ? dayjs(String(c.verifiedAt)).format('DD/MM/YYYY') : '—'],
+                  ...(c.verificationRequestedAt && dayjs(String(c.verificationRequestedAt)).isValid()
+                    ? ([['Yêu cầu xác thực', dayjs(String(c.verificationRequestedAt)).format('DD/MM/YYYY')]] as [string, string][])
+                    : []),
+                  ...(c.verificationReviewedAt && dayjs(String(c.verificationReviewedAt)).isValid()
+                    ? ([['Xét duyệt lúc', dayjs(String(c.verificationReviewedAt)).format('DD/MM/YYYY')]] as [string, string][])
+                    : []),
+                  ['Xác thực lúc', c.verifiedAt && dayjs(String(c.verifiedAt)).isValid() ? dayjs(String(c.verifiedAt)).format('DD/MM/YYYY') : '—'],
+                  ...(c.createdAt && dayjs(String(c.createdAt)).isValid()
+                    ? ([['Ngày tạo', dayjs(String(c.createdAt)).format('DD/MM/YYYY')]] as [string, string][])
+                    : []),
+                  ...(c.updatedAt && dayjs(String(c.updatedAt)).isValid()
+                    ? ([['Cập nhật', dayjs(String(c.updatedAt)).format('DD/MM/YYYY')]] as [string, string][])
+                    : []),
                 ] as [string, string][]
               ).map(([label, value]) => (
                 <div key={label} className="flex justify-between gap-3 border-0 border-t border-solid border-slate-100 py-2.5 text-sm first:border-t-0">
@@ -181,7 +230,9 @@ export const ClientCompanyPage: React.FC = () => {
           </Surface>
           <Surface padded className="rounded-2xl bg-white border border-slate-200/90 shadow-xs">
             <h2 className="m-0 text-base font-semibold text-slate-900">Chỉnh sửa thông tin</h2>
-            <p className="mb-5 mt-1 text-sm text-slate-600">Trạng thái xác thực do HR Connect quản lý.</p>
+            <p className="mb-5 mt-1 text-sm text-slate-600">
+              Trạng thái xác thực do HR Connect quản lý · Cập nhật giới thiệu hoặc địa chỉ không làm mất trạng thái xác thực.
+            </p>
             <Form form={form} layout="vertical" requiredMark={false} validateTrigger="onBlur" onFinish={(v) => save.mutate(v)}>
               <Form.Item name="companyName" label="Tên doanh nghiệp" rules={[{ required: true, whitespace: true, message: 'Nhập tên doanh nghiệp.' }, { max: 255, message: 'Tối đa 255 ký tự.' }]}>
                 <Input size="large" className="rounded-xl" />

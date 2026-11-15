@@ -26,13 +26,33 @@ vi.mock('@/services/api/hrApi', () => ({
   pipelineApi: { interviews: vi.fn() },
 }));
 
-const jobs = vi.hoisted(() => ({ data: [] as unknown[] }));
+const jobs = vi.hoisted(() => ({ data: [] as unknown[], lastEnabled: true as boolean | undefined }));
 vi.mock('@/features/jobs-mf01/useJobQueries', () => ({
-  useMyJobs: () => ({ isLoading: false, data: jobs.data }),
+  useMyJobs: (_status?: unknown, enabled?: boolean) => {
+    jobs.lastEnabled = enabled;
+    return { isLoading: false, data: enabled === false ? [] : jobs.data };
+  },
+}));
+
+const authMock = vi.hoisted(() => ({
+  user: { name: 'Demo Client' },
+  roles: ['CLIENT'] as string[],
+  permissions: ['job.view_own', 'application.view_company', 'interview.view_company', 'placement.confirm'] as string[],
 }));
 
 vi.mock('@/stores/authStore', () => ({
-  useAuthStore: (select: (s: { user: { name: string } }) => unknown) => select({ user: { name: 'Demo Client' } }),
+  useAuthStore: (
+    select: (s: {
+      user: { name: string };
+      hasAnyRole: (roles: string[]) => boolean;
+      hasPermission: (p: string) => boolean;
+    }) => unknown
+  ) =>
+    select({
+      user: authMock.user,
+      hasAnyRole: (roles: string[]) => roles.some((r) => authMock.roles.includes(r)),
+      hasPermission: (p: string) => authMock.permissions.includes(p),
+    }),
 }));
 
 const hoursFromNow = (h: number) => new Date(Date.now() + h * 3_600_000).toISOString();
@@ -62,6 +82,10 @@ const renderPage = () =>
 describe('ClientOverviewPage', () => {
   beforeEach(() => {
     mockNavigate.mockReset();
+    authMock.user = { name: 'Demo Client' };
+    authMock.roles = ['CLIENT'];
+    authMock.permissions = ['job.view_own', 'application.view_company', 'interview.view_company', 'placement.confirm'];
+    vi.mocked(financeApi.clientDashboardSummary).mockReset();
     vi.mocked(financeApi.clientDashboardSummary).mockResolvedValue({
       pendingFeesAmount: 7_000_000, pendingFeesCount: 2, overdueFeesAmount: 6_000_000, overdueFeesCount: 1,
       nextFeeDueDate: '2026-11-20', refundsOwedAmount: 500_000, refundsOwedCount: 1,
@@ -155,5 +179,26 @@ describe('ClientOverviewPage', () => {
     expect(mockNavigate).toHaveBeenLastCalledWith('/client/candidates?service=CV_SOURCING');
     fireEvent.click(screen.getByRole('button', { name: /Bảo hành & suất thay thế/ }));
     expect(mockNavigate).toHaveBeenLastCalledWith('/client/warranty');
+  });
+
+  it('skips clientDashboardSummary and useMyJobs when ADMIN visits /client/dashboard without CLIENT membership', async () => {
+    authMock.roles = ['ADMIN'];
+    authMock.permissions = ['placement.confirm'];
+
+    renderPage();
+
+    expect(await screen.findByText('CV chờ duyệt')).toBeInTheDocument();
+    expect(jobs.lastEnabled).toBe(false);
+    expect(financeApi.clientDashboardSummary).not.toHaveBeenCalled();
+  });
+
+  it('skips clientDashboardSummary and useMyJobs when CLIENT lacks job.view_own and placement.confirm', () => {
+    authMock.roles = ['CLIENT'];
+    authMock.permissions = ['application.view_company', 'interview.view_company'];
+
+    renderPage();
+
+    expect(jobs.lastEnabled).toBe(false);
+    expect(financeApi.clientDashboardSummary).not.toHaveBeenCalled();
   });
 });

@@ -318,8 +318,15 @@ export interface CompanyProfile {
   address: string | null;
   description: string | null;
   logoUrl: string | null;
+  verificationStatus?: string;
+  verifiedAt?: string | null;
+  verificationRejectedReason?: string | null;
+  verificationRequestedAt?: string | null;
+  verificationReviewedAt?: string | null;
   roleInCompany?: string | null;
   isPrimaryContact?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
   [key: string]: unknown;
 }
 export const companyProfileApi = {

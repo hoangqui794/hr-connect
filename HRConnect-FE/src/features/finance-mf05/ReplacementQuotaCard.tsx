@@ -76,18 +76,6 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
   const [detailPlacementId, setDetailPlacementId] = useState<string | null>(null);
   const [cancelForm] = Form.useForm<{ reason: string }>();
 
-  // Query replacement slots and associated job metadata
-  // Refunds created when a slot ran out, so an expired slot can say how much comes back.
-  // Client sees its own company's; Internal HR (commission.view) sees all.
-  const refundsQuery = useQuery({
-    queryKey: ['mf05-replacement-refunds', mode],
-    queryFn: () => financeApi.serviceFees({ kind: 'REPLACEMENT_REFUND', page: 1, pageSize: 100 }),
-  });
-  const refundOf = (slot: ReplacementSlotWithMeta) =>
-    (refundsQuery.data?.items ?? []).find(
-      (f) => f.jobId === slot.jobId && (!f.candidateName || !slot.originalCandidateName || f.candidateName === slot.originalCandidateName)
-    );
-
   const slotsQuery = useQuery({
     queryKey: ['mf05-replacement-slots', mode, selectedJobId],
     queryFn: async (): Promise<ReplacementSlotWithMeta[]> => {
@@ -95,8 +83,12 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
       // so the card no longer fans out over placements, jobs and warranties.
       const pageSize = 100;
       const slotResults: ReplacementSlotWithMeta[][] = [];
+      const fetchSlots =
+        mode === 'client' && typeof financeApi.clientReplacementSlots === 'function'
+          ? financeApi.clientReplacementSlots
+          : financeApi.replacementSlots;
       for (let page = 1; ; page += 1) {
-        const res = await financeApi.replacementSlots({ jobId: selectedJobId, page, pageSize });
+        const res = await fetchSlots({ jobId: selectedJobId, page, pageSize });
         const items = res?.items ?? [];
         slotResults.push(
           items.map((slot) => ({
@@ -122,6 +114,27 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
       });
     },
   });
+
+  // Fallback only for legacy payloads lacking direct refund metadata on EXPIRED slots.
+  const needsFallbackRefundQuery =
+    mode === 'client' &&
+    typeof financeApi.serviceFees === 'function' &&
+    (slotsQuery.data ?? []).some((slot) => slot.status === 'EXPIRED' && slot.refundAmount == null && !slot.refundStatus);
+  const refundsQuery = useQuery({
+    queryKey: ['mf05-replacement-refunds', mode],
+    enabled: needsFallbackRefundQuery,
+    queryFn: async () =>
+      (await financeApi.serviceFees({ kind: 'REPLACEMENT_REFUND', page: 1, pageSize: 100 })) ?? {
+        items: [],
+        totalCount: 0,
+        page: 1,
+        pageSize: 100,
+      },
+  });
+  const refundOf = (slot: ReplacementSlotWithMeta) =>
+    (refundsQuery.data?.items ?? []).find(
+      (f) => f.jobId === slot.jobId && (!f.candidateName || !slot.originalCandidateName || f.candidateName === slot.originalCandidateName)
+    );
 
 
   // 3. Cancel slot mutation (Internal HR)
@@ -237,8 +250,16 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
       key: 'status',
       render: (_, slot) => {
         const conf = REPLACEMENT_STATUS_CONFIG[slot.status];
-        const refund = slot.status === 'EXPIRED' && mode === 'client' ? refundOf(slot) : undefined;
-        const pctLabel = refund?.feeMultiplier != null ? `${Number((refund.feeMultiplier * 100).toFixed(2))}% ` : '';
+        const fallbackRefund = slot.status === 'EXPIRED' && mode === 'client' ? refundOf(slot) : undefined;
+        const hasDirectRefund = slot.refundAmount != null || Boolean(slot.refundStatus);
+        const refundStatus = hasDirectRefund ? slot.refundStatus : fallbackRefund?.status;
+        const refundAmount = hasDirectRefund ? slot.refundAmount : fallbackRefund?.amount;
+        const pctLabel =
+          slot.refundPercent != null
+            ? `${Number(slot.refundPercent.toFixed(2))}% `
+            : fallbackRefund?.feeMultiplier != null
+            ? `${Number((fallbackRefund.feeMultiplier * 100).toFixed(2))}% `
+            : '';
         return (
           <div className="space-y-1">
             <Tooltip title={conf.description}>
@@ -248,16 +269,21 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
             </Tooltip>
             {slot.status === 'EXPIRED' && mode === 'client' && (
               <div>
-                {refund ? (
+                {refundStatus === 'CANCELLED' ? (
+                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                    Đã hủy hoàn phí
+                  </span>
+                ) : refundStatus || refundAmount != null ? (
                   <span
                     className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-                      refund.status === 'PAID'
+                      refundStatus === 'PAID'
                         ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
                         : 'border-sky-200 bg-sky-50 text-sky-800'
                     }`}
                   >
                     <CheckCircleOutlined />
-                    {refund.status === 'PAID' ? 'Đã hoàn' : 'Chờ hoàn'} {pctLabel}({money(refund.amount)})
+                    {refundStatus === 'PAID' ? 'Đã hoàn' : 'Chờ hoàn'} {pctLabel}
+                    {refundAmount != null ? `(${money(refundAmount)})` : ''}
                   </span>
                 ) : (
                   <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-600">
@@ -280,6 +306,13 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
             <div className="text-sm tabular-nums text-slate-700">
               {slot.expiresAt ? date(slot.expiresAt) : 'Chưa kích hoạt'}
             </div>
+            {(slot.openedAt || slot.fillWindowDays > 0) && (
+              <div className="mt-0.5 text-xs text-slate-500 tabular-nums">
+                {slot.openedAt ? `Mở ${date(slot.openedAt)}` : ''}
+                {slot.openedAt && slot.fillWindowDays > 0 ? ' · ' : ''}
+                {slot.fillWindowDays > 0 ? `Cửa sổ ${slot.fillWindowDays} ngày` : ''}
+              </div>
+            )}
             {slot.status === 'OPEN' && (
               <div className="mt-0.5">
                 <Tag color={countdown.badgeColor} className="m-0 text-xs font-semibold">
@@ -322,6 +355,13 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
         }
         if (slot.status === 'EXPIRED') {
           return <span className="text-xs text-slate-500">Chưa tuyển được người thay</span>;
+        }
+        if (slot.status === 'CANCELLED' && slot.cancelReason) {
+          return (
+            <div className="text-xs text-slate-500 line-clamp-2" title={slot.cancelReason}>
+              Lý do hủy: {slot.cancelReason}
+            </div>
+          );
         }
         return <span className="text-slate-400">—</span>;
       },

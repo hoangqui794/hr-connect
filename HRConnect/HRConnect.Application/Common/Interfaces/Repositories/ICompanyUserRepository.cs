@@ -8,6 +8,8 @@ public interface ICompanyUserRepository
 
     Task<CompanyUser?> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
 
+    Task<CompanyUser?> GetPrimaryActiveByCompanyIdAsync(Guid companyId, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<CompanyUser>> GetActiveByUserIdsAsync(
         Guid companyId,
         IReadOnlyCollection<Guid> userIds,

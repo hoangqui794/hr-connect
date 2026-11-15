@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Offers.Queries.GetOfferDetail;
@@ -19,8 +20,13 @@ public class GetOfferDetailQueryHandlerTests
     private readonly Mock<ICompanyUserRepository> _companyUserRepositoryMock = new();
     private readonly Mock<ILogger<GetOfferDetailQueryHandler>> _loggerMock = new();
 
-    private GetOfferDetailQueryHandler CreateHandler() =>
-        new(_offerRepositoryMock.Object, _companyUserRepositoryMock.Object, _loggerMock.Object);
+    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
+    }
+
+    private GetOfferDetailQueryHandler CreateHandler(TimeProvider? timeProvider = null) =>
+        new(_offerRepositoryMock.Object, _companyUserRepositoryMock.Object, _loggerMock.Object, timeProvider);
 
     [Fact]
     public async Task Handle_WhenOfferNotFound_ShouldThrowNotFoundException()
@@ -204,6 +210,30 @@ public class GetOfferDetailQueryHandlerTests
         result.Data.Status.Should().Be("DRAFT");
     }
 
+    [Theory]
+    [InlineData(13, false)]
+    [InlineData(14, true)]
+    public async Task Handle_AtEarlyMorningVietnamTime_ShouldComputeCanRespondAgainstVietnamDate(
+        int expiryDay,
+        bool expectedCanRespond)
+    {
+        var earlyMorningVn = new FixedTimeProvider(new DateTimeOffset(2026, 11, 13, 20, 34, 0, TimeSpan.Zero));
+        var offerId = Guid.NewGuid();
+        var adminUserId = Guid.NewGuid();
+        var offer = CreateSampleOffer(offerId, Guid.NewGuid(), Guid.NewGuid(), "SENT");
+        offer.ExpiryDate = new DateOnly(2026, 11, expiryDay);
+
+        _offerRepositoryMock
+            .Setup(r => r.GetByIdWithDetailsAsync(offerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(offer);
+
+        var result = await CreateHandler(earlyMorningVn).Handle(
+            new GetOfferDetailQuery(offerId, adminUserId, IsInternalHrOrAdmin: true),
+            CancellationToken.None);
+
+        result.Data.CanRespond.Should().Be(expectedCanRespond);
+    }
+
     private static Offer CreateSampleOffer(Guid offerId, Guid companyId, Guid candidateUserId, string status)
     {
         var candidateId = Guid.NewGuid();
@@ -217,8 +247,8 @@ public class GetOfferDetailQueryHandlerTests
             OfferVersion = 1,
             Salary = 35000000m,
             CurrencyCode = "VND",
-            StartDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(14)),
-            ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7)),
+            StartDate = VietnamTime.Today().AddDays(14),
+            ExpiryDate = VietnamTime.Today().AddDays(7),
             Status = status,
             SentAt = status == "SENT" ? DateTime.UtcNow : null,
             CreatedAt = DateTime.UtcNow,

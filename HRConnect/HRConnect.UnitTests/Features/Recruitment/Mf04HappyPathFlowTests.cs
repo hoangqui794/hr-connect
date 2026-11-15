@@ -1,4 +1,5 @@
 using FluentAssertions;
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
@@ -167,7 +168,7 @@ public sealed class Mf04HappyPathFlowTests
         application.Status.Should().Be(ApplicationStates.OfferPending);
         persistedInterview.Status.Should().Be(InterviewStates.Completed);
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = VietnamTime.Today();
         var createOfferHandler = new CreateOfferDraftCommandHandler(
             offers.Object,
             applications.Object,
@@ -276,7 +277,7 @@ public sealed class Mf04HappyPathFlowTests
         var internalHrId = Guid.NewGuid();
         var platformAdminId = Guid.NewGuid();
         var serviceTypeId = Guid.NewGuid();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = VietnamTime.Today();
         var application = new HRConnect.Domain.Entities.Application
         {
             ApplicationId = Guid.NewGuid(),

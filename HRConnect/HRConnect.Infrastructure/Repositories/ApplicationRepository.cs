@@ -326,6 +326,8 @@ public class ApplicationRepository : IApplicationRepository
             .Include(a => a.SourcingDeliveries)
             .Include(a => a.Job)
                 .ThenInclude(j => j.Company)
+                    .ThenInclude(c => c!.CompanyUser)
+                        .ThenInclude(cu => cu!.User)
             .Include(a => a.Job)
                 .ThenInclude(j => j.ServiceType)
             .Include(a => a.Job)

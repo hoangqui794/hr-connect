@@ -8,7 +8,7 @@ import { financeApi, vnPayApi } from '@/services/api/financeApi';
 import { jobsApi } from '@/services/api/jobsApi';
 
 vi.mock('@/services/api/financeApi', () => ({
-  financeApi: { serviceFees: vi.fn() },
+  financeApi: { serviceFees: vi.fn(), serviceFeesSummary: vi.fn() },
   vnPayApi: { enabled: vi.fn(), createPayment: vi.fn() },
 }));
 vi.mock('@/services/api/jobsApi', () => ({ jobsApi: { getMine: vi.fn(), getPostingFee: vi.fn() } }));
@@ -31,6 +31,7 @@ const renderPage = () =>
 
 describe('ClientBillingPage', () => {
   beforeEach(() => {
+    vi.mocked(financeApi.serviceFeesSummary).mockResolvedValue(null as never);
     vi.mocked(financeApi.serviceFees).mockResolvedValue({
       items: [
         fee({ serviceFeeId: 'hh', kind: 'PLACEMENT', jobTitle: 'Backend .NET', candidateName: 'qui3', amount: 42_000_000, status: 'OVERDUE' }),
@@ -93,6 +94,9 @@ describe('ClientBillingPage', () => {
     expect(screen.getByText('Suất thay thế hết hạn ngày 11/11/2026 mà chưa có ứng viên nào. HR Connect hoàn 30% phí đã trả.')).toBeInTheDocument();
     expect(screen.getByText((t) => t.includes('trước 13/11/2026'))).toBeInTheDocument();
     expect(screen.getByText('Chờ hoàn tiền')).toBeInTheDocument();
+    expect(screen.getByText('HR Connect cần hoàn')).toBeInTheDocument();
+    expect(screen.getByText('1 khoản chờ hoàn tiền')).toBeInTheDocument();
+    expect(screen.getByText('0 khoản chưa thanh toán')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Thanh toán/ })).not.toBeInTheDocument();
   });
 
@@ -102,7 +106,9 @@ describe('ClientBillingPage', () => {
 
     const services = within(screen.getByRole('radiogroup', { name: 'Lọc theo dịch vụ' }));
     expect(services.queryByRole('radio', { name: /^(HH|SS|AP)\b/ })).toBeNull();
-    fireEvent.click(services.getByRole('radio', { name: /^Mua CV theo số lượng/ }));
+    expect(screen.queryByText('Tuyển qua Affiliate')).toBeNull();
+    expect(screen.queryByText('Mua CV theo số lượng')).toBeNull();
+    fireEvent.click(services.getByRole('radio', { name: /^Tìm hồ sơ phù hợp/ }));
 
     expect(screen.getByText('Kế toán tổng hợp')).toBeTruthy();
     expect(screen.queryByText('Backend .NET')).toBeNull();
@@ -200,5 +206,268 @@ describe('ClientBillingPage', () => {
 
     const headers = screen.getAllByRole('columnheader').map((h) => h.textContent?.trim());
     expect(headers).toEqual(['Tin tuyển dụng', 'Dịch vụ', 'Khoản phí', 'Số tiền', 'Hạn thanh toán', 'Trạng thái', 'Thao tác']);
+  });
+
+  it('explains HEADHUNT_COD multiplier as months of salary, shows createdAt/placementId and reconciliation reason', async () => {
+    const placementBreakdown = feeBreakdown(
+      fee({ kind: 'PLACEMENT', baseSalary: 30_000_000, feeMultiplier: 1.5, amount: 45_000_000 }) as never
+    );
+    expect(placementBreakdown).toEqual([
+      { label: 'Lương gross tháng', value: '30.000.000 đ' },
+      { label: 'Hệ số phí', value: '1.5 tháng lương' },
+    ]);
+
+    vi.mocked(financeApi.serviceFees).mockResolvedValue({
+      items: [
+        fee({
+          serviceFeeId: 'rec-pending',
+          kind: 'PLACEMENT',
+          placementId: 'abcd1234-5678-90ab-cdef-111122223333',
+          jobTitle: 'Tech Lead',
+          candidateName: 'Nguyễn Văn A',
+          amount: 45_000_000,
+          status: 'PENDING',
+          reconciliationStatus: 'PENDING',
+          createdAt: '2026-10-15T08:00:00Z',
+        }),
+        fee({
+          serviceFeeId: 'rec-flagged',
+          kind: 'PLACEMENT',
+          jobTitle: 'Product Owner',
+          amount: 35_000_000,
+          status: 'DUE',
+          reconciliationStatus: 'FLAGGED',
+          createdAt: '2026-10-16T08:00:00Z',
+        }),
+      ],
+      totalCount: 5,
+      page: 1,
+      pageSize: 100,
+    } as never);
+    vi.mocked(jobsApi.getMine).mockResolvedValue([] as never);
+
+    renderPage();
+
+    expect(await screen.findByText('Tech Lead')).toBeInTheDocument();
+    expect(screen.getByText('Lập 15/10/2026')).toBeInTheDocument();
+    expect(screen.getByText('#ABCD1234')).toBeInTheDocument();
+    expect(screen.getByText('Chờ xác nhận ngày đi làm thực tế')).toBeInTheDocument();
+    expect(screen.getByText('Đang rà soát sai lệch đối soát')).toBeInTheDocument();
+    expect(screen.getByText('Đang hiển thị 2/5 khoản phí dịch vụ gần nhất.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Thanh toán:/ })).toBeNull();
+  });
+
+  it('does not treat an already PAID fee with stale reconciliationStatus as reconciling', async () => {
+    vi.mocked(financeApi.serviceFees).mockResolvedValue({
+      items: [
+        fee({
+          serviceFeeId: 'paid-stale-rec',
+          kind: 'PLACEMENT',
+          jobTitle: 'Senior QA',
+          amount: 25_000_000,
+          status: 'PAID',
+          paidAt: '2026-10-25T10:00:00Z',
+          paymentReference: 'VNP-999',
+          reconciliationStatus: 'PENDING',
+        }),
+      ],
+      totalCount: 1,
+      page: 1,
+      pageSize: 100,
+    } as never);
+    vi.mocked(jobsApi.getMine).mockResolvedValue([] as never);
+
+    renderPage();
+
+    expect(await screen.findByText('Senior QA')).toBeInTheDocument();
+    expect(within(screen.getByRole('table')).getByText('Đã thanh toán')).toBeInTheDocument();
+    expect(screen.queryByText('Đang đối soát')).toBeNull();
+    expect(screen.queryByText('Chờ xác nhận ngày đi làm thực tế')).toBeNull();
+  });
+
+  it('renders serviceTypeCode, BE daysOverdue, links placementId, and blocks duplicate payment while transfer/VNPay is pending', async () => {
+    vi.mocked(financeApi.serviceFees).mockResolvedValue({
+      items: [
+        fee({
+          serviceFeeId: 'fee-transfer-submitted',
+          kind: 'DEPOSIT',
+          serviceTypeCode: 'CV_SOURCING',
+          jobTitle: 'Frontend React',
+          amount: 4_000_000,
+          status: 'DUE',
+          dueDate: '2026-10-20',
+          paymentSubmittedAt: '2026-11-12T08:00:00Z',
+        }),
+        fee({
+          serviceFeeId: 'fee-vnpay-pending',
+          kind: 'PLACEMENT',
+          placementId: 'bcdef123-0000-0000-0000-000000000001',
+          serviceTypeCode: 'HEADHUNT_COD',
+          jobTitle: 'DevOps Lead',
+          amount: 28_000_000,
+          status: 'OVERDUE',
+          daysOverdue: 9,
+          dueDate: '2026-11-01',
+          pendingOnlinePayment: true,
+        }),
+      ],
+      totalCount: 2,
+      page: 1,
+      pageSize: 100,
+    } as never);
+    vi.mocked(jobsApi.getMine).mockResolvedValue([] as never);
+
+    renderPage();
+
+    expect(await screen.findByText('Frontend React')).toBeInTheDocument();
+    expect(screen.getByText('Quá hạn 9 ngày')).toBeInTheDocument();
+    expect(screen.getByText(/Đã báo chuyển khoản – chờ xác nhận \(12\/11\/2026\)/)).toBeInTheDocument();
+    expect(screen.getByText('VNPay đang xử lý')).toBeInTheDocument();
+    expect(screen.getByText('Chờ xác nhận')).toBeInTheDocument();
+    expect(screen.getByText('VNPay chờ XL')).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: 'Xem chi tiết nhận việc #BCDEF123' });
+    expect(link).toHaveAttribute('href', '/client/placements/bcdef123-0000-0000-0000-000000000001');
+    expect(screen.queryByRole('button', { name: /^Thanh toán:/ })).toBeNull();
+  });
+
+  it('uses full GET /service-fees/summary totals combined with posting fees when totalCount exceeds loaded page', async () => {
+    vi.mocked(financeApi.serviceFeesSummary).mockResolvedValue({
+      unpaidAmount: 150_000_000,
+      unpaidCount: 12,
+      overdueAmount: 60_000_000,
+      overdueCount: 4,
+      paidAmount: 420_000_000,
+      paidCount: 110,
+      pendingRefundAmount: 18_000_000,
+      pendingRefundCount: 2,
+      paidRefundAmount: 0,
+      paidRefundCount: 0,
+      totalCount: 124,
+      currencyCode: 'VND',
+    });
+    vi.mocked(financeApi.serviceFees).mockResolvedValue({
+      items: [fee({ serviceFeeId: 'hh-1', kind: 'PLACEMENT', jobTitle: 'Architect', amount: 40_000_000, status: 'PENDING' })],
+      totalCount: 124,
+      page: 1,
+      pageSize: 100,
+    } as never);
+    vi.mocked(jobsApi.getMine).mockResolvedValue([
+      {
+        jobId: 'j-ap-1',
+        title: 'AP Job',
+        serviceTypeCode: 'CV_APPLICATION',
+        postingFeeStatus: 'PENDING',
+        postingPackageCode: 'PRO',
+        postingFee: {
+          postingFeeId: 'pf-1',
+          amount: 1_000_000,
+          currencyCode: 'VND',
+          status: 'PENDING',
+          paidAt: null,
+          paymentReference: null,
+          packageName: 'Pro',
+        },
+      },
+    ] as never);
+
+    renderPage();
+
+    expect(await screen.findByText('Architect')).toBeInTheDocument();
+    expect(screen.getByText('151.000.000 đ')).toBeInTheDocument();
+    expect(screen.getByText('13 khoản chưa thanh toán')).toBeInTheDocument();
+    expect(screen.getByText('60.000.000 đ')).toBeInTheDocument();
+    expect(screen.getByText('4 khoản quá hạn')).toBeInTheDocument();
+    expect(screen.getByText('420.000.000 đ')).toBeInTheDocument();
+    expect(screen.getByText('110 khoản')).toBeInTheDocument();
+    expect(screen.getByText('18.000.000 đ')).toBeInTheDocument();
+    expect(screen.getByText('2 khoản chờ hoàn tiền')).toBeInTheDocument();
+    expect(screen.getByText('125 khoản phí')).toBeInTheDocument();
+    expect(screen.getByText(/Số liệu KPI đã tổng hợp toàn bộ hệ thống/)).toBeInTheDocument();
+  });
+
+  it('matches summary currency breakdown counts, filters posting counts by currency, and hides overdue days while reconciling', async () => {
+    vi.mocked(financeApi.serviceFeesSummary).mockResolvedValue({
+      unpaidAmount: 10_000_000,
+      unpaidCount: 1,
+      overdueAmount: 0,
+      overdueCount: 0,
+      paidAmount: 0,
+      paidCount: 0,
+      pendingRefundAmount: 0,
+      pendingRefundCount: 0,
+      paidRefundAmount: 0,
+      paidRefundCount: 0,
+      totalCount: 3,
+      currencyCode: 'VND',
+      currencyBreakdowns: [
+        {
+          currencyCode: 'VND',
+          unpaidAmount: 10_000_000,
+          unpaidCount: 1,
+          overdueAmount: 0,
+          overdueCount: 0,
+          paidAmount: 0,
+          paidCount: 0,
+          pendingRefundAmount: 0,
+          pendingRefundCount: 0,
+          paidRefundAmount: 0,
+          paidRefundCount: 0,
+        },
+        {
+          currencyCode: 'USD',
+          unpaidAmount: 500,
+          unpaidCount: 2,
+          overdueAmount: 0,
+          overdueCount: 0,
+          paidAmount: 0,
+          paidCount: 0,
+          pendingRefundAmount: 0,
+          pendingRefundCount: 0,
+          paidRefundAmount: 0,
+          paidRefundCount: 0,
+        },
+      ],
+    });
+    vi.mocked(financeApi.serviceFees).mockResolvedValue({
+      items: [
+        fee({
+          serviceFeeId: 'fee-reconcile-overdue',
+          jobTitle: 'Solution Architect',
+          amount: 10_000_000,
+          status: 'OVERDUE',
+          daysOverdue: 7,
+          dueDate: '2026-10-01',
+          reconciliationStatus: 'PENDING',
+        }),
+      ],
+      totalCount: 3,
+      page: 1,
+      pageSize: 100,
+    } as never);
+    vi.mocked(jobsApi.getMine).mockResolvedValue([
+      {
+        jobId: 'j-ap-usd',
+        title: 'AP USD Job',
+        serviceTypeCode: 'CV_APPLICATION',
+        postingFeeStatus: 'PENDING',
+        postingPackageCode: 'PRO',
+        postingFee: {
+          postingFeeId: 'pf-usd',
+          amount: 100,
+          currencyCode: 'USD',
+          status: 'PENDING',
+          paidAt: null,
+          paymentReference: null,
+          packageName: 'Pro',
+        },
+      },
+    ] as never);
+
+    renderPage();
+
+    expect(await screen.findByText('Solution Architect')).toBeInTheDocument();
+    expect(screen.getByText('1 khoản chưa thanh toán')).toBeInTheDocument();
+    expect(screen.getByText('4 khoản phí')).toBeInTheDocument();
+    expect(screen.queryByText('Quá hạn 7 ngày')).toBeNull();
   });
 });

@@ -66,8 +66,23 @@ export const REJECTION_REASONS: { value: string; label: string }[] = [
   { value: 'OTHER', label: 'Lý do khác' },
 ];
 
-export const reasonLabel = (code?: string | null) =>
-  code ? REJECTION_REASONS.find((r) => r.value === code)?.label ?? code : null;
+const EXTRA_APPLICATION_REASON_LABELS: Record<string, string> = {
+  CANDIDATE_ACCEPTED_OTHER_JOB: 'Ứng viên đã nhận việc ở nơi khác',
+  CANDIDATE_PERSONAL_REASON: 'Ứng viên báo lý do cá nhân / gia đình',
+  CANDIDATE_NO_SHOW: 'Ứng viên không đến vào ngày hẹn',
+  EMPLOYER_CANCELLED: 'Doanh nghiệp dừng tiếp nhận',
+  CANDIDATE_OTHER: 'Ứng viên không nhận việc',
+};
+
+export const reasonLabel = (code?: string | null) => {
+  const normalized = code?.trim().toUpperCase();
+  if (!normalized) return null;
+  return (
+    REJECTION_REASONS.find((r) => r.value === normalized)?.label ??
+    EXTRA_APPLICATION_REASON_LABELS[normalized] ??
+    code!.trim()
+  );
+};
 
 /** Service names come from the single source in jobDisplay (HR feedback 28/10). */
 export const SERVICE_TYPE: Record<string, string> = Object.fromEntries(

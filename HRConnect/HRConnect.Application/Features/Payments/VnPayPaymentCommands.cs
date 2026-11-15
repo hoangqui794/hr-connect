@@ -200,6 +200,7 @@ public sealed class VnPayPaymentCommandHandlers(
                             PaymentReference = reference,
                             PaidAt = paidAt,
                             UserId = payment.CreatedBy,
+                            IsBackofficeOrSystem = true,
                         }, cancellationToken);
                     }
                 }

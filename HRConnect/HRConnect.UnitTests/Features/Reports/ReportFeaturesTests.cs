@@ -481,4 +481,31 @@ public class ReportFeaturesTests
             .Invoking(h => h.Handle(new GetReportTopCompaniesQuery(null, null, "INVALID_SORT", 10), default))
             .Should().ThrowAsync<BadRequestException>();
     }
+
+    [Fact]
+    public async Task RevenueReport_ShouldSeparateCurrenciesAndNotSumUsdIntoVndTotals()
+    {
+        var now = DateTime.UtcNow;
+        var today = DateOnly.FromDateTime(now.AddHours(7));
+        var company = new Company { CompanyId = Guid.NewGuid(), CompanyName = "Multi Currency Co", Industry = "IT", VerificationStatus = "VERIFIED", CreatedAt = now, UpdatedAt = now };
+        var jobVnd = new Job { JobId = Guid.NewGuid(), CompanyId = company.CompanyId, ServiceTypeId = Guid.NewGuid(), Title = "BE VND", Status = "ACTIVE", CurrencyCode = "VND", Quantity = 1, CreatedAt = now, UpdatedAt = now };
+        var jobUsd = new Job { JobId = Guid.NewGuid(), CompanyId = company.CompanyId, ServiceTypeId = Guid.NewGuid(), Title = "BE USD", Status = "ACTIVE", CurrencyCode = "USD", Quantity = 1, CreatedAt = now, UpdatedAt = now };
+
+        await _context.Companies.AddAsync(company);
+        await _context.Jobs.AddRangeAsync(jobVnd, jobUsd);
+        await _context.ServiceFees.AddRangeAsync(
+            new ServiceFee { ServiceFeeId = Guid.NewGuid(), JobId = jobVnd.JobId, Kind = ServiceFeeKinds.Placement, CompanyId = company.CompanyId, BaseSalary = 20_000_000m, FeeMultiplier = 1m, Amount = 20_000_000m, CurrencyCode = "VND", DueDate = today, Status = ServiceFeeStates.Paid, PaidAt = now, CreatedAt = now, UpdatedAt = now },
+            new ServiceFee { ServiceFeeId = Guid.NewGuid(), JobId = jobUsd.JobId, Kind = ServiceFeeKinds.Placement, CompanyId = company.CompanyId, BaseSalary = 2_000m, FeeMultiplier = 1m, Amount = 1_500m, CurrencyCode = "USD", DueDate = today, Status = ServiceFeeStates.Paid, PaidAt = now, CreatedAt = now, UpdatedAt = now });
+        await _context.SaveChangesAsync();
+
+        var revenue = await new GetReportRevenueQueryHandler(Repository)
+            .Handle(new GetReportRevenueQuery(today.AddDays(-1), today.AddDays(1), "MONTH"), default);
+
+        revenue.Currency.Should().Be("VND");
+        revenue.Totals["HEADHUNT_COD"].Collected.Should().Be(20_000_000m);
+        revenue.Totals["HEADHUNT_COD"].Billed.Should().Be(20_000_000m);
+        revenue.Series.Single().HEADHUNT_COD.Should().Be(20_000_000m);
+        revenue.ByCurrency["USD"].Totals["HEADHUNT_COD"].Collected.Should().Be(1_500m);
+        revenue.ByCurrency["VND"].Totals["HEADHUNT_COD"].Collected.Should().Be(20_000_000m);
+    }
 }

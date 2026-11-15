@@ -21,4 +21,10 @@ public interface ISourcingDeliveryRepository
     Task<IReadOnlyList<Guid>> GetDueForAutoAcceptAsync(DateTime now, int batchSize, CancellationToken cancellationToken = default);
 
     Task AddAsync(SourcingDelivery delivery, CancellationToken cancellationToken = default);
+
+    /// <summary>Latest SOURCING_REJECTION_REVIEWED audit logs for a batch of deliveries (avoid N+1).</summary>
+    Task<IReadOnlyList<AuditLog>> GetRejectionReviewAuditLogsAsync(
+        IReadOnlyCollection<Guid> deliveryIds,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<AuditLog>>(Array.Empty<AuditLog>());
 }

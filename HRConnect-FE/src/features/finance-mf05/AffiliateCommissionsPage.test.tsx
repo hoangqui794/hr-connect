@@ -95,4 +95,79 @@ describe('Affiliate › Hoa hồng và chi trả', () => {
 
     expect(await screen.findByText('Chưa có hoa hồng')).toBeInTheDocument();
   });
+
+  it('shows Giới thiệu thay thế only when replacementSlotStatus is OPEN and explains non-open states', async () => {
+    vi.mocked(financeApi.commissions).mockResolvedValue(
+      page([
+        commission({
+          commissionId: 'c-open',
+          candidateName: 'Ứng viên Mở',
+          jobId: 'job-open',
+          status: 'CANCELLED',
+          warrantyStatus: 'VOIDED',
+          replacementSlotId: 'slot-open',
+          replacementSlotStatus: 'OPEN',
+          replacementExpiresAt: inDays(10),
+        }),
+        commission({
+          commissionId: 'c-wait',
+          candidateName: 'Ứng viên Chờ phí',
+          jobId: 'job-wait',
+          status: 'CANCELLED',
+          warrantyStatus: 'VOIDED',
+          replacementSlotId: 'slot-wait',
+          replacementSlotStatus: 'WAITING_PAYMENT',
+        }),
+        commission({
+          commissionId: 'c-filled',
+          candidateName: 'Ứng viên Đã đủ',
+          jobId: 'job-filled',
+          status: 'CANCELLED',
+          warrantyStatus: 'VOIDED',
+          replacementSlotId: 'slot-filled',
+          replacementSlotStatus: 'FILLED',
+        }),
+        commission({
+          commissionId: 'c-expired',
+          candidateName: 'Ứng viên Hết hạn',
+          jobId: 'job-expired',
+          status: 'CANCELLED',
+          warrantyStatus: 'VOIDED',
+          replacementSlotId: 'slot-expired',
+          replacementSlotStatus: 'EXPIRED',
+        }),
+        commission({
+          commissionId: 'c-none',
+          candidateName: 'Ứng viên Không suất',
+          jobId: 'job-none',
+          status: 'CANCELLED',
+          warrantyStatus: 'VOIDED',
+          replacementSlotId: null,
+          replacementSlotStatus: null,
+        }),
+      ])
+    );
+    renderPage();
+
+    const openRow = (await screen.findByText('Ứng viên Mở')).closest('tr')!;
+    const replaceLink = within(openRow).getByRole('link', { name: 'Giới thiệu thay thế' });
+    expect(replaceLink).toHaveAttribute('href', '/affiliate/submit-candidate?job=job-open');
+    expect(within(openRow).getByText(/Đã mở suất thay thế · Còn (9|10) ngày/)).toBeInTheDocument();
+
+    const waitRow = screen.getByText('Ứng viên Chờ phí').closest('tr')!;
+    expect(within(waitRow).queryByRole('link', { name: 'Giới thiệu thay thế' })).not.toBeInTheDocument();
+    expect(within(waitRow).getByText('Đang chờ doanh nghiệp thanh toán phí để mở suất thay thế')).toBeInTheDocument();
+
+    const filledRow = screen.getByText('Ứng viên Đã đủ').closest('tr')!;
+    expect(within(filledRow).queryByRole('link', { name: 'Giới thiệu thay thế' })).not.toBeInTheDocument();
+    expect(within(filledRow).getByText('Suất thay thế đã có người đi làm')).toBeInTheDocument();
+
+    const expiredRow = screen.getByText('Ứng viên Hết hạn').closest('tr')!;
+    expect(within(expiredRow).queryByRole('link', { name: 'Giới thiệu thay thế' })).not.toBeInTheDocument();
+    expect(within(expiredRow).getByText('Đã hết hạn suất thay thế')).toBeInTheDocument();
+
+    const noneRow = screen.getByText('Ứng viên Không suất').closest('tr')!;
+    expect(within(noneRow).queryByRole('link', { name: 'Giới thiệu thay thế' })).not.toBeInTheDocument();
+    expect(within(noneRow).getByText('Ứng viên nghỉ trong bảo hành · Không còn suất thay thế')).toBeInTheDocument();
+  });
 });

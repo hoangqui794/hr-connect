@@ -100,6 +100,23 @@ export interface RecruitmentApplicationItem {
   serviceTypeCode?: string | null;
   /** CV_SOURCING: latest delivery status (DELIVERED, ACCEPTED, AUTO_ACCEPTED, REJECTED, ...). */
   sourcingDeliveryStatus?: string | null;
+  /** CV_SOURCING: review deadline for the latest delivery (ISO datetime). */
+  sourcingReviewDueAt?: string | null;
+  /** Reason text and canonical code for terminal outcomes (e.g. REJECTED, OFFER_DECLINED, NOT_STARTED). */
+  statusReason?: string | null;
+  statusReasonCode?: string | null;
+  /** Latest offer expiry date (YYYY-MM-DD). */
+  latestOfferExpiryDate?: string | null;
+  /** True when this application uses an MF-05 replacement slot. */
+  isReplacement?: boolean;
+  /** Submission channel (CANDIDATE, AFFILIATE, ...). */
+  source?: string | null;
+  /** Expected start date once candidate accepts an offer or starts placement (YYYY-MM-DD). */
+  plannedStartDate?: string | null;
+  /** Who manages candidate contact (`InternalHr` for HR Connect-managed pipelines, else `Client`). */
+  contactOwner?: string | null;
+  /** True when candidate email/phone are masked until placement (e.g. HEADHUNT_COD before PLACED). */
+  isContactMasked?: boolean;
 }
 
 export interface RecruitmentApplicationSearchParams {
@@ -250,6 +267,9 @@ export interface InterviewItem {
   meetingLink: string | null;
   status: string;
   result: string | null;
+  lastStatusReason?: string | null;
+  candidateAttendanceStatus?: string | null;
+  candidateRespondedAt?: string | null;
 }
 
 /** GET /offers item. */
@@ -272,6 +292,7 @@ export interface OfferItem {
   sentAt: string | null;
   respondedAt: string | null;
   declineReason: string | null;
+  canRespond?: boolean;
 }
 
 /** GET /placements item (this endpoint returns the page without the success/data envelope). */
@@ -282,6 +303,11 @@ export interface PlacementItem {
   endDate?: string | null;
   resignationReason?: string | null;
   resignedBy?: 'CANDIDATE' | 'CLIENT' | string | null;
+  warrantyEndDate?: string | null;
+  warrantyStatus?: string | null;
+  serviceFeeStatus?: string | null;
+  isReplacement?: boolean;
+  serviceTypeCode?: string | null;
   position: string | null;
   department: string | null;
   status: string;

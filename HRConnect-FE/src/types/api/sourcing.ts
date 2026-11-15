@@ -18,6 +18,11 @@ export type SourcingRejectReasonCode =
   | 'WRONG_JOB'
   | 'OTHER';
 
+export type SourcingRejectionReviewStatus =
+  | 'PENDING_HR_REVIEW'
+  | 'UPHELD'
+  | 'OVERTURNED';
+
 export interface SourcingDeliveryDto {
   deliveryId: string;
   applicationId: string;
@@ -30,6 +35,11 @@ export interface SourcingDeliveryDto {
   rejectReasonCode: string | null;
   rejectNote: string | null;
   replacedByDeliveryId: string | null;
+  rejectionReviewStatus?: SourcingRejectionReviewStatus | string | null;
+  rejectionReviewNote?: string | null;
+  rejectionReviewedAt?: string | null;
+  replacementCandidateName?: string | null;
+  aiMatchScore?: number | null;
 }
 
 export interface SourcingSummaryDto {
@@ -40,6 +50,12 @@ export interface SourcingSummaryDto {
   rejected: number;
   pendingReview: number;
   counted: number;
+  reviewDays?: number | null;
+  pricePerCv?: number | null;
+  countedAmount?: number | null;
+  depositPaidAmount?: number | null;
+  remainingToDeliver?: number | null;
+  jobStatus?: string | null;
 }
 
 export interface SourcingDeliveriesResponse {

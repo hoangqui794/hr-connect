@@ -26,7 +26,15 @@ public record PlacementListItemDto(
     PlacementCandidateDto Candidate,
     PlacementJobDto Job,
     DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    DateOnly? WarrantyEndDate = null,
+    string? WarrantyStatus = null,
+    string? ServiceFeeStatus = null,
+    bool IsReplacement = false,
+    string? ServiceTypeCode = null,
+    DateOnly? EndDate = null,
+    string? ResignationReason = null,
+    string? ResignedBy = null
 );
 
 public record PlacementCandidateDto(

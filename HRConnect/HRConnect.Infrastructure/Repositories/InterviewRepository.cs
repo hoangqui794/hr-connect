@@ -102,6 +102,7 @@ public class InterviewRepository : IInterviewRepository
                 .ThenInclude(a => a.Submission)
             .Include(i => i.InterviewParticipants)
                 .ThenInclude(p => p.User)
+            .Include(i => i.InterviewStatusHistories)
             .Include(i => i.CreatedByNavigation)
             .Include(i => i.RecordedByNavigation)
             .Skip((page - 1) * pageSize)

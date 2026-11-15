@@ -103,15 +103,35 @@ builder.Services.AddRateLimiter(options =>
 
     static string ClientKey(HttpContext context) => RateLimitIdentity.Ip(context);
 
-    // Gỡ bỏ rate limiting cho toàn bộ endpoint phục vụ môi trường Demo
-    options.AddPolicy("auth-login", context => RateLimitPartition.GetNoLimiter(ClientKey(context)));
-    options.AddPolicy("public-read", context => RateLimitPartition.GetNoLimiter(ClientKey(context)));
-    options.AddPolicy("auth-sensitive", context => RateLimitPartition.GetNoLimiter(ClientKey(context)));
-    options.AddPolicy("auth-registration", context => RateLimitPartition.GetNoLimiter(ClientKey(context)));
-    options.AddPolicy("submission-consent", context => RateLimitPartition.GetNoLimiter(ClientKey(context)));
-    options.AddPolicy("submission-consent-public", context => RateLimitPartition.GetNoLimiter(ClientKey(context)));
-    options.AddPolicy("candidate-application", context => RateLimitPartition.GetNoLimiter(ClientKey(context)));
-    options.AddPolicy("candidate-identity", context => RateLimitPartition.GetNoLimiter(ClientKey(context)));
+    // Luôn bật rate limit ở Production; ngoài Production chỉ tắt khi cấu hình explicit cho kiểm thử.
+    var disableRateLimiting = !builder.Environment.IsProduction()
+        && builder.Configuration.GetValue<bool>("RateLimiting:DisableInNonProduction");
+
+    void AddFixedWindowPolicy(string name, Func<HttpContext, string> partitionKey, int permitLimit, TimeSpan window) =>
+        options.AddPolicy(name, context => disableRateLimiting
+            ? RateLimitPartition.GetNoLimiter(ClientKey(context))
+            : RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey(context),
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = permitLimit,
+                    Window = window,
+                    QueueLimit = 0,
+                    AutoReplenishment = true
+                }));
+
+    AddFixedWindowPolicy("auth-login", ClientKey, 10, TimeSpan.FromMinutes(1));
+    AddFixedWindowPolicy("public-read", ClientKey, 120, TimeSpan.FromMinutes(1));
+    AddFixedWindowPolicy("auth-sensitive", ClientKey, 5, TimeSpan.FromMinutes(10));
+    AddFixedWindowPolicy("auth-registration", ClientKey, 5, TimeSpan.FromHours(1));
+    AddFixedWindowPolicy(
+        "submission-consent",
+        context => $"{ClientKey(context)}:{context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous"}",
+        10,
+        TimeSpan.FromHours(1));
+    AddFixedWindowPolicy("submission-consent-public", ClientKey, 20, TimeSpan.FromMinutes(15));
+    AddFixedWindowPolicy("candidate-application", RateLimitIdentity.UserAndIp, 10, TimeSpan.FromHours(1));
+    AddFixedWindowPolicy("candidate-identity", RateLimitIdentity.UserAndIp, 5, TimeSpan.FromHours(1));
 });
 
 // Chỉ cho phép các frontend đã khai báo gọi API kèm cookie xác thực.

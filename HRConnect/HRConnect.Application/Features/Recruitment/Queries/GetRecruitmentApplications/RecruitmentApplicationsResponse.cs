@@ -92,4 +92,16 @@ public class RecruitmentApplicationItemDto
 
     /// <summary>CV_SOURCING: status of the latest delivery (DELIVERED, ACCEPTED, REJECTED, ...); null when not delivered.</summary>
     public string? SourcingDeliveryStatus { get; set; }
+
+    public DateTime? SourcingReviewDueAt { get; init; }
+
+    public string? StatusReason { get; init; }
+
+    public string? StatusReasonCode { get; init; }
+
+    public DateOnly? LatestOfferExpiryDate { get; init; }
+
+    public bool IsReplacement { get; init; }
+
+    public string? Source { get; init; }
 }

@@ -8,15 +8,21 @@ import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
 import { candidateApplicationsApi } from '@/services/api/mf02Api';
+import { useAuthStore } from '@/stores/authStore';
+import { UserRole } from '@/types/roles';
 import { ChangePasswordModal } from '@/components/common/ChangePasswordModal';
 
 export const CandidateAccountFrame: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { pathname } = useLocation();
   const { savedJobsCount } = useSavedJobs();
+  const canViewOwnApplications = useAuthStore(
+    (s) => s.hasAnyRole([UserRole.CANDIDATE]) && s.hasPermission('application.view_own')
+  );
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const applications = useQuery({
     queryKey: ['candidate-menu', 'applications-count'],
     queryFn: async () => (await candidateApplicationsApi.list({ page: 1, pageSize: 1 })).total,
+    enabled: canViewOwnApplications,
   });
 
   const items: { to: string; label: string; count?: number }[] = [

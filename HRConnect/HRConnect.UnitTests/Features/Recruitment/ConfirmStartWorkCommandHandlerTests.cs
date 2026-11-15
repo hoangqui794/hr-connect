@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
@@ -38,7 +39,12 @@ public class ConfirmStartWorkCommandHandlerTests
         return mock;
     }
 
-    private ConfirmStartWorkCommandHandler CreateHandler() =>
+    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
+    }
+
+    private ConfirmStartWorkCommandHandler CreateHandler(TimeProvider? timeProvider = null) =>
         new(
             _applicationRepositoryMock.Object,
             _offerRepositoryMock.Object,
@@ -49,7 +55,8 @@ public class ConfirmStartWorkCommandHandlerTests
             _auditLogServiceMock.Object,
             _placementFinanceServiceMock.Object,
             _financeRepositoryMock.Object,
-            _reconciliationRepositoryMock.Object);
+            _reconciliationRepositoryMock.Object,
+            timeProvider: timeProvider);
 
     private ConfirmStartWorkCommandHandler CreateHandlerWithCandidateLock() =>
         new(
@@ -69,7 +76,7 @@ public class ConfirmStartWorkCommandHandlerTests
     public async Task Handle_WhenActualStartDateIsInFuture_ShouldThrowBadRequestException()
     {
         // Arrange
-        var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2));
+        var futureDate = VietnamTime.Today().AddDays(2);
         var command = new ConfirmStartWorkCommand(
             ApplicationId: Guid.NewGuid(),
             OfferId: Guid.NewGuid(),
@@ -102,7 +109,7 @@ public class ConfirmStartWorkCommandHandlerTests
         var command = new ConfirmStartWorkCommand(
             ApplicationId: Guid.NewGuid(),
             OfferId: Guid.NewGuid(),
-            ActualStartDate: DateOnly.FromDateTime(DateTime.UtcNow),
+            ActualStartDate: VietnamTime.Today(),
             ConfirmationNote: null,
             Position: positionLength == 0 ? null : new string('P', positionLength),
             Department: departmentLength == 0 ? null : new string('D', departmentLength),
@@ -124,7 +131,7 @@ public class ConfirmStartWorkCommandHandlerTests
     {
         // Arrange
         var appId = Guid.NewGuid();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = VietnamTime.Today();
         _applicationRepositoryMock
             .Setup(r => r.GetByIdAsync(appId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Domain.Entities.Application?)null);
@@ -153,7 +160,7 @@ public class ConfirmStartWorkCommandHandlerTests
     {
         // Arrange
         var appId = Guid.NewGuid();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = VietnamTime.Today();
         var application = new Domain.Entities.Application
         {
             ApplicationId = appId,
@@ -191,7 +198,7 @@ public class ConfirmStartWorkCommandHandlerTests
         var appId = Guid.NewGuid();
         var offerId = Guid.NewGuid();
         var userId = Guid.NewGuid();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = VietnamTime.Today();
         var application = new Domain.Entities.Application
         {
             ApplicationId = appId,
@@ -240,7 +247,7 @@ public class ConfirmStartWorkCommandHandlerTests
         var userId = Guid.NewGuid();
         var jobCompanyId = Guid.NewGuid();
         var userCompanyId = Guid.NewGuid();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = VietnamTime.Today();
 
         var application = new Domain.Entities.Application
         {
@@ -311,7 +318,7 @@ public class ConfirmStartWorkCommandHandlerTests
         var command = new ConfirmStartWorkCommand(
             ApplicationId: appId,
             OfferId: offerId,
-            ActualStartDate: DateOnly.FromDateTime(DateTime.UtcNow),
+            ActualStartDate: VietnamTime.Today(),
             ConfirmationNote: null,
             Position: null,
             Department: null,
@@ -342,7 +349,7 @@ public class ConfirmStartWorkCommandHandlerTests
     {
         // Arrange
         var appId = Guid.NewGuid();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = VietnamTime.Today();
         var application = new Domain.Entities.Application
         {
             ApplicationId = appId,
@@ -379,7 +386,7 @@ public class ConfirmStartWorkCommandHandlerTests
     {
         // Arrange
         var appId = Guid.NewGuid();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = VietnamTime.Today();
         var application = new Domain.Entities.Application
         {
             ApplicationId = appId,
@@ -453,7 +460,7 @@ public class ConfirmStartWorkCommandHandlerTests
         // Arrange
         var appId = Guid.NewGuid();
         var offerId = Guid.NewGuid();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = VietnamTime.Today();
         var application = new Domain.Entities.Application
         {
             ApplicationId = appId,
@@ -499,7 +506,7 @@ public class ConfirmStartWorkCommandHandlerTests
         // Arrange
         var appId = Guid.NewGuid();
         var offerId = Guid.NewGuid();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = VietnamTime.Today();
         var application = new Domain.Entities.Application
         {
             ApplicationId = appId,
@@ -569,7 +576,7 @@ public class ConfirmStartWorkCommandHandlerTests
         var act = () => CreateHandler().Handle(new ConfirmStartWorkCommand(
             appId,
             offerId,
-            DateOnly.FromDateTime(acceptedAt.AddDays(-1)),
+            VietnamTime.ToDateOnly(acceptedAt).AddDays(-1),
             null,
             null,
             null,
@@ -588,7 +595,7 @@ public class ConfirmStartWorkCommandHandlerTests
         var appId = Guid.NewGuid();
         var offerId = Guid.NewGuid();
         var userId = Guid.NewGuid();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = VietnamTime.Today();
         var application = new Domain.Entities.Application
         {
             ApplicationId = appId,
@@ -634,7 +641,7 @@ public class ConfirmStartWorkCommandHandlerTests
         var offerId = Guid.NewGuid();
         var userId = Guid.NewGuid();
         var companyId = Guid.NewGuid();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = VietnamTime.Today();
         var initialToken = Guid.NewGuid();
 
         var application = new Domain.Entities.Application
@@ -895,7 +902,7 @@ public class ConfirmStartWorkCommandHandlerTests
         ConfirmStartWorkCommand CreateCommand(bool acceptAsNewHire = false) => new(
             applicationId,
             offerId,
-            DateOnly.FromDateTime(DateTime.UtcNow),
+            VietnamTime.Today(),
             "Đã đi làm",
             null,
             null,
@@ -976,5 +983,49 @@ public class ConfirmStartWorkCommandHandlerTests
         _reconciliationRepositoryMock.Verify(
             r => r.AddAsync(It.IsAny<PlacementReconciliation>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_AtEarlyMorningVietnamTime_ShouldAcceptVietnamTodayAsActualStartDate()
+    {
+        var earlyMorningVn = new FixedTimeProvider(new DateTimeOffset(2026, 11, 13, 20, 34, 0, TimeSpan.Zero));
+        var fixture = ArrangeValidClientStart(null);
+        fixture.Offer.RespondedAt = new DateTime(2026, 11, 13, 20, 32, 0, DateTimeKind.Utc);
+        _placementRepositoryMock.Setup(r => r.AddAsync(It.IsAny<Placement>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _unitOfWorkMock.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        var command = fixture.CreateCommand(false) with { ActualStartDate = new DateOnly(2026, 11, 14) };
+        var result = await CreateHandler(earlyMorningVn).Handle(command, CancellationToken.None);
+
+        result.ActualStartDate.Should().Be(new DateOnly(2026, 11, 14));
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_AtEarlyMorningVietnamTime_WhenActualStartDateIsUtcDateBeforeVietnamAcceptance_ShouldReject()
+    {
+        var earlyMorningVn = new FixedTimeProvider(new DateTimeOffset(2026, 11, 13, 20, 34, 0, TimeSpan.Zero));
+        var fixture = ArrangeValidClientStart(null);
+        fixture.Offer.RespondedAt = new DateTime(2026, 11, 13, 20, 32, 0, DateTimeKind.Utc);
+
+        var command = fixture.CreateCommand(false) with { ActualStartDate = new DateOnly(2026, 11, 13) };
+        var act = () => CreateHandler(earlyMorningVn).Handle(command, CancellationToken.None);
+
+        var exception = await act.Should().ThrowAsync<BadRequestException>();
+        exception.Which.ErrorCode.Should().Be(PlacementStartDateErrorCodes.InvalidStartDate);
+    }
+
+    [Fact]
+    public async Task Handle_AtEarlyMorningVietnamTime_WhenActualStartDateIsAfterVietnamToday_ShouldReject()
+    {
+        var earlyMorningVn = new FixedTimeProvider(new DateTimeOffset(2026, 11, 13, 20, 34, 0, TimeSpan.Zero));
+        var fixture = ArrangeValidClientStart(null);
+
+        var command = fixture.CreateCommand(false) with { ActualStartDate = new DateOnly(2026, 11, 15) };
+        var act = () => CreateHandler(earlyMorningVn).Handle(command, CancellationToken.None);
+
+        var exception = await act.Should().ThrowAsync<BadRequestException>();
+        exception.Which.ErrorCode.Should().Be(PlacementStartDateErrorCodes.InvalidStartDate);
     }
 }

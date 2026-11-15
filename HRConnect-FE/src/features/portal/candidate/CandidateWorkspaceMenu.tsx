@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { authService } from '@/services/authService';
 import { getAvatarImageUrl, getInitials, useAuthStore } from '@/stores/authStore';
+import { UserRole } from '@/types/roles';
 import { AccountAvatar } from '@/components/common/AccountAvatar';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
 import { candidateApplicationsApi } from '@/services/api/mf02Api';
@@ -20,13 +21,14 @@ interface CandidateWorkspaceMenuProps {
 }
 
 export const CandidateWorkspaceMenu: React.FC<CandidateWorkspaceMenuProps> = ({ className = '' }) => {
-  const { user, logout } = useAuthStore();
+  const { user, logout, hasAnyRole, hasPermission } = useAuthStore();
+  const canViewOwnApplications = hasAnyRole([UserRole.CANDIDATE]) && hasPermission('application.view_own');
   const { savedJobsCount } = useSavedJobs();
   const [open, setOpen] = useState(false);
   const applications = useQuery({
     queryKey: ['candidate-menu', 'applications-count'],
     queryFn: async () => (await candidateApplicationsApi.list({ page: 1, pageSize: 1 })).total,
-    enabled: open,
+    enabled: open && canViewOwnApplications,
   });
 
   const name = user?.name || 'Ứng viên';

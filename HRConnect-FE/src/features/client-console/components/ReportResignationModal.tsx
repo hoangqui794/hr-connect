@@ -66,10 +66,14 @@ export const ReportResignationModal: React.FC<ReportResignationModalProps> = ({
       return;
     }
 
+    const targetId = placement.placementId?.trim();
+    if (!targetId) {
+      message.error('Không tìm thấy mã tiếp nhận việc để báo nghỉ việc.');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      // Prioritize applicationId, fallback to placementId
-      const targetId = placement.applicationId || placement.placementId;
       await reportCandidateResignation(targetId, {
         resignationDate: formattedDate,
         reason: values.reason,

@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
@@ -25,13 +26,19 @@ public class RespondToOfferCommandHandlerTests
     private readonly Mock<IAuditLogService> _auditLogServiceMock = new();
     private readonly Mock<IPlacementRepository> _placementRepositoryMock = new();
 
-    private RespondToOfferCommandHandler CreateHandler() =>
+    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
+    }
+
+    private RespondToOfferCommandHandler CreateHandler(TimeProvider? timeProvider = null) =>
         new(
             _offerRepositoryMock.Object,
             _applicationRepositoryMock.Object,
             _unitOfWorkMock.Object,
             _loggerMock.Object,
-            _auditLogServiceMock.Object);
+            _auditLogServiceMock.Object,
+            timeProvider: timeProvider);
 
     private RespondToOfferCommandHandler CreatePolicyHandler() =>
         new(
@@ -217,7 +224,7 @@ public class RespondToOfferCommandHandlerTests
     {
         var offerId = Guid.NewGuid();
         var candidateUserId = Guid.NewGuid();
-        var yesterday = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
+        var yesterday = VietnamTime.Today().AddDays(-1);
 
         var offer = new Offer
         {
@@ -252,7 +259,7 @@ public class RespondToOfferCommandHandlerTests
     {
         var offerId = Guid.NewGuid();
         var candidateUserId = Guid.NewGuid();
-        var startDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(14));
+        var startDate = VietnamTime.Today().AddDays(14);
 
         var app = new HRConnect.Domain.Entities.Application
         {
@@ -631,5 +638,30 @@ public class RespondToOfferCommandHandlerTests
             ConcurrencyToken = Guid.NewGuid(),
             Application = application
         };
+    }
+
+    [Fact]
+    public async Task Handle_AtEarlyMorningVietnamTime_WhenExpiryDateIsUtcTodayButYesterdayInVietnam_ShouldRejectAsExpired()
+    {
+        var earlyMorningVn = new FixedTimeProvider(new DateTimeOffset(2026, 11, 13, 20, 34, 0, TimeSpan.Zero));
+        var candidateUserId = Guid.NewGuid();
+        var offer = CreateOffer(Guid.NewGuid(), candidateUserId, "FULL_TIME", OfferStates.Sent);
+        offer.ExpiryDate = new DateOnly(2026, 11, 13);
+
+        _offerRepositoryMock
+            .Setup(r => r.GetByIdWithApplicationAsync(offer.OfferId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(offer);
+
+        var command = new RespondToOfferCommand(
+            OfferId: offer.OfferId,
+            Response: OfferStates.Accepted,
+            DeclineReason: null,
+            ConcurrencyToken: offer.ConcurrencyToken,
+            CurrentUserId: candidateUserId);
+
+        var act = () => CreateHandler(earlyMorningVn).Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*Lời mời nhận việc đã hết hạn phản hồi*");
     }
 }

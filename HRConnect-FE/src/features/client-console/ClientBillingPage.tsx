@@ -9,18 +9,20 @@
  * transfer details, which Platform Admin still records by hand.
  */
 import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { a11yItemRender } from '@/components/common/paginationA11y';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Button, Table, Tag } from 'antd';
+import { Alert, Button, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { financeApi } from '@/services/api/financeApi';
 import { jobsApi } from '@/services/api/jobsApi';
 import { getApiErrorMessage } from '@/services/apiClient';
-import type { OnlinePaymentTargetType, ServiceFee, ServiceFeeKind, ServiceFeeStatus } from '@/types/api/finance';
+import type { ServiceFee, ServiceFeeKind, ServiceFeeStatus } from '@/types/api/finance';
 import type { ServiceTypeCode } from '@/types/api/jobs';
-import { FilterPills, PageHero, StatusDot, Surface, type Tone } from '@/features/admin-console/ui';
+import { FilterPills, StatusDot, Surface, type Tone } from '@/features/admin-console/ui';
+import { SERVICE_TYPE_LABEL } from '@/features/jobs-mf01/jobDisplay';
 import { SERVICE_FEE_KIND, SERVICE_FEE_STATUS, labelOf, money, OWED_FEE_STATUS, isOwedToClient } from '@/features/finance-mf05/financeLabels';
 import { depositTransferNote, serviceFeeTransferNote, transferNote } from '@/features/finance-mf05/platformBankAccount';
 import { BillingPaymentModal } from './BillingPaymentModal';
@@ -29,12 +31,18 @@ const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 
 const PAGE_SIZE = 10;
 
-/** Client wording (no "Client", no HH/SS/AP); Admin keeps the finance labels. */
-const CLIENT_SERVICE_NAME: Record<ServiceTypeCode, string> = {
-  HEADHUNT_COD: 'Tuyển qua Affiliate',
-  CV_SOURCING: 'Mua CV theo số lượng',
-  CV_APPLICATION: 'Nhận hồ sơ ứng tuyển',
+const serviceLabel = (code: ServiceTypeCode): string => SERVICE_TYPE_LABEL[code]?.label ?? code;
+
+const resolveServiceType = (serviceTypeCode: string | null | undefined, fallback: ServiceTypeCode): ServiceTypeCode =>
+  serviceTypeCode && serviceTypeCode in SERVICE_TYPE_LABEL ? (serviceTypeCode as ServiceTypeCode) : fallback;
+
+const RECONCILIATION_REASON: Record<'PENDING' | 'FLAGGED', string> = {
+  PENDING: 'Chờ xác nhận ngày đi làm thực tế',
+  FLAGGED: 'Đang rà soát sai lệch đối soát',
 };
+
+const reconciliationHintOf = (status?: BillingRow['reconciliationStatus']): string | null =>
+  status === 'PENDING' || status === 'FLAGGED' ? RECONCILIATION_REASON[status] : null;
 const CLIENT_FEE_NAME: Record<ServiceFeeKind, string> = {
   PLACEMENT: 'Phí tuyển thành công',
   DEPOSIT: 'Đặt cọc',
@@ -66,7 +74,7 @@ export const feeBreakdown = (f: ServiceFee): BreakdownLine[] => {
   if (kind === 'PLACEMENT') {
     return [
       { label: 'Lương gross tháng', value: money(f.baseSalary, cur) },
-      { label: 'Hệ số phí', value: `× ${f.feeMultiplier}` },
+      { label: 'Hệ số phí', value: `${f.feeMultiplier} tháng lương` },
     ];
   }
   if (kind === 'REPLACEMENT_REFUND') {
@@ -122,6 +130,12 @@ const useBillingRows = () => {
     queryFn: () => financeApi.serviceFees({ page: 1, pageSize: 100 }),
     staleTime: 60_000,
   });
+  const summaryQuery = useQuery({
+    queryKey: ['client-billing', 'service-fees-summary'],
+    queryFn: async () => (await financeApi.serviceFeesSummary?.()) ?? null,
+    enabled: typeof financeApi.serviceFeesSummary === 'function',
+    staleTime: 60_000,
+  });
   const postingFees = useQuery({
     queryKey: ['client-billing', 'posting-fees'],
     // GET /jobs/mine already carries each job's posting fee (C-07). Paid fees feed the "Đã thanh toán"
@@ -132,7 +146,16 @@ const useBillingRows = () => {
       const paidPackageJobs = jobs.filter(
         (j) => j.serviceTypeCode === 'CV_APPLICATION' && j.postingFeeStatus && j.postingPackageCode !== 'FREE'
       );
-      type Fee = { postingFeeId: string; amount: number; currencyCode: string; status: 'PENDING' | 'PAID' | 'CANCELLED'; paidAt: string | null; paymentReference: string | null; packageName: string | null };
+      type Fee = {
+        postingFeeId: string;
+        amount: number;
+        currencyCode: string;
+        status: 'PENDING' | 'PAID' | 'CANCELLED';
+        paidAt: string | null;
+        paymentReference: string | null;
+        packageName: string | null;
+        createdAt?: string | null;
+      };
       const fees: Array<{ job: (typeof paidPackageJobs)[number]; fee: Fee | null | undefined }> = paidPackageJobs.map(
         (j) => ({ job: j, fee: j.postingFee })
       );
@@ -151,18 +174,25 @@ const useBillingRows = () => {
   const rows = useMemo<BillingRow[]>(() => {
     const serviceRows: BillingRow[] = (fees.data?.items ?? []).map((f) => {
       const kind: ServiceFeeKind = f.kind ?? 'PLACEMENT';
-      const status = (isOwedToClient(kind) && OWED_FEE_STATUS[f.status]) || labelOf(SERVICE_FEE_STATUS, f.status);
-      const reconciling = f.reconciliationStatus === 'PENDING' || f.reconciliationStatus === 'FLAGGED';
-      const bucket: Bucket = isOwedToClient(kind) ? 'OTHER' : bucketOf(f.status);
+      const owed = isOwedToClient(kind);
+      const status = (owed && OWED_FEE_STATUS[f.status]) || labelOf(SERVICE_FEE_STATUS, f.status);
+      const reconciling =
+        !owed &&
+        f.status !== 'PAID' &&
+        f.status !== 'CANCELLED' &&
+        (f.reconciliationStatus === 'PENDING' || f.reconciliationStatus === 'FLAGGED');
+      const bucket: Bucket = owed ? 'OTHER' : bucketOf(f.status);
+      const awaitingConfirm = !owed && f.status !== 'PAID' && f.status !== 'CANCELLED' && Boolean(f.paymentSubmittedAt);
+      const vnpayPending = !owed && f.status !== 'PAID' && f.status !== 'CANCELLED' && Boolean(f.pendingOnlinePayment);
       return {
         key: `fee-${f.serviceFeeId}`,
-        service: SERVICE_OF_KIND[kind],
+        service: resolveServiceType(f.serviceTypeCode, SERVICE_OF_KIND[kind]),
         item: CLIENT_FEE_NAME[kind] ?? labelOf(SERVICE_FEE_KIND, kind).label,
         note: refundNote(f),
-        owedToClient: isOwedToClient(kind),
+        owedToClient: owed,
         jobTitle: f.jobTitle ?? '—',
         candidateName: f.candidateName ?? null,
-        amount: isOwedToClient(kind) ? -f.amount : f.amount,
+        amount: owed ? -f.amount : f.amount,
         currencyCode: f.currencyCode,
         dueDate: reconciling ? null : f.dueDate,
         statusLabel: reconciling ? 'Đang đối soát' : status.label,
@@ -171,12 +201,20 @@ const useBillingRows = () => {
         paidAt: f.paidAt ?? null,
         paymentReference: f.paymentReference ?? null,
         transferNote: kind === 'DEPOSIT' && f.jobId ? depositTransferNote(f.jobId) : serviceFeeTransferNote(f.serviceFeeId),
-        payable: !reconciling && (bucket === 'UNPAID' || bucket === 'OVERDUE'),
+        payable: !reconciling && !awaitingConfirm && !vnpayPending && (bucket === 'UNPAID' || bucket === 'OVERDUE'),
         payTarget: { type: 'SERVICE_FEE', id: f.serviceFeeId },
         breakdown: feeBreakdown(f),
         sourcingProgress: f.sourcingTarget && f.sourcingTarget > 0
           ? { counted: f.sourcingCounted ?? 0, target: f.sourcingTarget }
           : null,
+        createdAt: f.createdAt ?? null,
+        placementId: f.placementId ?? null,
+        reconciliationStatus: reconciling ? f.reconciliationStatus ?? null : null,
+        cancelled: f.status === 'CANCELLED',
+        serviceTypeCode: f.serviceTypeCode ?? null,
+        daysOverdue: f.daysOverdue ?? null,
+        paymentSubmittedAt: f.paymentSubmittedAt ?? null,
+        pendingOnlinePayment: f.pendingOnlinePayment ?? false,
       };
     });
     const postingRows: BillingRow[] = (postingFees.data ?? []).map(({ job, fee }) => {
@@ -200,6 +238,8 @@ const useBillingRows = () => {
         payable: bucket === 'UNPAID',
         payTarget: { type: 'POSTING_FEE', id: job.jobId },
         breakdown: [{ label: 'Gói đăng tin', value: fee!.packageName ?? '—' }],
+        createdAt: fee!.createdAt ?? null,
+        cancelled: fee!.status === 'CANCELLED',
       };
     });
     return [...serviceRows, ...postingRows].sort((a, b) => {
@@ -210,12 +250,16 @@ const useBillingRows = () => {
 
   return {
     rows,
+    serviceFeeSummary: summaryQuery.data ?? null,
+    loadedServiceFees: fees.data?.items?.length ?? 0,
+    totalServiceFees: fees.data?.totalCount ?? 0,
     loading: fees.isLoading || postingFees.isLoading,
-    fetching: fees.isFetching || postingFees.isFetching,
+    fetching: fees.isFetching || postingFees.isFetching || summaryQuery.isFetching,
     error: fees.error ?? postingFees.error,
     refetch: () => {
       void fees.refetch();
       void postingFees.refetch();
+      void summaryQuery.refetch();
     },
   };
 };
@@ -225,12 +269,20 @@ type StatusFilter = 'all' | 'UNPAID' | 'OVERDUE' | 'PAID';
 
 const sumVnd = (rows: BillingRow[]) => rows.filter((r) => r.currencyCode === 'VND').reduce((s, r) => s + r.amount, 0);
 
-const Kpi: React.FC<{ label: string; value: string; hint: string; tone?: 'danger' | 'success' }> = ({ label, value, hint, tone }) => (
+const sumByMainCurrency = (list: BillingRow[]) => {
+  const currencies = Array.from(new Set(list.map((r) => r.currencyCode)));
+  if (currencies.length === 1) {
+    return { amount: list.reduce((s, r) => s + r.amount, 0), currency: currencies[0] };
+  }
+  return { amount: sumVnd(list), currency: 'VND' };
+};
+
+const Kpi: React.FC<{ label: string; value: string; hint: string; tone?: 'danger' | 'success' | 'info' }> = ({ label, value, hint, tone }) => (
   <Surface padded className="!px-4 !py-3 shadow-xs transition-shadow hover:shadow-sm">
     <div className="text-[13px] font-medium text-slate-600">{label}</div>
     <div
       className={`text-lg font-bold tabular-nums ${
-        tone === 'danger' ? 'text-red-600' : tone === 'success' ? 'text-emerald-700' : 'text-slate-900'
+        tone === 'danger' ? 'text-red-600' : tone === 'success' ? 'text-emerald-700' : tone === 'info' ? 'text-sky-700' : 'text-slate-900'
       }`}
     >
       {value}
@@ -240,7 +292,7 @@ const Kpi: React.FC<{ label: string; value: string; hint: string; tone?: 'danger
 );
 
 export const ClientBillingPage: React.FC = () => {
-  const { rows, loading, fetching, error, refetch } = useBillingRows();
+  const { rows, serviceFeeSummary, loadedServiceFees, totalServiceFees, loading, fetching, error, refetch } = useBillingRows();
   const [service, setService] = useState<ServiceFilter>('all');
   const [status, setStatus] = useState<StatusFilter>('all');
   const [page, setPage] = useState(1);
@@ -251,6 +303,52 @@ export const ClientBillingPage: React.FC = () => {
   const unpaid = rows.filter((r) => r.bucket === 'UNPAID' || r.bucket === 'OVERDUE');
   const overdue = rows.filter((r) => r.bucket === 'OVERDUE');
   const paid = rows.filter((r) => r.bucket === 'PAID');
+  const pendingRefunds = rows.filter((r) => r.owedToClient && !r.paidAt && !r.cancelled && r.statusLabel !== 'Đã hoàn tiền');
+
+  const postingRows = rows.filter((r) => r.key.startsWith('posting-'));
+  const postingUnpaid = postingRows.filter((r) => r.bucket === 'UNPAID' || r.bucket === 'OVERDUE');
+  const postingOverdue = postingRows.filter((r) => r.bucket === 'OVERDUE');
+  const postingPaid = postingRows.filter((r) => r.bucket === 'PAID');
+  const sumCurrency = (list: BillingRow[], currency: string) =>
+    list
+      .filter((r) => (r.currencyCode ?? 'VND').toUpperCase() === currency.toUpperCase())
+      .reduce((s, r) => s + r.amount, 0);
+
+  const summaryCurrency = serviceFeeSummary?.currencyCode || 'VND';
+  const summaryBreakdown = serviceFeeSummary?.currencyBreakdowns?.find(
+    (b) => (b.currencyCode ?? 'VND').toUpperCase() === summaryCurrency.toUpperCase()
+  );
+  const countCurrency = (list: BillingRow[], currency: string) =>
+    list.filter((r) => (r.currencyCode ?? 'VND').toUpperCase() === currency.toUpperCase()).length;
+  const postingUnpaidCount = countCurrency(postingUnpaid, summaryCurrency);
+  const postingOverdueCount = countCurrency(postingOverdue, summaryCurrency);
+  const postingPaidCount = countCurrency(postingPaid, summaryCurrency);
+
+  const unpaidTotal = serviceFeeSummary
+    ? { amount: (summaryBreakdown?.unpaidAmount ?? serviceFeeSummary.unpaidAmount) + sumCurrency(postingUnpaid, summaryCurrency), currency: summaryCurrency }
+    : sumByMainCurrency(unpaid);
+  const unpaidCount = serviceFeeSummary
+    ? (summaryBreakdown?.unpaidCount ?? serviceFeeSummary.unpaidCount) + postingUnpaidCount
+    : countCurrency(unpaid, unpaidTotal.currency);
+  const overdueTotal = serviceFeeSummary
+    ? { amount: (summaryBreakdown?.overdueAmount ?? serviceFeeSummary.overdueAmount) + sumCurrency(postingOverdue, summaryCurrency), currency: summaryCurrency }
+    : sumByMainCurrency(overdue);
+  const overdueCount = serviceFeeSummary
+    ? (summaryBreakdown?.overdueCount ?? serviceFeeSummary.overdueCount) + postingOverdueCount
+    : countCurrency(overdue, overdueTotal.currency);
+  const paidTotal = serviceFeeSummary
+    ? { amount: (summaryBreakdown?.paidAmount ?? serviceFeeSummary.paidAmount) + sumCurrency(postingPaid, summaryCurrency), currency: summaryCurrency }
+    : sumByMainCurrency(paid);
+  const paidCount = serviceFeeSummary
+    ? (summaryBreakdown?.paidCount ?? serviceFeeSummary.paidCount) + postingPaidCount
+    : countCurrency(paid, paidTotal.currency);
+  const refundTotal = serviceFeeSummary
+    ? { amount: summaryBreakdown?.pendingRefundAmount ?? serviceFeeSummary.pendingRefundAmount, currency: summaryCurrency }
+    : sumByMainCurrency(pendingRefunds);
+  const pendingRefundCount = serviceFeeSummary
+    ? (summaryBreakdown?.pendingRefundCount ?? serviceFeeSummary.pendingRefundCount)
+    : countCurrency(pendingRefunds, refundTotal.currency);
+  const totalFeeRowsBadgeCount = serviceFeeSummary ? serviceFeeSummary.totalCount + postingRows.length : rows.length;
 
   const columns: ColumnsType<BillingRow> = [
     {
@@ -289,7 +387,7 @@ export const ClientBillingPage: React.FC = () => {
             className="m-0 rounded-md border-0 px-2 py-0.5 text-[11.5px] font-bold"
             color={r.service === 'HEADHUNT_COD' ? 'orange' : r.service === 'CV_SOURCING' ? 'cyan' : 'blue'}
           >
-            {CLIENT_SERVICE_NAME[r.service]}
+            {serviceLabel(r.service)}
           </Tag>
         </div>
       ),
@@ -301,6 +399,22 @@ export const ClientBillingPage: React.FC = () => {
       render: (_, r) => (
         <div className="min-w-0 py-1">
           <div className="text-[13.5px] font-semibold leading-snug text-slate-900">{r.item}</div>
+          {(r.createdAt || r.placementId) && (
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11.5px] text-slate-500 tabular-nums">
+              {r.createdAt && <span>Lập {dayjs(r.createdAt).format('DD/MM/YYYY')}</span>}
+              {r.placementId && (
+                <Tooltip title={`Xem chi tiết nhận việc (${r.placementId})`}>
+                  <Link
+                    to={`/client/placements/${r.placementId}`}
+                    aria-label={`Xem chi tiết nhận việc #${r.placementId.slice(0, 8).toUpperCase()}`}
+                    className="font-mono text-[#0369A1] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 rounded"
+                  >
+                    #{r.placementId.slice(0, 8).toUpperCase()}
+                  </Link>
+                </Tooltip>
+              )}
+            </div>
+          )}
         </div>
       ),
     },
@@ -319,58 +433,107 @@ export const ClientBillingPage: React.FC = () => {
       title: 'Hạn thanh toán',
       key: 'due',
       align: 'center',
-      width: 130,
-      render: (_, r) => (
-        r.owedToClient && r.dueDate && r.bucket !== 'PAID' && !r.paidAt ? (
-          <span className="text-[12px] leading-snug text-emerald-700">
-            HR Connect hoàn
-            <br />
-            trước {dayjs(r.dueDate).format('DD/MM/YYYY')}
-          </span>
-        ) : (
-          <span className="tabular-nums text-[13px] text-slate-700">{r.dueDate ? dayjs(r.dueDate).format('DD/MM/YYYY') : '—'}</span>
-        )
-      ),
+      width: 140,
+      render: (_, r) => {
+        if (r.owedToClient && r.dueDate && !r.cancelled && r.statusLabel !== 'Đã hoàn tiền' && !r.paidAt) {
+          return (
+            <span className="text-[12px] leading-snug text-emerald-700">
+              HR Connect hoàn
+              <br />
+              trước {dayjs(r.dueDate).format('DD/MM/YYYY')}
+            </span>
+          );
+        }
+        const overdueDays =
+          !r.reconciliationStatus && Boolean(r.dueDate)
+            ? typeof r.daysOverdue === 'number'
+              ? Math.max(0, r.daysOverdue)
+              : !r.owedToClient && r.bucket === 'OVERDUE' && r.dueDate
+              ? Math.max(0, dayjs().startOf('day').diff(dayjs(r.dueDate).startOf('day'), 'day'))
+              : 0
+            : 0;
+        return (
+          <div className="tabular-nums">
+            <span className="text-[13px] text-slate-700">{r.dueDate ? dayjs(r.dueDate).format('DD/MM/YYYY') : '—'}</span>
+            {overdueDays > 0 && <div className="mt-0.5 text-[11px] font-semibold text-red-600">Quá hạn {overdueDays} ngày</div>}
+          </div>
+        );
+      },
     },
     {
       title: 'Trạng thái',
       key: 'status',
       align: 'left',
-      width: 170,
-      render: (_, r) => (
-        <div className="py-1 space-y-0.5 text-left">
-          <StatusDot tone={r.tone}>{r.statusLabel}</StatusDot>
-          {r.paidAt && (
-            <div className="text-[11.5px] text-slate-500 pl-3.5">
-              {dayjs(r.paidAt).format('DD/MM/YYYY')}
-              {r.paymentReference ? ` · ${r.paymentReference}` : ''}
-            </div>
-          )}
-        </div>
-      ),
+      width: 215,
+      render: (_, r) => {
+        const reconcileHint = reconciliationHintOf(r.reconciliationStatus);
+        const submittedDate =
+          r.paymentSubmittedAt && dayjs(r.paymentSubmittedAt).isValid()
+            ? dayjs(r.paymentSubmittedAt).format('DD/MM/YYYY')
+            : null;
+        return (
+          <div className="py-1 space-y-0.5 text-left">
+            <StatusDot tone={r.tone}>{r.statusLabel}</StatusDot>
+            {reconcileHint && <div className="pl-3.5 text-[11.5px] leading-snug text-sky-700">{reconcileHint}</div>}
+            {!r.paidAt && !r.cancelled && r.paymentSubmittedAt && (
+              <div className="pl-3.5 text-[11.5px] font-medium leading-snug text-sky-700">
+                Đã báo chuyển khoản – chờ xác nhận{submittedDate ? ` (${submittedDate})` : ''}
+              </div>
+            )}
+            {!r.paidAt && !r.cancelled && r.pendingOnlinePayment && (
+              <div className="pl-3.5 text-[11.5px] font-medium leading-snug text-amber-700">
+                VNPay đang xử lý
+              </div>
+            )}
+            {r.paidAt && (
+              <div className="text-[11.5px] text-slate-500 pl-3.5">
+                {dayjs(r.paidAt).format('DD/MM/YYYY')}
+                {r.paymentReference ? ` · ${r.paymentReference}` : ''}
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: 'Thao tác',
       key: 'actions',
       align: 'right',
-      width: 120,
-      render: (_, r) => (
-        <div className="flex justify-end py-1">
-          {r.payable ? (
-            <Button
-              type="primary"
-              size="small"
-              className="!bg-[#0369A1] hover:!bg-[#075985] !border-0 text-white w-[100px] !h-8 text-xs font-semibold rounded-lg shadow-sm transition-all active:scale-[0.98]"
-              onClick={() => setPaying(r)}
-              aria-label={`Thanh toán: ${r.item} · ${r.jobTitle}`}
-            >
-              Thanh toán
-            </Button>
-          ) : (
-            <span className="inline-block w-[100px] text-center text-slate-400 text-xs">—</span>
-          )}
-        </div>
-      ),
+      width: 130,
+      render: (_, r) => {
+        const reconcileHint = reconciliationHintOf(r.reconciliationStatus);
+        const blockedBySubmittedTransfer = !r.payable && !r.paidAt && !r.cancelled && Boolean(r.paymentSubmittedAt);
+        const blockedByVnpay = !r.payable && !r.paidAt && !r.cancelled && Boolean(r.pendingOnlinePayment);
+        return (
+          <div className="flex justify-end py-1">
+            {r.payable ? (
+              <Button
+                type="primary"
+                size="small"
+                className="!bg-[#0369A1] hover:!bg-[#075985] !border-0 text-white w-[100px] !h-8 text-xs font-semibold rounded-lg shadow-sm transition-all active:scale-[0.98]"
+                onClick={() => setPaying(r)}
+                aria-label={`Thanh toán: ${r.item} · ${r.jobTitle}`}
+              >
+                Thanh toán
+              </Button>
+            ) : blockedByVnpay ? (
+              <Tooltip title="Đang có giao dịch VNPay chờ kết quả xác nhận">
+                <span className="inline-block w-[110px] text-center text-amber-700 text-[11.5px] font-medium">VNPay chờ XL</span>
+              </Tooltip>
+            ) : blockedBySubmittedTransfer ? (
+              <Tooltip title="Đã gửi xác nhận chuyển khoản, đang chờ HR Connect đối soát">
+                <span className="inline-block w-[110px] text-center text-sky-700 text-[11.5px] font-medium">Chờ xác nhận</span>
+              </Tooltip>
+            ) : reconcileHint ? (
+              <Tooltip title={`Chưa mở thanh toán: ${reconcileHint}`}>
+                <span className="inline-block w-[100px] text-center text-sky-700 text-[11.5px] font-medium">Chờ đối soát</span>
+              </Tooltip>
+            ) : (
+              <span className="inline-block w-[100px] text-center text-slate-400 text-xs">—</span>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -386,7 +549,7 @@ export const ClientBillingPage: React.FC = () => {
               Công nợ & phí dịch vụ
             </h1>
             <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0284C7] border border-sky-100">
-              {rows.length} khoản phí
+              {totalFeeRowsBadgeCount} khoản phí
             </span>
           </div>
         </div>
@@ -402,11 +565,32 @@ export const ClientBillingPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
-        <Kpi label="Cần thanh toán" value={money(sumVnd(unpaid))} hint={`${unpaid.length} khoản chưa thanh toán`} />
-        <Kpi label="Quá hạn" value={money(sumVnd(overdue))} hint={`${overdue.length} khoản quá hạn`} tone={overdue.length ? 'danger' : undefined} />
-        <Kpi label="Đã thanh toán" value={money(sumVnd(paid))} hint={`${paid.length} khoản`} tone="success" />
+      <div className={`mb-4 grid gap-3 ${pendingRefundCount > 0 ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-3'}`}>
+        <Kpi label="Cần thanh toán" value={money(unpaidTotal.amount, unpaidTotal.currency)} hint={`${unpaidCount} khoản chưa thanh toán`} />
+        <Kpi label="Quá hạn" value={money(overdueTotal.amount, overdueTotal.currency)} hint={`${overdueCount} khoản quá hạn`} tone={overdueCount ? 'danger' : undefined} />
+        <Kpi label="Đã thanh toán" value={money(paidTotal.amount, paidTotal.currency)} hint={`${paidCount} khoản`} tone="success" />
+        {pendingRefundCount > 0 && (
+          <Kpi
+            label="HR Connect cần hoàn"
+            value={money(Math.abs(refundTotal.amount), refundTotal.currency)}
+            hint={`${pendingRefundCount} khoản chờ hoàn tiền`}
+            tone="info"
+          />
+        )}
       </div>
+
+      {totalServiceFees > loadedServiceFees && (
+        <Alert
+          type="info"
+          showIcon
+          className="mb-4 rounded-xl"
+          message={
+            serviceFeeSummary
+              ? `Đang hiển thị ${loadedServiceFees}/${totalServiceFees} khoản phí dịch vụ gần nhất · Số liệu KPI đã tổng hợp toàn bộ hệ thống.`
+              : `Đang hiển thị ${loadedServiceFees}/${totalServiceFees} khoản phí dịch vụ gần nhất.`
+          }
+        />
+      )}
 
       <Surface>
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 pb-3 pt-5">
@@ -419,9 +603,9 @@ export const ClientBillingPage: React.FC = () => {
             }}
             options={[
               { value: 'all', label: 'Tất cả', count: rows.length },
-              { value: 'HEADHUNT_COD', label: CLIENT_SERVICE_NAME.HEADHUNT_COD, count: count('HEADHUNT_COD') },
-              { value: 'CV_SOURCING', label: CLIENT_SERVICE_NAME.CV_SOURCING, count: count('CV_SOURCING') },
-              { value: 'CV_APPLICATION', label: CLIENT_SERVICE_NAME.CV_APPLICATION, count: count('CV_APPLICATION') },
+              { value: 'HEADHUNT_COD', label: serviceLabel('HEADHUNT_COD'), count: count('HEADHUNT_COD') },
+              { value: 'CV_SOURCING', label: serviceLabel('CV_SOURCING'), count: count('CV_SOURCING') },
+              { value: 'CV_APPLICATION', label: serviceLabel('CV_APPLICATION'), count: count('CV_APPLICATION') },
             ]}
           />
           <FilterPills<StatusFilter>
@@ -450,7 +634,7 @@ export const ClientBillingPage: React.FC = () => {
             columns={columns}
             dataSource={visible}
             loading={loading}
-            scroll={{ x: 1040 }}
+            scroll={{ x: 1200 }}
             pagination={{ itemRender: a11yItemRender, current: page, pageSize: PAGE_SIZE, total: visible.length, onChange: setPage, showSizeChanger: false, hideOnSinglePage: true }}
             locale={{
               emptyText: (

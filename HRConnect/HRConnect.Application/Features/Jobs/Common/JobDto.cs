@@ -264,12 +264,13 @@ public sealed record JobPostingFeeSummaryDto(
     string Status,
     DateTime? PaidAt,
     string? PaymentReference,
-    string? PackageName)
+    string? PackageName,
+    DateTime? CreatedAt = null)
 {
     public static JobPostingFeeSummaryDto? From(JobPostingFee? fee, string? packageName) =>
         fee is null
             ? null
-            : new(fee.PostingFeeId, fee.Amount, fee.CurrencyCode, fee.Status, fee.PaidAt, fee.PaymentReference, fee.Package?.Name ?? packageName);
+            : new(fee.PostingFeeId, fee.Amount, fee.CurrencyCode, fee.Status, fee.PaidAt, fee.PaymentReference, fee.Package?.Name ?? packageName, fee.CreatedAt);
 }
 
 public sealed record JobDetailDto(

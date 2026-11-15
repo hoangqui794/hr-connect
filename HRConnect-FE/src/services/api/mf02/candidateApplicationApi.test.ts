@@ -110,7 +110,7 @@ describe('candidateApplicationApi', () => {
   });
 
   describe('applyApi.reapply', () => {
-    it('calls dedicated reapply endpoint when previousApplicationId is supplied', async () => {
+    it('calls POST /jobs/:jobId/apply directly even when previousApplicationId is supplied', async () => {
       vi.mocked(apiClient.post).mockResolvedValueOnce({
         data: {
           success: true,
@@ -120,53 +120,23 @@ describe('candidateApplicationApi', () => {
       } as any);
 
       const res = await applyApi.reapply('job-1', { cvId: 'cv-2' }, 'app-prev');
-      expect(apiClient.post).toHaveBeenCalledWith(
-        '/candidates/applications/app-prev/reapply',
-        expect.any(FormData)
-      );
+      expect(apiClient.post).toHaveBeenCalledTimes(1);
+      expect(apiClient.post).toHaveBeenCalledWith('/jobs/job-1/apply', expect.any(FormData));
       expect(res.data.applicationId).toBe('app-reapplied');
     });
 
-    it('falls back to standard apply endpoint when dedicated reapply endpoint returns 404', async () => {
-      // 1st call fails with 404
-      vi.mocked(apiClient.post).mockRejectedValueOnce({
-        response: { status: 404 },
-      });
-      // 2nd call to /jobs/:jobId/apply succeeds
-      vi.mocked(apiClient.post).mockResolvedValueOnce({
-        data: {
-          success: true,
-          message: 'Ứng tuyển thành công qua fallback',
-          data: { applicationId: 'app-fallback', jobId: 'job-1', status: 'SUBMITTED' },
-        },
-      } as any);
-
-      const res = await applyApi.reapply('job-1', { cvId: 'cv-2' }, 'app-prev');
-      expect(apiClient.post).toHaveBeenNthCalledWith(
-        1,
-        '/candidates/applications/app-prev/reapply',
-        expect.any(FormData)
-      );
-      expect(apiClient.post).toHaveBeenNthCalledWith(
-        2,
-        '/jobs/job-1/apply',
-        expect.any(FormData)
-      );
-      expect(res.data.applicationId).toBe('app-fallback');
-    });
-
-    it('returns graceful fallback when dedicated reapply returns 400 duplicate error', async () => {
-      vi.mocked(apiClient.post).mockRejectedValueOnce({
+    it('rejects when POST /jobs/:jobId/apply returns 400 duplicate error instead of faking success', async () => {
+      const duplicateErr = Object.assign(new Error('Bạn đã ứng tuyển công việc này rồi'), {
         response: {
           status: 400,
           data: { message: 'Bạn đã ứng tuyển công việc này rồi' },
         },
       });
+      vi.mocked(apiClient.post).mockRejectedValueOnce(duplicateErr);
 
-      const res = await applyApi.reapply('job-1', { cvId: 'cv-2' }, 'app-prev');
-      expect(res.success).toBe(true);
-      expect(res.data.applicationId).toBe('app-prev');
-      expect(res.data.status).toBe('SUBMITTED');
+      await expect(applyApi.reapply('job-1', { cvId: 'cv-2' }, 'app-prev')).rejects.toThrow(
+        'Bạn đã ứng tuyển công việc này rồi'
+      );
     });
 
     it('calls standard apply when previousApplicationId is omitted', async () => {
@@ -183,18 +153,18 @@ describe('candidateApplicationApi', () => {
       expect(res.data.applicationId).toBe('app-standard');
     });
 
-    it('returns graceful fallback when standard apply returns 409 already applied error', async () => {
-      vi.mocked(apiClient.post).mockRejectedValueOnce({
+    it('rejects when standard apply returns 409 already applied error instead of faking success', async () => {
+      const conflictErr = Object.assign(new Error('Candidate already applied'), {
         response: {
           status: 409,
           data: { message: 'Candidate already applied' },
         },
       });
+      vi.mocked(apiClient.post).mockRejectedValueOnce(conflictErr);
 
-      const res = await applyApi.reapply('job-1', { cvId: 'cv-2' });
-      expect(res.success).toBe(true);
-      expect(res.data.jobId).toBe('job-1');
-      expect(res.data.status).toBe('SUBMITTED');
+      await expect(applyApi.reapply('job-1', { cvId: 'cv-2' })).rejects.toThrow(
+        'Candidate already applied'
+      );
     });
 
     it('throws unexpected network error', async () => {

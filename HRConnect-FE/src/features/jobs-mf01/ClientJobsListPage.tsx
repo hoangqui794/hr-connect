@@ -65,6 +65,16 @@ const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 /** The deposit BE actually issued wins over the estimate from the agreed terms. */
 const depositOf = (job: Job): number | null => job.depositAmount ?? sourcingDepositAmount(job);
 
+const jobStatusTooltip = (job: Job): string => {
+  if (job.status === 'PENDING_AGREEMENT' && job.agreementStatus === 'CHANGE_REQUESTED') {
+    return 'Doanh nghiệp đã yêu cầu điều chỉnh điều khoản, đang chờ HR Connect gửi lại thỏa thuận.';
+  }
+  if (job.status === 'PENDING_AGREEMENT' && job.hasSignedAgreement) {
+    return 'Đã nộp hợp đồng đã ký kết, đang chờ Internal HR kiểm tra và duyệt tin';
+  }
+  return JOB_STATUS[job.status].hint;
+};
+
 type StatusFilter = 'ALL' | JobStatus;
 const FILTER_ORDER: JobStatus[] = ['DRAFT', 'PENDING_REVIEW', 'PENDING_AGREEMENT', 'PENDING_PAYMENT', 'ACTIVE', 'PAUSED', 'CLOSED', 'REJECTED'];
 
@@ -376,6 +386,12 @@ export const ClientJobsListPage: React.FC = () => {
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
             <ServiceTypeTag code={job.serviceTypeCode} />
             <span className="text-xs text-slate-500">{job.location ?? 'Chưa có địa điểm'}</span>
+            {job.applicationDeadline && (
+              <span className="text-xs text-slate-500">· Hạn nộp: {formatDate(job.applicationDeadline)}</span>
+            )}
+            {job.expiresAt && (
+              <span className="text-xs text-slate-500">· Hết hạn tin: {formatDate(job.expiresAt)}</span>
+            )}
           </div>
           {job.status === 'REJECTED' && job.statusReason && (
             <div className="text-xs text-red-700 mt-1 line-clamp-2">Lý do từ chối: {job.statusReason}</div>
@@ -394,9 +410,13 @@ export const ClientJobsListPage: React.FC = () => {
       width: 150,
       render: (_, job) => (
         <div className="space-y-1">
-          <Tooltip title={job.status === 'PENDING_AGREEMENT' && job.hasSignedAgreement ? 'Đã nộp hợp đồng đã ký kết, đang chờ Internal HR kiểm tra và duyệt tin' : JOB_STATUS[job.status].hint}>
+          <Tooltip title={jobStatusTooltip(job)}>
             <span>
-              <JobStatusTag status={job.status} hasSignedAgreement={job.hasSignedAgreement} />
+              <JobStatusTag
+                status={job.status}
+                hasSignedAgreement={job.hasSignedAgreement}
+                isChangeRequested={job.agreementStatus === 'CHANGE_REQUESTED'}
+              />
             </span>
           </Tooltip>
           {job.postingFeeStatus === 'PENDING' && job.status === 'PENDING_PAYMENT' && !isAwaitingSourcingDeposit(job) && (
@@ -611,15 +631,13 @@ export const ClientJobsListPage: React.FC = () => {
                       {/* Header tags */}
                       <div className="flex items-start justify-between gap-2 mb-3">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <Tooltip
-                            title={
-                              job.status === 'PENDING_AGREEMENT' && job.hasSignedAgreement
-                                ? 'Đã nộp hợp đồng đã ký kết, đang chờ Internal HR kiểm tra và duyệt tin'
-                                : JOB_STATUS[job.status].hint
-                            }
-                          >
+                          <Tooltip title={jobStatusTooltip(job)}>
                             <span>
-                              <JobStatusTag status={job.status} hasSignedAgreement={job.hasSignedAgreement} />
+                              <JobStatusTag
+                                status={job.status}
+                                hasSignedAgreement={job.hasSignedAgreement}
+                                isChangeRequested={job.agreementStatus === 'CHANGE_REQUESTED'}
+                              />
                             </span>
                           </Tooltip>
                           <ServiceTypeTag code={job.serviceTypeCode} />
@@ -648,11 +666,23 @@ export const ClientJobsListPage: React.FC = () => {
                             <span>{formatSalary(job)}</span>
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-slate-500">
                           <EnvironmentOutlined aria-hidden className="text-slate-400" />
                           <span className="truncate">{job.location ?? 'Chưa xác định địa điểm'}</span>
                           <span className="text-slate-300">·</span>
                           <span>Cần tuyển {formatHeadcount(job)}</span>
+                          {job.applicationDeadline && (
+                            <>
+                              <span className="text-slate-300">·</span>
+                              <span>Hạn nộp: {formatDate(job.applicationDeadline)}</span>
+                            </>
+                          )}
+                          {job.expiresAt && (
+                            <>
+                              <span className="text-slate-300">·</span>
+                              <span>Hết hạn tin: {formatDate(job.expiresAt)}</span>
+                            </>
+                          )}
                         </div>
                       </div>
 

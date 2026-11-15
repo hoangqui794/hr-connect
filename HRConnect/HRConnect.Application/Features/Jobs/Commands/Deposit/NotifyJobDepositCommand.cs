@@ -8,6 +8,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using MediatR;
@@ -22,12 +23,16 @@ public sealed record NotifyJobDepositCommand : IRequest<bool>
     [JsonIgnore]
     public Guid UserId { get; set; }
 
+    [JsonIgnore]
+    public bool IsBackoffice { get; set; }
+
     public string? PaymentReference { get; set; }
 }
 
 public sealed class NotifyJobDepositCommandHandler : IRequestHandler<NotifyJobDepositCommand, bool>
 {
     private readonly IJobRepository _jobRepository;
+    private readonly ICompanyUserRepository _companyUsers;
     private readonly IUserRepository _users;
     private readonly INotificationRepository _notifications;
     private readonly IFinanceRepository _financeRepository;
@@ -35,12 +40,14 @@ public sealed class NotifyJobDepositCommandHandler : IRequestHandler<NotifyJobDe
 
     public NotifyJobDepositCommandHandler(
         IJobRepository jobRepository,
+        ICompanyUserRepository companyUsers,
         IUserRepository users,
         INotificationRepository notifications,
         IFinanceRepository financeRepository,
         IUnitOfWork uow)
     {
         _jobRepository = jobRepository;
+        _companyUsers = companyUsers;
         _users = users;
         _notifications = notifications;
         _financeRepository = financeRepository;
@@ -51,6 +58,9 @@ public sealed class NotifyJobDepositCommandHandler : IRequestHandler<NotifyJobDe
     {
         var job = await _jobRepository.GetByIdAsync(request.JobId, cancellationToken)
             ?? throw new NotFoundException("Không tìm thấy tin tuyển dụng.");
+
+        await CompanyMembershipPolicy.EnsureCompanyAccessAsync(
+            _companyUsers, request.UserId, request.IsBackoffice, job.CompanyId, cancellationToken);
 
         if (job.Status != JobStatuses.PendingPayment)
         {

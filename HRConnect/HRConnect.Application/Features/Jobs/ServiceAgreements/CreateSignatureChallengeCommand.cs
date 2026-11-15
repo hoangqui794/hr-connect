@@ -16,6 +16,7 @@ public sealed class CreateSignatureChallengeCommand : IRequest<SignatureChalleng
     [JsonIgnore] public Guid JobId { get; set; }
     [JsonIgnore] public Guid AgreementId { get; set; }
     [JsonIgnore] public Guid UserId { get; set; }
+    [JsonIgnore] public bool IncludeDevOtp { get; set; }
 }
 
 public sealed class SignatureChallengeResponse
@@ -165,17 +166,27 @@ public sealed class CreateSignatureChallengeCommandHandler : IRequestHandler<Cre
 </div>";
 
         var emailResult = await _emailService.SendEmailAsync(user.Email, emailSubject, emailBody, ct);
+        if (!emailResult.IsSuccess && !request.IncludeDevOtp)
+        {
+            throw new BadRequestException(
+                "Không thể gửi mã OTP qua email. Vui lòng thử lại sau hoặc liên hệ hỗ trợ.",
+                "SIGNATURE_OTP_EMAIL_FAILED");
+        }
+
         await _uow.SaveChangesAsync(ct);
 
-        Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine("================================================================================");
-        Console.WriteLine($"[OTP KÝ THỎA THUẬN] User: {user.Email} | OTP: {rawOtp}");
-        if (!emailResult.IsSuccess)
+        if (request.IncludeDevOtp)
         {
-            Console.WriteLine($"[LƯU Ý EMAIL] Gửi mail qua Resend thất bại: {emailResult.ErrorMessage}");
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("================================================================================");
+            Console.WriteLine($"[OTP KÝ THỎA THUẬN] User: {user.Email} | OTP: {rawOtp}");
+            if (!emailResult.IsSuccess)
+            {
+                Console.WriteLine($"[LƯU Ý EMAIL] Gửi mail qua Resend thất bại: {emailResult.ErrorMessage}");
+            }
+            Console.WriteLine("================================================================================");
+            Console.ResetColor();
         }
-        Console.WriteLine("================================================================================");
-        Console.ResetColor();
 
         var message = emailResult.IsSuccess
             ? $"Mã OTP đã được gửi đến email {user.Email}. Mã có hiệu lực trong 10 phút."
@@ -190,7 +201,7 @@ public sealed class CreateSignatureChallengeCommandHandler : IRequestHandler<Cre
             CooldownSeconds = 60,
             Message = message,
             ConcurrencyToken = agreement.ConcurrencyToken,
-            DevOtp = rawOtp
+            DevOtp = request.IncludeDevOtp ? rawOtp : null
         };
     }
 }

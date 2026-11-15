@@ -189,4 +189,91 @@ public class GetPlacementsQueryHandlerTests
             20,
             It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task Handle_WhenPlacementHasWarrantyFeeReplacementAndResignation_ShouldMapEnrichedFields()
+    {
+        var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
+
+        var claimedPlacement = new Placement
+        {
+            PlacementId = Guid.NewGuid(),
+            ApplicationId = Guid.NewGuid(),
+            OfferId = Guid.NewGuid(),
+            ActualStartDate = new DateOnly(2026, 10, 1),
+            Status = "LEFT_DURING_WARRANTY",
+            ReplacementSlotId = Guid.NewGuid(),
+            UpdatedAt = new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc),
+            CreatedAt = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc),
+            Warranty = new Warranty
+            {
+                EndDate = new DateOnly(2026, 11, 1),
+                Status = "VOIDED",
+                ResultNote = "Client báo nghỉ, ngày làm việc cuối 2026-10-15: Ứng viên tự xin nghỉ | Internal HR xác nhận: Đã kiểm tra"
+            },
+            ServiceFee = new ServiceFee { Status = "PAID" },
+            Application = new Domain.Entities.Application
+            {
+                Candidate = new Candidate { CandidateId = Guid.NewGuid(), FullName = "Nguyen Van B", Email = "b@example.com" },
+                Job = new Job
+                {
+                    JobId = Guid.NewGuid(),
+                    Title = "Senior QA",
+                    CompanyId = companyId,
+                    Company = new Company { CompanyName = "Tech Corp" },
+                    ServiceType = new ServiceType { Code = "HEADHUNT_COD" }
+                }
+            }
+        };
+
+        var normalPlacement = new Placement
+        {
+            PlacementId = Guid.NewGuid(),
+            ApplicationId = Guid.NewGuid(),
+            OfferId = Guid.NewGuid(),
+            ActualStartDate = new DateOnly(2026, 10, 5),
+            Status = "STARTED",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            Application = new Domain.Entities.Application
+            {
+                Candidate = new Candidate { CandidateId = Guid.NewGuid(), FullName = "Le Thi C", Email = "c@example.com" },
+                Job = new Job { JobId = Guid.NewGuid(), Title = "Tester", CompanyId = companyId, Company = new Company { CompanyName = "Tech Corp" } }
+            }
+        };
+
+        _placementRepositoryMock
+            .Setup(r => r.GetPlacementsAsync(
+                companyId, null, null, null, null, null, 1, 10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(([claimedPlacement, normalPlacement], 2));
+
+        var result = await CreateHandler().Handle(
+            new GetPlacementsQuery(CurrentUserId: userId, IsClientCompanyUser: true),
+            CancellationToken.None);
+
+        var first = result.Items[0];
+        first.WarrantyEndDate.Should().Be(new DateOnly(2026, 11, 1));
+        first.WarrantyStatus.Should().Be("VOIDED");
+        first.ServiceFeeStatus.Should().Be("PAID");
+        first.IsReplacement.Should().BeTrue();
+        first.ServiceTypeCode.Should().Be("HEADHUNT_COD");
+        first.EndDate.Should().Be(new DateOnly(2026, 10, 15));
+        first.ResignationReason.Should().Be("Ứng viên tự xin nghỉ");
+        first.ResignedBy.Should().Be("CLIENT");
+
+        var second = result.Items[1];
+        second.WarrantyEndDate.Should().BeNull();
+        second.WarrantyStatus.Should().BeNull();
+        second.ServiceFeeStatus.Should().BeNull();
+        second.IsReplacement.Should().BeFalse();
+        second.ServiceTypeCode.Should().BeNull();
+        second.EndDate.Should().BeNull();
+        second.ResignationReason.Should().BeNull();
+        second.ResignedBy.Should().BeNull();
+    }
 }

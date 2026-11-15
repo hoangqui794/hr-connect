@@ -1,3 +1,4 @@
+using System.Text.Json;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
@@ -12,8 +13,8 @@ using MediatR;
 namespace HRConnect.Application.Features.Recruitment.Sourcing;
 
 // MF-03 (CV_SOURCING): Internal HR hands qualified CVs to the Client; the Client accepts or rejects
-// each one within the review window (default 7 days); no answer counts as accepted. Only accepted
-// CVs are billed. See HRConnect/docs/main-flows.md (MF-03, CV_SOURCING) and QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md section 2.
+// each one within the agreed review window (default from settings); no answer counts as accepted. Only
+// accepted CVs are billed. See HRConnect/docs/main-flows.md (MF-03, CV_SOURCING) and QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md section 2.
 
 public sealed record SourcingDeliveryDto(
     Guid DeliveryId,
@@ -26,10 +27,34 @@ public sealed record SourcingDeliveryDto(
     DateTime? DecidedAt,
     string? RejectReasonCode,
     string? RejectNote,
-    Guid? ReplacedByDeliveryId);
+    Guid? ReplacedByDeliveryId,
+    string? RejectionReviewStatus = null,
+    string? RejectionReviewNote = null,
+    DateTime? RejectionReviewedAt = null,
+    string? ReplacementCandidateName = null,
+    decimal? AiMatchScore = null);
 
 public sealed record SourcingSummaryDto(
-    int? SourcingTarget, int Delivered, int Accepted, int AutoAccepted, int Rejected, int PendingReview, int Counted);
+    int? SourcingTarget,
+    int Delivered,
+    int Accepted,
+    int AutoAccepted,
+    int Rejected,
+    int PendingReview,
+    int Counted,
+    int? ReviewDays = null,
+    decimal? PricePerCv = null,
+    decimal? CountedAmount = null,
+    decimal? DepositPaidAmount = null,
+    int? RemainingToDeliver = null,
+    string? JobStatus = null);
+
+public static class SourcingRejectionReviewStates
+{
+    public const string PendingHrReview = "PENDING_HR_REVIEW";
+    public const string Upheld = "UPHELD";
+    public const string Overturned = "OVERTURNED";
+}
 
 public sealed record SourcingDeliveriesResponse(SourcingSummaryDto Summary, IReadOnlyList<SourcingDeliveryDto> Items);
 
@@ -66,29 +91,79 @@ public static class SourcingDeliveryAudit
     public const string EntityType = "SOURCING_DELIVERY";
 }
 
+internal sealed record RejectionReviewInfo(string Status, string? Note, DateTime ReviewedAt);
+
 internal static class SourcingDeliveryRules
 {
     public const string ConsentConfirmed = "CONFIRMED";
 
-    public static SourcingDeliveryDto ToDto(SourcingDelivery d, DateTime now) => new(
-        d.DeliveryId,
-        d.ApplicationId,
-        d.Application?.Candidate?.FullName,
-        d.Status,
-        d.DeliveredAt,
-        d.ReviewDueAt,
-        d.Status == SourcingDeliveryStates.Delivered
-            ? Math.Max(0, (int)Math.Ceiling((d.ReviewDueAt - now).TotalDays))
-            : null,
-        d.DecidedAt,
-        d.RejectReasonCode,
-        d.RejectNote,
-        d.ReplacedByDeliveryId);
+    public static SourcingDeliveryDto ToDto(
+        SourcingDelivery d,
+        DateTime now,
+        RejectionReviewInfo? review = null,
+        string? replacementCandidateName = null)
+    {
+        var reviewStatus = review?.Status
+            ?? (d.Status == SourcingDeliveryStates.Rejected
+                && string.Equals(d.RejectReasonCode, SourcingRejectReasons.Other, StringComparison.OrdinalIgnoreCase)
+                    ? SourcingRejectionReviewStates.PendingHrReview
+                    : null);
+        var aiMatchScore = d.Application?.AiMatchResults?
+            .OrderByDescending(r => r.AttemptNo)
+            .FirstOrDefault()?.MatchScore;
+
+        return new(
+            d.DeliveryId,
+            d.ApplicationId,
+            d.Application?.Candidate?.FullName,
+            d.Status,
+            d.DeliveredAt,
+            d.ReviewDueAt,
+            d.Status == SourcingDeliveryStates.Delivered
+                ? Math.Max(0, (int)Math.Ceiling((d.ReviewDueAt - now).TotalDays))
+                : null,
+            d.DecidedAt,
+            d.RejectReasonCode,
+            d.RejectNote,
+            d.ReplacedByDeliveryId,
+            reviewStatus,
+            review?.Note,
+            review?.ReviewedAt,
+            replacementCandidateName,
+            aiMatchScore);
+    }
 
     public static SourcingSummaryDto Summarize(int? target, IEnumerable<SourcingDelivery> deliveries)
+        => Summarize(target, deliveries, reviewDays: null, pricePerCv: null, depositPaidAmount: null, jobStatus: null);
+
+    public static SourcingSummaryDto Summarize(
+        Job job,
+        IEnumerable<SourcingDelivery> deliveries,
+        int? reviewDays = null,
+        decimal? depositPaidAmount = null) =>
+        Summarize(
+            job.SourcingTarget,
+            deliveries,
+            reviewDays ?? job.ReviewDays,
+            job.SourcingPricePerCv,
+            depositPaidAmount,
+            job.Status);
+
+    private static SourcingSummaryDto Summarize(
+        int? target,
+        IEnumerable<SourcingDelivery> deliveries,
+        int? reviewDays,
+        decimal? pricePerCv,
+        decimal? depositPaidAmount,
+        string? jobStatus)
     {
         var list = deliveries.ToList();
         int Count(string status) => list.Count(d => d.Status == status);
+        var counted = list.Count(d => SourcingDeliveryStates.Counted.Contains(d.Status));
+        var occupied = list.Count(d => SourcingDeliveryStates.Occupying.Contains(d.Status));
+        decimal? countedAmount = pricePerCv.HasValue ? counted * pricePerCv.Value : null;
+        int? remainingToDeliver = target.HasValue ? Math.Max(0, target.Value - occupied) : null;
+
         return new SourcingSummaryDto(
             target,
             list.Count(d => d.Status != SourcingDeliveryStates.Replaced),
@@ -96,7 +171,13 @@ internal static class SourcingDeliveryRules
             Count(SourcingDeliveryStates.AutoAccepted),
             Count(SourcingDeliveryStates.Rejected),
             Count(SourcingDeliveryStates.Delivered),
-            list.Count(d => SourcingDeliveryStates.Counted.Contains(d.Status)));
+            counted,
+            reviewDays,
+            pricePerCv,
+            countedAmount,
+            depositPaidAmount,
+            remainingToDeliver,
+            jobStatus);
     }
 
     public static void RequireSourcingJob(Job job)
@@ -242,7 +323,7 @@ public sealed class DeliverSourcingCvsCommandHandler : IRequestHandler<DeliverSo
 
         return new DeliverCvsResponse(
             created.Select(d => SourcingDeliveryRules.ToDto(d, now)).ToList(),
-            SourcingDeliveryRules.Summarize(job.SourcingTarget, existing.Concat(created)));
+            SourcingDeliveryRules.Summarize(job, existing.Concat(created), reviewDays));
     }
 }
 
@@ -420,7 +501,10 @@ public sealed class ReviewSourcingRejectionCommandHandler : IRequestHandler<Revi
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return SourcingDeliveryRules.ToDto(delivery, now);
+        var reviewStatus = request.Upheld
+            ? SourcingRejectionReviewStates.Upheld
+            : SourcingRejectionReviewStates.Overturned;
+        return SourcingDeliveryRules.ToDto(delivery, now, new RejectionReviewInfo(reviewStatus, note, now));
     }
 }
 
@@ -500,11 +584,19 @@ public sealed class GetSourcingDeliveriesQueryHandler : IRequestHandler<GetSourc
 {
     private readonly ISourcingDeliveryRepository _deliveries;
     private readonly ICompanyUserRepository _companyUsers;
+    private readonly IFinanceRepository? _financeRepository;
+    private readonly IAdminBusinessSettings? _settings;
 
-    public GetSourcingDeliveriesQueryHandler(ISourcingDeliveryRepository deliveries, ICompanyUserRepository companyUsers)
+    public GetSourcingDeliveriesQueryHandler(
+        ISourcingDeliveryRepository deliveries,
+        ICompanyUserRepository companyUsers,
+        IFinanceRepository? financeRepository = null,
+        IAdminBusinessSettings? settings = null)
     {
         _deliveries = deliveries;
         _companyUsers = companyUsers;
+        _financeRepository = financeRepository;
+        _settings = settings;
     }
 
     public async Task<SourcingDeliveriesResponse> Handle(GetSourcingDeliveriesQuery request, CancellationToken cancellationToken)
@@ -518,15 +610,139 @@ public sealed class GetSourcingDeliveriesQueryHandler : IRequestHandler<GetSourc
 
         SourcingDeliveryRules.RequireSourcingJob(job);
         var all = await _deliveries.GetByJobAsync(job.JobId, cancellationToken);
+        var reviewDays = job.ReviewDays is > 0
+            ? job.ReviewDays.Value
+            : (_settings != null
+                ? await _settings.GetIntAsync(BusinessSettingKeys.CvSourcingReviewDays, cancellationToken)
+                : (int?)null);
+
+        decimal? depositPaidAmount = null;
+        if (_financeRepository != null)
+        {
+            var fees = await _financeRepository.GetJobServiceFeesAsync([job.JobId], cancellationToken);
+            var depositFees = fees
+                .Where(f => f.Kind == ServiceFeeKinds.Deposit && f.Status != ServiceFeeStates.Cancelled)
+                .ToList();
+            if (depositFees.Any(f => f.Status == ServiceFeeStates.Paid))
+            {
+                depositPaidAmount = depositFees
+                    .Where(f => f.Status == ServiceFeeStates.Paid)
+                    .Sum(f => f.Amount);
+            }
+            else if (depositFees.Count > 0 || job.DepositPercent == 0m)
+            {
+                depositPaidAmount = 0m;
+            }
+        }
+
+        var candidateByDeliveryId = all.ToDictionary(
+            d => d.DeliveryId,
+            d => d.Application?.Candidate?.FullName);
+
+        var reviewsByDeliveryId = await LoadRejectionReviewsAsync(all, cancellationToken);
+
         var status = request.Status?.Trim().ToUpperInvariant();
         var now = DateTime.UtcNow;
         var items = all
             .Where(d => status == null || d.Status == status)
             .OrderByDescending(d => d.DeliveredAt)
-            .Select(d => SourcingDeliveryRules.ToDto(d, now))
+            .Select(d =>
+            {
+                reviewsByDeliveryId.TryGetValue(d.DeliveryId, out var review);
+                string? replacementCandidateName = null;
+                if (d.ReplacedByDeliveryId is Guid repId)
+                {
+                    candidateByDeliveryId.TryGetValue(repId, out replacementCandidateName);
+                }
+
+                return SourcingDeliveryRules.ToDto(d, now, review, replacementCandidateName);
+            })
             .ToList();
 
-        return new SourcingDeliveriesResponse(SourcingDeliveryRules.Summarize(job.SourcingTarget, all), items);
+        return new SourcingDeliveriesResponse(
+            SourcingDeliveryRules.Summarize(job, all, reviewDays, depositPaidAmount),
+            items);
+    }
+
+    private async Task<Dictionary<Guid, RejectionReviewInfo>> LoadRejectionReviewsAsync(
+        IReadOnlyList<SourcingDelivery> all,
+        CancellationToken cancellationToken)
+    {
+        var deliveryIds = all.Select(d => d.DeliveryId).Distinct().ToList();
+        var result = new Dictionary<Guid, RejectionReviewInfo>();
+        if (deliveryIds.Count == 0)
+        {
+            return result;
+        }
+
+        var logs = await _deliveries.GetRejectionReviewAuditLogsAsync(deliveryIds, cancellationToken);
+        foreach (var log in logs
+            .Where(l => l.EntityId.HasValue)
+            .OrderByDescending(l => l.CreatedAt)
+            .ThenByDescending(l => l.AuditLogId))
+        {
+            var deliveryId = log.EntityId!.Value;
+            if (result.ContainsKey(deliveryId))
+            {
+                continue;
+            }
+
+            var parsed = ParseRejectionReview(log);
+            if (parsed != null)
+            {
+                result[deliveryId] = parsed;
+            }
+        }
+
+        return result;
+    }
+
+    private static RejectionReviewInfo? ParseRejectionReview(AuditLog log)
+    {
+        if (string.IsNullOrWhiteSpace(log.NewValues))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(log.NewValues);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            bool? upheld = null;
+            string? note = null;
+            foreach (var prop in doc.RootElement.EnumerateObject())
+            {
+                if (string.Equals(prop.Name, "upheld", StringComparison.OrdinalIgnoreCase)
+                    && prop.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                {
+                    upheld = prop.Value.GetBoolean();
+                }
+                else if (string.Equals(prop.Name, "note", StringComparison.OrdinalIgnoreCase)
+                         && prop.Value.ValueKind == JsonValueKind.String)
+                {
+                    var text = prop.Value.GetString()?.Trim();
+                    note = string.IsNullOrWhiteSpace(text) ? null : text;
+                }
+            }
+
+            if (!upheld.HasValue)
+            {
+                return null;
+            }
+
+            var status = upheld.Value
+                ? SourcingRejectionReviewStates.Upheld
+                : SourcingRejectionReviewStates.Overturned;
+            return new RejectionReviewInfo(status, note, log.CreatedAt);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 }
 

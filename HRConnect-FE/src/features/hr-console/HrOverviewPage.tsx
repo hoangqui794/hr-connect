@@ -15,6 +15,7 @@ import 'dayjs/locale/vi';
 import { jobsApi } from '@/services/api/jobsApi';
 import { HR_SCREENED_SERVICE_TYPES, pipelineApi, screeningApi } from '@/services/api/hrApi';
 import { useAuthStore } from '@/stores/authStore';
+import { UserRole } from '@/types/roles';
 import { PersonCell, StatTile, StatusDot, Surface } from '@/features/admin-console/ui';
 import { pick, INTERVIEW_STATUS, applicationStatusOf } from './hrLabels';
 
@@ -22,33 +23,48 @@ dayjs.extend(relativeTimePlugin);
 dayjs.locale('vi');
 
 const Count: React.FC<{ q: { isLoading: boolean; isError: boolean; data?: number } }> = ({ q }) =>
-  q.isLoading ? <Skeleton.Input active size="small" /> : <>{q.isError ? '—' : q.data}</>;
+  q.isLoading ? <Skeleton.Input active size="small" /> : <>{q.isError ? '—' : (q.data ?? '—')}</>;
 
 /**
  * N6: Internal HR screens HEADHUNT_COD and CV_SOURCING only; Client screens CV_APPLICATION itself,
  * so the backend filters those out of the HR counters and recent list.
  */
-const useApplicationCount = (status: string) =>
+const useApplicationCount = (status: string, enabled = true) =>
   useQuery({
     queryKey: ['hr-overview', 'applications', status],
     queryFn: async () => (await screeningApi.list({ status, serviceTypeCode: HR_SCREENED_SERVICE_TYPES, page: 1, pageSize: 1 })).total,
+    enabled,
   });
 
 export const HrOverviewPage: React.FC = () => {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const canReviewJobs = useAuthStore(
+    (s) => s.hasAnyRole([UserRole.INTERNAL_HR, UserRole.ADMIN]) && s.hasPermission('job.review')
+  );
+  const canViewScreening = useAuthStore(
+    (s) =>
+      s.hasAnyRole([UserRole.ADMIN]) ||
+      (s.hasAnyRole([UserRole.INTERNAL_HR]) && s.hasPermission('application.view'))
+  );
 
-  const jobs = useQuery({ queryKey: ['hr-overview', 'jobs'], queryFn: async () => (await jobsApi.getReviewQueue()).length });
-  const submitted = useApplicationCount('SUBMITTED');
-  const screening = useApplicationCount('SCREENING');
-  const shortlisted = useApplicationCount('SHORTLISTED');
+  const jobs = useQuery({
+    queryKey: ['hr-overview', 'jobs'],
+    queryFn: async () => (await jobsApi.getReviewQueue()).length,
+    enabled: canReviewJobs,
+  });
+  const submitted = useApplicationCount('SUBMITTED', canViewScreening);
+  const screening = useApplicationCount('SCREENING', canViewScreening);
+  const shortlisted = useApplicationCount('SHORTLISTED', canViewScreening);
   const recent = useQuery({
     queryKey: ['hr-overview', 'recent'],
     queryFn: async () => (await screeningApi.list({ serviceTypeCode: HR_SCREENED_SERVICE_TYPES, page: 1, pageSize: 6 })).items,
+    enabled: canViewScreening,
   });
   const upcoming = useQuery({
     queryKey: ['hr-overview', 'interviews'],
     queryFn: async () => (await pipelineApi.interviews({ status: 'SCHEDULED', page: 1, pageSize: 4 })).items,
+    enabled: canViewScreening,
   });
 
   const firstName = (user?.name || 'bạn').trim().split(/\s+/).slice(-1)[0];

@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
@@ -24,14 +25,20 @@ public class SendOfferCommandHandlerTests
     private readonly Mock<ILogger<SendOfferCommandHandler>> _loggerMock = new();
     private readonly Mock<IAuditLogService> _auditLogServiceMock = new();
 
-    private SendOfferCommandHandler CreateHandler() =>
+    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
+    }
+
+    private SendOfferCommandHandler CreateHandler(TimeProvider? timeProvider = null) =>
         new(
             _offerRepositoryMock.Object,
             _applicationRepositoryMock.Object,
             _companyUserRepositoryMock.Object,
             _unitOfWorkMock.Object,
             _loggerMock.Object,
-            _auditLogServiceMock.Object);
+            _auditLogServiceMock.Object,
+            timeProvider: timeProvider);
 
     [Fact]
     public async Task Handle_WhenOfferNotFound_ShouldThrowNotFoundException()
@@ -148,7 +155,7 @@ public class SendOfferCommandHandlerTests
     public async Task Handle_WhenExpiryDateIsInThePast_ShouldThrowBadRequestException()
     {
         var offerId = Guid.NewGuid();
-        var yesterday = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
+        var yesterday = VietnamTime.Today().AddDays(-1);
         var offer = new Offer
         {
             OfferId = offerId,
@@ -178,7 +185,7 @@ public class SendOfferCommandHandlerTests
         var offerId = Guid.NewGuid();
         var clientUserId = Guid.NewGuid();
         var companyId = Guid.NewGuid();
-        var tomorrow = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7));
+        var tomorrow = VietnamTime.Today().AddDays(7);
 
         var app = new HRConnect.Domain.Entities.Application
         {
@@ -262,7 +269,7 @@ public class SendOfferCommandHandlerTests
             CurrencyCode = "VND",
             SalaryBasis = OfferSalaryBasisCodes.Gross,
             SalaryPeriod = OfferSalaryPeriodCodes.Monthly,
-            ExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7))
+            ExpiryDate = VietnamTime.Today().AddDays(7)
         };
 
         _offerRepositoryMock
@@ -360,5 +367,32 @@ public class SendOfferCommandHandlerTests
 
         var exception = await act.Should().ThrowAsync<BadRequestException>();
         exception.Which.ErrorCode.Should().Be(OfferSalaryErrorCodes.HeadhuntRequiresGross);
+    }
+
+    [Fact]
+    public async Task Handle_AtEarlyMorningVietnamTime_WhenExpiryDateIsUtcTodayButYesterdayInVietnam_ShouldReject()
+    {
+        var earlyMorningVn = new FixedTimeProvider(new DateTimeOffset(2026, 11, 13, 20, 34, 0, TimeSpan.Zero));
+        var offerId = Guid.NewGuid();
+        var offer = new Offer
+        {
+            OfferId = offerId,
+            Status = OfferStates.Draft,
+            ExpiryDate = new DateOnly(2026, 11, 13)
+        };
+        _offerRepositoryMock
+            .Setup(r => r.GetByIdWithApplicationAsync(offerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(offer);
+
+        var command = new SendOfferCommand(
+            OfferId: offerId,
+            ConcurrencyToken: offer.ConcurrencyToken,
+            CurrentUserId: Guid.NewGuid(),
+            IsInternalHrOrAdmin: true);
+
+        var act = () => CreateHandler(earlyMorningVn).Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<BadRequestException>()
+            .WithMessage("*Offer đã quá hạn phản hồi, không thể gửi*");
     }
 }

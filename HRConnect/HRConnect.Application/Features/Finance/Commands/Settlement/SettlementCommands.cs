@@ -127,6 +127,8 @@ public sealed class SettlementCommandHandlers :
         {
             await ReplacementSlotLifecycle.OpenAsync(
                 slot, slot.Job, fee.UpdatedAt, request.CurrentUserId, _financeRepository, _notificationRepository, cancellationToken);
+            await ReplacementSlotLifecycle.NotifyAffiliateOpenAsync(
+                slot, slot.Job, extended: false, _financeRepository, _notifier, cancellationToken);
             await AuditAsync(AuditActions.ReplacementSlotOpened, "REPLACEMENT_SLOT", slot.ReplacementSlotId, request.CurrentUserId,
                 new { status = ReplacementSlotStates.WaitingPayment }, new { slot.Status, slot.OpenedAt, slot.ExpiresAt }, cancellationToken);
         }
@@ -212,8 +214,9 @@ public sealed class SettlementCommandHandlers :
 
         await AuditAsync(AuditActions.CommissionApproved, "COMMISSION", commission.CommissionId, request.CurrentUserId,
             new { status = CommissionStates.Earned }, new { status = commission.Status, commission.Amount, serviceFeeId }, cancellationToken);
+        var formattedAmount = FinanceCurrency.FormatMoney(commission.Amount, FinanceCurrency.Of(commission));
         await NotifyAsync(await _financeRepository.GetAffiliateUserIdAsync(commission.AttributionId, cancellationToken), "COMMISSION", "Hoa hồng đã được duyệt chi",
-            $"Khoản hoa hồng {commission.Amount:N0} đ đã được duyệt và đang chờ chi trả.", "COMMISSION", commission.CommissionId,
+            $"Khoản hoa hồng {formattedAmount} đã được duyệt và đang chờ chi trả.", "COMMISSION", commission.CommissionId,
             "/affiliate/commissions", now, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return ToResponse(commission);
@@ -234,8 +237,9 @@ public sealed class SettlementCommandHandlers :
 
         await AuditAsync(AuditActions.CommissionCancelled, "COMMISSION", commission.CommissionId, request.CurrentUserId,
             new { status = oldStatus }, new { status = commission.Status, reason = request.Reason.Trim() }, cancellationToken);
+        var formattedAmount = FinanceCurrency.FormatMoney(commission.Amount, FinanceCurrency.Of(commission));
         await NotifyAsync(await _financeRepository.GetAffiliateUserIdAsync(commission.AttributionId, cancellationToken), "COMMISSION", "Hoa hồng đã bị hủy",
-            $"Khoản hoa hồng {commission.Amount:N0} đ đã bị hủy. Lý do: {request.Reason.Trim()}", "COMMISSION", commission.CommissionId,
+            $"Khoản hoa hồng {formattedAmount} đã bị hủy. Lý do: {request.Reason.Trim()}", "COMMISSION", commission.CommissionId,
             "/affiliate/commissions", DateTime.UtcNow, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return ToResponse(commission);
@@ -277,8 +281,11 @@ public sealed class SettlementCommandHandlers :
 
         await AuditAsync(AuditActions.CommissionAdjusted, "COMMISSION", commission.CommissionId, request.CurrentUserId,
             new { amount = oldAmount }, new { amount = request.NewAmount, reason = request.Reason.Trim() }, cancellationToken);
+        var currency = FinanceCurrency.Of(commission);
+        var oldFormatted = FinanceCurrency.FormatMoney(oldAmount, currency);
+        var newFormatted = FinanceCurrency.FormatMoney(request.NewAmount, currency);
         await NotifyAsync(await _financeRepository.GetAffiliateUserIdAsync(commission.AttributionId, cancellationToken), "COMMISSION", "Hoa hồng đã được điều chỉnh",
-            $"Khoản hoa hồng được điều chỉnh từ {oldAmount:N0} đ thành {request.NewAmount:N0} đ.", "COMMISSION", commission.CommissionId,
+            $"Khoản hoa hồng được điều chỉnh từ {oldFormatted} thành {newFormatted}.", "COMMISSION", commission.CommissionId,
             "/affiliate/commissions", now, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return ToResponse(commission);
@@ -329,13 +336,14 @@ public sealed class SettlementCommandHandlers :
             new { commissionStatus = CommissionStates.Payable },
             new { payout.Status, payout.Amount, payout.AttemptNo, payout.TransactionReference, commissionStatus = commission.Status },
             cancellationToken);
+        var payoutFormatted = FinanceCurrency.FormatMoney(commission.Amount, FinanceCurrency.Of(commission));
         await NotifyAsync(
             await _financeRepository.GetAffiliateUserIdAsync(commission.AttributionId, cancellationToken),
             "COMMISSION",
             request.Succeeded ? "Đã chuyển khoản hoa hồng" : "Chuyển khoản hoa hồng chưa thành công",
             request.Succeeded
-                ? $"Khoản hoa hồng {commission.Amount:N0} đ đã được chuyển khoản (mã giao dịch: {payout.TransactionReference})."
-                : $"Lần chi trả khoản hoa hồng {commission.Amount:N0} đ chưa thành công; Admin sẽ thực hiện lại.",
+                ? $"Khoản hoa hồng {payoutFormatted} đã được chuyển khoản (mã giao dịch: {payout.TransactionReference})."
+                : $"Lần chi trả khoản hoa hồng {payoutFormatted} chưa thành công; Admin sẽ thực hiện lại.",
             "PAYOUT",
             payout.PayoutId,
             "/affiliate/commissions",

@@ -85,7 +85,7 @@ describe('ReportResignationModal', () => {
 
     await waitFor(() => {
       expect(placementApiModule.reportCandidateResignation).toHaveBeenCalledWith(
-        'app-456',
+        'placement-123',
         expect.objectContaining({
           reason: 'Ứng viên tự xin nghỉ',
           resignationDate: dayjs().format('YYYY-MM-DD'),
@@ -93,6 +93,28 @@ describe('ReportResignationModal', () => {
       );
       expect(onSuccessMock).toHaveBeenCalledTimes(1);
       expect(onCloseMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('does not call API when placementId is missing', async () => {
+    const onSuccessMock = vi.fn();
+    render(
+      <App>
+        <ReportResignationModal
+          open={true}
+          onClose={vi.fn()}
+          placement={{ ...mockPlacement, placementId: '' }}
+          onSuccess={onSuccessMock}
+        />
+      </App>
+    );
+
+    const submitBtn = screen.getByRole('button', { name: /Xác nhận báo nghỉ/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(placementApiModule.reportCandidateResignation).not.toHaveBeenCalled();
+      expect(onSuccessMock).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using HRConnect.Application.Features.Finance.ReplacementSlots;
 
 namespace HRConnect.Application.Features.Placements.Queries.GetPlacementDetail;
 
@@ -26,7 +27,9 @@ public record GetPlacementDetailResponse(
     IReadOnlyList<string> AllowedActions,
     DateTime CreatedAt,
     DateTime UpdatedAt,
-    PlacementDetailFinancialDto? Financial = null
+    PlacementDetailFinancialDto? Financial = null,
+    PlacementDetailResignationDto? Resignation = null,
+    ReplacementSummaryDto? Replacement = null
 );
 
 /// <summary>
@@ -37,7 +40,19 @@ public record PlacementDetailFinancialDto(
     decimal? ServiceFeeAmount,
     string? ServiceFeeStatus,
     decimal? CommissionAmount,
-    string? CommissionStatus
+    string? CommissionStatus,
+    Guid? ServiceFeeId = null,
+    DateOnly? ServiceFeeDueDate = null,
+    DateTime? ServiceFeePaidAt = null
+);
+
+public record PlacementDetailResignationDto(
+    DateTime? ReportedAt,
+    DateOnly? LastWorkingDate,
+    string? Reason,
+    string? ReviewStatus,
+    string? ReviewNote = null,
+    string? ResignedBy = null
 );
 
 public record PlacementDetailCandidateDto(

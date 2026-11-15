@@ -155,70 +155,45 @@ describe('placementApi', () => {
   });
 
   describe('reportCandidateResignation', () => {
-    it('calls POST /recruitment/applications/:id/resignation successfully', async () => {
+    it('calls POST /placements/:id/resignation directly with lastWorkingDate and formatted reason', async () => {
       vi.mocked(apiClient.post).mockResolvedValueOnce({
         data: { success: true, message: 'Đã báo nghỉ việc thành công.' },
       } as any);
 
-      const res = await reportCandidateResignation('app-1', {
+      const res = await reportCandidateResignation('plc-1', {
         resignationDate: '2026-11-12',
         reason: 'EMPLOYEE_RESIGNED',
         note: 'Gia đình chuyển nhà',
       });
 
-      expect(apiClient.post).toHaveBeenCalledWith('/recruitment/applications/app-1/resignation', {
-        resignationDate: '2026-11-12',
-        reason: 'EMPLOYEE_RESIGNED',
-        note: 'Gia đình chuyển nhà',
+      expect(apiClient.post).toHaveBeenCalledTimes(1);
+      expect(apiClient.post).toHaveBeenCalledWith('/placements/plc-1/resignation', {
+        lastWorkingDate: '2026-11-12',
+        reason: 'EMPLOYEE_RESIGNED: Gia đình chuyển nhà',
       });
       expect(res.success).toBe(true);
     });
 
-    it('falls back to /placements/:id/resignation when recruitment endpoint returns 404', async () => {
+    it('rejects when /placements/:id/resignation returns 404 instead of faking success', async () => {
       vi.mocked(apiClient.post).mockRejectedValueOnce({
-        response: { status: 404 },
-      });
-      vi.mocked(apiClient.post).mockResolvedValueOnce({
-        data: { success: true, message: 'Đã báo nghỉ việc fallback thành công.' },
-      } as any);
-
-      const res = await reportCandidateResignation('plc-1', {
-        resignationDate: '2026-11-12',
-        reason: 'PROBATION_FAILED',
-        note: 'Không đạt thử việc',
+        response: { status: 404, data: { message: 'Không tìm thấy hồ sơ tiếp nhận việc' } },
       });
 
-      expect(apiClient.post).toHaveBeenNthCalledWith(
-        2,
-        '/placements/plc-1/resignation',
-        {
-          lastWorkingDate: '2026-11-12',
-          reason: 'PROBATION_FAILED: Không đạt thử việc',
-        }
-      );
-      expect(res.success).toBe(true);
+      await expect(
+        reportCandidateResignation('plc-missing', {
+          resignationDate: '2026-11-12',
+          reason: 'OTHER',
+        })
+      ).rejects.toThrow('Không tìm thấy hồ sơ tiếp nhận việc');
     });
 
-    it('returns graceful mock fallback when both primary and secondary return 404', async () => {
-      vi.mocked(apiClient.post).mockRejectedValueOnce({ response: { status: 404 } });
-      vi.mocked(apiClient.post).mockRejectedValueOnce({ response: { status: 404 } });
-
-      const res = await reportCandidateResignation('plc-1', {
-        resignationDate: '2026-11-12',
-        reason: 'OTHER',
-      });
-
-      expect(res.success).toBe(true);
-      expect(res.message).toBe('Đã ghi nhận báo nghỉ việc thành công.');
-    });
-
-    it('throws formatted error on other errors', async () => {
+    it('throws formatted error on 400 validation errors', async () => {
       vi.mocked(apiClient.post).mockRejectedValueOnce({
         response: { status: 400, data: { message: 'Dữ liệu không hợp lệ' } },
       });
 
       await expect(
-        reportCandidateResignation('app-1', {
+        reportCandidateResignation('plc-1', {
           resignationDate: '2026-11-12',
           reason: 'OTHER',
         })
@@ -230,8 +205,12 @@ describe('placementApi', () => {
         data: { success: true },
       } as any);
 
-      const res = await placementApi.reportCandidateResignation('app-1', {
+      const res = await placementApi.reportCandidateResignation('plc-1', {
         resignationDate: '2026-11-12',
+        reason: 'OTHER',
+      });
+      expect(apiClient.post).toHaveBeenCalledWith('/placements/plc-1/resignation', {
+        lastWorkingDate: '2026-11-12',
         reason: 'OTHER',
       });
       expect(res.success).toBe(true);
@@ -258,17 +237,16 @@ describe('placementApi', () => {
       expect(res.success).toBe(true);
     });
 
-    it('returns graceful mock fallback when recruitment endpoint returns 404', async () => {
+    it('rejects when recruitment endpoint returns 404 instead of faking success', async () => {
       vi.mocked(apiClient.post).mockRejectedValueOnce({
-        response: { status: 404 },
+        response: { status: 404, data: { message: 'Endpoint không tồn tại' } },
       });
 
-      const res = await selfReportResignation('app-1', {
-        resignationDate: '2026-11-12',
-      });
-
-      expect(res.success).toBe(true);
-      expect(res.message).toBe('Đã cập nhật trạng thái nghỉ việc thành công.');
+      await expect(
+        selfReportResignation('app-1', {
+          resignationDate: '2026-11-12',
+        })
+      ).rejects.toThrow('Endpoint không tồn tại');
     });
 
     it('throws formatted error on other errors', async () => {

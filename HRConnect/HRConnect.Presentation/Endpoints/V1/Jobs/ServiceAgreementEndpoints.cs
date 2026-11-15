@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 
 namespace HRConnect.Presentation.Endpoints.V1.Jobs;
 
@@ -50,11 +51,12 @@ public static class ServiceAgreementEndpoints
         {
             var id = UserId(user);
             if (id == null) return Results.Unauthorized();
-            return await Run(async () => Results.Ok(await sender.Send(new GetServiceAgreementQuery(jobId), ct)));
+            return await Run(async () => Results.Ok(await sender.Send(new GetServiceAgreementQuery(jobId, null, id.Value, IsBackoffice(user)), ct)));
         })
         .WithName("GetCurrentServiceAgreement")
         .WithSummary("Lấy thông tin thỏa thuận dịch vụ hiện hành của tin tuyển dụng")
         .Produces<ServiceAgreementDto>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound);
 
         // 3. Get agreement history
@@ -62,22 +64,25 @@ public static class ServiceAgreementEndpoints
         {
             var id = UserId(user);
             if (id == null) return Results.Unauthorized();
-            return await Run(async () => Results.Ok(await sender.Send(new GetServiceAgreementHistoryQuery(jobId), ct)));
+            return await Run(async () => Results.Ok(await sender.Send(new GetServiceAgreementHistoryQuery(jobId, id.Value, IsBackoffice(user)), ct)));
         })
         .WithName("GetServiceAgreementHistory")
         .WithSummary("Lấy lịch sử các phiên bản thỏa thuận dịch vụ của tin tuyển dụng")
-        .Produces<IReadOnlyList<ServiceAgreementDto>>(StatusCodes.Status200OK);
+        .Produces<IReadOnlyList<ServiceAgreementDto>>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound);
 
         // 4. Download presigned PDF URL
         jobAgreementHistory.MapGet("/{agreementId:guid}/download-url", async (Guid jobId, Guid agreementId, [FromQuery] bool? signed, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
         {
             var id = UserId(user);
             if (id == null) return Results.Unauthorized();
-            return await Run(async () => Results.Ok(await sender.Send(new GetServiceAgreementDownloadUrlQuery(jobId, agreementId, signed), ct)));
+            return await Run(async () => Results.Ok(await sender.Send(new GetServiceAgreementDownloadUrlQuery(jobId, agreementId, signed, id.Value, IsBackoffice(user)), ct)));
         })
         .WithName("GetServiceAgreementDownloadUrl")
         .WithSummary("Lấy liên kết tải PDF thỏa thuận dịch vụ (có chữ ký nếu đã ký)")
         .Produces<AgreementDownloadUrlResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status403Forbidden)
         .Produces(StatusCodes.Status404NotFound);
 
         // 5. Internal HR creates/sends agreement proposal
@@ -159,7 +164,7 @@ public static class ServiceAgreementEndpoints
         .Produces(StatusCodes.Status409Conflict);
 
         // 7. Client requests OTP challenge to sign
-        clientAgreements.MapPost("/signature-challenges", async (Guid jobId, Guid agreementId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
+        clientAgreements.MapPost("/signature-challenges", async (Guid jobId, Guid agreementId, ClaimsPrincipal user, [FromServices] IHostEnvironment env, ISender sender, CancellationToken ct) =>
         {
             var id = UserId(user);
             if (id == null) return Results.Unauthorized();
@@ -169,7 +174,8 @@ public static class ServiceAgreementEndpoints
             {
                 JobId = jobId,
                 AgreementId = agreementId,
-                UserId = id.Value
+                UserId = id.Value,
+                IncludeDevOtp = env.IsDevelopment()
             };
 
             return await Run(async () => Results.Ok(await sender.Send(command, ct)));
@@ -262,8 +268,15 @@ public static class ServiceAgreementEndpoints
     private static Guid? UserId(ClaimsPrincipal user) =>
         Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirstValue("sub"), out var id) ? id : null;
 
+    private static bool IsBackoffice(ClaimsPrincipal user) =>
+        user.IsInRole("INTERNAL_HR")
+        || user.IsInRole("PLATFORM_ADMIN")
+        || user.FindAll(ClaimTypes.Role).Any(c =>
+            string.Equals(c.Value, "INTERNAL_HR", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(c.Value, "PLATFORM_ADMIN", StringComparison.OrdinalIgnoreCase));
+
     private static bool ReviewerCan(ClaimsPrincipal user, string permission) =>
-        (user.IsInRole("INTERNAL_HR") || user.IsInRole("PLATFORM_ADMIN")) &&
+        IsBackoffice(user) &&
         (user.HasClaim("permission", permission) || user.IsInRole("PLATFORM_ADMIN") || user.IsInRole("INTERNAL_HR"));
 
     private static IResult Forbidden() => Results.Json(new { success = false, message = "Bạn không có quyền thực hiện thao tác này." }, statusCode: 403);

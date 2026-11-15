@@ -110,21 +110,18 @@ public static class JobEndpoints
         jobs.MapGet("/{jobId:guid}/posting-fee", async (Guid jobId, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
         {
             var id = UserId(user); if (id == null) return Results.Unauthorized();
-            return await Run(async Task<IResult> () => Results.Ok(await sender.Send(new GetJobPostingFeeQuery(jobId), ct)));
+            var isBackoffice = IsBackoffice(user);
+            var isClient = IsClientCaller(user);
+            if (!isBackoffice && !isClient) return Forbidden();
+
+            return await Run(async Task<IResult> () => Results.Ok(await sender.Send(
+                new GetJobPostingFeeQuery(jobId, id.Value, isBackoffice), ct)));
         }).WithName("GetJobPostingFee").WithSummary("Lấy thông tin phí đăng tin của Job");
 
         jobs.MapPost("/{jobId:guid}/posting-fee/pay", async (Guid jobId, ClaimsPrincipal user, [FromBody] PayPostingFeeRequest? request, ISender sender, CancellationToken ct) =>
         {
             var id = UserId(user); if (id == null) return Results.Unauthorized();
-            var roles = RoleCodes(user);
-            var isAllowed = roles.Any(r => string.Equals(r, "CLIENT_COMPANY_USER", StringComparison.OrdinalIgnoreCase)
-                                        || string.Equals(r, "CLIENT", StringComparison.OrdinalIgnoreCase)
-                                        || string.Equals(r, "INTERNAL_HR", StringComparison.OrdinalIgnoreCase)
-                                        || string.Equals(r, "PLATFORM_ADMIN", StringComparison.OrdinalIgnoreCase))
-                            || user.IsInRole("CLIENT_COMPANY_USER")
-                            || user.IsInRole("INTERNAL_HR")
-                            || user.IsInRole("PLATFORM_ADMIN");
-            if (!isAllowed) return Forbidden();
+            if (!IsBackoffice(user)) return Forbidden();
 
             var reference = string.IsNullOrWhiteSpace(request?.PaymentReference)
                 ? $"PAY-{jobId.ToString("N")[..8].ToUpper()}"
@@ -134,23 +131,17 @@ public static class JobEndpoints
             {
                 JobId = jobId,
                 PaymentReference = reference,
-                UserId = id.Value
+                UserId = id.Value,
+                IsBackofficeOrSystem = true
             }, ct)));
         }).WithName("RecordJobPostingFeePayment").WithSummary("Ghi nhận thanh toán phí đăng tin CV_APPLICATION")
-        .WithDescription("Platform Admin, Internal HR hoặc Client ghi nhận thanh toán phí đăng tin. Job đang chờ thanh toán sẽ được mở công khai.");
+        .WithDescription("Platform Admin hoặc Internal HR ghi nhận thanh toán phí đăng tin thủ công. Job đang chờ thanh toán sẽ được mở công khai.");
 
         jobs.MapPost("/{jobId:guid}/deposit/notify", async (Guid jobId, ClaimsPrincipal user, [FromBody] PayPostingFeeRequest? request, ISender sender, CancellationToken ct) =>
         {
             var id = UserId(user); if (id == null) return Results.Unauthorized();
-            var roles = RoleCodes(user);
-            var isAllowed = roles.Any(r => string.Equals(r, "CLIENT_COMPANY_USER", StringComparison.OrdinalIgnoreCase)
-                                        || string.Equals(r, "CLIENT", StringComparison.OrdinalIgnoreCase)
-                                        || string.Equals(r, "INTERNAL_HR", StringComparison.OrdinalIgnoreCase)
-                                        || string.Equals(r, "PLATFORM_ADMIN", StringComparison.OrdinalIgnoreCase))
-                            || user.IsInRole("CLIENT_COMPANY_USER")
-                            || user.IsInRole("INTERNAL_HR")
-                            || user.IsInRole("PLATFORM_ADMIN");
-            if (!isAllowed) return Forbidden();
+            var isBackoffice = IsBackoffice(user);
+            if (!isBackoffice && !IsClientCaller(user)) return Forbidden();
 
             var reference = string.IsNullOrWhiteSpace(request?.PaymentReference)
                 ? $"DEP-{jobId.ToString("N")[..8].ToUpper()}"
@@ -162,7 +153,8 @@ public static class JobEndpoints
                 {
                     JobId = jobId,
                     PaymentReference = reference,
-                    UserId = id.Value
+                    UserId = id.Value,
+                    IsBackoffice = isBackoffice
                 }, ct),
                 message = "Đã ghi nhận thông tin nộp cọc. HR Connect sẽ kiểm tra và xác nhận công khai tin."
             }));
@@ -436,6 +428,18 @@ public static class JobEndpoints
     }
     private static Guid? UserId(ClaimsPrincipal user) => Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirstValue("sub"), out var id) ? id : null;
     private static bool ClientCan(ClaimsPrincipal user, string permission) => user.IsInRole("CLIENT_COMPANY_USER") && user.HasClaim("permission", permission);
+    private static bool IsBackoffice(ClaimsPrincipal user) =>
+        user.IsInRole("INTERNAL_HR")
+        || user.IsInRole("PLATFORM_ADMIN")
+        || RoleCodes(user).Any(r =>
+            string.Equals(r, "INTERNAL_HR", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(r, "PLATFORM_ADMIN", StringComparison.OrdinalIgnoreCase));
+    private static bool IsClientCaller(ClaimsPrincipal user) =>
+        user.IsInRole("CLIENT_COMPANY_USER")
+        || user.IsInRole("CLIENT")
+        || RoleCodes(user).Any(r =>
+            string.Equals(r, "CLIENT_COMPANY_USER", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(r, "CLIENT", StringComparison.OrdinalIgnoreCase));
     private static bool ReviewerCan(ClaimsPrincipal user, string permission) =>
         (user.IsInRole("INTERNAL_HR") || user.IsInRole("PLATFORM_ADMIN")) &&
         user.HasClaim("permission", permission);

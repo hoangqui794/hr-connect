@@ -59,6 +59,18 @@ public interface IFinanceRepository
     /// <summary>The slot granted under a service fee, with its job, tracked for update.</summary>
     Task<ReplacementSlot?> GetReplacementSlotByServiceFeeForUpdateAsync(Guid serviceFeeId, CancellationToken cancellationToken = default);
 
+    /// <summary>Replacement slots matching the given original placement ids (read-only, ordered newest first).</summary>
+    Task<IReadOnlyList<ReplacementSlot>> GetReplacementSlotsByOriginalPlacementIdsAsync(
+        IReadOnlyCollection<Guid> originalPlacementIds,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<ReplacementSlot>>(Array.Empty<ReplacementSlot>());
+
+    /// <summary>Distinct affiliate user ids credited on commissions for an original placement.</summary>
+    Task<IReadOnlyList<Guid>> GetAffiliateUserIdsByPlacementAsync(
+        Guid placementId,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>());
+
     /// <summary>Expired replacement slots of these jobs, with the candidate who left and the fee the refund is a share of (read only).</summary>
     Task<IReadOnlyList<ReplacementSlot>> GetExpiredReplacementSlotsForJobsAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default);
 
@@ -146,12 +158,23 @@ public interface IFinanceRepository
         Guid? companyId, string? status, int page, int pageSize, CancellationToken cancellationToken = default,
         Guid? jobId = null, string? kind = null);
 
+    /// <summary>Aggregated service fee counts and amounts grouped by kind, status and currency.</summary>
+    Task<IReadOnlyList<HRConnect.Application.Features.Finance.Queries.ServiceFeeSummaryBucket>> GetServiceFeeSummaryBucketsAsync(
+        Guid? companyId, Guid? jobId = null, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<HRConnect.Application.Features.Finance.Queries.ServiceFeeSummaryBucket>>(
+            Array.Empty<HRConnect.Application.Features.Finance.Queries.ServiceFeeSummaryBucket>());
+
     Task<(IReadOnlyList<Commission> Items, int TotalCount)> GetCommissionsAsync(
         Guid? affiliateUserId, string? status, int page, int pageSize, CancellationToken cancellationToken = default);
 
     /// <summary>Warranties with their placement, job, candidate, service fee and commissions (read-only).</summary>
     Task<(IReadOnlyList<Warranty> Items, int TotalCount)> GetWarrantiesAsync(
         Guid? companyId, string? status, int page, int pageSize, CancellationToken cancellationToken = default);
+
+    /// <summary>Latest warranty claim / resolution audit logs for a batch of warranty ids.</summary>
+    Task<IReadOnlyList<AuditLog>> GetWarrantyClaimAuditLogsAsync(
+        IReadOnlyCollection<Guid> warrantyIds, CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<AuditLog>>(Array.Empty<AuditLog>());
 
     Task<(IReadOnlyList<Payout> Items, int TotalCount)> GetPayoutsAsync(
         Guid? affiliateUserId, int page, int pageSize, CancellationToken cancellationToken = default);

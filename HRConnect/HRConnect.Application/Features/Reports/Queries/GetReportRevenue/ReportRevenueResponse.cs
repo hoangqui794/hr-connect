@@ -8,6 +8,13 @@ public sealed record ReportRevenueResponse
     public Dictionary<string, RevenueServiceTotalDto> Totals { get; init; } = new();
     public List<RevenueSeriesItemDto> Series { get; init; } = new();
     public RevenueCommissionDto Commission { get; init; } = new();
+    public Dictionary<string, RevenueCurrencySummaryDto> ByCurrency { get; init; } = new();
+}
+
+public sealed record RevenueCurrencySummaryDto
+{
+    public Dictionary<string, RevenueServiceTotalDto> Totals { get; init; } = new();
+    public RevenueCommissionDto Commission { get; init; } = new();
 }
 
 public sealed record RevenueServiceTotalDto

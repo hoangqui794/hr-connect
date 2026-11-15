@@ -9,6 +9,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Common.Settings;
+using HRConnect.Application.Features.Finance.Common;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Application.Features.Jobs.ServiceAgreements;
 using HRConnect.Domain.Constants;
@@ -405,5 +406,250 @@ public class ServiceAgreementFlowTests
 
         // Assert
         await act.Should().ThrowAsync<ConflictException>().WithMessage("*không thể hủy bỏ*");
+    }
+
+    [Fact]
+    public async Task CreateSignatureChallenge_WhenNotDevelopment_ShouldHideDevOtp_AndFailWhenEmailFails()
+    {
+        var (job, company, clientUser, clientMember) = CreateTestJob("HEADHUNT_COD");
+        var agreementId = Guid.NewGuid();
+        var agreement = new ServiceAgreement
+        {
+            ServiceAgreementId = agreementId,
+            JobId = job.JobId,
+            CompanyId = company.CompanyId,
+            Version = 1,
+            Status = ServiceAgreementStatuses.Accepted,
+            IsCurrent = true,
+            CompanyNameSnapshot = company.CompanyName,
+            ConcurrencyToken = Guid.NewGuid()
+        };
+
+        _agreements.Setup(x => x.GetByIdForUpdateAsync(agreementId, It.IsAny<CancellationToken>())).ReturnsAsync(agreement);
+        _companyUsers.Setup(x => x.GetByUserIdAsync(clientUser.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(clientMember);
+        _users.Setup(x => x.GetByIdAsync(clientUser.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(clientUser);
+        _agreements.Setup(x => x.GetChallengeCountTodayAsync(clientUser.UserId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(0);
+        _agreements.Setup(x => x.GetActiveChallengeAsync(agreementId, clientUser.UserId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync((ServiceAgreementSignatureChallenge?)null);
+
+        var email = new Mock<IEmailService>();
+        var handler = new CreateSignatureChallengeCommandHandler(
+            _agreements.Object, _companyUsers.Object, _users.Object, _otpService.Object, email.Object, _uow.Object);
+
+        // Non-dev + email succeeds -> DevOtp must be null
+        email.Setup(x => x.SendEmailAsync(clientUser.Email!, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new EmailResult { IsSuccess = true, MessageId = "ok" });
+
+        var prodResponse = await handler.Handle(new CreateSignatureChallengeCommand
+        {
+            JobId = job.JobId,
+            AgreementId = agreementId,
+            UserId = clientUser.UserId,
+            IncludeDevOtp = false
+        }, CancellationToken.None);
+
+        prodResponse.DevOtp.Should().BeNull();
+        prodResponse.Message.Should().NotContain("123456");
+
+        // Non-dev + email fails -> throw BadRequestException without saving or returning OTP
+        agreement.Status = ServiceAgreementStatuses.Accepted;
+        email.Setup(x => x.SendEmailAsync(clientUser.Email!, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new EmailResult { IsSuccess = false, ErrorMessage = "Invalid Resend key" });
+
+        var act = () => handler.Handle(new CreateSignatureChallengeCommand
+        {
+            JobId = job.JobId,
+            AgreementId = agreementId,
+            UserId = clientUser.UserId,
+            IncludeDevOtp = false
+        }, CancellationToken.None);
+
+        (await act.Should().ThrowAsync<BadRequestException>()).Which.ErrorCode.Should().Be("SIGNATURE_OTP_EMAIL_FAILED");
+        _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task PrivateAgreementQueries_ShouldRejectNonMemberClient_AndAllowOwnerOrBackoffice()
+    {
+        var (job, company, ownerUser, ownerMember) = CreateTestJob("HEADHUNT_COD");
+        var outsiderUserId = Guid.NewGuid();
+        var outsiderMember = new CompanyUser
+        {
+            CompanyId = Guid.NewGuid(),
+            UserId = outsiderUserId,
+            Status = "ACTIVE"
+        };
+        var agreementId = Guid.NewGuid();
+        var agreement = new ServiceAgreement
+        {
+            ServiceAgreementId = agreementId,
+            JobId = job.JobId,
+            CompanyId = company.CompanyId,
+            Version = 1,
+            Status = ServiceAgreementStatuses.SentToClient,
+            IsCurrent = true,
+            ServiceTypeCode = "HEADHUNT_COD",
+            CompanyNameSnapshot = company.CompanyName
+        };
+
+        _jobs.Setup(x => x.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job);
+        _agreements.Setup(x => x.GetCurrentByJobIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(agreement);
+        _agreements.Setup(x => x.GetHistoryByJobIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(new List<ServiceAgreement> { agreement });
+        _agreements.Setup(x => x.GetByIdForUpdateAsync(agreementId, It.IsAny<CancellationToken>())).ReturnsAsync(agreement);
+        _companyUsers.Setup(x => x.GetByUserIdAsync(outsiderUserId, It.IsAny<CancellationToken>())).ReturnsAsync(outsiderMember);
+        _companyUsers.Setup(x => x.GetByUserIdAsync(ownerUser.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(ownerMember);
+        _storage.Setup(x => x.GetPresignedDownloadUrlAsync(It.IsAny<string>(), It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("https://files.example/agreement.pdf");
+
+        var currentHandler = new GetServiceAgreementQueryHandler(_agreements.Object, _jobs.Object, _companyUsers.Object);
+        var historyHandler = new GetServiceAgreementHistoryQueryHandler(_agreements.Object, _jobs.Object, _companyUsers.Object);
+        var downloadHandler = new GetServiceAgreementDownloadUrlQueryHandler(
+            _agreements.Object, _jobs.Object, _companyUsers.Object, _storage.Object, _pdfRenderer.Object, _uow.Object);
+
+        await FluentActions.Awaiting(() => currentHandler.Handle(new GetServiceAgreementQuery(job.JobId, null, outsiderUserId, false), CancellationToken.None))
+            .Should().ThrowAsync<ForbiddenException>();
+        await FluentActions.Awaiting(() => historyHandler.Handle(new GetServiceAgreementHistoryQuery(job.JobId, outsiderUserId, false), CancellationToken.None))
+            .Should().ThrowAsync<ForbiddenException>();
+        await FluentActions.Awaiting(() => downloadHandler.Handle(new GetServiceAgreementDownloadUrlQuery(job.JobId, agreementId, null, outsiderUserId, false), CancellationToken.None))
+            .Should().ThrowAsync<ForbiddenException>();
+        _pdfRenderer.Verify(x => x.RenderAgreementPdf(It.IsAny<ServiceAgreement>(), It.IsAny<Job>(), It.IsAny<Company>(), It.IsAny<bool>()), Times.Never);
+
+        // Owner & backoffice succeed
+        (await currentHandler.Handle(new GetServiceAgreementQuery(job.JobId, null, ownerUser.UserId, false), CancellationToken.None)).ServiceAgreementId.Should().Be(agreementId);
+        (await historyHandler.Handle(new GetServiceAgreementHistoryQuery(job.JobId, outsiderUserId, true), CancellationToken.None)).Should().HaveCount(1);
+        (await downloadHandler.Handle(new GetServiceAgreementDownloadUrlQuery(job.JobId, agreementId, null, ownerUser.UserId, false), CancellationToken.None)).DownloadUrl.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task SignAgreement_CvSourcing_WithoutDepositPercent_ShouldSetDefaultDepositPercent_AndEnsureDeposit()
+    {
+        var (job, company, clientUser, clientMember) = CreateTestJob("CV_SOURCING");
+        job.Status = JobStatuses.PendingAgreement;
+        job.DepositPercent = null;
+
+        var agreementId = Guid.NewGuid();
+        var agreement = new ServiceAgreement
+        {
+            ServiceAgreementId = agreementId,
+            JobId = job.JobId,
+            CompanyId = company.CompanyId,
+            Version = 1,
+            Status = ServiceAgreementStatuses.Accepted,
+            IsCurrent = true,
+            ServiceTypeCode = ServiceTypeCodes.CvSourcing,
+            SourcingTarget = 10,
+            PricePerQualifiedCv = 500_000m,
+            ReviewDays = 7,
+            PaymentDueDays = 15,
+            ConcurrencyToken = Guid.NewGuid(),
+            CompanyNameSnapshot = company.CompanyName,
+            SignerEmailSnapshot = clientUser.Email,
+            VerificationCode = "HRC-SOURCING",
+            CreatedByUserId = Guid.NewGuid()
+        };
+        var challenge = new ServiceAgreementSignatureChallenge
+        {
+            ChallengeId = Guid.NewGuid(),
+            ServiceAgreementId = agreementId,
+            SignerUserId = clientUser.UserId,
+            OtpHash = "HASH_123456",
+            ExpiresAt = DateTime.UtcNow.AddMinutes(10)
+        };
+
+        _agreements.Setup(x => x.GetByIdForUpdateAsync(agreementId, It.IsAny<CancellationToken>())).ReturnsAsync(agreement);
+        _agreements.Setup(x => x.GetActiveChallengeAsync(agreementId, clientUser.UserId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(challenge);
+        _companyUsers.Setup(x => x.GetByUserIdAsync(clientUser.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(clientMember);
+        _users.Setup(x => x.GetByIdAsync(clientUser.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(clientUser);
+        _jobs.Setup(x => x.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job);
+
+        var adminSettings = new Mock<IAdminBusinessSettings>();
+        adminSettings.Setup(x => x.GetDecimalAsync(BusinessSettingKeys.CvSourcingDepositPercent, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(50m);
+
+        var sourcingFinance = new Mock<ISourcingFinanceService>();
+        sourcingFinance.Setup(x => x.EnsureDepositAsync(job, clientUser.UserId, It.IsAny<CancellationToken>(), ServiceTypeCodes.CvSourcing))
+            .ReturnsAsync(new ServiceFee { ServiceFeeId = Guid.NewGuid(), Kind = ServiceFeeKinds.Deposit, Amount = 2_500_000m });
+
+        var handler = new SignServiceAgreementCommandHandler(
+            _agreements.Object, _jobs.Object, _companyUsers.Object, _users.Object, _otpService.Object,
+            _pdfRenderer.Object, _storage.Object, _notifications.Object, _audit.Object, _uow.Object,
+            sourcingFinance.Object, adminSettings.Object);
+
+        var result = await handler.Handle(new SignServiceAgreementCommand
+        {
+            JobId = job.JobId,
+            AgreementId = agreementId,
+            Otp = "123456",
+            ConsentAccepted = true,
+            UserId = clientUser.UserId,
+            ConcurrencyToken = agreement.ConcurrencyToken
+        }, CancellationToken.None);
+
+        result.Status.Should().Be(ServiceAgreementStatuses.Signed);
+        job.DepositPercent.Should().Be(50m);
+        job.Status.Should().Be(JobStatuses.PendingPayment);
+        sourcingFinance.Verify(x => x.EnsureDepositAsync(job, clientUser.UserId, It.IsAny<CancellationToken>(), ServiceTypeCodes.CvSourcing), Times.Once);
+    }
+
+    [Fact]
+    public async Task SignAgreement_CvSourcing_WhenDepositCreationReturnsNull_ShouldThrowConflictAndNotSetPendingPayment()
+    {
+        var (job, company, clientUser, clientMember) = CreateTestJob("CV_SOURCING");
+        job.Status = JobStatuses.PendingAgreement;
+        var agreementId = Guid.NewGuid();
+        var agreement = new ServiceAgreement
+        {
+            ServiceAgreementId = agreementId,
+            JobId = job.JobId,
+            CompanyId = company.CompanyId,
+            Version = 1,
+            Status = ServiceAgreementStatuses.Accepted,
+            IsCurrent = true,
+            ServiceTypeCode = ServiceTypeCodes.CvSourcing,
+            SourcingTarget = 10,
+            PricePerQualifiedCv = 500_000m,
+            ReviewDays = 7,
+            PaymentDueDays = 15,
+            ConcurrencyToken = Guid.NewGuid(),
+            CompanyNameSnapshot = company.CompanyName,
+            SignerEmailSnapshot = clientUser.Email,
+            VerificationCode = "HRC-SOURCING",
+            CreatedByUserId = Guid.NewGuid()
+        };
+        var challenge = new ServiceAgreementSignatureChallenge
+        {
+            ChallengeId = Guid.NewGuid(),
+            ServiceAgreementId = agreementId,
+            SignerUserId = clientUser.UserId,
+            OtpHash = "HASH_123456",
+            ExpiresAt = DateTime.UtcNow.AddMinutes(10)
+        };
+
+        _agreements.Setup(x => x.GetByIdForUpdateAsync(agreementId, It.IsAny<CancellationToken>())).ReturnsAsync(agreement);
+        _agreements.Setup(x => x.GetActiveChallengeAsync(agreementId, clientUser.UserId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(challenge);
+        _companyUsers.Setup(x => x.GetByUserIdAsync(clientUser.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(clientMember);
+        _users.Setup(x => x.GetByIdAsync(clientUser.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(clientUser);
+        _jobs.Setup(x => x.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job);
+
+        var sourcingFinance = new Mock<ISourcingFinanceService>();
+        sourcingFinance.Setup(x => x.EnsureDepositAsync(job, clientUser.UserId, It.IsAny<CancellationToken>(), ServiceTypeCodes.CvSourcing))
+            .ReturnsAsync((ServiceFee?)null);
+
+        var handler = new SignServiceAgreementCommandHandler(
+            _agreements.Object, _jobs.Object, _companyUsers.Object, _users.Object, _otpService.Object,
+            _pdfRenderer.Object, _storage.Object, _notifications.Object, _audit.Object, _uow.Object,
+            sourcingFinance.Object);
+
+        var act = () => handler.Handle(new SignServiceAgreementCommand
+        {
+            JobId = job.JobId,
+            AgreementId = agreementId,
+            Otp = "123456",
+            ConsentAccepted = true,
+            UserId = clientUser.UserId,
+            ConcurrencyToken = agreement.ConcurrencyToken
+        }, CancellationToken.None);
+
+        (await act.Should().ThrowAsync<ConflictException>()).Which.ErrorCode.Should().Be("SOURCING_DEPOSIT_NOT_CREATED");
+        job.Status.Should().Be(JobStatuses.PendingAgreement);
     }
 }

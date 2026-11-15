@@ -95,6 +95,11 @@ export interface ServiceFee {
   paidAt?: string | null;
   paymentReference?: string | null;
   createdAt: string;
+  serviceTypeCode?: string | null;
+  daysOverdue?: number | null;
+  paymentSubmittedAt?: string | null;
+  pendingOnlinePayment?: boolean;
+  placementStartDate?: string | null;
 }
 
 export interface Commission {
@@ -104,6 +109,9 @@ export interface Commission {
   sourcingDeliveryId?: string | null;
   /** Job of the placement or delivery; used to refer a replacement after a voided warranty. */
   jobId?: string | null;
+  replacementSlotId?: string | null;
+  replacementSlotStatus?: 'WAITING_PAYMENT' | 'OPEN' | 'FILLED' | 'CANCELLED' | 'EXPIRED' | string | null;
+  replacementExpiresAt?: string | null;
   attributionId: string;
   affiliateId: string;
   affiliateName?: string | null;
@@ -169,6 +177,15 @@ export interface Warranty {
   serviceFeeAmount?: number | null;
   commissionStatus?: CommissionStatus | null;
   commissionAmount?: number | null;
+  jobId?: string | null;
+  daysRemaining?: number | null;
+  claimReportedAt?: string | null;
+  lastWorkingDate?: string | null;
+  resignationReason?: string | null;
+  replacementSlotId?: string | null;
+  replacementSlotStatus?: ReplacementSlotStatus | string | null;
+  replacementExpiresAt?: string | null;
+  serviceFeeDueDate?: string | null;
 }
 
 /** MF-05 replacement slot status */
@@ -200,6 +217,10 @@ export interface ReplacementSlotDto {
   /** Tên tin và doanh nghiệp, BE trả kèm từ GET /replacement-slots và /jobs/{id}/replacement-slots. */
   jobTitle?: string | null;
   companyName?: string | null;
+  refundPercent?: number | null;
+  refundServiceFeeId?: string | null;
+  refundAmount?: number | null;
+  refundStatus?: ServiceFeeStatus | null;
 }
 
 /** Short slot summary returned when resolving a resignation */
@@ -246,5 +267,35 @@ export interface PlacementListItem {
     companyId: string;
     companyName: string;
   };
+}
+
+export interface ServiceFeeCurrencySummary {
+  currencyCode: string;
+  unpaidAmount: number;
+  unpaidCount: number;
+  overdueAmount: number;
+  overdueCount: number;
+  paidAmount: number;
+  paidCount: number;
+  pendingRefundAmount: number;
+  pendingRefundCount: number;
+  paidRefundAmount: number;
+  paidRefundCount: number;
+}
+
+export interface ServiceFeeSummary {
+  unpaidAmount: number;
+  unpaidCount: number;
+  overdueAmount: number;
+  overdueCount: number;
+  paidAmount: number;
+  paidCount: number;
+  pendingRefundAmount: number;
+  pendingRefundCount: number;
+  paidRefundAmount: number;
+  paidRefundCount: number;
+  totalCount: number;
+  currencyCode: string;
+  currencyBreakdowns?: ServiceFeeCurrencySummary[] | null;
 }
 

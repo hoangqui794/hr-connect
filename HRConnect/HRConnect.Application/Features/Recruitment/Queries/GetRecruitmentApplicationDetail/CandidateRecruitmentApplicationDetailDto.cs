@@ -51,6 +51,23 @@ public class CandidateRecruitmentApplicationDetailDto
     public CandidatePlacementSummaryDto? Placement { get; set; }
 
     public List<string> AllowedActions { get; set; } = new();
+
+    public CandidateEmployerContactDto? EmployerContact { get; set; }
+}
+
+public class CandidateEmployerContactDto
+{
+    public string? ContactName { get; set; }
+
+    public string? RoleInCompany { get; set; }
+
+    public string? Email { get; set; }
+
+    public string? Phone { get; set; }
+
+    public string? Website { get; set; }
+
+    public string? Address { get; set; }
 }
 
 public class CandidateApplicationJobOverviewDto

@@ -290,7 +290,7 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
                         PackageId = package.PackageId,
                         CompanyId = job.CompanyId,
                         Amount = standardPrice,
-                        CurrencyCode = "VND",
+                        CurrencyCode = FinanceCurrency.Normalize(job.CurrencyCode),
                         Status = JobPostingFeeStatuses.Pending,
                         CreatedAt = now,
                         UpdatedAt = now
@@ -348,8 +348,8 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
                 NotificationType = "JOB",
                 Title = "Tin tuyển dụng đã được duyệt nội dung",
                 Message = awaitsSourcingDeposit
-                    ? $"Tin tuyển dụng \"{job.Title}\" đã được phê duyệt nội dung. Vui lòng đặt cọc CV Sourcing ({standardPrice:N0} đ) để công bố."
-                    : $"Tin tuyển dụng \"{job.Title}\" đã được phê duyệt nội dung. Vui lòng thanh toán phí đăng tin ({standardPrice:N0} đ) để công bố.",
+                    ? $"Tin tuyển dụng \"{job.Title}\" đã được phê duyệt nội dung. Vui lòng đặt cọc CV Sourcing ({FinanceCurrency.FormatMoney(standardPrice, job.CurrencyCode)}) để công bố."
+                    : $"Tin tuyển dụng \"{job.Title}\" đã được phê duyệt nội dung. Vui lòng thanh toán phí đăng tin ({FinanceCurrency.FormatMoney(standardPrice, job.CurrencyCode)}) để công bố.",
                 RelatedEntityType = "JOB",
                 RelatedEntityId = job.JobId,
                 Metadata = System.Text.Json.JsonSerializer.Serialize(new

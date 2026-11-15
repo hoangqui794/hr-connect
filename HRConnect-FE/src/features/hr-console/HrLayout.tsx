@@ -26,6 +26,7 @@ import {
   CustomerServiceOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/authStore';
+import { UserRole } from '@/types/roles';
 import { authService } from '@/services/authService';
 import { jobsApi } from '@/services/api/jobsApi';
 import { HR_SCREENED_SERVICE_TYPES, placementReconciliationApi, screeningApi } from '@/services/api/hrApi';
@@ -89,10 +90,23 @@ export const HrLayout: React.FC = () => {
   }, [menuOpen]);
 
   const canManageTemplates = useAuthStore((s) => s.hasPermission('job_template.manage'));
+  const canManageContacts = useAuthStore((s) => s.hasPermission('contact_request.manage'));
+  const canReviewJobs = useAuthStore(
+    (s) => (s.hasAnyRole([UserRole.INTERNAL_HR, UserRole.ADMIN])) && s.hasPermission('job.review')
+  );
+  const isAdmin = useAuthStore((s) => s.hasAnyRole([UserRole.ADMIN]));
+  const canViewScreening = useAuthStore(
+    (s) => s.hasAnyRole([UserRole.ADMIN]) || (s.hasAnyRole([UserRole.INTERNAL_HR]) && s.hasPermission('application.view'))
+  );
+  const canReconcileAsHr = useAuthStore(
+    (s) => s.hasAnyRole([UserRole.INTERNAL_HR]) && s.hasPermission('placement.reconcile')
+  );
+  const useAdminReconciliations = isAdmin && !canReconcileAsHr;
 
   const pendingJobs = useQuery({
     queryKey: ['hr-overview', 'jobs'],
     queryFn: async () => (await jobsApi.getReviewQueue()).length,
+    enabled: canReviewJobs,
     staleTime: 30_000,
     refetchInterval: 60_000,
     retry: false,
@@ -101,6 +115,7 @@ export const HrLayout: React.FC = () => {
     queryKey: ['hr-overview', 'applications', 'SUBMITTED'],
     queryFn: async () =>
       (await screeningApi.list({ status: 'SUBMITTED', serviceTypeCode: HR_SCREENED_SERVICE_TYPES, page: 1, pageSize: 1 })).total,
+    enabled: canViewScreening,
     staleTime: 30_000,
     refetchInterval: 60_000,
     retry: false,
@@ -108,13 +123,16 @@ export const HrLayout: React.FC = () => {
   const pendingContacts = useQuery({
     queryKey: ['hr-nav-counts', 'contact-requests'],
     queryFn: async () => (await contactApi.list({ status: 'NEW', page: 1, pageSize: 1 })).totalCount,
+    enabled: canManageContacts,
     staleTime: 30_000,
     refetchInterval: 60_000,
     retry: false,
   });
   const pendingReconciliations = useQuery({
-    queryKey: ['hr-nav-counts', 'reconciliations'],
-    queryFn: async () => (await placementReconciliationApi.list({ status: 'PENDING', page: 1, pageSize: 1 }, false)).totalCount,
+    queryKey: ['hr-nav-counts', 'reconciliations', useAdminReconciliations ? 'admin' : 'hr'],
+    queryFn: async () =>
+      (await placementReconciliationApi.list({ status: 'PENDING', page: 1, pageSize: 1 }, useAdminReconciliations)).totalCount,
+    enabled: isAdmin || canReconcileAsHr,
     staleTime: 30_000,
     refetchInterval: 60_000,
     retry: false,
@@ -130,7 +148,9 @@ export const HrLayout: React.FC = () => {
   const navGroups = useMemo(() => {
     return NAV.map((group) => {
       if (group.group === 'Vận hành') {
-        const items = [...group.items];
+        const items = group.items.filter(
+          (item) => canManageContacts || item.to !== '/hr/contact-requests'
+        );
         if (canManageTemplates) {
           const jobIndex = items.findIndex((i) => i.to === '/hr/jobs');
           const templateItem: NavItem = {
@@ -148,7 +168,7 @@ export const HrLayout: React.FC = () => {
       }
       return group;
     });
-  }, [canManageTemplates]);
+  }, [canManageContacts, canManageTemplates]);
 
   const allItems = useMemo(
     () => navGroups.flatMap((g) => g.items.map((i) => ({ ...i, group: g.group }))),

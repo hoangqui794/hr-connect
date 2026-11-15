@@ -44,13 +44,31 @@ export interface PlacementWarrantyDto {
 }
 
 export interface PlacementFinancialDto {
-  serviceFeeId?: string;
+  serviceFeeId?: string | null;
   serviceFeeAmount?: number | null;
   serviceFeeStatus?: string | null;
+  serviceFeeDueDate?: string | null;
+  serviceFeePaidAt?: string | null;
   commissionId?: string;
   commissionAmount?: number | null;
   commissionStatus?: string | null;
   affiliateName?: string | null;
+}
+
+export interface PlacementResignationDto {
+  reportedAt?: string | null;
+  lastWorkingDate?: string | null;
+  reason?: string | null;
+  reviewStatus?: string | null;
+  reviewNote?: string | null;
+  resignedBy?: string | null;
+}
+
+export interface PlacementReplacementSummaryDto {
+  replacementSlotId: string;
+  jobId: string;
+  status: string;
+  expiresAt?: string | null;
 }
 
 export interface PlacementDetailDto {
@@ -76,6 +94,8 @@ export interface PlacementDetailDto {
   probation?: PlacementProbationDto | null;
   warranty?: PlacementWarrantyDto | null;
   financial?: PlacementFinancialDto | null;
+  resignation?: PlacementResignationDto | null;
+  replacement?: PlacementReplacementSummaryDto | null;
   allowedActions: string[];
   createdAt: string;
   updatedAt: string;

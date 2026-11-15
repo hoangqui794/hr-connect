@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
@@ -23,6 +24,7 @@ public class CreateOfferDraftCommandHandler : IRequestHandler<CreateOfferDraftCo
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CreateOfferDraftCommandHandler> _logger;
     private readonly IAuditLogService _auditLogService;
+    private readonly TimeProvider _timeProvider;
 
     public CreateOfferDraftCommandHandler(
         IOfferRepository offerRepository,
@@ -30,7 +32,8 @@ public class CreateOfferDraftCommandHandler : IRequestHandler<CreateOfferDraftCo
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
         ILogger<CreateOfferDraftCommandHandler> logger,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        TimeProvider? timeProvider = null)
     {
         _offerRepository = offerRepository;
         _applicationRepository = applicationRepository;
@@ -38,6 +41,7 @@ public class CreateOfferDraftCommandHandler : IRequestHandler<CreateOfferDraftCo
         _unitOfWork = unitOfWork;
         _logger = logger;
         _auditLogService = auditLogService;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public async Task<CreateOfferDraftResponse> Handle(CreateOfferDraftCommand request, CancellationToken cancellationToken)
@@ -47,7 +51,7 @@ public class CreateOfferDraftCommandHandler : IRequestHandler<CreateOfferDraftCo
             throw new BadRequestException("Mức lương không được là số âm.");
         }
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = VietnamTime.Today(_timeProvider);
         if (request.ExpiryDate.HasValue && request.ExpiryDate.Value < today)
         {
             throw new BadRequestException("Hạn phản hồi offer không được ở quá khứ.");

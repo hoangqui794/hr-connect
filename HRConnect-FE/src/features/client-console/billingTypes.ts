@@ -38,4 +38,20 @@ export interface BillingRow {
   owedToClient?: boolean;
   /** Accepted/counted CVs vs sourcing target for CV_SOURCING fees. */
   sourcingProgress?: { counted: number; target: number } | null;
+  /** When the fee record was created, for traceability. */
+  createdAt?: string | null;
+  /** Related placement UUID for HEADHUNT_COD placement/refund fees. */
+  placementId?: string | null;
+  /** Reconciliation state holding payment open for HEADHUNT_COD placements. */
+  reconciliationStatus?: 'PENDING' | 'CONFIRMED' | 'FLAGGED' | null;
+  /** Whether the fee was cancelled (excluded from open refund KPIs). */
+  cancelled?: boolean;
+  /** Explicit service type code returned by BE. */
+  serviceTypeCode?: string | null;
+  /** Days overdue computed by BE when OVERDUE. */
+  daysOverdue?: number | null;
+  /** When Client reported a bank transfer for deposit awaiting Admin confirmation. */
+  paymentSubmittedAt?: string | null;
+  /** True while a VNPay payment session is pending/processing for this fee. */
+  pendingOnlinePayment?: boolean;
 }

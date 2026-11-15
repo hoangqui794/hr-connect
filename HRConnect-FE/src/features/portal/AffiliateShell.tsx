@@ -28,6 +28,7 @@ import {
 } from '@ant-design/icons';
 import { TrophyOutlined, SolutionOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/authStore';
+import { UserRole } from '@/types/roles';
 import { authService } from '@/services/authService';
 import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
 import { AccountAvatar } from '@/components/common/AccountAvatar';
@@ -76,10 +77,14 @@ export const AffiliateShell: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const canViewOwnSubmissions = useAuthStore(
+    (s) => s.hasAnyRole([UserRole.AFFILIATE]) && s.hasPermission('submission.view_own')
+  );
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const pendingCount = useQuery({
     queryKey: ['aff-submissions', 'count', 'PENDING_CONSENT'],
     queryFn: async () => (await affiliateApi.submissions({ status: 'PENDING_CONSENT', page: 1, pageSize: 1 })).totalCount,
+    enabled: canViewOwnSubmissions,
   });
 
   // Off-canvas menu below lg: close it on navigation and on Escape.

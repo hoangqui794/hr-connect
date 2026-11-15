@@ -65,3 +65,15 @@ export const money = (amount?: number | null, currency = 'VND') =>
     : `${amount.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} ${currency === 'VND' ? 'đ' : currency}`;
 
 export const date = (value?: string | null) => (value ? new Date(value).toLocaleDateString('vi-VN') : '—');
+
+/** Short Vietnamese countdown for an open replacement slot's deadline. */
+export const replacementCountdownText = (end?: string | null): string | null => {
+  if (!end) return null;
+  const target = new Date(end);
+  if (Number.isNaN(target.getTime())) return null;
+  const ms = target.setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0);
+  const diff = Math.round(ms / 86_400_000);
+  if (diff < 0) return 'Đã quá hạn';
+  if (diff === 0) return 'Hết hạn hôm nay';
+  return `Còn ${diff} ngày`;
+};

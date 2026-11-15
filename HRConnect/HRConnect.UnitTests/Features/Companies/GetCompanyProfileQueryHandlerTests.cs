@@ -87,8 +87,46 @@ public class GetCompanyProfileQueryHandlerTests
         result.Data.IsPrimaryContact.Should().BeTrue();
         result.Data.CreatedAt.Should().Be(createdAt);
         result.Data.UpdatedAt.Should().Be(updatedAt);
+        result.Data.VerificationRejectedReason.Should().BeNull();
 
         _companyUserRepositoryMock.Verify(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenVerificationRejected_ShouldReturnRejectedReasonAndTimestamps()
+    {
+        var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var submittedAt = DateTime.UtcNow.AddDays(-5);
+        var reviewedAt = DateTime.UtcNow.AddDays(-1);
+        var company = new Company
+        {
+            CompanyId = companyId,
+            CompanyName = "Công ty ABC",
+            VerificationStatus = "REJECTED",
+            CreatedAt = DateTime.UtcNow.AddDays(-6),
+            UpdatedAt = reviewedAt,
+            CompanyVerificationRequest = new CompanyVerificationRequest
+            {
+                CompanyVerificationRequestId = Guid.NewGuid(),
+                CompanyId = companyId,
+                Status = "REJECTED",
+                ReviewNote = "  Thiếu giấy phép kinh doanh rõ nét  ",
+                SubmittedAt = submittedAt,
+                ReviewedAt = reviewedAt,
+            },
+        };
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { CompanyId = companyId, UserId = userId, Company = company });
+
+        var result = await _handler.Handle(new GetCompanyProfileQuery(userId), CancellationToken.None);
+
+        result.Data.Should().NotBeNull();
+        result.Data!.VerificationStatus.Should().Be("REJECTED");
+        result.Data.VerificationRejectedReason.Should().Be("Thiếu giấy phép kinh doanh rõ nét");
+        result.Data.VerificationRequestedAt.Should().Be(submittedAt);
+        result.Data.VerificationReviewedAt.Should().Be(reviewedAt);
     }
 
     [Fact]

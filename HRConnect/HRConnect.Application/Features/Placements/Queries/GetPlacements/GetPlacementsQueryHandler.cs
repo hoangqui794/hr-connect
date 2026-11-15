@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Placements.Common;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -78,6 +79,8 @@ public class GetPlacementsQueryHandler : IRequestHandler<GetPlacementsQuery, Get
                 ? p.ConfirmedByNavigation.DisplayName
                 : p.ConfirmedByNavigation?.Email;
 
+            var (endDate, resignationReason, resignedBy) = PlacementResignationParser.Extract(p);
+
             return new PlacementListItemDto(
                 p.PlacementId,
                 p.ApplicationId,
@@ -103,7 +106,15 @@ public class GetPlacementsQueryHandler : IRequestHandler<GetPlacementsQuery, Get
                     p.Application?.Job?.Company?.CompanyName ?? string.Empty
                 ),
                 p.CreatedAt,
-                p.UpdatedAt
+                p.UpdatedAt,
+                p.Warranty?.EndDate,
+                p.Warranty?.Status,
+                p.ServiceFee?.Status,
+                p.ReplacementSlotId.HasValue,
+                p.Application?.Job?.ServiceType?.Code,
+                endDate,
+                resignationReason,
+                resignedBy
             );
         }).ToList();
 
