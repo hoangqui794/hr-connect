@@ -46,7 +46,6 @@ public class ServiceAgreementRepository : IServiceAgreementRepository
     public async Task<ServiceAgreement?> GetCurrentByJobIdAsync(Guid jobId, CancellationToken cancellationToken = default)
     {
         return await _context.ServiceAgreements
-            .AsNoTracking()
             .Include(a => a.Job)
             .Include(a => a.Company)
             .Include(a => a.SignerUser)
