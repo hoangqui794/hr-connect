@@ -820,6 +820,167 @@ public class JobManagementCommandHandlerTests
         job.DepositSubmittedAt.Should().BeNull();
     }
 
+    [Fact]
+    public async Task RejectFreeThenSwitchToStandardAndApprove_ShouldRequirePaymentInsteadOfBypassing()
+    {
+        var (job, owner) = SetupOwnedJob(JobStatuses.Draft);
+        job.Title = "Backend Developer";
+        job.Description = "Build APIs";
+        job.Benefits = "Insurance and training";
+        job.Location = "HCM";
+        job.EmploymentType = "FULL_TIME";
+        job.JobRequirements.Add(Requirement(job.JobId, JobRequirementTypes.MustHave));
+
+        var freePkg = new JobPostingPackage
+        {
+            PackageId = Guid.NewGuid(),
+            Code = JobPostingPackageCodes.Free,
+            Name = "Gói Miễn Phí",
+            Price = 0m,
+            DurationDays = 30,
+            MaxApplications = null,
+            IsActive = true
+        };
+        var stdPkg = new JobPostingPackage
+        {
+            PackageId = Guid.NewGuid(),
+            Code = JobPostingPackageCodes.Standard,
+            Name = "Gói Tiêu Chuẩn",
+            Price = 1_500_000m,
+            DurationDays = 90,
+            MaxApplications = 100,
+            IsActive = true
+        };
+
+        job.PostingPackageId = freePkg.PackageId;
+        job.PostingPackage = freePkg;
+
+        JobPostingFee? persistedFee = null;
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceTypeCodes.CvApplication);
+        _jobs.Setup(x => x.GetPostingPackageByIdAsync(freePkg.PackageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(freePkg);
+        _jobs.Setup(x => x.GetPostingPackageByIdAsync(stdPkg.PackageId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(stdPkg);
+        _jobs.Setup(x => x.AddPostingFeeAsync(It.IsAny<JobPostingFee>(), It.IsAny<CancellationToken>()))
+            .Callback<JobPostingFee, CancellationToken>((f, _) =>
+            {
+                persistedFee = f;
+                job.JobPostingFees.Add(f);
+            })
+            .Returns(Task.CompletedTask);
+        _jobs.Setup(x => x.GetPostingFeeByJobIdAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => persistedFee);
+
+        var submitHandler = new SubmitJobCommandHandler(_jobs.Object, _members.Object, _adminSettings.Object, _uow.Object);
+        var rejectHandler = new RejectJobCommandHandler(_jobs.Object, _notifications.Object, _uow.Object);
+        var updateHandler = new UpdateJobCommandHandler(_jobs.Object, _members.Object, _uow.Object);
+        var approveHandler = new ApproveJobCommandHandler(_jobs.Object, _adminSettings.Object, _notifications.Object, _audit.Object, _uow.Object);
+
+        // 1. Submit with FREE -> creates PAID ("FREE_TIER") fee
+        await submitHandler.Handle(new SubmitJobCommand { JobId = job.JobId, UserId = owner, ConcurrencyToken = job.ConcurrencyToken }, default);
+        persistedFee.Should().NotBeNull();
+        persistedFee!.Status.Should().Be(JobPostingFeeStatuses.Paid);
+        persistedFee.PaymentReference.Should().Be("FREE_TIER");
+
+        // 2. HR rejects
+        await rejectHandler.Handle(new RejectJobCommand
+        {
+            JobId = job.JobId,
+            UserId = Guid.NewGuid(),
+            ConcurrencyToken = job.ConcurrencyToken,
+            ReasonCode = JobReasonCodes.RejectedIncompleteDescription,
+            ReasonText = "Cần bổ sung JD"
+        }, default);
+
+        // 3. Client updates package from FREE to STANDARD
+        await updateHandler.Handle(new UpdateJobCommand
+        {
+            JobId = job.JobId,
+            UserId = owner,
+            ConcurrencyToken = job.ConcurrencyToken,
+            ServiceTypeId = job.ServiceTypeId,
+            PostingPackageId = stdPkg.PackageId,
+            Title = "Backend Developer Updated",
+            Description = "Build APIs",
+            Benefits = "Insurance and training",
+            Location = "HCM",
+            EmploymentType = "FULL_TIME",
+            CurrencyCode = "VND",
+            Quantity = 1,
+            Requirements = [new CreateJobRequirementRequest { RequirementType = JobRequirementTypes.MustHave, Content = "C#" }]
+        }, default);
+
+        persistedFee.PackageId.Should().Be(stdPkg.PackageId);
+        persistedFee.Amount.Should().Be(1_500_000m);
+        persistedFee.Status.Should().Be(JobPostingFeeStatuses.Pending);
+        persistedFee.PaymentReference.Should().BeNull();
+        persistedFee.PaidAt.Should().BeNull();
+
+        // 4. Client resubmits & HR approves -> MUST transition to PENDING_PAYMENT, NOT ACTIVE
+        await submitHandler.Handle(new SubmitJobCommand { JobId = job.JobId, UserId = owner, ConcurrencyToken = job.ConcurrencyToken }, default);
+        var approveResult = await approveHandler.Handle(new ApproveJobCommand
+        {
+            JobId = job.JobId,
+            UserId = Guid.NewGuid(),
+            ConcurrencyToken = job.ConcurrencyToken
+        }, default);
+
+        approveResult.Data.Status.Should().Be(JobStatuses.PendingPayment);
+        job.Status.Should().Be(JobStatuses.PendingPayment);
+        persistedFee.Status.Should().Be(JobPostingFeeStatuses.Pending);
+    }
+
+    [Fact]
+    public async Task UpdateDraftFromStandardToHeadhunt_ShouldCancelPendingPostingFee()
+    {
+        var (job, owner) = SetupOwnedJob(JobStatuses.Draft);
+        var stdPkg = new JobPostingPackage
+        {
+            PackageId = Guid.NewGuid(),
+            Code = JobPostingPackageCodes.Standard,
+            Price = 1_500_000m,
+            IsActive = true
+        };
+        var existingFee = new JobPostingFee
+        {
+            PostingFeeId = Guid.NewGuid(),
+            JobId = job.JobId,
+            PackageId = stdPkg.PackageId,
+            CompanyId = job.CompanyId,
+            Amount = 1_500_000m,
+            CurrencyCode = "VND",
+            Status = JobPostingFeeStatuses.Pending,
+            CreatedAt = DateTime.UtcNow
+        };
+        job.PostingPackageId = stdPkg.PackageId;
+        job.JobPostingFees.Add(existingFee);
+
+        var headhuntServiceTypeId = Guid.NewGuid();
+        _jobs.Setup(x => x.HasSubmissionsOrApplicationsAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(headhuntServiceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceTypeCodes.HeadhuntCod);
+        _jobs.Setup(x => x.GetPostingFeeByJobIdAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingFee);
+
+        var updateHandler = new UpdateJobCommandHandler(_jobs.Object, _members.Object, _uow.Object);
+        await updateHandler.Handle(new UpdateJobCommand
+        {
+            JobId = job.JobId,
+            UserId = owner,
+            ConcurrencyToken = job.ConcurrencyToken,
+            ServiceTypeId = headhuntServiceTypeId,
+            PostingPackageId = stdPkg.PackageId,
+            Title = "Headhunt Role",
+            CurrencyCode = "VND",
+            Quantity = 1
+        }, default);
+
+        job.PostingPackageId.Should().BeNull();
+        existingFee.Status.Should().Be(JobPostingFeeStatuses.Cancelled);
+    }
+
     private (Job Job, Guid User) SetupOwnedJob(string status)
     {
         var job = SetupJob(status); var user = Guid.NewGuid();

@@ -257,9 +257,10 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
             }
 
             var package = job.PostingPackage;
-            if (package == null && job.PostingPackageId.HasValue)
+            if (job.PostingPackageId.HasValue && (package == null || package.PackageId != job.PostingPackageId.Value))
             {
                 package = await _jobs.GetPostingPackageByIdAsync(job.PostingPackageId.Value, ct);
+                job.PostingPackage = package;
             }
 
             if (package == null)
@@ -275,7 +276,8 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
             job.AgreedAt = now;
             job.AgreedBy = request.UserId;
             job.MaxApplications = package?.MaxApplications;
-            var fee = await _jobs.GetPostingFeeByJobIdAsync(job.JobId, ct);
+            var fee = await _jobs.GetPostingFeeByJobIdAsync(job.JobId, ct)
+                ?? job.JobPostingFees?.OrderByDescending(x => x.CreatedAt).FirstOrDefault();
 
             if (package != null && string.Equals(package.Code, JobPostingPackageCodes.Standard, StringComparison.OrdinalIgnoreCase))
             {
@@ -296,6 +298,22 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
                         UpdatedAt = now
                     };
                     await _jobs.AddPostingFeeAsync(fee, ct);
+                }
+                else if (fee.PackageId != package.PackageId ||
+                         string.Equals(fee.PaymentReference, "FREE_TIER", StringComparison.OrdinalIgnoreCase) ||
+                         fee.Status == JobPostingFeeStatuses.Cancelled)
+                {
+                    fee.PackageId = package.PackageId;
+                    fee.Package = package;
+                    fee.Amount = standardPrice;
+                    fee.CurrencyCode = FinanceCurrency.Normalize(job.CurrencyCode);
+                    fee.Status = JobPostingFeeStatuses.Pending;
+                    fee.PaidAt = null;
+                    fee.PaymentReference = null;
+                    fee.RecordedBy = null;
+                    fee.ActivatedAt = null;
+                    fee.ExpiresAt = null;
+                    fee.UpdatedAt = now;
                 }
 
                 if (fee.Status != JobPostingFeeStatuses.Paid)
