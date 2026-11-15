@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from 'antd';
 import dayjs from 'dayjs';
@@ -16,7 +16,12 @@ vi.mock('@/services/api/hrApi', () => ({
     placements: vi.fn(),
   },
 }));
-vi.mock('@/features/jobs-mf01/useJobQueries', () => ({ useMyJobs: () => ({ isLoading: false, data: [] }) }));
+vi.mock('@/features/jobs-mf01/useJobQueries', () => ({
+  useMyJobs: () => ({
+    isLoading: false,
+    data: [{ jobId: 'job-backend', title: 'Backend .NET' }],
+  }),
+}));
 vi.mock('@/features/recruitment/ApplicationWorkbench', () => ({ ApplicationWorkbench: () => null }));
 vi.mock('@/features/client-console/ClientInterviewDetailDrawer', () => ({ ClientInterviewDetailDrawer: () => null }));
 vi.mock('./components/ReportResignationModal', () => ({ ReportResignationModal: () => null }));
@@ -117,6 +122,22 @@ describe('Client › Phỏng vấn & Offer', () => {
     interviewsMock.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 10 } as never);
     offersMock.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 10 } as never);
     placementsMock.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 10 } as never);
+  });
+
+  it('sends the selected job to the server and resets pagination', async () => {
+    renderPage('/client/interviews-offers?tab=interviews&page=3');
+
+    const jobFilter = await screen.findByRole('combobox');
+    fireEvent.mouseDown(jobFilter);
+    fireEvent.click(await screen.findByText('Backend .NET'));
+
+    await waitFor(() => {
+      expect(interviewsMock).toHaveBeenCalledWith(expect.objectContaining({
+        jobId: 'job-backend',
+        page: 1,
+        pageSize: 10,
+      }));
+    });
   });
 
   it('shows interview format, duration, candidate attendance badge, and overdue warning', async () => {
