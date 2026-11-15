@@ -168,16 +168,17 @@ export const ClientInterviewsOffersPage: React.FC = () => {
 
   // Query for current tab data
   const listQ = useQuery({
-    queryKey: ['client-pipeline', tab, page, statusFilter === 'all' ? undefined : statusFilter],
+    queryKey: ['client-pipeline', tab, page, statusFilter === 'all' ? undefined : statusFilter, selectedJobId],
     queryFn: async () => {
       const st = statusFilter === 'all' ? undefined : statusFilter;
+      const jobId = selectedJobId === 'all' ? undefined : selectedJobId;
       if (tab === 'interviews') {
-        return await pipelineApi.interviews({ page, pageSize: PAGE_SIZE, status: st });
+        return await pipelineApi.interviews({ page, pageSize: PAGE_SIZE, status: st, jobId });
       }
       if (tab === 'offers') {
-        return await pipelineApi.offers({ page, pageSize: PAGE_SIZE, status: st });
+        return await pipelineApi.offers({ page, pageSize: PAGE_SIZE, status: st, jobId });
       }
-      return await pipelineApi.placements({ page, pageSize: PAGE_SIZE, status: st });
+      return await pipelineApi.placements({ page, pageSize: PAGE_SIZE, status: st, jobId });
     },
   });
 
@@ -212,22 +213,17 @@ export const ClientInterviewsOffersPage: React.FC = () => {
     setSearchParams(next);
   };
 
-  // Filter items locally by search keyword and job
+  const handleJobChange = (jobId: string) => {
+    setSelectedJobId(jobId);
+    const next = new URLSearchParams(searchParams);
+    next.delete('page');
+    setSearchParams(next, { replace: true });
+  };
+
+  // Keyword search remains local to the current server-filtered page.
   const filteredItems = useMemo(() => {
     const rawItems = (listQ.data?.items ?? []) as any[];
     return rawItems.filter((item) => {
-      // 1. Job filter
-      if (selectedJobId !== 'all') {
-        const itemJobId = item.jobId || item.job?.jobId;
-        const itemJobTitle = item.jobTitle || item.job?.title;
-        const targetJob = myJobs.find((j) => j.jobId === selectedJobId);
-        if (targetJob) {
-          if (itemJobId && itemJobId !== selectedJobId) return false;
-          if (itemJobTitle && itemJobTitle !== targetJob.title) return false;
-        }
-      }
-
-      // 2. Keyword filter
       if (searchKeyword.trim()) {
         const q = searchKeyword.trim().toLowerCase();
         const candName = (item.candidateName || item.candidate?.fullName || '').toLowerCase();
@@ -240,7 +236,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
 
       return true;
     });
-  }, [listQ.data?.items, selectedJobId, searchKeyword, myJobs]);
+  }, [listQ.data?.items, searchKeyword]);
 
   // ── Columns Definitions ──────────────────────────────────────────
   const interviewColumns: ColumnsType<InterviewItem> = useMemo(
@@ -933,7 +929,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
           <Select
             size="large"
             value={selectedJobId}
-            onChange={setSelectedJobId}
+            onChange={handleJobChange}
             loading={loadingJobs}
             className="w-full sm:w-72 font-medium"
             options={[

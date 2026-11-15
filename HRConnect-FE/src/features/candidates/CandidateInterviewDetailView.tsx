@@ -16,7 +16,7 @@ dayjs.extend(utc);
 import { candidateInterviewApi } from '@/services/api/candidateInterviewApi';
 import { candidateInterviewKeys, useCandidateInterviewDetail } from '@/hooks/useCandidateInterviewDetail';
 import type { CandidateInterviewDetailDto } from '@/types/api/candidateInterview';
-import { candidateInterviewStatus } from '@/features/portal/mf02Labels';
+import { candidateInterviewStatus, candidateInterviewType } from '@/features/portal/mf02Labels';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
@@ -80,6 +80,7 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
       queryClient.setQueryData<CandidateInterviewDetailDto>(candidateInterviewKeys.detail(interviewId), (current) =>
         current ? { ...current, candidateAttendanceStatus: result.attendanceStatus, candidateRespondedAt: result.respondedAt } : current,
       );
+      void queryClient.invalidateQueries({ queryKey: ['candidate-applications'] });
       message.success(result.alreadyConfirmed ? 'Bạn đã xác nhận lịch phỏng vấn này.' : 'Đã xác nhận tham gia phỏng vấn.');
     },
     onError: (mutationError: Error) => {
@@ -130,6 +131,7 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
   }
 
   const status = STATUS_STYLE[String(interview.status).toUpperCase()] ?? { label: candidateInterviewStatus(interview.status), text: '#374151', background: '#F3F4F6' };
+  const interviewTypeLabel = candidateInterviewType(interview.interviewType);
   const isOnline = (interview.interviewType || '').toUpperCase() === 'ONLINE' || Boolean(interview.meetingLink);
   const start = interview.scheduledAt ? dayjs(interview.scheduledAt).locale('vi') : null;
   const duration = interview.durationMinutes || 45;
@@ -161,7 +163,7 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
           </div>
           <div>
             <dt className="text-[12px] text-[#6B7280]">Hình thức</dt>
-            <dd className="m-0 mt-0.5 font-semibold">{isOnline ? 'Trực tuyến' : 'Trực tiếp tại văn phòng'}</dd>
+            <dd className="m-0 mt-0.5 font-semibold">{interviewTypeLabel}</dd>
           </div>
           <div className="min-w-0">
             <dt className="text-[12px] text-[#6B7280]">{isOnline ? 'Link phòng họp' : 'Địa điểm'}</dt>

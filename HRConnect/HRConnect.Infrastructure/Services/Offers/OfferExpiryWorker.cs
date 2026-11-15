@@ -75,6 +75,9 @@ public sealed class OfferExpiryWorker : BackgroundService
             var offer = await context.Offers
                 .Include(item => item.Application)
                     .ThenInclude(application => application.Candidate)
+                .Include(item => item.Application)
+                    .ThenInclude(application => application.Job)
+                        .ThenInclude(job => job.Company)
                 .SingleOrDefaultAsync(item => item.OfferId == offerId, cancellationToken);
             if (offer == null)
             {

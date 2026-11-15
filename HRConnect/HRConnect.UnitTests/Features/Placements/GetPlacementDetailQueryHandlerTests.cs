@@ -153,6 +153,68 @@ public class GetPlacementDetailQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenCandidateReadsOwnPlacement_ShouldHideInternalOperationalNotes()
+    {
+        var placementId = Guid.NewGuid();
+        var candidateUserId = Guid.NewGuid();
+        var internalUserId = Guid.NewGuid();
+        var placement = new Placement
+        {
+            PlacementId = placementId,
+            ApplicationId = Guid.NewGuid(),
+            OfferId = Guid.NewGuid(),
+            ActualStartDate = new DateOnly(2026, 11, 5),
+            Status = "STARTED",
+            ConfirmedAt = DateTime.UtcNow,
+            ConfirmedBy = internalUserId,
+            ConfirmationNote = "Internal confirmation note",
+            ConfirmedByNavigation = new AppUser
+            {
+                UserId = internalUserId,
+                DisplayName = "Internal recruiter"
+            },
+            Application = new Domain.Entities.Application
+            {
+                Candidate = new Candidate
+                {
+                    CandidateId = Guid.NewGuid(),
+                    UserId = candidateUserId,
+                    FullName = "Candidate Owner"
+                },
+                Job = new Job { Company = new Company() }
+            },
+            Offer = new Offer(),
+            Probation = new Probation
+            {
+                ProbationId = Guid.NewGuid(),
+                StartDate = new DateOnly(2026, 11, 5),
+                Notes = "Internal probation note"
+            },
+            Warranty = new Warranty
+            {
+                WarrantyId = Guid.NewGuid(),
+                StartDate = new DateOnly(2026, 11, 5),
+                Status = "ACTIVE",
+                ResultNote = "Internal warranty note"
+            }
+        };
+
+        _placementRepositoryMock
+            .Setup(r => r.GetByIdWithDetailsAsync(placementId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(placement);
+
+        var result = await CreateHandler().Handle(
+            new GetPlacementDetailQuery(placementId, candidateUserId, IsCandidate: true),
+            CancellationToken.None);
+
+        result.ConfirmedBy.Should().BeNull();
+        result.ConfirmedByName.Should().BeNull();
+        result.ConfirmationNote.Should().BeNull();
+        result.Probation!.Notes.Should().BeNull();
+        result.Warranty!.ResultNote.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Handle_WhenUserHasNoPermissions_ShouldThrowForbiddenException()
     {
         // Arrange

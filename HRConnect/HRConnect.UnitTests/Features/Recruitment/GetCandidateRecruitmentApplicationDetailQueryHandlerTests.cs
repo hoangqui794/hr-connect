@@ -107,6 +107,7 @@ public class GetCandidateRecruitmentApplicationDetailQueryHandlerTests
                 FullName = "Nguyen Van A"
             },
             Status = ApplicationStates.Shortlisted,
+            StatusReason = "Internal HR note: keep as backup",
             AppliedAt = DateTime.UtcNow.AddDays(-5),
             UpdatedAt = DateTime.UtcNow,
             ConcurrencyToken = Guid.NewGuid(),
@@ -167,12 +168,14 @@ public class GetCandidateRecruitmentApplicationDetailQueryHandlerTests
         data.JobTitle.Should().Be("Backend Engineer");
         data.CompanyName.Should().Be("Tech Corp");
         data.Status.Should().Be(ApplicationStates.Shortlisted);
+        data.StatusReason.Should().BeNull();
         data.ConcurrencyToken.Should().NotBeEmpty();
 
         // Check Interview sanitization: no internal feedback/result exposed
         data.Interviews.Should().HaveCount(1);
         data.Interviews[0].MeetingLink.Should().Be("https://meet.google.com/xyz");
         data.Interviews[0].Status.Should().Be(InterviewStates.Scheduled);
+        data.Interviews[0].ConcurrencyToken.Should().BeNull();
 
         // Check Offer filtering: Draft must NOT be included, Sent must be included
         data.Offers.Should().HaveCount(1);
@@ -184,6 +187,25 @@ public class GetCandidateRecruitmentApplicationDetailQueryHandlerTests
         data.AllowedActions.Should().Contain("WITHDRAW_APPLICATION");
         data.AllowedActions.Should().Contain("VIEW_INTERVIEW");
         data.AllowedActions.Should().Contain("RESPOND_OFFER");
+    }
+
+    [Fact]
+    public async Task Handle_WhenCandidateWithdrawsApplication_ShouldExposeCandidateWithdrawalReason()
+    {
+        var appId = Guid.NewGuid();
+        var candidateUserId = Guid.NewGuid();
+        var app = CreateEmployerContactApp(appId, candidateUserId, ApplicationStates.Withdrawn);
+        app.StatusReason = "Tôi không còn nhu cầu ứng tuyển.";
+
+        _applicationRepositoryMock
+            .Setup(r => r.GetRecruitmentApplicationDetailAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+
+        var result = await CreateHandler().Handle(
+            new GetCandidateRecruitmentApplicationDetailQuery(appId, candidateUserId),
+            CancellationToken.None);
+
+        result.Data!.StatusReason.Should().Be("Tôi không còn nhu cầu ứng tuyển.");
     }
 
     [Theory]

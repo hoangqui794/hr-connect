@@ -12,7 +12,8 @@ public sealed class ClientVisibilityPolicyTests
     [InlineData("HEADHUNT_COD", "SUBMITTED", false)]
     [InlineData("CV_SOURCING", "SCREENING", false)]
     [InlineData("CV_SOURCING", "REJECTED", false)]
-    [InlineData("HEADHUNT_COD", "BACKUP", false)]
+    [InlineData("HEADHUNT_COD", "BACKUP", true)]
+    [InlineData("HEADHUNT_COD", "BACKUP_NOT_SELECTED", true)]
     [InlineData("HEADHUNT_COD", "SHORTLISTED", true)]
     [InlineData("HEADHUNT_COD", "INTERVIEW", true)]
     public void IsVisibleToClient_WithoutHistory_ShouldFollowStatus(string serviceType, string status, bool expected)
@@ -50,6 +51,8 @@ public sealed class ClientVisibilityPolicyTests
         var predicate = ClientVisibilityPolicy.IsVisibleToClientExpression.Compile();
 
         predicate(App("HEADHUNT_COD", ApplicationStates.Submitted)).Should().BeFalse();
+        predicate(App("HEADHUNT_COD", ApplicationStates.Backup)).Should().BeTrue();
+        predicate(App("HEADHUNT_COD", ApplicationStates.BackupNotSelected)).Should().BeTrue();
         predicate(App("HEADHUNT_COD", ApplicationStates.Backup, ApplicationStates.Shortlisted)).Should().BeTrue();
         predicate(App("CV_APPLICATION", ApplicationStates.Submitted)).Should().BeTrue();
         predicate(App("CV_SOURCING", ApplicationStates.Backup, ApplicationStates.Shortlisted)).Should().BeFalse();

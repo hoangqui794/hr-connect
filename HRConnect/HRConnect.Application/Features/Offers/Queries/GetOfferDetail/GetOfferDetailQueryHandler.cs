@@ -109,10 +109,12 @@ public class GetOfferDetailQueryHandler : IRequestHandler<GetOfferDetailQuery, G
             OfferDocumentUrl = offer.OfferDocumentUrl,
             SentAt = offer.SentAt,
             RespondedAt = offer.RespondedAt,
-            DeclineReason = offer.DeclineReason,
+            DeclineReason = !request.IsCandidate || offer.Status == OfferStates.Declined
+                ? offer.DeclineReason
+                : null,
             ConcurrencyToken = offer.ConcurrencyToken,
             CanRespond = offer.Status == OfferStates.Sent && (!offer.ExpiryDate.HasValue || offer.ExpiryDate.Value >= VietnamTime.Today(_timeProvider)),
-            CreatedBy = offer.CreatedByNavigation != null
+            CreatedBy = !request.IsCandidate && offer.CreatedByNavigation != null
                 ? new CreatedByDto
                 {
                     UserId = offer.CreatedByNavigation.UserId,
@@ -122,7 +124,9 @@ public class GetOfferDetailQueryHandler : IRequestHandler<GetOfferDetailQuery, G
                 : null,
             CreatedAt = offer.CreatedAt,
             UpdatedAt = offer.UpdatedAt,
-            Approvals = offer.OfferApprovals.Select(oa => new OfferApprovalSummaryDto
+            Approvals = request.IsCandidate
+                ? []
+                : offer.OfferApprovals.Select(oa => new OfferApprovalSummaryDto
             {
                 ApprovalId = oa.ApprovalId,
                 UserId = oa.UserId,

@@ -132,6 +132,9 @@ public class GetOfferDetailQueryHandlerTests
         result.Success.Should().BeTrue();
         result.Data.OfferId.Should().Be(offerId);
         result.Data.Status.Should().Be("SENT");
+        result.Data.DeclineReason.Should().BeNull();
+        result.Data.CreatedBy.Should().BeNull();
+        result.Data.Approvals.Should().BeEmpty();
     }
 
     [Fact]
@@ -250,10 +253,17 @@ public class GetOfferDetailQueryHandlerTests
             StartDate = VietnamTime.Today().AddDays(14),
             ExpiryDate = VietnamTime.Today().AddDays(7),
             Status = status,
+            DeclineReason = "Internal withdrawal note",
             SentAt = status == "SENT" ? DateTime.UtcNow : null,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
             ConcurrencyToken = Guid.NewGuid(),
+            CreatedByNavigation = new AppUser
+            {
+                UserId = Guid.NewGuid(),
+                DisplayName = "Internal recruiter",
+                Email = "recruiter@example.com"
+            },
             Application = new HRConnect.Domain.Entities.Application
             {
                 ApplicationId = applicationId,

@@ -24,6 +24,8 @@ public static class ClientVisibilityPolicy
     private static readonly string[] PostShortlistStatuses =
     [
         ApplicationStates.Shortlisted,
+        ApplicationStates.Backup,
+        ApplicationStates.BackupNotSelected,
         ApplicationStates.Interview,
         ApplicationStates.InterviewFailed,
         ApplicationStates.OfferPending,
