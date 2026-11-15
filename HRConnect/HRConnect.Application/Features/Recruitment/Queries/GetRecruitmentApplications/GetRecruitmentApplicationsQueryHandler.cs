@@ -70,6 +70,7 @@ public class GetRecruitmentApplicationsQueryHandler : IRequestHandler<GetRecruit
             var latestAi = a.AiMatchResults?.OrderByDescending(r => r.AttemptNo).FirstOrDefault();
             var latestInterview = a.Interviews?.OrderByDescending(i => i.InterviewRound).ThenByDescending(i => i.CreatedAt).FirstOrDefault();
             var latestOffer = a.Offers?.OrderByDescending(o => o.OfferVersion).FirstOrDefault();
+            var latestDelivery = a.SourcingDeliveries?.OrderByDescending(x => x.DeliveredAt).FirstOrDefault();
             var serviceTypeCode = a.Job?.ServiceType?.Code;
             var maskContact = request.IsClientCompanyUser
                 && ClientVisibilityPolicy.ShouldMaskContactForClient(serviceTypeCode, a.Status, hasPlacement: false);
@@ -106,7 +107,13 @@ public class GetRecruitmentApplicationsQueryHandler : IRequestHandler<GetRecruit
                 ServiceTypeCode = serviceTypeCode,
                 ContactOwner = ClientVisibilityPolicy.GetContactOwner(serviceTypeCode).ToString(),
                 IsContactMasked = maskContact,
-                SourcingDeliveryStatus = a.SourcingDeliveries?.OrderByDescending(x => x.DeliveredAt).FirstOrDefault()?.Status
+                SourcingDeliveryStatus = latestDelivery?.Status,
+                SourcingReviewDueAt = latestDelivery?.ReviewDueAt,
+                StatusReason = a.StatusReason,
+                StatusReasonCode = a.StatusReasonCode,
+                LatestOfferExpiryDate = latestOffer?.ExpiryDate,
+                IsReplacement = a.ReplacementSlotId.HasValue,
+                Source = a.Submission?.Source
             };
         }).ToList();
 

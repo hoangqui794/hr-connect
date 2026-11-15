@@ -37,7 +37,7 @@ import type { RecruitmentApplicationItem } from '@/types/api/hr';
 import { useMyJobs } from '@/features/jobs-mf01/useJobQueries';
 import { Initials, StatusDot, Surface } from '@/features/admin-console/ui';
 import { ApplicationWorkbench } from '@/features/recruitment/ApplicationWorkbench';
-import { applicationStatusOf, INTERVIEW_RESULT, INTERVIEW_STATUS, OFFER_STATUS, SERVICE_TYPE } from '@/features/hr-console/hrLabels';
+import { applicationStatusOf, INTERVIEW_RESULT, INTERVIEW_STATUS, OFFER_STATUS, reasonLabel, SERVICE_TYPE } from '@/features/hr-console/hrLabels';
 import { money } from '@/features/finance-mf05/financeLabels';
 import { SERVICE_TYPE_LABEL } from '@/features/jobs-mf01/jobDisplay';
 import type { ServiceTypeCode } from '@/types/api/jobs';
@@ -259,14 +259,14 @@ export const ClientCandidatesPage: React.FC = () => {
   /** One short line on the latest offer, else the latest interview; appends planned start date when offer is accepted. */
   const progressOf = (a: RecruitmentApplicationItem): string | null => {
     const startSuffix =
-      a.status.toUpperCase() === 'OFFER_ACCEPTED' && a.plannedStartDate
+      a.status.toUpperCase() === 'OFFER_ACCEPTED' && a.plannedStartDate && dayjs(a.plannedStartDate).isValid()
         ? `Nhận việc ${dayjs(a.plannedStartDate).format('DD/MM/YYYY')}`
         : null;
     if (a.latestOfferStatus) {
       const label = OFFER_STATUS[a.latestOfferStatus]?.label ?? a.latestOfferStatus;
       return `Offer: ${label}${a.latestOfferSalary != null ? ` · ${money(a.latestOfferSalary)}` : ''}${startSuffix ? ` · ${startSuffix}` : ''}`;
     }
-    if (a.latestInterviewScheduledAt) {
+    if (a.latestInterviewScheduledAt && dayjs(a.latestInterviewScheduledAt).isValid()) {
       const outcome = a.latestInterviewResult
         ? INTERVIEW_RESULT[a.latestInterviewResult] ?? a.latestInterviewResult
         : a.latestInterviewStatus
@@ -275,6 +275,51 @@ export const ClientCandidatesPage: React.FC = () => {
       return `PV vòng ${a.latestInterviewRound ?? 1} · ${dayjs(a.latestInterviewScheduledAt).format('DD/MM HH:mm')}${outcome ? ` · ${outcome}` : ''}`;
     }
     return startSuffix;
+  };
+
+  const deadlineMetaOf = (
+    rawDate: string | null | undefined,
+    prefix: string,
+    overdueText: string
+  ): { text: string; tone: 'danger' | 'warning' | 'neutral' } | null => {
+    if (!rawDate) return null;
+    const dt = dayjs(rawDate);
+    if (!dt.isValid()) return null;
+    const diffDays = dt.startOf('day').diff(dayjs().startOf('day'), 'day');
+    if (diffDays < 0) return { text: overdueText, tone: 'danger' };
+    if (diffDays === 0) return { text: `${prefix}: hết hạn hôm nay`, tone: 'warning' };
+    if (diffDays <= 2) return { text: `${prefix}: ${dt.format('DD/MM/YYYY')} (còn ${diffDays} ngày)`, tone: 'warning' };
+    return { text: `${prefix}: ${dt.format('DD/MM/YYYY')}`, tone: 'neutral' };
+  };
+
+  const closedReasonOf = (r: RecruitmentApplicationItem): string | null => {
+    const st = r.status.toUpperCase();
+    if (
+      st !== 'REJECTED' &&
+      st !== 'INTERVIEW_FAILED' &&
+      st !== 'OFFER_DECLINED' &&
+      st !== 'NOT_STARTED' &&
+      st !== 'WITHDRAWN' &&
+      st !== 'RESIGNED' &&
+      st !== 'LEFT_DURING_WARRANTY'
+    ) {
+      return null;
+    }
+    const codeLabel = r.statusReasonCode ? reasonLabel(r.statusReasonCode) : null;
+    const rawReason = r.statusReason?.trim() || null;
+    if (codeLabel && rawReason && codeLabel.toLowerCase() !== rawReason.toLowerCase()) {
+      return `${codeLabel}: ${rawReason}`;
+    }
+    return rawReason || codeLabel || null;
+  };
+
+  const sourceLabelOf = (source?: string | null): string | null => {
+    const code = source?.trim().toUpperCase();
+    if (!code) return null;
+    if (code === 'CANDIDATE') return 'Ứng tuyển trực tiếp';
+    if (code === 'AFFILIATE') return 'Từ HR Connect · CTV';
+    if (code === 'INTERNAL_HR') return 'Từ HR Connect';
+    return source!.trim();
   };
 
   const columns: ColumnsType<RecruitmentApplicationItem> = [
@@ -311,17 +356,30 @@ export const ClientCandidatesPage: React.FC = () => {
       render: (_, r) => {
         const s = r.serviceTypeCode ? SERVICE_TYPE_LABEL[r.serviceTypeCode as ServiceTypeCode] : null;
         const color = r.serviceTypeCode === 'HEADHUNT_COD' ? 'blue' : r.serviceTypeCode === 'CV_SOURCING' ? 'purple' : 'cyan';
+        const srcLabel = sourceLabelOf(r.source);
         return (
           <div className="max-w-[270px] space-y-1.5 py-1">
             <div className="truncate font-semibold text-slate-900 text-[13.5px]" title={r.jobTitle}>
               {r.jobTitle}
             </div>
-            {s && (
-              <span className="inline-block">
-                <Tag color={color} className="m-0 text-[11px] font-medium border-0 px-2 py-0.5 rounded">
-                  {s.label}
-                </Tag>
-              </span>
+            {(s || r.isReplacement || srcLabel) && (
+              <div className="flex flex-wrap items-center gap-1">
+                {s && (
+                  <Tag color={color} className="m-0 text-[11px] font-medium border-0 px-2 py-0.5 rounded">
+                    {s.label}
+                  </Tag>
+                )}
+                {r.isReplacement && (
+                  <Tag color="gold" className="m-0 text-[11px] font-semibold px-2 py-0.5 rounded">
+                    Suất thay thế
+                  </Tag>
+                )}
+                {srcLabel && (
+                  <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10.5px] font-medium text-slate-600">
+                    {srcLabel}
+                  </span>
+                )}
+              </div>
             )}
           </div>
         );
@@ -340,16 +398,46 @@ export const ClientCandidatesPage: React.FC = () => {
     {
       title: 'Giai đoạn',
       dataIndex: 'status',
-      width: 170,
+      width: 220,
       render: (v: string, r) => {
         const st = applicationStatusOf(v, r.serviceTypeCode, r.sourcingDeliveryStatus);
         const progress = progressOf(r);
+        const reason = closedReasonOf(r);
+        const offerExpiry =
+          r.latestOfferStatus?.toUpperCase() === 'SENT'
+            ? deadlineMetaOf(r.latestOfferExpiryDate, 'Hạn offer', 'Offer đã quá hạn phản hồi')
+            : null;
+        const sourcingDue =
+          r.serviceTypeCode === 'CV_SOURCING' && r.sourcingDeliveryStatus?.toUpperCase() === 'DELIVERED'
+            ? deadlineMetaOf(r.sourcingReviewDueAt, 'Hạn phản hồi CV', 'Đã quá hạn phản hồi CV')
+            : null;
+        const activeDeadline = offerExpiry ?? sourcingDue;
         return (
-          <div className="py-1">
+          <div className="py-1 space-y-1">
             <div className="inline-flex items-center">
               <StatusDot tone={st.tone}>{st.label}</StatusDot>
             </div>
-            {progress && <div className="mt-1 text-[12px] text-slate-600">{progress}</div>}
+            {progress && <div className="text-[12px] text-slate-600">{progress}</div>}
+            {activeDeadline && (
+              <div
+                className={`text-[11px] font-semibold ${
+                  activeDeadline.tone === 'danger'
+                    ? 'text-rose-700'
+                    : activeDeadline.tone === 'warning'
+                      ? 'text-amber-700'
+                      : 'text-slate-600'
+                }`}
+              >
+                {activeDeadline.text}
+              </div>
+            )}
+            {reason && (
+              <Tooltip title={reason}>
+                <div className="line-clamp-2 text-[11px] text-rose-700/90 font-medium">
+                  Lý do: {reason}
+                </div>
+              </Tooltip>
+            )}
           </div>
         );
       },

@@ -262,4 +262,57 @@ public class GetRecruitmentApplicationsQueryHandlerTests
             ConcurrencyToken = Guid.NewGuid()
         };
     }
+
+    [Fact]
+    public async Task Handle_WhenApplicationHasRejectionOfferExpirySourcingDueReplacementAndSource_ShouldMapNewFields()
+    {
+        var companyId = Guid.NewGuid();
+        var reviewDueAt = new DateTime(2026, 11, 20, 12, 0, 0, DateTimeKind.Utc);
+        var app = CreateSampleApplication(companyId, "REJECTED");
+        app.StatusReason = "Chưa có kinh nghiệm microservices";
+        app.StatusReasonCode = "INSUFFICIENT_EXPERIENCE";
+        app.ReplacementSlotId = Guid.NewGuid();
+        app.Submission = new Submission { Source = "AFFILIATE", SubmittedFullName = "Nguyen Van A" };
+        app.Offers.Add(new Offer
+        {
+            OfferId = Guid.NewGuid(),
+            OfferVersion = 1,
+            Status = "SENT",
+            ExpiryDate = new DateOnly(2026, 11, 25)
+        });
+        app.SourcingDeliveries.Add(new SourcingDelivery
+        {
+            DeliveryId = Guid.NewGuid(),
+            Status = "DELIVERED",
+            DeliveredAt = DateTime.UtcNow.AddHours(-1),
+            ReviewDueAt = reviewDueAt
+        });
+
+        var emptyApp = CreateSampleApplication(companyId, "SUBMITTED");
+
+        _applicationRepositoryMock
+            .Setup(r => r.GetRecruitmentApplicationsAsync(
+                null, null, null, null, null, null, 1, 10, It.IsAny<CancellationToken>(), null, null, null))
+            .ReturnsAsync(([app, emptyApp], 2));
+
+        var result = await CreateHandler().Handle(
+            new GetRecruitmentApplicationsQuery(UserId: Guid.NewGuid(), IsClientCompanyUser: false, IsInternalHrOrAdmin: true),
+            CancellationToken.None);
+
+        var mapped = result.Data.Items[0];
+        mapped.StatusReason.Should().Be("Chưa có kinh nghiệm microservices");
+        mapped.StatusReasonCode.Should().Be("INSUFFICIENT_EXPERIENCE");
+        mapped.LatestOfferExpiryDate.Should().Be(new DateOnly(2026, 11, 25));
+        mapped.SourcingReviewDueAt.Should().Be(reviewDueAt);
+        mapped.IsReplacement.Should().BeTrue();
+        mapped.Source.Should().Be("AFFILIATE");
+
+        var emptyMapped = result.Data.Items[1];
+        emptyMapped.StatusReason.Should().BeNull();
+        emptyMapped.StatusReasonCode.Should().BeNull();
+        emptyMapped.LatestOfferExpiryDate.Should().BeNull();
+        emptyMapped.SourcingReviewDueAt.Should().BeNull();
+        emptyMapped.IsReplacement.Should().BeFalse();
+        emptyMapped.Source.Should().BeNull();
+    }
 }

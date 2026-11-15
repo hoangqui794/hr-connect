@@ -38,6 +38,10 @@ import type { InterviewItem, OfferItem, PlacementItem } from '@/types/api/hr';
 import { PersonCell, StatusDot, Surface } from '@/features/admin-console/ui';
 import { useMyJobs } from '@/features/jobs-mf01/useJobQueries';
 import { INTERVIEW_RESULT, INTERVIEW_STATUS, OFFER_STATUS, PLACEMENT_STATUS, pick } from '@/features/hr-console/hrLabels';
+import { labelOf, SERVICE_FEE_STATUS, WARRANTY_STATUS } from '@/features/finance-mf05/financeLabels';
+import { SERVICE_TYPE_LABEL } from '@/features/jobs-mf01/jobDisplay';
+import type { ServiceTypeCode } from '@/types/api/jobs';
+import type { ServiceFeeStatus, WarrantyStatus } from '@/types/api/finance';
 import { ApplicationWorkbench } from '@/features/recruitment/ApplicationWorkbench';
 import { ClientInterviewDetailDrawer } from '@/features/client-console/ClientInterviewDetailDrawer';
 import { ReportResignationModal } from './components/ReportResignationModal';
@@ -363,6 +367,13 @@ export const ClientInterviewsOffersPage: React.FC = () => {
                   </Tag>
                 </div>
               )}
+              {(r.status === 'CANCELLED' || r.status === 'SCHEDULED') && r.lastStatusReason?.trim() && (
+                <Tooltip title={r.lastStatusReason.trim()}>
+                  <div className="pl-3.5 text-[11px] font-medium text-slate-600 line-clamp-2">
+                    Lý do: {r.lastStatusReason.trim()}
+                  </div>
+                </Tooltip>
+              )}
               {res && (
                 <div className="text-xs pl-3.5 flex items-center gap-1.5">
                   <span className="text-slate-500 font-medium">Kết quả:</span>
@@ -576,13 +587,30 @@ export const ClientInterviewsOffersPage: React.FC = () => {
         title: 'Vị trí tuyển dụng',
         key: 'j',
         width: 250,
-        render: (_, r) => (
-          <div className="py-1">
-            <span className="line-clamp-2 font-semibold text-slate-800 text-[13px] leading-snug">
-              {r.job?.title}
-            </span>
-          </div>
-        ),
+        render: (_, r) => {
+          const svc = r.serviceTypeCode ? SERVICE_TYPE_LABEL[r.serviceTypeCode as ServiceTypeCode] : null;
+          return (
+            <div className="py-1 space-y-1">
+              <span className="line-clamp-2 font-semibold text-slate-800 text-[13px] leading-snug">
+                {r.job?.title}
+              </span>
+              {(svc || r.isReplacement) && (
+                <div className="flex flex-wrap items-center gap-1">
+                  {svc && (
+                    <Tag color={r.serviceTypeCode === 'HEADHUNT_COD' ? 'blue' : 'cyan'} className="!m-0 text-[10.5px] font-medium border-0 px-1.5 py-0.2 rounded">
+                      {svc.label}
+                    </Tag>
+                  )}
+                  {r.isReplacement && (
+                    <Tag color="gold" className="!m-0 text-[10.5px] font-semibold px-1.5 py-0.2 rounded">
+                      Thay thế
+                    </Tag>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        },
       },
       {
         title: 'Chức danh tiếp nhận',
@@ -598,24 +626,61 @@ export const ClientInterviewsOffersPage: React.FC = () => {
         render: (v) => (
           <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1 text-xs font-bold tabular-nums text-slate-800 border border-slate-200">
             <CalendarOutlined className="text-emerald-600" />
-            {v ? dayjs(v).format('DD/MM/YYYY') : '—'}
+            {v && dayjs(v).isValid() ? dayjs(v).format('DD/MM/YYYY') : '—'}
           </span>
         ),
       },
       {
         title: 'Trạng thái',
         key: 's',
-        width: 210,
+        width: 250,
         render: (_, r) => {
           const st = pick(PLACEMENT_STATUS, r.status);
+          const warrantyMeta = r.warrantyStatus
+            ? labelOf(WARRANTY_STATUS, r.warrantyStatus as WarrantyStatus)
+            : null;
+          const warrantyEndDt = r.warrantyEndDate && dayjs(r.warrantyEndDate).isValid()
+            ? dayjs(r.warrantyEndDate)
+            : null;
+          const warrantyDaysLeft = warrantyEndDt
+            ? warrantyEndDt.startOf('day').diff(dayjs().startOf('day'), 'day')
+            : null;
+          const feeMeta = r.serviceFeeStatus
+            ? labelOf(SERVICE_FEE_STATUS, r.serviceFeeStatus as ServiceFeeStatus)
+            : null;
+          const formattedEndDate = r.endDate && dayjs(r.endDate).isValid()
+            ? `Nghỉ ${dayjs(r.endDate).format('DD/MM/YYYY')}`
+            : null;
           const resignationMeta =
-            r.endDate || r.resignationReason ? (
+            formattedEndDate || r.resignationReason ? (
               <div className="text-[11px] text-slate-600 line-clamp-2" title={r.resignationReason ?? undefined}>
-                {[r.endDate ? `Nghỉ ${dayjs(r.endDate).format('DD/MM/YYYY')}` : null, r.resignationReason]
+                {[formattedEndDate, r.resignationReason]
                   .filter(Boolean)
                   .join(' · ')}
               </div>
             ) : null;
+          const warrantyAndFeeInfo = (
+            <>
+              {(warrantyMeta || warrantyEndDt) && (
+                <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-600">
+                  {warrantyMeta && <StatusDot tone={warrantyMeta.tone}>{warrantyMeta.label}</StatusDot>}
+                  {warrantyEndDt && (
+                    <span className="tabular-nums text-slate-500">
+                      Hết BH {warrantyEndDt.format('DD/MM/YYYY')}
+                      {r.warrantyStatus === 'ACTIVE' && warrantyDaysLeft != null && warrantyDaysLeft >= 0
+                        ? ` (${warrantyDaysLeft === 0 ? 'hôm nay' : `còn ${warrantyDaysLeft} ngày`})`
+                        : ''}
+                    </span>
+                  )}
+                </div>
+              )}
+              {feeMeta && (
+                <div className="text-[11px] text-slate-600">
+                  Phí dịch vụ: <span className="font-semibold text-slate-800">{feeMeta.label}</span>
+                </div>
+              )}
+            </>
+          );
           if (r.status === 'RESIGNED') {
             return (
               <div className="py-1 space-y-1">
@@ -624,6 +689,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
                   Đã nghỉ việc
                 </span>
                 {resignationMeta}
+                {warrantyAndFeeInfo}
               </div>
             );
           }
@@ -631,6 +697,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             <div className="py-1 space-y-1">
               <StatusDot tone={st.tone}>{st.label}</StatusDot>
               {resignationMeta}
+              {warrantyAndFeeInfo}
             </div>
           );
         },
@@ -642,7 +709,9 @@ export const ClientInterviewsOffersPage: React.FC = () => {
         align: 'right',
         render: (_, r) => (
           <div className="flex flex-wrap items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-            {r.status === 'STARTED' && (
+            {r.status === 'STARTED' &&
+              (!r.warrantyStatus || r.warrantyStatus === 'ACTIVE') &&
+              (!r.serviceTypeCode || r.serviceTypeCode === 'HEADHUNT_COD') && (
               <Button
                 size="small"
                 className="!h-8 !rounded-lg !border-slate-300 text-slate-700 hover:!border-rose-300 hover:!text-rose-600 hover:!bg-rose-50 font-semibold text-xs transition-all active:scale-[0.98]"

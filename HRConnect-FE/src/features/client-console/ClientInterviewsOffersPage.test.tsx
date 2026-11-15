@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from 'antd';
+import dayjs from 'dayjs';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -239,5 +240,95 @@ describe('Client › Phỏng vấn & Offer', () => {
     const resignedRow = screen.getByText('Nhân Sự Đã Nghỉ').closest('tr')!;
     expect(within(resignedRow).getByRole('link', { name: 'Chi tiết bảo hành' })).toHaveAttribute('href', '/client/placements/pl-resigned');
     expect(within(resignedRow).getByText(/Nghỉ 10\/11\/2026 · Chuyển nơi ở/)).toBeInTheDocument();
+  });
+
+  it('shows lastStatusReason on cancelled/rescheduled interviews and warranty, fee, replacement and service details on placements', async () => {
+    interviewsMock.mockImplementation(async (p) => {
+      if (p.pageSize === 1) return { items: [], total: 2, page: 1, pageSize: 1 } as never;
+      return {
+        items: [
+          makeInterview({
+            interviewId: 'iv-cancel',
+            candidateName: 'Ứng Viên Đã Hủy',
+            status: 'CANCELLED',
+            lastStatusReason: 'Ứng viên bận đột xuất',
+          }),
+          makeInterview({
+            interviewId: 'iv-null',
+            candidateName: 'Ứng Viên Bình Thường',
+            status: 'SCHEDULED',
+            lastStatusReason: null,
+          }),
+        ],
+        total: 2,
+        page: 1,
+        pageSize: 10,
+      } as never;
+    });
+
+    renderPage('/client/interviews-offers?tab=interviews&status=all');
+    const cancelledRow = (await screen.findByText('Ứng Viên Đã Hủy')).closest('tr')!;
+    expect(within(cancelledRow).getByText('Lý do: Ứng viên bận đột xuất')).toBeInTheDocument();
+    const normalIvRow = screen.getByText('Ứng Viên Bình Thường').closest('tr')!;
+    expect(within(normalIvRow).queryByText(/Lý do:|undefined/)).toBeNull();
+
+    const futureWarrantyDate = dayjs().add(5, 'day').format('YYYY-MM-DD');
+    placementsMock.mockImplementation(async (p) => {
+      if (p.pageSize === 1) return { items: [], total: 3, page: 1, pageSize: 1 } as never;
+      return {
+        items: [
+          makePlacement({
+            placementId: 'pl-enriched',
+            status: 'STARTED',
+            warrantyStatus: 'ACTIVE',
+            warrantyEndDate: futureWarrantyDate,
+            serviceFeeStatus: 'PAID',
+            isReplacement: true,
+            serviceTypeCode: 'HEADHUNT_COD',
+            candidate: { candidateId: 'c3', fullName: 'Nhân Sự Bảo Hành', email: 'c3@x.com', phoneNumber: null },
+          }),
+          makePlacement({
+            placementId: 'pl-claimed',
+            status: 'STARTED',
+            warrantyStatus: 'CLAIMED',
+            warrantyEndDate: futureWarrantyDate,
+            serviceFeeStatus: 'PAID',
+            serviceTypeCode: 'HEADHUNT_COD',
+            endDate: '2026-11-12',
+            resignationReason: 'Chờ HR xác nhận',
+            candidate: { candidateId: 'c3b', fullName: 'Nhân Sự Đang Claim', email: 'c3b@x.com', phoneNumber: null },
+          }),
+          makePlacement({
+            placementId: 'pl-plain',
+            status: 'STARTED',
+            warrantyStatus: null,
+            warrantyEndDate: null,
+            serviceFeeStatus: null,
+            isReplacement: false,
+            serviceTypeCode: null,
+            candidate: { candidateId: 'c4', fullName: 'Nhân Sự Null', email: 'c4@x.com', phoneNumber: null },
+          }),
+        ],
+        total: 3,
+        page: 1,
+        pageSize: 10,
+      } as never;
+    });
+
+    renderPage('/client/interviews-offers?tab=placements&status=all');
+    const enrichedRow = (await screen.findByText('Nhân Sự Bảo Hành')).closest('tr')!;
+    expect(within(enrichedRow).getByText('Tuyển dụng theo kết quả')).toBeInTheDocument();
+    expect(within(enrichedRow).getByText('Thay thế')).toBeInTheDocument();
+    expect(within(enrichedRow).getByText('Đang bảo hành')).toBeInTheDocument();
+    expect(within(enrichedRow).getByText(/Hết BH .*còn 5 ngày/)).toBeInTheDocument();
+    expect(within(enrichedRow).getByText('Đã thanh toán')).toBeInTheDocument();
+    expect(within(enrichedRow).getByRole('button', { name: 'Báo nghỉ việc' })).toBeInTheDocument();
+
+    const claimedRow = screen.getByText('Nhân Sự Đang Claim').closest('tr')!;
+    expect(within(claimedRow).getByText('Báo nghỉ — chờ xác minh')).toBeInTheDocument();
+    expect(within(claimedRow).queryByRole('button', { name: 'Báo nghỉ việc' })).toBeNull();
+
+    const plainRow = screen.getByText('Nhân Sự Null').closest('tr')!;
+    expect(within(plainRow).queryByText(/Invalid Date|undefined|Thay thế/)).toBeNull();
   });
 });

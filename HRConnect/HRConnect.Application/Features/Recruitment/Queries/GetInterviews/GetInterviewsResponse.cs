@@ -65,6 +65,8 @@ public class InterviewItemDto
 
     public string? Feedback { get; set; }
 
+    public string? LastStatusReason { get; init; }
+
     public string? CandidateAttendanceStatus { get; set; }
 
     public DateTime? CandidateRespondedAt { get; set; }

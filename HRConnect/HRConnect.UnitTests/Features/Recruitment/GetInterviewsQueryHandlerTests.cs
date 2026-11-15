@@ -306,4 +306,58 @@ public class GetInterviewsQueryHandlerTests
         GetInterviewsQueryHandler.ToUtc(unspecified)!.Value.Kind.Should().Be(DateTimeKind.Utc);
         GetInterviewsQueryHandler.ToUtc(unspecified)!.Value.Should().Be(utc);
     }
+
+    [Fact]
+    public async Task Handle_LastStatusReason_ShouldBeReturnedToClientAndHiddenFromCandidate()
+    {
+        var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var interview = CreateSampleInterview(companyId, "CANCELLED");
+        interview.InterviewStatusHistories.Add(new InterviewStatusHistory
+        {
+            InterviewStatusHistoryId = Guid.NewGuid(),
+            InterviewId = interview.InterviewId,
+            OldStatus = "SCHEDULED",
+            NewStatus = "SCHEDULED",
+            Reason = "Dời lịch theo yêu cầu manager",
+            ChangedAt = DateTime.UtcNow.AddDays(-2)
+        });
+        interview.InterviewStatusHistories.Add(new InterviewStatusHistory
+        {
+            InterviewStatusHistoryId = Guid.NewGuid(),
+            InterviewId = interview.InterviewId,
+            OldStatus = "SCHEDULED",
+            NewStatus = "CANCELLED",
+            Reason = "Đã tuyển đủ vị trí",
+            ChangedAt = DateTime.UtcNow.AddDays(-1)
+        });
+        interview.InterviewStatusHistories.Add(new InterviewStatusHistory
+        {
+            InterviewStatusHistoryId = Guid.NewGuid(),
+            InterviewId = interview.InterviewId,
+            OldStatus = "CANCELLED",
+            NewStatus = "CANCELLED",
+            Reason = "   ",
+            ChangedAt = DateTime.UtcNow
+        });
+
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
+
+        _interviewRepositoryMock
+            .Setup(r => r.GetInterviewsAsync(
+                It.IsAny<Guid?>(), It.IsAny<Guid?>(), null, null, null, null, null, null, null, 1, 10, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(([interview], 1));
+
+        var clientResult = await CreateHandler().Handle(
+            new GetInterviewsQuery(UserId: userId, IsClientCompanyUser: true, IsInternalHrOrAdmin: false),
+            CancellationToken.None);
+        clientResult.Data.Items.Single().LastStatusReason.Should().Be("Đã tuyển đủ vị trí");
+
+        var candidateResult = await CreateHandler().Handle(
+            new GetInterviewsQuery(UserId: Guid.NewGuid(), IsClientCompanyUser: false, IsInternalHrOrAdmin: false, IsCandidate: true),
+            CancellationToken.None);
+        candidateResult.Data.Items.Single().LastStatusReason.Should().BeNull();
+    }
 }

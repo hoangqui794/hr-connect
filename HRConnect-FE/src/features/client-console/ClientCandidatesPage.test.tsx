@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from 'antd';
+import dayjs from 'dayjs';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -160,6 +161,82 @@ describe('Client › Hồ sơ ứng viên', () => {
 
     const openRow = screen.getByText('Ứng Viên Không Email').closest('tr')!;
     expect(within(openRow).getByText('Chưa có email')).toBeInTheDocument();
+  });
+
+  it('shows closed status reason, sent offer expiry, sourcing review due date, replacement and source badges without Invalid Date', async () => {
+    const tomorrow = dayjs().add(1, 'day').format('YYYY-MM-DD');
+    const pastIso = dayjs().subtract(2, 'day').toISOString();
+    listMock.mockImplementation(async (p) => {
+      if (p.pageSize === 1) return { items: [], total: 4, page: 1, pageSize: 1 } as never;
+      return {
+        items: [
+          row({
+            applicationId: 'a-rej',
+            candidateName: 'Ứng Viên Bị Loại',
+            status: 'REJECTED',
+            statusReasonCode: 'INSUFFICIENT_EXPERIENCE',
+            statusReason: 'Thiếu kinh nghiệm cloud',
+            isReplacement: true,
+            source: 'AFFILIATE',
+          }),
+          row({
+            applicationId: 'a-offer',
+            candidateName: 'Ứng Viên Chờ Offer',
+            status: 'OFFER_PENDING',
+            latestOfferStatus: 'SENT',
+            latestOfferExpiryDate: tomorrow,
+            source: 'CANDIDATE',
+          }),
+          row({
+            applicationId: 'a-src',
+            candidateName: 'Ứng Viên Sourcing',
+            status: 'SHORTLISTED',
+            serviceTypeCode: 'CV_SOURCING',
+            sourcingDeliveryStatus: 'DELIVERED',
+            sourcingReviewDueAt: pastIso,
+          }),
+          row({
+            applicationId: 'a-not-started',
+            candidateName: 'Ứng Viên Không Nhận Việc',
+            status: 'NOT_STARTED',
+            statusReasonCode: 'CANDIDATE_NO_SHOW',
+            statusReason: null,
+          }),
+          row({
+            applicationId: 'a-null',
+            candidateName: 'Ứng Viên Null',
+            status: 'REJECTED',
+            statusReason: null,
+            statusReasonCode: null,
+            latestOfferExpiryDate: null,
+            sourcingReviewDueAt: null,
+            isReplacement: false,
+            source: null,
+          }),
+        ],
+        total: 5, page: 1, pageSize: 10,
+      } as never;
+    });
+    renderPage();
+
+    const rejRow = (await screen.findByText('Ứng Viên Bị Loại')).closest('tr')!;
+    expect(within(rejRow).getByText(/Lý do: Chưa đủ kinh nghiệm: Thiếu kinh nghiệm cloud/)).toBeInTheDocument();
+    expect(within(rejRow).getByText('Suất thay thế')).toBeInTheDocument();
+    expect(within(rejRow).getByText('Từ HR Connect · CTV')).toBeInTheDocument();
+
+    const notStartedRow = screen.getByText('Ứng Viên Không Nhận Việc').closest('tr')!;
+    expect(within(notStartedRow).getByText('Lý do: Ứng viên không đến vào ngày hẹn')).toBeInTheDocument();
+
+    const offerRow = screen.getByText('Ứng Viên Chờ Offer').closest('tr')!;
+    expect(within(offerRow).getByText(/Hạn offer:.*còn 1 ngày/)).toBeInTheDocument();
+    expect(within(offerRow).getByText('Ứng tuyển trực tiếp')).toBeInTheDocument();
+
+    const srcRow = screen.getByText('Ứng Viên Sourcing').closest('tr')!;
+    expect(within(srcRow).getByText('Đã quá hạn phản hồi CV')).toBeInTheDocument();
+
+    const nullRow = screen.getByText('Ứng Viên Null').closest('tr')!;
+    expect(within(nullRow).queryByText(/Lý do:/)).toBeNull();
+    expect(within(nullRow).queryByText(/Invalid Date|undefined/)).toBeNull();
   });
 });
 
