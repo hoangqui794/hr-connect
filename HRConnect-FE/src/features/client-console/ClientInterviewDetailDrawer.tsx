@@ -561,8 +561,8 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                               >
                                 <div className="font-semibold text-slate-900">
                                   {item.oldStatus
-                                    ? `${item.oldStatus} → ${item.newStatus}`
-                                    : item.newStatus}
+                                    ? `${pick(INTERVIEW_STATUS, item.oldStatus).label} → ${pick(INTERVIEW_STATUS, item.newStatus).label}`
+                                    : pick(INTERVIEW_STATUS, item.newStatus).label}
                                 </div>
                                 {(item.oldScheduledAt || item.newScheduledAt) && (
                                   <div className="mt-1 text-xs text-slate-600">

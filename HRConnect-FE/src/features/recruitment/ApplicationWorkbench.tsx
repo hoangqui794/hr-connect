@@ -1736,7 +1736,9 @@ export const ApplicationWorkbench: React.FC<{
             {interviewHistory.data!.map((item) => (
               <li key={item.historyId} className="border-0 border-l-2 border-solid border-blue-300 pl-4 text-sm">
                 <div className="font-medium text-slate-900">
-                  {item.oldStatus ? `${item.oldStatus} → ${item.newStatus}` : item.newStatus}
+                  {item.oldStatus
+                    ? `${pick(INTERVIEW_STATUS, item.oldStatus).label} → ${pick(INTERVIEW_STATUS, item.newStatus).label}`
+                    : pick(INTERVIEW_STATUS, item.newStatus).label}
                 </div>
                 {(item.oldScheduledAt || item.newScheduledAt) && (
                   <div className="mt-1 text-slate-600">
