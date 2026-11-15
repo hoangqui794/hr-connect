@@ -70,6 +70,114 @@ const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 
 type AgreementTabKey = 'ALL' | 'PENDING_AGREEMENT' | 'PENDING_PAYMENT' | 'ACTIVE' | 'CLOSED';
 
+const AGREEMENT_STATUS_STYLE: Record<
+  string,
+  { bg: string; text: string; border: string; label: string }
+> = {
+  DRAFT: { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200', label: 'Dự thảo' },
+  SENT_TO_CLIENT: { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200', label: 'Chờ phản hồi' },
+  CHANGE_REQUESTED: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', label: 'Yêu cầu điều chỉnh' },
+  ACCEPTED: { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', label: 'Đã chấp thuận' },
+  AWAITING_SIGNATURE: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', label: 'Chờ nộp HĐ đã ký' },
+  SIGNED: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', label: 'Đã ký kết' },
+  VOID: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', label: 'Đã hủy' },
+  LEGACY_CONFIRMED: { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200', label: 'Đã xác nhận' },
+};
+
+const renderAgreementStatusBadge = (status: string, variant: 'pill' | 'tag' = 'pill') => {
+  const meta = AGREEMENT_STATUS_STYLE[status] ?? {
+    bg: 'bg-slate-100',
+    text: 'text-slate-700',
+    border: 'border-slate-200',
+    label: SERVICE_AGREEMENT_STATUS[status as keyof typeof SERVICE_AGREEMENT_STATUS]?.label ?? status,
+  };
+  const base =
+    variant === 'pill'
+      ? 'font-bold text-xs rounded-full border px-2.5 py-0.5'
+      : 'font-semibold text-xs rounded px-2 py-0.5 border';
+  return <span className={`${base} ${meta.bg} ${meta.text} ${meta.border}`}>{meta.label}</span>;
+};
+
+const formatAgreementTime = (value?: string | null): string | null => {
+  if (!value) return null;
+  const parsed = dayjs(value);
+  return parsed.isValid() ? parsed.format('DD/MM/YYYY HH:mm') : null;
+};
+
+/** Computes Headhunt fee context (% of annual salary + estimated fee from job salary range). */
+const formatHeadhuntFeeContext = (
+  feeMultiplier?: number | null,
+  job?: Job | null
+): { annualPercentText: string; salaryEstimateText: string | null } | null => {
+  if (feeMultiplier == null || feeMultiplier <= 0) return null;
+  const annualPctRaw = Math.round((feeMultiplier / 12) * 100 * 10) / 10;
+  const annualPctLabel = Number.isInteger(annualPctRaw) ? `${annualPctRaw}` : annualPctRaw.toFixed(1);
+  const annualPercentText = `~${annualPctLabel}% tổng thu nhập năm`;
+
+  let salaryEstimateText: string | null = null;
+  if (job && !job.salaryNegotiable) {
+    const currency = job.currencyCode || 'VND';
+    const minFee = job.salaryMin != null && job.salaryMin > 0 ? Math.round(job.salaryMin * feeMultiplier) : null;
+    const maxFee = job.salaryMax != null && job.salaryMax > 0 ? Math.round(job.salaryMax * feeMultiplier) : null;
+    if (minFee != null && maxFee != null && minFee !== maxFee) {
+      salaryEstimateText = `Ước tính ${formatMoney(minFee, currency)} – ${formatMoney(maxFee, currency)}`;
+    } else if (minFee != null || maxFee != null) {
+      salaryEstimateText = `Ước tính ${formatMoney((minFee ?? maxFee)!, currency)}`;
+    }
+  }
+  return { annualPercentText, salaryEstimateText };
+};
+
+/** Summarizes commercial term changes between consecutive agreement versions. */
+const buildAgreementDiffMap = (agreements: ServiceAgreementDto[]): Map<string, string[]> => {
+  const map = new Map<string, string[]>();
+  if (agreements.length === 0) return map;
+
+  const sorted = [...agreements].sort(
+    (a, b) => a.version - b.version || dayjs(a.createdAt).valueOf() - dayjs(b.createdAt).valueOf()
+  );
+  sorted.forEach((curr, idx) => {
+    if (idx === 0) {
+      map.set(curr.serviceAgreementId, ['Bản khởi tạo']);
+      return;
+    }
+    const prev = sorted[idx - 1];
+    const diffs: string[] = [];
+    const norm = (v?: number | null) => v ?? null;
+    const fmt = (v?: number | null, suffix = '') => (v != null ? `${v}${suffix}` : '—');
+
+    if (norm(prev.feeMultiplier) !== norm(curr.feeMultiplier)) {
+      diffs.push(`Phí tuyển dụng: ${fmt(prev.feeMultiplier, ' tháng')} → ${fmt(curr.feeMultiplier, ' tháng')}`);
+    }
+    if (norm(prev.warrantyDays) !== norm(curr.warrantyDays)) {
+      diffs.push(`Bảo hành: ${fmt(prev.warrantyDays, ' ngày')} → ${fmt(curr.warrantyDays, ' ngày')}`);
+    }
+    if (norm(prev.paymentDueDays) !== norm(curr.paymentDueDays)) {
+      diffs.push(`Hạn thanh toán: ${fmt(prev.paymentDueDays, ' ngày')} → ${fmt(curr.paymentDueDays, ' ngày')}`);
+    }
+    if (norm(prev.sourcingTarget) !== norm(curr.sourcingTarget)) {
+      diffs.push(`CV mục tiêu: ${fmt(prev.sourcingTarget, ' hồ sơ')} → ${fmt(curr.sourcingTarget, ' hồ sơ')}`);
+    }
+    if (norm(prev.pricePerQualifiedCv) !== norm(curr.pricePerQualifiedCv)) {
+      const pOld = prev.pricePerQualifiedCv != null ? formatMoney(prev.pricePerQualifiedCv, 'VND') : '—';
+      const pNew = curr.pricePerQualifiedCv != null ? formatMoney(curr.pricePerQualifiedCv, 'VND') : '—';
+      diffs.push(`Đơn giá CV: ${pOld} → ${pNew}`);
+    }
+    if (norm(prev.reviewDays) !== norm(curr.reviewDays)) {
+      diffs.push(`Xem xét CV: ${fmt(prev.reviewDays, ' ngày')} → ${fmt(curr.reviewDays, ' ngày')}`);
+    }
+    if (norm(prev.depositPercent) !== norm(curr.depositPercent)) {
+      diffs.push(`Tỷ lệ cọc: ${fmt(prev.depositPercent, '%')} → ${fmt(curr.depositPercent, '%')}`);
+    }
+    if ((prev.agreementNote ?? '').trim() !== (curr.agreementNote ?? '').trim()) {
+      diffs.push('Cập nhật ghi chú bổ sung');
+    }
+
+    map.set(curr.serviceAgreementId, diffs.length > 0 ? diffs : ['Không đổi điều khoản thương mại']);
+  });
+  return map;
+};
+
 export const ClientServiceAgreementsPage: React.FC = () => {
   const { message } = AntApp.useApp();
   const navigate = useNavigate();
@@ -386,6 +494,12 @@ export const ClientServiceAgreementsPage: React.FC = () => {
   const DEPOSIT_PENDING_TEXT = 'HR Connect đang chốt số tiền cọc';
   const depositText = depositAmount != null ? formatMoney(depositAmount, 'VND') : null;
 
+  const agreementDiffMap = useMemo(() => buildAgreementDiffMap(historyAgreements), [historyAgreements]);
+  const headhuntFeeContext = useMemo(
+    () => formatHeadhuntFeeContext(currentAgreement?.feeMultiplier, activeJob),
+    [currentAgreement?.feeMultiplier, activeJob]
+  );
+
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
   return (
@@ -547,8 +661,12 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                   filteredJobs.map((job) => {
                     const isSelected = job.jobId === activeJobId;
                     const statusMeta = JOB_STATUS[job.status] ?? { label: job.status, color: 'default' };
+                    const isVoidedActive =
+                      job.jobId === activeJobId && currentAgreement?.status === 'VOID';
                     const isSignedPendingReview =
                       job.status === 'PENDING_AGREEMENT' &&
+                      job.agreementStatus !== 'VOID' &&
+                      !isVoidedActive &&
                       Boolean(
                         job.hasSignedAgreement ||
                           (job.jobId === activeJobId &&
@@ -716,32 +834,12 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           Thỏa thuận dịch vụ{' '}
                           {activeJob?.serviceTypeCode ? SERVICE_TYPE_LABEL[activeJob.serviceTypeCode]?.label : ''}
                         </Text>
-                        {(() => {
-                          const s = currentAgreement.status;
-                          const styles: Record<string, { bg: string; text: string; border: string; label: string }> = {
-                            DRAFT: { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200', label: 'Dự thảo' },
-                            SENT_TO_CLIENT: { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200', label: 'Chờ phản hồi' },
-                            CHANGE_REQUESTED: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', label: 'Yêu cầu điều chỉnh' },
-                            ACCEPTED: { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', label: 'Đã chấp thuận' },
-                            AWAITING_SIGNATURE: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', label: 'Chờ nộp HĐ đã ký' },
-                            SIGNED: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', label: 'Đã ký kết' },
-                            VOID: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', label: 'Đã hủy' },
-                            LEGACY_CONFIRMED: { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200', label: 'Đã xác nhận' },
-                          };
-                          const meta = styles[s] ?? {
-                            bg: 'bg-slate-100',
-                            text: 'text-slate-700',
-                            border: 'border-slate-200',
-                            label: SERVICE_AGREEMENT_STATUS[s]?.label ?? s,
-                          };
-                          return (
-                            <span className={`font-bold text-xs rounded-full border px-2.5 py-0.5 ${meta.bg} ${meta.text} ${meta.border}`}>
-                              {meta.label}
-                            </span>
-                          );
-                        })()}
+                        <Tag color="blue" className="m-0 font-bold border-0">
+                          v{currentAgreement.version}
+                        </Tag>
+                        {renderAgreementStatusBadge(currentAgreement.status, 'pill')}
                       </div>
-                      <div className="text-xs text-slate-500 mt-1.5 flex flex-wrap gap-4">
+                      <div className="text-xs text-slate-500 mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
                         <span>
                           Vị trí: <strong className="text-slate-800">{activeJob?.title}</strong>
                         </span>
@@ -751,14 +849,20 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                             {currentAgreement.verificationCode || 'Đang cấp'}
                           </code>
                         </span>
-                        <span>
-                          Tạo ngày: {dayjs(currentAgreement.createdAt).format('DD/MM/YYYY HH:mm')}
-                        </span>
-                        {currentAgreement.signedAt && (
-                          <span className="text-emerald-700 font-bold">
-                            Ký ngày: {dayjs(currentAgreement.signedAt).format('DD/MM/YYYY HH:mm')}
-                          </span>
-                        )}
+                        {[
+                          { label: 'Tạo ngày', value: currentAgreement.createdAt, cls: '' },
+                          { label: 'Gửi DN lúc', value: currentAgreement.sentToClientAt, cls: '' },
+                          { label: 'DN phản hồi lúc', value: currentAgreement.respondedAt, cls: '' },
+                          { label: 'Ký ngày', value: currentAgreement.signedAt, cls: 'text-emerald-700 font-bold' },
+                          { label: 'Hủy lúc', value: currentAgreement.voidedAt, cls: 'text-rose-700 font-bold' },
+                        ].map((m) => {
+                          const formatted = formatAgreementTime(m.value);
+                          return formatted ? (
+                            <span key={m.label} className={m.cls}>
+                              {m.label}: {formatted}
+                            </span>
+                          ) : null;
+                        })}
                       </div>
                     </div>
 
@@ -873,11 +977,18 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                       <div className="space-y-1">
                         <div className="font-bold">Đang chờ HR Connect xem xét yêu cầu điều chỉnh</div>
                         <div className="text-xs text-amber-800 leading-relaxed">
-                          Doanh nghiệp đã gửi yêu cầu điều chỉnh với nội dung:{' '}
-                          <span className="italic font-semibold">
-                            "{currentAgreement.changeRequestReason}"
-                          </span>
-                          . HR Connect sẽ xem xét và cập nhật lại bản hợp đồng trong thời gian sớm nhất.
+                          {currentAgreement.changeRequestReason?.trim() ? (
+                            <>
+                              Doanh nghiệp đã gửi yêu cầu điều chỉnh với nội dung:{' '}
+                              <span className="italic font-semibold">
+                                "{currentAgreement.changeRequestReason.trim()}"
+                              </span>
+                              .{' '}
+                            </>
+                          ) : (
+                            'Doanh nghiệp đã gửi yêu cầu điều chỉnh. '
+                          )}
+                          HR Connect sẽ xem xét và cập nhật lại bản hợp đồng trong thời gian sớm nhất.
                         </div>
                       </div>
                     </div>
@@ -889,19 +1000,111 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                       <div className="space-y-1">
                         <div className="font-bold">Hợp đồng dịch vụ đã có hiệu lực pháp lý</div>
                         <div className="text-xs text-emerald-800 leading-relaxed">
-                          Hợp đồng đã hoàn tất thủ tục ký kết giữa hai bên vào ngày{' '}
-                          {dayjs(currentAgreement.signedAt || currentAgreement.createdAt).format('DD/MM/YYYY HH:mm')}.
+                          {currentAgreement.signedAt
+                            ? `Hợp đồng đã hoàn tất thủ tục ký kết giữa hai bên vào ngày ${dayjs(currentAgreement.signedAt).format('DD/MM/YYYY HH:mm')}.`
+                            : 'Hợp đồng đã hoàn tất thủ tục ký kết giữa hai bên.'}
                         </div>
                       </div>
                     </div>
                   )}
+
+                  {currentAgreement.status === 'VOID' && (
+                    <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-4 text-rose-950 text-sm flex items-start gap-3">
+                      <InfoCircleOutlined className="text-rose-600 text-lg mt-0.5 shrink-0" />
+                      <div className="space-y-1">
+                        <div className="font-bold text-rose-900">Thỏa thuận phiên bản này đã bị hủy</div>
+                        <div className="text-xs text-rose-800 leading-relaxed">
+                          {formatAgreementTime(currentAgreement.voidedAt)
+                            ? `Hợp đồng đã được hủy lúc ${formatAgreementTime(currentAgreement.voidedAt)}. `
+                            : ''}
+                          {currentAgreement.voidReason?.trim() ? (
+                            <>
+                              Lý do hủy: <span className="font-semibold">{currentAgreement.voidReason.trim()}</span>.
+                            </>
+                          ) : (
+                            'Vui lòng theo dõi phiên bản mới hoặc liên hệ HR Connect nếu cần hỗ trợ.'
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Legal Entity & Signer Summary ── */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 rounded-xl border border-slate-200/80 bg-slate-50/50 p-4">
+                    <div className="space-y-1">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        Bên sử dụng dịch vụ
+                      </div>
+                      <div className="text-xs font-bold text-slate-900">{currentAgreement.companyName}</div>
+                      {currentAgreement.companyTaxCode?.trim() && (
+                        <div className="text-xs text-slate-600">
+                          MST: <span className="font-medium text-slate-800">{currentAgreement.companyTaxCode.trim()}</span>
+                        </div>
+                      )}
+                      {currentAgreement.companyAddress?.trim() && (
+                        <div className="text-xs text-slate-600 leading-snug">
+                          Địa chỉ: {currentAgreement.companyAddress.trim()}
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-1 md:border-l md:border-slate-200/80 md:pl-4">
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        Đại diện ký &amp; xác nhận
+                      </div>
+                      {(() => {
+                        const hasSignerIdentity = Boolean(
+                          currentAgreement.signerName || currentAgreement.signerRole || currentAgreement.signerEmail
+                        );
+                        const consentTime = formatAgreementTime(currentAgreement.consentAcceptedAt);
+                        const signedTime = formatAgreementTime(currentAgreement.signedAt);
+
+                        if (!hasSignerIdentity && !consentTime && !currentAgreement.hasSignedDocument) {
+                          return <div className="text-xs text-slate-500">Chưa có thông tin người ký</div>;
+                        }
+
+                        return (
+                          <>
+                            {currentAgreement.signerName && (
+                              <div className="text-xs font-bold text-slate-900">
+                                {currentAgreement.signerName}
+                                {currentAgreement.signerRole ? (
+                                  <span className="font-normal text-slate-600"> · {currentAgreement.signerRole}</span>
+                                ) : null}
+                              </div>
+                            )}
+                            {!currentAgreement.signerName && currentAgreement.signerRole && (
+                              <div className="text-xs font-semibold text-slate-800">{currentAgreement.signerRole}</div>
+                            )}
+                            {currentAgreement.signerEmail && (
+                              <div className="text-xs text-slate-600">{currentAgreement.signerEmail}</div>
+                            )}
+                            {consentTime ? (
+                              <div className="text-xs text-emerald-700 font-medium">
+                                Đồng ý điều khoản lúc {consentTime}
+                              </div>
+                            ) : currentAgreement.hasSignedDocument ? (
+                              <div className="text-xs text-emerald-700 font-medium">
+                                Đã tải lên bản ký{signedTime ? ` · Ngày ký ${signedTime}` : ''}
+                              </div>
+                            ) : null}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
 
                   {/* ── Commercial Terms Summary Grid ── */}
                   <div className="space-y-3">
                     <div className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                       Điều khoản thương mại chính
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div
+                      className={
+                        activeJob?.serviceTypeCode === 'HEADHUNT_COD'
+                          ? 'grid grid-cols-2 sm:grid-cols-4 gap-3'
+                          : 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3'
+                      }
+                    >
                       {activeJob?.serviceTypeCode === 'HEADHUNT_COD' ? (
                         <>
                           <div className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/70">
@@ -909,6 +1112,14 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                             <span className="text-base font-black text-slate-900">
                               {currentAgreement.feeMultiplier != null ? `${currentAgreement.feeMultiplier} tháng lương` : 'Theo thỏa thuận'}
                             </span>
+                            {headhuntFeeContext && (
+                              <div className="mt-1 space-y-0.5 text-[11px] text-slate-600 leading-snug">
+                                <div>{headhuntFeeContext.annualPercentText}</div>
+                                {headhuntFeeContext.salaryEstimateText && (
+                                  <div className="font-semibold text-slate-700">{headhuntFeeContext.salaryEstimateText}</div>
+                                )}
+                              </div>
+                            )}
                           </div>
                           <div className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/70">
                             <span className="text-xs text-slate-500 font-medium block">Thời gian bảo hành</span>
@@ -948,6 +1159,12 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                             <span className="text-xs text-slate-500 font-medium block">Tổng phí dự kiến</span>
                             <span className="text-base font-black text-slate-900">
                               {sourcingEstimatedTotal != null ? formatMoney(sourcingEstimatedTotal, 'VND') : '—'}
+                            </span>
+                          </div>
+                          <div className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/70">
+                            <span className="text-xs text-slate-500 font-medium block">Thời hạn xem xét CV</span>
+                            <span className="text-base font-black text-slate-900">
+                              {currentAgreement.reviewDays != null ? `${currentAgreement.reviewDays} ngày` : '—'}
                             </span>
                           </div>
                           <div className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/70">
@@ -1023,7 +1240,19 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           </div>
                           <div className="text-xs text-slate-500 mt-0.5">
                             {currentAgreement.hasSignedDocument
-                              ? `${currentAgreement.signedAt ? `Nộp lúc ${dayjs(currentAgreement.signedAt).format('DD/MM/YYYY HH:mm')} · ` : ''}Đang chờ HR Connect duyệt`
+                              ? (() => {
+                                  const time = formatAgreementTime(currentAgreement.signedAt);
+                                  if (
+                                    currentAgreement.status === 'SIGNED' ||
+                                    currentAgreement.status === 'LEGACY_CONFIRMED'
+                                  ) {
+                                    return `${time ? `Ký lúc ${time} · ` : ''}Đã xác nhận hiệu lực`;
+                                  }
+                                  if (currentAgreement.status === 'VOID') {
+                                    return `${time ? `Nộp lúc ${time} · ` : ''}Phiên bản đã hủy`;
+                                  }
+                                  return `${time ? `Nộp lúc ${time} · ` : ''}Đang chờ HR Connect duyệt`;
+                                })()
                               : 'Bản hợp đồng có chữ ký / con dấu của doanh nghiệp'}
                           </div>
                         </div>
@@ -1103,53 +1332,90 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                       rowKey="serviceAgreementId"
                       pagination={false}
                       size="middle"
+                      scroll={{ x: 'max-content' }}
                       className="admin-soft-table"
                       columns={[
                         {
                           title: 'Phiên bản',
                           dataIndex: 'version',
                           key: 'version',
-                          render: (v: number) => <Tag color="blue" className="font-bold border-0">v{v}</Tag>,
+                          render: (v: number, r: ServiceAgreementDto) => (
+                            <div className="flex items-center gap-1.5">
+                              <Tag color="blue" className="m-0 font-bold border-0">v{v}</Tag>
+                              {r.isCurrent && (
+                                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5">
+                                  Hiện tại
+                                </span>
+                              )}
+                            </div>
+                          ),
                         },
                         {
                           title: 'Trạng thái',
                           dataIndex: 'status',
                           key: 'status',
-                          render: (st: string) => {
-                            const styles: Record<string, { bg: string; text: string; border: string; label: string }> = {
-                              DRAFT: { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200', label: 'Dự thảo' },
-                              SENT_TO_CLIENT: { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200', label: 'Chờ phản hồi' },
-                              CHANGE_REQUESTED: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', label: 'Yêu cầu điều chỉnh' },
-                              ACCEPTED: { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', label: 'Đã chấp thuận' },
-                              AWAITING_SIGNATURE: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', label: 'Chờ nộp HĐ đã ký' },
-                              SIGNED: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', label: 'Đã ký kết' },
-                              VOID: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', label: 'Đã hủy' },
-                              LEGACY_CONFIRMED: { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200', label: 'Đã xác nhận' },
-                            };
-                            const meta = styles[st] ?? {
-                              bg: 'bg-slate-100',
-                              text: 'text-slate-700',
-                              border: 'border-slate-200',
-                              label: SERVICE_AGREEMENT_STATUS[st as keyof typeof SERVICE_AGREEMENT_STATUS]?.label ?? st,
-                            };
+                          render: (st: string) => renderAgreementStatusBadge(st, 'tag'),
+                        },
+                        {
+                          title: 'Ngày tạo & mốc chính',
+                          dataIndex: 'createdAt',
+                          key: 'createdAt',
+                          render: (d: string, r: ServiceAgreementDto) => {
+                            const sent = formatAgreementTime(r.sentToClientAt);
+                            const responded = formatAgreementTime(r.respondedAt);
+                            const signed = formatAgreementTime(r.signedAt);
+                            const voided = formatAgreementTime(r.voidedAt);
                             return (
-                              <span className={`font-semibold text-xs rounded px-2 py-0.5 border ${meta.bg} ${meta.text} ${meta.border}`}>
-                                {meta.label}
-                              </span>
+                              <div className="space-y-0.5 text-xs">
+                                <div className="font-medium text-slate-800">{dayjs(d).format('DD/MM/YYYY HH:mm')}</div>
+                                {sent && <div className="text-slate-500">Gửi DN: {sent}</div>}
+                                {responded && <div className="text-slate-500">Phản hồi: {responded}</div>}
+                                {signed && <div className="text-emerald-700 font-medium">Ký: {signed}</div>}
+                                {voided && <div className="text-rose-700 font-medium">Hủy: {voided}</div>}
+                              </div>
                             );
                           },
                         },
                         {
-                          title: 'Ngày tạo',
-                          dataIndex: 'createdAt',
-                          key: 'createdAt',
-                          render: (d: string) => dayjs(d).format('DD/MM/YYYY HH:mm'),
+                          title: 'Thay đổi so với bản trước',
+                          key: 'diff',
+                          render: (_: unknown, r: ServiceAgreementDto) => {
+                            const diffs = agreementDiffMap.get(r.serviceAgreementId) ?? [];
+                            if (diffs.length === 0) return '—';
+                            return (
+                              <ul className="m-0 pl-3.5 text-xs text-slate-700 space-y-0.5 max-w-[260px]">
+                                {diffs.map((item) => (
+                                  <li key={item}>{item}</li>
+                                ))}
+                              </ul>
+                            );
+                          },
                         },
                         {
                           title: 'Phản hồi / Ghi chú',
                           key: 'note',
-                          render: (_: unknown, r: ServiceAgreementDto) =>
-                            r.changeRequestReason || r.agreementNote || '—',
+                          render: (_: unknown, r: ServiceAgreementDto) => {
+                            const lines: { label: string; text: string; cls: string }[] = [];
+                            if (r.voidReason?.trim()) {
+                              lines.push({ label: 'Lý do hủy', text: r.voidReason.trim(), cls: 'text-rose-700 font-medium' });
+                            }
+                            if (r.changeRequestReason?.trim()) {
+                              lines.push({ label: 'Đề xuất chỉnh sửa', text: r.changeRequestReason.trim(), cls: 'text-amber-800' });
+                            }
+                            if (r.agreementNote?.trim()) {
+                              lines.push({ label: 'Ghi chú HR', text: r.agreementNote.trim(), cls: 'text-slate-600' });
+                            }
+                            if (lines.length === 0) return '—';
+                            return (
+                              <div className="space-y-1 text-xs max-w-[260px]">
+                                {lines.map((item) => (
+                                  <div key={item.label} className={item.cls}>
+                                    <span className="font-semibold">{item.label}:</span> {item.text}
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          },
                         },
                         {
                           title: 'Tài liệu',

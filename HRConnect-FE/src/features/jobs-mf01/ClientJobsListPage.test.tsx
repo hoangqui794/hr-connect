@@ -16,7 +16,9 @@ vi.mock('@/services/api/hrApi', () => ({ screeningApi: { counts: vi.fn() } }));
 vi.mock('@/services/api/jobsApi', () => ({ jobsApi: { getById: vi.fn() } }));
 vi.mock('./JobDetailPanel', () => ({
   JobDetailPanel: () => null,
-  JobStatusTag: ({ status }: { status: string }) => <span>{status}</span>,
+  JobStatusTag: ({ status, isChangeRequested }: { status: string; isChangeRequested?: boolean }) => (
+    <span>{status === 'PENDING_AGREEMENT' && isChangeRequested ? 'DN yêu cầu sửa' : status}</span>
+  ),
 }));
 vi.mock('./PaymentDemoModal', () => ({ PaymentDemoModal: () => null }));
 
@@ -132,5 +134,22 @@ describe('ClientJobsListPage', () => {
     expect(screen.getByText(/3\.000\.000/)).toBeInTheDocument();
     expect(screen.queryByText(/1\.500\.000/)).toBeNull();
     expect(screen.getByText('Hạn nộp cọc 20/11/2026')).toBeInTheDocument();
+  });
+
+  it('passes isChangeRequested to JobStatusTag and displays applicationDeadline and expiresAt', async () => {
+    jobs.data = [
+      job({
+        title: 'Senior Go',
+        status: 'PENDING_AGREEMENT',
+        agreementStatus: 'CHANGE_REQUESTED',
+        applicationDeadline: '2026-11-25T00:00:00Z',
+        expiresAt: '2026-12-15T00:00:00Z',
+      }),
+    ];
+    renderPage();
+
+    expect(await screen.findByText('DN yêu cầu sửa')).toBeInTheDocument();
+    expect(screen.getByText('Hạn nộp: 25/11/2026')).toBeInTheDocument();
+    expect(screen.getByText('Hết hạn tin: 15/12/2026')).toBeInTheDocument();
   });
 });

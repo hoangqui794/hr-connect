@@ -93,6 +93,9 @@ describe('ClientBillingPage', () => {
     expect(screen.getByText('Suất thay thế hết hạn ngày 11/11/2026 mà chưa có ứng viên nào. HR Connect hoàn 30% phí đã trả.')).toBeInTheDocument();
     expect(screen.getByText((t) => t.includes('trước 13/11/2026'))).toBeInTheDocument();
     expect(screen.getByText('Chờ hoàn tiền')).toBeInTheDocument();
+    expect(screen.getByText('HR Connect cần hoàn')).toBeInTheDocument();
+    expect(screen.getByText('1 khoản chờ hoàn tiền')).toBeInTheDocument();
+    expect(screen.getByText('0 khoản chưa thanh toán')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Thanh toán/ })).not.toBeInTheDocument();
   });
 
@@ -102,7 +105,9 @@ describe('ClientBillingPage', () => {
 
     const services = within(screen.getByRole('radiogroup', { name: 'Lọc theo dịch vụ' }));
     expect(services.queryByRole('radio', { name: /^(HH|SS|AP)\b/ })).toBeNull();
-    fireEvent.click(services.getByRole('radio', { name: /^Mua CV theo số lượng/ }));
+    expect(screen.queryByText('Tuyển qua Affiliate')).toBeNull();
+    expect(screen.queryByText('Mua CV theo số lượng')).toBeNull();
+    fireEvent.click(services.getByRole('radio', { name: /^Tìm hồ sơ phù hợp/ }));
 
     expect(screen.getByText('Kế toán tổng hợp')).toBeTruthy();
     expect(screen.queryByText('Backend .NET')).toBeNull();
@@ -200,5 +205,82 @@ describe('ClientBillingPage', () => {
 
     const headers = screen.getAllByRole('columnheader').map((h) => h.textContent?.trim());
     expect(headers).toEqual(['Tin tuyển dụng', 'Dịch vụ', 'Khoản phí', 'Số tiền', 'Hạn thanh toán', 'Trạng thái', 'Thao tác']);
+  });
+
+  it('explains HEADHUNT_COD multiplier as months of salary, shows createdAt/placementId and reconciliation reason', async () => {
+    const placementBreakdown = feeBreakdown(
+      fee({ kind: 'PLACEMENT', baseSalary: 30_000_000, feeMultiplier: 1.5, amount: 45_000_000 }) as never
+    );
+    expect(placementBreakdown).toEqual([
+      { label: 'Lương gross tháng', value: '30.000.000 đ' },
+      { label: 'Hệ số phí', value: '1.5 tháng lương' },
+    ]);
+
+    vi.mocked(financeApi.serviceFees).mockResolvedValue({
+      items: [
+        fee({
+          serviceFeeId: 'rec-pending',
+          kind: 'PLACEMENT',
+          placementId: 'abcd1234-5678-90ab-cdef-111122223333',
+          jobTitle: 'Tech Lead',
+          candidateName: 'Nguyễn Văn A',
+          amount: 45_000_000,
+          status: 'PENDING',
+          reconciliationStatus: 'PENDING',
+          createdAt: '2026-10-15T08:00:00Z',
+        }),
+        fee({
+          serviceFeeId: 'rec-flagged',
+          kind: 'PLACEMENT',
+          jobTitle: 'Product Owner',
+          amount: 35_000_000,
+          status: 'DUE',
+          reconciliationStatus: 'FLAGGED',
+          createdAt: '2026-10-16T08:00:00Z',
+        }),
+      ],
+      totalCount: 5,
+      page: 1,
+      pageSize: 100,
+    } as never);
+    vi.mocked(jobsApi.getMine).mockResolvedValue([] as never);
+
+    renderPage();
+
+    expect(await screen.findByText('Tech Lead')).toBeInTheDocument();
+    expect(screen.getByText('Lập 15/10/2026')).toBeInTheDocument();
+    expect(screen.getByText('#ABCD1234')).toBeInTheDocument();
+    expect(screen.getByText('Chờ xác nhận ngày đi làm thực tế')).toBeInTheDocument();
+    expect(screen.getByText('Đang rà soát sai lệch đối soát')).toBeInTheDocument();
+    expect(screen.getByText('Đang hiển thị 2/5 khoản phí dịch vụ gần nhất.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Thanh toán:/ })).toBeNull();
+  });
+
+  it('does not treat an already PAID fee with stale reconciliationStatus as reconciling', async () => {
+    vi.mocked(financeApi.serviceFees).mockResolvedValue({
+      items: [
+        fee({
+          serviceFeeId: 'paid-stale-rec',
+          kind: 'PLACEMENT',
+          jobTitle: 'Senior QA',
+          amount: 25_000_000,
+          status: 'PAID',
+          paidAt: '2026-10-25T10:00:00Z',
+          paymentReference: 'VNP-999',
+          reconciliationStatus: 'PENDING',
+        }),
+      ],
+      totalCount: 1,
+      page: 1,
+      pageSize: 100,
+    } as never);
+    vi.mocked(jobsApi.getMine).mockResolvedValue([] as never);
+
+    renderPage();
+
+    expect(await screen.findByText('Senior QA')).toBeInTheDocument();
+    expect(within(screen.getByRole('table')).getByText('Đã thanh toán')).toBeInTheDocument();
+    expect(screen.queryByText('Đang đối soát')).toBeNull();
+    expect(screen.queryByText('Chờ xác nhận ngày đi làm thực tế')).toBeNull();
   });
 });

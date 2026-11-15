@@ -38,4 +38,12 @@ export interface BillingRow {
   owedToClient?: boolean;
   /** Accepted/counted CVs vs sourcing target for CV_SOURCING fees. */
   sourcingProgress?: { counted: number; target: number } | null;
+  /** When the fee record was created, for traceability. */
+  createdAt?: string | null;
+  /** Related placement UUID for HEADHUNT_COD placement/refund fees. */
+  placementId?: string | null;
+  /** Reconciliation state holding payment open for HEADHUNT_COD placements. */
+  reconciliationStatus?: 'PENDING' | 'CONFIRMED' | 'FLAGGED' | null;
+  /** Whether the fee was cancelled (excluded from open refund KPIs). */
+  cancelled?: boolean;
 }

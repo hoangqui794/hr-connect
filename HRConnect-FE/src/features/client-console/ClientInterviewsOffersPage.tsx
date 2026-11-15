@@ -10,7 +10,7 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { a11yItemRender } from '@/components/common/paginationA11y';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Empty, Input, Select, Skeleton, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -53,6 +53,51 @@ const TABS: TabKey[] = ['interviews', 'offers', 'placements'];
 
 const money = (v: number | null, currency = 'VND') =>
   v == null ? '—' : `${new Intl.NumberFormat('vi-VN').format(v)} ${currency === 'VND' ? '₫' : currency}`;
+
+const INTERVIEW_TYPE_LABEL: Record<string, string> = {
+  ONLINE: 'Trực tuyến',
+  OFFLINE: 'Trực tiếp',
+  PHONE: 'Điện thoại',
+};
+
+const SALARY_BASIS_LABEL: Record<string, string> = {
+  GROSS: 'Trước thuế (Gross)',
+  NET: 'Thực nhận (Net)',
+};
+
+const safeWebLink = (url?: string | null): string | undefined => {
+  if (!url?.trim()) return undefined;
+  try {
+    const parsed = new URL(url.trim());
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.href : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const offerActionMeta = (status: string): { label: string; primary: boolean } => {
+  switch (status.toUpperCase()) {
+    case 'DRAFT':
+      return { label: 'Xem & gửi Offer', primary: true };
+    case 'SENT':
+      return { label: 'Xem Offer', primary: false };
+    default:
+      return { label: 'Xem chi tiết', primary: false };
+  }
+};
+
+const offerExpiryMeta = (
+  r: Pick<OfferItem, 'status' | 'expiryDate' | 'canRespond'>
+): { label: string; tone: 'danger' | 'warning' } | null => {
+  if (r.status.toUpperCase() !== 'SENT' || !r.expiryDate) return null;
+  const diffDays = dayjs(r.expiryDate).startOf('day').diff(dayjs().startOf('day'), 'day');
+  if (r.canRespond === false || (r.canRespond === undefined && diffDays < 0)) {
+    return { label: 'Đã quá hạn phản hồi', tone: 'danger' };
+  }
+  if (diffDays <= 0) return { label: 'Hết hạn hôm nay', tone: 'warning' };
+  if (diffDays <= 2) return { label: `Còn ${diffDays} ngày`, tone: 'warning' };
+  return null;
+};
 
 export const ClientInterviewsOffersPage: React.FC = () => {
   const navigate = useNavigate();
@@ -217,14 +262,40 @@ export const ClientInterviewsOffersPage: React.FC = () => {
       {
         title: 'Vị trí tuyển dụng',
         key: 'j',
-        width: 250,
-        render: (_, r) => (
-          <div className="py-1">
-            <span className="line-clamp-2 font-semibold text-slate-800 text-[13px] leading-snug">
-              {r.jobTitle}
-            </span>
-          </div>
-        ),
+        width: 260,
+        render: (_, r) => {
+          const typeLabel = r.interviewType ? INTERVIEW_TYPE_LABEL[r.interviewType] ?? r.interviewType : null;
+          const meetingUrl = r.interviewType === 'ONLINE' ? safeWebLink(r.meetingLink) : undefined;
+          const summaryParts = [typeLabel, r.durationMinutes ? `${r.durationMinutes} phút` : null].filter(Boolean);
+          return (
+            <div className="py-1 space-y-1">
+              <span className="line-clamp-2 font-semibold text-slate-800 text-[13px] leading-snug">
+                {r.jobTitle}
+              </span>
+              {(summaryParts.length > 0 || (r.interviewType === 'OFFLINE' && r.location) || meetingUrl) && (
+                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-slate-600">
+                  {summaryParts.length > 0 && <span>{summaryParts.join(' · ')}</span>}
+                  {r.interviewType === 'OFFLINE' && r.location && (
+                    <span className="truncate max-w-[160px]" title={r.location}>
+                      · <EnvironmentOutlined aria-hidden /> {r.location}
+                    </span>
+                  )}
+                  {meetingUrl && (
+                    <a
+                      href={meetingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="font-semibold text-[#0284C7] hover:underline"
+                    >
+                      · Link họp
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        },
       },
       {
         title: 'Vòng phỏng vấn',
@@ -270,13 +341,28 @@ export const ClientInterviewsOffersPage: React.FC = () => {
       {
         title: 'Trạng thái & Kết quả',
         key: 's',
-        width: 200,
+        width: 220,
         render: (_, r) => {
           const st = pick(INTERVIEW_STATUS, r.status);
           const res = r.result ? INTERVIEW_RESULT[r.result] ?? r.result : null;
+          const isScheduled = r.status === 'SCHEDULED';
+          const isOverdue = isScheduled && Boolean(r.scheduledAt) && dayjs(r.scheduledAt).isBefore(dayjs());
+          const confirmed = r.candidateAttendanceStatus === 'CONFIRMED';
           return (
             <div className="py-1 space-y-1">
               <StatusDot tone={st.tone}>{st.label}</StatusDot>
+              {isOverdue && (
+                <div className="pl-3.5 text-[11px] font-semibold text-amber-800">
+                  Quá giờ · Chờ ghi kết quả
+                </div>
+              )}
+              {isScheduled && (
+                <div className="pl-3.5">
+                  <Tag color={confirmed ? 'success' : 'warning'} className="!m-0 text-[11px] font-medium">
+                    {confirmed ? 'Đã xác nhận tham gia' : 'Chưa xác nhận'}
+                  </Tag>
+                </div>
+              )}
               {res && (
                 <div className="text-xs pl-3.5 flex items-center gap-1.5">
                   <span className="text-slate-500 font-medium">Kết quả:</span>
@@ -343,53 +429,95 @@ export const ClientInterviewsOffersPage: React.FC = () => {
       {
         title: 'Vị trí tuyển dụng',
         key: 'j',
-        width: 250,
+        width: 240,
         render: (_, r) => (
-          <div className="py-1">
+          <div className="py-1 space-y-1">
             <span className="line-clamp-2 font-semibold text-slate-800 text-[13px] leading-snug">
               {r.jobTitle}
             </span>
+            {r.offerVersion != null && (
+              <div className="text-[11px] font-medium text-slate-500">Phiên bản v{r.offerVersion}</div>
+            )}
           </div>
         ),
       },
       {
         title: 'Lương đề nghị',
         key: 'sal',
-        width: 200,
-        render: (_, r) => (
-          <div className="py-1 space-y-0.5">
-            <div className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 border border-emerald-100">
-              <DollarOutlined />
-              <span>{money(r.salary, r.currencyCode)}</span>
-            </div>
-            {r.salaryBasis && (
-              <div className="text-[11px] text-slate-400 font-medium pl-1">
-                Lương {r.salaryBasis} ({r.salaryPeriod === 'ANNUAL' ? 'Năm' : 'Tháng'})
+        width: 230,
+        render: (_, r) => {
+          const basisLabel = r.salaryBasis ? SALARY_BASIS_LABEL[r.salaryBasis] ?? r.salaryBasis : null;
+          return (
+            <div className="py-1 space-y-0.5">
+              <div className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 border border-emerald-100">
+                <DollarOutlined />
+                <span>{money(r.salary, r.currencyCode)}</span>
               </div>
-            )}
-          </div>
-        ),
+              {basisLabel && (
+                <div className="text-[11px] text-slate-600 font-medium pl-1">
+                  {basisLabel} ({r.salaryPeriod === 'ANNUAL' ? 'Năm' : 'Tháng'})
+                </div>
+              )}
+              {r.startDate && (
+                <div className="text-[11px] text-slate-600 pl-1">
+                  Nhận việc {dayjs(r.startDate).format('DD/MM/YYYY')}
+                </div>
+              )}
+            </div>
+          );
+        },
       },
       {
         title: 'Hạn phản hồi',
         dataIndex: 'expiryDate',
-        width: 140,
+        width: 155,
         align: 'center',
-        render: (v) => (
-          <span className="text-xs font-semibold tabular-nums text-slate-700">
-            {v ? dayjs(v).format('DD/MM/YYYY') : '—'}
-          </span>
-        ),
+        render: (v, r) => {
+          const expiryMeta = offerExpiryMeta(r);
+          return (
+            <div className="py-1 space-y-0.5">
+              <span className="block text-xs font-semibold tabular-nums text-slate-700">
+                {v ? dayjs(v).format('DD/MM/YYYY') : '—'}
+              </span>
+              {expiryMeta && (
+                <span
+                  className={`inline-block rounded px-1.5 py-0.5 text-[11px] font-semibold ${
+                    expiryMeta.tone === 'danger'
+                      ? 'bg-rose-50 text-rose-700 border border-rose-200/80'
+                      : 'bg-amber-50 text-amber-800 border border-amber-200/80'
+                  }`}
+                >
+                  {expiryMeta.label}
+                </span>
+              )}
+            </div>
+          );
+        },
       },
       {
         title: 'Trạng thái Offer',
         key: 's',
-        width: 180,
+        width: 220,
         render: (_, r) => {
           const st = pick(OFFER_STATUS, r.status);
+          const timestampLine = r.respondedAt
+            ? `Phản hồi ${dayjs(r.respondedAt).format('DD/MM/YYYY')}`
+            : r.sentAt && r.status === 'SENT'
+              ? `Gửi ${dayjs(r.sentAt).format('DD/MM/YYYY')}`
+              : null;
           return (
-            <div className="py-1">
+            <div className="py-1 space-y-1">
               <StatusDot tone={st.tone}>{st.label}</StatusDot>
+              {timestampLine && (
+                <div className="pl-3.5 text-[11px] text-slate-500">{timestampLine}</div>
+              )}
+              {r.status === 'DECLINED' && r.declineReason && (
+                <Tooltip title={r.declineReason}>
+                  <div className="ml-3.5 line-clamp-2 rounded border border-rose-200/80 bg-rose-50/80 px-2 py-0.5 text-[11px] text-rose-700">
+                    {r.declineReason}
+                  </div>
+                </Tooltip>
+              )}
             </div>
           );
         },
@@ -397,21 +525,28 @@ export const ClientInterviewsOffersPage: React.FC = () => {
       {
         title: 'Thao tác',
         key: 'actions',
-        width: 130,
+        width: 150,
         align: 'right',
-        render: (_, r) => (
-          <Button
-            type="primary"
-            size="small"
-            className="!h-8 !rounded-lg !border-0 !bg-[#0369A1] hover:!bg-[#075985] text-white font-bold text-xs shadow-2xs transition-all active:scale-[0.98]"
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpen(r.applicationId);
-            }}
-          >
-            Xem & gửi Offer
-          </Button>
-        ),
+        render: (_, r) => {
+          const action = offerActionMeta(r.status);
+          return (
+            <Button
+              type={action.primary ? 'primary' : 'default'}
+              size="small"
+              className={
+                action.primary
+                  ? '!h-8 !rounded-lg !border-0 !bg-[#0369A1] hover:!bg-[#075985] text-white font-bold text-xs shadow-2xs transition-all active:scale-[0.98]'
+                  : '!h-8 !rounded-lg !border-slate-300 text-slate-700 hover:!border-[#0284C7] hover:!text-[#0284C7] font-semibold text-xs transition-all active:scale-[0.98]'
+              }
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(r.applicationId);
+              }}
+            >
+              {action.label}
+            </Button>
+          );
+        },
       },
     ],
     []
@@ -470,22 +605,32 @@ export const ClientInterviewsOffersPage: React.FC = () => {
       {
         title: 'Trạng thái',
         key: 's',
-        width: 170,
+        width: 210,
         render: (_, r) => {
           const st = pick(PLACEMENT_STATUS, r.status);
+          const resignationMeta =
+            r.endDate || r.resignationReason ? (
+              <div className="text-[11px] text-slate-600 line-clamp-2" title={r.resignationReason ?? undefined}>
+                {[r.endDate ? `Nghỉ ${dayjs(r.endDate).format('DD/MM/YYYY')}` : null, r.resignationReason]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </div>
+            ) : null;
           if (r.status === 'RESIGNED') {
             return (
-              <div className="py-1">
+              <div className="py-1 space-y-1">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700 border border-slate-200/80">
                   <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
                   Đã nghỉ việc
                 </span>
+                {resignationMeta}
               </div>
             );
           }
           return (
-            <div className="py-1">
+            <div className="py-1 space-y-1">
               <StatusDot tone={st.tone}>{st.label}</StatusDot>
+              {resignationMeta}
             </div>
           );
         },
@@ -493,10 +638,10 @@ export const ClientInterviewsOffersPage: React.FC = () => {
       {
         title: 'Thao tác',
         key: 'actions',
-        width: 220,
+        width: 310,
         align: 'right',
         render: (_, r) => (
-          <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+          <div className="flex flex-wrap items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
             {r.status === 'STARTED' && (
               <Button
                 size="small"
@@ -506,6 +651,13 @@ export const ClientInterviewsOffersPage: React.FC = () => {
                 Báo nghỉ việc
               </Button>
             )}
+            <Link
+              to={`/client/placements/${r.placementId}`}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex h-8 items-center rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:border-[#0284C7] hover:text-[#0284C7] transition-colors"
+            >
+              Chi tiết bảo hành
+            </Link>
             <Button
               type="primary"
               size="small"
@@ -877,7 +1029,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             columns={interviewColumns}
             dataSource={filteredItems}
             loading={listQ.isFetching}
-            scroll={{ x: 1000 }}
+            scroll={{ x: 'max-content' }}
             pagination={{ itemRender: a11yItemRender,
               current: page,
               pageSize: PAGE_SIZE,
@@ -897,7 +1049,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             columns={offerColumns}
             dataSource={filteredItems}
             loading={listQ.isFetching}
-            scroll={{ x: 1000 }}
+            scroll={{ x: 'max-content' }}
             pagination={{ itemRender: a11yItemRender,
               current: page,
               pageSize: PAGE_SIZE,
@@ -917,7 +1069,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             columns={placementColumns}
             dataSource={filteredItems}
             loading={listQ.isFetching}
-            scroll={{ x: 1000 }}
+            scroll={{ x: 'max-content' }}
             pagination={{ itemRender: a11yItemRender,
               current: page,
               pageSize: PAGE_SIZE,

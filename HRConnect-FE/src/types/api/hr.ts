@@ -100,6 +100,12 @@ export interface RecruitmentApplicationItem {
   serviceTypeCode?: string | null;
   /** CV_SOURCING: latest delivery status (DELIVERED, ACCEPTED, AUTO_ACCEPTED, REJECTED, ...). */
   sourcingDeliveryStatus?: string | null;
+  /** Expected start date once candidate accepts an offer or starts placement (YYYY-MM-DD). */
+  plannedStartDate?: string | null;
+  /** Who manages candidate contact (`InternalHr` for HR Connect-managed pipelines, else `Client`). */
+  contactOwner?: string | null;
+  /** True when candidate email/phone are masked until placement (e.g. HEADHUNT_COD before PLACED). */
+  isContactMasked?: boolean;
 }
 
 export interface RecruitmentApplicationSearchParams {
@@ -250,6 +256,8 @@ export interface InterviewItem {
   meetingLink: string | null;
   status: string;
   result: string | null;
+  candidateAttendanceStatus?: string | null;
+  candidateRespondedAt?: string | null;
 }
 
 /** GET /offers item. */
@@ -272,6 +280,7 @@ export interface OfferItem {
   sentAt: string | null;
   respondedAt: string | null;
   declineReason: string | null;
+  canRespond?: boolean;
 }
 
 /** GET /placements item (this endpoint returns the page without the success/data envelope). */

@@ -170,6 +170,8 @@ export const ClientCompanyPage: React.FC = () => {
                   ['Mã số thuế', c.taxCode || '—'],
                   ['Vai trò của bạn', String(c.roleInCompany ?? '—')],
                   ['Xác thực lúc', c.verifiedAt ? dayjs(String(c.verifiedAt)).format('DD/MM/YYYY') : '—'],
+                  ...(c.createdAt ? ([['Ngày tạo', dayjs(String(c.createdAt)).format('DD/MM/YYYY')]] as [string, string][]) : []),
+                  ...(c.updatedAt ? ([['Cập nhật', dayjs(String(c.updatedAt)).format('DD/MM/YYYY')]] as [string, string][]) : []),
                 ] as [string, string][]
               ).map(([label, value]) => (
                 <div key={label} className="flex justify-between gap-3 border-0 border-t border-solid border-slate-100 py-2.5 text-sm first:border-t-0">

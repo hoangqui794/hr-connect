@@ -21,6 +21,7 @@ import {
   ClearOutlined,
   FileTextOutlined,
   HeartFilled,
+  LockOutlined,
   ReloadOutlined,
   SearchOutlined,
   ThunderboltOutlined,
@@ -134,20 +135,41 @@ export const AiScore: React.FC<{ score: number | null; tier?: string | null; sta
 };
 
 /** The one thing the Client is expected to do next, if anything. */
-export const nextStepOf = (r: Pick<RecruitmentApplicationItem, 'status' | 'serviceTypeCode' | 'sourcingDeliveryStatus'>): { label: string; urgent: boolean } | null => {
+export const nextStepOf = (
+  r: Pick<
+    RecruitmentApplicationItem,
+    'status' | 'serviceTypeCode' | 'sourcingDeliveryStatus' | 'latestOfferStatus' | 'latestInterviewStatus' | 'latestInterviewScheduledAt' | 'contactOwner'
+  >
+): { label: string; urgent: boolean } | null => {
   const status = r.status.toUpperCase();
-  if (r.serviceTypeCode === 'CV_SOURCING' && r.sourcingDeliveryStatus === 'DELIVERED') return { label: 'Phản hồi CV', urgent: true };
+  const isHrManaged = r.contactOwner === 'InternalHr';
+  if (r.serviceTypeCode === 'CV_SOURCING') {
+    const sourcing = r.sourcingDeliveryStatus?.toUpperCase();
+    if (sourcing === 'DELIVERED' && status === 'SHORTLISTED') return { label: 'Phản hồi CV', urgent: true };
+    if ((sourcing === 'REJECTED' || sourcing === 'REPLACED') && status === 'SHORTLISTED') return null;
+  }
   switch (status) {
     case 'SUBMITTED':
     case 'SCREENING':
-      return { label: 'Xem và chọn', urgent: true };
+      // ScreeningPolicy: Client only screens CV_APPLICATION; HEADHUNT_COD (InternalHr) is screened by HR Connect first.
+      return isHrManaged ? { label: 'Chờ HR Connect', urgent: false } : { label: 'Xem và chọn', urgent: true };
     case 'SHORTLISTED':
+      // Client schedules interviews across all services (including HEADHUNT_COD once shortlisted).
       return { label: 'Lên lịch phỏng vấn', urgent: true };
-    case 'INTERVIEW':
-      return { label: 'Ghi kết quả phỏng vấn', urgent: false };
+    case 'INTERVIEW': {
+      const ivStatus = r.latestInterviewStatus?.toUpperCase();
+      if (ivStatus === 'COMPLETED' || ivStatus === 'CANCELLED' || ivStatus === 'NO_SHOW') {
+        return { label: 'Lên lịch phỏng vấn', urgent: true };
+      }
+      if (ivStatus === 'SCHEDULED' && r.latestInterviewScheduledAt && dayjs(r.latestInterviewScheduledAt).isAfter(dayjs())) {
+        return { label: 'Chờ phỏng vấn', urgent: false };
+      }
+      return { label: 'Ghi kết quả phỏng vấn', urgent: ivStatus === 'SCHEDULED' };
+    }
     case 'BACKUP':
       return { label: 'Quyết định dự phòng', urgent: false };
     case 'OFFER_PENDING':
+      if (r.latestOfferStatus?.toUpperCase() === 'SENT') return { label: 'Chờ ứng viên', urgent: false };
       return { label: 'Gửi offer', urgent: true };
     case 'OFFER_ACCEPTED':
       return { label: 'Xác nhận đi làm', urgent: true };
@@ -234,11 +256,15 @@ export const ClientCandidatesPage: React.FC = () => {
     enabled: view === 'list',
   });
 
-  /** One short line on the latest offer, else the latest interview; null when neither exists. */
+  /** One short line on the latest offer, else the latest interview; appends planned start date when offer is accepted. */
   const progressOf = (a: RecruitmentApplicationItem): string | null => {
+    const startSuffix =
+      a.status.toUpperCase() === 'OFFER_ACCEPTED' && a.plannedStartDate
+        ? `Nhận việc ${dayjs(a.plannedStartDate).format('DD/MM/YYYY')}`
+        : null;
     if (a.latestOfferStatus) {
       const label = OFFER_STATUS[a.latestOfferStatus]?.label ?? a.latestOfferStatus;
-      return `Offer: ${label}${a.latestOfferSalary != null ? ` · ${money(a.latestOfferSalary)}` : ''}`;
+      return `Offer: ${label}${a.latestOfferSalary != null ? ` · ${money(a.latestOfferSalary)}` : ''}${startSuffix ? ` · ${startSuffix}` : ''}`;
     }
     if (a.latestInterviewScheduledAt) {
       const outcome = a.latestInterviewResult
@@ -248,7 +274,7 @@ export const ClientCandidatesPage: React.FC = () => {
           : null;
       return `PV vòng ${a.latestInterviewRound ?? 1} · ${dayjs(a.latestInterviewScheduledAt).format('DD/MM HH:mm')}${outcome ? ` · ${outcome}` : ''}`;
     }
-    return null;
+    return startSuffix;
   };
 
   const columns: ColumnsType<RecruitmentApplicationItem> = [
@@ -263,7 +289,16 @@ export const ClientCandidatesPage: React.FC = () => {
             <div className="truncate text-[14px] font-bold text-slate-900 hover:text-[#0284C7] transition-colors">
               {r.candidateName}
             </div>
-            <div className="truncate text-[12px] text-slate-500">{r.candidateEmail || 'Chưa có email'}</div>
+            {r.isContactMasked && !r.candidateEmail ? (
+              <Tooltip title="Thông tin liên hệ được HR Connect bảo mật và sẽ mở sau khi ứng viên chính thức đi làm.">
+                <div className="inline-flex max-w-full items-center gap-1 text-[12px] font-medium text-slate-600">
+                  <LockOutlined className="shrink-0 text-[11px] text-amber-700" aria-hidden />
+                  <span className="truncate">HR Connect bảo mật liên hệ</span>
+                </div>
+              </Tooltip>
+            ) : (
+              <div className="truncate text-[12px] text-slate-500">{r.candidateEmail || 'Chưa có email'}</div>
+            )}
             <div className="text-[11px] text-slate-400">cập nhật {dayjs(r.updatedAt ?? r.appliedAt).fromNow()}</div>
           </div>
         </div>
@@ -337,7 +372,7 @@ export const ClientCandidatesPage: React.FC = () => {
             size="middle"
             type={step.urgent ? 'primary' : 'default'}
             ghost={step.urgent}
-            className={`w-[135px] !h-8 text-xs font-semibold rounded-lg shadow-2xs transition-all ${
+            className={`min-w-[135px] px-3 whitespace-nowrap !h-8 text-xs font-semibold rounded-lg shadow-2xs transition-all ${
               step.urgent
                 ? '!border-[#0284C7] !text-[#0284C7] hover:!bg-[#0284C7] hover:!text-white'
                 : '!border-slate-200 text-slate-700 hover:!border-slate-300 hover:bg-slate-50'
