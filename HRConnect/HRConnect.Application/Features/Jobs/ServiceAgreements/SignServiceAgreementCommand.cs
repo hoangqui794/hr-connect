@@ -231,6 +231,31 @@ public sealed class SignServiceAgreementCommandHandler : IRequestHandler<SignSer
 
         if (string.Equals(serviceTypeCode, ServiceTypeCodes.HeadhuntCod, StringComparison.OrdinalIgnoreCase))
         {
+            if (job.FeeMultiplier is not > 0m)
+            {
+                job.FeeMultiplier = agreement.FeeMultiplier
+                    ?? job.ProposedFeeMultiplier
+                    ?? (_adminSettings != null ? await _adminSettings.GetDecimalAsync(BusinessSettingKeys.HeadhuntFeeMultiplier, ct) : 1.5m);
+            }
+
+            if (job.WarrantyDays is not > 0)
+            {
+                job.WarrantyDays = agreement.WarrantyDays
+                    ?? job.ProposedWarrantyDays
+                    ?? (_adminSettings != null ? await _adminSettings.GetIntAsync(BusinessSettingKeys.HeadhuntWarrantyDays, ct) : 30);
+            }
+
+            if (job.PaymentDueDays is not > 0)
+            {
+                job.PaymentDueDays = agreement.PaymentDueDays
+                    ?? job.ProposedPaymentDueDays
+                    ?? (_adminSettings != null ? await _adminSettings.GetIntAsync(BusinessSettingKeys.HeadhuntPaymentDueDays, ct) : 20);
+            }
+
+            agreement.FeeMultiplier ??= job.FeeMultiplier;
+            agreement.WarrantyDays ??= job.WarrantyDays;
+            agreement.PaymentDueDays ??= job.PaymentDueDays;
+
             // HEADHUNT_COD goes straight to ACTIVE
             JobTransitions.ChangeStatus(
                 job,
@@ -243,6 +268,39 @@ public sealed class SignServiceAgreementCommandHandler : IRequestHandler<SignSer
         }
         else if (string.Equals(serviceTypeCode, ServiceTypeCodes.CvSourcing, StringComparison.OrdinalIgnoreCase))
         {
+            if (job.SourcingPricePerCv is not > 0m)
+            {
+                job.SourcingPricePerCv = agreement.PricePerQualifiedCv
+                    ?? job.ProposedPricePerCv
+                    ?? (_adminSettings != null ? await _adminSettings.GetDecimalAsync(BusinessSettingKeys.CvSourcingPricePerCv, ct) : 600_000m);
+            }
+
+            if (job.SourcingTarget is not > 0)
+            {
+                job.SourcingTarget = agreement.SourcingTarget
+                    ?? job.SourcingTarget
+                    ?? 10;
+            }
+
+            if (job.ReviewDays is not > 0)
+            {
+                job.ReviewDays = agreement.ReviewDays
+                    ?? job.ReviewDays
+                    ?? (_adminSettings != null ? await _adminSettings.GetIntAsync(BusinessSettingKeys.CvSourcingReviewDays, ct) : 7);
+            }
+
+            if (job.PaymentDueDays is not > 0)
+            {
+                job.PaymentDueDays = agreement.PaymentDueDays
+                    ?? job.ProposedPaymentDueDays
+                    ?? (_adminSettings != null ? await _adminSettings.GetIntAsync(BusinessSettingKeys.CvSourcingPaymentDueDays, ct) : 20);
+            }
+
+            agreement.PricePerQualifiedCv ??= job.SourcingPricePerCv;
+            agreement.SourcingTarget ??= job.SourcingTarget;
+            agreement.ReviewDays ??= job.ReviewDays;
+            agreement.PaymentDueDays ??= job.PaymentDueDays;
+
             if (job.DepositPercent is not > 0m)
             {
                 job.DepositPercent = _adminSettings != null

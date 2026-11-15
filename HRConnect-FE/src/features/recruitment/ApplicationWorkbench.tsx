@@ -213,6 +213,9 @@ export const ApplicationWorkbench: React.FC<{
       !dayjs(watchedActualStartDate).isSame(dayjs(d.plannedStartDate), 'day')
   );
   const plannedStartChangeCount = (timeline.data ?? []).filter((event) => event.eventType === 'PLANNED_START_DATE_CHANGED').length;
+  const agreedOfferStartDate = acceptedOffer?.startDate ? dayjs(acceptedOffer.startDate).startOf('day') : null;
+  const latestPlannedStartDate = agreedOfferStartDate?.isValid() ? agreedOfferStartDate.add(60, 'day') : null;
+  const plannedStartLimitReached = plannedStartChangeCount >= 3;
 
   // MF-03: opening an application starts screening (idempotent on the backend).
   const start = useMutation({
@@ -583,6 +586,16 @@ export const ApplicationWorkbench: React.FC<{
     // the result is changed immediately before confirmation.
     if (open === 'result' && !trim(v.feedback)) {
       form.setFields([{ name: 'feedback', errors: ['Nhập nhận xét phỏng vấn.'] }]);
+      return;
+    }
+    if (
+      open === 'startWork' &&
+      d.plannedStartDate &&
+      v.actualStartDate &&
+      !dayjs(v.actualStartDate).isSame(dayjs(d.plannedStartDate), 'day') &&
+      !trim(v.note)
+    ) {
+      form.setFields([{ name: 'note', errors: ['Nhập lý do ngày thực tế khác ngày dự kiến.'] }]);
       return;
     }
     setPendingAction(open);
@@ -1316,7 +1329,11 @@ export const ApplicationWorkbench: React.FC<{
         open={open !== null}
         title={open ? (open === 'offer' && has('UPDATE_OFFER') ? 'Sửa offer' : MODAL_TITLE[open]) : ''}
         okText={open === 'startWork' ? 'Xác nhận' : open === 'schedule' ? 'Lên lịch' : open === 'offer' ? 'Lưu offer' : 'Xác nhận'}
-        okButtonProps={{ danger: open ? DANGER_MODALS.includes(open) : false, loading: run.isPending || Boolean(pendingAction) }}
+        okButtonProps={{
+          danger: open ? DANGER_MODALS.includes(open) : false,
+          loading: run.isPending || Boolean(pendingAction),
+          disabled: open === 'plannedStart' && plannedStartLimitReached,
+        }}
         cancelButtonProps={{ disabled: busy }}
         closable={!busy}
         maskClosable={!busy}
@@ -1470,7 +1487,7 @@ export const ApplicationWorkbench: React.FC<{
               <Form.Item noStyle shouldUpdate={(a, b) => a.reasonCode !== b.reasonCode}>
                 {({ getFieldValue }) => {
                   const code = getFieldValue('reasonCode');
-                  const required = code === 'CANDIDATE_OTHER';
+                  const required = code === 'CANDIDATE_OTHER' || code === 'EMPLOYER_CANCELLED';
                   return (
                     <Form.Item name="reason" label={required ? 'Ghi chú (bắt buộc)' : 'Ghi chú (không bắt buộc)'} rules={[{ required, whitespace: required, message: 'Vui lòng ghi chú lý do.' }, { max: 1000, message: 'Tối đa 1000 ký tự.' }]}>
                       <Input.TextArea rows={3} maxLength={1000} showCount />
@@ -1644,11 +1661,29 @@ export const ApplicationWorkbench: React.FC<{
 
           {open === 'plannedStart' && (
             <>
+              <Alert
+                className="mb-4"
+                type={plannedStartLimitReached ? 'error' : 'info'}
+                showIcon
+                message={`Đã dời ${plannedStartChangeCount}/3 lần`}
+                description={
+                  plannedStartLimitReached
+                    ? 'Đã đạt giới hạn dời ngày. Vui lòng xác nhận đi làm hoặc báo không nhận việc.'
+                    : latestPlannedStartDate
+                      ? `Ngày mới không được muộn hơn ${latestPlannedStartDate.format('DD/MM/YYYY')} (60 ngày từ ngày trong offer).`
+                      : 'Ngày mới không được muộn quá 60 ngày so với ngày đã thỏa thuận trong offer.'
+                }
+              />
               <Form.Item name="plannedStartDate" label="Ngày nhận việc mới" rules={[{ required: true, message: 'Chọn ngày.' }]}>
-                <DatePicker format="DD/MM/YYYY" disabledDate={notPast} className="w-full" />
+                <DatePicker
+                  format="DD/MM/YYYY"
+                  disabled={plannedStartLimitReached}
+                  disabledDate={(date) => notPast(date) || Boolean(latestPlannedStartDate && date.isAfter(latestPlannedStartDate, 'day'))}
+                  className="w-full"
+                />
               </Form.Item>
               <Form.Item name="reason" label="Lý do dời ngày" rules={REQUIRED}>
-                <Input.TextArea rows={2} maxLength={1000} />
+                <Input.TextArea rows={2} maxLength={1000} disabled={plannedStartLimitReached} />
               </Form.Item>
             </>
           )}
@@ -1705,11 +1740,22 @@ export const ApplicationWorkbench: React.FC<{
               <Form.Item
                 name="note"
                 label={actualStartDiffersFromPlan ? 'Lý do ngày thực tế khác ngày dự kiến' : 'Ghi chú (không bắt buộc)'}
-                rules={
-                  actualStartDiffersFromPlan
-                    ? [{ required: true, whitespace: true, message: 'Nhập lý do ngày thực tế khác ngày dự kiến.' }]
-                    : undefined
-                }
+                dependencies={['actualStartDate']}
+                rules={[
+                  {
+                    validator: (_, value) => {
+                      const actualStartDate = form.getFieldValue('actualStartDate');
+                      const differsFromPlan = Boolean(
+                        d?.plannedStartDate &&
+                          actualStartDate &&
+                          !dayjs(actualStartDate).isSame(dayjs(d.plannedStartDate), 'day')
+                      );
+                      return differsFromPlan && !String(value ?? '').trim()
+                        ? Promise.reject(new Error('Nhập lý do ngày thực tế khác ngày dự kiến.'))
+                        : Promise.resolve();
+                    },
+                  },
+                ]}
               >
                 <Input.TextArea rows={2} maxLength={1000} />
               </Form.Item>
@@ -1736,7 +1782,9 @@ export const ApplicationWorkbench: React.FC<{
             {interviewHistory.data!.map((item) => (
               <li key={item.historyId} className="border-0 border-l-2 border-solid border-blue-300 pl-4 text-sm">
                 <div className="font-medium text-slate-900">
-                  {item.oldStatus ? `${item.oldStatus} → ${item.newStatus}` : item.newStatus}
+                  {item.oldStatus
+                    ? `${pick(INTERVIEW_STATUS, item.oldStatus).label} → ${pick(INTERVIEW_STATUS, item.newStatus).label}`
+                    : pick(INTERVIEW_STATUS, item.newStatus).label}
                 </div>
                 {(item.oldScheduledAt || item.newScheduledAt) && (
                   <div className="mt-1 text-slate-600">

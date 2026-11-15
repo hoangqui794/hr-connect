@@ -9,6 +9,13 @@ describe('refreshKeysFor', () => {
     expect(refreshKeysFor('WARRANTY')).toContainEqual(['mf05-warranties']);
     expect(refreshKeysFor('CONTACT_REQUEST')).toContainEqual(['admin-contact-requests']);
     expect(refreshKeysFor('PLACEMENT_RECONCILIATION')).toContainEqual(['placement-reconciliations']);
+    expect(refreshKeysFor('APPLICATION')).toContainEqual(['client-pipeline']);
+    expect(refreshKeysFor('INTERVIEW')).toContainEqual(['candidate', 'interviews']);
+    expect(refreshKeysFor('OFFER')).toEqual(expect.arrayContaining([
+      ['candidate-offer'],
+      ['candidate-offer-versions'],
+      ['candidate-offer-impact'],
+    ]));
   });
 
   it('includes client billing key for JOB and SERVICE_AGREEMENT notifications', () => {

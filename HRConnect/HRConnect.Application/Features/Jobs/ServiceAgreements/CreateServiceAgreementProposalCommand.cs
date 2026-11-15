@@ -8,6 +8,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
@@ -40,6 +41,7 @@ public sealed class CreateServiceAgreementProposalCommandHandler : IRequestHandl
     private readonly INotificationRepository _notifications;
     private readonly IAuditLogService _audit;
     private readonly IUnitOfWork _uow;
+    private readonly IAdminBusinessSettings? _adminSettings;
 
     public CreateServiceAgreementProposalCommandHandler(
         IJobRepository jobs,
@@ -48,7 +50,8 @@ public sealed class CreateServiceAgreementProposalCommandHandler : IRequestHandl
         IFileStorageService storage,
         INotificationRepository notifications,
         IAuditLogService audit,
-        IUnitOfWork uow)
+        IUnitOfWork uow,
+        IAdminBusinessSettings? adminSettings = null)
     {
         _jobs = jobs;
         _agreements = agreements;
@@ -57,6 +60,7 @@ public sealed class CreateServiceAgreementProposalCommandHandler : IRequestHandl
         _notifications = notifications;
         _audit = audit;
         _uow = uow;
+        _adminSettings = adminSettings;
     }
 
     public async Task<ServiceAgreementDto> Handle(CreateServiceAgreementProposalCommand request, CancellationToken ct)
@@ -75,12 +79,29 @@ public sealed class CreateServiceAgreementProposalCommandHandler : IRequestHandl
             throw new BadRequestException("Dịch vụ CV_APPLICATION sử dụng gói đăng tin công khai, không áp dụng quy trình thỏa thuận đàm phán riêng.");
         }
 
+        decimal? resolvedMultiplier = null;
+        int? resolvedWarranty = null;
+        int? resolvedPaymentDue = null;
+        decimal? resolvedPrice = null;
+        int? resolvedTarget = null;
+        int? resolvedReview = null;
+
         // Validate ranges based on service type
         if (string.Equals(serviceTypeCode, ServiceTypeCodes.HeadhuntCod, StringComparison.OrdinalIgnoreCase))
         {
-            var multiplier = request.FeeMultiplier ?? job.ProposedFeeMultiplier ?? 1.0m;
-            var warranty = request.WarrantyDays ?? job.ProposedWarrantyDays ?? 30;
-            var paymentDue = request.PaymentDueDays ?? job.ProposedPaymentDueDays ?? 15;
+            var defaultMultiplier = _adminSettings != null
+                ? await _adminSettings.GetDecimalAsync(BusinessSettingKeys.HeadhuntFeeMultiplier, ct)
+                : 1.5m;
+            var defaultWarranty = _adminSettings != null
+                ? await _adminSettings.GetIntAsync(BusinessSettingKeys.HeadhuntWarrantyDays, ct)
+                : 30;
+            var defaultPaymentDue = _adminSettings != null
+                ? await _adminSettings.GetIntAsync(BusinessSettingKeys.HeadhuntPaymentDueDays, ct)
+                : 20;
+
+            var multiplier = request.FeeMultiplier ?? job.ProposedFeeMultiplier ?? defaultMultiplier;
+            var warranty = request.WarrantyDays ?? job.ProposedWarrantyDays ?? defaultWarranty;
+            var paymentDue = request.PaymentDueDays ?? job.ProposedPaymentDueDays ?? defaultPaymentDue;
 
             if (multiplier < 0.1m || multiplier > 10.0m)
                 throw new BadRequestException($"Hệ số phí Headhunt không hợp lệ ({multiplier}). Khoảng cho phép: 0.1 - 10.0.");
@@ -88,13 +109,27 @@ public sealed class CreateServiceAgreementProposalCommandHandler : IRequestHandl
                 throw new BadRequestException($"Số ngày bảo hành không hợp lệ ({warranty}). Khoảng cho phép: 1 - 365 ngày.");
             if (paymentDue < 1 || paymentDue > 120)
                 throw new BadRequestException($"Hạn thanh toán không hợp lệ ({paymentDue}). Khoảng cho phép: 1 - 120 ngày.");
+
+            resolvedMultiplier = multiplier;
+            resolvedWarranty = warranty;
+            resolvedPaymentDue = paymentDue;
         }
         else if (string.Equals(serviceTypeCode, ServiceTypeCodes.CvSourcing, StringComparison.OrdinalIgnoreCase))
         {
+            var defaultPrice = _adminSettings != null
+                ? await _adminSettings.GetDecimalAsync(BusinessSettingKeys.CvSourcingPricePerCv, ct)
+                : 600_000m;
+            var defaultReview = _adminSettings != null
+                ? await _adminSettings.GetIntAsync(BusinessSettingKeys.CvSourcingReviewDays, ct)
+                : 7;
+            var defaultPaymentDue = _adminSettings != null
+                ? await _adminSettings.GetIntAsync(BusinessSettingKeys.CvSourcingPaymentDueDays, ct)
+                : 20;
+
             var target = request.SourcingTarget ?? job.SourcingTarget ?? 10;
-            var price = request.PricePerQualifiedCv ?? job.ProposedPricePerCv ?? 500_000m;
-            var review = request.ReviewDays ?? job.ReviewDays ?? 7;
-            var paymentDue = request.PaymentDueDays ?? job.ProposedPaymentDueDays ?? 15;
+            var price = request.PricePerQualifiedCv ?? job.ProposedPricePerCv ?? defaultPrice;
+            var review = request.ReviewDays ?? job.ReviewDays ?? defaultReview;
+            var paymentDue = request.PaymentDueDays ?? job.ProposedPaymentDueDays ?? defaultPaymentDue;
 
             if (target < 1)
                 throw new BadRequestException("Số lượng CV mục tiêu (Sourcing Target) phải lớn hơn hoặc bằng 1.");
@@ -104,6 +139,18 @@ public sealed class CreateServiceAgreementProposalCommandHandler : IRequestHandl
                 throw new BadRequestException($"Thời gian xem xét hồ sơ không hợp lệ ({review}). Khoảng cho phép: 1 - 30 ngày.");
             if (paymentDue < 1 || paymentDue > 120)
                 throw new BadRequestException($"Hạn thanh toán không hợp lệ ({paymentDue}). Khoảng cho phép: 1 - 120 ngày.");
+
+            resolvedTarget = target;
+            resolvedPrice = price;
+            resolvedReview = review;
+            resolvedPaymentDue = paymentDue;
+
+            if (job.DepositPercent is not > 0m)
+            {
+                job.DepositPercent = _adminSettings != null
+                    ? await _adminSettings.GetDecimalAsync(BusinessSettingKeys.CvSourcingDepositPercent, ct)
+                    : 50m;
+            }
         }
 
         var now = DateTime.UtcNow;
@@ -143,12 +190,12 @@ public sealed class CreateServiceAgreementProposalCommandHandler : IRequestHandl
             Status = ServiceAgreementStatuses.SentToClient,
             ConcurrencyToken = Guid.NewGuid(),
             IsCurrent = true,
-            FeeMultiplier = request.FeeMultiplier ?? job.ProposedFeeMultiplier,
-            WarrantyDays = request.WarrantyDays ?? job.ProposedWarrantyDays,
-            PaymentDueDays = request.PaymentDueDays ?? job.ProposedPaymentDueDays,
-            PricePerQualifiedCv = request.PricePerQualifiedCv ?? job.ProposedPricePerCv,
-            SourcingTarget = request.SourcingTarget ?? job.SourcingTarget,
-            ReviewDays = request.ReviewDays ?? job.ReviewDays,
+            FeeMultiplier = resolvedMultiplier,
+            WarrantyDays = resolvedWarranty,
+            PaymentDueDays = resolvedPaymentDue,
+            PricePerQualifiedCv = resolvedPrice,
+            SourcingTarget = resolvedTarget,
+            ReviewDays = resolvedReview,
             AgreementNote = string.IsNullOrWhiteSpace(request.AgreementNote) ? null : request.AgreementNote.Trim(),
             CompanyNameSnapshot = job.Company.CompanyName,
             CompanyTaxCodeSnapshot = job.Company.TaxCode,
@@ -157,7 +204,8 @@ public sealed class CreateServiceAgreementProposalCommandHandler : IRequestHandl
             VerificationCode = verificationCode,
             CreatedByUserId = request.UserId,
             CreatedAt = now,
-            SentToClientAt = now
+            SentToClientAt = now,
+            Job = job
         };
 
         // Render unsigned PDF and store in R2

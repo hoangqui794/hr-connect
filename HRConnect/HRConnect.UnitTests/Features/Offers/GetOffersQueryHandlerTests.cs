@@ -129,6 +129,7 @@ public class GetOffersQueryHandlerTests
         result.Success.Should().BeTrue();
         result.Data.Items.Should().HaveCount(1);
         result.Data.Items[0].Status.Should().Be("SENT");
+        result.Data.Items[0].DeclineReason.Should().BeNull();
     }
 
     [Fact]
@@ -277,6 +278,7 @@ public class GetOffersQueryHandlerTests
             StartDate = VietnamTime.Today().AddDays(14),
             ExpiryDate = VietnamTime.Today().AddDays(7),
             Status = status,
+            DeclineReason = "Internal withdrawal note",
             SentAt = status == "SENT" ? DateTime.UtcNow : null,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,

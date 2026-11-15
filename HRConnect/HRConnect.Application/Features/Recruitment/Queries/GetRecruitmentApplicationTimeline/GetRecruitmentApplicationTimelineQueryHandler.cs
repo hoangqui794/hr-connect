@@ -269,19 +269,23 @@ public class GetRecruitmentApplicationTimelineQueryHandler : IRequestHandler<Get
                     });
                 }
 
-                if (o.RespondedAt.HasValue)
+                if (o.RespondedAt.HasValue
+                    && (o.Status == OfferStates.Accepted || o.Status == OfferStates.Declined))
                 {
+                    var accepted = o.Status == OfferStates.Accepted;
                     events.Add(new ApplicationTimelineEventDto
                     {
-                        EventType = o.Status == "ACCEPTED" ? "OFFER_ACCEPTED" : "OFFER_DECLINED",
+                        EventType = accepted ? "OFFER_ACCEPTED" : "OFFER_DECLINED",
                         Title = request.IsCandidate
-                            ? (o.Status == "ACCEPTED" ? "Bạn đã chấp nhận lời mời nhận việc" : "Bạn đã từ chối lời mời nhận việc")
-                            : (o.Status == "ACCEPTED" ? $"Ứng viên chấp nhận Offer v{o.OfferVersion}" : $"Ứng viên từ chối Offer v{o.OfferVersion}"),
-                        Description = !string.IsNullOrWhiteSpace(o.DeclineReason) ? $"Lý do: {o.DeclineReason}" : null,
+                            ? (accepted ? "Bạn đã chấp nhận lời mời nhận việc" : "Bạn đã từ chối lời mời nhận việc")
+                            : (accepted ? $"Ứng viên chấp nhận Offer v{o.OfferVersion}" : $"Ứng viên từ chối Offer v{o.OfferVersion}"),
+                        Description = !accepted && !string.IsNullOrWhiteSpace(o.DeclineReason)
+                            ? $"Lý do: {o.DeclineReason}"
+                            : null,
                         Timestamp = o.RespondedAt.Value,
                         ActorUserId = app.Candidate?.UserId,
                         ActorName = candidateName,
-                        Status = request.IsCandidate ? (o.Status == "ACCEPTED" ? "HIRED" : "WITHDRAWN") : o.Status
+                        Status = request.IsCandidate ? (accepted ? "HIRED" : "WITHDRAWN") : o.Status
                     });
                 }
             }

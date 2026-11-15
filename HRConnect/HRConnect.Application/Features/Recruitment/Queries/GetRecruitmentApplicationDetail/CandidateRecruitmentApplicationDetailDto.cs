@@ -113,7 +113,7 @@ public class CandidateInterviewSummaryDto
 
     public string Status { get; set; } = string.Empty;
 
-    public Guid ConcurrencyToken { get; set; }
+    public Guid? ConcurrencyToken { get; set; }
 }
 
 public class CandidateOfferSummaryDto

@@ -200,6 +200,39 @@ public class GetRecruitmentApplicationTimelineQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenCandidateOfferWasWithdrawn_ShouldNotDescribeItAsCandidateDeclined()
+    {
+        var appId = Guid.NewGuid();
+        var candidateUserId = Guid.NewGuid();
+        var app = CreateSampleApplication(appId, Guid.NewGuid(), "OFFER_PENDING");
+        app.Candidate!.UserId = candidateUserId;
+        app.Offers.Add(new Offer
+        {
+            OfferId = Guid.NewGuid(),
+            OfferVersion = 1,
+            Status = "WITHDRAWN",
+            SentAt = DateTime.UtcNow.AddDays(-2),
+            RespondedAt = DateTime.UtcNow.AddDays(-1),
+            DeclineReason = "Internal withdrawal note",
+            CreatedAt = DateTime.UtcNow.AddDays(-3)
+        });
+
+        _applicationRepositoryMock
+            .Setup(r => r.GetApplicationTimelineDataAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(app);
+
+        var result = await CreateHandler().Handle(
+            new GetRecruitmentApplicationTimelineQuery(
+                ApplicationId: appId,
+                UserId: candidateUserId,
+                IsCandidate: true),
+            CancellationToken.None);
+
+        result.Data.Events.Should().NotContain(e => e.EventType == "OFFER_DECLINED");
+        result.Data.Events.Should().NotContain(e => e.Description != null && e.Description.Contains("Internal withdrawal note"));
+    }
+
+    [Fact]
     public async Task Handle_WhenUserHasNeitherRole_ShouldThrowForbiddenException()
     {
         // Arrange

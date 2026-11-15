@@ -155,6 +155,20 @@ describe('CandidateInterviewDetailPage & CandidateInterviewDetailView', () => {
     expect(screen.queryByText(/Yêu cầu dời lịch/i)).not.toBeInTheDocument();
   });
 
+  it('shows the correct label for legacy phone interviews', async () => {
+    vi.mocked(candidateInterviewApi.getInterviewDetail).mockResolvedValueOnce({
+      ...mockOfflineInterview,
+      interviewId: 'iv-phone-legacy',
+      interviewType: 'PHONE',
+      location: null,
+    } as any);
+
+    renderWithProviders(<CandidateInterviewDetailPage />, '/candidate/interviews/iv-phone-legacy');
+
+    expect(await screen.findByText('Qua điện thoại')).toBeInTheDocument();
+    expect(screen.queryByText('Trực tiếp tại văn phòng')).not.toBeInTheDocument();
+  });
+
   it('lets the Candidate confirm an upcoming interview and updates the confirmation state', async () => {
     vi.mocked(candidateInterviewApi.getInterviewDetail).mockResolvedValueOnce(mockOnlineInterview as any);
     vi.mocked(candidateInterviewApi.confirmAttendance).mockResolvedValueOnce({
@@ -199,7 +213,7 @@ describe('CandidateInterviewDetailPage & CandidateInterviewDetailView', () => {
     });
 
     expect(screen.getByText(/Vòng 2/i)).toBeInTheDocument();
-    expect(screen.getByText('Trực tiếp tại văn phòng')).toBeInTheDocument();
+    expect(screen.getByText('Trực tiếp', { selector: 'dd' })).toBeInTheDocument();
     expect(screen.getByText('Tầng 12, Tòa nhà Bitexco, Q.1, TP. Hồ Chí Minh')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Google Maps/i })).toBeInTheDocument();
   });

@@ -101,7 +101,9 @@ public class GetOffersQueryHandler : IRequestHandler<GetOffersQuery, GetOffersRe
             OfferDocumentUrl = o.OfferDocumentUrl,
             SentAt = o.SentAt,
             RespondedAt = o.RespondedAt,
-            DeclineReason = o.DeclineReason,
+            DeclineReason = !request.IsCandidate || o.Status == OfferStates.Declined
+                ? o.DeclineReason
+                : null,
             CreatedAt = o.CreatedAt,
             UpdatedAt = o.UpdatedAt,
             ConcurrencyToken = o.ConcurrencyToken,

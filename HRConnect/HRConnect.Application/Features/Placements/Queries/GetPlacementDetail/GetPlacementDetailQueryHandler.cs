@@ -102,7 +102,7 @@ public class GetPlacementDetailQueryHandler : IRequestHandler<GetPlacementDetail
                 placement.Probation.StartDate,
                 placement.Probation.EndDate,
                 placement.Probation.Result,
-                placement.Probation.Notes
+                request.IsCandidate ? null : placement.Probation.Notes
             );
         }
 
@@ -114,7 +114,7 @@ public class GetPlacementDetailQueryHandler : IRequestHandler<GetPlacementDetail
                 placement.Warranty.StartDate,
                 placement.Warranty.EndDate,
                 placement.Warranty.Status,
-                placement.Warranty.ResultNote
+                request.IsCandidate ? null : placement.Warranty.ResultNote
             );
         }
 
@@ -207,9 +207,9 @@ public class GetPlacementDetailQueryHandler : IRequestHandler<GetPlacementDetail
             placement.Department,
             placement.Status,
             placement.ConfirmedAt,
-            placement.ConfirmedBy,
-            confirmedByName,
-            placement.ConfirmationNote,
+            request.IsCandidate ? null : placement.ConfirmedBy,
+            request.IsCandidate ? null : confirmedByName,
+            request.IsCandidate ? null : placement.ConfirmationNote,
             placement.ReplacementSlotId.HasValue,
             placement.ReplacementSlotId,
             placement.ReplacementSlot?.OriginalPlacementId,

@@ -78,9 +78,10 @@ public sealed class SubmitJobCommandHandler : IRequestHandler<SubmitJobCommand, 
 
             // Xử lý gói đăng tin (MF-01 B1 & B2)
             var package = job.PostingPackage;
-            if (package == null && job.PostingPackageId.HasValue)
+            if (job.PostingPackageId.HasValue && (package == null || package.PackageId != job.PostingPackageId.Value))
             {
                 package = await _jobs.GetPostingPackageByIdAsync(job.PostingPackageId.Value, ct);
+                job.PostingPackage = package;
             }
 
             // Yêu cầu chọn gói rõ ràng cho CV_APPLICATION (bỏ fallback FREE tự động)
@@ -91,6 +92,8 @@ public sealed class SubmitJobCommandHandler : IRequestHandler<SubmitJobCommand, 
 
             var now = DateTime.UtcNow;
             job.MaxApplications = package.MaxApplications;
+            var existingFee = await _jobs.GetPostingFeeByJobIdAsync(job.JobId, ct)
+                ?? job.JobPostingFees?.OrderByDescending(x => x.CreatedAt).FirstOrDefault();
 
             // Kiểm tra giới hạn gói FREE (B2)
             if (string.Equals(package.Code, JobPostingPackageCodes.Free, StringComparison.OrdinalIgnoreCase))
@@ -117,8 +120,7 @@ public sealed class SubmitJobCommandHandler : IRequestHandler<SubmitJobCommand, 
                     }
                 }
 
-                // Tạo bản ghi phí gói FREE (0 VNĐ, PAID)
-                var existingFee = await _jobs.GetPostingFeeByJobIdAsync(job.JobId, ct);
+                // Tạo hoặc đồng bộ bản ghi phí gói FREE (0 VNĐ, PAID)
                 if (existingFee == null)
                 {
                     var freeFee = new JobPostingFee
@@ -137,14 +139,26 @@ public sealed class SubmitJobCommandHandler : IRequestHandler<SubmitJobCommand, 
                     };
                     await _jobs.AddPostingFeeAsync(freeFee, ct);
                 }
+                else if (existingFee.PackageId != package.PackageId ||
+                         existingFee.Status != JobPostingFeeStatuses.Paid ||
+                         existingFee.Amount != 0m)
+                {
+                    existingFee.PackageId = package.PackageId;
+                    existingFee.Package = package;
+                    existingFee.Amount = 0m;
+                    existingFee.CurrencyCode = "VND";
+                    existingFee.Status = JobPostingFeeStatuses.Paid;
+                    existingFee.PaidAt = now;
+                    existingFee.PaymentReference = "FREE_TIER";
+                    existingFee.UpdatedAt = now;
+                }
             }
             else if (string.Equals(package.Code, JobPostingPackageCodes.Standard, StringComparison.OrdinalIgnoreCase))
             {
                 // Đảm bảo có bản ghi phí PENDING (Client sẽ thanh toán sau khi Admin duyệt nội dung)
-                var existingFee = await _jobs.GetPostingFeeByJobIdAsync(job.JobId, ct);
+                var standardPrice = package.Price;
                 if (existingFee == null)
                 {
-                    var standardPrice = package.Price;
                     existingFee = new JobPostingFee
                     {
                         PostingFeeId = Guid.NewGuid(),
@@ -159,13 +173,43 @@ public sealed class SubmitJobCommandHandler : IRequestHandler<SubmitJobCommand, 
                     };
                     await _jobs.AddPostingFeeAsync(existingFee, ct);
                 }
+                else if (existingFee.PackageId != package.PackageId ||
+                         string.Equals(existingFee.PaymentReference, "FREE_TIER", StringComparison.OrdinalIgnoreCase) ||
+                         existingFee.Status == JobPostingFeeStatuses.Cancelled ||
+                         (existingFee.Status == JobPostingFeeStatuses.Pending && existingFee.Amount != standardPrice))
+                {
+                    existingFee.PackageId = package.PackageId;
+                    existingFee.Package = package;
+                    existingFee.Amount = standardPrice;
+                    existingFee.CurrencyCode = "VND";
+                    existingFee.Status = JobPostingFeeStatuses.Pending;
+                    existingFee.PaidAt = null;
+                    existingFee.PaymentReference = null;
+                    existingFee.RecordedBy = null;
+                    existingFee.ActivatedAt = null;
+                    existingFee.ExpiresAt = null;
+                    existingFee.UpdatedAt = now;
+                }
             }
         }
         else
         {
             job.PostingPackageId = null;
+            job.PostingPackage = null;
             job.MaxApplications = null;
             job.ExpiresAt = null;
+
+            var existingFee = await _jobs.GetPostingFeeByJobIdAsync(job.JobId, ct)
+                ?? job.JobPostingFees?.OrderByDescending(x => x.CreatedAt).FirstOrDefault();
+            if (existingFee != null &&
+                (existingFee.Status == JobPostingFeeStatuses.Pending ||
+                 string.Equals(existingFee.PaymentReference, "FREE_TIER", StringComparison.OrdinalIgnoreCase)))
+            {
+                existingFee.Status = JobPostingFeeStatuses.Cancelled;
+                existingFee.PaidAt = null;
+                existingFee.PaymentReference = null;
+                existingFee.UpdatedAt = DateTime.UtcNow;
+            }
         }
 
         JobTransitions.ChangeStatus(job, JobStatuses.PendingReview, request.UserId, JobReasonCodes.SubmittedForReview);

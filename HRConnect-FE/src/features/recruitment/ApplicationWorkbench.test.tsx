@@ -69,12 +69,16 @@ const baseApplication = {
   isContactMasked: false,
 };
 
-const renderWorkbench = (data: Record<string, unknown>, audience: 'client' | 'hr' = 'client') => {
+const renderWorkbench = (
+  data: Record<string, unknown>,
+  audience: 'client' | 'hr' = 'client',
+  timeline: Record<string, unknown>[] = []
+) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   vi.mocked(screeningApi.get).mockResolvedValue(data as any);
-  vi.mocked(screeningApi.timeline).mockResolvedValue([]);
+  vi.mocked(screeningApi.timeline).mockResolvedValue(timeline as any);
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -218,6 +222,39 @@ describe('ApplicationWorkbench MF-04', () => {
 
     expect(await screen.findByText('Nhập lý do ngày thực tế khác ngày dự kiến.')).toBeInTheDocument();
     expect(clientActionsApi.confirmStartWork).not.toHaveBeenCalled();
+  });
+
+  it('shows the planned start change count and the 60-day offer limit', async () => {
+    const offerStartDate = dayjs().add(10, 'day').startOf('day');
+    renderWorkbench(
+      {
+        ...baseApplication,
+        status: 'OFFER_ACCEPTED',
+        currentStage: 'OFFER',
+        plannedStartDate: offerStartDate.format('YYYY-MM-DD'),
+        allowedActions: ['CONFIRM_PLANNED_START_DATE'],
+        offers: [
+          {
+            offerId: 'offer-accepted',
+            offerVersion: 1,
+            status: 'ACCEPTED',
+            startDate: offerStartDate.format('YYYY-MM-DD'),
+            respondedAt: dayjs().subtract(1, 'day').toISOString(),
+            concurrencyToken: 'offer-token',
+          },
+        ],
+      },
+      'client',
+      [
+        { eventType: 'PLANNED_START_DATE_CHANGED' },
+        { eventType: 'PLANNED_START_DATE_CHANGED' },
+      ]
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Dời ngày nhận việc' }));
+
+    expect(await screen.findByText('Đã dời 2/3 lần')).toBeInTheDocument();
+    expect(screen.getByText(`Ngày mới không được muộn hơn ${offerStartDate.add(60, 'day').format('DD/MM/YYYY')} (60 ngày từ ngày trong offer).`)).toBeInTheDocument();
   });
 
   it('treats a failed interview as rejection without offering another interview round', async () => {

@@ -88,6 +88,43 @@ public sealed class OfferExpiryWorkerTests
         (await verification.AuditLogs.AnyAsync()).Should().BeFalse();
     }
 
+    [Fact]
+    public async Task ExpireBatchAsync_ExpiredOffer_LoadsJobAndCompanyForCandidateDelivery()
+    {
+        var databaseName = Guid.NewGuid().ToString();
+        var fixture = CreateOffer(VietnamTime.Today().AddDays(-1));
+        var expiryService = new Mock<IOfferExpiryService>();
+        Offer? deliveredOffer = null;
+        expiryService
+            .Setup(service => service.ExpireAsync(
+                It.IsAny<Offer>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<Offer, DateTime, CancellationToken>((offer, _, _) => deliveredOffer = offer)
+            .ReturnsAsync(true);
+
+        var services = new ServiceCollection();
+        services.AddDbContext<ApplicationDbContext>(options => options.UseInMemoryDatabase(databaseName));
+        services.AddScoped(_ => expiryService.Object);
+        await using var provider = services.BuildServiceProvider();
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            db.Offers.Add(fixture.Offer);
+            await db.SaveChangesAsync();
+        }
+
+        var worker = new OfferExpiryWorker(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<OfferExpiryWorker>.Instance);
+        await worker.ExpireBatchAsync(CancellationToken.None);
+
+        deliveredOffer.Should().NotBeNull();
+        deliveredOffer!.Application.Job!.Title.Should().Be("Backend Developer");
+        deliveredOffer.Application.Job.Company!.CompanyName.Should().Be("Tech Corp");
+    }
+
     [Theory]
     [InlineData(13, "EXPIRED")]
     [InlineData(14, "SENT")]
@@ -139,6 +176,7 @@ public sealed class OfferExpiryWorkerTests
     private static OfferFixture CreateOffer(DateOnly expiryDate)
     {
         var now = DateTime.UtcNow;
+        var companyId = Guid.NewGuid();
         var candidateUser = new AppUser
         {
             UserId = Guid.NewGuid(),
@@ -164,6 +202,15 @@ public sealed class OfferExpiryWorkerTests
         {
             JobId = Guid.NewGuid(),
             Title = "Backend Developer",
+            CompanyId = companyId,
+            Company = new Company
+            {
+                CompanyId = companyId,
+                CompanyName = "Tech Corp",
+                VerificationStatus = "VERIFIED",
+                CreatedAt = now,
+                UpdatedAt = now
+            },
             CurrencyCode = "VND",
             Status = "ACTIVE",
             CreatedAt = now,

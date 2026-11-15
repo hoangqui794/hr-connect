@@ -64,6 +64,10 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
         // CV_SOURCING: the job opens only after the Client pays the deposit (decision 2026-10-17).
         var awaitsSourcingDeposit = false;
 
+        var currentAgreement = job.CurrentServiceAgreement
+            ?? job.ServiceAgreements?.FirstOrDefault(a => a.IsCurrent && a.Status != ServiceAgreementStatuses.Void)
+            ?? (_agreements != null ? await _agreements.GetCurrentByJobIdAsync(job.JobId, ct) : null);
+
         object? adminDefaultsAtApproval = null;
         object? approvedTerms = null;
         var proposedTerms = new
@@ -100,9 +104,18 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
                 paymentDueDays = defaultPaymentDueDays
             };
 
-            var feeMultiplier = request.CommercialTerms?.FeeMultiplier ?? job.ProposedFeeMultiplier ?? defaultFeeMultiplier;
-            var warrantyDays = request.CommercialTerms?.WarrantyDays ?? job.ProposedWarrantyDays ?? defaultWarrantyDays;
-            var paymentDueDays = request.CommercialTerms?.PaymentDueDays ?? job.ProposedPaymentDueDays ?? defaultPaymentDueDays;
+            var feeMultiplier = request.CommercialTerms?.FeeMultiplier
+                ?? currentAgreement?.FeeMultiplier
+                ?? job.ProposedFeeMultiplier
+                ?? defaultFeeMultiplier;
+            var warrantyDays = request.CommercialTerms?.WarrantyDays
+                ?? currentAgreement?.WarrantyDays
+                ?? job.ProposedWarrantyDays
+                ?? defaultWarrantyDays;
+            var paymentDueDays = request.CommercialTerms?.PaymentDueDays
+                ?? currentAgreement?.PaymentDueDays
+                ?? job.ProposedPaymentDueDays
+                ?? defaultPaymentDueDays;
 
             if (feeMultiplier < 0.1m || feeMultiplier > 10m)
             {
@@ -119,11 +132,15 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
                 throw new BadRequestException($"Điều khoản paymentDueDays không hợp lệ ({paymentDueDays}). Khoảng cho phép: 1 - 120 ngày.", "TERM_OUT_OF_RANGE");
             }
 
+            var effectiveAgreementReference = !string.IsNullOrWhiteSpace(request.AgreementReference)
+                ? request.AgreementReference.Trim()
+                : currentAgreement?.VerificationCode ?? job.AgreementReference;
+
             var differsFromProposed = (job.ProposedFeeMultiplier.HasValue && job.ProposedFeeMultiplier.Value != feeMultiplier)
                 || (job.ProposedWarrantyDays.HasValue && job.ProposedWarrantyDays.Value != warrantyDays)
                 || (job.ProposedPaymentDueDays.HasValue && job.ProposedPaymentDueDays.Value != paymentDueDays);
 
-            if (differsFromProposed && string.IsNullOrWhiteSpace(request.AgreementReference))
+            if (differsFromProposed && string.IsNullOrWhiteSpace(effectiveAgreementReference))
             {
                 throw new BadRequestException("Số tiền/điều khoản chốt khác với đề xuất của Client, bắt buộc phải cung cấp thông tin thỏa thuận (agreementReference).", "AGREEMENT_REFERENCE_REQUIRED");
             }
@@ -131,10 +148,19 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
             job.FeeMultiplier = feeMultiplier;
             job.WarrantyDays = warrantyDays;
             job.PaymentDueDays = paymentDueDays;
-            job.AgreementReference = string.IsNullOrWhiteSpace(request.AgreementReference) ? null : request.AgreementReference.Trim();
-            job.AgreementNote = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
+            job.AgreementReference = effectiveAgreementReference;
+            job.AgreementNote = string.IsNullOrWhiteSpace(request.Note)
+                ? (currentAgreement?.AgreementNote ?? job.AgreementNote)
+                : request.Note.Trim();
             job.AgreedAt = now;
             job.AgreedBy = request.UserId;
+
+            if (currentAgreement != null)
+            {
+                currentAgreement.FeeMultiplier ??= feeMultiplier;
+                currentAgreement.WarrantyDays ??= warrantyDays;
+                currentAgreement.PaymentDueDays ??= paymentDueDays;
+            }
 
             approvedTerms = new
             {
@@ -167,11 +193,25 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
                 paymentDueDays = defaultPaymentDueDays
             };
 
-            var sourcingTarget = request.CommercialTerms?.SourcingTarget ?? job.SourcingTarget ?? 10;
-            var pricePerCv = request.CommercialTerms?.PricePerCv ?? job.ProposedPricePerCv ?? defaultPricePerCv;
-            var depositPercent = request.CommercialTerms?.DepositPercent ?? defaultDepositPercent;
-            var reviewDays = request.CommercialTerms?.ReviewDays ?? defaultReviewDays;
-            var paymentDueDays = request.CommercialTerms?.PaymentDueDays ?? job.ProposedPaymentDueDays ?? defaultPaymentDueDays;
+            var sourcingTarget = request.CommercialTerms?.SourcingTarget
+                ?? currentAgreement?.SourcingTarget
+                ?? job.SourcingTarget
+                ?? 10;
+            var pricePerCv = request.CommercialTerms?.PricePerCv
+                ?? currentAgreement?.PricePerQualifiedCv
+                ?? job.ProposedPricePerCv
+                ?? defaultPricePerCv;
+            var depositPercent = request.CommercialTerms?.DepositPercent
+                ?? job.DepositPercent
+                ?? defaultDepositPercent;
+            var reviewDays = request.CommercialTerms?.ReviewDays
+                ?? currentAgreement?.ReviewDays
+                ?? job.ReviewDays
+                ?? defaultReviewDays;
+            var paymentDueDays = request.CommercialTerms?.PaymentDueDays
+                ?? currentAgreement?.PaymentDueDays
+                ?? job.ProposedPaymentDueDays
+                ?? defaultPaymentDueDays;
 
             if (sourcingTarget < 1 || sourcingTarget > 1000)
             {
@@ -203,10 +243,14 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
                 throw new BadRequestException("Khi giảm số lượng CV mục tiêu so với yêu cầu của Client, bắt buộc phải có ghi chú lý do.", "NOTE_REQUIRED");
             }
 
+            var effectiveAgreementReference = !string.IsNullOrWhiteSpace(request.AgreementReference)
+                ? request.AgreementReference.Trim()
+                : currentAgreement?.VerificationCode ?? job.AgreementReference;
+
             var differsFromProposed = (job.ProposedPricePerCv.HasValue && job.ProposedPricePerCv.Value != pricePerCv)
                 || (job.ProposedPaymentDueDays.HasValue && job.ProposedPaymentDueDays.Value != paymentDueDays);
 
-            if (differsFromProposed && string.IsNullOrWhiteSpace(request.AgreementReference))
+            if (differsFromProposed && string.IsNullOrWhiteSpace(effectiveAgreementReference))
             {
                 throw new BadRequestException("Số tiền/điều khoản chốt khác với đề xuất của Client, bắt buộc phải cung cấp thông tin thỏa thuận (agreementReference).", "AGREEMENT_REFERENCE_REQUIRED");
             }
@@ -216,10 +260,20 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
             job.DepositPercent = depositPercent;
             job.ReviewDays = reviewDays;
             job.PaymentDueDays = paymentDueDays;
-            job.AgreementReference = string.IsNullOrWhiteSpace(request.AgreementReference) ? null : request.AgreementReference.Trim();
-            job.AgreementNote = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
+            job.AgreementReference = effectiveAgreementReference;
+            job.AgreementNote = string.IsNullOrWhiteSpace(request.Note)
+                ? (currentAgreement?.AgreementNote ?? job.AgreementNote)
+                : request.Note.Trim();
             job.AgreedAt = now;
             job.AgreedBy = request.UserId;
+
+            if (currentAgreement != null)
+            {
+                currentAgreement.PricePerQualifiedCv ??= pricePerCv;
+                currentAgreement.SourcingTarget ??= sourcingTarget;
+                currentAgreement.ReviewDays ??= reviewDays;
+                currentAgreement.PaymentDueDays ??= paymentDueDays;
+            }
 
             approvedTerms = new
             {
@@ -257,9 +311,10 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
             }
 
             var package = job.PostingPackage;
-            if (package == null && job.PostingPackageId.HasValue)
+            if (job.PostingPackageId.HasValue && (package == null || package.PackageId != job.PostingPackageId.Value))
             {
                 package = await _jobs.GetPostingPackageByIdAsync(job.PostingPackageId.Value, ct);
+                job.PostingPackage = package;
             }
 
             if (package == null)
@@ -275,7 +330,8 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
             job.AgreedAt = now;
             job.AgreedBy = request.UserId;
             job.MaxApplications = package?.MaxApplications;
-            var fee = await _jobs.GetPostingFeeByJobIdAsync(job.JobId, ct);
+            var fee = await _jobs.GetPostingFeeByJobIdAsync(job.JobId, ct)
+                ?? job.JobPostingFees?.OrderByDescending(x => x.CreatedAt).FirstOrDefault();
 
             if (package != null && string.Equals(package.Code, JobPostingPackageCodes.Standard, StringComparison.OrdinalIgnoreCase))
             {
@@ -296,6 +352,22 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
                         UpdatedAt = now
                     };
                     await _jobs.AddPostingFeeAsync(fee, ct);
+                }
+                else if (fee.PackageId != package.PackageId ||
+                         string.Equals(fee.PaymentReference, "FREE_TIER", StringComparison.OrdinalIgnoreCase) ||
+                         fee.Status == JobPostingFeeStatuses.Cancelled)
+                {
+                    fee.PackageId = package.PackageId;
+                    fee.Package = package;
+                    fee.Amount = standardPrice;
+                    fee.CurrencyCode = FinanceCurrency.Normalize(job.CurrencyCode);
+                    fee.Status = JobPostingFeeStatuses.Pending;
+                    fee.PaidAt = null;
+                    fee.PaymentReference = null;
+                    fee.RecordedBy = null;
+                    fee.ActivatedAt = null;
+                    fee.ExpiresAt = null;
+                    fee.UpdatedAt = now;
                 }
 
                 if (fee.Status != JobPostingFeeStatuses.Paid)
@@ -327,6 +399,15 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
                     fee.UpdatedAt = now;
                 }
             }
+        }
+
+        // If there is an active/current ServiceAgreement, mark it as Signed upon approval (before payment gate or activation)
+        if (currentAgreement != null && currentAgreement.Status != ServiceAgreementStatuses.Signed)
+        {
+            currentAgreement.Status = ServiceAgreementStatuses.Signed;
+            currentAgreement.SignedAt = now;
+            currentAgreement.ConcurrencyToken = Guid.NewGuid();
+            job.CurrentServiceAgreementId = currentAgreement.ServiceAgreementId;
         }
 
         if (requiresPayment)
@@ -373,17 +454,6 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
         await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct);
         job.PostedAt = now;
         job.ClosedAt = null;
-
-        if (_agreements != null)
-        {
-            var currentAgreement = await _agreements.GetCurrentByJobIdAsync(job.JobId, ct);
-            if (currentAgreement != null && currentAgreement.Status != ServiceAgreementStatuses.Signed)
-            {
-                currentAgreement.Status = ServiceAgreementStatuses.Signed;
-                currentAgreement.SignedAt = now;
-                currentAgreement.ConcurrencyToken = Guid.NewGuid();
-            }
-        }
 
         await _notifications.AddAsync(new Notification
         {

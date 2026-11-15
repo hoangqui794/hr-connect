@@ -10,6 +10,7 @@ using HRConnect.Application.Features.Jobs.Commands.CreateJob;
 using HRConnect.Application.Features.Jobs.Commands.SubmitJob;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Application.Features.Jobs.Queries.GetJobCommercialTermsDefaults;
+using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -421,5 +422,149 @@ public class JobCommercialTermsTests
         reviewerDto.CommercialTerms!.AgreementReference.Should().Be("SECRET_REF_INTERNAL");
         reviewerDto.CommercialTerms.AgreementNote.Should().Be("Internal discount approved by Director");
         reviewerDto.CommercialTerms.AgreedBy.Should().Be("Internal HR Staff");
+    }
+
+    [Fact]
+    public async Task ApproveJob_CvSourcing_WithWetSignature_CommercialTermsNull_ShouldInheritTermsFromAgreement_AndMarkAgreementSigned_AndGoToPendingPayment()
+    {
+        // Arrange
+        var hrUserId = Guid.NewGuid();
+        var agreementId = Guid.NewGuid();
+        var agreement = new ServiceAgreement
+        {
+            ServiceAgreementId = agreementId,
+            Version = 1,
+            Status = ServiceAgreementStatuses.SentToClient,
+            IsCurrent = true,
+            PricePerQualifiedCv = 550_000m,
+            SourcingTarget = 15,
+            ReviewDays = 10,
+            PaymentDueDays = 25,
+            AgreementNote = "Thỏa thuận ký ướt đạt chuẩn",
+            VerificationCode = "HRC-WET-123"
+        };
+
+        var job = new Job
+        {
+            JobId = Guid.NewGuid(),
+            CompanyId = Guid.NewGuid(),
+            Title = "Backend Tech Lead",
+            Status = JobStatuses.PendingAgreement,
+            CurrencyCode = "VND",
+            Company = new Company { CompanyId = Guid.NewGuid(), CompanyName = "Acme Corp" },
+            ServiceType = new ServiceType { Code = "CV_SOURCING", Name = "CV Sourcing" },
+            CurrentServiceAgreement = agreement,
+            CurrentServiceAgreementId = agreementId
+        };
+        agreement.Job = job;
+        agreement.JobId = job.JobId;
+
+        _jobRepository.Setup(x => x.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job);
+        _adminSettings.Setup(x => x.GetDecimalAsync(BusinessSettingKeys.CvSourcingPricePerCv, It.IsAny<CancellationToken>())).ReturnsAsync(600_000m);
+        _adminSettings.Setup(x => x.GetDecimalAsync(BusinessSettingKeys.CvSourcingDepositPercent, It.IsAny<CancellationToken>())).ReturnsAsync(50m);
+        _adminSettings.Setup(x => x.GetIntAsync(BusinessSettingKeys.CvSourcingPaymentDueDays, It.IsAny<CancellationToken>())).ReturnsAsync(20);
+        _adminSettings.Setup(x => x.GetIntAsync(BusinessSettingKeys.CvSourcingReviewDays, It.IsAny<CancellationToken>())).ReturnsAsync(7);
+
+        var sourcingFinance = new Mock<HRConnect.Application.Features.Finance.Common.ISourcingFinanceService>();
+        sourcingFinance.Setup(x => x.EnsureDepositAsync(job, hrUserId, It.IsAny<CancellationToken>(), "CV_SOURCING"))
+            .ReturnsAsync(new ServiceFee { ServiceFeeId = Guid.NewGuid(), Kind = ServiceFeeKinds.Deposit, Amount = 4_125_000m, Status = ServiceFeeStates.Pending });
+
+        var handler = new ApproveJobCommandHandler(
+            _jobRepository.Object, _adminSettings.Object, _notifications.Object, _auditLog.Object, _unitOfWork.Object,
+            sourcingFinance.Object);
+
+        // Act - HR confirms signed wet agreement without re-passing terms
+        var command = new ApproveJobCommand
+        {
+            JobId = job.JobId,
+            UserId = hrUserId,
+            ConcurrencyToken = job.ConcurrencyToken,
+            CommercialTerms = null,
+            AgreementReference = null
+        };
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        job.Status.Should().Be(JobStatuses.PendingPayment);
+        job.SourcingPricePerCv.Should().Be(550_000m);
+        job.SourcingTarget.Should().Be(15);
+        job.ReviewDays.Should().Be(10);
+        job.PaymentDueDays.Should().Be(25);
+        job.AgreementReference.Should().Be("HRC-WET-123");
+        job.AgreementNote.Should().Be("Thỏa thuận ký ướt đạt chuẩn");
+
+        agreement.Status.Should().Be(ServiceAgreementStatuses.Signed);
+        agreement.SignedAt.Should().NotBeNull();
+        job.CurrentServiceAgreementId.Should().Be(agreementId);
+        _unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ApproveJob_HeadhuntCod_WithWetSignature_CommercialTermsNull_ShouldInheritTermsFromAgreement_AndMarkAgreementSigned_AndGoToActive()
+    {
+        // Arrange
+        var hrUserId = Guid.NewGuid();
+        var agreementId = Guid.NewGuid();
+        var agreement = new ServiceAgreement
+        {
+            ServiceAgreementId = agreementId,
+            Version = 1,
+            Status = ServiceAgreementStatuses.SentToClient,
+            IsCurrent = true,
+            FeeMultiplier = 1.8m,
+            WarrantyDays = 60,
+            PaymentDueDays = 30,
+            AgreementNote = "Thỏa thuận Headhunt VIP ký ướt",
+            VerificationCode = "HRC-HH-WET-999"
+        };
+
+        var job = new Job
+        {
+            JobId = Guid.NewGuid(),
+            CompanyId = Guid.NewGuid(),
+            Title = "Senior AI Engineer",
+            Status = JobStatuses.PendingAgreement,
+            CurrencyCode = "VND",
+            Company = new Company { CompanyId = Guid.NewGuid(), CompanyName = "Tech Corp" },
+            ServiceType = new ServiceType { Code = "HEADHUNT_COD", Name = "Headhunt COD" },
+            CurrentServiceAgreement = agreement,
+            CurrentServiceAgreementId = agreementId
+        };
+        agreement.Job = job;
+        agreement.JobId = job.JobId;
+
+        _jobRepository.Setup(x => x.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job);
+        _adminSettings.Setup(x => x.GetDecimalAsync(BusinessSettingKeys.HeadhuntFeeMultiplier, It.IsAny<CancellationToken>())).ReturnsAsync(1.5m);
+        _adminSettings.Setup(x => x.GetIntAsync(BusinessSettingKeys.HeadhuntWarrantyDays, It.IsAny<CancellationToken>())).ReturnsAsync(30);
+        _adminSettings.Setup(x => x.GetIntAsync(BusinessSettingKeys.HeadhuntPaymentDueDays, It.IsAny<CancellationToken>())).ReturnsAsync(20);
+
+        var handler = new ApproveJobCommandHandler(
+            _jobRepository.Object, _adminSettings.Object, _notifications.Object, _auditLog.Object, _unitOfWork.Object);
+
+        // Act - HR confirms signed wet agreement without re-passing terms
+        var command = new ApproveJobCommand
+        {
+            JobId = job.JobId,
+            UserId = hrUserId,
+            ConcurrencyToken = job.ConcurrencyToken,
+            CommercialTerms = null,
+            AgreementReference = null
+        };
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        job.Status.Should().Be(JobStatuses.Active);
+        job.FeeMultiplier.Should().Be(1.8m);
+        job.WarrantyDays.Should().Be(60);
+        job.PaymentDueDays.Should().Be(30);
+        job.AgreementReference.Should().Be("HRC-HH-WET-999");
+        job.AgreementNote.Should().Be("Thỏa thuận Headhunt VIP ký ướt");
+
+        agreement.Status.Should().Be(ServiceAgreementStatuses.Signed);
+        agreement.SignedAt.Should().NotBeNull();
+        job.CurrentServiceAgreementId.Should().Be(agreementId);
+        _unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 }
