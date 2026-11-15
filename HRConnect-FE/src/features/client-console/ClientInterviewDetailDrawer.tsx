@@ -618,7 +618,6 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                 options={[
                   { value: 'ONLINE', label: 'Trực tuyến (Online)' },
                   { value: 'OFFLINE', label: 'Trực tiếp (Tại văn phòng)' },
-                  { value: 'PHONE', label: 'Điện thoại' },
                 ]}
               />
             </Form.Item>
@@ -662,9 +661,22 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
           <Form.Item
             name="newScheduledAt"
             label="Thời gian phỏng vấn mới"
-            rules={[{ required: true, message: 'Vui lòng chọn thời gian mới.' }]}
+            rules={[
+              { required: true, message: 'Vui lòng chọn thời gian mới.' },
+              {
+                validator: (_, value: Dayjs | undefined) =>
+                  !value || value.isAfter(dayjs())
+                    ? Promise.resolve()
+                    : Promise.reject(new Error('Thời gian phỏng vấn mới phải ở tương lai.')),
+              },
+            ]}
           >
-            <DatePicker showTime format="HH:mm DD/MM/YYYY" className="w-full" />
+            <DatePicker
+              showTime
+              format="HH:mm DD/MM/YYYY"
+              className="w-full"
+              disabledDate={(current) => current.isBefore(dayjs().startOf('day'))}
+            />
           </Form.Item>
           <Form.Item
             name="reason"
