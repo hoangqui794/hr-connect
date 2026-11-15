@@ -120,6 +120,7 @@ export const ClientJobsListPage: React.FC = () => {
   const [paymentModalJob, setPaymentModalJob] = useState<{
     jobId: string;
     title: string;
+    serviceTypeCode?: string | null;
     isDeposit?: boolean;
     depositAmount?: number | null;
   } | null>(null);
@@ -185,7 +186,15 @@ export const ClientJobsListPage: React.FC = () => {
       }
 
       if (openPaymentParam) {
-        setPaymentModalJob({ jobId: targetJob.jobId, title: targetJob.title });
+        const isDeposit = isAwaitingSourcingDeposit(targetJob);
+        const amount = isDeposit ? depositOf(targetJob) : undefined;
+        setPaymentModalJob({
+          jobId: targetJob.jobId,
+          title: targetJob.title,
+          serviceTypeCode: targetJob.serviceTypeCode,
+          isDeposit,
+          depositAmount: amount,
+        });
       }
 
       // Cuộn mượt đến thẻ bài viết sau khi render
@@ -310,7 +319,14 @@ export const ClientJobsListPage: React.FC = () => {
             type="primary"
             className="!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 text-white !rounded-lg shadow-sm transition-all active:scale-[0.98] font-medium !h-8 px-3 text-xs"
             icon={<CreditCardOutlined />}
-            onClick={() => setPaymentModalJob({ jobId: job.jobId, title: job.title })}
+            onClick={() =>
+              setPaymentModalJob({
+                jobId: job.jobId,
+                title: job.title,
+                serviceTypeCode: job.serviceTypeCode,
+                isDeposit: false,
+              })
+            }
           >
             Thanh toán
           </Button>
@@ -756,10 +772,11 @@ export const ClientJobsListPage: React.FC = () => {
                                 const amount = depositOf(job);
                                 if (amount == null) return;
                                 setPaymentModalJob({
-                                   jobId: job.jobId,
-                                   title: job.title,
-                                   isDeposit: true,
-                                   depositAmount: amount,
+                                  jobId: job.jobId,
+                                  title: job.title,
+                                  serviceTypeCode: job.serviceTypeCode,
+                                  isDeposit: true,
+                                  depositAmount: amount,
                                 });
                               }}
                             >
@@ -944,6 +961,7 @@ export const ClientJobsListPage: React.FC = () => {
         visible={Boolean(paymentModalJob)}
         jobId={paymentModalJob?.jobId ?? ''}
         jobTitle={paymentModalJob?.title ?? ''}
+        serviceTypeCode={paymentModalJob?.serviceTypeCode}
         isDeposit={paymentModalJob?.isDeposit}
         depositAmount={paymentModalJob?.depositAmount}
         onClose={() => {
