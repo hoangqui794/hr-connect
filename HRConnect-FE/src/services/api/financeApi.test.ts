@@ -190,4 +190,39 @@ describe('financeApi', () => {
       expect(res).toEqual(mockResult);
     });
   });
+
+  describe('serviceFeesSummary & clientReplacementSlots', () => {
+    it('calls GET /service-fees/summary and unwraps data', async () => {
+      const mockSummary = {
+        unpaidAmount: 15_000_000,
+        unpaidCount: 2,
+        overdueAmount: 5_000_000,
+        overdueCount: 1,
+        paidAmount: 30_000_000,
+        paidCount: 3,
+        pendingRefundAmount: 4_000_000,
+        pendingRefundCount: 1,
+        paidRefundAmount: 0,
+        paidRefundCount: 0,
+        totalCount: 6,
+        currencyCode: 'VND',
+      };
+      vi.mocked(apiClient.get).mockResolvedValueOnce({ data: { success: true, data: mockSummary } });
+
+      const res = await financeApi.serviceFeesSummary({ jobId: 'job-1' });
+      expect(apiClient.get).toHaveBeenCalledWith('/service-fees/summary', { params: { jobId: 'job-1' } });
+      expect(res).toEqual(mockSummary);
+    });
+
+    it('calls GET /client/replacement-slots with cleaned params', async () => {
+      const mockPage = { items: [], totalCount: 0, page: 1, pageSize: 50 };
+      vi.mocked(apiClient.get).mockResolvedValueOnce({ data: { success: true, data: mockPage } });
+
+      const res = await financeApi.clientReplacementSlots({ jobId: 'job-2', page: 1, pageSize: 50 });
+      expect(apiClient.get).toHaveBeenCalledWith('/client/replacement-slots', {
+        params: { jobId: 'job-2', page: 1, pageSize: 50 },
+      });
+      expect(res).toEqual(mockPage);
+    });
+  });
 });

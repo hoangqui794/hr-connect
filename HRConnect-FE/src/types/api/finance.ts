@@ -269,3 +269,33 @@ export interface PlacementListItem {
   };
 }
 
+export interface ServiceFeeCurrencySummary {
+  currencyCode: string;
+  unpaidAmount: number;
+  unpaidCount: number;
+  overdueAmount: number;
+  overdueCount: number;
+  paidAmount: number;
+  paidCount: number;
+  pendingRefundAmount: number;
+  pendingRefundCount: number;
+  paidRefundAmount: number;
+  paidRefundCount: number;
+}
+
+export interface ServiceFeeSummary {
+  unpaidAmount: number;
+  unpaidCount: number;
+  overdueAmount: number;
+  overdueCount: number;
+  paidAmount: number;
+  paidCount: number;
+  pendingRefundAmount: number;
+  pendingRefundCount: number;
+  paidRefundAmount: number;
+  paidRefundCount: number;
+  totalCount: number;
+  currencyCode: string;
+  currencyBreakdowns?: ServiceFeeCurrencySummary[] | null;
+}
+

@@ -8,7 +8,7 @@ import { financeApi, vnPayApi } from '@/services/api/financeApi';
 import { jobsApi } from '@/services/api/jobsApi';
 
 vi.mock('@/services/api/financeApi', () => ({
-  financeApi: { serviceFees: vi.fn() },
+  financeApi: { serviceFees: vi.fn(), serviceFeesSummary: vi.fn() },
   vnPayApi: { enabled: vi.fn(), createPayment: vi.fn() },
 }));
 vi.mock('@/services/api/jobsApi', () => ({ jobsApi: { getMine: vi.fn(), getPostingFee: vi.fn() } }));
@@ -31,6 +31,7 @@ const renderPage = () =>
 
 describe('ClientBillingPage', () => {
   beforeEach(() => {
+    vi.mocked(financeApi.serviceFeesSummary).mockResolvedValue(null as never);
     vi.mocked(financeApi.serviceFees).mockResolvedValue({
       items: [
         fee({ serviceFeeId: 'hh', kind: 'PLACEMENT', jobTitle: 'Backend .NET', candidateName: 'qui3', amount: 42_000_000, status: 'OVERDUE' }),
@@ -327,5 +328,60 @@ describe('ClientBillingPage', () => {
     const link = screen.getByRole('link', { name: 'Xem chi tiết nhận việc #BCDEF123' });
     expect(link).toHaveAttribute('href', '/client/placements/bcdef123-0000-0000-0000-000000000001');
     expect(screen.queryByRole('button', { name: /^Thanh toán:/ })).toBeNull();
+  });
+
+  it('uses full GET /service-fees/summary totals combined with posting fees when totalCount exceeds loaded page', async () => {
+    vi.mocked(financeApi.serviceFeesSummary).mockResolvedValue({
+      unpaidAmount: 150_000_000,
+      unpaidCount: 12,
+      overdueAmount: 60_000_000,
+      overdueCount: 4,
+      paidAmount: 420_000_000,
+      paidCount: 110,
+      pendingRefundAmount: 18_000_000,
+      pendingRefundCount: 2,
+      paidRefundAmount: 0,
+      paidRefundCount: 0,
+      totalCount: 124,
+      currencyCode: 'VND',
+    });
+    vi.mocked(financeApi.serviceFees).mockResolvedValue({
+      items: [fee({ serviceFeeId: 'hh-1', kind: 'PLACEMENT', jobTitle: 'Architect', amount: 40_000_000, status: 'PENDING' })],
+      totalCount: 124,
+      page: 1,
+      pageSize: 100,
+    } as never);
+    vi.mocked(jobsApi.getMine).mockResolvedValue([
+      {
+        jobId: 'j-ap-1',
+        title: 'AP Job',
+        serviceTypeCode: 'CV_APPLICATION',
+        postingFeeStatus: 'PENDING',
+        postingPackageCode: 'PRO',
+        postingFee: {
+          postingFeeId: 'pf-1',
+          amount: 1_000_000,
+          currencyCode: 'VND',
+          status: 'PENDING',
+          paidAt: null,
+          paymentReference: null,
+          packageName: 'Pro',
+        },
+      },
+    ] as never);
+
+    renderPage();
+
+    expect(await screen.findByText('Architect')).toBeInTheDocument();
+    expect(screen.getByText('151.000.000 đ')).toBeInTheDocument();
+    expect(screen.getByText('13 khoản chưa thanh toán')).toBeInTheDocument();
+    expect(screen.getByText('60.000.000 đ')).toBeInTheDocument();
+    expect(screen.getByText('4 khoản quá hạn')).toBeInTheDocument();
+    expect(screen.getByText('420.000.000 đ')).toBeInTheDocument();
+    expect(screen.getByText('110 khoản')).toBeInTheDocument();
+    expect(screen.getByText('18.000.000 đ')).toBeInTheDocument();
+    expect(screen.getByText('2 khoản chờ hoàn tiền')).toBeInTheDocument();
+    expect(screen.getByText('125 khoản phí')).toBeInTheDocument();
+    expect(screen.getByText(/Số liệu KPI đã tổng hợp toàn bộ hệ thống/)).toBeInTheDocument();
   });
 });

@@ -95,8 +95,12 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
       // so the card no longer fans out over placements, jobs and warranties.
       const pageSize = 100;
       const slotResults: ReplacementSlotWithMeta[][] = [];
+      const fetchSlots =
+        mode === 'client' && typeof financeApi.clientReplacementSlots === 'function'
+          ? financeApi.clientReplacementSlots
+          : financeApi.replacementSlots;
       for (let page = 1; ; page += 1) {
-        const res = await financeApi.replacementSlots({ jobId: selectedJobId, page, pageSize });
+        const res = await fetchSlots({ jobId: selectedJobId, page, pageSize });
         const items = res?.items ?? [];
         slotResults.push(
           items.map((slot) => ({

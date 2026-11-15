@@ -281,4 +281,24 @@ describe('ReplacementQuotaCard', () => {
     expect(screen.getByText(/Mở 10\/10\/2026 · Cửa sổ 30 ngày/)).toBeInTheDocument();
     expect(screen.getByText('Lý do hủy: Client đóng vị trí tuyển dụng')).toBeInTheDocument();
   });
+
+  it('prefers clientReplacementSlots when mode is client and keeps replacementSlots for hr', async () => {
+    const clientSpy = vi.fn().mockResolvedValue(slotPage([mockSlots[0]]));
+    (financeApi as unknown as { clientReplacementSlots?: typeof clientSpy }).clientReplacementSlots = clientSpy;
+    try {
+      vi.mocked(financeApi.serviceFees).mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 100 } as never);
+      vi.mocked(financeApi.replacementSlots).mockResolvedValue(slotPage([mockSlots[1]]));
+
+      const { unmount } = renderComponent({ mode: 'client' });
+      expect(await screen.findByText('Trần Văn An', {}, { timeout: 10000 })).toBeInTheDocument();
+      expect(clientSpy).toHaveBeenCalledWith({ jobId: undefined, page: 1, pageSize: 100 });
+      unmount();
+
+      renderComponent({ mode: 'hr' });
+      expect(await screen.findByText('Lê Thị Bình', {}, { timeout: 10000 })).toBeInTheDocument();
+      expect(financeApi.replacementSlots).toHaveBeenCalledWith({ jobId: undefined, page: 1, pageSize: 100 });
+    } finally {
+      delete (financeApi as unknown as { clientReplacementSlots?: typeof clientSpy }).clientReplacementSlots;
+    }
+  });
 });

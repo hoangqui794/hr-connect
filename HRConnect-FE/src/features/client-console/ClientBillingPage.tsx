@@ -130,6 +130,12 @@ const useBillingRows = () => {
     queryFn: () => financeApi.serviceFees({ page: 1, pageSize: 100 }),
     staleTime: 60_000,
   });
+  const summaryQuery = useQuery({
+    queryKey: ['client-billing', 'service-fees-summary'],
+    queryFn: async () => (await financeApi.serviceFeesSummary?.()) ?? null,
+    enabled: typeof financeApi.serviceFeesSummary === 'function',
+    staleTime: 60_000,
+  });
   const postingFees = useQuery({
     queryKey: ['client-billing', 'posting-fees'],
     // GET /jobs/mine already carries each job's posting fee (C-07). Paid fees feed the "Đã thanh toán"
@@ -244,14 +250,16 @@ const useBillingRows = () => {
 
   return {
     rows,
+    serviceFeeSummary: summaryQuery.data ?? null,
     loadedServiceFees: fees.data?.items?.length ?? 0,
     totalServiceFees: fees.data?.totalCount ?? 0,
     loading: fees.isLoading || postingFees.isLoading,
-    fetching: fees.isFetching || postingFees.isFetching,
+    fetching: fees.isFetching || postingFees.isFetching || summaryQuery.isFetching,
     error: fees.error ?? postingFees.error,
     refetch: () => {
       void fees.refetch();
       void postingFees.refetch();
+      void summaryQuery.refetch();
     },
   };
 };
@@ -284,7 +292,7 @@ const Kpi: React.FC<{ label: string; value: string; hint: string; tone?: 'danger
 );
 
 export const ClientBillingPage: React.FC = () => {
-  const { rows, loadedServiceFees, totalServiceFees, loading, fetching, error, refetch } = useBillingRows();
+  const { rows, serviceFeeSummary, loadedServiceFees, totalServiceFees, loading, fetching, error, refetch } = useBillingRows();
   const [service, setService] = useState<ServiceFilter>('all');
   const [status, setStatus] = useState<StatusFilter>('all');
   const [page, setPage] = useState(1);
@@ -296,10 +304,32 @@ export const ClientBillingPage: React.FC = () => {
   const overdue = rows.filter((r) => r.bucket === 'OVERDUE');
   const paid = rows.filter((r) => r.bucket === 'PAID');
   const pendingRefunds = rows.filter((r) => r.owedToClient && !r.paidAt && !r.cancelled && r.statusLabel !== 'Đã hoàn tiền');
-  const unpaidTotal = sumByMainCurrency(unpaid);
-  const overdueTotal = sumByMainCurrency(overdue);
-  const paidTotal = sumByMainCurrency(paid);
-  const refundTotal = sumByMainCurrency(pendingRefunds);
+
+  const postingRows = rows.filter((r) => r.key.startsWith('posting-'));
+  const postingUnpaid = postingRows.filter((r) => r.bucket === 'UNPAID' || r.bucket === 'OVERDUE');
+  const postingOverdue = postingRows.filter((r) => r.bucket === 'OVERDUE');
+  const postingPaid = postingRows.filter((r) => r.bucket === 'PAID');
+  const sumCurrency = (list: BillingRow[], currency: string) =>
+    list.filter((r) => r.currencyCode === currency).reduce((s, r) => s + r.amount, 0);
+
+  const summaryCurrency = serviceFeeSummary?.currencyCode || 'VND';
+  const unpaidTotal = serviceFeeSummary
+    ? { amount: serviceFeeSummary.unpaidAmount + sumCurrency(postingUnpaid, summaryCurrency), currency: summaryCurrency }
+    : sumByMainCurrency(unpaid);
+  const unpaidCount = serviceFeeSummary ? serviceFeeSummary.unpaidCount + postingUnpaid.length : unpaid.length;
+  const overdueTotal = serviceFeeSummary
+    ? { amount: serviceFeeSummary.overdueAmount + sumCurrency(postingOverdue, summaryCurrency), currency: summaryCurrency }
+    : sumByMainCurrency(overdue);
+  const overdueCount = serviceFeeSummary ? serviceFeeSummary.overdueCount + postingOverdue.length : overdue.length;
+  const paidTotal = serviceFeeSummary
+    ? { amount: serviceFeeSummary.paidAmount + sumCurrency(postingPaid, summaryCurrency), currency: summaryCurrency }
+    : sumByMainCurrency(paid);
+  const paidCount = serviceFeeSummary ? serviceFeeSummary.paidCount + postingPaid.length : paid.length;
+  const refundTotal = serviceFeeSummary
+    ? { amount: serviceFeeSummary.pendingRefundAmount, currency: summaryCurrency }
+    : sumByMainCurrency(pendingRefunds);
+  const pendingRefundCount = serviceFeeSummary ? serviceFeeSummary.pendingRefundCount : pendingRefunds.length;
+  const totalFeeRowsBadgeCount = serviceFeeSummary ? serviceFeeSummary.totalCount + postingRows.length : rows.length;
 
   const columns: ColumnsType<BillingRow> = [
     {
@@ -498,7 +528,7 @@ export const ClientBillingPage: React.FC = () => {
               Công nợ & phí dịch vụ
             </h1>
             <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0284C7] border border-sky-100">
-              {rows.length} khoản phí
+              {totalFeeRowsBadgeCount} khoản phí
             </span>
           </div>
         </div>
@@ -514,15 +544,15 @@ export const ClientBillingPage: React.FC = () => {
         </div>
       </div>
 
-      <div className={`mb-4 grid gap-3 ${pendingRefunds.length > 0 ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-3'}`}>
-        <Kpi label="Cần thanh toán" value={money(unpaidTotal.amount, unpaidTotal.currency)} hint={`${unpaid.length} khoản chưa thanh toán`} />
-        <Kpi label="Quá hạn" value={money(overdueTotal.amount, overdueTotal.currency)} hint={`${overdue.length} khoản quá hạn`} tone={overdue.length ? 'danger' : undefined} />
-        <Kpi label="Đã thanh toán" value={money(paidTotal.amount, paidTotal.currency)} hint={`${paid.length} khoản`} tone="success" />
-        {pendingRefunds.length > 0 && (
+      <div className={`mb-4 grid gap-3 ${pendingRefundCount > 0 ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-3'}`}>
+        <Kpi label="Cần thanh toán" value={money(unpaidTotal.amount, unpaidTotal.currency)} hint={`${unpaidCount} khoản chưa thanh toán`} />
+        <Kpi label="Quá hạn" value={money(overdueTotal.amount, overdueTotal.currency)} hint={`${overdueCount} khoản quá hạn`} tone={overdueCount ? 'danger' : undefined} />
+        <Kpi label="Đã thanh toán" value={money(paidTotal.amount, paidTotal.currency)} hint={`${paidCount} khoản`} tone="success" />
+        {pendingRefundCount > 0 && (
           <Kpi
             label="HR Connect cần hoàn"
             value={money(Math.abs(refundTotal.amount), refundTotal.currency)}
-            hint={`${pendingRefunds.length} khoản chờ hoàn tiền`}
+            hint={`${pendingRefundCount} khoản chờ hoàn tiền`}
             tone="info"
           />
         )}
@@ -533,7 +563,11 @@ export const ClientBillingPage: React.FC = () => {
           type="info"
           showIcon
           className="mb-4 rounded-xl"
-          message={`Đang hiển thị ${loadedServiceFees}/${totalServiceFees} khoản phí dịch vụ gần nhất.`}
+          message={
+            serviceFeeSummary
+              ? `Đang hiển thị ${loadedServiceFees}/${totalServiceFees} khoản phí dịch vụ gần nhất · Số liệu KPI đã tổng hợp toàn bộ hệ thống.`
+              : `Đang hiển thị ${loadedServiceFees}/${totalServiceFees} khoản phí dịch vụ gần nhất.`
+          }
         />
       )}
 
