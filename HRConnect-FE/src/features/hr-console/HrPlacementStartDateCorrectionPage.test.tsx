@@ -22,7 +22,7 @@ const placement = {
   position: 'Backend Engineer',
   department: 'Engineering',
   status: 'ACTIVE',
-  confirmedAt: '2026-10-15T08:00:00Z',
+  confirmedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
   confirmedByName: 'Client HR',
   candidate: { candidateId: 'candidate-1', fullName: 'Nguyễn Văn A', email: 'candidate@example.com', phoneNumber: '0900000000' },
   job: { jobId: 'job-1', title: 'Senior Backend Engineer', companyId: 'company-1', companyName: 'HR Connect' },
@@ -94,5 +94,19 @@ describe('HrPlacementStartDateCorrectionPage', () => {
         reason: 'Client nhập nhầm ngày bắt đầu làm việc.',
       });
     });
+  });
+
+  it('disables correction after the seven-day window', async () => {
+    vi.mocked(placementCorrectionApi.get).mockResolvedValue({
+      ...placementDetail,
+      confirmedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+    } as any);
+    renderPage();
+
+    await screen.findByText('Xem');
+    await userEvent.click(findButtonWithText('Xem'));
+
+    expect(await screen.findByText('Đã hết thời hạn chỉnh sửa')).toBeInTheDocument();
+    expect(findButtonWithText('Sửa ngày đi làm')).toBeDisabled();
   });
 });

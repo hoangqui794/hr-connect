@@ -9,7 +9,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { CheckCircleOutlined, ExclamationCircleOutlined, EyeOutlined, FormOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { getApiErrorMessage } from '@/services/apiClient';
+import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import { placementReconciliationApi } from '@/services/api/hrApi';
 import type {
   PlacementReconciliationItem,
@@ -96,6 +96,13 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
       concurrencyToken: selected!.concurrencyToken,
     }),
     onSuccess: () => finish(form.getFieldValue('decision') === 'FLAG' ? 'Đã chuyển hồ sơ sang Platform Admin xử lý.' : 'Đã xác nhận kết quả nhận việc.'),
+    onError: async (error) => {
+      if (getApiError(error, '').status !== 409) return;
+      message.warning('Hồ sơ vừa được cập nhật. Danh sách đang được tải lại.');
+      setActionOpen(false);
+      setSelected(null);
+      await queryClient.invalidateQueries({ queryKey: ['placement-reconciliations'] });
+    },
   });
   const resolve = useMutation({
     mutationFn: (values: ActionValues) => placementReconciliationApi.resolve(selected!.applicationId, {
@@ -104,6 +111,13 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
       concurrencyToken: selected!.concurrencyToken,
     }),
     onSuccess: () => finish('Đã hoàn tất xử lý hồ sơ đối soát.'),
+    onError: async (error) => {
+      if (getApiError(error, '').status !== 409) return;
+      message.warning('Hồ sơ vừa được cập nhật. Danh sách đang được tải lại.');
+      setActionOpen(false);
+      setSelected(null);
+      await queryClient.invalidateQueries({ queryKey: ['placement-reconciliations'] });
+    },
   });
   const activeMutation = admin ? resolve : reconcile;
 
@@ -210,7 +224,7 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
           {!admin && selected.status === 'PENDING' && <div className="mt-5 flex flex-wrap gap-2">
             <Button type="primary" icon={<CheckCircleOutlined />} onClick={() => openAction('CONFIRM')}>Xác nhận đúng</Button>
             <Button danger icon={<ExclamationCircleOutlined />} onClick={() => openAction('FLAG')}>Báo không khớp</Button>
-            {selected.placementId && <Button icon={<FormOutlined />} onClick={() => navigate('/hr/placement-review')}>Sửa ngày đi làm</Button>}
+            {selected.placementId && <Button icon={<FormOutlined />} onClick={() => navigate(`/hr/placement-review?highlight=${selected.placementId}`)}>Sửa ngày đi làm</Button>}
           </div>}
           {admin && selected.status === 'FLAGGED' && <div className="mt-5"><Button type="primary" onClick={() => openAction()}>Ghi nhận đã xử lý</Button></div>}
         </>}

@@ -79,6 +79,9 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
     queryFn: () => placementCorrectionApi.get(selectedId!),
     enabled: selectedId !== null,
   });
+  const correctionWindowExpired = detail.data?.confirmedAt
+    ? dayjs().isAfter(dayjs(detail.data.confirmedAt).add(7, 'day'))
+    : false;
 
   const correction = useMutation({
     mutationFn: ({ placementId, actualStartDate, reason }: { placementId: string; actualStartDate: string; reason: string }) =>
@@ -184,7 +187,13 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
         }}
         extra={
           detail.data ? (
-            <Button type="primary" icon={<EditOutlined />} onClick={openCorrection}>
+            <Button
+              type="primary"
+              icon={<EditOutlined />}
+              onClick={openCorrection}
+              disabled={correctionWindowExpired}
+              title={correctionWindowExpired ? 'Đã quá 7 ngày kể từ lúc xác nhận đi làm.' : undefined}
+            >
               Sửa ngày đi làm
             </Button>
           ) : null
@@ -196,6 +205,15 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
           <Alert type="error" showIcon message="Không tải được chi tiết nhận việc" description={getApiErrorMessage(detail.error)} />
         ) : detail.data ? (
           <>
+            {correctionWindowExpired && (
+              <Alert
+                className="mb-4"
+                type="warning"
+                showIcon
+                message="Đã hết thời hạn chỉnh sửa"
+                description="Ngày đi làm chỉ được sửa trong 7 ngày kể từ lúc Client xác nhận."
+              />
+            )}
             <div className="mb-5 flex items-center gap-2">
               <StatusDot tone={pick(PLACEMENT_STATUS, detail.data.status).tone}>{pick(PLACEMENT_STATUS, detail.data.status).label}</StatusDot>
               {detail.data.isReplacement && <Tag color="gold">Ứng viên thay thế</Tag>}
