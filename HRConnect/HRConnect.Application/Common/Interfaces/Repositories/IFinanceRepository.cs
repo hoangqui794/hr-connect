@@ -165,6 +165,11 @@ public interface IFinanceRepository
     Task<(IReadOnlyList<Warranty> Items, int TotalCount)> GetWarrantiesAsync(
         Guid? companyId, string? status, int page, int pageSize, CancellationToken cancellationToken = default);
 
+    /// <summary>Latest warranty claim / resolution audit logs for a batch of warranty ids.</summary>
+    Task<IReadOnlyList<AuditLog>> GetWarrantyClaimAuditLogsAsync(
+        IReadOnlyCollection<Guid> warrantyIds, CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<AuditLog>>(Array.Empty<AuditLog>());
+
     Task<(IReadOnlyList<Payout> Items, int TotalCount)> GetPayoutsAsync(
         Guid? affiliateUserId, int page, int pageSize, CancellationToken cancellationToken = default);
 }

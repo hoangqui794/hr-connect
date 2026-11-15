@@ -1,5 +1,6 @@
 using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
@@ -128,6 +129,7 @@ public class FinanceRepository : IFinanceRepository
             .Include(s => s.OriginalPlacement).ThenInclude(p => p.Application).ThenInclude(a => a.Candidate)
             .Include(s => s.FilledByPlacement!).ThenInclude(p => p.Application).ThenInclude(a => a.Candidate)
             .Include(s => s.Job).ThenInclude(j => j.Company)
+            .Include(s => s.ServiceFee)
             .Where(s => s.JobId == jobId)
             .OrderByDescending(s => s.CreatedAt)
             .ToListAsync(cancellationToken);
@@ -156,6 +158,7 @@ public class FinanceRepository : IFinanceRepository
             .Include(s => s.OriginalPlacement).ThenInclude(p => p.Application).ThenInclude(a => a.Candidate)
             .Include(s => s.FilledByPlacement!).ThenInclude(p => p.Application).ThenInclude(a => a.Candidate)
             .Include(s => s.Job).ThenInclude(j => j.Company)
+            .Include(s => s.ServiceFee)
             .OrderBy(s => s.Status == ReplacementSlotStates.Open ? 0
                 : s.Status == ReplacementSlotStates.WaitingPayment ? 1
                 : s.Status == ReplacementSlotStates.Filled ? 2
@@ -428,8 +431,8 @@ public class FinanceRepository : IFinanceRepository
         var total = await query.CountAsync(cancellationToken);
         var items = await query
             .Include(fee => fee.Company)
-            .Include(fee => fee.Job)
-            .Include(fee => fee.Placement!).ThenInclude(p => p.Application).ThenInclude(a => a.Job)
+            .Include(fee => fee.Job!).ThenInclude(j => j.ServiceType)
+            .Include(fee => fee.Placement!).ThenInclude(p => p.Application).ThenInclude(a => a.Job).ThenInclude(j => j.ServiceType)
             .Include(fee => fee.Placement!).ThenInclude(p => p.Application).ThenInclude(a => a.Candidate)
             .Include(fee => fee.Placement!).ThenInclude(p => p.Reconciliation)
             // Newest activity first: a fee paid today sorts above one raised last week.
@@ -437,6 +440,7 @@ public class FinanceRepository : IFinanceRepository
             .ThenByDescending(fee => fee.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
+            .AsSplitQuery()
             .ToListAsync(cancellationToken);
         return (items, total);
     }
@@ -496,8 +500,26 @@ public class FinanceRepository : IFinanceRepository
             .ThenBy(w => w.EndDate)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
+            .AsSplitQuery()
             .ToListAsync(cancellationToken);
         return (items, total);
+    }
+
+    public async Task<IReadOnlyList<AuditLog>> GetWarrantyClaimAuditLogsAsync(
+        IReadOnlyCollection<Guid> warrantyIds, CancellationToken cancellationToken = default)
+    {
+        if (warrantyIds.Count == 0)
+        {
+            return Array.Empty<AuditLog>();
+        }
+
+        return await _context.AuditLogs.AsNoTracking()
+            .Where(log => log.EntityType == "WARRANTY"
+                && log.EntityId.HasValue
+                && warrantyIds.Contains(log.EntityId.Value)
+                && (log.Action == AuditActions.WarrantyClaimReported || log.Action == AuditActions.WarrantyClaimResolved))
+            .OrderByDescending(log => log.CreatedAt)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<(IReadOnlyList<Payout> Items, int TotalCount)> GetPayoutsAsync(

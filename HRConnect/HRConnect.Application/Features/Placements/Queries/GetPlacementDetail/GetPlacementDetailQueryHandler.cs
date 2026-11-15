@@ -5,6 +5,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Finance.ReplacementSlots;
+using HRConnect.Application.Features.Placements.Common;
+using HRConnect.Domain.Constants;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -15,15 +18,18 @@ public class GetPlacementDetailQueryHandler : IRequestHandler<GetPlacementDetail
     private readonly IPlacementRepository _placementRepository;
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly ILogger<GetPlacementDetailQueryHandler> _logger;
+    private readonly IFinanceRepository? _financeRepository;
 
     public GetPlacementDetailQueryHandler(
         IPlacementRepository placementRepository,
         ICompanyUserRepository companyUserRepository,
-        ILogger<GetPlacementDetailQueryHandler> logger)
+        ILogger<GetPlacementDetailQueryHandler> logger,
+        IFinanceRepository? financeRepository = null)
     {
         _placementRepository = placementRepository;
         _companyUserRepository = companyUserRepository;
         _logger = logger;
+        _financeRepository = financeRepository;
     }
 
     public async Task<GetPlacementDetailResponse> Handle(GetPlacementDetailQuery request, CancellationToken cancellationToken)
@@ -127,8 +133,68 @@ public class GetPlacementDetailQueryHandler : IRequestHandler<GetPlacementDetail
                     placement.ServiceFee?.Amount,
                     placement.ServiceFee?.Status,
                     commission?.Amount,
-                    commission?.Status
+                    commission?.Status,
+                    placement.ServiceFee?.ServiceFeeId,
+                    placement.ServiceFee?.DueDate,
+                    placement.ServiceFee?.PaidAt
                 );
+            }
+        }
+
+        PlacementDetailResignationDto? resignationDto = null;
+        var (lastWorkingDate, resignationReason, resignedBy) = PlacementResignationParser.Extract(placement);
+        var warrantyStatus = placement.Warranty?.Status;
+        var hasClaimState = lastWorkingDate != null
+            || resignationReason != null
+            || warrantyStatus is WarrantyStates.Claimed or WarrantyStates.Voided;
+        if (hasClaimState)
+        {
+            DateTime? reportedAt = warrantyStatus == WarrantyStates.Claimed ? placement.Warranty?.UpdatedAt : null;
+            if (_financeRepository != null && placement.Warranty != null)
+            {
+                var logs = await _financeRepository.GetWarrantyClaimAuditLogsAsync(
+                    [placement.Warranty.WarrantyId], cancellationToken) ?? [];
+                var reportedLog = logs.FirstOrDefault(l => l.Action == HRConnect.Application.Common.Models.AuditActions.WarrantyClaimReported);
+                if (reportedLog != null)
+                {
+                    reportedAt = reportedLog.CreatedAt;
+                }
+            }
+
+            var reviewStatus = string.Equals(warrantyStatus, WarrantyStates.Claimed, StringComparison.OrdinalIgnoreCase)
+                ? "PENDING_HR_REVIEW"
+                : string.Equals(warrantyStatus, WarrantyStates.Voided, StringComparison.OrdinalIgnoreCase)
+                  || string.Equals(placement.Status, PlacementStates.LeftDuringWarranty, StringComparison.OrdinalIgnoreCase)
+                  || string.Equals(placement.Status, "RESIGNED", StringComparison.OrdinalIgnoreCase)
+                    ? "CONFIRMED"
+                    : null;
+
+            var reviewNote = request.IsCandidate
+                ? null
+                : PlacementResignationParser.ExtractResolutionNote(placement.Warranty);
+
+            resignationDto = new PlacementDetailResignationDto(
+                reportedAt,
+                lastWorkingDate,
+                resignationReason,
+                reviewStatus,
+                reviewNote,
+                resignedBy
+            );
+        }
+
+        ReplacementSummaryDto? replacementDto = null;
+        if (!request.IsCandidate
+            && _financeRepository != null
+            && (string.Equals(warrantyStatus, WarrantyStates.Voided, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(placement.Status, PlacementStates.LeftDuringWarranty, StringComparison.OrdinalIgnoreCase)))
+        {
+            var openedSlots = await _financeRepository.GetReplacementSlotsByOriginalPlacementIdsAsync(
+                [placement.PlacementId], cancellationToken);
+            var openedSlot = openedSlots?.FirstOrDefault();
+            if (openedSlot != null)
+            {
+                replacementDto = ReplacementSlotMapping.ToSummary(openedSlot);
             }
         }
 
@@ -173,7 +239,9 @@ public class GetPlacementDetailQueryHandler : IRequestHandler<GetPlacementDetail
             allowedActions,
             placement.CreatedAt,
             placement.UpdatedAt,
-            financialDto
+            financialDto,
+            resignationDto,
+            replacementDto
         );
     }
 }

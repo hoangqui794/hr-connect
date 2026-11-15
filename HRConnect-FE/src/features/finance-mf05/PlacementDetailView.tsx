@@ -42,7 +42,8 @@ import dayjs from 'dayjs';
 import { usePlacementDetail } from '@/hooks/usePlacementDetail';
 import type { PlacementDetailDto } from '@/types/api/placement';
 import { COMMISSION_STATUS, SERVICE_FEE_STATUS, WARRANTY_STATUS, date, labelOf, money } from './financeLabels';
-import type { CommissionStatus, ServiceFeeStatus, WarrantyStatus } from '@/types/api/finance';
+import type { CommissionStatus, ReplacementSlotStatus, ServiceFeeStatus, WarrantyStatus } from '@/types/api/finance';
+import { REPLACEMENT_STATUS_CONFIG } from './replacementUtils';
 
 /** Ant Design tag colour for a finance label tone. */
 const TAG_COLOR: Record<string, string> = { success: 'green', info: 'blue', warning: 'orange', danger: 'red', neutral: 'default' };
@@ -373,6 +374,92 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
         </Card>
       </div>
 
+      {placement.resignation && (
+        <Card
+          size="small"
+          className="rounded-xl border border-amber-200/80 bg-amber-50/30 shadow-sm"
+          title={
+            <div className="flex items-center gap-2 text-slate-800 font-bold text-sm">
+              <ExclamationCircleOutlined className="text-amber-600" />
+              <span>Thông tin báo nghỉ việc</span>
+            </div>
+          }
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-slate-700">
+            <div>
+              <div className="text-slate-500">Ngày làm việc cuối</div>
+              <div className="font-semibold text-slate-900 mt-0.5 tabular-nums">
+                {placement.resignation.lastWorkingDate ? date(placement.resignation.lastWorkingDate) : '—'}
+              </div>
+            </div>
+            <div>
+              <div className="text-slate-500">Thời điểm báo nghỉ</div>
+              <div className="font-semibold text-slate-900 mt-0.5 tabular-nums">
+                {placement.resignation.reportedAt ? date(placement.resignation.reportedAt) : '—'}
+              </div>
+            </div>
+            <div>
+              <div className="text-slate-500">Trạng thái xác minh</div>
+              <div className="font-semibold text-slate-900 mt-0.5">
+                {placement.resignation.reviewStatus === 'CONFIRMED'
+                  ? 'Đã xác nhận nghỉ việc'
+                  : placement.resignation.reviewStatus === 'REJECTED'
+                  ? 'Đã từ chối báo nghỉ'
+                  : 'Đang chờ xác minh'}
+                {placement.resignation.resignedBy ? ` · Bởi ${placement.resignation.resignedBy}` : ''}
+              </div>
+            </div>
+          </div>
+          {placement.resignation.reason && (
+            <div className="mt-2.5 text-xs text-slate-700 bg-white/80 rounded-lg border border-slate-200/70 p-2.5">
+              <span className="font-semibold text-slate-800">Lý do: </span>
+              {placement.resignation.reason}
+            </div>
+          )}
+          {placement.resignation.reviewNote && (
+            <div className="mt-2 text-xs text-slate-600 italic">
+              Ghi chú xác minh: {placement.resignation.reviewNote}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {placement.replacement && (
+        <Card
+          size="small"
+          className="rounded-xl border border-sky-200/80 bg-sky-50/30 shadow-sm"
+          title={
+            <div className="flex items-center gap-2 text-slate-800 font-bold text-sm">
+              <ReloadOutlined className="text-sky-600" />
+              <span>Suất tuyển thay thế liên kết</span>
+            </div>
+          }
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-700">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-mono font-semibold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200">
+                Suất #{placement.replacement.replacementSlotId.slice(0, 8).toUpperCase()}
+              </span>
+              {(() => {
+                const conf = REPLACEMENT_STATUS_CONFIG[placement.replacement.status as ReplacementSlotStatus];
+                return conf ? (
+                  <Tag color={conf.tagColor} className="m-0 font-medium">
+                    {conf.label}
+                  </Tag>
+                ) : (
+                  <Tag className="m-0">{placement.replacement.status}</Tag>
+                );
+              })()}
+            </div>
+            {placement.replacement.expiresAt && (
+              <div className="text-slate-600 tabular-nums">
+                Hạn tuyển thay thế: <strong className="text-slate-900">{date(placement.replacement.expiresAt)}</strong>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
       {/* Candidate & Job Information Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Candidate Information Card */}
@@ -467,7 +554,7 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
               <div className="text-base font-black text-slate-900">
                 {placement.financial.serviceFeeAmount != null ? money(placement.financial.serviceFeeAmount) : '—'}
               </div>
-              <div>
+              <div className="flex flex-wrap items-center gap-2">
                 {placement.financial.serviceFeeStatus ? (
                   <Tag color={TAG_COLOR[labelOf(SERVICE_FEE_STATUS, placement.financial.serviceFeeStatus as ServiceFeeStatus).tone]}>
                     {labelOf(SERVICE_FEE_STATUS, placement.financial.serviceFeeStatus as ServiceFeeStatus).label}
@@ -476,6 +563,18 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
                   <Tag color="orange">Chưa phát sinh phí</Tag>
                 )}
               </div>
+              {(placement.financial.serviceFeeDueDate || placement.financial.serviceFeePaidAt) && (
+                <div className="pt-1 text-xs text-slate-600 space-y-0.5 tabular-nums">
+                  {placement.financial.serviceFeeDueDate && (
+                    <div>Hạn thanh toán: {date(placement.financial.serviceFeeDueDate)}</div>
+                  )}
+                  {placement.financial.serviceFeePaidAt && (
+                    <div className="text-emerald-700 font-medium">
+                      Đã thanh toán: {date(placement.financial.serviceFeePaidAt)}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             )}
 

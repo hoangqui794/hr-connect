@@ -298,4 +298,57 @@ describe('MF-05 Client warranty page', () => {
     expect(screen.getByText('Suất #68EF9A24 · Mở 12/11/2026')).toBeTruthy();
     expect(screen.queryByText('Xem Công nợ')).toBeNull();
   });
+
+  it('displays daysRemaining pill, claim summary, serviceFeeDueDate, and AP/SS exclusion hint', async () => {
+    const activeWarranty: Warranty = {
+      warrantyId: 'w-act-1',
+      placementId: 'p-act-1',
+      jobId: 'job-act-1',
+      companyName: 'ABC Tech',
+      jobTitle: 'Senior Backend .NET',
+      candidateName: 'Nguyễn Minh Quân',
+      startDate: '2026-11-01',
+      endDate: '2026-12-01',
+      status: 'ACTIVE',
+      daysRemaining: 6,
+      placementStatus: 'ACTIVE',
+      serviceFeeStatus: 'PENDING',
+      serviceFeeAmount: 20_000_000,
+      serviceFeeDueDate: '2026-11-25',
+    };
+    const claimedWarranty: Warranty = {
+      warrantyId: 'w-clm-1',
+      placementId: 'p-clm-1',
+      jobId: 'job-clm-1',
+      companyName: 'ABC Tech',
+      jobTitle: 'Tech Lead',
+      candidateName: 'Trần Thu Hà',
+      startDate: '2026-10-01',
+      endDate: '2026-11-30',
+      status: 'CLAIMED',
+      placementStatus: 'LEFT_DURING_WARRANTY',
+      daysRemaining: null,
+      claimReportedAt: '2026-11-10T09:00:00Z',
+      lastWorkingDate: '2026-11-08',
+      resignationReason: 'Chuyển công tác ra nước ngoài',
+      replacementSlotId: 'aa11bb22-3344-5566-7788-9900aabbccdd',
+      replacementSlotStatus: 'WAITING_PAYMENT',
+      serviceFeeStatus: 'PAID',
+      serviceFeeAmount: 25_000_000,
+    };
+
+    vi.mocked(financeApi.replacementSlots).mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 100 } as never);
+    vi.mocked(financeApi.warranties).mockResolvedValue(page([activeWarranty, claimedWarranty]));
+    vi.mocked(financeApi.serviceFees).mockResolvedValue(page<ServiceFee>([]));
+
+    renderWith(<ClientWarrantyPage />);
+
+    expect(await screen.findByText('Còn 6 ngày', {}, { timeout: 10000 })).toBeTruthy();
+    expect(screen.getByText('Hạn TT: 25/11/2026')).toBeTruthy();
+    expect(screen.getByText(/Chỉ áp dụng cho Headhunt COD/)).toBeTruthy();
+    expect(screen.getByText(/Nghỉ 8\/11\/2026 · Báo 10\/11\/2026/)).toBeTruthy();
+    expect(screen.getByText('Lý do: Chuyển công tác ra nước ngoài')).toBeTruthy();
+    expect(screen.getByText('Suất #AA11BB22')).toBeTruthy();
+    expect(screen.getByText('Chờ xác minh')).toBeTruthy();
+  });
 });

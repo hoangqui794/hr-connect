@@ -22,6 +22,9 @@ public class CompanyProfileData
     public string? LogoUrl { get; set; }
     public string VerificationStatus { get; set; } = string.Empty;
     public DateTime? VerifiedAt { get; set; }
+    public string? VerificationRejectedReason { get; set; }
+    public DateTime? VerificationRequestedAt { get; set; }
+    public DateTime? VerificationReviewedAt { get; set; }
     public string? RoleInCompany { get; set; }
     public bool IsPrimaryContact { get; set; }
     public DateTime CreatedAt { get; set; }

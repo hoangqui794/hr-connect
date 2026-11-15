@@ -46,4 +46,12 @@ export interface BillingRow {
   reconciliationStatus?: 'PENDING' | 'CONFIRMED' | 'FLAGGED' | null;
   /** Whether the fee was cancelled (excluded from open refund KPIs). */
   cancelled?: boolean;
+  /** Explicit service type code returned by BE. */
+  serviceTypeCode?: string | null;
+  /** Days overdue computed by BE when OVERDUE. */
+  daysOverdue?: number | null;
+  /** When Client reported a bank transfer for deposit awaiting Admin confirmation. */
+  paymentSubmittedAt?: string | null;
+  /** True while a VNPay payment session is pending/processing for this fee. */
+  pendingOnlinePayment?: boolean;
 }

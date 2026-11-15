@@ -99,11 +99,32 @@ export const placementApi = {
         // BE trả sẵn khối tiền: Client chỉ có phí dịch vụ (hoa hồng luôn null), ứng viên không có khối này.
         financial: raw.financial
           ? ({
+              serviceFeeId: raw.financial.serviceFeeId ?? null,
               serviceFeeAmount: raw.financial.serviceFeeAmount ?? null,
               serviceFeeStatus: raw.financial.serviceFeeStatus ?? null,
+              serviceFeeDueDate: raw.financial.serviceFeeDueDate ?? null,
+              serviceFeePaidAt: raw.financial.serviceFeePaidAt ?? null,
               commissionAmount: raw.financial.commissionAmount ?? null,
               commissionStatus: raw.financial.commissionStatus ?? null,
             } satisfies PlacementFinancialDto)
+          : null,
+        resignation: raw.resignation
+          ? {
+              reportedAt: raw.resignation.reportedAt ?? null,
+              lastWorkingDate: raw.resignation.lastWorkingDate ?? null,
+              reason: raw.resignation.reason ?? null,
+              reviewStatus: raw.resignation.reviewStatus ?? null,
+              reviewNote: raw.resignation.reviewNote ?? null,
+              resignedBy: raw.resignation.resignedBy ?? null,
+            }
+          : null,
+        replacement: raw.replacement
+          ? {
+              replacementSlotId: raw.replacement.replacementSlotId ?? '',
+              jobId: raw.replacement.jobId ?? raw.job?.jobId ?? '',
+              status: raw.replacement.status ?? '',
+              expiresAt: raw.replacement.expiresAt ?? null,
+            }
           : null,
       };
 

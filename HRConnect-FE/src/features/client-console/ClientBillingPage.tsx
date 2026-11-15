@@ -9,6 +9,7 @@
  * transfer details, which Platform Admin still records by hand.
  */
 import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { a11yItemRender } from '@/components/common/paginationA11y';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Table, Tag, Tooltip } from 'antd';
@@ -30,7 +31,10 @@ const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 
 const PAGE_SIZE = 10;
 
-const serviceLabel = (code: ServiceTypeCode): string => SERVICE_TYPE_LABEL[code].label;
+const serviceLabel = (code: ServiceTypeCode): string => SERVICE_TYPE_LABEL[code]?.label ?? code;
+
+const resolveServiceType = (serviceTypeCode: string | null | undefined, fallback: ServiceTypeCode): ServiceTypeCode =>
+  serviceTypeCode && serviceTypeCode in SERVICE_TYPE_LABEL ? (serviceTypeCode as ServiceTypeCode) : fallback;
 
 const RECONCILIATION_REASON: Record<'PENDING' | 'FLAGGED', string> = {
   PENDING: 'Chờ xác nhận ngày đi làm thực tế',
@@ -172,9 +176,11 @@ const useBillingRows = () => {
         f.status !== 'CANCELLED' &&
         (f.reconciliationStatus === 'PENDING' || f.reconciliationStatus === 'FLAGGED');
       const bucket: Bucket = owed ? 'OTHER' : bucketOf(f.status);
+      const awaitingConfirm = !owed && f.status !== 'PAID' && f.status !== 'CANCELLED' && Boolean(f.paymentSubmittedAt);
+      const vnpayPending = !owed && f.status !== 'PAID' && f.status !== 'CANCELLED' && Boolean(f.pendingOnlinePayment);
       return {
         key: `fee-${f.serviceFeeId}`,
-        service: SERVICE_OF_KIND[kind],
+        service: resolveServiceType(f.serviceTypeCode, SERVICE_OF_KIND[kind]),
         item: CLIENT_FEE_NAME[kind] ?? labelOf(SERVICE_FEE_KIND, kind).label,
         note: refundNote(f),
         owedToClient: owed,
@@ -189,7 +195,7 @@ const useBillingRows = () => {
         paidAt: f.paidAt ?? null,
         paymentReference: f.paymentReference ?? null,
         transferNote: kind === 'DEPOSIT' && f.jobId ? depositTransferNote(f.jobId) : serviceFeeTransferNote(f.serviceFeeId),
-        payable: !reconciling && (bucket === 'UNPAID' || bucket === 'OVERDUE'),
+        payable: !reconciling && !awaitingConfirm && !vnpayPending && (bucket === 'UNPAID' || bucket === 'OVERDUE'),
         payTarget: { type: 'SERVICE_FEE', id: f.serviceFeeId },
         breakdown: feeBreakdown(f),
         sourcingProgress: f.sourcingTarget && f.sourcingTarget > 0
@@ -199,6 +205,10 @@ const useBillingRows = () => {
         placementId: f.placementId ?? null,
         reconciliationStatus: reconciling ? f.reconciliationStatus ?? null : null,
         cancelled: f.status === 'CANCELLED',
+        serviceTypeCode: f.serviceTypeCode ?? null,
+        daysOverdue: f.daysOverdue ?? null,
+        paymentSubmittedAt: f.paymentSubmittedAt ?? null,
+        pendingOnlinePayment: f.pendingOnlinePayment ?? false,
       };
     });
     const postingRows: BillingRow[] = (postingFees.data ?? []).map(({ job, fee }) => {
@@ -344,8 +354,14 @@ export const ClientBillingPage: React.FC = () => {
             <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11.5px] text-slate-500 tabular-nums">
               {r.createdAt && <span>Lập {dayjs(r.createdAt).format('DD/MM/YYYY')}</span>}
               {r.placementId && (
-                <Tooltip title={`Mã nhận việc: ${r.placementId}`}>
-                  <span className="font-mono text-slate-600">#{r.placementId.slice(0, 8).toUpperCase()}</span>
+                <Tooltip title={`Xem chi tiết nhận việc (${r.placementId})`}>
+                  <Link
+                    to={`/client/placements/${r.placementId}`}
+                    aria-label={`Xem chi tiết nhận việc #${r.placementId.slice(0, 8).toUpperCase()}`}
+                    className="font-mono text-[#0369A1] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 rounded"
+                  >
+                    #{r.placementId.slice(0, 8).toUpperCase()}
+                  </Link>
                 </Tooltip>
               )}
             </div>
@@ -380,7 +396,9 @@ export const ClientBillingPage: React.FC = () => {
           );
         }
         const overdueDays =
-          !r.owedToClient && r.bucket === 'OVERDUE' && r.dueDate
+          typeof r.daysOverdue === 'number'
+            ? Math.max(0, r.daysOverdue)
+            : !r.owedToClient && r.bucket === 'OVERDUE' && r.dueDate
             ? Math.max(0, dayjs().startOf('day').diff(dayjs(r.dueDate).startOf('day'), 'day'))
             : 0;
         return (
@@ -395,13 +413,27 @@ export const ClientBillingPage: React.FC = () => {
       title: 'Trạng thái',
       key: 'status',
       align: 'left',
-      width: 195,
+      width: 215,
       render: (_, r) => {
         const reconcileHint = reconciliationHintOf(r.reconciliationStatus);
+        const submittedDate =
+          r.paymentSubmittedAt && dayjs(r.paymentSubmittedAt).isValid()
+            ? dayjs(r.paymentSubmittedAt).format('DD/MM/YYYY')
+            : null;
         return (
           <div className="py-1 space-y-0.5 text-left">
             <StatusDot tone={r.tone}>{r.statusLabel}</StatusDot>
             {reconcileHint && <div className="pl-3.5 text-[11.5px] leading-snug text-sky-700">{reconcileHint}</div>}
+            {!r.paidAt && !r.cancelled && r.paymentSubmittedAt && (
+              <div className="pl-3.5 text-[11.5px] font-medium leading-snug text-sky-700">
+                Đã báo chuyển khoản – chờ xác nhận{submittedDate ? ` (${submittedDate})` : ''}
+              </div>
+            )}
+            {!r.paidAt && !r.cancelled && r.pendingOnlinePayment && (
+              <div className="pl-3.5 text-[11.5px] font-medium leading-snug text-amber-700">
+                VNPay đang xử lý
+              </div>
+            )}
             {r.paidAt && (
               <div className="text-[11.5px] text-slate-500 pl-3.5">
                 {dayjs(r.paidAt).format('DD/MM/YYYY')}
@@ -416,9 +448,11 @@ export const ClientBillingPage: React.FC = () => {
       title: 'Thao tác',
       key: 'actions',
       align: 'right',
-      width: 120,
+      width: 130,
       render: (_, r) => {
         const reconcileHint = reconciliationHintOf(r.reconciliationStatus);
+        const blockedBySubmittedTransfer = !r.payable && !r.paidAt && !r.cancelled && Boolean(r.paymentSubmittedAt);
+        const blockedByVnpay = !r.payable && !r.paidAt && !r.cancelled && Boolean(r.pendingOnlinePayment);
         return (
           <div className="flex justify-end py-1">
             {r.payable ? (
@@ -431,6 +465,14 @@ export const ClientBillingPage: React.FC = () => {
               >
                 Thanh toán
               </Button>
+            ) : blockedByVnpay ? (
+              <Tooltip title="Đang có giao dịch VNPay chờ kết quả xác nhận">
+                <span className="inline-block w-[110px] text-center text-amber-700 text-[11.5px] font-medium">VNPay chờ XL</span>
+              </Tooltip>
+            ) : blockedBySubmittedTransfer ? (
+              <Tooltip title="Đã gửi xác nhận chuyển khoản, đang chờ HR Connect đối soát">
+                <span className="inline-block w-[110px] text-center text-sky-700 text-[11.5px] font-medium">Chờ xác nhận</span>
+              </Tooltip>
             ) : reconcileHint ? (
               <Tooltip title={`Chưa mở thanh toán: ${reconcileHint}`}>
                 <span className="inline-block w-[100px] text-center text-sky-700 text-[11.5px] font-medium">Chờ đối soát</span>

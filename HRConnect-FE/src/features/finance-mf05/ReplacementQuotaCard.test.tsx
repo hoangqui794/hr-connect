@@ -250,4 +250,35 @@ describe('ReplacementQuotaCard', () => {
     fireEvent.click(detailIn('Lê Thị Bình'));
     await waitFor(() => expect(screen.getByTestId('placement-drawer').textContent).toBe('pl-2'));
   });
+
+  it('prefers direct refund metadata, shows openedAt/window days, and displays cancelReason when cancelled', async () => {
+    vi.mocked(financeApi.serviceFees).mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 100 } as never);
+    vi.mocked(financeApi.replacementSlots).mockResolvedValue(
+      slotPage([
+        {
+          ...mockSlots[0],
+          replacementSlotId: 'slot-expired-direct',
+          status: 'EXPIRED',
+          originalCandidateName: 'Phạm Hữu Đạt',
+          refundPercent: 40,
+          refundServiceFeeId: 'fee-ref-direct',
+          refundAmount: 8_000_000,
+          refundStatus: 'PAID',
+        },
+        {
+          ...mockSlots[1],
+          replacementSlotId: 'slot-cancelled-reason',
+          status: 'CANCELLED',
+          originalCandidateName: 'Đỗ Mai Anh',
+          cancelReason: 'Client đóng vị trí tuyển dụng',
+        },
+      ])
+    );
+
+    renderComponent({ mode: 'client' });
+
+    expect(await screen.findByText(/Đã hoàn 40% \(8\.000\.000 đ\)/i, {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(screen.getByText(/Mở 10\/10\/2026 · Cửa sổ 30 ngày/)).toBeInTheDocument();
+    expect(screen.getByText('Lý do hủy: Client đóng vị trí tuyển dụng')).toBeInTheDocument();
+  });
 });

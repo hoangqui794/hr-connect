@@ -283,4 +283,49 @@ describe('ClientBillingPage', () => {
     expect(screen.queryByText('Đang đối soát')).toBeNull();
     expect(screen.queryByText('Chờ xác nhận ngày đi làm thực tế')).toBeNull();
   });
+
+  it('renders serviceTypeCode, BE daysOverdue, links placementId, and blocks duplicate payment while transfer/VNPay is pending', async () => {
+    vi.mocked(financeApi.serviceFees).mockResolvedValue({
+      items: [
+        fee({
+          serviceFeeId: 'fee-transfer-submitted',
+          kind: 'DEPOSIT',
+          serviceTypeCode: 'CV_SOURCING',
+          jobTitle: 'Frontend React',
+          amount: 4_000_000,
+          status: 'DUE',
+          dueDate: '2026-10-20',
+          paymentSubmittedAt: '2026-11-12T08:00:00Z',
+        }),
+        fee({
+          serviceFeeId: 'fee-vnpay-pending',
+          kind: 'PLACEMENT',
+          placementId: 'bcdef123-0000-0000-0000-000000000001',
+          serviceTypeCode: 'HEADHUNT_COD',
+          jobTitle: 'DevOps Lead',
+          amount: 28_000_000,
+          status: 'OVERDUE',
+          daysOverdue: 9,
+          dueDate: '2026-11-01',
+          pendingOnlinePayment: true,
+        }),
+      ],
+      totalCount: 2,
+      page: 1,
+      pageSize: 100,
+    } as never);
+    vi.mocked(jobsApi.getMine).mockResolvedValue([] as never);
+
+    renderPage();
+
+    expect(await screen.findByText('Frontend React')).toBeInTheDocument();
+    expect(screen.getByText('Quá hạn 9 ngày')).toBeInTheDocument();
+    expect(screen.getByText(/Đã báo chuyển khoản – chờ xác nhận \(12\/11\/2026\)/)).toBeInTheDocument();
+    expect(screen.getByText('VNPay đang xử lý')).toBeInTheDocument();
+    expect(screen.getByText('Chờ xác nhận')).toBeInTheDocument();
+    expect(screen.getByText('VNPay chờ XL')).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: 'Xem chi tiết nhận việc #BCDEF123' });
+    expect(link).toHaveAttribute('href', '/client/placements/bcdef123-0000-0000-0000-000000000001');
+    expect(screen.queryByRole('button', { name: /^Thanh toán:/ })).toBeNull();
+  });
 });

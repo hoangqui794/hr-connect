@@ -95,6 +95,11 @@ export interface ServiceFee {
   paidAt?: string | null;
   paymentReference?: string | null;
   createdAt: string;
+  serviceTypeCode?: string | null;
+  daysOverdue?: number | null;
+  paymentSubmittedAt?: string | null;
+  pendingOnlinePayment?: boolean;
+  placementStartDate?: string | null;
 }
 
 export interface Commission {
@@ -172,6 +177,15 @@ export interface Warranty {
   serviceFeeAmount?: number | null;
   commissionStatus?: CommissionStatus | null;
   commissionAmount?: number | null;
+  jobId?: string | null;
+  daysRemaining?: number | null;
+  claimReportedAt?: string | null;
+  lastWorkingDate?: string | null;
+  resignationReason?: string | null;
+  replacementSlotId?: string | null;
+  replacementSlotStatus?: ReplacementSlotStatus | string | null;
+  replacementExpiresAt?: string | null;
+  serviceFeeDueDate?: string | null;
 }
 
 /** MF-05 replacement slot status */
@@ -203,6 +217,10 @@ export interface ReplacementSlotDto {
   /** Tên tin và doanh nghiệp, BE trả kèm từ GET /replacement-slots và /jobs/{id}/replacement-slots. */
   jobTitle?: string | null;
   companyName?: string | null;
+  refundPercent?: number | null;
+  refundServiceFeeId?: string | null;
+  refundAmount?: number | null;
+  refundStatus?: ServiceFeeStatus | null;
 }
 
 /** Short slot summary returned when resolving a resignation */

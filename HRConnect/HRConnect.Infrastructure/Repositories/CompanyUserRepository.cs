@@ -23,6 +23,7 @@ public class CompanyUserRepository : ICompanyUserRepository
     {
         return await _context.CompanyUsers
             .Include(cu => cu.Company)
+                .ThenInclude(c => c.CompanyVerificationRequest)
             .FirstOrDefaultAsync(cu => cu.UserId == userId, cancellationToken);
     }
 

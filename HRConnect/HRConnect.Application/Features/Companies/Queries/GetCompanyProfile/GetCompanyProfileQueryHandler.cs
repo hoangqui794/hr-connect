@@ -11,15 +11,18 @@ public class GetCompanyProfileQueryHandler : IRequestHandler<GetCompanyProfileQu
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly ILogger<GetCompanyProfileQueryHandler> _logger;
     private readonly ICompanyLogoUrlResolver? _logoUrlResolver;
+    private readonly ICompanyVerificationRequestRepository? _verificationRequestRepository;
 
     public GetCompanyProfileQueryHandler(
         ICompanyUserRepository companyUserRepository,
         ILogger<GetCompanyProfileQueryHandler> logger,
-        ICompanyLogoUrlResolver? logoUrlResolver = null)
+        ICompanyLogoUrlResolver? logoUrlResolver = null,
+        ICompanyVerificationRequestRepository? verificationRequestRepository = null)
     {
         _companyUserRepository = companyUserRepository;
         _logger = logger;
         _logoUrlResolver = logoUrlResolver;
+        _verificationRequestRepository = verificationRequestRepository;
     }
 
     public async Task<CompanyProfileResponse> Handle(
@@ -34,6 +37,14 @@ public class GetCompanyProfileQueryHandler : IRequestHandler<GetCompanyProfileQu
         }
 
         var company = companyUser.Company;
+        var verificationRequest = company.CompanyVerificationRequest
+            ?? (_verificationRequestRepository != null
+                ? await _verificationRequestRepository.GetByCompanyIdAsync(company.CompanyId, cancellationToken)
+                : null);
+        var rejectedReason = string.Equals(company.VerificationStatus, "REJECTED", StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(verificationRequest?.ReviewNote)
+                ? verificationRequest.ReviewNote.Trim()
+                : null;
 
         return new CompanyProfileResponse
         {
@@ -54,6 +65,9 @@ public class GetCompanyProfileQueryHandler : IRequestHandler<GetCompanyProfileQu
                 LogoUrl = _logoUrlResolver?.Resolve(company) ?? company.LogoUrl,
                 VerificationStatus = company.VerificationStatus,
                 VerifiedAt = company.VerifiedAt,
+                VerificationRejectedReason = rejectedReason,
+                VerificationRequestedAt = verificationRequest?.SubmittedAt,
+                VerificationReviewedAt = verificationRequest?.ReviewedAt,
                 RoleInCompany = companyUser.RoleInCompany,
                 IsPrimaryContact = companyUser.IsPrimaryContact,
                 CreatedAt = company.CreatedAt,

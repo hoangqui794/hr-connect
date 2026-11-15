@@ -16,13 +16,15 @@ public class GetPlacementDetailQueryHandlerTests
 {
     private readonly Mock<IPlacementRepository> _placementRepositoryMock = new();
     private readonly Mock<ICompanyUserRepository> _companyUserRepositoryMock = new();
+    private readonly Mock<IFinanceRepository> _financeRepositoryMock = new();
     private readonly Mock<ILogger<GetPlacementDetailQueryHandler>> _loggerMock = new();
 
-    private GetPlacementDetailQueryHandler CreateHandler() =>
+    private GetPlacementDetailQueryHandler CreateHandler(bool withFinanceRepo = false) =>
         new(
             _placementRepositoryMock.Object,
             _companyUserRepositoryMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            withFinanceRepo ? _financeRepositoryMock.Object : null);
 
     [Fact]
     public async Task Handle_WhenPlacementNotFound_ShouldThrowNotFoundException()
@@ -393,5 +395,140 @@ public class GetPlacementDetailQueryHandlerTests
             new GetPlacementDetailQuery(placementId, Guid.NewGuid(), IsInternalHrOrAdmin: true), CancellationToken.None);
 
         result.Financial.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_WhenResignedAndSlotOpened_ShouldReturnFinancialDetailsResignationAndReplacementForClient()
+    {
+        var placementId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+        var warrantyId = Guid.NewGuid();
+        var feeId = Guid.NewGuid();
+        var slotId = Guid.NewGuid();
+        var dueDate = new DateOnly(2026, 11, 20);
+        var paidAt = new DateTime(2026, 11, 10, 8, 0, 0, DateTimeKind.Utc);
+        var reportedAt = new DateTime(2026, 11, 12, 9, 30, 0, DateTimeKind.Utc);
+        var expiresAt = new DateTime(2026, 12, 12, 9, 30, 0, DateTimeKind.Utc);
+
+        var placement = new Placement
+        {
+            PlacementId = placementId,
+            Status = "LEFT_DURING_WARRANTY",
+            Application = new HRConnect.Domain.Entities.Application
+            {
+                JobId = jobId,
+                Candidate = new Candidate { UserId = Guid.NewGuid(), FullName = "Nguyễn Văn B" },
+                Job = new Job { JobId = jobId, CompanyId = companyId, Title = "Tech Lead", Company = new Company { CompanyName = "ACME" } },
+            },
+            Offer = new Offer(),
+            ServiceFee = new ServiceFee
+            {
+                ServiceFeeId = feeId,
+                Amount = 50_000_000m,
+                Status = "PAID",
+                DueDate = dueDate,
+                PaidAt = paidAt,
+            },
+            Warranty = new Warranty
+            {
+                WarrantyId = warrantyId,
+                StartDate = new DateOnly(2026, 10, 1),
+                EndDate = new DateOnly(2026, 12, 1),
+                Status = "VOIDED",
+                ResultNote = "Client báo nghỉ, ngày làm việc cuối 2026-11-11: Chuyển công tác | Internal HR xác nhận: Đã đối chiếu",
+                UpdatedAt = DateTime.UtcNow,
+            },
+        };
+
+        _placementRepositoryMock
+            .Setup(r => r.GetByIdWithDetailsAsync(placementId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(placement);
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
+        _financeRepositoryMock
+            .Setup(r => r.GetWarrantyClaimAuditLogsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                new AuditLog
+                {
+                    Action = "WARRANTY_CLAIM_REPORTED",
+                    EntityType = "WARRANTY",
+                    EntityId = warrantyId,
+                    CreatedAt = reportedAt,
+                }
+            ]);
+        _financeRepositoryMock
+            .Setup(r => r.GetReplacementSlotsByOriginalPlacementIdsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                new ReplacementSlot
+                {
+                    ReplacementSlotId = slotId,
+                    JobId = jobId,
+                    Status = "OPEN",
+                    ExpiresAt = expiresAt,
+                }
+            ]);
+
+        var result = await CreateHandler(withFinanceRepo: true).Handle(
+            new GetPlacementDetailQuery(placementId, userId, IsClientCompanyUser: true), CancellationToken.None);
+
+        result.Financial.Should().NotBeNull();
+        result.Financial!.ServiceFeeId.Should().Be(feeId);
+        result.Financial.ServiceFeeDueDate.Should().Be(dueDate);
+        result.Financial.ServiceFeePaidAt.Should().Be(paidAt);
+        result.Financial.CommissionAmount.Should().BeNull();
+
+        result.Resignation.Should().NotBeNull();
+        result.Resignation!.ReportedAt.Should().Be(reportedAt);
+        result.Resignation.LastWorkingDate.Should().Be(new DateOnly(2026, 11, 11));
+        result.Resignation.Reason.Should().Be("Chuyển công tác");
+        result.Resignation.ReviewStatus.Should().Be("CONFIRMED");
+        result.Resignation.ReviewNote.Should().Contain("xác nhận: Đã đối chiếu");
+        result.Resignation.ResignedBy.Should().Be("CLIENT");
+
+        result.Replacement.Should().NotBeNull();
+        result.Replacement!.ReplacementSlotId.Should().Be(slotId);
+        result.Replacement.Status.Should().Be("OPEN");
+        result.Replacement.ExpiresAt.Should().Be(expiresAt);
+    }
+
+    [Fact]
+    public async Task Handle_WhenCandidateWithResignation_ShouldHideFinancialReplacementAndHrNote()
+    {
+        var placementId = Guid.NewGuid();
+        var candidateUserId = Guid.NewGuid();
+        var placement = new Placement
+        {
+            PlacementId = placementId,
+            Status = "LEFT_DURING_WARRANTY",
+            Application = new HRConnect.Domain.Entities.Application
+            {
+                Candidate = new Candidate { UserId = candidateUserId, FullName = "Ứng viên A" },
+                Job = new Job { CompanyId = Guid.NewGuid(), Company = new Company() },
+            },
+            Offer = new Offer(),
+            ServiceFee = new ServiceFee { ServiceFeeId = Guid.NewGuid(), Amount = 20_000_000m, Status = "PAID" },
+            Warranty = new Warranty
+            {
+                WarrantyId = Guid.NewGuid(),
+                Status = "VOIDED",
+                ResultNote = "Client báo nghỉ, ngày làm việc cuối 2026-11-05: Lý do cá nhân | Internal HR xác nhận: Ghi chú nội bộ",
+            },
+        };
+
+        _placementRepositoryMock
+            .Setup(r => r.GetByIdWithDetailsAsync(placementId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(placement);
+
+        var result = await CreateHandler(withFinanceRepo: true).Handle(
+            new GetPlacementDetailQuery(placementId, candidateUserId, IsCandidate: true), CancellationToken.None);
+
+        result.Financial.Should().BeNull();
+        result.Replacement.Should().BeNull();
+        result.Resignation.Should().NotBeNull();
+        result.Resignation!.Reason.Should().Be("Lý do cá nhân");
+        result.Resignation.ReviewNote.Should().BeNull();
     }
 }

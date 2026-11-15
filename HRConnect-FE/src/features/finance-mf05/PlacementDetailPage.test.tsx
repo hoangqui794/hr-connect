@@ -291,4 +291,41 @@ describe('PlacementDetailPage & PlacementDetailView', () => {
     await screen.findByTestId('placement-detail-content');
     expect(screen.queryByText('Người thay thế – không tính phí mới')).toBeNull();
   });
+
+  it('renders serviceFeeDueDate, serviceFeePaidAt, resignation card, and linked replacement strip when present', async () => {
+    vi.mocked(placementApi.getPlacementDetail).mockResolvedValueOnce({
+      ...mockPlacement,
+      status: 'LEFT_DURING_WARRANTY',
+      financial: {
+        ...mockPlacement.financial,
+        serviceFeeId: 'fee-100',
+        serviceFeeDueDate: '2026-11-20',
+        serviceFeePaidAt: '2026-11-05T10:00:00Z',
+      },
+      resignation: {
+        reportedAt: '2026-11-12T08:00:00Z',
+        lastWorkingDate: '2026-11-10',
+        reason: 'Chuyển sang công ty gia đình',
+        reviewStatus: 'CONFIRMED',
+        reviewNote: 'HR đã đối soát ngày công',
+        resignedBy: 'CLIENT',
+      },
+      replacement: {
+        replacementSlotId: 'de305d54-75b4-431b-adb2-eb6b9e546014',
+        jobId: 'job-1',
+        status: 'OPEN',
+        expiresAt: '2026-12-12T08:00:00Z',
+      },
+    } as any);
+
+    renderWithProviders(<PlacementDetailPage />, '/client/placements/plc-1');
+
+    expect(await screen.findByText('Thông tin báo nghỉ việc')).toBeInTheDocument();
+    expect(screen.getByText('Chuyển sang công ty gia đình')).toBeInTheDocument();
+    expect(screen.getByText(/Ghi chú xác minh: HR đã đối soát ngày công/)).toBeInTheDocument();
+    expect(screen.getByText('Suất tuyển thay thế liên kết')).toBeInTheDocument();
+    expect(screen.getByText('Suất #DE305D54')).toBeInTheDocument();
+    expect(screen.getByText('Hạn thanh toán: 20/11/2026')).toBeInTheDocument();
+    expect(screen.getByText('Đã thanh toán: 5/11/2026')).toBeInTheDocument();
+  });
 });

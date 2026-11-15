@@ -1,5 +1,8 @@
 using HRConnect.Application.Common.Exceptions;
+using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.Placements.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using MediatR;
@@ -17,7 +20,9 @@ public sealed record ServiceFeeDto(
     decimal BaseSalary, decimal FeeMultiplier, decimal Amount, string CurrencyCode, DateOnly DueDate, string Status,
     DateTime? PaidAt, string? PaymentReference, DateTime CreatedAt, string Kind = "PLACEMENT", Guid? JobId = null,
     string? ReconciliationStatus = null, int? SourcingTarget = null, decimal? SourcingPricePerCv = null,
-    DateTime? ReplacementExpiredAt = null, int? SourcingCounted = null);
+    DateTime? ReplacementExpiredAt = null, int? SourcingCounted = null,
+    string? ServiceTypeCode = null, int? DaysOverdue = null, DateTime? PaymentSubmittedAt = null,
+    bool PendingOnlinePayment = false, DateOnly? PlacementStartDate = null);
 
 /// <summary>PlacementId is set for HEADHUNT_COD; SourcingDeliveryId for CV_SOURCING (one per accepted CV).</summary>
 public sealed record CommissionDto(
@@ -33,7 +38,10 @@ public sealed record AffiliateBankDto(string? BankName, string? BankAccountNumbe
 public sealed record WarrantyDto(
     Guid WarrantyId, Guid PlacementId, string? CompanyName, string? JobTitle, string? CandidateName, string? Position,
     DateOnly StartDate, DateOnly? EndDate, string Status, string PlacementStatus, string? ResultNote,
-    string? ServiceFeeStatus, decimal? ServiceFeeAmount, string? CommissionStatus, decimal? CommissionAmount);
+    string? ServiceFeeStatus, decimal? ServiceFeeAmount, string? CommissionStatus, decimal? CommissionAmount,
+    Guid? JobId = null, int? DaysRemaining = null, DateTime? ClaimReportedAt = null, DateOnly? LastWorkingDate = null,
+    string? ResignationReason = null, Guid? ReplacementSlotId = null, string? ReplacementSlotStatus = null,
+    DateTime? ReplacementExpiresAt = null, DateOnly? ServiceFeeDueDate = null);
 
 public sealed record PayoutDto(
     Guid PayoutId, Guid CommissionId, decimal Amount, DateTime? PayoutDate, string? Method, string? TransactionReference,
@@ -62,15 +70,21 @@ public sealed class FinanceQueryHandlers :
     private readonly IFinanceRepository _financeRepository;
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly ISourcingDeliveryRepository? _sourcingDeliveries;
+    private readonly IOnlinePaymentRepository? _onlinePayments;
+    private readonly IVnPayGateway? _vnPayGateway;
 
     public FinanceQueryHandlers(
         IFinanceRepository financeRepository,
         ICompanyUserRepository companyUserRepository,
-        ISourcingDeliveryRepository? sourcingDeliveries = null)
+        ISourcingDeliveryRepository? sourcingDeliveries = null,
+        IOnlinePaymentRepository? onlinePayments = null,
+        IVnPayGateway? vnPayGateway = null)
     {
         _financeRepository = financeRepository;
         _companyUserRepository = companyUserRepository;
         _sourcingDeliveries = sourcingDeliveries;
+        _onlinePayments = onlinePayments;
+        _vnPayGateway = vnPayGateway;
     }
 
     public async Task<PagedResult<ServiceFeeDto>> Handle(GetServiceFeesQuery request, CancellationToken cancellationToken)
@@ -113,20 +127,58 @@ public sealed class FinanceQueryHandlers :
             ? null
             : await _sourcingDeliveries.GetCountedCountsByJobIdsAsync(sourcingJobIds, cancellationToken);
 
-        return new PagedResult<ServiceFeeDto>(items.Select(fee => new ServiceFeeDto(
-            fee.ServiceFeeId, fee.PlacementId, fee.CompanyId, fee.Company?.CompanyName,
-            fee.Job?.Title ?? fee.Placement?.Application?.Job?.Title,
-            fee.Placement?.Application?.Candidate?.FullName ?? SlotOf(fee)?.OriginalPlacement?.Application?.Candidate?.FullName,
-            fee.BaseSalary, fee.FeeMultiplier, fee.Amount, fee.CurrencyCode, fee.DueDate, fee.Status,
-            fee.PaidAt, fee.PaymentReference, fee.CreatedAt, fee.Kind,
-            fee.JobId ?? fee.Placement?.Application?.JobId,
-            fee.Placement?.Reconciliation?.Status,
-            // CV_SOURCING: lets the Client see how a deposit or settlement was worked out (CVs × price per CV).
-            fee.Job?.SourcingTarget, fee.Job?.SourcingPricePerCv,
-            SlotOf(fee)?.ExpiresAt,
-            fee.JobId is { } sJobId && countedByJob is not null && sourcingJobIds.Contains(sJobId)
-                ? countedByJob.GetValueOrDefault(sJobId, 0)
-                : null)).ToList(), total, page, pageSize);
+        var openPayableFeeIds = items
+            .Where(fee => !ServiceFeeKinds.OwedToClient.Contains(fee.Kind)
+                && fee.Status is ServiceFeeStates.Pending or ServiceFeeStates.Due or ServiceFeeStates.Overdue)
+            .Select(fee => fee.ServiceFeeId)
+            .ToList();
+        var pendingOnlineStatuses = openPayableFeeIds.Count == 0 || _onlinePayments is null
+            ? new Dictionary<Guid, string>()
+            : await _onlinePayments.GetActiveStatusesByTargetIdsAsync(
+                OnlinePaymentTargets.ServiceFee,
+                openPayableFeeIds,
+                DateTime.UtcNow.Subtract(_vnPayGateway?.PaymentLifetime ?? TimeSpan.FromMinutes(15)),
+                cancellationToken);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        return new PagedResult<ServiceFeeDto>(items.Select(fee =>
+        {
+            var resolvedServiceTypeCode = fee.Kind switch
+            {
+                ServiceFeeKinds.Placement or ServiceFeeKinds.ReplacementRefund => "HEADHUNT_COD",
+                ServiceFeeKinds.Deposit or ServiceFeeKinds.Settlement or ServiceFeeKinds.Credit => "CV_SOURCING",
+                _ => fee.Job?.ServiceType?.Code ?? fee.Placement?.Application?.Job?.ServiceType?.Code,
+            };
+            int? daysOverdue = fee.Status == ServiceFeeStates.Overdue && !ServiceFeeKinds.OwedToClient.Contains(fee.Kind)
+                ? Math.Max(0, today.DayNumber - fee.DueDate.DayNumber)
+                : null;
+            DateTime? paymentSubmittedAt = fee.Kind == ServiceFeeKinds.Deposit
+                && fee.Status != ServiceFeeStates.Paid
+                && fee.Status != ServiceFeeStates.Cancelled
+                    ? fee.Job?.DepositSubmittedAt
+                    : null;
+            var pendingOnline = pendingOnlineStatuses.ContainsKey(fee.ServiceFeeId);
+
+            return new ServiceFeeDto(
+                fee.ServiceFeeId, fee.PlacementId, fee.CompanyId, fee.Company?.CompanyName,
+                fee.Job?.Title ?? fee.Placement?.Application?.Job?.Title,
+                fee.Placement?.Application?.Candidate?.FullName ?? SlotOf(fee)?.OriginalPlacement?.Application?.Candidate?.FullName,
+                fee.BaseSalary, fee.FeeMultiplier, fee.Amount, fee.CurrencyCode, fee.DueDate, fee.Status,
+                fee.PaidAt, fee.PaymentReference, fee.CreatedAt, fee.Kind,
+                fee.JobId ?? fee.Placement?.Application?.JobId,
+                fee.Placement?.Reconciliation?.Status,
+                // CV_SOURCING: lets the Client see how a deposit or settlement was worked out (CVs × price per CV).
+                fee.Job?.SourcingTarget, fee.Job?.SourcingPricePerCv,
+                SlotOf(fee)?.ExpiresAt,
+                fee.JobId is { } sJobId && countedByJob is not null && sourcingJobIds.Contains(sJobId)
+                    ? countedByJob.GetValueOrDefault(sJobId, 0)
+                    : null,
+                resolvedServiceTypeCode,
+                daysOverdue,
+                paymentSubmittedAt,
+                pendingOnline,
+                fee.Placement?.ActualStartDate);
+        }).ToList(), total, page, pageSize);
     }
 
     public async Task<PagedResult<CommissionDto>> Handle(GetCommissionsQuery request, CancellationToken cancellationToken)
@@ -224,14 +276,53 @@ public sealed class FinanceQueryHandlers :
         var (items, total) = await _financeRepository.GetWarrantiesAsync(companyId, Upper(request.Status), page, pageSize, cancellationToken);
         // A Client sees its own service fee but never the Affiliate's commission.
         var hideCommission = companyId.HasValue;
+        var placementIds = items.Select(w => w.PlacementId).Distinct().ToList();
+        var replacementSlotsByPlacement = placementIds.Count == 0
+            ? new Dictionary<Guid, Domain.Entities.ReplacementSlot>()
+            : (await _financeRepository.GetReplacementSlotsByOriginalPlacementIdsAsync(placementIds, cancellationToken))
+                .GroupBy(slot => slot.OriginalPlacementId)
+                .ToDictionary(g => g.Key, g => g.First());
+        var claimWarrantyIds = items
+            .Where(w => w.Status is WarrantyStates.Claimed or WarrantyStates.Voided)
+            .Select(w => w.WarrantyId)
+            .Distinct()
+            .ToList();
+        var reportedClaimTimeByWarranty = claimWarrantyIds.Count == 0
+            ? new Dictionary<Guid, DateTime>()
+            : (await _financeRepository.GetWarrantyClaimAuditLogsAsync(claimWarrantyIds, cancellationToken))
+                .Where(log => log.EntityId.HasValue && log.Action == AuditActions.WarrantyClaimReported)
+                .GroupBy(log => log.EntityId!.Value)
+                .ToDictionary(g => g.Key, g => g.Max(log => log.CreatedAt));
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
         return new PagedResult<WarrantyDto>(items.Select(w =>
         {
             var commission = hideCommission ? null : w.Placement?.Commissions.OrderByDescending(c => c.CreatedAt).FirstOrDefault();
+            var slot = replacementSlotsByPlacement.GetValueOrDefault(w.PlacementId);
+            var (lastWorkingDate, resignationReason, _) = w.Placement is null
+                ? PlacementResignationParser.Extract(null, w)
+                : PlacementResignationParser.Extract(w.Placement, w);
+            DateTime? claimReportedAt = reportedClaimTimeByWarranty.TryGetValue(w.WarrantyId, out var loggedAt)
+                ? loggedAt
+                : (w.Status == WarrantyStates.Claimed ? w.UpdatedAt : null);
+            int? daysRemaining = w.EndDate is DateOnly end && w.Status is WarrantyStates.Active or WarrantyStates.Claimed
+                ? Math.Max(0, end.DayNumber - today.DayNumber)
+                : null;
+
             return new WarrantyDto(
                 w.WarrantyId, w.PlacementId, w.Placement?.Application?.Job?.Company?.CompanyName,
                 w.Placement?.Application?.Job?.Title, w.Placement?.Application?.Candidate?.FullName, w.Placement?.Position,
                 w.StartDate, w.EndDate, w.Status, w.Placement?.Status ?? string.Empty, w.ResultNote,
-                w.Placement?.ServiceFee?.Status, w.Placement?.ServiceFee?.Amount, commission?.Status, commission?.Amount);
+                w.Placement?.ServiceFee?.Status, w.Placement?.ServiceFee?.Amount, commission?.Status, commission?.Amount,
+                w.Placement?.Application?.JobId,
+                daysRemaining,
+                claimReportedAt,
+                lastWorkingDate,
+                resignationReason,
+                slot?.ReplacementSlotId,
+                slot?.Status,
+                slot?.ExpiresAt,
+                w.Placement?.ServiceFee?.DueDate);
         }).ToList(), total, page, pageSize);
     }
 

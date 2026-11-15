@@ -91,4 +91,30 @@ public sealed class OnlinePaymentRepository(ApplicationDbContext context) : IOnl
                 .SetProperty(p => p.Status, OnlinePaymentStates.Pending)
                 .SetProperty(p => p.UpdatedAt, DateTime.UtcNow), cancellationToken);
     }
+
+    public async Task<IReadOnlyDictionary<Guid, string>> GetActiveStatusesByTargetIdsAsync(
+        string targetType,
+        IReadOnlyCollection<Guid> targetIds,
+        DateTime pendingCreatedAfter,
+        CancellationToken cancellationToken = default)
+    {
+        if (targetIds.Count == 0)
+        {
+            return new Dictionary<Guid, string>();
+        }
+
+        var rows = await context.OnlinePayments
+            .AsNoTracking()
+            .Where(p => p.TargetType == targetType
+                && targetIds.Contains(p.TargetId)
+                && (p.Status == OnlinePaymentStates.Processing
+                    || (p.Status == OnlinePaymentStates.Pending && p.CreatedAt > pendingCreatedAfter)))
+            .OrderByDescending(p => p.CreatedAt)
+            .Select(p => new { p.TargetId, p.Status })
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .GroupBy(r => r.TargetId)
+            .ToDictionary(g => g.Key, g => g.First().Status);
+    }
 }

@@ -1561,4 +1561,166 @@ public class Mf05FinanceTests
                 a.RouteHint == $"/affiliate/submit-candidate?job={slot.JobId}"),
             It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task Warranty_list_returns_days_remaining_resignation_claim_and_linked_replacement_slot()
+    {
+        var (placementVoided, fee) = await ResignationReportedAsync(feePaid: true);
+        var voidedWarranty = await _context.Warranties.SingleAsync(w => w.PlacementId == placementVoided.PlacementId);
+        var reportedAt = DateTime.UtcNow.AddDays(-2);
+        _context.AuditLogs.Add(new AuditLog
+        {
+            ActorType = AuditActorTypes.User,
+            Action = AuditActions.WarrantyClaimReported,
+            EntityType = "WARRANTY",
+            EntityId = voidedWarranty.WarrantyId,
+            Source = "API",
+            CreatedAt = reportedAt,
+        });
+        await _context.SaveChangesAsync();
+        await ConfirmResignationAsync(placementVoided.PlacementId);
+        var slot = await _context.ReplacementSlots.SingleAsync();
+
+        var (placementActive, offerActive) = await SeedPlacementAsync();
+        await InitializeAsync(placementActive, offerActive);
+        var activeWarranty = await _context.Warranties.SingleAsync(w => w.PlacementId == placementActive.PlacementId);
+        activeWarranty.EndDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(12);
+        await _context.SaveChangesAsync();
+
+        var handlers = new FinanceQueryHandlers(Repository, Mock.Of<ICompanyUserRepository>());
+        var result = await handlers.Handle(new GetWarrantiesQuery(null, null, 1, 20), default);
+
+        var activeDto = result.Items.Single(w => w.PlacementId == placementActive.PlacementId);
+        activeDto.JobId.Should().Be(placementActive.Application.JobId);
+        activeDto.DaysRemaining.Should().Be(12);
+        activeDto.ServiceFeeDueDate.Should().NotBeNull();
+        activeDto.ClaimReportedAt.Should().BeNull();
+        activeDto.ReplacementSlotId.Should().BeNull();
+
+        var voidedDto = result.Items.Single(w => w.PlacementId == placementVoided.PlacementId);
+        voidedDto.DaysRemaining.Should().BeNull();
+        voidedDto.ClaimReportedAt.Should().Be(reportedAt);
+        voidedDto.LastWorkingDate.Should().Be(Start.AddDays(5));
+        voidedDto.ResignationReason.Should().Be("Nghỉ");
+        voidedDto.ReplacementSlotId.Should().Be(slot.ReplacementSlotId);
+        voidedDto.ReplacementSlotStatus.Should().Be(ReplacementSlotStates.Open);
+        voidedDto.ReplacementExpiresAt.Should().Be(slot.ExpiresAt);
+        voidedDto.ServiceFeeDueDate.Should().Be(fee.DueDate);
+    }
+
+    [Fact]
+    public async Task Service_fee_list_returns_service_type_days_overdue_payment_submitted_and_pending_online_payment()
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        await InitializeAsync(placement, offer);
+        var placementFee = await _context.ServiceFees.SingleAsync(f => f.PlacementId == placement.PlacementId);
+        placementFee.Status = ServiceFeeStates.Overdue;
+        placementFee.DueDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-5);
+
+        var sourcingJob = new Job
+        {
+            JobId = Guid.NewGuid(),
+            CompanyId = _companyId,
+            ServiceTypeId = _serviceTypeId,
+            CreatedBy = _actor,
+            Title = "Sourcing Deposit Job",
+            CurrencyCode = "VND",
+            Quantity = 5,
+            Status = "PENDING_PAYMENT",
+            DepositSubmittedAt = DateTime.UtcNow.AddHours(-3),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            ConcurrencyToken = Guid.NewGuid(),
+        };
+        _context.Jobs.Add(sourcingJob);
+        var depositFee = new ServiceFee
+        {
+            ServiceFeeId = Guid.NewGuid(),
+            JobId = sourcingJob.JobId,
+            Kind = ServiceFeeKinds.Deposit,
+            CompanyId = _companyId,
+            BaseSalary = 5_000_000m,
+            FeeMultiplier = 0.2m,
+            Amount = 1_000_000m,
+            CurrencyCode = "VND",
+            DueDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(3),
+            Status = ServiceFeeStates.Pending,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        _context.ServiceFees.Add(depositFee);
+        _context.OnlinePayments.Add(new OnlinePayment
+        {
+            OnlinePaymentId = Guid.NewGuid(),
+            Provider = OnlinePaymentProviders.VnPay,
+            TargetType = OnlinePaymentTargets.ServiceFee,
+            TargetId = placementFee.ServiceFeeId,
+            CompanyId = _companyId,
+            Amount = placementFee.Amount,
+            CurrencyCode = "VND",
+            TxnRef = Guid.NewGuid().ToString("N"),
+            Status = OnlinePaymentStates.Pending,
+            CreatedBy = _actor,
+            CreatedAt = DateTime.UtcNow.AddMinutes(-2),
+            UpdatedAt = DateTime.UtcNow.AddMinutes(-2),
+        });
+        await _context.SaveChangesAsync();
+
+        var gateway = new Mock<IVnPayGateway>();
+        gateway.SetupGet(g => g.PaymentLifetime).Returns(TimeSpan.FromMinutes(15));
+        var handlers = new FinanceQueryHandlers(
+            Repository,
+            Mock.Of<ICompanyUserRepository>(),
+            onlinePayments: new OnlinePaymentRepository(_context),
+            vnPayGateway: gateway.Object);
+
+        var fees = (await handlers.Handle(new GetServiceFeesQuery(null, null, 1, 20), default)).Items;
+
+        var hh = fees.Single(f => f.ServiceFeeId == placementFee.ServiceFeeId);
+        hh.ServiceTypeCode.Should().Be("HEADHUNT_COD");
+        hh.DaysOverdue.Should().Be(5);
+        hh.PendingOnlinePayment.Should().BeTrue();
+        hh.PaymentSubmittedAt.Should().BeNull();
+        hh.PlacementStartDate.Should().Be(placement.ActualStartDate);
+
+        var ss = fees.Single(f => f.ServiceFeeId == depositFee.ServiceFeeId);
+        ss.ServiceTypeCode.Should().Be("CV_SOURCING");
+        ss.DaysOverdue.Should().BeNull();
+        ss.PendingOnlinePayment.Should().BeFalse();
+        ss.PaymentSubmittedAt.Should().Be(sourcingJob.DepositSubmittedAt);
+    }
+
+    [Fact]
+    public async Task Replacement_slots_return_real_refund_percent_and_linked_refund_fee()
+    {
+        var (placement, fee) = await ResignationReportedAsync(feePaid: true);
+        await ConfirmResignationAsync(placement.PlacementId);
+        var slot = await _context.ReplacementSlots.SingleAsync();
+        var refundFee = new ServiceFee
+        {
+            ServiceFeeId = Guid.NewGuid(),
+            JobId = slot.JobId,
+            Kind = ServiceFeeKinds.ReplacementRefund,
+            CompanyId = _companyId,
+            BaseSalary = fee.Amount,
+            FeeMultiplier = 0.4m,
+            Amount = decimal.Round(fee.Amount * 0.4m, 0, MidpointRounding.AwayFromZero),
+            CurrencyCode = "VND",
+            DueDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(14),
+            Status = ServiceFeeStates.Pending,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        _context.ServiceFees.Add(refundFee);
+        await _context.SaveChangesAsync();
+
+        var handler = new GetReplacementSlotsQueryHandler(Repository, Mock.Of<ICompanyUserRepository>());
+        var result = await handler.Handle(new GetReplacementSlotsQuery(null, slot.JobId, null, 1, 20), default);
+
+        var dto = result.Items.Single();
+        dto.RefundPercent.Should().Be(40m);
+        dto.RefundServiceFeeId.Should().Be(refundFee.ServiceFeeId);
+        dto.RefundAmount.Should().Be(refundFee.Amount);
+        dto.RefundStatus.Should().Be(ServiceFeeStates.Pending);
+    }
 }
