@@ -1881,4 +1881,141 @@ public class Mf05FinanceTests
         jobBuckets.Should().Contain(new ServiceFeeSummaryBucket(ServiceFeeKinds.Deposit, ServiceFeeStates.Pending, "VND", 2, 5_000_000m));
         jobBuckets.Should().Contain(new ServiceFeeSummaryBucket(ServiceFeeKinds.Placement, ServiceFeeStates.Paid, "VND", 1, 15_000_000m));
     }
+
+    [Fact]
+    public async Task Replacement_placement_earned_commission_uses_original_slot_service_fee_for_queries_and_approval()
+    {
+        var (originalPlacement, originalFee) = await ResignationReportedAsync(feePaid: false);
+        await ConfirmResignationAsync(originalPlacement.PlacementId);
+        var slot = await _context.ReplacementSlots.SingleAsync();
+
+        var now = DateTime.UtcNow;
+        var affiliateUserId = await SeedAffiliateUserForPlacementAsync();
+        var affiliateProfile = await _context.Set<AffiliateProfile>().SingleAsync(p => p.UserId == affiliateUserId);
+
+        var replacementCandidate = new Candidate
+        {
+            CandidateId = Guid.NewGuid(),
+            FullName = "Ứng viên thay thế",
+            ProfileVisibility = "PRIVATE",
+            Status = "ACTIVE",
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        var replacementApplication = new JobApplication
+        {
+            ApplicationId = Guid.NewGuid(),
+            JobId = originalPlacement.Application.JobId,
+            CandidateId = replacementCandidate.CandidateId,
+            ReplacementSlotId = slot.ReplacementSlotId,
+            Status = ApplicationStates.Placed,
+            AppliedAt = now,
+            UpdatedAt = now,
+            ConcurrencyToken = Guid.NewGuid(),
+            Job = originalPlacement.Application.Job,
+            Candidate = replacementCandidate,
+        };
+        var replacementOffer = new Offer
+        {
+            OfferId = Guid.NewGuid(),
+            ApplicationId = replacementApplication.ApplicationId,
+            OfferVersion = 1,
+            Salary = 22_000_000m,
+            CurrencyCode = "VND",
+            SalaryBasis = OfferSalaryBasisCodes.Gross,
+            SalaryPeriod = OfferSalaryPeriodCodes.Monthly,
+            Status = OfferStates.Accepted,
+            ConcurrencyToken = Guid.NewGuid(),
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        var replacementPlacement = new Placement
+        {
+            PlacementId = Guid.NewGuid(),
+            ApplicationId = replacementApplication.ApplicationId,
+            OfferId = replacementOffer.OfferId,
+            ActualStartDate = Start.AddDays(10),
+            Status = PlacementStates.Started,
+            ReplacementSlotId = slot.ReplacementSlotId,
+            ReplacementSlot = slot,
+            ConfirmedAt = now,
+            CreatedAt = now,
+            UpdatedAt = now,
+            Application = replacementApplication,
+            Offer = replacementOffer,
+        };
+        slot.FilledByPlacementId = replacementPlacement.PlacementId;
+        slot.Status = ReplacementSlotStates.Filled;
+        _context.AddRange(replacementCandidate, replacementApplication, replacementOffer, replacementPlacement);
+        _context.Add(new Attribution
+        {
+            AttributionId = Guid.NewGuid(),
+            ApplicationId = replacementApplication.ApplicationId,
+            AffiliateId = affiliateProfile.AffiliateId,
+            WinningSubmissionId = Guid.NewGuid(),
+            AttributionRule = "FIRST_ACCEPTED_SUBMISSION",
+            Status = "ACTIVE",
+            EstablishedAt = now,
+            UpdatedAt = now,
+        });
+        await _context.SaveChangesAsync();
+
+        await FinanceService().InitializeAsync(
+            replacementPlacement,
+            new JobApplicationContext(
+                replacementApplication.ApplicationId,
+                _companyId,
+                _serviceTypeId,
+                ServiceTypeCodesForTest.Headhunt,
+                replacementOffer,
+                ReplacementSourceServiceFee: originalFee),
+            _actor);
+        await _context.SaveChangesAsync();
+
+        (await Progress().CompleteWarrantyAsync(replacementPlacement.PlacementId, replacementPlacement.ActualStartDate.AddDays(30)))
+            .Should().BeTrue();
+        var replacementCommission = await _context.Commissions.SingleAsync(c => c.PlacementId == replacementPlacement.PlacementId);
+        replacementCommission.Status.Should().Be(CommissionStates.Earned);
+
+        var queryHandlers = new FinanceQueryHandlers(Repository, Mock.Of<ICompanyUserRepository>());
+
+        // 1. Original fee unpaid -> queries expose PENDING status and ApproveCommission rejects with 409 SERVICE_FEE_NOT_PAID
+        _context.ChangeTracker.Clear();
+        var unpaidCommissions = await queryHandlers.Handle(new GetCommissionsQuery(null, null, 1, 20), default);
+        unpaidCommissions.Items.Single(c => c.CommissionId == replacementCommission.CommissionId)
+            .ServiceFeeStatus.Should().Be(ServiceFeeStates.Pending);
+
+        var unpaidWarranties = await queryHandlers.Handle(new GetWarrantiesQuery(null, null, 1, 20), default);
+        unpaidWarranties.Items.Single(w => w.PlacementId == replacementPlacement.PlacementId)
+            .ServiceFeeStatus.Should().Be(ServiceFeeStates.Pending);
+
+        _context.ChangeTracker.Clear();
+        var blocked = await Settlement()
+            .Invoking(h => h.Handle(new ApproveCommissionCommand(replacementCommission.CommissionId, _actor), default))
+            .Should().ThrowAsync<ConflictException>();
+        blocked.Which.ErrorCode.Should().Be("SERVICE_FEE_NOT_PAID");
+
+        // 2. Original fee PAID -> queries expose PAID status and ApproveCommission transitions to PAYABLE with original serviceFeeId
+        await Settlement().Handle(new RecordServiceFeePaymentCommand(originalFee.ServiceFeeId, DateTime.UtcNow, "VCB-REPL-ORIG", _actor), default);
+
+        _context.ChangeTracker.Clear();
+        var paidCommissions = await queryHandlers.Handle(new GetCommissionsQuery(null, null, 1, 20), default);
+        paidCommissions.Items.Single(c => c.CommissionId == replacementCommission.CommissionId)
+            .ServiceFeeStatus.Should().Be(ServiceFeeStates.Paid);
+
+        var paidWarranties = await queryHandlers.Handle(new GetWarrantiesQuery(null, null, 1, 20), default);
+        paidWarranties.Items.Single(w => w.PlacementId == replacementPlacement.PlacementId)
+            .ServiceFeeStatus.Should().Be(ServiceFeeStates.Paid);
+
+        _context.ChangeTracker.Clear();
+        var approved = await Settlement().Handle(new ApproveCommissionCommand(replacementCommission.CommissionId, _actor), default);
+        approved.Status.Should().Be(CommissionStates.Payable);
+        _audit.Verify(a => a.AddAsync(
+            It.Is<AuditEntry>(e =>
+                e.Action == AuditActions.CommissionApproved &&
+                e.EntityId == replacementCommission.CommissionId &&
+                e.NewValues != null &&
+                e.NewValues.ToString()!.Contains(originalFee.ServiceFeeId.ToString())),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
 }

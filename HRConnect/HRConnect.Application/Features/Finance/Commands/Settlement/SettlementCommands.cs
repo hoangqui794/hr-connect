@@ -196,7 +196,7 @@ public sealed class SettlementCommandHandlers :
         }
         else
         {
-            var fee = commission.Placement?.ServiceFee;
+            var fee = commission.Placement?.GetEffectiveServiceFee();
             if (fee == null || fee.Status != ServiceFeeStates.Paid)
             {
                 throw new ConflictException(

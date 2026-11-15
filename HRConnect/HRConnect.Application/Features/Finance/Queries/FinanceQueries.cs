@@ -320,7 +320,7 @@ public sealed class FinanceQueryHandlers :
                 c.Placement?.Application?.Candidate?.FullName ?? c.SourcingDelivery?.Application?.Candidate?.FullName,
                 c.Amount, hideClientFee ? null : c.BaseAmount, c.Status, c.MilestoneType,
                 c.Placement?.Warranty?.EndDate, c.Placement?.Warranty?.Status,
-                c.Placement?.ServiceFee?.Status ?? (c.SourcingDelivery?.JobId is { } sJobId ? sourcingFeeStatusByJob.GetValueOrDefault(sJobId, ServiceFeeStates.Pending) : null),
+                c.Placement?.GetEffectiveServiceFee()?.Status ?? (c.SourcingDelivery?.JobId is { } sJobId ? sourcingFeeStatusByJob.GetValueOrDefault(sJobId, ServiceFeeStates.Pending) : null),
                 c.ApprovedAt, c.CreatedAt,
                 request.IncludeBankDetails && c.Attribution.Affiliate is { } affiliate
                     ? new AffiliateBankDto(affiliate.BankName, affiliate.BankAccountNumber, affiliate.BankAccountHolder, affiliate.BankBranch)
@@ -413,7 +413,7 @@ public sealed class FinanceQueryHandlers :
                 w.WarrantyId, w.PlacementId, w.Placement?.Application?.Job?.Company?.CompanyName,
                 w.Placement?.Application?.Job?.Title, w.Placement?.Application?.Candidate?.FullName, w.Placement?.Position,
                 w.StartDate, w.EndDate, w.Status, w.Placement?.Status ?? string.Empty, w.ResultNote,
-                w.Placement?.ServiceFee?.Status, w.Placement?.ServiceFee?.Amount, commission?.Status, commission?.Amount,
+                w.Placement?.GetEffectiveServiceFee()?.Status, w.Placement?.ServiceFee?.Amount, commission?.Status, commission?.Amount,
                 w.Placement?.Application?.JobId,
                 daysRemaining,
                 claimReportedAt,

@@ -47,7 +47,7 @@ public static class FinanceCurrency
         string.IsNullOrWhiteSpace(currencyCode) ? DefaultCurrency : currencyCode.Trim().ToUpperInvariant();
 
     public static string Of(Commission commission) =>
-        Normalize(commission.Placement?.ServiceFee?.CurrencyCode
+        Normalize(commission.Placement?.GetEffectiveServiceFee()?.CurrencyCode
             ?? commission.Placement?.Application?.Job?.CurrencyCode
             ?? commission.SourcingDelivery?.Job?.CurrencyCode);
 

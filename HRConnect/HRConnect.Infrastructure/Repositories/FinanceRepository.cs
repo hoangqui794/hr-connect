@@ -273,6 +273,7 @@ public class FinanceRepository : IFinanceRepository
     public Task<Commission?> GetCommissionForUpdateAsync(Guid commissionId, CancellationToken cancellationToken = default) =>
         _context.Commissions
             .Include(c => c.Placement!).ThenInclude(p => p.ServiceFee)
+            .Include(c => c.Placement!).ThenInclude(p => p.ReplacementSlot!).ThenInclude(s => s.ServiceFee)
             .Include(c => c.SourcingDelivery!).ThenInclude(d => d.Job)
             .Include(c => c.Payouts)
             .FirstOrDefaultAsync(c => c.CommissionId == commissionId, cancellationToken);
@@ -503,6 +504,7 @@ public class FinanceRepository : IFinanceRepository
             .Include(c => c.Placement!).ThenInclude(p => p.Application).ThenInclude(a => a.Candidate)
             .Include(c => c.Placement!).ThenInclude(p => p.Warranty)
             .Include(c => c.Placement!).ThenInclude(p => p.ServiceFee)
+            .Include(c => c.Placement!).ThenInclude(p => p.ReplacementSlot!).ThenInclude(s => s.ServiceFee)
             .Include(c => c.SourcingDelivery!).ThenInclude(d => d.Job)
             .Include(c => c.SourcingDelivery!).ThenInclude(d => d.Application).ThenInclude(a => a.Candidate)
             .OrderByDescending(c => c.CreatedAt)
@@ -531,6 +533,7 @@ public class FinanceRepository : IFinanceRepository
             .Include(w => w.Placement).ThenInclude(p => p.Application).ThenInclude(a => a.Job).ThenInclude(j => j.Company)
             .Include(w => w.Placement).ThenInclude(p => p.Application).ThenInclude(a => a.Candidate)
             .Include(w => w.Placement).ThenInclude(p => p.ServiceFee)
+            .Include(w => w.Placement).ThenInclude(p => p.ReplacementSlot!).ThenInclude(s => s.ServiceFee)
             .Include(w => w.Placement).ThenInclude(p => p.Commissions)
             // Claims waiting for verification first, then the nearest end dates.
             .OrderBy(w => w.Status == "CLAIMED" ? 0 : 1)

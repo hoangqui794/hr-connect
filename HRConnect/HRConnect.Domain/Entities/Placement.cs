@@ -49,5 +49,11 @@ public partial class Placement
     public Guid? ReplacementSlotId { get; set; }
 
     public virtual ReplacementSlot? ReplacementSlot { get; set; }
+
+    /// <summary>
+    /// Phí dịch vụ hiệu lực của placement: phí trực tiếp của placement thường, hoặc phí gốc
+    /// từ suất thay thế (ReplacementSlot.ServiceFee) đối với ứng viên thay thế bảo hành.
+    /// </summary>
+    public ServiceFee? GetEffectiveServiceFee() => ServiceFee ?? ReplacementSlot?.ServiceFee;
 }
 
