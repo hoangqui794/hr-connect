@@ -6,8 +6,8 @@ namespace HRConnect.Application.Features.Recruitment.Queries.GetRecruitmentAppli
 public record GetRecruitmentApplicationTimelineQuery(
     Guid ApplicationId,
     Guid UserId,
-    bool IsClientCompanyUser,
-    bool IsInternalHrOrAdmin,
+    bool IsClientCompanyUser = false,
+    bool IsInternalHrOrAdmin = false,
     bool Ascending = true,
     bool IsCandidate = false
 ) : IRequest<RecruitmentApplicationTimelineResponse>;
