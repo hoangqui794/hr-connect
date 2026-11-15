@@ -321,6 +321,8 @@ describe('PlacementDetailPage & PlacementDetailView', () => {
     renderWithProviders(<PlacementDetailPage />, '/client/placements/plc-1');
 
     expect(await screen.findByText('Thông tin báo nghỉ việc')).toBeInTheDocument();
+    expect(screen.getByText('Nghỉ trong bảo hành')).toBeInTheDocument();
+    expect(screen.queryByText('LEFT_DURING_WARRANTY')).toBeNull();
     expect(screen.getByText(/Đã xác nhận nghỉ việc · Doanh nghiệp báo/)).toBeInTheDocument();
     expect(screen.queryByText(/Bởi CLIENT/)).toBeNull();
     expect(screen.getByText('Chuyển sang công ty gia đình')).toBeInTheDocument();
@@ -329,5 +331,17 @@ describe('PlacementDetailPage & PlacementDetailView', () => {
     expect(screen.getByText('Suất #DE305D54')).toBeInTheDocument();
     expect(screen.getByText('Hạn thanh toán: 20/11/2026')).toBeInTheDocument();
     expect(screen.getByText('Đã thanh toán: 5/11/2026')).toBeInTheDocument();
+  });
+
+  it('falls back to a friendly Vietnamese label instead of raw enum code for unknown placement status', async () => {
+    vi.mocked(placementApi.getPlacementDetail).mockResolvedValueOnce({
+      ...mockPlacement,
+      status: 'UNKNOWN_FUTURE_STATUS',
+    } as any);
+
+    renderWithProviders(<PlacementDetailPage />, '/client/placements/plc-1');
+
+    expect(await screen.findByText('Không xác định')).toBeInTheDocument();
+    expect(screen.queryByText('UNKNOWN_FUTURE_STATUS')).toBeNull();
   });
 });

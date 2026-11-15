@@ -89,6 +89,7 @@ export const HrLayout: React.FC = () => {
   }, [menuOpen]);
 
   const canManageTemplates = useAuthStore((s) => s.hasPermission('job_template.manage'));
+  const canManageContacts = useAuthStore((s) => s.hasPermission('contact_request.manage'));
 
   const pendingJobs = useQuery({
     queryKey: ['hr-overview', 'jobs'],
@@ -108,6 +109,7 @@ export const HrLayout: React.FC = () => {
   const pendingContacts = useQuery({
     queryKey: ['hr-nav-counts', 'contact-requests'],
     queryFn: async () => (await contactApi.list({ status: 'NEW', page: 1, pageSize: 1 })).totalCount,
+    enabled: canManageContacts,
     staleTime: 30_000,
     refetchInterval: 60_000,
     retry: false,
@@ -130,7 +132,9 @@ export const HrLayout: React.FC = () => {
   const navGroups = useMemo(() => {
     return NAV.map((group) => {
       if (group.group === 'Vận hành') {
-        const items = [...group.items];
+        const items = group.items.filter(
+          (item) => canManageContacts || item.to !== '/hr/contact-requests'
+        );
         if (canManageTemplates) {
           const jobIndex = items.findIndex((i) => i.to === '/hr/jobs');
           const templateItem: NavItem = {
@@ -148,7 +152,7 @@ export const HrLayout: React.FC = () => {
       }
       return group;
     });
-  }, [canManageTemplates]);
+  }, [canManageContacts, canManageTemplates]);
 
   const allItems = useMemo(
     () => navGroups.flatMap((g) => g.items.map((i) => ({ ...i, group: g.group }))),

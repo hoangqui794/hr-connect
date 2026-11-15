@@ -200,8 +200,9 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
       RESIGNED: { color: 'magenta', label: 'Đã nghỉ việc', icon: <CloseCircleOutlined /> },
       CLAIMED: { color: 'warning', label: 'Chờ xác minh báo nghỉ', icon: <ClockCircleOutlined /> },
       VOIDED: { color: 'volcano', label: 'Nghỉ trong bảo hành', icon: <ExclamationCircleOutlined /> },
+      LEFT_DURING_WARRANTY: { color: 'volcano', label: 'Nghỉ trong bảo hành', icon: <ExclamationCircleOutlined /> },
     };
-    const s = map[status.toUpperCase()] || { color: 'default', label: status, icon: null };
+    const s = map[(status ?? '').toUpperCase()] || { color: 'default', label: 'Không xác định', icon: null };
     return (
       <Tag color={s.color} className="px-2.5 py-1 text-sm font-semibold rounded-md inline-flex items-center gap-1.5">
         {s.icon}
