@@ -66,17 +66,74 @@ public sealed class UpdateJobCommandHandler : IRequestHandler<UpdateJobCommand, 
         job.ProposedPaymentDueDays = proposed.PaymentDueDays;
         job.ProposedPricePerCv = proposed.PricePerCv;
         job.ProposedFeeNote = proposed.Note;
-        if (job.PostingPackageId != request.PostingPackageId)
+        var existingFee = await _jobs.GetPostingFeeByJobIdAsync(job.JobId, ct)
+            ?? job.JobPostingFees?.OrderByDescending(x => x.CreatedAt).FirstOrDefault();
+
+        if (!string.Equals(serviceTypeCode, ServiceTypeCodes.CvApplication, StringComparison.OrdinalIgnoreCase))
+        {
+            job.PostingPackageId = null;
+            job.PostingPackage = null;
+            job.MaxApplications = null;
+            if (existingFee != null &&
+                (existingFee.Status == JobPostingFeeStatuses.Pending ||
+                 string.Equals(existingFee.PaymentReference, "FREE_TIER", StringComparison.OrdinalIgnoreCase)))
+            {
+                existingFee.Status = JobPostingFeeStatuses.Cancelled;
+                existingFee.PaidAt = null;
+                existingFee.PaymentReference = null;
+                existingFee.UpdatedAt = now;
+            }
+        }
+        else if (job.PostingPackageId != request.PostingPackageId)
         {
             job.PostingPackageId = request.PostingPackageId;
+            JobPostingPackage? pkg = null;
             if (request.PostingPackageId.HasValue)
             {
-                var pkg = await _jobs.GetPostingPackageByIdAsync(request.PostingPackageId.Value, ct);
+                pkg = await _jobs.GetPostingPackageByIdAsync(request.PostingPackageId.Value, ct);
+                job.PostingPackage = pkg;
                 job.MaxApplications = pkg?.MaxApplications;
             }
             else
             {
+                job.PostingPackage = null;
                 job.MaxApplications = null;
+            }
+
+            if (existingFee != null &&
+                (existingFee.Status == JobPostingFeeStatuses.Pending ||
+                 existingFee.Status == JobPostingFeeStatuses.Cancelled ||
+                 string.Equals(existingFee.PaymentReference, "FREE_TIER", StringComparison.OrdinalIgnoreCase)))
+            {
+                if (pkg != null && string.Equals(pkg.Code, JobPostingPackageCodes.Standard, StringComparison.OrdinalIgnoreCase))
+                {
+                    existingFee.PackageId = pkg.PackageId;
+                    existingFee.Package = pkg;
+                    existingFee.Amount = pkg.Price > 0 ? pkg.Price : 1500000m;
+                    existingFee.Status = JobPostingFeeStatuses.Pending;
+                    existingFee.PaidAt = null;
+                    existingFee.PaymentReference = null;
+                    existingFee.RecordedBy = null;
+                    existingFee.ActivatedAt = null;
+                    existingFee.ExpiresAt = null;
+                    existingFee.UpdatedAt = now;
+                }
+                else
+                {
+                    if (pkg != null)
+                    {
+                        existingFee.PackageId = pkg.PackageId;
+                        existingFee.Package = pkg;
+                    }
+                    existingFee.Amount = 0m;
+                    existingFee.Status = JobPostingFeeStatuses.Cancelled;
+                    existingFee.PaidAt = null;
+                    existingFee.PaymentReference = null;
+                    existingFee.RecordedBy = null;
+                    existingFee.ActivatedAt = null;
+                    existingFee.ExpiresAt = null;
+                    existingFee.UpdatedAt = now;
+                }
             }
         }
         job.ApplicationDeadline = JobDates.ToUtc(request.ApplicationDeadline);
