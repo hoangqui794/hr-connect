@@ -310,25 +310,44 @@ export const ClientBillingPage: React.FC = () => {
   const postingOverdue = postingRows.filter((r) => r.bucket === 'OVERDUE');
   const postingPaid = postingRows.filter((r) => r.bucket === 'PAID');
   const sumCurrency = (list: BillingRow[], currency: string) =>
-    list.filter((r) => r.currencyCode === currency).reduce((s, r) => s + r.amount, 0);
+    list
+      .filter((r) => (r.currencyCode ?? 'VND').toUpperCase() === currency.toUpperCase())
+      .reduce((s, r) => s + r.amount, 0);
 
   const summaryCurrency = serviceFeeSummary?.currencyCode || 'VND';
+  const summaryBreakdown = serviceFeeSummary?.currencyBreakdowns?.find(
+    (b) => (b.currencyCode ?? 'VND').toUpperCase() === summaryCurrency.toUpperCase()
+  );
+  const countCurrency = (list: BillingRow[], currency: string) =>
+    list.filter((r) => (r.currencyCode ?? 'VND').toUpperCase() === currency.toUpperCase()).length;
+  const postingUnpaidCount = countCurrency(postingUnpaid, summaryCurrency);
+  const postingOverdueCount = countCurrency(postingOverdue, summaryCurrency);
+  const postingPaidCount = countCurrency(postingPaid, summaryCurrency);
+
   const unpaidTotal = serviceFeeSummary
-    ? { amount: serviceFeeSummary.unpaidAmount + sumCurrency(postingUnpaid, summaryCurrency), currency: summaryCurrency }
+    ? { amount: (summaryBreakdown?.unpaidAmount ?? serviceFeeSummary.unpaidAmount) + sumCurrency(postingUnpaid, summaryCurrency), currency: summaryCurrency }
     : sumByMainCurrency(unpaid);
-  const unpaidCount = serviceFeeSummary ? serviceFeeSummary.unpaidCount + postingUnpaid.length : unpaid.length;
+  const unpaidCount = serviceFeeSummary
+    ? (summaryBreakdown?.unpaidCount ?? serviceFeeSummary.unpaidCount) + postingUnpaidCount
+    : countCurrency(unpaid, unpaidTotal.currency);
   const overdueTotal = serviceFeeSummary
-    ? { amount: serviceFeeSummary.overdueAmount + sumCurrency(postingOverdue, summaryCurrency), currency: summaryCurrency }
+    ? { amount: (summaryBreakdown?.overdueAmount ?? serviceFeeSummary.overdueAmount) + sumCurrency(postingOverdue, summaryCurrency), currency: summaryCurrency }
     : sumByMainCurrency(overdue);
-  const overdueCount = serviceFeeSummary ? serviceFeeSummary.overdueCount + postingOverdue.length : overdue.length;
+  const overdueCount = serviceFeeSummary
+    ? (summaryBreakdown?.overdueCount ?? serviceFeeSummary.overdueCount) + postingOverdueCount
+    : countCurrency(overdue, overdueTotal.currency);
   const paidTotal = serviceFeeSummary
-    ? { amount: serviceFeeSummary.paidAmount + sumCurrency(postingPaid, summaryCurrency), currency: summaryCurrency }
+    ? { amount: (summaryBreakdown?.paidAmount ?? serviceFeeSummary.paidAmount) + sumCurrency(postingPaid, summaryCurrency), currency: summaryCurrency }
     : sumByMainCurrency(paid);
-  const paidCount = serviceFeeSummary ? serviceFeeSummary.paidCount + postingPaid.length : paid.length;
+  const paidCount = serviceFeeSummary
+    ? (summaryBreakdown?.paidCount ?? serviceFeeSummary.paidCount) + postingPaidCount
+    : countCurrency(paid, paidTotal.currency);
   const refundTotal = serviceFeeSummary
-    ? { amount: serviceFeeSummary.pendingRefundAmount, currency: summaryCurrency }
+    ? { amount: summaryBreakdown?.pendingRefundAmount ?? serviceFeeSummary.pendingRefundAmount, currency: summaryCurrency }
     : sumByMainCurrency(pendingRefunds);
-  const pendingRefundCount = serviceFeeSummary ? serviceFeeSummary.pendingRefundCount : pendingRefunds.length;
+  const pendingRefundCount = serviceFeeSummary
+    ? (summaryBreakdown?.pendingRefundCount ?? serviceFeeSummary.pendingRefundCount)
+    : countCurrency(pendingRefunds, refundTotal.currency);
   const totalFeeRowsBadgeCount = serviceFeeSummary ? serviceFeeSummary.totalCount + postingRows.length : rows.length;
 
   const columns: ColumnsType<BillingRow> = [
@@ -426,10 +445,12 @@ export const ClientBillingPage: React.FC = () => {
           );
         }
         const overdueDays =
-          typeof r.daysOverdue === 'number'
-            ? Math.max(0, r.daysOverdue)
-            : !r.owedToClient && r.bucket === 'OVERDUE' && r.dueDate
-            ? Math.max(0, dayjs().startOf('day').diff(dayjs(r.dueDate).startOf('day'), 'day'))
+          !r.reconciliationStatus && Boolean(r.dueDate)
+            ? typeof r.daysOverdue === 'number'
+              ? Math.max(0, r.daysOverdue)
+              : !r.owedToClient && r.bucket === 'OVERDUE' && r.dueDate
+              ? Math.max(0, dayjs().startOf('day').diff(dayjs(r.dueDate).startOf('day'), 'day'))
+              : 0
             : 0;
         return (
           <div className="tabular-nums">

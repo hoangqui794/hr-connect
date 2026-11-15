@@ -252,7 +252,7 @@ describe('ReplacementQuotaCard', () => {
   });
 
   it('prefers direct refund metadata, shows openedAt/window days, and displays cancelReason when cancelled', async () => {
-    vi.mocked(financeApi.serviceFees).mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 100 } as never);
+    vi.mocked(financeApi.serviceFees).mockClear();
     vi.mocked(financeApi.replacementSlots).mockResolvedValue(
       slotPage([
         {
@@ -280,6 +280,34 @@ describe('ReplacementQuotaCard', () => {
     expect(await screen.findByText(/Đã hoàn 40% \(8\.000\.000 đ\)/i, {}, { timeout: 10000 })).toBeInTheDocument();
     expect(screen.getByText(/Mở 10\/10\/2026 · Cửa sổ 30 ngày/)).toBeInTheDocument();
     expect(screen.getByText('Lý do hủy: Client đóng vị trí tuyển dụng')).toBeInTheDocument();
+    expect(financeApi.serviceFees).not.toHaveBeenCalled();
+  });
+
+  it('skips fallback serviceFees in hr mode and shows cancelled refund badge explicitly', async () => {
+    vi.mocked(financeApi.serviceFees).mockClear();
+    vi.mocked(financeApi.replacementSlots).mockResolvedValue(
+      slotPage([
+        {
+          ...mockSlots[0],
+          replacementSlotId: 'slot-expired-cancelled-refund',
+          status: 'EXPIRED',
+          originalCandidateName: 'Vũ Văn Minh',
+          refundPercent: 30,
+          refundAmount: 6_000_000,
+          refundStatus: 'CANCELLED',
+        },
+      ])
+    );
+
+    const { unmount } = renderComponent({ mode: 'hr' });
+    expect(await screen.findByText('Vũ Văn Minh', {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(financeApi.serviceFees).not.toHaveBeenCalled();
+    unmount();
+
+    renderComponent({ mode: 'client' });
+    expect(await screen.findByText('Đã hủy hoàn phí', {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(screen.queryByText(/Chờ hoàn/)).toBeNull();
+    expect(financeApi.serviceFees).not.toHaveBeenCalled();
   });
 
   it('prefers clientReplacementSlots when mode is client and keeps replacementSlots for hr', async () => {

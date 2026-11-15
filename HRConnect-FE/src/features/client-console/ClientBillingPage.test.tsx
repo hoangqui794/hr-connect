@@ -384,4 +384,90 @@ describe('ClientBillingPage', () => {
     expect(screen.getByText('125 khoản phí')).toBeInTheDocument();
     expect(screen.getByText(/Số liệu KPI đã tổng hợp toàn bộ hệ thống/)).toBeInTheDocument();
   });
+
+  it('matches summary currency breakdown counts, filters posting counts by currency, and hides overdue days while reconciling', async () => {
+    vi.mocked(financeApi.serviceFeesSummary).mockResolvedValue({
+      unpaidAmount: 10_000_000,
+      unpaidCount: 1,
+      overdueAmount: 0,
+      overdueCount: 0,
+      paidAmount: 0,
+      paidCount: 0,
+      pendingRefundAmount: 0,
+      pendingRefundCount: 0,
+      paidRefundAmount: 0,
+      paidRefundCount: 0,
+      totalCount: 3,
+      currencyCode: 'VND',
+      currencyBreakdowns: [
+        {
+          currencyCode: 'VND',
+          unpaidAmount: 10_000_000,
+          unpaidCount: 1,
+          overdueAmount: 0,
+          overdueCount: 0,
+          paidAmount: 0,
+          paidCount: 0,
+          pendingRefundAmount: 0,
+          pendingRefundCount: 0,
+          paidRefundAmount: 0,
+          paidRefundCount: 0,
+        },
+        {
+          currencyCode: 'USD',
+          unpaidAmount: 500,
+          unpaidCount: 2,
+          overdueAmount: 0,
+          overdueCount: 0,
+          paidAmount: 0,
+          paidCount: 0,
+          pendingRefundAmount: 0,
+          pendingRefundCount: 0,
+          paidRefundAmount: 0,
+          paidRefundCount: 0,
+        },
+      ],
+    });
+    vi.mocked(financeApi.serviceFees).mockResolvedValue({
+      items: [
+        fee({
+          serviceFeeId: 'fee-reconcile-overdue',
+          jobTitle: 'Solution Architect',
+          amount: 10_000_000,
+          status: 'OVERDUE',
+          daysOverdue: 7,
+          dueDate: '2026-10-01',
+          reconciliationStatus: 'PENDING',
+        }),
+      ],
+      totalCount: 3,
+      page: 1,
+      pageSize: 100,
+    } as never);
+    vi.mocked(jobsApi.getMine).mockResolvedValue([
+      {
+        jobId: 'j-ap-usd',
+        title: 'AP USD Job',
+        serviceTypeCode: 'CV_APPLICATION',
+        postingFeeStatus: 'PENDING',
+        postingPackageCode: 'PRO',
+        postingFee: {
+          postingFeeId: 'pf-usd',
+          amount: 100,
+          currencyCode: 'USD',
+          status: 'PENDING',
+          paidAt: null,
+          paymentReference: null,
+          packageName: 'Pro',
+        },
+      },
+    ] as never);
+
+    renderPage();
+
+    expect(await screen.findByText('Solution Architect')).toBeInTheDocument();
+    expect(screen.getByText('1 khoản chưa thanh toán')).toBeInTheDocument();
+    expect(screen.getByText('4 khoản phí')).toBeInTheDocument();
+    expect(screen.queryByText('Quá hạn 7 ngày')).toBeNull();
+  });
 });

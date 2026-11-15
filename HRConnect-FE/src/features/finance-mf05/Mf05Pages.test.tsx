@@ -294,7 +294,7 @@ describe('MF-05 Client warranty page', () => {
     renderWith(<ClientWarrantyPage />);
 
     expect(await screen.findByText('Chưa tuyển được người thay', {}, { timeout: 10000 })).toBeTruthy();
-    expect(screen.getByText(/Chờ hoàn 30%/)).toBeTruthy();
+    expect(await screen.findByText(/Chờ hoàn 30%/)).toBeTruthy();
     expect(screen.getByText('Suất #68EF9A24 · Mở 12/11/2026')).toBeTruthy();
     expect(screen.queryByText('Xem Công nợ')).toBeNull();
   });

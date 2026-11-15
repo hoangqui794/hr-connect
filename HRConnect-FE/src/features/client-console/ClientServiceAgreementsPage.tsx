@@ -452,16 +452,15 @@ export const ClientServiceAgreementsPage: React.FC = () => {
   // Helper calculation for CV Sourcing
   const sourcingEstimatedTotal = useMemo(() => {
     if (!currentAgreement || activeJob?.serviceTypeCode !== 'CV_SOURCING') return null;
-    const count = currentAgreement.sourcingTarget ?? 0;
-    const price = currentAgreement.pricePerQualifiedCv ?? 0;
-    return count * price;
+    if (currentAgreement.sourcingTarget == null || currentAgreement.pricePerQualifiedCv == null) return null;
+    return currentAgreement.sourcingTarget * currentAgreement.pricePerQualifiedCv;
   }, [currentAgreement, activeJob]);
 
   // Tỷ lệ cọc thật: ưu tiên điều khoản thương mại của job, sau đó tới thỏa thuận (BE map từ Job.DepositPercent).
   const depositPercent = activeJob?.commercialTerms?.depositPercent ?? currentAgreement?.depositPercent ?? null;
 
   const sourcingEstimatedDeposit = useMemo(() => {
-    if (!sourcingEstimatedTotal || !depositPercent) return null;
+    if (sourcingEstimatedTotal == null || depositPercent == null) return null;
     return Math.round((sourcingEstimatedTotal * depositPercent) / 100);
   }, [sourcingEstimatedTotal, depositPercent]);
 
@@ -487,7 +486,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
   const depositAmount = useMemo<number | null>(() => {
     if (activeJob) {
       const amt = sourcingDepositAmount(activeJob);
-      if (amt) return amt;
+      if (amt != null) return amt;
     }
     return sourcingEstimatedDeposit ?? null;
   }, [activeJob, sourcingEstimatedDeposit]);
@@ -507,7 +506,8 @@ export const ClientServiceAgreementsPage: React.FC = () => {
       {/* ── 1. Compact header: the top bar already names the page, so one line with the count and actions. ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-sm text-slate-600">
-          <b className="text-slate-900">{counts.all}</b> thỏa thuận · Mua CV theo số lượng và Tuyển qua Affiliate
+          <b className="text-slate-900">{counts.all}</b> thỏa thuận · {SERVICE_TYPE_LABEL.CV_SOURCING.label} và{' '}
+          {SERVICE_TYPE_LABEL.HEADHUNT_COD.label}
         </span>
         <div className="flex items-center gap-2">
           <Button
@@ -1169,7 +1169,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           </div>
                           <div className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/70">
                             <span className="text-xs text-slate-500 font-medium block">
-                              Tiền cọc ban đầu{depositPercent ? ` (${depositPercent}%)` : ''}
+                              Tiền cọc ban đầu{depositPercent != null ? ` (${depositPercent}%)` : ''}
                             </span>
                             <span className="text-base font-black text-[#0284C7]">
                               {depositText ?? DEPOSIT_PENDING_TEXT}

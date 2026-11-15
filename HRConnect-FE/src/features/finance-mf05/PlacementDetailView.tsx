@@ -406,7 +406,19 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
                   : placement.resignation.reviewStatus === 'REJECTED'
                   ? 'Đã từ chối báo nghỉ'
                   : 'Đang chờ xác minh'}
-                {placement.resignation.resignedBy ? ` · Bởi ${placement.resignation.resignedBy}` : ''}
+                {(() => {
+                  const code = placement.resignation.resignedBy?.trim().toUpperCase();
+                  if (!code) return null;
+                  const label =
+                    code === 'CLIENT'
+                      ? 'Doanh nghiệp báo'
+                      : code === 'CANDIDATE'
+                      ? 'Ứng viên báo'
+                      : code === 'INTERNAL_HR' || code === 'HR'
+                      ? 'HR Connect ghi nhận'
+                      : null;
+                  return label ? ` · ${label}` : null;
+                })()}
               </div>
             </div>
           </div>

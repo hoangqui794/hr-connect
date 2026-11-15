@@ -321,6 +321,8 @@ describe('PlacementDetailPage & PlacementDetailView', () => {
     renderWithProviders(<PlacementDetailPage />, '/client/placements/plc-1');
 
     expect(await screen.findByText('Thông tin báo nghỉ việc')).toBeInTheDocument();
+    expect(screen.getByText(/Đã xác nhận nghỉ việc · Doanh nghiệp báo/)).toBeInTheDocument();
+    expect(screen.queryByText(/Bởi CLIENT/)).toBeNull();
     expect(screen.getByText('Chuyển sang công ty gia đình')).toBeInTheDocument();
     expect(screen.getByText(/Ghi chú xác minh: HR đã đối soát ngày công/)).toBeInTheDocument();
     expect(screen.getByText('Suất tuyển thay thế liên kết')).toBeInTheDocument();

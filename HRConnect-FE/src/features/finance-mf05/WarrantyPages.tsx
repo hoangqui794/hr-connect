@@ -43,7 +43,13 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
 
   const replacementSlots = useQuery({
     queryKey: ['mf05-replacement-slots-summary', mode],
-    queryFn: () => financeApi.replacementSlots({ page: 1, pageSize: 100 }),
+    queryFn: () => {
+      const fetchSlots =
+        mode === 'client' && typeof financeApi.clientReplacementSlots === 'function'
+          ? financeApi.clientReplacementSlots
+          : financeApi.replacementSlots;
+      return fetchSlots({ page: 1, pageSize: 100 });
+    },
     staleTime: 30_000,
   });
 
