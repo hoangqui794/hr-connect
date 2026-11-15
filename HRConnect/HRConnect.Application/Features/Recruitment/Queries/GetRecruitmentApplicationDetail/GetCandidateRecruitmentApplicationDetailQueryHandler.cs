@@ -102,7 +102,7 @@ public class GetCandidateRecruitmentApplicationDetailQueryHandler
                     OfferDocumentUrl = o.OfferDocumentUrl,
                     SentAt = o.SentAt,
                     RespondedAt = o.RespondedAt,
-                    DeclineReason = o.DeclineReason,
+                    DeclineReason = o.Status == OfferStates.Declined ? o.DeclineReason : null,
                     ConcurrencyToken = o.ConcurrencyToken,
                     CanRespond = canRespond
                 };
