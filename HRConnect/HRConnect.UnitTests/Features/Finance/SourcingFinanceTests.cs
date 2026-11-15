@@ -457,7 +457,7 @@ public class SourcingFinanceTests
         await Approve().Handle(new ApproveJobCommand { JobId = job.JobId, UserId = _actor, ConcurrencyToken = job.ConcurrencyToken }, default);
         var handler = new RecordJobPostingFeePaymentCommandHandler(new JobRepository(_context), new NotificationRepository(_context), UnitOfWork);
 
-        var act = () => handler.Handle(new RecordJobPostingFeePaymentCommand { JobId = job.JobId, UserId = _actor, PaymentReference = "X" }, default);
+        var act = () => handler.Handle(new RecordJobPostingFeePaymentCommand { JobId = job.JobId, UserId = _actor, IsBackofficeOrSystem = true, PaymentReference = "X" }, default);
 
         (await act.Should().ThrowAsync<ConflictException>()).Which.ErrorCode.Should().Be("JOB_REQUIRES_SOURCING_DEPOSIT");
         job.Status.Should().Be("PENDING_PAYMENT");
@@ -522,6 +522,42 @@ public class SourcingFinanceTests
 
         result.Items.Single(c => c.JobId == pendingJob.JobId).ServiceFeeStatus.Should().Be(ServiceFeeStates.Pending);
         result.Items.Single(c => c.JobId == overdueJob.JobId).ServiceFeeStatus.Should().Be(ServiceFeeStates.Overdue);
+    }
+
+    [Fact]
+    public async Task EnsureDepositAndSettle_WithUsdJob_ShouldPropagateUsdCurrencyAndCommissionNotification()
+    {
+        var job = SeedJob(target: 2, depositPercent: 50m);
+        job.SourcingPricePerCv = 100m;
+        job.CurrencyCode = "USD";
+        await _context.SaveChangesAsync();
+
+        var deposit = await Finance().EnsureDepositAsync(job, _actor);
+        deposit.Should().NotBeNull();
+        deposit!.CurrencyCode.Should().Be("USD");
+        deposit.Status = ServiceFeeStates.Paid;
+
+        var delivery = SeedDelivery(job);
+        await AcceptAsync(job, delivery);
+        SeedAffiliateForJob();
+        await _context.SaveChangesAsync();
+
+        var settlement = _context.ServiceFees.SingleOrDefault(f => f.JobId == job.JobId && f.Kind == ServiceFeeKinds.Settlement);
+        if (settlement == null)
+        {
+            settlement = await Finance().SettleAsync(job, _actor);
+        }
+        settlement.CurrencyCode.Should().Be("USD");
+        settlement.Status = ServiceFeeStates.Paid;
+
+        var commission = _context.Commissions.Single(c => c.SourcingDeliveryId == delivery.DeliveryId);
+        commission.Status = CommissionStates.Earned;
+        await _context.SaveChangesAsync();
+
+        await Settlement().Handle(new ApproveCommissionCommand(commission.CommissionId, _actor), default);
+        var notification = _context.Notifications.OrderByDescending(n => n.CreatedAt).First(n => n.RelatedEntityId == commission.CommissionId);
+        notification.Message.Should().Contain("USD");
+        notification.Message.Should().NotContain(" đ ");
     }
 
     private void SeedAffiliateForJob()

@@ -106,12 +106,14 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
         if (_notifier != null)
         {
             var jobTitle = placement.Application?.Job?.Title ?? "vị trí tuyển dụng";
+            var currency = placement.ServiceFee?.CurrencyCode ?? placement.Application?.Job?.CurrencyCode;
             foreach (var commission in earned)
             {
+                var formatted = FinanceCurrency.FormatMoney(commission.Amount, currency);
                 await _notifier.NotifyRoleAsync("PLATFORM_ADMIN", new AppNotice(
                     "COMMISSION",
                     "Hoa hồng Affiliate chờ duyệt chi",
-                    $"Ứng viên của vị trí \"{jobTitle}\" đã làm đủ thời hạn bảo hành. Khoản hoa hồng {commission.Amount:N0} đ đang chờ Admin duyệt chi.",
+                    $"Ứng viên của vị trí \"{jobTitle}\" đã làm đủ thời hạn bảo hành. Khoản hoa hồng {formatted} đang chờ Admin duyệt chi.",
                     "COMMISSION",
                     commission.CommissionId,
                     "/admin/payouts"), cancellationToken);

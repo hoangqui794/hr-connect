@@ -11,8 +11,10 @@ using HRConnect.Application.Features.Jobs.Commands.ResumeJob;
 using HRConnect.Application.Features.Jobs.Commands.SubmitJob;
 using HRConnect.Application.Features.Jobs.Commands.UpdateJob;
 using HRConnect.Application.Features.Jobs.Commands.CreateJob;
+using HRConnect.Application.Features.Jobs.Commands.Deposit;
 using HRConnect.Application.Features.Jobs.Commands.RecordJobPostingFeePayment;
 using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Application.Features.Jobs.Queries.GetJobPostingFee;
 using HRConnect.Domain.Entities;
 using Moq;
 
@@ -667,6 +669,7 @@ public class JobManagementCommandHandlerTests
         {
             JobId = job.JobId,
             UserId = Guid.NewGuid(),
+            IsBackofficeOrSystem = true,
             PaymentReference = "PAY_SUCCESS_123"
         }, default);
 
@@ -707,6 +710,114 @@ public class JobManagementCommandHandlerTests
 
         await action.Should().ThrowAsync<BadRequestException>()
             .WithMessage("*đã hết hạn*");
+    }
+
+    [Fact]
+    public async Task RecordPayment_WhenNotBackofficeOrSystem_ShouldThrowForbidden()
+    {
+        var job = SetupJob(JobStatuses.PendingPayment);
+        var handler = new RecordJobPostingFeePaymentCommandHandler(_jobs.Object, _notifications.Object, _uow.Object);
+
+        var action = () => handler.Handle(new RecordJobPostingFeePaymentCommand
+        {
+            JobId = job.JobId,
+            UserId = Guid.NewGuid(),
+            IsBackofficeOrSystem = false,
+            PaymentReference = "BYPASS"
+        }, default);
+
+        await action.Should().ThrowAsync<ForbiddenException>();
+        job.Status.Should().Be(JobStatuses.PendingPayment);
+    }
+
+    [Fact]
+    public async Task RecordPayment_WhenJobCurrencyIsUsd_ShouldCreateFeeInUsd()
+    {
+        var job = SetupJob(JobStatuses.PendingPayment);
+        job.CurrencyCode = "USD";
+        var stdPkg = new JobPostingPackage
+        {
+            PackageId = Guid.NewGuid(),
+            Code = JobPostingPackageCodes.Standard,
+            Name = "Gói Tiêu chuẩn",
+            Price = 100m,
+            DurationDays = 30
+        };
+        job.PostingPackageId = stdPkg.PackageId;
+        job.PostingPackage = stdPkg;
+        _jobs.Setup(x => x.GetPostingFeeByJobIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync((JobPostingFee?)null);
+
+        JobPostingFee? added = null;
+        _jobs.Setup(x => x.AddPostingFeeAsync(It.IsAny<JobPostingFee>(), It.IsAny<CancellationToken>()))
+            .Callback<JobPostingFee, CancellationToken>((f, _) => added = f)
+            .Returns(Task.CompletedTask);
+
+        var handler = new RecordJobPostingFeePaymentCommandHandler(_jobs.Object, _notifications.Object, _uow.Object);
+        var result = await handler.Handle(new RecordJobPostingFeePaymentCommand
+        {
+            JobId = job.JobId,
+            UserId = Guid.NewGuid(),
+            IsBackofficeOrSystem = true,
+            PaymentReference = "USD-PAY-1"
+        }, default);
+
+        added.Should().NotBeNull();
+        added!.CurrencyCode.Should().Be("USD");
+        result.CurrencyCode.Should().Be("USD");
+    }
+
+    [Fact]
+    public async Task GetJobPostingFee_ShouldRejectOtherCompanyUser_AndAllowOwnerOrBackoffice()
+    {
+        var (job, ownerUser) = SetupOwnedJob(JobStatuses.PendingPayment);
+        var outsiderUser = Guid.NewGuid();
+        _members.Setup(x => x.GetByUserIdAsync(outsiderUser, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Member(outsiderUser, Guid.NewGuid()));
+        _jobs.Setup(x => x.GetPostingFeeByJobIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(new JobPostingFee
+        {
+            PostingFeeId = Guid.NewGuid(),
+            JobId = job.JobId,
+            PackageId = Guid.NewGuid(),
+            CompanyId = job.CompanyId,
+            Amount = 1_500_000m,
+            CurrencyCode = "VND",
+            Status = JobPostingFeeStatuses.Pending,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        var handler = new GetJobPostingFeeQueryHandler(_jobs.Object, _members.Object);
+
+        await FluentActions.Awaiting(() => handler.Handle(new GetJobPostingFeeQuery(job.JobId, outsiderUser, IsBackoffice: false), default))
+            .Should().ThrowAsync<ForbiddenException>();
+
+        var ownerFee = await handler.Handle(new GetJobPostingFeeQuery(job.JobId, ownerUser, IsBackoffice: false), default);
+        ownerFee.Should().NotBeNull();
+
+        var backofficeFee = await handler.Handle(new GetJobPostingFeeQuery(job.JobId, outsiderUser, IsBackoffice: true), default);
+        backofficeFee.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task NotifyJobDeposit_WhenCallerNotMemberOfCompany_ShouldThrowForbidden()
+    {
+        var (job, _) = SetupOwnedJob(JobStatuses.PendingPayment);
+        var outsiderUser = Guid.NewGuid();
+        _members.Setup(x => x.GetByUserIdAsync(outsiderUser, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Member(outsiderUser, Guid.NewGuid()));
+
+        var users = new Mock<IUserRepository>();
+        var finance = new Mock<IFinanceRepository>();
+        var handler = new NotifyJobDepositCommandHandler(_jobs.Object, _members.Object, users.Object, _notifications.Object, finance.Object, _uow.Object);
+
+        await FluentActions.Awaiting(() => handler.Handle(new NotifyJobDepositCommand
+        {
+            JobId = job.JobId,
+            UserId = outsiderUser,
+            IsBackoffice = false,
+            PaymentReference = "DEP-OTHER"
+        }, default)).Should().ThrowAsync<ForbiddenException>();
+
+        job.DepositSubmittedAt.Should().BeNull();
     }
 
     private (Job Job, Guid User) SetupOwnedJob(string status)

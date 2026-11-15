@@ -168,53 +168,122 @@ public class ReportRepository : IReportRepository
 
     public async Task<ReportRevenueResponse> GetRevenueReportAsync(ReportTimeRange range, string groupBy, CancellationToken cancellationToken = default)
     {
+        const string primaryCurrency = "VND";
+        static string NormalizeCurrency(string? code) =>
+            string.IsNullOrWhiteSpace(code) ? primaryCurrency : code.Trim().ToUpperInvariant();
+
         // 1. service_fee: PLACEMENT là HEADHUNT_COD; DEPOSIT + SETTLEMENT − CREDIT (hoàn cọc) là CV_SOURCING.
         var billedFees = await _context.ServiceFees
             .AsNoTracking()
             .Where(sf => sf.CreatedAt >= range.FromUtc && sf.CreatedAt < range.ToUtcPlusOne && sf.Status != ServiceFeeStates.Cancelled)
-            .Select(sf => new { sf.Kind, sf.Amount })
+            .Select(sf => new { sf.Kind, sf.Amount, sf.CurrencyCode })
             .ToListAsync(cancellationToken);
 
         var collectedFees = await _context.ServiceFees
             .AsNoTracking()
             .Where(sf => sf.Status == ServiceFeeStates.Paid && sf.PaidAt != null && sf.PaidAt >= range.FromUtc && sf.PaidAt < range.ToUtcPlusOne)
-            .Select(sf => new { sf.Kind, sf.Amount, PaidAt = sf.PaidAt!.Value })
+            .Select(sf => new { sf.Kind, sf.Amount, sf.CurrencyCode, PaidAt = sf.PaidAt!.Value })
             .ToListAsync(cancellationToken);
 
-        var headhuntBilled = billedFees.Where(f => IsHeadhuntKind(f.Kind)).Sum(f => SignedAmount(f.Kind, f.Amount));
-        var headhuntCollected = collectedFees.Where(f => IsHeadhuntKind(f.Kind)).Sum(f => SignedAmount(f.Kind, f.Amount));
-        var sourcingBilled = billedFees.Where(f => !IsHeadhuntKind(f.Kind)).Sum(f => SignedAmount(f.Kind, f.Amount));
-        var sourcingCollected = collectedFees.Where(f => !IsHeadhuntKind(f.Kind)).Sum(f => SignedAmount(f.Kind, f.Amount));
-
         // 2. CV_APPLICATION từ job_posting_fee
-        var cvAppBilled = await _context.JobPostingFees
+        var cvAppBilledItems = await _context.JobPostingFees
             .AsNoTracking()
             .Where(jpf => jpf.CreatedAt >= range.FromUtc && jpf.CreatedAt < range.ToUtcPlusOne && jpf.Status != "CANCELLED")
-            .SumAsync(jpf => jpf.Amount, cancellationToken);
+            .Select(jpf => new { jpf.Amount, jpf.CurrencyCode })
+            .ToListAsync(cancellationToken);
 
-        var cvAppCollected = await _context.JobPostingFees
-            .AsNoTracking()
-            .Where(jpf => jpf.Status == "PAID" && jpf.PaidAt != null && jpf.PaidAt >= range.FromUtc && jpf.PaidAt < range.ToUtcPlusOne)
-            .SumAsync(jpf => jpf.Amount, cancellationToken);
-
-        // 3. Totals
-        var totals = new Dictionary<string, RevenueServiceTotalDto>
-        {
-            ["HEADHUNT_COD"] = new() { Billed = headhuntBilled, Collected = headhuntCollected },
-            ["CV_SOURCING"] = new() { Billed = sourcingBilled, Collected = sourcingCollected },
-            ["CV_APPLICATION"] = new() { Billed = cvAppBilled, Collected = cvAppCollected }
-        };
-
-        // 4. Series (thu theo collected, gom theo groupBy và timezone UTC+7)
         var cvAppPaidItems = await _context.JobPostingFees
             .AsNoTracking()
             .Where(jpf => jpf.Status == "PAID" && jpf.PaidAt != null && jpf.PaidAt >= range.FromUtc && jpf.PaidAt < range.ToUtcPlusOne)
-            .Select(jpf => new { Amount = jpf.Amount, PaidAt = jpf.PaidAt!.Value })
+            .Select(jpf => new { jpf.Amount, jpf.CurrencyCode, PaidAt = jpf.PaidAt!.Value })
             .ToListAsync(cancellationToken);
 
+        // 3. Commission: HEADHUNT_COD đạt khi hết bảo hành; CV_SOURCING đạt khi CV được chấp nhận.
+        var earnedCommissions = await EarnedCommissionsInPeriod(range)
+            .Select(c => new
+            {
+                c.Amount,
+                CurrencyCode = c.Placement != null && c.Placement.ServiceFee != null
+                    ? c.Placement.ServiceFee.CurrencyCode
+                    : (c.Placement != null && c.Placement.Application != null && c.Placement.Application.Job != null
+                        ? c.Placement.Application.Job.CurrencyCode
+                        : (c.SourcingDelivery != null && c.SourcingDelivery.Job != null
+                            ? c.SourcingDelivery.Job.CurrencyCode
+                            : null))
+            })
+            .ToListAsync(cancellationToken);
+
+        var completedPayouts = await _context.Payouts
+            .AsNoTracking()
+            .Where(p => p.Status == PayoutStates.Completed && p.PayoutDate != null && p.PayoutDate >= range.FromUtc && p.PayoutDate < range.ToUtcPlusOne)
+            .Select(p => new
+            {
+                p.Amount,
+                CurrencyCode = p.Commission != null && p.Commission.Placement != null && p.Commission.Placement.ServiceFee != null
+                    ? p.Commission.Placement.ServiceFee.CurrencyCode
+                    : (p.Commission != null && p.Commission.Placement != null && p.Commission.Placement.Application != null && p.Commission.Placement.Application.Job != null
+                        ? p.Commission.Placement.Application.Job.CurrencyCode
+                        : (p.Commission != null && p.Commission.SourcingDelivery != null && p.Commission.SourcingDelivery.Job != null
+                            ? p.Commission.SourcingDelivery.Job.CurrencyCode
+                            : null))
+            })
+            .ToListAsync(cancellationToken);
+
+        RevenueCurrencySummaryDto SummarizeCurrency(string currency)
+        {
+            var hhBilled = billedFees
+                .Where(f => NormalizeCurrency(f.CurrencyCode) == currency && IsHeadhuntKind(f.Kind))
+                .Sum(f => SignedAmount(f.Kind, f.Amount));
+            var hhCollected = collectedFees
+                .Where(f => NormalizeCurrency(f.CurrencyCode) == currency && IsHeadhuntKind(f.Kind))
+                .Sum(f => SignedAmount(f.Kind, f.Amount));
+            var srcBilled = billedFees
+                .Where(f => NormalizeCurrency(f.CurrencyCode) == currency && !IsHeadhuntKind(f.Kind))
+                .Sum(f => SignedAmount(f.Kind, f.Amount));
+            var srcCollected = collectedFees
+                .Where(f => NormalizeCurrency(f.CurrencyCode) == currency && !IsHeadhuntKind(f.Kind))
+                .Sum(f => SignedAmount(f.Kind, f.Amount));
+            var appBilled = cvAppBilledItems
+                .Where(f => NormalizeCurrency(f.CurrencyCode) == currency)
+                .Sum(f => f.Amount);
+            var appCollected = cvAppPaidItems
+                .Where(f => NormalizeCurrency(f.CurrencyCode) == currency)
+                .Sum(f => f.Amount);
+
+            return new RevenueCurrencySummaryDto
+            {
+                Totals = new Dictionary<string, RevenueServiceTotalDto>
+                {
+                    ["HEADHUNT_COD"] = new() { Billed = hhBilled, Collected = hhCollected },
+                    ["CV_SOURCING"] = new() { Billed = srcBilled, Collected = srcCollected },
+                    ["CV_APPLICATION"] = new() { Billed = appBilled, Collected = appCollected }
+                },
+                Commission = new RevenueCommissionDto
+                {
+                    Earned = earnedCommissions.Where(c => NormalizeCurrency(c.CurrencyCode) == currency).Sum(c => c.Amount),
+                    Paid = completedPayouts.Where(p => NormalizeCurrency(p.CurrencyCode) == currency).Sum(p => p.Amount)
+                }
+            };
+        }
+
+        // Tổng hợp riêng cho từng loại tiền tệ (không cộng gộp 1:1 giữa USD/VND).
+        var currencies = billedFees.Select(f => NormalizeCurrency(f.CurrencyCode))
+            .Concat(collectedFees.Select(f => NormalizeCurrency(f.CurrencyCode)))
+            .Concat(cvAppBilledItems.Select(f => NormalizeCurrency(f.CurrencyCode)))
+            .Concat(cvAppPaidItems.Select(f => NormalizeCurrency(f.CurrencyCode)))
+            .Concat(earnedCommissions.Select(c => NormalizeCurrency(c.CurrencyCode)))
+            .Concat(completedPayouts.Select(p => NormalizeCurrency(p.CurrencyCode)))
+            .Append(primaryCurrency)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var byCurrency = currencies.ToDictionary(c => c, SummarizeCurrency, StringComparer.OrdinalIgnoreCase);
+        var primarySummary = byCurrency[primaryCurrency];
+
+        // 4. Series cho báo cáo chính (thu theo collected VND, gom theo groupBy và timezone UTC+7)
         var periodMap = new SortedDictionary<string, RevenueSeriesItemDto>();
 
-        foreach (var item in collectedFees)
+        foreach (var item in collectedFees.Where(f => NormalizeCurrency(f.CurrencyCode) == primaryCurrency))
         {
             var period = FormatPeriod(item.PaidAt.Add(VietnamOffset), groupBy);
             if (!periodMap.TryGetValue(period, out var seriesItem))
@@ -227,7 +296,7 @@ public class ReportRepository : IReportRepository
                 : seriesItem with { CV_SOURCING = seriesItem.CV_SOURCING + SignedAmount(item.Kind, item.Amount) };
         }
 
-        foreach (var item in cvAppPaidItems)
+        foreach (var item in cvAppPaidItems.Where(f => NormalizeCurrency(f.CurrencyCode) == primaryCurrency))
         {
             var period = FormatPeriod(item.PaidAt.Add(VietnamOffset), groupBy);
             if (!periodMap.TryGetValue(period, out var seriesItem))
@@ -238,24 +307,13 @@ public class ReportRepository : IReportRepository
             periodMap[period] = seriesItem with { CV_APPLICATION = seriesItem.CV_APPLICATION + item.Amount };
         }
 
-        // 5. Commission: HEADHUNT_COD đạt khi hết bảo hành; CV_SOURCING đạt khi CV được chấp nhận.
-        var commissionEarned = await EarnedCommissionsInPeriod(range).SumAsync(c => c.Amount, cancellationToken);
-
-        var commissionPaid = await _context.Payouts
-            .AsNoTracking()
-            .Where(p => p.Status == PayoutStates.Completed && p.PayoutDate != null && p.PayoutDate >= range.FromUtc && p.PayoutDate < range.ToUtcPlusOne)
-            .SumAsync(p => p.Amount, cancellationToken);
-
         return new ReportRevenueResponse
         {
-            Currency = "VND",
-            Totals = totals,
+            Currency = primaryCurrency,
+            Totals = primarySummary.Totals,
             Series = periodMap.Values.ToList(),
-            Commission = new RevenueCommissionDto
-            {
-                Earned = commissionEarned,
-                Paid = commissionPaid
-            }
+            Commission = primarySummary.Commission,
+            ByCurrency = byCurrency
         };
     }
 

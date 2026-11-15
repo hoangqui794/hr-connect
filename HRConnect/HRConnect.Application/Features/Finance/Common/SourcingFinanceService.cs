@@ -39,6 +39,27 @@ public interface ISourcingFinanceService
     Task<ServiceFee> SettleAsync(Job job, Guid? actorUserId, CancellationToken cancellationToken = default);
 }
 
+public static class FinanceCurrency
+{
+    public const string DefaultCurrency = "VND";
+
+    public static string Normalize(string? currencyCode) =>
+        string.IsNullOrWhiteSpace(currencyCode) ? DefaultCurrency : currencyCode.Trim().ToUpperInvariant();
+
+    public static string Of(Commission commission) =>
+        Normalize(commission.Placement?.ServiceFee?.CurrencyCode
+            ?? commission.Placement?.Application?.Job?.CurrencyCode
+            ?? commission.SourcingDelivery?.Job?.CurrencyCode);
+
+    public static string FormatMoney(decimal amount, string? currencyCode)
+    {
+        var code = Normalize(currencyCode);
+        return string.Equals(code, DefaultCurrency, StringComparison.OrdinalIgnoreCase)
+            ? $"{amount:N0} đ"
+            : $"{amount:N0} {code}";
+    }
+}
+
 public sealed class SourcingFinanceService : ISourcingFinanceService
 {
     private const string DefaultCurrency = "VND";
@@ -100,7 +121,7 @@ public sealed class SourcingFinanceService : ISourcingFinanceService
             BaseSalary = package,
             FeeMultiplier = multiplier,
             Amount = Round(package * multiplier),
-            CurrencyCode = DefaultCurrency,
+            CurrencyCode = FinanceCurrency.Normalize(job.CurrencyCode),
             DueDate = Today(now).AddDays(await PaymentDueDaysAsync(job, cancellationToken)),
             Status = ServiceFeeStates.Pending,
             CreatedAt = now,
@@ -191,7 +212,7 @@ public sealed class SourcingFinanceService : ISourcingFinanceService
             BaseSalary = total,
             FeeMultiplier = 1m,
             Amount = Math.Abs(balance),
-            CurrencyCode = DefaultCurrency,
+            CurrencyCode = FinanceCurrency.Normalize(job.CurrencyCode),
             DueDate = Today(now).AddDays(await PaymentDueDaysAsync(job, cancellationToken)),
             Status = ServiceFeeStates.Pending,
             CreatedAt = now,
