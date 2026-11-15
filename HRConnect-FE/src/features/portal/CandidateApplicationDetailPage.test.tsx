@@ -540,4 +540,34 @@ describe('CandidateApplicationDetailPage', () => {
     expect(screen.getByText('TP. Hồ Chí Minh')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Xem trang doanh nghiệp' })).toHaveAttribute('href', '/companies/company-1');
   });
+
+  it('shows employer contact button instead of self-resignation trigger when application is PLACED', async () => {
+    vi.spyOn(mf04Api, 'getApplicationDetail').mockResolvedValueOnce({
+      ...mockMf04Application,
+      status: 'PLACED',
+      currentStage: 'PLACED',
+      offers: [],
+      interviews: [],
+      placement: {
+        placementId: 'plc-1',
+        position: 'Senior .NET Developer',
+        department: 'Engineering',
+        actualStartDate: '2026-11-01',
+        status: 'STARTED',
+      },
+    } as any);
+    vi.spyOn(mf04Api, 'getApplicationTimeline').mockResolvedValueOnce({
+      applicationId: 'application-1',
+      candidateName: 'Nguyễn Văn A',
+      jobTitle: 'Senior .NET Developer',
+      currentStatus: 'PLACED',
+      events: [],
+    });
+
+    renderComponent();
+
+    expect(await screen.findByRole('button', { name: /Liên hệ doanh nghiệp/i })).toBeInTheDocument();
+    expect(screen.getByText(/Trạng thái kết thúc công việc được cập nhật khi doanh nghiệp hoặc HR Connect xác nhận/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Cập nhật đã nghỉ việc/i })).toBeNull();
+  });
 });

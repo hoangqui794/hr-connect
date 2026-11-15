@@ -38,6 +38,7 @@ import { financeApi } from '@/services/api/financeApi';
 import { money } from '@/features/finance-mf05/financeLabels';
 import { useMyJobs } from '@/features/jobs-mf01/useJobQueries';
 import { useAuthStore } from '@/stores/authStore';
+import { UserRole } from '@/types/roles';
 import { SERVICE_TYPE_LABEL, formatSalary } from '@/features/jobs-mf01/jobDisplay';
 import type { ServiceTypeCode } from '@/types/api/jobs';
 
@@ -106,12 +107,28 @@ const CommitmentTile: React.FC<{
 export const ClientOverviewPage: React.FC = () => {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const jobs = useMyJobs();
+  const canLoadClientJobs = useAuthStore(
+    (s) => Boolean(s.hasAnyRole?.([UserRole.CLIENT])) && Boolean(s.hasPermission?.('job.view_own'))
+  );
+  const canViewCompanyApplications = useAuthStore(
+    (s) =>
+      Boolean(s.hasAnyRole?.([UserRole.ADMIN])) ||
+      (Boolean(s.hasAnyRole?.([UserRole.CLIENT])) && Boolean(s.hasPermission?.('application.view_company'))) ||
+      (Boolean(s.hasAnyRole?.([UserRole.INTERNAL_HR])) && Boolean(s.hasPermission?.('application.view')))
+  );
+  const canViewCompanyInterviews = useAuthStore(
+    (s) =>
+      Boolean(s.hasAnyRole?.([UserRole.ADMIN])) ||
+      (Boolean(s.hasAnyRole?.([UserRole.CLIENT])) && Boolean(s.hasPermission?.('interview.view_company'))) ||
+      (Boolean(s.hasAnyRole?.([UserRole.INTERNAL_HR])) && Boolean(s.hasPermission?.('application.view')))
+  );
+  const jobs = useMyJobs(undefined, canLoadClientJobs);
 
   // Funnel: one request grouped by status (C-07) instead of one per stage.
   const stageCounts = useQuery({
     queryKey: ['client-overview', 'stages'],
     queryFn: () => screeningApi.counts('status', {}, FUNNEL.map((f) => f.code)),
+    enabled: canViewCompanyApplications,
   });
   const stagesLoading = stageCounts.isLoading;
 
@@ -127,7 +144,7 @@ export const ClientOverviewPage: React.FC = () => {
   const jobCounts = useQuery({
     queryKey: ['client-overview', 'job-applications', shownJobIds.join(',')],
     queryFn: () => screeningApi.counts('job', {}, shownJobIds),
-    enabled: shownJobIds.length > 0,
+    enabled: canViewCompanyApplications && shownJobIds.length > 0,
   });
   const perJob = shownJobIds.map((id) => ({ data: jobCounts.data?.[id] ?? 0, isLoading: jobCounts.isLoading }));
 
@@ -145,11 +162,17 @@ export const ClientOverviewPage: React.FC = () => {
           pageSize: 4,
         })
       ).items.filter((iv) => iv.scheduledAt),
+    enabled: canViewCompanyInterviews,
   });
+
+  const canLoadClientSummary = useAuthStore(
+    (s) => Boolean(s.hasAnyRole?.([UserRole.CLIENT])) && Boolean(s.hasPermission?.('placement.confirm'))
+  );
 
   const commitments = useQuery({
     queryKey: ['client-overview', 'commitments'],
     queryFn: () => financeApi.clientDashboardSummary(),
+    enabled: canLoadClientSummary,
   });
   const c = commitments.data;
 
@@ -538,7 +561,9 @@ export const ClientOverviewPage: React.FC = () => {
               loading={commitments.isLoading}
               value={c ? money(c.pendingFeesAmount, c.currencyCode) : '—'}
               note={
-                !c || c.pendingFeesCount === 0
+                !c
+                  ? '—'
+                  : c.pendingFeesCount === 0
                   ? 'Không có khoản phí chờ thanh toán'
                   : c.overdueFeesCount > 0
                   ? `${c.overdueFeesCount} khoản quá hạn · ${money(c.overdueFeesAmount, c.currencyCode)}`
@@ -555,7 +580,7 @@ export const ClientOverviewPage: React.FC = () => {
               icon={<RollbackOutlined />}
               loading={commitments.isLoading}
               value={c ? money(c.refundsOwedAmount, c.currencyCode) : '—'}
-              note={!c || c.refundsOwedCount === 0 ? 'Không có khoản hoàn đang chờ' : `${c.refundsOwedCount} khoản đang chờ chuyển`}
+              note={!c ? '—' : c.refundsOwedCount === 0 ? 'Không có khoản hoàn đang chờ' : `${c.refundsOwedCount} khoản đang chờ chuyển`}
               link="Công nợ →"
               onClick={() => navigate('/client/billing')}
             />
@@ -565,7 +590,9 @@ export const ClientOverviewPage: React.FC = () => {
               loading={commitments.isLoading}
               value={c ? String(c.sourcingPendingReviewCount) : '—'}
               note={
-                c?.sourcingNearestReviewDueAt
+                !c
+                  ? '—'
+                  : c.sourcingNearestReviewDueAt
                   ? `Hạn phản hồi gần nhất ${dayjs(c.sourcingNearestReviewDueAt).format('DD/MM HH:mm')}`
                   : 'Không có CV chờ phản hồi'
               }

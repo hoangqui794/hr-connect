@@ -60,6 +60,7 @@ import { financeApi } from '@/services/api/financeApi';
 import { CommissionEstimateCard, commissionEstimateApi, formatEstimate } from './CommissionEstimateCard';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
+import { UserRole } from '@/types/roles';
 import type { AffiliateAttribution, AffiliateSubmission } from '@/types/api/mf02';
 import { Initials, StatusDot, Surface } from '@/features/admin-console/ui';
 import { ATTRIBUTION_STATUS, MAX_CV_MB, cvFileError, fileSize, submissionStatus } from './mf02Labels';
@@ -125,29 +126,50 @@ const ACCOUNT_STATES: Record<string, { label: string; mark: string; icon: string
 
 export const AffiliateHomePage: React.FC = () => {
   const navigate = useNavigate();
-  const profile = useQuery({ queryKey: keys.profile, queryFn: () => affiliateApi.profile() });
-  const perf = useQuery({ queryKey: keys.performance, queryFn: () => affiliateApi.performance() });
+  const isAffiliate = useAuthStore((s) => s.hasAnyRole([UserRole.AFFILIATE]));
+  const canViewOwnSubmissions = useAuthStore(
+    (s) => s.hasAnyRole([UserRole.AFFILIATE]) && s.hasPermission('submission.view_own')
+  );
+  const canViewOwnCommissions = useAuthStore(
+    (s) => s.hasAnyRole([UserRole.AFFILIATE]) && s.hasPermission('commission.view_own')
+  );
+  const canViewJobs = useAuthStore((s) => s.hasPermission('job.view'));
+  const profile = useQuery({
+    queryKey: keys.profile,
+    queryFn: () => affiliateApi.profile(),
+    enabled: isAffiliate,
+  });
+  const perf = useQuery({
+    queryKey: keys.performance,
+    queryFn: () => affiliateApi.performance(),
+    enabled: isAffiliate,
+  });
   const pending = useQuery({
     queryKey: [...keys.submissions, 'count', 'PENDING_CONSENT'],
     queryFn: async () => (await affiliateApi.submissions({ status: 'PENDING_CONSENT', page: 1, pageSize: 1 })).totalCount,
+    enabled: canViewOwnSubmissions,
   });
   const recent = useQuery({
     queryKey: [...keys.submissions, 'recent'],
     queryFn: async () => (await affiliateApi.submissions({ page: 1, pageSize: 5 })).items,
+    enabled: canViewOwnSubmissions,
   });
   // One page of up to 100 (the API maximum) is enough for the money totals on this page.
   const commissions = useQuery({
     queryKey: ['mf05-my-commissions'],
     queryFn: () => financeApi.commissions({ page: 1, pageSize: 100 }),
+    enabled: canViewOwnCommissions,
   });
   const opportunities = useQuery({
     queryKey: ['aff-jobs', 'dashboard'],
     queryFn: async () => (await jobsApi.search({ page: 1, pageSize: 5 })).items,
+    enabled: canViewJobs,
   });
   const estimates = useQueries({
     queries: (opportunities.data ?? []).map((job) => ({
       queryKey: ['affiliate-commission-estimate', job.jobId],
       queryFn: () => commissionEstimateApi.get(job.jobId),
+      enabled: isAffiliate,
       staleTime: 5 * 60_000,
     })),
   });

@@ -39,8 +39,8 @@ export const jobQueryKeys = {
   internalTemplateDetail: (templateId: string) => [...jobQueryKeys.all, 'internal-template-detail', templateId] as const,
 };
 
-export const useMyJobs = (status?: JobStatus) =>
-  useQuery({ queryKey: jobQueryKeys.mine(status), queryFn: () => jobsApi.getMine(status) });
+export const useMyJobs = (status?: JobStatus, enabled = true) =>
+  useQuery({ queryKey: jobQueryKeys.mine(status), queryFn: () => jobsApi.getMine(status), enabled });
 
 export const useJobSearch = (params: JobSearchParams, enabled = true) =>
   useQuery({

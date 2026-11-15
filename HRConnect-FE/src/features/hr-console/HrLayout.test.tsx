@@ -171,9 +171,60 @@ describe('HrLayout', () => {
     expect(screen.getByTestId('hr-dashboard-outlet')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Yêu cầu tư vấn/i })).toBeNull();
 
+    expect(jobsApi.getReviewQueue).not.toHaveBeenCalled();
+    expect(screeningApi.list).not.toHaveBeenCalled();
+    expect(placementReconciliationApi.list).not.toHaveBeenCalled();
+    expect(contactApi.list).not.toHaveBeenCalled();
+  });
+
+  it('uses the admin placement reconciliation endpoint when PLATFORM_ADMIN visits /hr', async () => {
+    useAuthStore.setState({
+      isAuthenticated: true,
+      role: UserRole.ADMIN,
+      user: {
+        id: 'admin-1',
+        name: 'Platform Admin',
+        email: 'admin@gmail.com',
+        role: UserRole.ADMIN,
+        roles: [UserRole.ADMIN],
+        permissions: ['job.review', 'contact_request.manage'],
+      },
+    });
+
+    renderHrLayout();
+
     await waitFor(() => {
+      expect(placementReconciliationApi.list).toHaveBeenCalledWith(
+        { status: 'PENDING', page: 1, pageSize: 1 },
+        true
+      );
+      expect(screeningApi.list).toHaveBeenCalled();
       expect(jobsApi.getReviewQueue).toHaveBeenCalled();
     });
-    expect(contactApi.list).not.toHaveBeenCalled();
+  });
+
+  it('uses the internal HR reconciliation endpoint only when INTERNAL_HR has placement.reconcile', async () => {
+    useAuthStore.setState({
+      isAuthenticated: true,
+      role: UserRole.INTERNAL_HR,
+      user: {
+        id: 'hr-3',
+        name: 'Internal HR Full',
+        email: 'fullhr@gmail.com',
+        role: UserRole.INTERNAL_HR,
+        roles: [UserRole.INTERNAL_HR],
+        permissions: ['job.review', 'application.view', 'placement.reconcile'],
+      },
+    });
+
+    renderHrLayout();
+
+    await waitFor(() => {
+      expect(placementReconciliationApi.list).toHaveBeenCalledWith(
+        { status: 'PENDING', page: 1, pageSize: 1 },
+        false
+      );
+      expect(screeningApi.list).toHaveBeenCalled();
+    });
   });
 });

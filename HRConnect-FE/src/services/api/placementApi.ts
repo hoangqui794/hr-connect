@@ -171,14 +171,14 @@ export const placementApi = {
   },
 
   /**
-   * Dùng cho Doanh nghiệp báo ứng viên nghỉ việc (Client / Internal HR).
-   * POST /api/v1/recruitment/applications/{applicationId}/resignation hoặc /placements/{placementId}/resignation
+   * Dùng cho Doanh nghiệp báo ứng viên nghỉ việc (Client).
+   * POST /api/v1/placements/{placementId}/resignation
    */
   async reportCandidateResignation(
-    placementIdOrAppId: string,
+    placementId: string,
     payload: ReportCandidateResignationPayload
   ): Promise<ResignationResponse> {
-    return reportCandidateResignation(placementIdOrAppId, payload);
+    return reportCandidateResignation(placementId, payload);
   },
 
   /**
@@ -197,39 +197,19 @@ export const placementApi = {
  * Standalone function: Dùng cho Doanh nghiệp báo ứng viên nghỉ việc.
  */
 export async function reportCandidateResignation(
-  placementIdOrAppId: string,
+  placementId: string,
   payload: ReportCandidateResignationPayload
 ): Promise<ResignationResponse> {
   try {
     const response = await apiClient.post<any>(
-      `/recruitment/applications/${placementIdOrAppId}/resignation`,
-      payload
+      `/placements/${placementId}/resignation`,
+      {
+        lastWorkingDate: payload.resignationDate,
+        reason: payload.reason + (payload.note ? `: ${payload.note}` : ''),
+      }
     );
     return response.data?.data ?? response.data ?? { success: true, message: 'Đã báo nghỉ việc thành công.' };
   } catch (err: any) {
-    if (err?.response?.status === 404 || err?.response?.status === 405) {
-      try {
-        const fallbackRes = await apiClient.post<any>(
-          `/placements/${placementIdOrAppId}/resignation`,
-          {
-            lastWorkingDate: payload.resignationDate,
-            reason: payload.reason + (payload.note ? `: ${payload.note}` : ''),
-          }
-        );
-        return fallbackRes.data?.data ?? fallbackRes.data ?? { success: true, message: 'Đã báo nghỉ việc thành công.' };
-      } catch (innerErr: any) {
-        if (innerErr?.response?.status === 404) {
-          // // TODO: Connect real BE endpoint if server is not yet updated
-          console.warn('// TODO: Connect real BE endpoint for resignation', innerErr);
-          return {
-            success: true,
-            message: 'Đã ghi nhận báo nghỉ việc thành công.',
-          };
-        }
-        const norm = getApiError(innerErr, 'Không thể gửi báo nghỉ việc');
-        throw new Error(norm.message);
-      }
-    }
     const norm = getApiError(err, 'Không thể gửi báo nghỉ việc');
     throw new Error(norm.message);
   }
@@ -253,14 +233,6 @@ export async function selfReportResignation(
     );
     return response.data?.data ?? response.data ?? { success: true, message: 'Đã cập nhật trạng thái nghỉ việc thành công.' };
   } catch (err: any) {
-    if (err?.response?.status === 404 || err?.response?.status === 405) {
-      // // TODO: Connect real BE endpoint if server is not yet updated
-      console.warn('// TODO: Connect real BE endpoint for selfReportResignation', err);
-      return {
-        success: true,
-        message: 'Đã cập nhật trạng thái nghỉ việc thành công.',
-      };
-    }
     const norm = getApiError(err, 'Không thể gửi xác nhận nghỉ việc');
     throw new Error(norm.message);
   }

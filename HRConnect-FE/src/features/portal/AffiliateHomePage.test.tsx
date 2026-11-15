@@ -8,6 +8,8 @@ import { AffiliateHomePage } from './AffiliatePages';
 import { affiliateApi } from '@/services/api/mf02Api';
 import { financeApi } from '@/services/api/financeApi';
 import { jobsApi } from '@/services/api/jobsApi';
+import { useAuthStore } from '@/stores/authStore';
+import { UserRole } from '@/types/roles';
 import type { Commission } from '@/types/api/finance';
 
 vi.mock('@/services/api/mf02Api', () => ({
@@ -83,6 +85,18 @@ const renderDashboard = () =>
 
 describe('AffiliateHomePage › Replacement Slot Alert Banner', () => {
   beforeEach(() => {
+    useAuthStore.setState({
+      isAuthenticated: true,
+      role: UserRole.AFFILIATE,
+      user: {
+        id: 'u-1',
+        name: 'Lê Nghi',
+        email: 'aff@example.com',
+        role: UserRole.AFFILIATE,
+        roles: [UserRole.AFFILIATE],
+        permissions: ['submission.view_own', 'commission.view_own', 'job.view'],
+      },
+    });
     vi.mocked(affiliateApi.profile).mockResolvedValue({
       affiliateId: 'aff-1',
       userId: 'u-1',

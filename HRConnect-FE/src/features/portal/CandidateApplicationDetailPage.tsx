@@ -20,7 +20,6 @@ import { CandidateAccountFrame } from './candidate/CandidateAccountFrame';
 import { CandidateDialog, DIALOG_CANCEL, DIALOG_DANGER, DIALOG_FONT } from './candidate/CandidateDialog';
 import { candidateInterviewType, candidateOfferStatus, candidateStage, candidateTimelineEventCopy } from './mf02Labels';
 import { candidateKeys, useOpenSignedUrl } from './CandidatePages';
-import { CandidateResignModal } from './components/CandidateResignModal';
 import {
   CopyOutlined,
   EnvironmentOutlined,
@@ -101,7 +100,6 @@ export const CandidateApplicationDetailPage: React.FC = () => {
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [withdrawReason, setWithdrawReason] = useState('');
   const [interviewId, setInterviewId] = useState<string | null>(null);
-  const [resignOpen, setResignOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
 
   const copyContact = async (value: string, label: string) => {
@@ -257,14 +255,17 @@ export const CandidateApplicationDetailPage: React.FC = () => {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <span role="status" className="rounded px-2.5 py-1 text-[13px] font-semibold" style={{ color: color.text, background: color.background }}>{stage.label}</span>
-              {isPlaced && (
-                <button
-                  type="button"
-                  onClick={() => setResignOpen(true)}
-                  className={`${FONT} inline-flex items-center gap-1.5 rounded-lg border border-solid border-slate-300 bg-white px-3 py-1 text-[13px] font-medium text-slate-700 hover:bg-slate-50 active:scale-[0.98] transition-all cursor-pointer`}
-                >
-                  Cập nhật đã nghỉ việc
-                </button>
+              {isPlaced && !placement && (
+                <Tooltip title="Trạng thái kết thúc công việc do doanh nghiệp xác nhận với HR Connect">
+                  <button
+                    type="button"
+                    onClick={() => setContactOpen(true)}
+                    className={`${FONT} inline-flex items-center gap-1.5 rounded-lg border border-solid border-slate-300 bg-white px-3 py-1 text-[13px] font-medium text-slate-700 hover:bg-slate-50 active:scale-[0.98] transition-all cursor-pointer`}
+                  >
+                    <PhoneOutlined aria-hidden="true" />
+                    Liên hệ doanh nghiệp
+                  </button>
+                </Tooltip>
               )}
               {isResigned && (
                 <Link
@@ -477,13 +478,16 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                   <div className="mt-0.5 text-[13px] text-slate-500">Nghỉ việc {dayjs(placement.endDate).format('DD/MM/YYYY')}</div>
                 )}
                 {isPlaced && (
-                  <div className="mt-3 pt-2.5 border-0 border-t border-solid border-slate-100">
+                  <div className="mt-3 pt-2.5 border-0 border-t border-solid border-slate-100 space-y-2">
+                    <p className="m-0 text-[12px] text-[#6B7280]">
+                      Trạng thái kết thúc công việc được cập nhật khi doanh nghiệp hoặc HR Connect xác nhận.
+                    </p>
                     <button
                       type="button"
-                      onClick={() => setResignOpen(true)}
+                      onClick={() => setContactOpen(true)}
                       className={`${FONT} w-full py-2 px-3 rounded-lg border border-solid border-slate-300 bg-white text-[13px] font-medium text-slate-700 hover:bg-slate-50 active:scale-[0.98] transition-all cursor-pointer`}
                     >
-                      Cập nhật đã nghỉ việc
+                      Liên hệ doanh nghiệp
                     </button>
                   </div>
                 )}
@@ -546,16 +550,6 @@ export const CandidateApplicationDetailPage: React.FC = () => {
       </CandidateDialog>
 
       <CandidateInterviewDetailModal open={Boolean(interviewId)} interviewId={interviewId || undefined} onClose={() => setInterviewId(null)} />
-
-      <CandidateResignModal
-        open={resignOpen}
-        onClose={() => setResignOpen(false)}
-        applicationId={applicationId}
-        jobTitle={application.jobTitle}
-        companyName={application.companyName}
-        startDate={placement?.actualStartDate || application.plannedStartDate}
-        onSuccess={refresh}
-      />
 
       <CandidateDialog
         open={contactOpen}
