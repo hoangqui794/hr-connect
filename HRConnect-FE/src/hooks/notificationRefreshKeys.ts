@@ -6,7 +6,7 @@
 const JOB = [['mf01-jobs'], ['client-overview'], ['hr-overview'], ['admin-overview'], ['aff-jobs'], ['mf05-posting-fees'], ['mf05-client-fees']];
 const APPLICATION = [
   ['hr-screening'], ['hr-overview'], ['hr-pipeline'], ['hr-application'], ['hr-application-timeline'],
-  ['client-candidates'], ['client-overview'], ['candidate-applications'], ['candidate-application-timeline'],
+  ['client-candidates'], ['client-overview'], ['client-pipeline'], ['candidate-applications'], ['candidate-application-timeline'],
   ['aff-attributions'], ['aff-submissions'], ['sourcing-deliveries'],
 ];
 const FINANCE = [
@@ -23,8 +23,8 @@ const BY_ENTITY: Record<string, string[][]> = {
   APPLICATION,
   SUBMISSION: [...APPLICATION, ['candidate-submission-consents'], ['aff-submissions']],
   SOURCING_DELIVERY: APPLICATION,
-  INTERVIEW: [...APPLICATION, ['interview-history'], ['client-interview-detail']],
-  OFFER: APPLICATION,
+  INTERVIEW: [...APPLICATION, ['interview-history'], ['client-interview-detail'], ['candidate', 'interviews']],
+  OFFER: [...APPLICATION, ['candidate-offer'], ['candidate-offer-versions'], ['candidate-offer-impact']],
   PLACEMENT: [...APPLICATION, ...FINANCE, ['mf04-placement-correction']],
   WARRANTY: [...FINANCE, ...APPLICATION],
   SERVICE_FEE: FINANCE,

@@ -104,6 +104,8 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
       queryClient.invalidateQueries({ queryKey: ['interview-history', interviewId] }),
       queryClient.invalidateQueries({ queryKey: ['hr-pipeline'] }),
       queryClient.invalidateQueries({ queryKey: ['hr-application'] }),
+      queryClient.invalidateQueries({ queryKey: ['client-pipeline'] }),
+      queryClient.invalidateQueries({ queryKey: ['client-candidates'] }),
     ]);
   };
 

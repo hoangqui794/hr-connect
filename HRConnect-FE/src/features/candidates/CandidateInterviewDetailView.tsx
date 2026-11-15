@@ -80,6 +80,7 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
       queryClient.setQueryData<CandidateInterviewDetailDto>(candidateInterviewKeys.detail(interviewId), (current) =>
         current ? { ...current, candidateAttendanceStatus: result.attendanceStatus, candidateRespondedAt: result.respondedAt } : current,
       );
+      void queryClient.invalidateQueries({ queryKey: ['candidate-applications'] });
       message.success(result.alreadyConfirmed ? 'Bạn đã xác nhận lịch phỏng vấn này.' : 'Đã xác nhận tham gia phỏng vấn.');
     },
     onError: (mutationError: Error) => {
