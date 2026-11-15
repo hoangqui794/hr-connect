@@ -43,7 +43,7 @@ import {
   SendOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import type { ApproveJobInput, Job, JobRejectReasonCode, JobStatus } from '@/types/api/jobs';
+import type { ApproveJobInput, CommercialTermsInput, Job, JobRejectReasonCode, JobStatus } from '@/types/api/jobs';
 import { jobsApi, serviceAgreementsApi } from '@/services/api/jobsApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useAlertStore } from '@/stores/alertStore';
@@ -661,6 +661,66 @@ export const JobReviewPage: React.FC = () => {
     const isPaidPackage = isStandardUnpaid;
     const requiresDepositOrPayment = isSourcing || isPaidPackage;
 
+    const buildPublishInput = (): ApproveJobInput | undefined => {
+      if (!currentAgreement && !job.commercialTerms) {
+        return undefined;
+      }
+      const terms = currentAgreement;
+      const jobTerms = job.commercialTerms;
+      const commercialTerms: CommercialTermsInput = {
+        feeMultiplier:
+          terms?.feeMultiplier != null
+            ? Number(terms.feeMultiplier)
+            : jobTerms?.feeMultiplier != null
+              ? Number(jobTerms.feeMultiplier)
+              : undefined,
+        warrantyDays:
+          terms?.warrantyDays != null
+            ? Number(terms.warrantyDays)
+            : jobTerms?.warrantyDays != null
+              ? Number(jobTerms.warrantyDays)
+              : undefined,
+        paymentDueDays:
+          terms?.paymentDueDays != null
+            ? Number(terms.paymentDueDays)
+            : jobTerms?.paymentDueDays != null
+              ? Number(jobTerms.paymentDueDays)
+              : undefined,
+        sourcingTarget:
+          terms?.sourcingTarget != null
+            ? Number(terms.sourcingTarget)
+            : jobTerms?.sourcingTarget != null
+              ? Number(jobTerms.sourcingTarget)
+              : undefined,
+        pricePerCv:
+          terms?.pricePerQualifiedCv != null
+            ? Number(terms.pricePerQualifiedCv)
+            : jobTerms?.pricePerCv != null
+              ? Number(jobTerms.pricePerCv)
+              : undefined,
+        depositPercent:
+          terms?.depositPercent != null
+            ? Number(terms.depositPercent)
+            : jobTerms?.depositPercent != null
+              ? Number(jobTerms.depositPercent)
+              : undefined,
+        reviewDays:
+          terms?.reviewDays != null
+            ? Number(terms.reviewDays)
+            : jobTerms?.reviewDays != null
+              ? Number(jobTerms.reviewDays)
+              : undefined,
+      };
+
+      return {
+        commercialTerms,
+        agreementReference: terms?.verificationCode || jobTerms?.agreementReference || undefined,
+        note: terms?.agreementNote || jobTerms?.agreementNote || undefined,
+      };
+    };
+
+    const publishInput = buildPublishInput();
+
     if (requiresDepositOrPayment) {
       modal.confirm({
         title: isSourcing
@@ -691,7 +751,7 @@ export const JobReviewPage: React.FC = () => {
         cancelText: 'Hủy bỏ',
         onOk: () =>
           approve
-            .mutateAsync({ jobId: job.jobId, token: job.concurrencyToken })
+            .mutateAsync({ jobId: job.jobId, token: job.concurrencyToken, input: publishInput })
             .then((res) => {
               message.success(res.message || 'Đã duyệt hợp đồng và tạo yêu cầu đặt cọc/thanh toán.');
               useAlertStore.getState().addAlert({
@@ -744,7 +804,7 @@ export const JobReviewPage: React.FC = () => {
       cancelText: 'Hủy bỏ',
       onOk: () =>
         approve
-          .mutateAsync({ jobId: job.jobId, token: job.concurrencyToken })
+          .mutateAsync({ jobId: job.jobId, token: job.concurrencyToken, input: publishInput })
           .then((res) => {
             message.success(res.message || 'Công khai tin tuyển dụng thành công.');
             useAlertStore.getState().addAlert({
