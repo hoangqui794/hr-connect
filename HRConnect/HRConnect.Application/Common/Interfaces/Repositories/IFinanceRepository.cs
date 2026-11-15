@@ -158,6 +158,12 @@ public interface IFinanceRepository
         Guid? companyId, string? status, int page, int pageSize, CancellationToken cancellationToken = default,
         Guid? jobId = null, string? kind = null);
 
+    /// <summary>Aggregated service fee counts and amounts grouped by kind, status and currency.</summary>
+    Task<IReadOnlyList<HRConnect.Application.Features.Finance.Queries.ServiceFeeSummaryBucket>> GetServiceFeeSummaryBucketsAsync(
+        Guid? companyId, Guid? jobId = null, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<HRConnect.Application.Features.Finance.Queries.ServiceFeeSummaryBucket>>(
+            Array.Empty<HRConnect.Application.Features.Finance.Queries.ServiceFeeSummaryBucket>());
+
     Task<(IReadOnlyList<Commission> Items, int TotalCount)> GetCommissionsAsync(
         Guid? affiliateUserId, string? status, int page, int pageSize, CancellationToken cancellationToken = default);
 

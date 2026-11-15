@@ -445,6 +445,32 @@ public class FinanceRepository : IFinanceRepository
         return (items, total);
     }
 
+    public async Task<IReadOnlyList<HRConnect.Application.Features.Finance.Queries.ServiceFeeSummaryBucket>> GetServiceFeeSummaryBucketsAsync(
+        Guid? companyId, Guid? jobId = null, CancellationToken cancellationToken = default)
+    {
+        var query = _context.ServiceFees.AsNoTracking();
+        if (companyId.HasValue)
+        {
+            query = query.Where(fee => fee.CompanyId == companyId.Value);
+        }
+
+        if (jobId.HasValue)
+        {
+            query = query.Where(fee => fee.JobId == jobId.Value
+                || (fee.Placement != null && fee.Placement.Application.JobId == jobId.Value));
+        }
+
+        return await query
+            .GroupBy(fee => new { fee.Kind, fee.Status, fee.CurrencyCode })
+            .Select(g => new HRConnect.Application.Features.Finance.Queries.ServiceFeeSummaryBucket(
+                g.Key.Kind,
+                g.Key.Status,
+                g.Key.CurrencyCode,
+                g.Count(),
+                g.Sum(fee => fee.Amount)))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<(IReadOnlyList<Commission> Items, int TotalCount)> GetCommissionsAsync(
         Guid? affiliateUserId, string? status, int page, int pageSize, CancellationToken cancellationToken = default)
     {

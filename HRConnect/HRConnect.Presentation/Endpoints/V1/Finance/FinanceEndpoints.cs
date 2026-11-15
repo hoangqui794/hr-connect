@@ -85,6 +85,15 @@ public static class FinanceEndpoints
             .WithSummary("Tiền và cam kết của doanh nghiệp (trang Tổng quan Client)")
             .WithDescription("Chỉ Client (placement.confirm, thành viên ACTIVE) xem của doanh nghiệp mình: tổng phí chưa trả (PLACEMENT, DEPOSIT, SETTLEMENT) và phần quá hạn, hạn phí gần nhất, khoản hoàn/credit HR Connect đang nợ doanh nghiệp, số CV Sourcing chờ phản hồi và hạn phản hồi gần nhất, số bảo hành ACTIVE kết thúc trong warrantyWithinDays ngày (mặc định 7, tối đa 90), số suất thay thế OPEN hoặc WAITING_PAYMENT.");
 
+        group.MapGet("/client/replacement-slots", (
+                ClaimsPrincipal user, [FromServices] ISender sender, CancellationToken ct,
+                [FromQuery] Guid? jobId, [FromQuery] string? status, [FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
+            Execute(user, [PlacementConfirm], userId =>
+                sender.Send(new GetReplacementSlotsQuery(userId, jobId, status, page, pageSize), ct)))
+            .WithName("GetClientReplacementSlots")
+            .WithSummary("Danh sách suất tuyển thay thế của doanh nghiệp Client (có phân trang)")
+            .WithDescription("Chỉ Client (placement.confirm, thành viên ACTIVE) xem suất thay thế của doanh nghiệp mình. Lọc theo jobId và status; trả về JobTitle, CompanyName và thông tin khoản hoàn phí liên kết.");
+
         group.MapPost("/internal/replacement-slots/{replacementSlotId:guid}/cancel", (
                 Guid replacementSlotId, [FromBody] CancelReplacementSlotRequest body, ClaimsPrincipal user, [FromServices] ISender sender, CancellationToken ct) =>
             Execute(user, [WarrantyManage], userId => sender.Send(
@@ -116,6 +125,18 @@ public static class FinanceEndpoints
             .WithName("GetServiceFees")
             .WithSummary("Danh sách công nợ phí dịch vụ")
             .WithDescription("Admin/Internal HR xem tất cả; Client (placement.confirm) chỉ xem công nợ của doanh nghiệp mình. Lọc theo status (PENDING, DUE, PAID, OVERDUE, CANCELLED), jobId và kind: PLACEMENT (HEADHUNT_COD), DEPOSIT, SETTLEMENT, CREDIT (CV_SOURCING; CREDIT là khoản trả lại Client).");
+
+        group.MapGet("/service-fees/summary", (
+                ClaimsPrincipal user, [FromServices] ISender sender, CancellationToken ct,
+                [FromQuery] Guid? jobId, [FromQuery] Guid? companyId) =>
+            Execute(user, [CommissionManage, CommissionView, PlacementConfirm], userId =>
+            {
+                var platform = Has(user, CommissionManage) || Has(user, CommissionView);
+                return sender.Send(new GetServiceFeesSummaryQuery(platform ? null : userId, platform ? companyId : null, jobId), ct);
+            }))
+            .WithName("GetServiceFeesSummary")
+            .WithSummary("Tổng hợp KPI công nợ phí dịch vụ (không giới hạn phân trang)")
+            .WithDescription("Trả tổng số tiền và số lượng khoản chưa thanh toán, quá hạn, đã thanh toán và hoàn phí HR Connect cần trả Client trên toàn bộ dữ liệu theo quyền (Client xem doanh nghiệp mình; Admin/Internal HR xem toàn hệ thống hoặc lọc theo companyId/jobId).");
 
         group.MapPost("/jobs/{jobId:guid}/sourcing-settlement", (
                 Guid jobId, ClaimsPrincipal user, [FromServices] ISender sender, CancellationToken ct) =>

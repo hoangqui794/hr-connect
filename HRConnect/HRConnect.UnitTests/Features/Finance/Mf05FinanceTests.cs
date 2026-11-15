@@ -1723,4 +1723,79 @@ public class Mf05FinanceTests
         dto.RefundAmount.Should().Be(refundFee.Amount);
         dto.RefundStatus.Should().Be(ServiceFeeStates.Pending);
     }
+
+    [Fact]
+    public async Task Service_fee_summary_aggregates_all_company_fees_and_isolates_by_company()
+    {
+        var now = DateTime.UtcNow;
+        var due = DateOnly.FromDateTime(now).AddDays(10);
+        ServiceFee Fee(Guid companyId, string kind, string status, decimal amount, string currency = "VND") => new()
+        {
+            ServiceFeeId = Guid.NewGuid(),
+            CompanyId = companyId,
+            Kind = kind,
+            Status = status,
+            Amount = amount,
+            BaseSalary = amount,
+            FeeMultiplier = 1m,
+            CurrencyCode = currency,
+            DueDate = due,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        _context.ServiceFees.AddRange(
+            Fee(_companyId, ServiceFeeKinds.Placement, ServiceFeeStates.Pending, 10_000_000m),
+            Fee(_companyId, ServiceFeeKinds.Deposit, ServiceFeeStates.Due, 3_000_000m),
+            Fee(_companyId, ServiceFeeKinds.Settlement, ServiceFeeStates.Overdue, 5_000_000m),
+            Fee(_companyId, ServiceFeeKinds.Placement, ServiceFeeStates.Paid, 22_000_000m),
+            Fee(_companyId, ServiceFeeKinds.Placement, ServiceFeeStates.Cancelled, 9_999_999m),
+            Fee(_companyId, ServiceFeeKinds.ReplacementRefund, ServiceFeeStates.Pending, 4_000_000m),
+            Fee(_companyId, ServiceFeeKinds.Credit, ServiceFeeStates.Paid, 1_500_000m),
+            Fee(_otherCompanyId, ServiceFeeKinds.Placement, ServiceFeeStates.Overdue, 88_000_000m));
+        await _context.SaveChangesAsync();
+
+        var handlers = new FinanceQueryHandlers(Repository, ClientOf(_companyId).Object);
+        var clientSummary = await handlers.Handle(new GetServiceFeesSummaryQuery(_actor), default);
+
+        clientSummary.UnpaidAmount.Should().Be(18_000_000m, "10M PENDING + 3M DUE + 5M OVERDUE");
+        clientSummary.UnpaidCount.Should().Be(3);
+        clientSummary.OverdueAmount.Should().Be(5_000_000m);
+        clientSummary.OverdueCount.Should().Be(1);
+        clientSummary.PaidAmount.Should().Be(22_000_000m);
+        clientSummary.PaidCount.Should().Be(1);
+        clientSummary.PendingRefundAmount.Should().Be(4_000_000m);
+        clientSummary.PendingRefundCount.Should().Be(1);
+        clientSummary.PaidRefundAmount.Should().Be(1_500_000m);
+        clientSummary.PaidRefundCount.Should().Be(1);
+        clientSummary.TotalCount.Should().Be(7);
+        clientSummary.CurrencyCode.Should().Be("VND");
+
+        var platformAll = await handlers.Handle(new GetServiceFeesSummaryQuery(null), default);
+        platformAll.UnpaidAmount.Should().Be(106_000_000m);
+        platformAll.OverdueCount.Should().Be(2);
+        platformAll.TotalCount.Should().Be(8);
+
+        var platformCompany = await handlers.Handle(new GetServiceFeesSummaryQuery(null, CompanyId: _otherCompanyId), default);
+        platformCompany.UnpaidAmount.Should().Be(88_000_000m);
+        platformCompany.TotalCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Service_fee_summary_rejects_inactive_company_member()
+    {
+        var inactive = new Mock<ICompanyUserRepository>();
+        inactive.Setup(r => r.GetByUserIdAsync(_actor, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser
+            {
+                CompanyUserId = Guid.NewGuid(),
+                CompanyId = _companyId,
+                UserId = _actor,
+                Status = "INACTIVE",
+            });
+
+        var handlers = new FinanceQueryHandlers(Repository, inactive.Object);
+        var act = () => handlers.Handle(new GetServiceFeesSummaryQuery(_actor), default);
+        await act.Should().ThrowAsync<ForbiddenException>();
+    }
 }

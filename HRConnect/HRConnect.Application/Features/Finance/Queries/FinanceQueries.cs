@@ -3,6 +3,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Placements.Common;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using MediatR;
@@ -23,6 +24,36 @@ public sealed record ServiceFeeDto(
     DateTime? ReplacementExpiredAt = null, int? SourcingCounted = null,
     string? ServiceTypeCode = null, int? DaysOverdue = null, DateTime? PaymentSubmittedAt = null,
     bool PendingOnlinePayment = false, DateOnly? PlacementStartDate = null);
+
+public sealed record ServiceFeeSummaryBucket(string Kind, string Status, string CurrencyCode, int Count, decimal Amount);
+
+public sealed record ServiceFeeCurrencySummaryDto(
+    string CurrencyCode,
+    decimal UnpaidAmount,
+    int UnpaidCount,
+    decimal OverdueAmount,
+    int OverdueCount,
+    decimal PaidAmount,
+    int PaidCount,
+    decimal PendingRefundAmount,
+    int PendingRefundCount,
+    decimal PaidRefundAmount,
+    int PaidRefundCount);
+
+public sealed record ServiceFeeSummaryDto(
+    decimal UnpaidAmount,
+    int UnpaidCount,
+    decimal OverdueAmount,
+    int OverdueCount,
+    decimal PaidAmount,
+    int PaidCount,
+    decimal PendingRefundAmount,
+    int PendingRefundCount,
+    decimal PaidRefundAmount,
+    int PaidRefundCount,
+    int TotalCount,
+    string CurrencyCode,
+    IReadOnlyList<ServiceFeeCurrencySummaryDto>? CurrencyBreakdowns = null);
 
 /// <summary>PlacementId is set for HEADHUNT_COD; SourcingDeliveryId for CV_SOURCING (one per accepted CV).</summary>
 public sealed record CommissionDto(
@@ -52,6 +83,10 @@ public sealed record PayoutDto(
 public sealed record GetServiceFeesQuery(Guid? CompanyUserId, string? Status, int Page, int PageSize, Guid? JobId = null, string? Kind = null)
     : IRequest<PagedResult<ServiceFeeDto>>;
 
+/// <summary>Full service-fee KPI totals across all records (not truncated by pageSize).</summary>
+public sealed record GetServiceFeesSummaryQuery(Guid? CompanyUserId, Guid? CompanyId = null, Guid? JobId = null)
+    : IRequest<ServiceFeeSummaryDto>;
+
 /// <summary>AffiliateUserId limits the list to the affiliate's own commissions.</summary>
 public sealed record GetCommissionsQuery(Guid? AffiliateUserId, string? Status, int Page, int PageSize, bool IncludeBankDetails = false)
     : IRequest<PagedResult<CommissionDto>>;
@@ -63,6 +98,7 @@ public sealed record GetPayoutsQuery(Guid? AffiliateUserId, int Page, int PageSi
 
 public sealed class FinanceQueryHandlers :
     IRequestHandler<GetServiceFeesQuery, PagedResult<ServiceFeeDto>>,
+    IRequestHandler<GetServiceFeesSummaryQuery, ServiceFeeSummaryDto>,
     IRequestHandler<GetCommissionsQuery, PagedResult<CommissionDto>>,
     IRequestHandler<GetPayoutsQuery, PagedResult<PayoutDto>>,
     IRequestHandler<GetWarrantiesQuery, PagedResult<WarrantyDto>>
@@ -179,6 +215,70 @@ public sealed class FinanceQueryHandlers :
                 pendingOnline,
                 fee.Placement?.ActualStartDate);
         }).ToList(), total, page, pageSize);
+    }
+
+    public async Task<ServiceFeeSummaryDto> Handle(GetServiceFeesSummaryQuery request, CancellationToken cancellationToken)
+    {
+        Guid? companyId = request.CompanyId;
+        if (request.CompanyUserId is Guid companyUserId)
+        {
+            var member = await _companyUserRepository.GetByUserIdAsync(companyUserId, cancellationToken);
+            if (!CompanyMembershipPolicy.IsActive(member))
+            {
+                throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
+            }
+
+            companyId = member.CompanyId;
+        }
+
+        var buckets = await _financeRepository.GetServiceFeeSummaryBucketsAsync(companyId, request.JobId, cancellationToken)
+            ?? Array.Empty<ServiceFeeSummaryBucket>();
+
+        var breakdowns = buckets
+            .GroupBy(b => string.IsNullOrWhiteSpace(b.CurrencyCode) ? "VND" : b.CurrencyCode)
+            .OrderByDescending(g => string.Equals(g.Key, "VND", StringComparison.OrdinalIgnoreCase))
+            .ThenBy(g => g.Key)
+            .Select(g =>
+            {
+                var owedByClient = g.Where(b => !ServiceFeeKinds.OwedToClient.Contains(b.Kind)).ToList();
+                var owedToClient = g.Where(b => ServiceFeeKinds.OwedToClient.Contains(b.Kind)).ToList();
+
+                var unpaid = owedByClient.Where(b => b.Status is ServiceFeeStates.Pending or ServiceFeeStates.Due or ServiceFeeStates.Overdue).ToList();
+                var overdue = owedByClient.Where(b => b.Status == ServiceFeeStates.Overdue).ToList();
+                var paid = owedByClient.Where(b => b.Status == ServiceFeeStates.Paid).ToList();
+                var pendingRefund = owedToClient.Where(b => b.Status is ServiceFeeStates.Pending or ServiceFeeStates.Due or ServiceFeeStates.Overdue).ToList();
+                var paidRefund = owedToClient.Where(b => b.Status == ServiceFeeStates.Paid).ToList();
+
+                return new ServiceFeeCurrencySummaryDto(
+                    g.Key,
+                    unpaid.Sum(x => x.Amount),
+                    unpaid.Sum(x => x.Count),
+                    overdue.Sum(x => x.Amount),
+                    overdue.Sum(x => x.Count),
+                    paid.Sum(x => x.Amount),
+                    paid.Sum(x => x.Count),
+                    pendingRefund.Sum(x => x.Amount),
+                    pendingRefund.Sum(x => x.Count),
+                    paidRefund.Sum(x => x.Amount),
+                    paidRefund.Sum(x => x.Count));
+            })
+            .ToList();
+
+        var primary = breakdowns.FirstOrDefault() ?? new ServiceFeeCurrencySummaryDto("VND", 0m, 0, 0m, 0, 0m, 0, 0m, 0, 0m, 0);
+        return new ServiceFeeSummaryDto(
+            primary.UnpaidAmount,
+            breakdowns.Sum(b => b.UnpaidCount),
+            primary.OverdueAmount,
+            breakdowns.Sum(b => b.OverdueCount),
+            primary.PaidAmount,
+            breakdowns.Sum(b => b.PaidCount),
+            primary.PendingRefundAmount,
+            breakdowns.Sum(b => b.PendingRefundCount),
+            primary.PaidRefundAmount,
+            breakdowns.Sum(b => b.PaidRefundCount),
+            buckets.Sum(b => b.Count),
+            primary.CurrencyCode,
+            breakdowns);
     }
 
     public async Task<PagedResult<CommissionDto>> Handle(GetCommissionsQuery request, CancellationToken cancellationToken)
