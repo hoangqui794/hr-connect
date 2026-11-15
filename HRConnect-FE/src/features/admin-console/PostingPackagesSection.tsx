@@ -81,7 +81,7 @@ export const PostingPackagesSection: React.FC = () => {
   return (
     <Surface>
       <div className="border-b border-slate-200 px-6 py-4">
-        <div className="text-[13px] font-semibold uppercase tracking-[0.06em] text-slate-500">AP · Gói đăng tin</div>
+        <div className="text-[13px] font-medium text-[#6B7487]">AP · Gói đăng tin</div>
         <div className="mt-0.5 text-[13.5px] text-slate-600">
           Gói Client chọn khi đăng tin dịch vụ Nhận hồ sơ ứng tuyển. Thay đổi áp dụng cho tin gửi duyệt sau đó.
         </div>

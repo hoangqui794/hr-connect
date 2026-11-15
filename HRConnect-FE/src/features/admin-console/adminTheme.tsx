@@ -10,18 +10,18 @@ import React from 'react';
 import { ConfigProvider, Empty, Tag, Typography } from 'antd';
 
 export const adminTokens = {
-  navy: '#0F172A',
-  navyMuted: '#94A3B8',
-  canvas: '#F8FAFC',
+  navy: '#111827',
+  navyMuted: '#6B7487',
+  canvas: '#F5F7FA',
   card: '#FFFFFF',
-  border: '#E2E8F0',
-  text: '#0F172A',
-  textMuted: '#475569',
+  border: 'rgba(17, 24, 39, 0.08)',
+  text: '#111827',
+  textMuted: '#4B5565',
   primary: '#2563EB',
   primaryHover: '#1D4ED8',
   primaryBg: '#EFF6FF',
-  danger: '#B91C1C',
-  warning: '#B45309',
+  danger: '#DC2626',
+  warning: '#D97706',
   info: '#2563EB',
   mono: "'JetBrains Mono', 'Cascadia Code', Consolas, monospace",
 } as const;
@@ -43,12 +43,12 @@ export const AdminScope: React.FC<{ children: React.ReactNode }> = ({ children }
         colorSuccess: '#16A34A',
         colorText: adminTokens.text,
         colorTextSecondary: adminTokens.textMuted,
-        colorBorder: adminTokens.border,
+        colorBorder: '#E2E6EE',
         borderRadius: 8,
       },
       components: {
-        Table: { headerBg: '#F1F5F9', headerColor: adminTokens.textMuted, cellPaddingBlock: 12, cellPaddingInline: 14, rowHoverBg: '#F8FAFC' },
-        Button: { primaryShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', dangerShadow: 'none', defaultShadow: 'none' },
+        Table: { headerBg: '#F9FAFC', headerColor: adminTokens.textMuted, cellPaddingBlock: 12, cellPaddingInline: 14, rowHoverBg: '#ECEFF4' },
+        Button: { primaryShadow: 'none', dangerShadow: 'none', defaultShadow: 'none' },
       },
     }}
   >

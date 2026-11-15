@@ -8,9 +8,9 @@ import React, { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import { Alert, Button, DatePicker, Descriptions, Drawer, Input, Select, Skeleton, Table, Tag, Typography } from 'antd';
+import { Alert, Button, DatePicker, Drawer, Input, Select, Skeleton, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { ReloadOutlined } from '@ant-design/icons';
+import { CloseOutlined, ReloadOutlined, RightOutlined } from '@ant-design/icons';
 import { adminAuditApi } from '@/services/api/adminApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { AuditLogItem } from '@/types/api/admin';
@@ -57,27 +57,43 @@ const ValueDiff: React.FC<{ oldValues: unknown; newValues: unknown }> = ({ oldVa
     }));
   }, [oldValues, newValues]);
 
-  if (rows.length === 0) return <Typography.Text type="secondary">Sự kiện này không ghi lại dữ liệu thay đổi.</Typography.Text>;
+  if (rows.length === 0) {
+    return <p className="m-0 text-xs text-slate-400">Sự kiện này không ghi lại dữ liệu thay đổi.</p>;
+  }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-solid border-slate-200">
+    <div className="overflow-x-auto rounded-lg border border-solid border-slate-200/80">
       <table className="w-full border-collapse text-xs">
         <thead>
-          <tr className="bg-slate-100 text-left text-slate-600">
-            <th className="px-3 py-2 font-semibold">Trường</th>
-            <th className="px-3 py-2 font-semibold">Trước</th>
-            <th className="px-3 py-2 font-semibold">Sau</th>
+          <tr className="border-b border-slate-200/80 bg-slate-50/80 text-left text-[11.5px] font-semibold text-slate-500">
+            <th className="px-3 py-2">Trường</th>
+            <th className="px-3 py-2">Trước</th>
+            <th className="px-3 py-2">Sau</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="bg-white">
           {rows.map((r) => (
-            <tr key={r.key} className={`border-0 border-t border-solid border-slate-100 ${r.changed ? 'bg-amber-50' : ''}`}>
+            <tr key={r.key} className={`border-0 border-t border-solid border-slate-100 ${r.changed ? 'bg-amber-50/60' : ''}`}>
               <td className="px-3 py-2 align-top font-medium text-slate-900">
-                {r.key}
-                {r.changed && <span className="ml-1 text-[11px] font-semibold text-amber-800">· đã đổi</span>}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-mono text-[11.5px]">{r.key}</span>
+                  {r.changed && (
+                    <span className="inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                      Đã đổi
+                    </span>
+                  )}
+                </div>
               </td>
-              <td className="px-3 py-2 align-top"><Mono>{show(r.before)}</Mono></td>
-              <td className="px-3 py-2 align-top"><Mono>{show(r.after)}</Mono></td>
+              <td className="px-3 py-2 align-top">
+                <span className={r.changed ? 'text-rose-700/90' : 'text-slate-600'}>
+                  <Mono>{show(r.before)}</Mono>
+                </span>
+              </td>
+              <td className="px-3 py-2 align-top">
+                <span className={r.changed ? 'font-medium text-emerald-700' : 'text-slate-700'}>
+                  <Mono>{show(r.after)}</Mono>
+                </span>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -119,20 +135,26 @@ export const AdminAuditLogPage: React.FC = () => {
     setSearchParams(next);
   };
 
+  const hasFilters = Boolean(
+    params.action || params.entityType || params.actorType || params.source || params.fromUtc || params.toUtc,
+  );
+
   const columns: ColumnsType<AuditLogItem> = [
-    { title: 'Thời điểm', dataIndex: 'createdAt', width: 160, render: (v: string) => <span className="tabular-nums">{formatDateTime(v)}</span> },
+    {
+      title: 'Thời điểm',
+      dataIndex: 'createdAt',
+      width: 155,
+      render: (v: string) => <span className="font-mono text-xs text-slate-600 tabular-nums">{formatDateTime(v)}</span>,
+    },
     {
       title: 'Người thao tác',
       key: 'actor',
-      width: 230,
+      width: 220,
       render: (_, r) => {
         const kind = ACTOR_TYPES[r.actorType] ?? r.actorType;
         const name = r.actorDisplayName || r.actorEmail;
-        // Second line only when it adds information (email, or the actor kind under a name).
         const sub = name ? (r.actorDisplayName && r.actorEmail ? r.actorEmail : kind) : null;
-        return (
-          <PersonCell name={name || kind} secondary={sub ?? undefined} size={32} />
-        );
+        return <PersonCell name={name || kind} secondary={sub ?? undefined} size={32} />;
       },
     },
     {
@@ -140,13 +162,11 @@ export const AdminAuditLogPage: React.FC = () => {
       dataIndex: 'action',
       render: (v: string) => (
         <div className="min-w-0">
-          <div className="text-slate-900 font-medium text-[13px] leading-snug">
+          <div className="text-[13px] font-medium text-slate-900 leading-snug">
             {describeAuditAction(v)}
           </div>
-          <div className="mt-0.5">
-            <span className="font-mono text-[10.5px] text-slate-400 tracking-tight">
-              {v}
-            </span>
+          <div className="mt-0.5 font-mono text-[11px] text-slate-400 tracking-tight truncate">
+            {v}
           </div>
         </div>
       ),
@@ -154,34 +174,44 @@ export const AdminAuditLogPage: React.FC = () => {
     {
       title: 'Đối tượng',
       key: 'entity',
-      width: 180,
+      width: 175,
       render: (_, r) => {
         if (!r.entityType) return <span className="text-slate-400">—</span>;
         const conf = describeEntityType(r.entityType);
         return (
-          <Tag color={conf.color} className="!m-0 text-xs font-medium">
-            {conf.label}
-          </Tag>
+          <div className="min-w-0">
+            <span className="inline-flex items-center rounded-md border border-slate-200/80 bg-slate-50 px-2 py-0.5 text-[11.5px] font-medium text-slate-700">
+              {conf.label}
+            </span>
+            {r.entityId && (
+              <div className="mt-0.5 font-mono text-[10.5px] text-slate-400 truncate">
+                {r.entityId.slice(0, 12)}
+              </div>
+            )}
+          </div>
         );
       },
     },
     {
       title: 'Nguồn',
       dataIndex: 'source',
-      width: 120,
+      width: 135,
       render: (v: string) => {
         const label = SOURCES[v] ?? v;
         const isApi = v === 'API';
         return (
-          <span
-            className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${
-              isApi
-                ? 'bg-slate-100 text-slate-600'
-                : 'bg-sky-50 text-sky-700 border border-sky-200'
-            }`}
-          >
-            {label}
-          </span>
+          <div className="flex items-center justify-between gap-2">
+            <span
+              className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ${
+                isApi
+                  ? 'bg-slate-100 text-slate-600'
+                  : 'border border-sky-200/80 bg-sky-50 text-sky-700'
+              }`}
+            >
+              {label}
+            </span>
+            <RightOutlined className="text-[10px] text-slate-400 opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
+          </div>
         );
       },
     },
@@ -191,7 +221,7 @@ export const AdminAuditLogPage: React.FC = () => {
   const page = list.data;
 
   return (
-    <div>
+    <div className="admin-stagger space-y-5">
       <PageHero
         eyebrow="Giám sát"
         title="Nhật ký hệ thống"
@@ -204,54 +234,75 @@ export const AdminAuditLogPage: React.FC = () => {
       />
 
       <Surface>
-        <div key={searchParams.toString()} className="flex flex-wrap items-center gap-3 px-5 pb-3 pt-5">
-          <Input.Search
-            allowClear
-            defaultValue={params.action}
-            placeholder="Mã hành động, ví dụ USER_SUSPENDED"
-            className="w-72"
-            onSearch={(v) => setParams({ action: v.trim().toUpperCase() || undefined })}
-            aria-label="Lọc theo hành động"
-          />
-          <Input
-            allowClear
-            defaultValue={params.entityType}
-            placeholder="Loại đối tượng, ví dụ JOB"
-            className="w-56"
-            onPressEnter={(e) => setParams({ entityType: e.currentTarget.value.trim().toUpperCase() || undefined })}
-            onBlur={(e) => setParams({ entityType: e.currentTarget.value.trim().toUpperCase() || undefined })}
-            aria-label="Lọc theo loại đối tượng"
-          />
-          <Select
-            allowClear
-            value={params.actorType}
-            placeholder="Người thao tác"
-            className="w-44"
-            onChange={(v) => setParams({ actorType: v })}
-            options={Object.entries(ACTOR_TYPES).map(([value, label]) => ({ value, label }))}
-            aria-label="Lọc theo loại người thao tác"
-          />
-          <Select
-            allowClear
-            value={params.source}
-            placeholder="Nguồn"
-            className="w-40"
-            onChange={(v) => setParams({ source: v })}
-            options={Object.entries(SOURCES).map(([value, label]) => ({ value, label }))}
-            aria-label="Lọc theo nguồn"
-          />
-          <DatePicker.RangePicker
-            value={params.fromUtc && params.toUtc ? [dayjs(params.fromUtc), dayjs(params.toUtc)] : null}
-            format="DD/MM/YYYY"
-            onChange={(range) =>
-              setParams({
-                from: range?.[0]?.startOf('day').toISOString(),
-                to: range?.[1]?.endOf('day').toISOString(),
-              })
-            }
-            aria-label="Khoảng thời gian"
-          />
-          {page && <span className="ml-auto text-sm text-slate-600 tabular-nums">{page.total} sự kiện</span>}
+        <div
+          key={searchParams.toString()}
+          className="flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-100 bg-slate-50/40 px-5 py-3.5"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <Input.Search
+              allowClear
+              defaultValue={params.action}
+              placeholder="Mã hành động (VD: USER_SUSPENDED)"
+              className="w-60"
+              onSearch={(v) => setParams({ action: v.trim().toUpperCase() || undefined })}
+              aria-label="Lọc theo hành động"
+            />
+            <Input
+              allowClear
+              defaultValue={params.entityType}
+              placeholder="Loại đối tượng (VD: JOB)"
+              className="w-44"
+              onPressEnter={(e) => setParams({ entityType: e.currentTarget.value.trim().toUpperCase() || undefined })}
+              onBlur={(e) => setParams({ entityType: e.currentTarget.value.trim().toUpperCase() || undefined })}
+              aria-label="Lọc theo loại đối tượng"
+            />
+            <Select
+              allowClear
+              value={params.actorType}
+              placeholder="Người thao tác"
+              className="w-36"
+              onChange={(v) => setParams({ actorType: v })}
+              options={Object.entries(ACTOR_TYPES).map(([value, label]) => ({ value, label }))}
+              aria-label="Lọc theo loại người thao tác"
+            />
+            <Select
+              allowClear
+              value={params.source}
+              placeholder="Nguồn"
+              className="w-36"
+              onChange={(v) => setParams({ source: v })}
+              options={Object.entries(SOURCES).map(([value, label]) => ({ value, label }))}
+              aria-label="Lọc theo nguồn"
+            />
+            <DatePicker.RangePicker
+              value={params.fromUtc && params.toUtc ? [dayjs(params.fromUtc), dayjs(params.toUtc)] : null}
+              format="DD/MM/YYYY"
+              className="w-56"
+              onChange={(range) =>
+                setParams({
+                  from: range?.[0]?.startOf('day').toISOString(),
+                  to: range?.[1]?.endOf('day').toISOString(),
+                })
+              }
+              aria-label="Khoảng thời gian"
+            />
+            {hasFilters && (
+              <Button
+                type="text"
+                size="small"
+                icon={<CloseOutlined className="text-[11px]" />}
+                onClick={() => setSearchParams({})}
+                className="text-slate-500 hover:!text-slate-900"
+              >
+                Xóa lọc
+              </Button>
+            )}
+          </div>
+          {page && (
+            <span className="font-mono text-xs font-medium text-slate-500 tabular-nums whitespace-nowrap">
+              {page.total} sự kiện
+            </span>
+          )}
         </div>
 
         {list.isError ? (
@@ -273,7 +324,7 @@ export const AdminAuditLogPage: React.FC = () => {
                 if (e.key === 'Enter') setSelectedId(r.auditLogId);
               },
               tabIndex: 0,
-              className: 'cursor-pointer',
+              className: 'group cursor-pointer',
               'aria-label': `Mở sự kiện ${r.action}`,
             })}
             pagination={{
@@ -288,39 +339,72 @@ export const AdminAuditLogPage: React.FC = () => {
         )}
       </Surface>
 
-      <Drawer open={selectedId !== undefined} width="min(640px, 100vw)" onClose={() => setSelectedId(undefined)} title="Chi tiết sự kiện" destroyOnHidden>
+      <Drawer
+        open={selectedId !== undefined}
+        width="min(620px, 100vw)"
+        onClose={() => setSelectedId(undefined)}
+        title="Chi tiết sự kiện"
+        styles={{ body: { background: '#F5F7FA', padding: '16px 20px' } }}
+        destroyOnHidden
+      >
         {detail.isLoading ? (
           <Skeleton active paragraph={{ rows: 10 }} />
         ) : detail.isError || !log ? (
           <Alert type="error" showIcon message={getApiErrorMessage(detail.error, 'Không tải được sự kiện.')} />
         ) : (
-          <div className="space-y-5">
-            <Descriptions size="small" column={1} labelStyle={{ width: 150, color: adminTokens.textMuted }}>
-              <Descriptions.Item label="Hành động"><Mono>{log.action}</Mono></Descriptions.Item>
-              <Descriptions.Item label="Thời điểm">{formatDateTime(log.createdAt)}</Descriptions.Item>
-              <Descriptions.Item label="Người thao tác">
-                {log.actorDisplayName ?? '—'} {log.actorEmail ? `· ${log.actorEmail}` : ''} ({ACTOR_TYPES[log.actorType] ?? log.actorType})
-              </Descriptions.Item>
-              <Descriptions.Item label="Nguồn">
-                {SOURCES[log.source] ?? log.source}
-                {log.serviceName ? ` · ${log.serviceName}` : ''}
-              </Descriptions.Item>
-              <Descriptions.Item label="Đối tượng">
-                <div>
-                  <div>{log.entityType ?? '—'}</div>
-                  {log.entityId && <Mono>{log.entityId}</Mono>}
+          <div className="space-y-4">
+            <div className="rounded-xl border border-slate-200/80 bg-white p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-base font-semibold text-slate-900">{describeAuditAction(log.action)}</div>
+                  <div className="mt-1 font-mono text-xs text-slate-500 break-all">{log.action}</div>
                 </div>
-              </Descriptions.Item>
-              <Descriptions.Item label="Mã tương quan">{log.correlationId ? <Mono>{log.correlationId}</Mono> : '—'}</Descriptions.Item>
-              <Descriptions.Item label="Địa chỉ IP">{log.ipAddress ? <Mono>{log.ipAddress}</Mono> : '—'}</Descriptions.Item>
-              <Descriptions.Item label="Trình duyệt">
-                <span className="break-all text-xs text-slate-600">{log.userAgent ?? '—'}</span>
-              </Descriptions.Item>
-            </Descriptions>
-            <section>
-              <Typography.Text strong className="mb-2 block">Dữ liệu thay đổi</Typography.Text>
+                <span className="shrink-0 rounded-md border border-slate-200/80 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                  {SOURCES[log.source] ?? log.source}
+                </span>
+              </div>
+              <div className="mt-3 font-mono text-xs text-slate-400 tabular-nums">
+                {formatDateTime(log.createdAt)}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200/80 bg-white p-4">
+              <h4 className="mb-3 text-xs font-semibold text-slate-500">Thông tin truy vết</h4>
+              <dl className="grid grid-cols-[130px_1fr] gap-y-2.5 gap-x-3 text-[13px]">
+                <dt className="text-slate-500">Người thao tác</dt>
+                <dd className="m-0 text-slate-900">
+                  <span className="font-medium">{log.actorDisplayName ?? '—'}</span>
+                  {log.actorEmail ? <span className="text-slate-500"> · {log.actorEmail}</span> : null}
+                  <span className="ml-1.5 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600">
+                    {ACTOR_TYPES[log.actorType] ?? log.actorType}
+                  </span>
+                </dd>
+                <dt className="text-slate-500">Nguồn / Dịch vụ</dt>
+                <dd className="m-0 text-slate-800">
+                  {SOURCES[log.source] ?? log.source}
+                  {log.serviceName ? <span className="text-slate-500"> · {log.serviceName}</span> : null}
+                </dd>
+                <dt className="text-slate-500">Đối tượng</dt>
+                <dd className="m-0">
+                  <div className="font-medium text-slate-900">
+                    {log.entityType ? describeEntityType(log.entityType).label : '—'}
+                    {log.entityType ? <span className="ml-1.5 font-mono text-[11px] text-slate-400">({log.entityType})</span> : null}
+                  </div>
+                  {log.entityId && <div className="mt-0.5"><Mono>{log.entityId}</Mono></div>}
+                </dd>
+                <dt className="text-slate-500">Mã tương quan</dt>
+                <dd className="m-0">{log.correlationId ? <Mono>{log.correlationId}</Mono> : '—'}</dd>
+                <dt className="text-slate-500">Địa chỉ IP</dt>
+                <dd className="m-0">{log.ipAddress ? <Mono>{log.ipAddress}</Mono> : '—'}</dd>
+                <dt className="text-slate-500">Trình duyệt</dt>
+                <dd className="m-0 break-all text-xs text-slate-600">{log.userAgent ?? '—'}</dd>
+              </dl>
+            </div>
+
+            <div className="rounded-xl border border-slate-200/80 bg-white p-4">
+              <h4 className="mb-3 text-xs font-semibold text-slate-500">Dữ liệu thay đổi</h4>
               <ValueDiff oldValues={log.oldValues} newValues={log.newValues} />
-            </section>
+            </div>
           </div>
         )}
       </Drawer>

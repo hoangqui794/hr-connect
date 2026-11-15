@@ -26,7 +26,7 @@ import { CheckOutlined, CloseOutlined, ReloadOutlined, SearchOutlined } from '@a
 import { adminService, type ApprovalListItemDto } from '@/services/adminService';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { adminTokens, formatDateTime } from './adminTheme';
-import { FilterPills, Initials, PageHero, PersonCell, StatusDot, Surface, type Tone } from './ui';
+import { FilterPills, Initials, PageHero, PersonCell, StatTile, StatusDot, Surface, type Tone } from './ui';
 
 const { Text } = Typography;
 const PAGE_SIZE = 20;
@@ -108,7 +108,7 @@ const ApprovalDetail: React.FC<{ item: ApprovalListItemDto }> = ({ item }) => {
       <div className="admin-surface flex items-center gap-4 p-5">
         <Initials name={title} size={56} />
         <div className="min-w-0">
-          <div className="truncate text-lg font-bold text-slate-900">{title}</div>
+          <div className="truncate text-lg font-semibold text-[#111827]">{title}</div>
           <div className="truncate text-sm text-slate-600">{company ? data.displayName : data.email}</div>
           <div className="mt-1">
             <StatusDot tone={STATUS_LABEL[data.status]?.tone ?? 'neutral'}>{STATUS_LABEL[data.status]?.label ?? data.status}</StatusDot>
@@ -235,20 +235,52 @@ export const AdminApprovalsPage: React.FC<{ presetType?: 'AFFILIATE' | 'CLIENT' 
   const data = list.data?.data;
 
   return (
-    <div>
+    <div className="admin-stagger space-y-5">
       <PageHero
         eyebrow="Vận hành"
         title="Phê duyệt tài khoản"
         description="Duyệt đăng ký Cộng tác viên và xác thực Doanh nghiệp trước khi họ dùng nền tảng."
         actions={
-          <Button icon={<ReloadOutlined />} loading={list.isFetching && !list.isLoading} onClick={() => list.refetch()}>
+          <Button
+            icon={<ReloadOutlined />}
+            loading={list.isFetching && !list.isLoading}
+            onClick={() => list.refetch()}
+            className="active:scale-[0.985] transition-transform duration-100"
+          >
             Tải lại
           </Button>
         }
       />
 
-      <Surface>
-        <div key={searchParams.toString()} className="flex flex-wrap items-center gap-3 px-5 pb-2 pt-5">
+      <section aria-label="Tổng quan hàng chờ" className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatTile
+          label="Chờ duyệt"
+          value={countPending.isLoading ? '…' : (countPending.data ?? '—')}
+          hint="Cần kiểm tra hồ sơ"
+          tone="warning"
+          active={status === 'UNDER_REVIEW'}
+          onClick={() => setParam('status', 'UNDER_REVIEW')}
+        />
+        <StatTile
+          label="Đã duyệt"
+          value={countApproved.isLoading ? '…' : (countApproved.data ?? '—')}
+          hint="Đang hoạt động trên nền tảng"
+          tone="success"
+          active={status === 'APPROVED'}
+          onClick={() => setParam('status', 'APPROVED')}
+        />
+        <StatTile
+          label="Đã từ chối"
+          value={countRejected.isLoading ? '…' : (countRejected.data ?? '—')}
+          hint="Yêu cầu bổ sung / không đạt"
+          tone="danger"
+          active={status === 'REJECTED'}
+          onClick={() => setParam('status', 'REJECTED')}
+        />
+      </section>
+
+      <Surface className="overflow-hidden">
+        <div key={searchParams.toString()} className="flex flex-wrap items-center justify-between gap-3 border-0 border-b border-solid border-black/[0.08] bg-[#F9FAFC] px-5 py-3.5">
           <FilterPills
             label="Lọc theo trạng thái"
             value={status}
@@ -259,31 +291,33 @@ export const AdminApprovalsPage: React.FC<{ presetType?: 'AFFILIATE' | 'CLIENT' 
               { value: 'REJECTED', label: 'Đã từ chối', count: countRejected.data },
             ]}
           />
-          <Select
-            allowClear
-            size="large"
-            value={type}
-            placeholder="Mọi loại hồ sơ"
-            className="w-56"
-            onChange={(v) => setParam('type', v)}
-            options={[
-              { value: 'CLIENT', label: TYPE_LABEL.CLIENT },
-              { value: 'AFFILIATE', label: TYPE_LABEL.AFFILIATE },
-            ]}
-            aria-label="Lọc theo loại hồ sơ"
-          />
-          <Input
-            allowClear
-            size="large"
-            defaultValue={search}
-            prefix={<SearchOutlined className="text-slate-500" aria-hidden />}
-            placeholder="Tên, email, doanh nghiệp... nhấn Enter"
-            className="max-w-xs"
-            maxLength={100}
-            onPressEnter={(e) => setParam('q', e.currentTarget.value.trim() || undefined)}
-            onChange={(e) => !e.target.value && search && setParam('q', undefined)}
-            aria-label="Tìm hồ sơ"
-          />
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Select
+              allowClear
+              size="large"
+              value={type}
+              placeholder="Mọi loại hồ sơ"
+              className="w-48"
+              onChange={(v) => setParam('type', v)}
+              options={[
+                { value: 'CLIENT', label: TYPE_LABEL.CLIENT },
+                { value: 'AFFILIATE', label: TYPE_LABEL.AFFILIATE },
+              ]}
+              aria-label="Lọc theo loại hồ sơ"
+            />
+            <Input
+              allowClear
+              size="large"
+              defaultValue={search}
+              prefix={<SearchOutlined className="text-slate-500" aria-hidden />}
+              placeholder="Tên, email, doanh nghiệp... nhấn Enter"
+              className="w-64"
+              maxLength={100}
+              onPressEnter={(e) => setParam('q', e.currentTarget.value.trim() || undefined)}
+              onChange={(e) => !e.target.value && search && setParam('q', undefined)}
+              aria-label="Tìm hồ sơ"
+            />
+          </div>
         </div>
 
         {list.isError ? (
@@ -331,7 +365,7 @@ export const AdminApprovalsPage: React.FC<{ presetType?: 'AFFILIATE' | 'CLIENT' 
         onClose={() => setSelected(null)}
         title="Hồ sơ đăng ký"
         destroyOnHidden
-        styles={{ body: { background: '#F4F6FA', padding: 20 } }}
+        styles={{ body: { background: '#F5F7FA', padding: 20 } }}
         extra={
           selected &&
           isPending(selected.status) && (
@@ -343,7 +377,7 @@ export const AdminApprovalsPage: React.FC<{ presetType?: 'AFFILIATE' | 'CLIENT' 
                 type="primary"
                 icon={<CheckOutlined />}
                 onClick={() => setDecision('approve')}
-                className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm active:scale-[0.98] font-medium"
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
               >
                 Duyệt
               </Button>
@@ -362,7 +396,7 @@ export const AdminApprovalsPage: React.FC<{ presetType?: 'AFFILIATE' | 'CLIENT' 
         okButtonProps={{
           danger: decision === 'reject',
           loading: act.isPending,
-          className: decision === 'approve' ? 'bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm active:scale-[0.98] font-medium' : undefined,
+          className: decision === 'approve' ? 'bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium' : undefined,
         }}
         onCancel={() => setDecision(null)}
         onOk={() => form.submit()}

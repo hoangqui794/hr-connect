@@ -369,10 +369,10 @@ export const UserAuthorizationTab: React.FC<UserAuthorizationTabProps> = ({ user
         {/* Tier 1: Title and Actions (Never wrap) */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="font-bold text-slate-900 text-sm tracking-tight whitespace-nowrap">
+            <span className="font-semibold text-[#111827] text-sm tracking-tight whitespace-nowrap">
               Vai trò đang kích hoạt
             </span>
-            <span className="inline-flex items-center justify-center h-5 px-2 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200/80 tabular-nums">
+            <span className="inline-flex items-center justify-center h-5 px-2 rounded-full text-xs font-medium bg-[#ECEFF4] text-[#4B5565] border border-black/[0.08] tabular-nums">
               {assignedRoles.filter((r) => r.status === 'ACTIVE').length}
             </span>
           </div>
@@ -394,10 +394,10 @@ export const UserAuthorizationTab: React.FC<UserAuthorizationTabProps> = ({ user
                     resetForm.resetFields();
                     setResetModalOpen(true);
                   }}
-                  className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-solid text-xs transition-all whitespace-nowrap ${
+                  className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-solid text-xs transition-[background-color,border-color,color] duration-150 whitespace-nowrap ${
                     activeCustomRoles.length > 0
-                      ? 'border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold shadow-2xs cursor-pointer'
-                      : 'border-slate-200 bg-slate-50 text-slate-400 font-medium cursor-not-allowed opacity-75'
+                      ? 'border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-medium cursor-pointer'
+                      : 'border-black/[0.08] bg-[#F9FAFC] text-slate-400 font-medium cursor-not-allowed opacity-75'
                   }`}
                 >
                   <UndoOutlined className={activeCustomRoles.length > 0 ? 'text-xs text-amber-600' : 'text-xs text-slate-400'} />
@@ -409,7 +409,7 @@ export const UserAuthorizationTab: React.FC<UserAuthorizationTabProps> = ({ user
               <button
                 type="button"
                 onClick={() => setAssignModalOpen(true)}
-                className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-lg border-0 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white text-xs font-semibold shadow-xs hover:shadow-sm transition-all cursor-pointer whitespace-nowrap"
+                className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-lg border-0 bg-[color:var(--console-accent)] hover:bg-[color:var(--console-accent-strong)] text-white text-xs font-medium transition-[background-color] duration-150 cursor-pointer whitespace-nowrap"
               >
                 <PlusOutlined className="text-xs" />
                 <span>Gán vai trò</span>
@@ -451,10 +451,10 @@ export const UserAuthorizationTab: React.FC<UserAuthorizationTabProps> = ({ user
               return (
                 <div
                   key={role.roleId}
-                  className={`rounded-xl border border-solid transition-all p-3.5 ${
+                  className={`rounded-xl border border-solid transition-[background-color,border-color] duration-150 p-3.5 ${
                     isActive
-                      ? 'border-slate-200/90 bg-gradient-to-r from-white to-slate-50/60 hover:border-slate-300 hover:shadow-2xs'
-                      : 'border-slate-200 bg-slate-50/70 opacity-60'
+                      ? 'border-black/[0.08] bg-white hover:border-black/[0.16] hover:bg-[#F9FAFC]'
+                      : 'border-black/[0.06] bg-[#F9FAFC] opacity-60'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -467,7 +467,7 @@ export const UserAuthorizationTab: React.FC<UserAuthorizationTabProps> = ({ user
                       {/* Info */}
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-bold text-slate-900 text-sm tracking-tight">{role.roleName}</span>
+                          <span className="font-semibold text-[#111827] text-sm tracking-tight">{role.roleName}</span>
                           <span className="font-mono text-[11px] font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.2 rounded">
                             {role.roleCode}
                           </span>
@@ -548,10 +548,10 @@ export const UserAuthorizationTab: React.FC<UserAuthorizationTabProps> = ({ user
       <div className="rounded-xl border border-solid border-slate-200/90 bg-white p-4 shadow-2xs">
         <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-0 border-b border-solid border-slate-100">
           <div>
-            <div className="font-bold text-slate-900 text-sm flex items-center gap-2">
+            <div className="font-semibold text-[#111827] text-sm flex items-center gap-2">
               <SafetyCertificateOutlined className="text-emerald-600" />
               <span>Quyền hạn thực tế</span>
-              <span className="inline-flex items-center justify-center h-5 px-2 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200/80 tabular-nums">
+              <span className="inline-flex items-center justify-center h-5 px-2 rounded-full text-xs font-medium bg-[#ECEFF4] text-[#4B5565] border border-black/[0.08] tabular-nums">
                 {effectivePerms.length}
               </span>
             </div>
@@ -577,14 +577,14 @@ export const UserAuthorizationTab: React.FC<UserAuthorizationTabProps> = ({ user
             rowKey="permissionId"
             size="small"
             pagination={{ pageSize: 8, showSizeChanger: false, hideOnSinglePage: true }}
-            className="admin-soft-table [&_.ant-table-thead>tr>th]:!bg-slate-50/80 [&_.ant-table-thead>tr>th]:!text-[11.5px] [&_.ant-table-thead>tr>th]:!font-bold [&_.ant-table-thead>tr>th]:!text-slate-600"
+            className="admin-soft-table"
           />
         </div>
       </div>
 
       {/* ── Modal: Assign Role ───────────────────────────────────────────── */}
       <Modal
-        title={<span className="font-bold text-slate-900 text-[16px]">Gán vai trò cho {userEmail}</span>}
+        title={<span className="font-semibold text-[#111827] text-[16px]">Gán vai trò cho {userEmail}</span>}
         open={assignModalOpen}
         onCancel={() => setAssignModalOpen(false)}
         footer={null}
@@ -646,7 +646,7 @@ export const UserAuthorizationTab: React.FC<UserAuthorizationTabProps> = ({ user
 
       {/* ── Modal: Revoke Role ───────────────────────────────────────────── */}
       <Modal
-        title={<span className="font-bold text-slate-900 text-[16px]">Thu hồi vai trò: {revokeRole?.roleName}</span>}
+        title={<span className="font-semibold text-[#111827] text-[16px]">Thu hồi vai trò: {revokeRole?.roleName}</span>}
         open={Boolean(revokeRole)}
         onCancel={() => setRevokeRole(null)}
         footer={null}
@@ -701,7 +701,7 @@ export const UserAuthorizationTab: React.FC<UserAuthorizationTabProps> = ({ user
 
       {/* ── Modal: Reactivate Role ───────────────────────────────────────── */}
       <Modal
-        title={<span className="font-bold text-slate-900 text-[16px]">Kích hoạt lại vai trò: {reactivateRole?.roleName}</span>}
+        title={<span className="font-semibold text-[#111827] text-[16px]">Kích hoạt lại vai trò: {reactivateRole?.roleName}</span>}
         open={Boolean(reactivateRole)}
         onCancel={() => setReactivateRole(null)}
         footer={null}
@@ -756,7 +756,7 @@ export const UserAuthorizationTab: React.FC<UserAuthorizationTabProps> = ({ user
       {/* ── Modal: Reset to Default Roles ─────────────────────────────────── */}
       <Modal
         title={
-          <span className="font-bold text-slate-900 text-[16px] flex items-center gap-2">
+          <span className="font-semibold text-[#111827] text-[16px] flex items-center gap-2">
             <UndoOutlined className="text-amber-600" />
             <span>Khôi phục quyền mặc định</span>
           </span>

@@ -270,7 +270,7 @@ export const AdminUsersPage: React.FC = () => {
   const v = (q: { data?: number; isLoading: boolean }) => (q.isLoading ? '…' : q.data ?? '—');
 
   return (
-    <div className="space-y-6">
+    <div className="admin-stagger space-y-5">
       <PageHero
         eyebrow="Vận hành"
         title="Quản lý Người dùng & Phân quyền"
@@ -280,7 +280,7 @@ export const AdminUsersPage: React.FC = () => {
             icon={<ReloadOutlined spin={list.isFetching && !list.isLoading} />}
             loading={list.isFetching && !list.isLoading}
             onClick={() => list.refetch()}
-            className="rounded-lg font-medium"
+            className="rounded-lg font-medium active:scale-[0.985] transition-transform duration-100"
           >
             Làm mới
           </Button>
@@ -288,37 +288,37 @@ export const AdminUsersPage: React.FC = () => {
       />
 
       {/* ── KPI Tiles ────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {/* Card: Tất cả tài khoản */}
         <div
           role="button"
           tabIndex={0}
           onClick={() => setParam('status', undefined)}
           onKeyDown={(e) => e.key === 'Enter' && setParam('status', undefined)}
-          className={`cursor-pointer select-none rounded-xl border border-solid p-4 transition-all duration-200 shadow-xs hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:scale-[0.99] ${
+          className={`cursor-pointer select-none rounded-xl border border-solid p-4 transition-[background-color,border-color,box-shadow,transform] duration-150 active:scale-[0.985] ${
             !params.status
-              ? 'border-2 border-[#0284C7] bg-sky-50/50 text-sky-950 ring-2 ring-[#0284C7]/20 shadow-sm'
-              : 'border-slate-200/90 bg-white text-slate-900 hover:border-sky-300 hover:bg-slate-50/70'
+              ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent-soft)]/50 text-[#111827] shadow-[0_0_0_1px_var(--console-accent)]'
+              : 'border-black/[0.08] bg-white text-[#111827] hover:border-black/[0.18] hover:bg-[#F9FAFC]'
           }`}
         >
           <div className="flex items-center justify-between">
             <span
-              className={`text-xs font-semibold uppercase tracking-wider ${
-                !params.status ? 'text-[#0369A1]' : 'text-slate-500'
+              className={`text-xs font-medium ${
+                !params.status ? 'text-[color:var(--console-accent-strong)]' : 'text-[#6B7487]'
               }`}
             >
               Tất cả tài khoản
             </span>
             <div className="flex items-center gap-1.5">
               {!params.status && (
-                <span className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[10.5px] font-semibold text-sky-700">
+                <span className="rounded-full bg-[color:var(--console-accent-soft)] px-2 py-0.5 text-[10.5px] font-medium text-[color:var(--console-accent-strong)]">
                   Đang lọc
                 </span>
               )}
-              <InboxOutlined className={`text-base ${!params.status ? 'text-[#0284C7]' : 'text-slate-400'}`} />
+              <InboxOutlined className={`text-base ${!params.status ? 'text-[color:var(--console-accent)]' : 'text-[#6B7487]'}`} />
             </div>
           </div>
-          <div className={`mt-2 text-2xl font-extrabold tabular-nums ${!params.status ? 'text-[#0284C7]' : 'text-slate-900'}`}>
+          <div className={`mt-2 text-[28px] leading-none font-semibold tabular-nums tracking-[-0.025em] ${!params.status ? 'text-[color:var(--console-accent-strong)]' : 'text-[#111827]'}`}>
             {v(totalAll)}
           </div>
         </div>
@@ -329,30 +329,30 @@ export const AdminUsersPage: React.FC = () => {
           tabIndex={0}
           onClick={() => setParam('status', 'ACTIVE')}
           onKeyDown={(e) => e.key === 'Enter' && setParam('status', 'ACTIVE')}
-          className={`cursor-pointer select-none rounded-xl border border-solid p-4 transition-all duration-200 shadow-xs hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:scale-[0.99] ${
+          className={`cursor-pointer select-none rounded-xl border border-solid p-4 transition-[background-color,border-color,box-shadow,transform] duration-150 active:scale-[0.985] ${
             params.status === 'ACTIVE'
-              ? 'border-2 border-emerald-600 bg-emerald-50/80 text-emerald-950 ring-2 ring-emerald-500/20 shadow-sm'
-              : 'border-emerald-200 bg-emerald-50/40 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-50/70'
+              ? 'border-emerald-600 bg-emerald-50/70 text-emerald-950 shadow-[0_0_0_1px_#059669]'
+              : 'border-emerald-200/90 bg-emerald-50/30 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-50/60'
           }`}
         >
           <div className="flex items-center justify-between">
             <span
-              className={`text-xs font-semibold uppercase tracking-wider ${
-                params.status === 'ACTIVE' ? 'text-emerald-900 font-bold' : 'text-emerald-700'
+              className={`text-xs font-medium ${
+                params.status === 'ACTIVE' ? 'text-emerald-900 font-semibold' : 'text-emerald-700'
               }`}
             >
               Đang hoạt động
             </span>
             <div className="flex items-center gap-1.5">
               {params.status === 'ACTIVE' && (
-                <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10.5px] font-semibold text-emerald-800">
+                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10.5px] font-medium text-emerald-800">
                   Đang lọc
                 </span>
               )}
               <CheckCircleOutlined className={`text-base ${params.status === 'ACTIVE' ? 'text-emerald-700' : 'text-emerald-600'}`} />
             </div>
           </div>
-          <div className={`mt-2 text-2xl font-extrabold tabular-nums ${params.status === 'ACTIVE' ? 'text-emerald-700' : 'text-emerald-800'}`}>
+          <div className={`mt-2 text-[28px] leading-none font-semibold tabular-nums tracking-[-0.025em] ${params.status === 'ACTIVE' ? 'text-emerald-800' : 'text-emerald-700'}`}>
             {v(totalActive)}
           </div>
         </div>
@@ -363,30 +363,30 @@ export const AdminUsersPage: React.FC = () => {
           tabIndex={0}
           onClick={() => setParam('status', 'PENDING')}
           onKeyDown={(e) => e.key === 'Enter' && setParam('status', 'PENDING')}
-          className={`cursor-pointer select-none rounded-xl border border-solid p-4 transition-all duration-200 shadow-xs hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:scale-[0.99] ${
+          className={`cursor-pointer select-none rounded-xl border border-solid p-4 transition-[background-color,border-color,box-shadow,transform] duration-150 active:scale-[0.985] ${
             params.status === 'PENDING'
-              ? 'border-2 border-amber-500 bg-amber-50/80 text-amber-950 ring-2 ring-amber-500/20 shadow-sm'
-              : 'border-amber-200 bg-amber-50/40 text-amber-800 hover:border-amber-300 hover:bg-amber-50/70'
+              ? 'border-amber-600 bg-amber-50/70 text-amber-950 shadow-[0_0_0_1px_#d97706]'
+              : 'border-amber-200/90 bg-amber-50/30 text-amber-800 hover:border-amber-300 hover:bg-amber-50/60'
           }`}
         >
           <div className="flex items-center justify-between">
             <span
-              className={`text-xs font-semibold uppercase tracking-wider ${
-                params.status === 'PENDING' ? 'text-amber-900 font-bold' : 'text-amber-700'
+              className={`text-xs font-medium ${
+                params.status === 'PENDING' ? 'text-amber-900 font-semibold' : 'text-amber-700'
               }`}
             >
               Chờ kích hoạt
             </span>
             <div className="flex items-center gap-1.5">
               {params.status === 'PENDING' && (
-                <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10.5px] font-semibold text-amber-800">
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10.5px] font-medium text-amber-800">
                   Đang lọc
                 </span>
               )}
               <ThunderboltOutlined className={`text-base ${params.status === 'PENDING' ? 'text-amber-700' : 'text-amber-600'}`} />
             </div>
           </div>
-          <div className={`mt-2 text-2xl font-extrabold tabular-nums ${params.status === 'PENDING' ? 'text-amber-700' : 'text-amber-800'}`}>
+          <div className={`mt-2 text-[28px] leading-none font-semibold tabular-nums tracking-[-0.025em] ${params.status === 'PENDING' ? 'text-amber-800' : 'text-amber-700'}`}>
             {v(totalPending)}
           </div>
         </div>
@@ -397,38 +397,38 @@ export const AdminUsersPage: React.FC = () => {
           tabIndex={0}
           onClick={() => setParam('status', 'SUSPENDED')}
           onKeyDown={(e) => e.key === 'Enter' && setParam('status', 'SUSPENDED')}
-          className={`cursor-pointer select-none rounded-xl border border-solid p-4 transition-all duration-200 shadow-xs hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:scale-[0.99] ${
+          className={`cursor-pointer select-none rounded-xl border border-solid p-4 transition-[background-color,border-color,box-shadow,transform] duration-150 active:scale-[0.985] ${
             params.status === 'SUSPENDED'
-              ? 'border-2 border-rose-500 bg-rose-50/80 text-rose-950 ring-2 ring-rose-500/20 shadow-sm'
-              : 'border-rose-200 bg-rose-50/40 text-rose-800 hover:border-rose-300 hover:bg-rose-50/70'
+              ? 'border-rose-600 bg-rose-50/70 text-rose-950 shadow-[0_0_0_1px_#e11d48]'
+              : 'border-rose-200/90 bg-rose-50/30 text-rose-800 hover:border-rose-300 hover:bg-rose-50/60'
           }`}
         >
           <div className="flex items-center justify-between">
             <span
-              className={`text-xs font-semibold uppercase tracking-wider ${
-                params.status === 'SUSPENDED' ? 'text-rose-900 font-bold' : 'text-rose-700'
+              className={`text-xs font-medium ${
+                params.status === 'SUSPENDED' ? 'text-rose-900 font-semibold' : 'text-rose-700'
               }`}
             >
               Tạm khóa
             </span>
             <div className="flex items-center gap-1.5">
               {params.status === 'SUSPENDED' && (
-                <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-[10.5px] font-semibold text-rose-800">
+                <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10.5px] font-medium text-rose-800">
                   Đang lọc
                 </span>
               )}
               <StopOutlined className={`text-base ${params.status === 'SUSPENDED' ? 'text-rose-700' : 'text-rose-600'}`} />
             </div>
           </div>
-          <div className={`mt-2 text-2xl font-extrabold tabular-nums ${params.status === 'SUSPENDED' ? 'text-rose-700' : 'text-rose-800'}`}>
+          <div className={`mt-2 text-[28px] leading-none font-semibold tabular-nums tracking-[-0.025em] ${params.status === 'SUSPENDED' ? 'text-rose-800' : 'text-rose-700'}`}>
             {v(totalSuspended)}
           </div>
         </div>
       </div>
 
       {/* ── Table Surface ────────────────────────────────────────────────── */}
-      <Surface padded className="space-y-4">
-        <div key={searchParams.toString()} className="flex flex-wrap items-center justify-between gap-3">
+      <Surface className="overflow-hidden">
+        <div key={searchParams.toString()} className="flex flex-wrap items-center justify-between gap-3 border-0 border-b border-solid border-black/[0.08] bg-[#F9FAFC] px-5 py-3.5">
           <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto flex-1">
             <div className="w-full sm:w-72">
               <Input
@@ -453,7 +453,7 @@ export const AdminUsersPage: React.FC = () => {
             />
           </div>
           {page && (
-            <span className="text-xs text-slate-500 tabular-nums">
+            <span className="font-mono text-xs text-[#6B7487] tabular-nums">
               Hiển thị {page.items.length} / {page.total} tài khoản
             </span>
           )}
@@ -471,7 +471,7 @@ export const AdminUsersPage: React.FC = () => {
         ) : (
           <div className="overflow-x-auto">
             <Table<AdminUserListItem>
-              className="admin-soft-table w-full [&_.ant-table-thead>tr>th]:!bg-slate-50/80 [&_.ant-table-thead>tr>th]:!text-[12px] [&_.ant-table-thead>tr>th]:!font-bold [&_.ant-table-thead>tr>th]:!text-slate-600"
+              className="admin-soft-table w-full"
               rowKey="userId"
               loading={list.isLoading}
               columns={columns}
@@ -504,7 +504,7 @@ export const AdminUsersPage: React.FC = () => {
             <div className="flex items-center gap-3">
               <Initials name={user.displayName || user.email} size={36} />
               <div className="min-w-0 flex-1">
-                <div className="font-bold text-slate-900 text-sm truncate">{user.displayName || user.email}</div>
+                <div className="font-semibold text-[#111827] text-sm truncate">{user.displayName || user.email}</div>
                 <div className="text-xs text-slate-500 truncate">{user.email}</div>
               </div>
             </div>
@@ -549,13 +549,13 @@ export const AdminUsersPage: React.FC = () => {
                       <div className="rounded-xl border border-solid border-slate-200 bg-slate-50/60 p-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
-                            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Trạng thái</span>
+                            <span className="text-xs font-medium text-[#6B7487]">Trạng thái</span>
                             <div className="mt-1">
                               <UserState user={user} />
                             </div>
                           </div>
                           <div>
-                            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Vai trò</span>
+                            <span className="text-xs font-medium text-[#6B7487]">Vai trò</span>
                             <div className="mt-1">
                               <RoleChips roles={user.roles} />
                             </div>
@@ -663,7 +663,7 @@ export const AdminUsersPage: React.FC = () => {
       {/* ── Suspend Modal ────────────────────────────────────────────────── */}
       <Modal
         open={suspendOpen}
-        title={<span className="text-base font-bold text-slate-900">Tạm khóa tài khoản người dùng</span>}
+        title={<span className="text-base font-semibold text-[#111827]">Tạm khóa tài khoản người dùng</span>}
         okText="Xác nhận tạm khóa"
         cancelText="Hủy"
         okButtonProps={{ danger: true, loading: changeStatus.isPending }}

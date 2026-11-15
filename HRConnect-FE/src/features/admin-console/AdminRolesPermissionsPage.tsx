@@ -625,7 +625,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
     q.isLoading ? '…' : (q.data as any)?.[key] ?? '—';
 
   return (
-    <div>
+    <div className="admin-stagger space-y-5">
       <PageHero
         eyebrow="Quản trị phân quyền RBAC"
         title="Vai trò & Danh mục quyền"
@@ -927,7 +927,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
       <Modal
         open={createRoleOpen}
         title={
-          <div className="flex items-center gap-2 text-base font-bold text-slate-900">
+          <div className="flex items-center gap-2 text-base font-semibold text-[#111827]">
             <SafetyCertificateOutlined className="text-emerald-600" />
             Tạo vai trò tùy chỉnh mới
           </div>
@@ -952,7 +952,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
             extra={
               roleCodeInput ? (
                 <span className="text-xs text-slate-500">
-                  Chuẩn hóa: <code className="font-bold text-emerald-700">{normalizeRoleCode(roleCodeInput)}</code>
+                  Chuẩn hóa: <code className="font-semibold text-emerald-700">{normalizeRoleCode(roleCodeInput)}</code>
                 </span>
               ) : (
                 'Chỉ chấp nhận chữ in hoa (A-Z), số (0-9) và gạch dưới (_).'
@@ -1164,7 +1164,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
                           <div key={resource} className="admin-surface p-4">
                             <div className="mb-3 flex items-center gap-2 border-0 border-b border-solid border-slate-100 pb-2">
                               <AppstoreOutlined className="text-slate-500" />
-                              <span className="font-bold uppercase tracking-wider text-slate-700 text-xs">
+                              <span className="font-semibold text-[#4B5565] text-xs">
                                 Phân hệ: {resource}
                               </span>
                               <Badge count={perms.length} style={{ backgroundColor: '#E2E8F0', color: '#475569' }} />
@@ -1402,7 +1402,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
       <Modal
         open={Boolean(editingPermission)}
         title={
-          <div className="flex items-center gap-2 font-bold text-slate-900">
+          <div className="flex items-center gap-2 font-semibold text-[#111827]">
             <KeyOutlined className="text-blue-600" />
             Cập nhật Quyền hạn
           </div>
@@ -1425,7 +1425,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
             <div className="mb-4 rounded-lg bg-slate-50 p-3 text-sm">
               <div className="flex justify-between py-1">
                 <span className="text-slate-500">Mã quyền:</span>
-                <code className="font-bold text-slate-800">{editingPermission.code}</code>
+                <code className="font-semibold text-[#111827]">{editingPermission.code}</code>
               </div>
               <div className="flex justify-between py-1">
                 <span className="text-slate-500">Resource / Action:</span>

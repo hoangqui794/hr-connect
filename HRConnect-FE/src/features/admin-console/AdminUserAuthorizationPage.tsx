@@ -451,7 +451,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
   ];
 
   return (
-    <div>
+    <div className="admin-stagger space-y-5">
       <PageHero
         eyebrow="Quản trị truy cập"
         title="Quyền truy cập người dùng"
@@ -476,7 +476,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
       <Surface className="mb-6 p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex-1 min-w-[280px]">
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+            <label className="mb-1.5 block text-xs font-medium text-[#4B5565]">
               Chọn người dùng để kiểm tra & phân quyền
             </label>
             <Select
@@ -512,10 +512,10 @@ export const AdminUserAuthorizationPage: React.FC = () => {
                 <KeyOutlined className="text-base" />
               </div>
               <div className="space-y-0.5">
-                <div className="text-xs font-semibold uppercase tracking-wider text-blue-700">
+                <div className="text-xs font-medium text-blue-700">
                   Chưa chọn người dùng
                 </div>
-                <div className="font-bold text-slate-900 text-sm">Tra cứu vai trò hệ thống</div>
+                <div className="font-semibold text-[#111827] text-sm">Tra cứu vai trò hệ thống</div>
                 <div className="text-xs text-slate-500">
                   Chọn một người dùng để xem quyền thực tế và gán vai trò truy cập tùy chỉnh. Vai trò hệ thống bên dưới chỉ đọc và được cấp qua đúng quy trình nghiệp vụ.
                 </div>
@@ -527,7 +527,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
             <div className="flex items-center justify-between border-0 border-b border-solid border-slate-100 px-5 py-4">
               <div className="flex items-center gap-2">
                 <SafetyCertificateOutlined className="text-base text-blue-600" />
-                <span className="text-base font-bold text-slate-900">Vai trò hệ thống</span>
+                <span className="text-base font-semibold text-[#111827]">Vai trò hệ thống</span>
                 <Badge count={systemRolesQuery.data?.total ?? 0} style={{ backgroundColor: '#2563EB' }} />
               </div>
               <span className="text-xs text-slate-500">Dữ liệu trực tiếp từ hệ thống</span>
@@ -622,7 +622,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
                 <Initials name={authData.email} size={48} />
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-lg font-bold text-slate-900">{authData.email}</span>
+                    <span className="text-lg font-semibold text-[#111827]">{authData.email}</span>
                     <StatusDot tone={authData.status === 'ACTIVE' ? 'success' : 'danger'}>
                       {USER_STATUS_LABEL[authData.status] ?? authData.status}
                     </StatusDot>
@@ -680,7 +680,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
             <div className="flex items-center justify-between border-0 border-b border-solid border-slate-100 px-5 py-4">
               <div className="flex items-center gap-2">
                 <SafetyCertificateOutlined className="text-base text-emerald-600" />
-                <span className="text-base font-bold text-slate-900">Vai trò được gán</span>
+                <span className="text-base font-semibold text-[#111827]">Vai trò được gán</span>
                 <Badge
                   count={authData.roles?.length ?? 0}
                   style={{ backgroundColor: '#2563EB' }}
@@ -704,7 +704,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <KeyOutlined className="text-base text-blue-600" />
-                  <span className="text-base font-bold text-slate-900">Quyền hiệu lực tổng hợp</span>
+                  <span className="text-base font-semibold text-[#111827]">Quyền hiệu lực tổng hợp</span>
                   <Badge
                     count={authData.effectivePermissions?.length ?? 0}
                     style={{ backgroundColor: '#2563EB' }}
@@ -755,7 +755,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
       <Modal
         open={assignModalOpen}
         title={
-          <div className="flex items-center gap-2 text-base font-bold text-slate-900">
+          <div className="flex items-center gap-2 text-base font-semibold text-[#111827]">
             <PlusOutlined className="text-emerald-600" />
             Gán vai trò truy cập cho người dùng
           </div>
@@ -811,7 +811,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
       <Modal
         open={Boolean(revokeRole)}
         title={
-          <div className="flex items-center gap-2 text-base font-bold text-red-700">
+          <div className="flex items-center gap-2 text-base font-semibold text-red-700">
             <StopOutlined />
             Thu hồi vai trò truy cập
           </div>
@@ -860,7 +860,7 @@ export const AdminUserAuthorizationPage: React.FC = () => {
       <Modal
         open={Boolean(reactivateRole)}
         title={
-          <div className="flex items-center gap-2 text-base font-bold text-slate-900">
+          <div className="flex items-center gap-2 text-base font-semibold text-[#111827]">
             <CheckCircleOutlined className="text-emerald-600" />
             Kích hoạt lại vai trò truy cập
           </div>

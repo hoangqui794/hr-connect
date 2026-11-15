@@ -194,7 +194,7 @@ export const AdminDisputesPage: React.FC = () => {
   ];
 
   return (
-    <div>
+    <div className="admin-stagger space-y-5">
       <PageHero
         eyebrow="Vận hành"
         title="Xử lý khiếu nại"
@@ -270,7 +270,7 @@ export const AdminDisputesPage: React.FC = () => {
                       {STATUS_CONFIG[d.status]?.label || d.status}
                     </StatusDot>
                   </div>
-                  <h3 className="m-0 mt-2 text-lg font-bold text-slate-900">
+                  <h3 className="m-0 mt-2 text-lg font-semibold text-[#111827]">
                     Ứng viên: {d.candidateName || '—'}
                   </h3>
                   <div className="text-sm text-slate-600">Vị trí: {d.jobTitle || '—'}</div>
@@ -290,8 +290,8 @@ export const AdminDisputesPage: React.FC = () => {
             </div>
 
             {/* Complainant & Description */}
-            <div className="rounded-2xl border border-solid border-slate-200 bg-white p-5 shadow-sm space-y-3">
-              <h4 className="m-0 text-sm font-bold text-slate-900">Nội dung khiếu nại</h4>
+            <div className="rounded-xl border border-solid border-black/[0.08] bg-white p-5 space-y-3">
+              <h4 className="m-0 text-sm font-semibold text-[#111827]">Nội dung khiếu nại</h4>
               <div className="text-sm">
                 <span className="text-slate-500">Người khiếu nại: </span>
                 <span className="font-semibold text-slate-900">{d.raisedByAffiliateName || 'Cộng tác viên'}</span>
@@ -307,8 +307,8 @@ export const AdminDisputesPage: React.FC = () => {
             </div>
 
             {/* Submissions comparison */}
-            <div className="rounded-2xl border border-solid border-slate-200 bg-white p-5 shadow-sm space-y-3">
-              <h4 className="m-0 text-sm font-bold text-slate-900">
+            <div className="rounded-xl border border-solid border-black/[0.08] bg-white p-5 space-y-3">
+              <h4 className="m-0 text-sm font-semibold text-[#111827]">
                 Các lượt nộp của ứng viên ({d.submissions.length})
               </h4>
               <div className="space-y-2">
@@ -339,8 +339,8 @@ export const AdminDisputesPage: React.FC = () => {
 
             {/* Current Attribution */}
             {d.currentAttribution && (
-              <div className="rounded-2xl border border-solid border-slate-200 bg-white p-5 shadow-sm space-y-2">
-                <h4 className="m-0 text-sm font-bold text-slate-900">Người đang được ghi nhận nguồn</h4>
+              <div className="rounded-xl border border-solid border-black/[0.08] bg-white p-5 space-y-2">
+                <h4 className="m-0 text-sm font-semibold text-[#111827]">Người đang được ghi nhận nguồn</h4>
                 <div className="text-sm text-slate-700">
                   Ghi nhận cho CTV: <b>{d.currentAttribution.affiliateName || 'Cộng tác viên'}</b>
                 </div>
@@ -357,8 +357,8 @@ export const AdminDisputesPage: React.FC = () => {
 
             {/* Resolution Section */}
             {d.status === 'OPEN' ? (
-              <div className="rounded-2xl border border-solid border-blue-200 bg-white p-5 shadow-sm space-y-4">
-                <h4 className="m-0 text-base font-bold text-slate-900">Ra quyết định giải quyết</h4>
+              <div className="rounded-xl border border-solid border-blue-200 bg-white p-5 space-y-4">
+                <h4 className="m-0 text-base font-semibold text-[#111827]">Ra quyết định giải quyết</h4>
                 <Form
                   form={resolveForm}
                   layout="vertical"
@@ -409,8 +409,8 @@ export const AdminDisputesPage: React.FC = () => {
                 </Form>
               </div>
             ) : (
-              <div className="rounded-2xl border border-solid border-slate-200 bg-white p-5 shadow-sm space-y-2">
-                <h4 className="m-0 text-sm font-bold text-slate-900">Kết quả giải quyết</h4>
+              <div className="rounded-xl border border-solid border-black/[0.08] bg-white p-5 space-y-2">
+                <h4 className="m-0 text-sm font-semibold text-[#111827]">Kết quả giải quyết</h4>
                 <div className="text-sm">
                   Quyết định: <b>{d.status === 'UPHELD' ? 'Chấp thuận khiếu nại' : 'Từ chối khiếu nại'}</b>
                 </div>

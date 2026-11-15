@@ -337,7 +337,7 @@ export const AdminContactRequestsPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="admin-stagger space-y-5">
       <PageHero
         eyebrow="Quản lý liên hệ"
         title="Yêu cầu tư vấn dịch vụ"
@@ -359,14 +359,14 @@ export const AdminContactRequestsPage: React.FC = () => {
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-400">
             <LockOutlined className="text-3xl" />
           </div>
-          <h3 className="mt-4 text-lg font-bold text-slate-900">
+          <h3 className="mt-4 text-lg font-semibold text-[#111827]">
             Bạn chưa được cấp quyền truy cập mục này
           </h3>
           <p className="mx-auto mt-2 max-w-md text-sm text-slate-500 leading-relaxed">
             Tài khoản của bạn hiện chưa được phân quyền quản lý yêu cầu liên hệ tư vấn. Vui lòng liên hệ Quản trị viên hệ thống để được hỗ trợ cấp quyền.
           </p>
           <div className="mt-6">
-            <Button onClick={() => window.history.back()} className="rounded-lg shadow-sm font-medium">
+            <Button onClick={() => window.history.back()} className="rounded-lg font-medium">
               Quay lại
             </Button>
           </div>
@@ -375,50 +375,50 @@ export const AdminContactRequestsPage: React.FC = () => {
         <>
           {/* Quick KPI Overview */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-xl border border-solid border-slate-200/90 bg-white p-4 shadow-xs">
+            <div className="rounded-xl border border-solid border-black/[0.08] bg-white p-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Tổng yêu cầu</span>
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600 text-xs">
+                <span className="text-xs font-medium text-[#6B7487]">Tổng yêu cầu</span>
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#ECEFF4] text-[#4B5565] text-xs">
                   <InboxOutlined />
                 </span>
               </div>
-              <div className="mt-2 text-2xl font-extrabold text-slate-900 tabular-nums">
+              <div className="mt-2 text-2xl font-semibold text-[#111827] tabular-nums tracking-[-0.02em]">
                 {kpiStats.total}
               </div>
             </div>
 
-            <div className="rounded-xl border border-solid border-amber-200 bg-amber-50/50 p-4 shadow-xs">
+            <div className="rounded-xl border border-solid border-amber-200/90 bg-amber-50/40 p-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-amber-800">Cần phản hồi</span>
+                <span className="text-xs font-medium text-amber-800">Cần phản hồi</span>
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-700 text-xs">
                   <ThunderboltOutlined />
                 </span>
               </div>
-              <div className="mt-2 text-2xl font-extrabold text-amber-700 tabular-nums">
+              <div className="mt-2 text-2xl font-semibold text-amber-700 tabular-nums tracking-[-0.02em]">
                 {kpiStats.newCount}
               </div>
             </div>
 
-            <div className="rounded-xl border border-solid border-sky-200 bg-sky-50/50 p-4 shadow-xs">
+            <div className="rounded-xl border border-solid border-blue-200/90 bg-blue-50/40 p-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-sky-800">Đã liên hệ</span>
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-100 text-sky-700 text-xs">
+                <span className="text-xs font-medium text-blue-800">Đã liên hệ</span>
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 text-blue-700 text-xs">
                   <PhoneOutlined />
                 </span>
               </div>
-              <div className="mt-2 text-2xl font-extrabold text-sky-700 tabular-nums">
+              <div className="mt-2 text-2xl font-semibold text-blue-700 tabular-nums tracking-[-0.02em]">
                 {kpiStats.contactedCount}
               </div>
             </div>
 
-            <div className="rounded-xl border border-solid border-slate-200 bg-slate-50/60 p-4 shadow-xs">
+            <div className="rounded-xl border border-solid border-black/[0.08] bg-[#F9FAFC] p-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Đã đóng</span>
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-200 text-slate-600 text-xs">
+                <span className="text-xs font-medium text-[#6B7487]">Đã đóng</span>
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#ECEFF4] text-[#4B5565] text-xs">
                   <CheckSquareOutlined />
                 </span>
               </div>
-              <div className="mt-2 text-2xl font-extrabold text-slate-700 tabular-nums">
+              <div className="mt-2 text-2xl font-semibold text-[#4B5565] tabular-nums tracking-[-0.02em]">
                 {kpiStats.closedCount}
               </div>
             </div>
@@ -443,10 +443,10 @@ export const AdminContactRequestsPage: React.FC = () => {
                       key={opt.value}
                       type="button"
                       onClick={() => handleStatusChangeFilter(opt.value)}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border border-solid ${
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-[background-color,border-color,color] duration-150 cursor-pointer border border-solid ${
                         active
-                          ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
-                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
+                          ? 'bg-[color:var(--console-accent)] text-white border-[color:var(--console-accent)]'
+                          : 'bg-white text-[#4B5565] border-black/[0.08] hover:bg-[#ECEFF4] hover:text-[#111827]'
                       }`}
                     >
                       <span>{opt.label}</span>
@@ -482,7 +482,7 @@ export const AdminContactRequestsPage: React.FC = () => {
                   onChange: handlePageChange,
                   showSizeChanger: false,
                 }}
-                className="admin-soft-table w-full [&_.ant-table-thead>tr>th]:!bg-slate-50/80 [&_.ant-table-thead>tr>th]:!text-[12px] [&_.ant-table-thead>tr>th]:!font-bold [&_.ant-table-thead>tr>th]:!text-slate-600"
+                className="admin-soft-table w-full"
               />
             </div>
           </Surface>
@@ -493,7 +493,7 @@ export const AdminContactRequestsPage: React.FC = () => {
       <Drawer
         title={
           <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-900">Chi tiết yêu cầu tư vấn</span>
+            <span className="font-semibold text-[#111827]">Chi tiết yêu cầu tư vấn</span>
             {detailItem && (
               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border border-solid ${SERVICE_INTEREST_LABELS[detailItem.serviceInterest]?.badgeStyle || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
                 {SERVICE_INTEREST_LABELS[detailItem.serviceInterest]?.label || detailItem.serviceInterest}
@@ -527,7 +527,7 @@ export const AdminContactRequestsPage: React.FC = () => {
             <div className="rounded-xl border border-solid border-slate-200 bg-slate-50 p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  <div className="text-xs font-medium text-[#6B7487]">
                     Trạng thái hiện tại
                   </div>
                   <div className="mt-1">
@@ -586,17 +586,17 @@ export const AdminContactRequestsPage: React.FC = () => {
 
             {/* Customer Message */}
             <div>
-              <div className="mb-2 font-bold text-slate-900 text-sm">Nội dung yêu cầu từ khách:</div>
-              <div className="rounded-xl border border-solid border-sky-100 bg-sky-50/50 p-4 text-sm leading-relaxed text-slate-800 whitespace-pre-wrap">
+              <div className="mb-2 font-semibold text-[#111827] text-sm">Nội dung yêu cầu từ khách:</div>
+              <div className="rounded-xl border border-solid border-blue-100 bg-blue-50/40 p-4 text-sm leading-relaxed text-[#111827] whitespace-pre-wrap">
                 {detailItem.message}
               </div>
             </div>
 
             {/* Internal Note */}
             <div>
-              <div className="mb-2 font-bold text-slate-900 text-sm">Ghi chú nội bộ:</div>
+              <div className="mb-2 font-semibold text-[#111827] text-sm">Ghi chú nội bộ:</div>
               {detailItem.note ? (
-                <div className="rounded-xl border border-solid border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 whitespace-pre-wrap">
+                <div className="rounded-xl border border-solid border-black/[0.08] bg-[#F9FAFC] p-4 text-sm text-[#4B5565] whitespace-pre-wrap">
                   {detailItem.note}
                 </div>
               ) : (
@@ -611,7 +611,7 @@ export const AdminContactRequestsPage: React.FC = () => {
 
       {/* Status & Note Update Modal */}
       <Modal
-        title={<span className="text-[17px] font-bold text-slate-900">Cập nhật trạng thái xử lý</span>}
+        title={<span className="text-[17px] font-semibold text-[#111827]">Cập nhật trạng thái xử lý</span>}
         open={Boolean(statusModalItem)}
         onCancel={() => setStatusModalItem(null)}
         footer={null}

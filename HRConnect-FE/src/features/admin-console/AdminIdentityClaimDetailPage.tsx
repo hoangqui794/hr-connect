@@ -99,7 +99,7 @@ const CandidateEvidence: React.FC<{
 }> = ({ title, candidate, recommended, loadingCv, onViewCv }) => (
   <Surface padded className="h-full">
     <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-      <h2 className="m-0 text-base font-bold text-slate-900">{title}</h2>
+      <h2 className="m-0 text-base font-semibold text-[#111827]">{title}</h2>
       {recommended && <Tag color="green" icon={<SafetyCertificateOutlined />}>Hồ sơ chính được đề xuất</Tag>}
     </div>
     {!candidate ? (
@@ -321,16 +321,16 @@ export const AdminIdentityClaimDetailPage: React.FC = () => {
         <Surface padded className="mb-5">
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="m-0 text-base font-bold text-slate-900">Bằng chứng xác định cùng một người</h2>
-              <p className="mb-0 mt-1 text-sm text-slate-500">Email đã xác minh là bằng chứng chính; điện thoại, ngày sinh và dấu vân tay CV chỉ là tín hiệu hỗ trợ.</p>
+              <h2 className="m-0 text-base font-semibold text-[#111827]">Bằng chứng xác định cùng một người</h2>
+              <p className="mb-0 mt-1 text-sm text-[#6B7487]">Email đã xác minh là bằng chứng chính; điện thoại, ngày sinh và dấu vân tay CV chỉ là tín hiệu hỗ trợ.</p>
             </div>
             <Tag color={claim.evidence.conflictingSignalCount > 0 ? 'red' : 'green'}>
               {claim.evidence.supportingSignalCount} tín hiệu phù hợp · {claim.evidence.conflictingSignalCount} xung đột
             </Tag>
           </div>
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <div className="overflow-x-auto rounded-xl border border-black/[0.08]">
             <table className="w-full min-w-[760px] border-collapse text-left text-sm">
-              <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <thead className="bg-[#F9FAFC] text-xs font-medium text-[#4B5565]">
                 <tr>
                   <th className="px-4 py-3">Tiêu chí</th>
                   <th className="px-4 py-3">Hồ sơ hiện tại</th>
@@ -478,7 +478,7 @@ export const AdminIdentityClaimDetailPage: React.FC = () => {
       </div>
 
       <Surface padded>
-        <h2 className="m-0 mb-3 text-base font-bold text-slate-900">Chủ sở hữu email hiện tại</h2>
+        <h2 className="m-0 mb-3 text-base font-semibold text-[#111827]">Chủ sở hữu email hiện tại</h2>
         {claim.currentEmailOwner ? (
           <Descriptions size="small" column={{ xs: 1, md: 2 }}>
             <Descriptions.Item label="Tên hiển thị">{claim.currentEmailOwner.displayName}</Descriptions.Item>

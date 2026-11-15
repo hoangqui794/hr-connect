@@ -129,12 +129,12 @@ const SettingRow: React.FC<{
   const long = s.description.length > LONG_DESCRIPTION;
 
   return (
-    <li className="rounded-xl border border-solid border-slate-200/90 bg-white p-4 sm:p-5 shadow-2xs hover:border-slate-300 hover:shadow-xs transition-all">
+    <li className="rounded-xl border border-solid border-black/[0.08] bg-white p-4 sm:p-5 hover:border-black/[0.16] transition-[border-color] duration-150">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-5">
         {/* Left: Thông tin & Quy định chi tiết */}
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2.5">
-            <span className="text-[16px] font-bold text-slate-900 tracking-tight">{s.label}</span>
+            <span className="text-[16px] font-semibold text-[#111827] tracking-tight">{s.label}</span>
             {s.isOverridden ? (
               <span className="inline-flex items-center rounded-full border border-solid border-amber-300 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
                 Đã đổi · mặc định {formatNumber(s.defaultValue)} {s.unit}
@@ -168,7 +168,7 @@ const SettingRow: React.FC<{
           {/* Quy định kỹ thuật & căn cứ */}
           <div className="flex flex-wrap items-center gap-2.5 text-xs text-slate-500 pt-1">
             <span className="inline-flex items-center rounded-md bg-slate-100/80 px-2.5 py-1 text-slate-700 font-medium">
-              Giới hạn:&nbsp;<strong className="text-slate-900 font-bold">{formatNumber(s.min)} – {formatNumber(s.max)} {s.unit}</strong>
+              Giới hạn:&nbsp;<strong className="text-[#111827] font-semibold">{formatNumber(s.min)} – {formatNumber(s.max)} {s.unit}</strong>
             </span>
             {s.source && (
               <span className="inline-flex items-center rounded-md bg-slate-50 px-2.5 py-1 text-slate-500 border border-solid border-slate-200/70">
@@ -188,25 +188,25 @@ const SettingRow: React.FC<{
         </div>
 
         {/* Right: Hộp Giá trị áp dụng & Nút hành động riêng biệt */}
-        <div className="flex lg:flex-col items-center justify-between lg:justify-center gap-3 shrink-0 rounded-xl border border-solid border-slate-200/90 bg-slate-50/80 px-5 py-3.5 min-w-[180px] text-center">
+        <div className="flex lg:flex-col items-center justify-between lg:justify-center gap-3 shrink-0 rounded-xl border border-solid border-black/[0.08] bg-[#F9FAFC] px-5 py-3.5 min-w-[180px] text-center">
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            <div className="text-[11.5px] font-medium text-[#6B7487]">
               Giá trị hiện tại
             </div>
-            <div className="mt-0.5 text-2xl font-black text-slate-900 tabular-nums tracking-tight">
+            <div className="mt-0.5 text-2xl font-semibold text-[#111827] tabular-nums tracking-[-0.02em]">
               {formatNumber(s.value)}{' '}
-              <span className="text-sm font-semibold text-slate-500">{s.unit}</span>
+              <span className="text-sm font-medium text-[#6B7487]">{s.unit}</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 w-full justify-center pt-1 border-0 lg:border-t border-solid border-slate-200/80">
+          <div className="flex items-center gap-2 w-full justify-center pt-1 border-0 lg:border-t border-solid border-black/[0.08]">
             {s.isOverridden && (
               <Tooltip title="Khôi phục về giá trị mặc định ban đầu theo tài liệu mô hình kinh doanh">
                 <button
                   type="button"
                   onClick={onRestore}
                   aria-label={`Khôi phục mặc định ${s.label}`}
-                  className="inline-flex items-center justify-center h-8 px-2.5 rounded-lg border border-solid border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 text-xs font-semibold cursor-pointer transition-colors shadow-2xs"
+                  className="inline-flex items-center justify-center h-8 px-2.5 rounded-lg border border-solid border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 text-xs font-medium cursor-pointer transition-colors"
                 >
                   Khôi phục
                 </button>
@@ -216,7 +216,7 @@ const SettingRow: React.FC<{
               type="button"
               onClick={onEdit}
               aria-label={`Sửa ${s.label}`}
-              className="inline-flex items-center justify-center gap-1.5 h-8 px-3.5 rounded-lg border border-solid border-slate-200 bg-white hover:bg-sky-50 hover:border-sky-300 text-slate-700 hover:text-sky-700 text-xs font-semibold cursor-pointer transition-all shadow-2xs"
+              className="inline-flex items-center justify-center gap-1.5 h-8 px-3.5 rounded-lg border border-solid border-black/[0.1] bg-white hover:bg-[color:var(--console-accent-soft)] hover:border-[color:var(--console-accent)]/40 text-[#111827] hover:text-[color:var(--console-accent-strong)] text-xs font-medium cursor-pointer transition-[background-color,border-color,color] duration-150"
             >
               <EditOutlined className="text-xs text-slate-400" />
               <span>Sửa</span>
@@ -315,7 +315,7 @@ export const AdminSettingsPage: React.FC = () => {
   }, [groups, filtering, activeGroupKey]);
 
   return (
-    <div className="space-y-6">
+    <div className="admin-stagger space-y-5">
       {/* ── Page Hero ──────────────────────────────────────────────────────── */}
       <PageHero
         eyebrow="Cấu hình nghiệp vụ"
@@ -335,44 +335,44 @@ export const AdminSettingsPage: React.FC = () => {
 
       {/* ── KPI Overview Cards (Sleek Typography, No distracting icons) ─── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-xl border border-solid border-slate-200 bg-white p-4 shadow-2xs">
-          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <div className="rounded-xl border border-solid border-black/[0.08] bg-white p-4">
+          <div className="text-xs font-medium text-[#6B7487]">
             Tổng thông số
           </div>
-          <div className="mt-2 text-2xl font-extrabold text-slate-900 tabular-nums">
+          <div className="mt-2 text-2xl font-semibold text-[#111827] tabular-nums tracking-[-0.02em]">
             {totalCount}
           </div>
-          <div className="mt-1 text-[11.5px] text-slate-400">10 phân hệ cấu hình</div>
+          <div className="mt-1 text-[11.5px] text-[#6B7487]">10 phân hệ cấu hình</div>
         </div>
 
-        <div className="rounded-xl border border-solid border-emerald-200 bg-emerald-50/50 p-4 shadow-2xs">
-          <div className="text-xs font-semibold uppercase tracking-wider text-emerald-800">
+        <div className="rounded-xl border border-solid border-emerald-200/90 bg-emerald-50/40 p-4">
+          <div className="text-xs font-medium text-emerald-800">
             Chuẩn mặc định
           </div>
-          <div className="mt-2 text-2xl font-extrabold text-emerald-700 tabular-nums">
+          <div className="mt-2 text-2xl font-semibold text-emerald-700 tabular-nums tracking-[-0.02em]">
             {defaultCount}
           </div>
-          <div className="mt-1 text-[11.5px] text-emerald-600">Theo mô hình kinh doanh</div>
+          <div className="mt-1 text-[11.5px] text-emerald-700">Theo mô hình kinh doanh</div>
         </div>
 
-        <div className="rounded-xl border border-solid border-amber-200 bg-amber-50/50 p-4 shadow-2xs">
-          <div className="text-xs font-semibold uppercase tracking-wider text-amber-800">
+        <div className="rounded-xl border border-solid border-amber-200/90 bg-amber-50/40 p-4">
+          <div className="text-xs font-medium text-amber-800">
             Đã tùy chỉnh
           </div>
-          <div className="mt-2 text-2xl font-extrabold text-amber-700 tabular-nums">
+          <div className="mt-2 text-2xl font-semibold text-amber-700 tabular-nums tracking-[-0.02em]">
             {changedCount}
           </div>
-          <div className="mt-1 text-[11.5px] text-amber-600">Admin đã tối ưu</div>
+          <div className="mt-1 text-[11.5px] text-amber-700">Admin đã tối ưu</div>
         </div>
 
-        <div className="rounded-xl border border-solid border-blue-200 bg-blue-50/50 p-4 shadow-2xs">
-          <div className="text-xs font-semibold uppercase tracking-wider text-blue-800">
+        <div className="rounded-xl border border-solid border-blue-200/90 bg-blue-50/40 p-4">
+          <div className="text-xs font-medium text-blue-800">
             Gói tin AP
           </div>
-          <div className="mt-2 text-2xl font-extrabold text-blue-700 tabular-nums">
+          <div className="mt-2 text-2xl font-semibold text-blue-700 tabular-nums tracking-[-0.02em]">
             Hoạt động
           </div>
-          <div className="mt-1 text-[11.5px] text-blue-600">Đăng tin & Hạn mức CV</div>
+          <div className="mt-1 text-[11.5px] text-blue-700">Đăng tin & Hạn mức CV</div>
         </div>
       </div>
 
@@ -397,9 +397,9 @@ export const AdminSettingsPage: React.FC = () => {
           {/* ── Left Sidebar Navigation (Clean Typography - zero icon clutter) ── */}
           <nav
             aria-label="Nhóm cài đặt"
-            className="sticky top-4 rounded-2xl border border-solid border-slate-200/90 bg-white p-2.5 shadow-2xs"
+            className="sticky top-4 rounded-xl border border-solid border-black/[0.08] bg-white p-2.5"
           >
-            <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            <div className="px-3 py-2 text-[11.5px] font-medium text-[#6B7487]">
               Danh mục cấu hình
             </div>
 
@@ -408,14 +408,14 @@ export const AdminSettingsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveGroupKey('ALL')}
-                className={`flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-xl border-0 px-3.5 py-2.5 text-left text-[13.5px] transition-all ${
+                className={`flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-lg border-0 px-3 py-2 text-left text-[13.5px] transition-[background-color,color] duration-150 ${
                   activeGroupKey === 'ALL'
-                    ? 'bg-sky-50 font-bold text-sky-700 border-l-4 border-solid border-sky-600 shadow-2xs'
-                    : 'bg-transparent font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                    ? 'bg-[color:var(--console-accent-soft)] font-medium text-[color:var(--console-accent-strong)]'
+                    : 'bg-transparent font-normal text-[#4B5565] hover:bg-[#ECEFF4] hover:text-[#111827]'
                 }`}
               >
                 <span className="truncate">Tất cả cài đặt</span>
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-slate-600">
+                <span className="rounded-full bg-[#ECEFF4] px-2 py-0.5 text-xs font-medium tabular-nums text-[#4B5565]">
                   {totalCount}
                 </span>
               </button>
@@ -428,21 +428,21 @@ export const AdminSettingsPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setActiveGroupKey(g.code)}
-                      className={`flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl border-0 px-3.5 py-2 text-left text-[13px] transition-all ${
+                      className={`flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg border-0 px-3 py-2 text-left text-[13px] transition-[background-color,color] duration-150 ${
                         isActive
-                          ? 'bg-sky-50 font-bold text-sky-700 border-l-4 border-solid border-sky-600 shadow-2xs'
-                          : 'bg-transparent font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                          ? 'bg-[color:var(--console-accent-soft)] font-medium text-[color:var(--console-accent-strong)]'
+                          : 'bg-transparent font-normal text-[#4B5565] hover:bg-[#ECEFF4] hover:text-[#111827]'
                       }`}
                     >
                       <span className="truncate">{g.title}</span>
-                      <span className="flex items-center gap-1.5 text-xs tabular-nums text-slate-500 shrink-0">
+                      <span className="flex items-center gap-1.5 text-xs tabular-nums text-[#6B7487] shrink-0">
                         {g.changed > 0 && (
                           <span
-                            className="h-2 w-2 rounded-full bg-amber-500 shadow-xs"
+                            className="h-2 w-2 rounded-full bg-amber-500"
                             title={`${g.changed} mục đã thay đổi`}
                           />
                         )}
-                        <span className="rounded bg-slate-100 px-1.5 py-0.2 text-[11px] font-semibold text-slate-600">
+                        <span className="rounded bg-[#ECEFF4] px-1.5 py-0.2 text-[11px] font-medium text-[#4B5565]">
                           {g.total}
                         </span>
                       </span>
@@ -453,10 +453,10 @@ export const AdminSettingsPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setActiveGroupKey(POSTING_PACKAGES_ID)}
-                        className={`flex w-full cursor-pointer items-center justify-between rounded-lg border-0 py-1.5 pl-7 pr-3 text-left text-[12.5px] transition-all ${
+                        className={`flex w-full cursor-pointer items-center justify-between rounded-lg border-0 py-1.5 pl-7 pr-3 text-left text-[12.5px] transition-[background-color,color] duration-150 ${
                           activeGroupKey === POSTING_PACKAGES_ID
-                            ? 'bg-blue-50 font-bold text-blue-700'
-                            : 'bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                            ? 'bg-[color:var(--console-accent-soft)] font-medium text-[color:var(--console-accent-strong)]'
+                            : 'bg-transparent text-[#4B5565] hover:bg-[#ECEFF4] hover:text-[#111827]'
                         }`}
                       >
                         <span className="truncate">Gói đăng tin AP</span>
@@ -549,10 +549,10 @@ export const AdminSettingsPage: React.FC = () => {
                           className="flex w-full cursor-pointer items-center justify-between gap-3 border-0 bg-slate-50/80 px-5 py-3.5 text-left transition-colors hover:bg-slate-100/70"
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <Tag color={g.color} className="!m-0 font-bold px-2 py-0.5 rounded text-xs">
+                            <Tag color={g.color} className="!m-0 font-medium px-2 py-0.5 rounded text-xs">
                               {g.tag}
                             </Tag>
-                            <span className="text-[15px] font-bold text-slate-900 truncate">
+                            <span className="text-[15px] font-semibold text-[#111827] truncate">
                               {g.title}
                             </span>
                             <span className="text-xs text-slate-500 font-medium">

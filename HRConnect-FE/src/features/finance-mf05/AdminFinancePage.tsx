@@ -7,7 +7,7 @@
  */
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App, Button, DatePicker, Dropdown, Form, Input, InputNumber, Modal, Pagination, Radio, Select, Spin, Tag, Tooltip } from 'antd';
+import { Alert, App, Button, DatePicker, Drawer, Dropdown, Form, Input, InputNumber, Modal, Pagination, Radio, Select, Spin, Tag, Tooltip } from 'antd';
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, ReloadOutlined, SwapOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useNavigate } from 'react-router-dom';
@@ -62,6 +62,11 @@ type Dialog =
   | { kind: 'cancel'; commission: Commission }
   | { kind: 'fee'; fee: ServiceFee }
   | null;
+type DetailItem =
+  | { kind: 'commission'; item: Commission }
+  | { kind: 'fee'; item: ServiceFee }
+  | { kind: 'payout'; item: Payout }
+  | null;
 
 const PAGE_SIZE = 20;
 
@@ -75,6 +80,7 @@ export const AdminFinancePage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' } | null>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
+  const [detail, setDetail] = useState<DetailItem>(null);
   const [form] = Form.useForm();
 
   const toggleSort = (key: string) => {
@@ -175,6 +181,7 @@ export const AdminFinancePage: React.FC = () => {
     getKey: (row: T) => string | number,
     loading: boolean,
     emptyText: string,
+    onRowClick?: (row: T) => void,
   ) => {
     const raw = rows ?? [];
     const activeSortCol = sort ? cols.find((c) => c.key === sort.key && c.sortBy) : undefined;
@@ -186,7 +193,7 @@ export const AdminFinancePage: React.FC = () => {
     // Below that width the table scrolls horizontally instead of squeezing columns together.
     const minWidth = cols.reduce((sum, c) => sum + (c.width ? parseInt(c.width, 10) : 200), 0);
     const cellAlign = (align?: 'left' | 'right' | 'center') =>
-      align === 'right' ? 'text-right pr-6' : align === 'center' ? 'text-center' : 'text-left';
+      align === 'right' ? 'text-right pr-4' : align === 'center' ? 'text-center' : 'text-left';
 
     return (
       <Spin spinning={loading}>
@@ -206,14 +213,18 @@ export const AdminFinancePage: React.FC = () => {
                       <th
                         key={col.key}
                         style={col.width ? { width: col.width } : undefined}
-                        className={`border-0 border-b border-solid border-[#eef2f6] bg-white px-3.5 py-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-slate-600 whitespace-nowrap ${alignCls}`}
+                        className={`border-0 border-b border-solid border-black/[0.08] bg-[#F9FAFC] px-3.5 py-3 text-[12px] font-medium tracking-[0.01em] text-[#4B5565] whitespace-nowrap ${alignCls}`}
                       >
                         {col.sortBy ? (
                           <button
                             type="button"
                             onClick={() => toggleSort(col.key)}
-                            className={`inline-flex items-center gap-1 uppercase hover:text-slate-800 transition-colors cursor-pointer ${
-                              col.align === 'right' ? 'flex-row-reverse' : ''
+                            className={`flex w-full items-center gap-1 hover:text-[#111827] transition-colors cursor-pointer bg-transparent border-0 p-0 ${
+                              col.align === 'right'
+                                ? 'justify-end'
+                                : col.align === 'center'
+                                  ? 'justify-center'
+                                  : 'justify-start'
                             }`}
                           >
                             <span>{col.title}</span>
@@ -231,11 +242,15 @@ export const AdminFinancePage: React.FC = () => {
               </thead>
               <tbody className="bg-white">
                 {sorted.map((row) => (
-                  <tr key={getKey(row)} className="transition-colors hover:bg-[#f8fafc] [&:last-child>td]:border-b-0">
+                  <tr
+                    key={getKey(row)}
+                    onClick={onRowClick ? () => onRowClick(row) : undefined}
+                    className={`group transition-colors duration-150 hover:bg-slate-50/90 [&:last-child>td]:border-b-0 ${onRowClick ? 'cursor-pointer' : ''}`}
+                  >
                     {cols.map((col) => {
                       const alignCls = cellAlign(col.align);
                       return (
-                        <td key={col.key} className={`border-0 border-b border-solid border-[#f1f5f9] px-3.5 py-3 align-middle text-slate-700 break-words ${alignCls}`}>
+                        <td key={col.key} className={`border-0 border-b border-solid border-slate-100 px-3.5 py-3 align-middle text-slate-700 break-words ${alignCls}`}>
                           {col.render(row)}
                         </td>
                       );
@@ -265,7 +280,7 @@ export const AdminFinancePage: React.FC = () => {
   const commissionColumns: SimpleCol<Commission>[] = [
     {
       key: 'who',
-      title: 'Ứng viên / Job',
+      title: 'Ứng viên / Job / Affiliate',
       render: (c) => {
         const isSourcing = Boolean(c.sourcingDeliveryId && !c.placementId);
         return (
@@ -276,66 +291,38 @@ export const AdminFinancePage: React.FC = () => {
                 {isSourcing ? 'CV Sourcing' : 'Headhunt'}
               </Tag>
             </div>
-            <Tooltip title={c.jobTitle ?? undefined}>
-              <div className="text-xs text-slate-500 line-clamp-2 mt-0.5">{c.jobTitle ?? '—'}</div>
+            <Tooltip title={[c.jobTitle, c.affiliateName].filter(Boolean).join(' · ') || undefined}>
+              <div className="text-xs text-slate-500 line-clamp-1 mt-0.5">
+                {c.jobTitle ?? '—'}
+                {c.affiliateName ? <span className="text-slate-400"> · {c.affiliateName}</span> : null}
+              </div>
             </Tooltip>
           </div>
         );
       },
     },
     {
-      key: 'affiliateName',
-      title: 'Affiliate',
-      width: '150px',
-      render: (c) => <span className="text-slate-800">{c.affiliateName ?? '—'}</span>,
-    },
-    {
       key: 'amount',
       title: 'Hoa hồng',
       align: 'right',
-      width: '140px',
-      render: (c) => <span className="font-semibold tabular-nums whitespace-nowrap">{money(c.amount)}</span>,
-    },
-    {
-      key: 'warrantyEndDate',
-      title: 'Hết bảo hành',
-      width: '130px',
-      sortBy: (a, b) => byDateDesc(b.warrantyEndDate, a.warrantyEndDate),
+      width: '135px',
+      sortBy: (a, b) => a.amount - b.amount,
       render: (c) => {
         const isSourcing = Boolean(c.sourcingDeliveryId && !c.placementId);
-        if (isSourcing && !c.warrantyEndDate) {
-          return <span className="text-xs text-slate-400 whitespace-nowrap">Không áp dụng</span>;
-        }
-        return <span className="tabular-nums whitespace-nowrap">{date(c.warrantyEndDate)}</span>;
-      },
-    },
-    {
-      key: 'approvedAt',
-      title: 'Ngày duyệt',
-      width: '120px',
-      sortBy: (a, b) => byDateDesc(b.approvedAt, a.approvedAt),
-      render: (c) => <span className="tabular-nums whitespace-nowrap">{date(c.approvedAt)}</span>,
-    },
-    {
-      key: 'serviceFeeStatus',
-      title: 'Phí Client',
-      width: '170px',
-      render: (c) => {
-        if (!c.serviceFeeStatus) {
-          return (
-            <Tooltip title="Khoản phí dịch vụ của Client chưa được tạo hoặc đang chờ đối soát">
-              <span><StatusDot tone="neutral">Chưa phát sinh phí</StatusDot></span>
-            </Tooltip>
-          );
-        }
-        const s = labelOf(SERVICE_FEE_STATUS, c.serviceFeeStatus);
-        return <StatusDot tone={s.tone}>{s.label}</StatusDot>;
+        return (
+          <div className="text-right whitespace-nowrap">
+            <div className="font-mono font-semibold text-slate-900 tabular-nums">{money(c.amount)}</div>
+            <div className="text-[11px] text-slate-400 tabular-nums mt-0.5">
+              {isSourcing && !c.warrantyEndDate ? 'Không áp dụng' : `BH: ${date(c.warrantyEndDate)}`}
+            </div>
+          </div>
+        );
       },
     },
     {
       key: 'status',
-      title: 'Trạng thái',
-      width: '200px',
+      title: 'Trạng thái & Phí Client',
+      width: '215px',
       render: (c) => {
         let s = labelOf(COMMISSION_STATUS, c.status);
         if (c.status === 'EARNED') {
@@ -343,10 +330,18 @@ export const AdminFinancePage: React.FC = () => {
             ? { label: 'Đủ điều kiện · Chờ duyệt', tone: 'info', hint: 'Client đã thanh toán phí dịch vụ, chờ Admin duyệt chi' }
             : { label: 'Đã đạt · Chờ Client thanh toán', tone: 'warning', hint: 'Ứng viên đã hết bảo hành, chờ Client thanh toán phí dịch vụ' };
         }
+        const feeBadge = !c.serviceFeeStatus
+          ? { tone: 'neutral' as const, label: 'Chưa phát sinh phí' }
+          : labelOf(SERVICE_FEE_STATUS, c.serviceFeeStatus);
         return (
-          <Tooltip title={s.hint}>
-            <span><StatusDot tone={s.tone}>{s.label}</StatusDot></span>
-          </Tooltip>
+          <div className="space-y-1">
+            <Tooltip title={s.hint}>
+              <span><StatusDot tone={s.tone}>{s.label}</StatusDot></span>
+            </Tooltip>
+            <div className="text-[11.5px] text-slate-500">
+              Phí Client: <span className="font-medium text-slate-700">{feeBadge.label}</span>
+            </div>
+          </div>
         );
       },
     },
@@ -357,18 +352,37 @@ export const AdminFinancePage: React.FC = () => {
       width: '170px',
       render: (c) => {
         const canModify = !['PAID', 'CANCELLED'].includes(c.status);
-        if (c.status !== 'EARNED' && c.status !== 'PAYABLE' && !canModify) {
-          return <span className="text-slate-400 text-xs">—</span>;
+        const hasPrimary = c.status === 'EARNED' || c.status === 'PAYABLE';
+        if (!hasPrimary && !canModify) {
+          return (
+            <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                aria-label={`Xem chi tiết hoa hồng ${c.candidateName ?? c.commissionId}`}
+                onClick={() => setDetail({ kind: 'commission', item: c })}
+                className="inline-flex items-center rounded-md border-0 bg-transparent px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
+              >
+                Chi tiết
+              </button>
+            </div>
+          );
         }
         return (
-          <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+          <div
+            className="flex items-center justify-end gap-1.5 whitespace-nowrap"
+            onClick={(e) => e.stopPropagation()}
+          >
             {c.status === 'EARNED' && (
               <Tooltip title={c.serviceFeeStatus !== 'PAID' ? 'Cần ghi nhận Client thanh toán phí dịch vụ trước khi duyệt chi' : 'Duyệt cho phép chi trả hoa hồng này'}>
                 <span className="inline-block">
                   <Button
                     size="small"
                     type="primary"
-                    className="!h-8 px-3 text-xs font-semibold rounded-lg"
+                    className={`!h-7 !px-3 !text-xs !font-medium !rounded-md !shadow-none active:scale-[0.985] ${
+                      c.serviceFeeStatus !== 'PAID'
+                        ? '!border-transparent !bg-slate-100 !text-slate-400 hover:!bg-slate-100'
+                        : ''
+                    }`}
                     disabled={c.serviceFeeStatus !== 'PAID'}
                     onClick={() => approve(c)}
                   >
@@ -381,7 +395,7 @@ export const AdminFinancePage: React.FC = () => {
               <Button
                 size="small"
                 type="primary"
-                className="!h-8 px-3 text-xs font-semibold rounded-lg"
+                className="!h-7 !px-3 !text-xs !font-medium !rounded-md !shadow-none active:scale-[0.985]"
                 onClick={() => { form.setFieldsValue({ result: 'success', payoutDate: dayjs(), method: 'Chuyển khoản ngân hàng' }); setDialog({ kind: 'payout', commission: c }); }}
               >
                 Ghi nhận chi
@@ -393,6 +407,12 @@ export const AdminFinancePage: React.FC = () => {
                 placement="bottomRight"
                 menu={{
                   items: [
+                    {
+                      key: 'detail',
+                      icon: <EyeOutlined />,
+                      label: 'Xem chi tiết',
+                      onClick: () => setDetail({ kind: 'commission', item: c }),
+                    },
                     ...(c.status === 'EARNED' && c.serviceFeeStatus !== 'PAID'
                       ? [
                           {
@@ -424,10 +444,11 @@ export const AdminFinancePage: React.FC = () => {
                 }}
               >
                 <Button
+                  type="text"
                   size="small"
                   icon={<MoreOutlined />}
                   aria-label={`Thao tác khác: ${c.candidateName ?? c.commissionId}`}
-                  className="!h-8 !w-8 rounded-lg"
+                  className="!h-7 !w-7 !rounded-md text-slate-400 hover:!text-slate-900 hover:!bg-slate-100"
                 />
               </Dropdown>
             )}
@@ -445,7 +466,7 @@ export const AdminFinancePage: React.FC = () => {
         const kind = f.kind ?? 'PLACEMENT';
         const svc = KIND_SERVICE[kind];
         return (
-          <div className="flex items-start gap-2 min-w-[200px]">
+          <div className="flex items-start gap-2.5 min-w-0">
             <Tag color={svc.color} className="m-0 mt-0.5 font-semibold shrink-0">{svc.short}</Tag>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
@@ -454,14 +475,12 @@ export const AdminFinancePage: React.FC = () => {
                   {labelOf(SERVICE_FEE_KIND, kind).label}
                 </span>
               </div>
-              <Tooltip title={f.jobTitle ?? undefined}>
-                <div className="mt-1 text-xs text-slate-600 line-clamp-2">{f.jobTitle ?? '—'}</div>
-              </Tooltip>
-              {kind === 'PLACEMENT' && f.candidateName && (
-                <div className="mt-0.5 text-xs text-slate-500">
-                  Ứng viên: <span className="font-medium text-slate-700">{f.candidateName}</span>
+              <Tooltip title={[f.jobTitle, kind === 'PLACEMENT' ? f.candidateName : null].filter(Boolean).join(' · ') || undefined}>
+                <div className="mt-0.5 text-xs text-slate-500 line-clamp-1">
+                  {f.jobTitle ?? '—'}
+                  {kind === 'PLACEMENT' && f.candidateName ? <span className="text-slate-700"> · {f.candidateName}</span> : null}
                 </div>
-              )}
+              </Tooltip>
               {f.sourcingTarget && f.sourcingTarget > 0 ? (
                 <div className="mt-1 inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-700 tabular-nums">
                   Đã nhận: {f.sourcingCounted ?? 0}/{f.sourcingTarget} CV
@@ -476,29 +495,41 @@ export const AdminFinancePage: React.FC = () => {
       key: 'amount',
       title: 'Số tiền',
       align: 'right',
-      width: '150px',
+      width: '135px',
       sortBy: (a, b) => a.amount - b.amount,
       render: (f) => (
         <div className="text-right whitespace-nowrap">
-          <div className="font-semibold text-slate-900 tabular-nums">{money(f.amount, f.currencyCode)}</div>
-          <div className="text-xs tabular-nums text-slate-500">{money(f.baseSalary, f.currencyCode)} × {f.feeMultiplier}</div>
+          <div className="font-mono font-semibold text-slate-900 tabular-nums">{money(f.amount, f.currencyCode)}</div>
+          {isOwedToClient(f.kind) && <div className="text-[11px] text-amber-700 mt-0.5">Hoàn cho Client</div>}
         </div>
       ),
     },
     {
-      key: 'dueDate',
-      title: 'Hạn trả',
-      width: '150px',
-      sortBy: (a, b) => byDateDesc(b.dueDate, a.dueDate),
+      key: 'status',
+      title: 'Trạng thái / Thanh toán',
+      width: '230px',
+      sortBy: (a, b) => byDateDesc(b.paidAt ?? b.dueDate, a.paidAt ?? a.dueDate),
       render: (f) => {
+        const s = (isOwedToClient(f.kind) && OWED_FEE_STATUS[f.status]) || labelOf(SERVICE_FEE_STATUS, f.status);
         const open = f.status === 'PENDING' || f.status === 'DUE' || f.status === 'OVERDUE';
         const days = f.dueDate ? daysUntil(f.dueDate) : null;
         return (
-          <div className="whitespace-nowrap">
-            <div className="tabular-nums text-slate-800">{date(f.dueDate)}</div>
-            {open && days !== null && (
-              <div className={`text-xs font-medium ${days < 0 ? 'text-red-600' : days <= 3 ? 'text-amber-700' : 'text-slate-500'}`}>
-                {days < 0 ? `Quá hạn ${-days} ngày` : days === 0 ? 'Đến hạn hôm nay' : `Còn ${days} ngày`}
+          <div className="space-y-1">
+            <StatusDot tone={s.tone}>{s.label}</StatusDot>
+            {f.paidAt ? (
+              <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+                <span className="font-medium tabular-nums text-slate-700">{date(f.paidAt)}</span>
+                <PaidVia reference={f.paymentReference} />
+                {f.paymentReference && <span className="font-mono text-[11px] text-slate-500">{f.paymentReference}</span>}
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 tabular-nums">
+                <span>Hạn: {date(f.dueDate)}</span>
+                {open && days !== null && (
+                  <span className={`font-medium ${days < 0 ? 'text-red-600' : days <= 3 ? 'text-amber-700' : 'text-slate-500'}`}>
+                    ({days < 0 ? `Quá hạn ${-days}n` : days === 0 ? 'Hôm nay' : `Còn ${days}n`})
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -506,56 +537,47 @@ export const AdminFinancePage: React.FC = () => {
       },
     },
     {
-      key: 'paidAt',
-      title: 'Thanh toán',
-      width: '190px',
-      sortBy: (a, b) => byDateDesc(b.paidAt, a.paidAt),
-      render: (f) =>
-        f.paidAt ? (
-          <div className="whitespace-nowrap">
-            <div className="flex items-center gap-1.5">
-              <span className="font-medium tabular-nums text-slate-900">{date(f.paidAt)}</span>
-              <PaidVia reference={f.paymentReference} />
-            </div>
-            {f.paymentReference && <div className="mt-0.5 font-mono text-xs text-slate-500">{f.paymentReference}</div>}
-          </div>
-        ) : (
-          <span className="text-slate-400 whitespace-nowrap">{isOwedToClient(f.kind) ? 'Chưa hoàn tiền' : 'Chưa thanh toán'}</span>
-        ),
-    },
-    {
-      key: 'status',
-      title: 'Trạng thái',
-      width: '170px',
-      render: (f) => {
-        const s = (isOwedToClient(f.kind) && OWED_FEE_STATUS[f.status]) || labelOf(SERVICE_FEE_STATUS, f.status);
-        return <StatusDot tone={s.tone}>{s.label}</StatusDot>;
-      },
-    },
-    {
       key: 'actions',
       title: 'Thao tác',
       align: 'right',
-      width: '190px',
+      width: '170px',
       render: (f) => {
-        if (f.status !== 'PENDING' && f.status !== 'DUE' && f.status !== 'OVERDUE') {
-          return <span className="text-slate-400 text-xs">—</span>;
-        }
+        const canRecord = f.status === 'PENDING' || f.status === 'DUE' || f.status === 'OVERDUE';
         const waitingForReconciliation = Boolean(f.reconciliationStatus && f.reconciliationStatus !== 'CONFIRMED');
         return (
-          <Tooltip title={waitingForReconciliation ? 'Chờ Internal HR hoàn tất đối soát nhận việc' : undefined}>
-            <span>
-              <Button
-                size="small"
-                type="primary"
-                className="!h-8 px-3 text-xs font-semibold rounded-lg whitespace-nowrap"
-                disabled={waitingForReconciliation}
-                onClick={() => { form.setFieldsValue({ paidAt: dayjs() }); setDialog({ kind: 'fee', fee: f }); }}
+          <div
+            className="flex items-center justify-end whitespace-nowrap"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {canRecord ? (
+              <Tooltip title={waitingForReconciliation ? 'Chờ Internal HR hoàn tất đối soát nhận việc' : undefined}>
+                <span>
+                  <Button
+                    size="small"
+                    type="primary"
+                    className={`!h-7 !px-3 !text-xs !font-medium !rounded-md !shadow-none whitespace-nowrap active:scale-[0.985] ${
+                      waitingForReconciliation
+                        ? '!border-transparent !bg-slate-100 !text-slate-400 hover:!bg-slate-100'
+                        : ''
+                    }`}
+                    disabled={waitingForReconciliation}
+                    onClick={() => { form.setFieldsValue({ paidAt: dayjs() }); setDialog({ kind: 'fee', fee: f }); }}
+                  >
+                    {waitingForReconciliation ? 'Chờ đối soát' : isOwedToClient(f.kind) ? 'Ghi nhận đã hoàn' : 'Ghi nhận đã thu'}
+                  </Button>
+                </span>
+              </Tooltip>
+            ) : (
+              <button
+                type="button"
+                aria-label={`Xem chi tiết khoản phí ${f.companyName ?? f.serviceFeeId}`}
+                onClick={() => setDetail({ kind: 'fee', item: f })}
+                className="inline-flex items-center rounded-md border-0 bg-transparent px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
               >
-                {waitingForReconciliation ? 'Chờ đối soát' : isOwedToClient(f.kind) ? 'Ghi nhận đã hoàn' : 'Ghi nhận đã thu'}
-              </Button>
-            </span>
-          </Tooltip>
+                Chi tiết
+              </button>
+            )}
+          </div>
         );
       },
     },
@@ -563,19 +585,14 @@ export const AdminFinancePage: React.FC = () => {
 
   const payoutColumns: SimpleCol<Payout>[] = [
     {
-      key: 'payoutDate',
-      title: 'Ngày chi',
-      width: '130px',
-      sortBy: (a, b) => byDateDesc(b.payoutDate ?? b.createdAt, a.payoutDate ?? a.createdAt),
-      render: (p) => <span className="font-medium tabular-nums text-slate-900">{date(p.payoutDate ?? p.createdAt)}</span>,
-    },
-    {
       key: 'who',
       title: 'Affiliate / Ứng viên',
       render: (p) => (
         <div className="min-w-0">
           <div className="font-semibold text-slate-900">{p.affiliateName ?? '—'}</div>
-          <div className="text-xs text-slate-600">{[p.candidateName, p.jobTitle].filter(Boolean).join(' · ') || '—'}</div>
+          <div className="text-xs text-slate-500 line-clamp-1 mt-0.5">
+            {[p.candidateName, p.jobTitle].filter(Boolean).join(' · ') || '—'}
+          </div>
         </div>
       ),
     },
@@ -583,32 +600,34 @@ export const AdminFinancePage: React.FC = () => {
       key: 'amount',
       title: 'Số tiền',
       align: 'right',
-      width: '150px',
+      width: '140px',
       sortBy: (a, b) => a.amount - b.amount,
-      render: (p) => <span className="font-semibold tabular-nums">{money(p.amount)}</span>,
+      render: (p) => <span className="font-mono font-semibold text-slate-900 tabular-nums">{money(p.amount)}</span>,
     },
     {
       key: 'method',
-      title: 'Phương thức / Mã giao dịch',
-      width: '240px',
+      title: 'Thanh toán',
+      width: '215px',
+      sortBy: (a, b) => byDateDesc(b.payoutDate ?? b.createdAt, a.payoutDate ?? a.createdAt),
       render: (p) => (
         <div>
-          <div>{p.method ?? '—'}</div>
-          {p.transactionReference && <div className="font-mono text-xs text-slate-500">{p.transactionReference}</div>}
+          <div className="flex items-center gap-1.5 text-slate-800">
+            <span className="font-medium">{p.method ?? '—'}</span>
+            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10.5px] font-medium text-slate-600 tabular-nums">
+              Lần {p.attemptNo}
+            </span>
+          </div>
+          <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500 tabular-nums">
+            <span>{date(p.payoutDate ?? p.createdAt)}</span>
+            {p.transactionReference && <span className="font-mono text-[11px]">· {p.transactionReference}</span>}
+          </div>
         </div>
       ),
     },
     {
-      key: 'attemptNo',
-      title: 'Lần',
-      align: 'center',
-      width: '64px',
-      render: (p) => <span className="tabular-nums">{p.attemptNo}</span>,
-    },
-    {
       key: 'status',
       title: 'Kết quả',
-      width: '160px',
+      width: '175px',
       render: (p) => {
         const s = labelOf(PAYOUT_STATUS, p.status);
         return <StatusDot tone={s.tone}>{s.label}</StatusDot>;
@@ -619,7 +638,7 @@ export const AdminFinancePage: React.FC = () => {
   const active = tab === 'commissions' ? commissions : tab === 'fees' ? fees : tab === 'payouts' ? payouts : null;
 
   return (
-    <div>
+    <div className="admin-stagger space-y-5">
       <PageHero
         eyebrow="Phí dịch vụ và hoa hồng"
         title="Tài chính"
@@ -692,10 +711,10 @@ export const AdminFinancePage: React.FC = () => {
                   role="tab"
                   aria-selected={selected}
                   onClick={() => { setTab(s.value); setPage(1); }}
-                  className={`cursor-pointer rounded-lg border-0 px-3.5 py-1.5 text-[13.5px] transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
+                  className={`cursor-pointer rounded-lg border-0 px-3.5 py-1.5 text-[13.5px] transition-[background-color,color,box-shadow] duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
                     selected
-                      ? 'bg-white font-semibold text-slate-900 shadow-xs'
-                      : 'bg-transparent font-medium text-slate-600 hover:text-slate-900'
+                      ? 'bg-white font-semibold text-[#111827] shadow-[0_1px_2px_rgba(17,24,39,0.06)]'
+                      : 'bg-transparent font-medium text-[#4B5565] hover:text-[#111827]'
                   }`}
                 >
                   {s.label}
@@ -726,11 +745,231 @@ export const AdminFinancePage: React.FC = () => {
             </label>
           )}
         </div>
-        {tab === 'commissions' && renderDataTable(commissionColumns, commissions.data?.items, (c) => c.commissionId, commissions.isFetching, 'Chưa có hoa hồng nào.')}
-        {tab === 'fees' && renderDataTable(feeColumns, fees.data?.items, (f) => f.serviceFeeId, fees.isFetching, 'Chưa có công nợ phí nào.')}
+        {tab === 'commissions' && renderDataTable(commissionColumns, commissions.data?.items, (c) => c.commissionId, commissions.isFetching, 'Chưa có hoa hồng nào.', (c) => setDetail({ kind: 'commission', item: c }))}
+        {tab === 'fees' && renderDataTable(feeColumns, fees.data?.items, (f) => f.serviceFeeId, fees.isFetching, 'Chưa có công nợ phí nào.', (f) => setDetail({ kind: 'fee', item: f }))}
         {tab === 'postingFees' && <PostingFeePaymentsPanel enabled={tab === 'postingFees'} />}
-        {tab === 'payouts' && renderDataTable(payoutColumns, payouts.data?.items, (p) => p.payoutId, payouts.isFetching, 'Chưa có lần chi nào.')}
+        {tab === 'payouts' && renderDataTable(payoutColumns, payouts.data?.items, (p) => p.payoutId, payouts.isFetching, 'Chưa có lần chi nào.', (p) => setDetail({ kind: 'payout', item: p }))}
       </section>
+
+      <Drawer
+        open={Boolean(detail)}
+        onClose={() => setDetail(null)}
+        width={520}
+        title={
+          detail?.kind === 'commission' ? 'Chi tiết hoa hồng'
+            : detail?.kind === 'fee' ? 'Chi tiết công nợ phí'
+              : detail?.kind === 'payout' ? 'Chi tiết lần chi trả'
+                : ''
+        }
+        styles={{ body: { background: '#F5F7FA', padding: '16px 20px' } }}
+      >
+        {detail?.kind === 'commission' && (() => {
+          const c = detail.item;
+          const isSourcing = Boolean(c.sourcingDeliveryId && !c.placementId);
+          const s = labelOf(COMMISSION_STATUS, c.status);
+          const feeLabel = !c.serviceFeeStatus ? 'Chưa phát sinh phí' : labelOf(SERVICE_FEE_STATUS, c.serviceFeeStatus).label;
+          return (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-slate-200/80 bg-white p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-xs text-slate-500">Số tiền hoa hồng</div>
+                    <div className="mt-1 font-mono text-2xl font-bold text-slate-900 tabular-nums">{money(c.amount)}</div>
+                  </div>
+                  <StatusDot tone={s.tone}>{s.label}</StatusDot>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Tag color={isSourcing ? 'cyan' : 'blue'} className="m-0">{isSourcing ? 'CV Sourcing' : 'Headhunt'}</Tag>
+                  <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+                    Phí Client: {feeLabel}
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200/80 bg-white p-4">
+                <h4 className="mb-3 text-xs font-semibold text-slate-500">Thông tin hồ sơ</h4>
+                <dl className="grid grid-cols-[120px_1fr] gap-y-2.5 gap-x-3 text-[13px]">
+                  <dt className="text-slate-500">Ứng viên</dt>
+                  <dd className="m-0 font-semibold text-slate-900">{c.candidateName ?? '—'}</dd>
+                  <dt className="text-slate-500">Vị trí tuyển</dt>
+                  <dd className="m-0 text-slate-800">{c.jobTitle ?? '—'}</dd>
+                  <dt className="text-slate-500">Affiliate</dt>
+                  <dd className="m-0 font-medium text-slate-900">{c.affiliateName ?? '—'}</dd>
+                  <dt className="text-slate-500">Hết bảo hành</dt>
+                  <dd className="m-0 tabular-nums text-slate-800">{isSourcing && !c.warrantyEndDate ? 'Không áp dụng' : date(c.warrantyEndDate)}</dd>
+                  <dt className="text-slate-500">Ngày duyệt</dt>
+                  <dd className="m-0 tabular-nums text-slate-800">{date(c.approvedAt)}</dd>
+                  <dt className="text-slate-500">Ngày tạo</dt>
+                  <dd className="m-0 tabular-nums text-slate-800">{date(c.createdAt)}</dd>
+                  <dt className="text-slate-500">Mã hoa hồng</dt>
+                  <dd className="m-0 font-mono text-xs text-slate-600 break-all">{c.commissionId}</dd>
+                </dl>
+              </div>
+
+              {c.affiliateBank?.bankAccountNumber && (
+                <div className="rounded-xl border border-slate-200/80 bg-white p-4">
+                  <h4 className="mb-3 text-xs font-semibold text-slate-500">Tài khoản nhận tiền</h4>
+                  <dl className="grid grid-cols-[120px_1fr] gap-y-2 gap-x-3 text-[13px]">
+                    <dt className="text-slate-500">Ngân hàng</dt>
+                    <dd className="m-0 font-medium text-slate-900">{c.affiliateBank.bankName}{c.affiliateBank.bankBranch ? ` — ${c.affiliateBank.bankBranch}` : ''}</dd>
+                    <dt className="text-slate-500">Số tài khoản</dt>
+                    <dd className="m-0 font-mono font-semibold text-slate-900 tabular-nums">{c.affiliateBank.bankAccountNumber}</dd>
+                    <dt className="text-slate-500">Chủ tài khoản</dt>
+                    <dd className="m-0 font-medium text-slate-900">{c.affiliateBank.bankAccountHolder}</dd>
+                  </dl>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                {c.status === 'EARNED' && (
+                  <Button
+                    type="primary"
+                    disabled={c.serviceFeeStatus !== 'PAID'}
+                    onClick={() => { setDetail(null); approve(c); }}
+                  >
+                    Duyệt chi
+                  </Button>
+                )}
+                {c.status === 'PAYABLE' && (
+                  <Button
+                    type="primary"
+                    onClick={() => {
+                      setDetail(null);
+                      form.setFieldsValue({ result: 'success', payoutDate: dayjs(), method: 'Chuyển khoản ngân hàng' });
+                      setDialog({ kind: 'payout', commission: c });
+                    }}
+                  >
+                    Ghi nhận chi
+                  </Button>
+                )}
+                {!['PAID', 'CANCELLED'].includes(c.status) && (
+                  <>
+                    <Button onClick={() => { setDetail(null); form.setFieldsValue({ newAmount: c.amount }); setDialog({ kind: 'adjust', commission: c }); }}>
+                      Điều chỉnh số tiền
+                    </Button>
+                    <Button danger onClick={() => { setDetail(null); setDialog({ kind: 'cancel', commission: c }); }}>
+                      Hủy hoa hồng
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {detail?.kind === 'fee' && (() => {
+          const f = detail.item;
+          const kind = f.kind ?? 'PLACEMENT';
+          const s = (isOwedToClient(f.kind) && OWED_FEE_STATUS[f.status]) || labelOf(SERVICE_FEE_STATUS, f.status);
+          const canRecord = f.status === 'PENDING' || f.status === 'DUE' || f.status === 'OVERDUE';
+          const waitingForReconciliation = Boolean(f.reconciliationStatus && f.reconciliationStatus !== 'CONFIRMED');
+          return (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-slate-200/80 bg-white p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-xs text-slate-500">{labelOf(SERVICE_FEE_KIND, kind).label}</div>
+                    <div className="mt-1 font-mono text-2xl font-bold text-slate-900 tabular-nums">{money(f.amount, f.currencyCode)}</div>
+                    <div className="mt-1 font-mono text-xs text-slate-500 tabular-nums">
+                      Công thức: {money(f.baseSalary, f.currencyCode)} × {f.feeMultiplier}
+                    </div>
+                  </div>
+                  <StatusDot tone={s.tone}>{s.label}</StatusDot>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200/80 bg-white p-4">
+                <h4 className="mb-3 text-xs font-semibold text-slate-500">Chi tiết công nợ</h4>
+                <dl className="grid grid-cols-[120px_1fr] gap-y-2.5 gap-x-3 text-[13px]">
+                  <dt className="text-slate-500">Doanh nghiệp</dt>
+                  <dd className="m-0 font-semibold text-slate-900">{f.companyName ?? '—'}</dd>
+                  <dt className="text-slate-500">Tin tuyển dụng</dt>
+                  <dd className="m-0 text-slate-800">{f.jobTitle ?? '—'}</dd>
+                  {f.candidateName && (
+                    <>
+                      <dt className="text-slate-500">Ứng viên</dt>
+                      <dd className="m-0 font-medium text-slate-900">{f.candidateName}</dd>
+                    </>
+                  )}
+                  <dt className="text-slate-500">Hạn thanh toán</dt>
+                  <dd className="m-0 tabular-nums text-slate-800">{date(f.dueDate)}</dd>
+                  <dt className="text-slate-500">Thanh toán</dt>
+                  <dd className="m-0">
+                    {f.paidAt ? (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="font-medium tabular-nums text-slate-900">{date(f.paidAt)}</span>
+                        <PaidVia reference={f.paymentReference} />
+                        {f.paymentReference && <span className="font-mono text-xs text-slate-600">{f.paymentReference}</span>}
+                      </div>
+                    ) : (
+                      <span className="text-slate-400">{isOwedToClient(f.kind) ? 'Chưa hoàn tiền' : 'Chưa thanh toán'}</span>
+                    )}
+                  </dd>
+                  {f.reconciliationStatus && (
+                    <>
+                      <dt className="text-slate-500">Đối soát</dt>
+                      <dd className="m-0 font-medium text-slate-800">{f.reconciliationStatus}</dd>
+                    </>
+                  )}
+                  <dt className="text-slate-500">Mã khoản phí</dt>
+                  <dd className="m-0 font-mono text-xs text-slate-600 break-all">{f.serviceFeeId}</dd>
+                </dl>
+              </div>
+
+              {canRecord && (
+                <div className="pt-1">
+                  <Button
+                    type="primary"
+                    disabled={waitingForReconciliation}
+                    onClick={() => { setDetail(null); form.setFieldsValue({ paidAt: dayjs() }); setDialog({ kind: 'fee', fee: f }); }}
+                  >
+                    {waitingForReconciliation ? 'Chờ đối soát' : isOwedToClient(f.kind) ? 'Ghi nhận đã hoàn' : 'Ghi nhận đã thu'}
+                  </Button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {detail?.kind === 'payout' && (() => {
+          const p = detail.item;
+          const s = labelOf(PAYOUT_STATUS, p.status);
+          return (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-slate-200/80 bg-white p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-xs text-slate-500">Số tiền đã chi</div>
+                    <div className="mt-1 font-mono text-2xl font-bold text-slate-900 tabular-nums">{money(p.amount)}</div>
+                  </div>
+                  <StatusDot tone={s.tone}>{s.label}</StatusDot>
+                </div>
+              </div>
+              <div className="rounded-xl border border-slate-200/80 bg-white p-4">
+                <h4 className="mb-3 text-xs font-semibold text-slate-500">Thông tin giao dịch</h4>
+                <dl className="grid grid-cols-[120px_1fr] gap-y-2.5 gap-x-3 text-[13px]">
+                  <dt className="text-slate-500">Affiliate</dt>
+                  <dd className="m-0 font-semibold text-slate-900">{p.affiliateName ?? '—'}</dd>
+                  <dt className="text-slate-500">Ứng viên</dt>
+                  <dd className="m-0 text-slate-800">{p.candidateName ?? '—'}</dd>
+                  <dt className="text-slate-500">Vị trí tuyển</dt>
+                  <dd className="m-0 text-slate-800">{p.jobTitle ?? '—'}</dd>
+                  <dt className="text-slate-500">Phương thức</dt>
+                  <dd className="m-0 text-slate-800">{p.method ?? '—'}</dd>
+                  <dt className="text-slate-500">Mã giao dịch</dt>
+                  <dd className="m-0 font-mono text-xs text-slate-700 break-all">{p.transactionReference ?? '—'}</dd>
+                  <dt className="text-slate-500">Lần chi</dt>
+                  <dd className="m-0 tabular-nums text-slate-800">Lần {p.attemptNo}</dd>
+                  <dt className="text-slate-500">Ngày chi</dt>
+                  <dd className="m-0 tabular-nums text-slate-800">{date(p.payoutDate ?? p.createdAt)}</dd>
+                  <dt className="text-slate-500">Mã lần chi</dt>
+                  <dd className="m-0 font-mono text-xs text-slate-600 break-all">{p.payoutId}</dd>
+                </dl>
+              </div>
+            </div>
+          );
+        })()}
+      </Drawer>
 
       <Modal
         open={Boolean(dialog)}

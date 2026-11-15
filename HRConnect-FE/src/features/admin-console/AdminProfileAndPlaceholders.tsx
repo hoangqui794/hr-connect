@@ -85,7 +85,7 @@ export const AdminProfilePage: React.FC = () => {
           <Surface padded className="self-start">
             <div className="flex flex-col items-center text-center">
               <AvatarUpload size={72} />
-              <div className="mt-3 text-lg font-bold text-slate-900">{p.displayName || '—'}</div>
+              <div className="mt-3 text-lg font-semibold text-[#111827]">{p.displayName || '—'}</div>
               <div className="text-sm text-slate-600">{p.jobTitle || 'Quản trị viên nền tảng'}</div>
               <div className="mt-3">
                 <StatusDot tone={p.status === 'ACTIVE' ? 'success' : 'neutral'}>{p.status === 'ACTIVE' ? 'Đang hoạt động' : p.status}</StatusDot>
@@ -137,7 +137,7 @@ export const AdminProfilePage: React.FC = () => {
                   size="large"
                   htmlType="submit"
                   loading={save.isPending}
-                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm active:scale-[0.98] font-medium border-0"
+                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium border-0"
                 >
                   Lưu thay đổi
                 </Button>

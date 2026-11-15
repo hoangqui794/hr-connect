@@ -95,7 +95,7 @@ export const AdminIdentityClaimsPage: React.FC = () => {
 
   const data = list.data;
   return (
-    <div>
+    <div className="admin-stagger space-y-5">
       <PageHero
         eyebrow="Vận hành"
         title="Đối chiếu danh tính Candidate"

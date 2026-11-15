@@ -63,8 +63,8 @@ export const PageHero: React.FC<{
   <header className="mb-7 flex flex-wrap items-end justify-between gap-4">
     <div className="flex max-w-2xl items-start gap-4">
       <div className="min-w-0">
-        {eyebrow && <div className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--console-accent-strong)]">{eyebrow}</div>}
-        <h1 className="m-0 flex items-center gap-2 text-[26px] font-bold leading-tight tracking-[-0.01em] text-slate-900">
+        {eyebrow && <div className="mb-1 text-xs font-medium tracking-[0.01em] text-[color:var(--console-accent-strong)]">{eyebrow}</div>}
+        <h1 className="m-0 flex items-center gap-2 text-[26px] font-semibold leading-tight tracking-[-0.015em] text-[#111827]">
           {title}
           {tip && (
             <Tooltip title={description} placement="bottomLeft">
@@ -78,7 +78,7 @@ export const PageHero: React.FC<{
             </Tooltip>
           )}
         </h1>
-        {!tip && <p className="m-0 mt-1.5 text-[14.5px] leading-relaxed text-slate-600">{description}</p>}
+        {!tip && <p className="m-0 mt-1.5 text-[14.5px] leading-relaxed text-[#4b5565]">{description}</p>}
       </div>
     </div>
     {actions && <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div>}
@@ -124,31 +124,31 @@ export const StatTile: React.FC<{
       type={onClick ? 'button' : undefined}
       onClick={onClick}
       aria-pressed={onClick ? Boolean(active) : undefined}
-      className={`admin-surface relative flex w-full flex-col gap-1 p-4 text-left transition-all duration-200 ${
+      className={`admin-surface relative flex w-full flex-col gap-1.5 p-4 text-left transition-[background-color,border-color,box-shadow,transform] duration-150 ${
         onClick
-          ? 'cursor-pointer select-none border border-solid focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]'
-          : 'border border-solid border-slate-200/80'
+          ? 'cursor-pointer select-none border border-solid active:scale-[0.985] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]'
+          : 'border border-solid border-black/[0.08]'
       } ${
         active
-          ? 'border-2 border-[#0284C7] bg-sky-50/30 shadow-sm ring-2 ring-[#0284C7]/20 admin-surface--active'
+          ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent-soft)]/50 admin-surface--active'
           : onClick
-            ? 'border-slate-200/90 bg-white hover:-translate-y-0.5 hover:border-sky-300 hover:bg-slate-50/70 hover:shadow-md active:translate-y-0 active:scale-[0.99]'
-            : 'border-slate-200/80 bg-white'
+            ? 'border-black/[0.08] bg-white hover:border-black/[0.18] hover:bg-[#F9FAFC]'
+            : 'border-black/[0.08] bg-white'
       }`}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-2 text-[12.5px] font-medium text-slate-600">
+        <span className="flex items-center gap-2 text-[12.5px] font-medium text-[#4b5565]">
           <span className="h-2 w-2 rounded-full" style={{ background: DOT[tone] }} aria-hidden />
           {label}
         </span>
         {active && (
-          <span className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[10.5px] font-semibold text-sky-700">
+          <span className="rounded-full bg-[color:var(--console-accent-soft)] px-2 py-0.5 text-[11px] font-medium text-[color:var(--console-accent-strong)]">
             Đang lọc
           </span>
         )}
       </div>
-      <span className="text-2xl font-bold tabular-nums text-slate-900">{value}</span>
-      {hint && <span className="text-xs text-slate-600">{hint}</span>}
+      <span className="text-[28px] font-semibold leading-none tabular-nums tracking-[-0.025em] text-[#111827]">{value}</span>
+      {hint && <span className="text-xs text-[#6b7487]">{hint}</span>}
     </Tag>
   );
 };
@@ -167,7 +167,7 @@ export function FilterPills<T extends string>({
   label: string;
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex flex-wrap gap-2 rounded-3xl bg-slate-100 p-1 sm:gap-1 sm:rounded-full">
+    <div role="radiogroup" aria-label={label} className="inline-flex flex-wrap gap-2 rounded-3xl border border-solid border-black/[0.06] bg-[#ECEFF4] p-1 sm:gap-1 sm:rounded-full">
       {options.map((o) => {
         const active = o.value === value;
         return (
@@ -177,13 +177,13 @@ export function FilterPills<T extends string>({
             role="radio"
             aria-checked={active}
             onClick={() => onChange(o.value)}
-            className={`inline-flex min-h-11 cursor-pointer items-center rounded-full border-0 px-3.5 py-1.5 text-[13px] sm:min-h-9 font-medium transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
-              active ? 'bg-white text-slate-900 shadow-sm' : 'bg-transparent text-slate-600 hover:text-slate-900'
+            className={`inline-flex min-h-11 cursor-pointer items-center rounded-full border-0 px-3.5 py-1.5 text-[13px] sm:min-h-9 font-medium transition-[background-color,color,box-shadow] duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
+              active ? 'bg-white text-[#111827] shadow-[0_1px_2px_rgba(17,24,39,0.06)]' : 'bg-transparent text-[#4b5565] hover:text-[#111827]'
             }`}
           >
             {o.label}
             {o.count !== undefined && (
-              <span className={`ml-1.5 tabular-nums ${active ? 'text-[color:var(--console-accent-strong)]' : 'text-slate-600'}`}>{o.count}</span>
+              <span className={`ml-1.5 tabular-nums ${active ? 'text-[color:var(--console-accent-strong)]' : 'text-[#6b7487]'}`}>{o.count}</span>
             )}
           </button>
         );

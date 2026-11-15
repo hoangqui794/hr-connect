@@ -170,7 +170,7 @@ export const AdminReportsPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="admin-stagger space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <PageHero
           eyebrow="Báo cáo & Thống kê"
@@ -196,12 +196,12 @@ export const AdminReportsPage: React.FC = () => {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="admin-surface p-5">
           <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              <FileTextOutlined className="text-blue-500" /> Hồ sơ ứng tuyển
+            <span className="flex items-center gap-1.5 text-xs font-medium text-[#6B7487]">
+              <FileTextOutlined className="text-blue-600" /> Hồ sơ ứng tuyển
             </span>
             <span className="inline-flex items-center gap-0.5 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 border border-blue-200/60">+15.2%</span>
           </div>
-          <div className="mt-2 text-2xl font-bold font-mono text-slate-900 tabular-nums">
+          <div className="mt-2 text-2xl font-semibold font-mono text-[#111827] tabular-nums tracking-[-0.02em]">
             {overviewQuery.isLoading ? <Skeleton.Input active size="small" /> : ov?.applications?.submitted ?? 0}
           </div>
           <div className="mt-2 flex gap-3 text-xs text-slate-500">
@@ -213,12 +213,12 @@ export const AdminReportsPage: React.FC = () => {
 
         <div className="admin-surface p-5">
           <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              <DollarCircleOutlined className="text-slate-600" /> Doanh thu thực thu
+            <span className="flex items-center gap-1.5 text-xs font-medium text-[#6B7487]">
+              <DollarCircleOutlined className="text-[#4B5565]" /> Doanh thu thực thu
             </span>
             <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 border border-emerald-200/60">+24.8%</span>
           </div>
-          <div className="mt-2 text-2xl font-bold font-mono text-slate-900 tabular-nums">
+          <div className="mt-2 text-2xl font-semibold font-mono text-[#111827] tabular-nums tracking-[-0.02em]">
             {revenueQuery.isLoading ? (
               <Skeleton.Input active size="small" />
             ) : (
@@ -234,12 +234,12 @@ export const AdminReportsPage: React.FC = () => {
 
         <div className="admin-surface p-5">
           <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              <TeamOutlined className="text-slate-600" /> Hoa hồng Affiliate
+            <span className="flex items-center gap-1.5 text-xs font-medium text-[#6B7487]">
+              <TeamOutlined className="text-[#4B5565]" /> Hoa hồng Affiliate
             </span>
             <span className="inline-flex items-center gap-0.5 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 border border-indigo-200/60">+18.0%</span>
           </div>
-          <div className="mt-2 text-2xl font-bold font-mono text-slate-900 tabular-nums">
+          <div className="mt-2 text-2xl font-semibold font-mono text-[#111827] tabular-nums tracking-[-0.02em]">
             {revenueQuery.isLoading ? (
               <Skeleton.Input active size="small" />
             ) : (
@@ -253,12 +253,12 @@ export const AdminReportsPage: React.FC = () => {
 
         <div className="admin-surface p-5">
           <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              <BankOutlined className="text-slate-600" /> Mạng lưới đối tác
+            <span className="flex items-center gap-1.5 text-xs font-medium text-[#6B7487]">
+              <BankOutlined className="text-[#4B5565]" /> Mạng lưới đối tác
             </span>
             <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 border border-amber-200/60">+9.5%</span>
           </div>
-          <div className="mt-2 text-2xl font-bold font-mono text-slate-900 tabular-nums">
+          <div className="mt-2 text-2xl font-semibold font-mono text-[#111827] tabular-nums tracking-[-0.02em]">
             {overviewQuery.isLoading ? (
               <Skeleton.Input active size="small" />
             ) : (
@@ -277,7 +277,7 @@ export const AdminReportsPage: React.FC = () => {
       <Surface padded>
         <div className="flex flex-wrap items-center justify-between gap-3 border-0 border-b border-solid border-slate-100 pb-4">
           <div>
-            <h3 className="m-0 text-base font-bold text-slate-900">Doanh thu theo gói dịch vụ</h3>
+            <h3 className="m-0 text-base font-semibold text-[#111827]">Doanh thu theo gói dịch vụ</h3>
             <p className="m-0 text-xs text-slate-500">Chi tiết doanh thu phát sinh và thực thu giữa các hình thức dịch vụ.</p>
           </div>
           <Radio.Group
@@ -321,17 +321,17 @@ export const AdminReportsPage: React.FC = () => {
                 color: 'emerald',
               },
             ].map((srv) => (
-              <div key={srv.code} className="rounded-2xl border border-solid border-slate-200/80 bg-slate-50/60 p-4">
-                <div className="font-bold text-slate-900">{srv.title}</div>
-                <div className="text-xs text-slate-500 mb-3">{srv.desc}</div>
-                <div className="space-y-1.5 border-0 border-t border-solid border-slate-200/60 pt-3 text-xs">
+              <div key={srv.code} className="rounded-xl border border-solid border-black/[0.08] bg-[#F9FAFC] p-4">
+                <div className="font-semibold text-[#111827]">{srv.title}</div>
+                <div className="text-xs text-[#6B7487] mb-3">{srv.desc}</div>
+                <div className="space-y-1.5 border-0 border-t border-solid border-black/[0.06] pt-3 text-xs">
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Phát sinh:</span>
-                    <span className="font-semibold text-slate-800">{formatMoney(srv.data?.billed ?? 0)}</span>
+                    <span className="text-[#6B7487]">Phát sinh:</span>
+                    <span className="font-medium text-[#111827] tabular-nums">{formatMoney(srv.data?.billed ?? 0)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Thực thu:</span>
-                    <span className="font-bold text-slate-900 font-mono">{formatMoney(srv.data?.collected ?? 0)}</span>
+                    <span className="text-[#6B7487]">Thực thu:</span>
+                    <span className="font-semibold text-[#111827] font-mono tabular-nums">{formatMoney(srv.data?.collected ?? 0)}</span>
                   </div>
                 </div>
               </div>

@@ -116,16 +116,16 @@ export const AdminLayout: React.FC = () => {
   };
 
   const name = user?.name || 'Quản trị viên';
-  const width = collapsed ? 76 : 260;
+  const width = collapsed ? 72 : 256;
 
   return (
-    <div className="min-h-screen bg-[#F4F6FA] text-slate-900">
-      {/* ── Sidebar ─────────────────────────────────────────────────────── */}
+    <div className="admin-console min-h-screen bg-[#F5F7FA] text-[#111827]">
+      {/* ── Sidebar: Deep-Ink Command Rail ──────────────────────────────── */}
       {compact && menuOpen && (
-        <div className="fixed inset-0 z-[25] bg-slate-900/40" onClick={() => setMenuOpen(false)} aria-hidden />
+        <div className="fixed inset-0 z-[25] bg-[#0B0D14]/50 backdrop-blur-[1px] transition-opacity duration-200" onClick={() => setMenuOpen(false)} aria-hidden />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 flex flex-col bg-white border-0 border-r border-solid border-slate-200/90 transition-[width,transform] duration-200${compact && menuOpen ? ' shadow-2xl' : ' shadow-[1px_0_3px_0_rgba(0,0,0,0.02)]'}`}
+        className={`fixed inset-y-0 left-0 z-30 flex flex-col bg-[#0B0D14] text-[#EEF0F5] border-0 border-r border-solid border-white/[0.08] transition-[width,transform] duration-250 ease-[cubic-bezier(0.22,1,0.36,1)]${compact && menuOpen ? ' shadow-2xl' : ''}`}
         style={{
           width: compact ? 272 : width,
           transform: compact && !menuOpen ? 'translateX(-100%)' : undefined,
@@ -133,23 +133,23 @@ export const AdminLayout: React.FC = () => {
         }}
         aria-label="Điều hướng quản trị"
       >
-        <div className="flex h-16 items-center gap-2.5 px-4 border-0 border-b border-solid border-slate-100">
-          <BrandMark size={34} className="shrink-0" />
+        <div className="flex h-16 items-center gap-2.5 px-4 border-0 border-b border-solid border-white/[0.08]">
+          <BrandMark size={32} className="shrink-0" />
           {!collapsed && (
             <div className="flex min-w-0 items-center gap-2">
-              <span className="truncate text-[16px] font-black tracking-tight text-slate-900">HR Connect</span>
-              <span className="rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-sky-700 border border-sky-200/80">
-                Quản trị
+              <span className="truncate text-[15.5px] font-semibold tracking-[-0.01em] text-[#EEF0F5]">HR Connect</span>
+              <span className="rounded-md bg-blue-500/15 px-2 py-0.5 text-[11px] font-medium text-blue-300 border border-blue-400/25">
+                Admin
               </span>
             </div>
           )}
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 pb-4">
+        <nav className="flex-1 overflow-y-auto px-2.5 pb-4">
           {navGroups.map((g) => (
             <div key={g.group} className="mt-5 first:mt-3">
               {!collapsed && (
-                <div className="px-3 pb-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-600">{g.group}</div>
+                <div className="px-3 pb-1.5 text-[11px] font-medium text-[#7A8296]">{g.group}</div>
               )}
               <ul className="m-0 list-none space-y-0.5 p-0">
                 {g.items.map((item) => (
@@ -159,16 +159,16 @@ export const AdminLayout: React.FC = () => {
                         to={item.to}
                         className={({ isActive }) =>
                           [
-                            'relative flex h-11 items-center gap-3 rounded-lg px-3 text-sm no-underline transition-colors duration-150',
-                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-sky-500',
+                            'relative flex min-h-11 lg:min-h-9 lg:h-9 items-center gap-3 rounded-lg px-3 text-[13.5px] no-underline transition-[background-color,color,transform] duration-150 active:scale-[0.985]',
+                            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-blue-400',
                             collapsed ? 'justify-center' : '',
                             isActive
-                              ? 'bg-sky-50/90 font-bold text-[#0284C7] shadow-2xs before:absolute before:inset-y-2 before:left-0 before:w-[3.5px] before:rounded-r before:bg-[#0284C7] before:content-[""]'
-                              : 'font-medium text-slate-700 hover:bg-slate-100/80 hover:text-[#0284C7]',
+                              ? 'bg-[#171B26] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-r before:bg-[#3B82F6] before:content-[""]'
+                              : 'font-normal text-[#A3A9B8] hover:bg-white/[0.05] hover:text-[#EEF0F5]',
                           ].join(' ')
                         }
                       >
-                        <span className="text-[17px] shrink-0" aria-hidden>
+                        <span className="text-[16px] shrink-0" aria-hidden>
                           {item.icon}
                         </span>
                         {!collapsed && <span className="truncate">{item.label}</span>}
@@ -185,18 +185,18 @@ export const AdminLayout: React.FC = () => {
           <button
             type="button"
             onClick={() => setCollapsed((c) => !c)}
-            className="flex h-11 cursor-pointer items-center gap-2 border-0 border-t border-solid border-slate-100 bg-slate-50/60 px-5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+            className="flex h-11 cursor-pointer items-center gap-2 border-0 border-t border-solid border-white/[0.08] bg-[#0F121B] px-5 text-[#8B93A7] transition-[background-color,color] duration-150 hover:bg-[#171B26] hover:text-[#EEF0F5]"
             aria-label={collapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
           >
             {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            {!collapsed && <span className="text-xs font-semibold">Thu gọn thanh bên</span>}
+            {!collapsed && <span className="text-xs font-medium">Thu gọn thanh bên</span>}
           </button>
         )}
       </aside>
 
       {/* ── Main ────────────────────────────────────────────────────────── */}
-      <div className="transition-[padding] duration-200" style={{ paddingLeft: compact ? 0 : width }}>
-        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-0 border-b border-solid border-slate-200/70 bg-white/80 px-4 backdrop-blur lg:px-8">
+      <div className="transition-[padding] duration-250 ease-[cubic-bezier(0.22,1,0.36,1)]" style={{ paddingLeft: compact ? 0 : width }}>
+        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-0 border-b border-solid border-black/[0.08] bg-white/90 px-4 backdrop-blur-sm lg:px-8">
           <div className="flex min-w-0 items-center gap-2">
             {compact && (
               <button

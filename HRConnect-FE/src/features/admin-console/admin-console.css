@@ -98,9 +98,36 @@
   --console-accent-glow: rgba(56, 189, 248, 0.6);
 }
 
-/* Admin console surfaces and tables ("Slate Command" + soft UI).
-   Imported only by Admin components. Tailwind preflight is off in this app, so borders are
-   declared explicitly. */
+/* Admin console surfaces and tables ("Operational Ledger" — Ink-Neutral + Cobalt).
+   Imported by Admin and shared console shells. Role-specific overrides are scoped so
+   Client/Candidate/Affiliate/HR keep their own accents. */
+
+.admin-console {
+  --admin-bg: #f5f7fa;
+  --admin-surface: #ffffff;
+  --admin-raised: #eceff4;
+  --admin-rail-bg: #0b0d14;
+  --admin-rail-raised: #171b26;
+  --admin-rail-hairline: rgba(238, 240, 245, 0.08);
+  --admin-rail-text: #eef0f5;
+  --admin-rail-muted: #8b93a7;
+  --admin-hairline: rgba(17, 24, 39, 0.08);
+  --admin-hairline-strong: rgba(17, 24, 39, 0.14);
+  --admin-text: #111827;
+  --admin-text-secondary: #4b5565;
+  --admin-text-muted: #6b7487;
+  --console-accent: #2563eb;
+  --console-accent-strong: #1d4ed8;
+  --console-accent-soft: #eff6ff;
+  --console-accent-bright: #3b82f6;
+  --console-accent-glow: rgba(37, 99, 235, 0.25);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.admin-console .font-mono,
+.admin-console code {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
 
 .admin-surface {
   background: #ffffff;
@@ -110,10 +137,22 @@
     0 6px 20px -6px rgba(15, 23, 42, 0.08);
 }
 
+.admin-console .admin-surface {
+  background: var(--admin-surface);
+  border-radius: 12px;
+  border: 1px solid var(--admin-hairline);
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.03);
+}
+
 .admin-surface--active {
   box-shadow:
     0 0 0 2px var(--console-accent),
     0 6px 20px -6px rgba(15, 23, 42, 0.12);
+}
+
+.admin-console .admin-surface--active {
+  border-color: var(--console-accent);
+  box-shadow: 0 0 0 1px var(--console-accent);
 }
 
 /* ── Tables: airy rows, quiet header, no vertical rules ─────────────────── */
@@ -137,6 +176,16 @@
   padding: 12px 14px !important; /* px-3.5 py-3 */
 }
 
+.admin-console .admin-soft-table .ant-table-thead > tr > th {
+  background: #f9fafc !important;
+  color: var(--admin-text-secondary) !important;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  border-bottom: 1px solid var(--admin-hairline) !important;
+}
+
 .admin-soft-table .ant-table-thead > tr > th::before {
   display: none; /* remove column separators */
 }
@@ -145,6 +194,14 @@
   border-bottom: 1px solid #f1f5f9 !important;
   padding: 12px 14px !important; /* px-3.5 py-3 */
   transition: background-color 150ms ease;
+}
+
+.admin-console .admin-soft-table .ant-table-tbody > tr > td {
+  border-bottom: 1px solid var(--admin-hairline) !important;
+}
+
+.admin-console .admin-soft-table .ant-table-tbody > tr.ant-table-row:hover > td {
+  background: var(--admin-raised) !important;
 }
 
 .admin-soft-table .ant-table-tbody > tr:last-child > td {
@@ -174,15 +231,14 @@
 .admin-progress-bar {
   height: 100%;
   width: 0;
-  background: linear-gradient(90deg, var(--console-accent), var(--console-accent-bright));
-  box-shadow: 0 0 10px var(--console-accent-glow), 0 0 4px var(--console-accent-glow);
-  border-radius: 0 3px 3px 0;
+  background: var(--console-accent);
+  border-radius: 0 2px 2px 0;
   animation: admin-progress-run 8s cubic-bezier(0.08, 0.7, 0.2, 1) forwards;
 }
 
 .admin-progress-bar--done {
   width: 100%;
-  animation: admin-progress-done 260ms ease-out forwards;
+  animation: admin-progress-done 240ms ease-out forwards;
 }
 
 @keyframes admin-progress-run {
@@ -199,7 +255,7 @@
 
 .admin-skeleton {
   border-radius: 8px;
-  background: linear-gradient(90deg, #eef2f6 25%, #f8fafc 50%, #eef2f6 75%);
+  background: linear-gradient(90deg, #eceff4 25%, #f5f7fa 50%, #eceff4 75%);
   background-size: 200% 100%;
   animation: admin-shimmer 1.3s ease-in-out infinite;
 }
@@ -220,16 +276,33 @@
 }
 
 .admin-page-enter {
-  animation: admin-page-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: admin-page-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes admin-page-in {
-  from { opacity: 0.96; transform: translateY(2px); }
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.admin-stagger > * {
+  animation: admin-stagger-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.admin-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.admin-stagger > *:nth-child(2) { animation-delay: 45ms; }
+.admin-stagger > *:nth-child(3) { animation-delay: 90ms; }
+.admin-stagger > *:nth-child(4) { animation-delay: 135ms; }
+.admin-stagger > *:nth-child(5) { animation-delay: 180ms; }
+.admin-stagger > *:nth-child(6) { animation-delay: 225ms; }
+
+@keyframes admin-stagger-in {
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .admin-page-enter,
+  .admin-stagger > *,
   .admin-skeleton-wrap,
   .admin-skeleton {
     animation: none;

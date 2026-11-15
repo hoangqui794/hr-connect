@@ -280,7 +280,7 @@ export const AdminCommissionRulesPage: React.FC = () => {
   const page = list.data;
 
   return (
-    <div>
+    <div className="admin-stagger space-y-5">
       <PageHero
         eyebrow="Cấu hình"
         title="Quy tắc hoa hồng"

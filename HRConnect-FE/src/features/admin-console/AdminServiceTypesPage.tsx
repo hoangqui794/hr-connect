@@ -200,7 +200,7 @@ export const AdminServiceTypesPage: React.FC = () => {
   const current = editing && editing !== 'new' ? editing : null;
 
   return (
-    <div>
+    <div className="admin-stagger space-y-5">
       <PageHero
         eyebrow="Cấu hình"
         title="Loại dịch vụ"
