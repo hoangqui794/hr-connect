@@ -20,7 +20,21 @@ vi.mock('./JobDetailPanel', () => ({
     <span>{status === 'PENDING_AGREEMENT' && isChangeRequested ? 'DN yêu cầu sửa' : status}</span>
   ),
 }));
-vi.mock('./PaymentDemoModal', () => ({ PaymentDemoModal: () => null }));
+vi.mock('./PaymentDemoModal', () => ({
+  PaymentDemoModal: (props: any) =>
+    props.visible ? (
+      <div
+        data-testid="payment-modal"
+        data-job-id={props.jobId}
+        data-job-title={props.jobTitle}
+        data-is-deposit={String(props.isDeposit)}
+        data-deposit-amount={String(props.depositAmount)}
+        data-service-type={props.serviceTypeCode}
+      >
+        Modal: {props.jobTitle}
+      </div>
+    ) : null,
+}));
 
 const jobs = vi.hoisted(() => ({ data: [] as unknown[] }));
 vi.mock('./useJobQueries', async () => ({
@@ -54,10 +68,10 @@ const job = (over: Record<string, unknown>) => ({
   ...over,
 });
 
-const renderPage = () =>
+const renderPage = (initialEntries = ['/client/jobs']) =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MemoryRouter initialEntries={['/client/jobs']}>
+      <MemoryRouter initialEntries={initialEntries}>
         <App>
           <ClientJobsListPage />
         </App>
@@ -151,5 +165,54 @@ describe('ClientJobsListPage', () => {
     expect(await screen.findByText('DN yêu cầu sửa')).toBeInTheDocument();
     expect(screen.getByText('Hạn nộp: 25/11/2026')).toBeInTheDocument();
     expect(screen.getByText('Hết hạn tin: 15/12/2026')).toBeInTheDocument();
+  });
+
+  it('opens payment modal with isDeposit=true and depositAmount when deep-linked with openPayment for CV_SOURCING', async () => {
+    jobs.data = [
+      job({
+        jobId: 'job-sourcing-deposit',
+        title: 'Tuyển ReactJS gấp',
+        status: 'PENDING_PAYMENT',
+        serviceTypeCode: 'CV_SOURCING',
+        depositAmount: 5_000_000,
+      }),
+    ];
+
+    renderPage(['/client/jobs?highlight=job-sourcing-deposit&openPayment=true']);
+
+    const modal = await screen.findByTestId('payment-modal');
+    expect(modal).toBeInTheDocument();
+    expect(modal.getAttribute('data-job-id')).toBe('job-sourcing-deposit');
+    expect(modal.getAttribute('data-is-deposit')).toBe('true');
+    expect(modal.getAttribute('data-deposit-amount')).toBe('5000000');
+    expect(modal.getAttribute('data-service-type')).toBe('CV_SOURCING');
+  });
+
+  it('opens payment modal with isDeposit=false when deep-linked with openPayment for CV_APPLICATION', async () => {
+    jobs.data = [
+      job({
+        jobId: 'job-posting-fee',
+        title: 'Tuyển Golang',
+        status: 'PENDING_PAYMENT',
+        serviceTypeCode: 'CV_APPLICATION',
+        postingFee: {
+          postingFeeId: 'f1',
+          amount: 1_500_000,
+          currencyCode: 'VND',
+          status: 'PENDING',
+          paidAt: null,
+          paymentReference: null,
+          packageName: 'Tiêu chuẩn',
+        },
+      }),
+    ];
+
+    renderPage(['/client/jobs?highlight=job-posting-fee&openPayment=true']);
+
+    const modal = await screen.findByTestId('payment-modal');
+    expect(modal).toBeInTheDocument();
+    expect(modal.getAttribute('data-job-id')).toBe('job-posting-fee');
+    expect(modal.getAttribute('data-is-deposit')).toBe('false');
+    expect(modal.getAttribute('data-service-type')).toBe('CV_APPLICATION');
   });
 });

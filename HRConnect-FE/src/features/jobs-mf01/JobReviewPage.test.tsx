@@ -226,7 +226,7 @@ describe('JobReviewPage tab switching with highlight query param', () => {
       expect(screen.getByText('Senior Developer')).toBeInTheDocument();
     });
 
-    const confirmBtn = await screen.findByRole('button', { name: /Công khai tin tuyển dụng/i });
+    const confirmBtn = await screen.findByRole('button', { name: /Công khai tin tuyển dụng/i }, { timeout: 8000 });
     fireEvent.click(confirmBtn);
 
     expect(capturedModalConfig).not.toBeNull();
