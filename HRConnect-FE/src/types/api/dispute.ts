@@ -74,6 +74,7 @@ export interface AdminDisputeDetailDto {
   resolvedBy: string | null;
   resolution: string | null;
   resolvedAt: string | null;
+  concurrencyToken: string;
 }
 
 export interface DisputePageDto {
@@ -93,4 +94,6 @@ export interface CreateDisputeRequest {
 export interface ResolveDisputeRequest {
   decision: 'UPHELD' | 'REJECTED';
   resolution: string;
+  concurrencyToken: string;
+  idempotencyKey: string;
 }

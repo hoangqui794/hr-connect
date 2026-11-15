@@ -68,6 +68,7 @@ const mockDisputeDetail = {
   resolvedBy: null,
   resolution: null,
   resolvedAt: null,
+  concurrencyToken: '11111111-1111-1111-1111-111111111111',
 };
 
 const renderComponent = () => {
@@ -129,8 +130,118 @@ describe('AdminDisputesPage', () => {
         expect.objectContaining({
           decision: 'UPHELD',
           resolution: 'Chấp thuận khiếu nại của CTV Pro',
+          concurrencyToken: '11111111-1111-1111-1111-111111111111',
+          idempotencyKey: expect.any(String),
         })
       );
+    });
+    const sentPayload = vi.mocked(disputeApi.resolveDispute).mock.calls[0][1];
+    expect(sentPayload.idempotencyKey.length).toBeGreaterThan(0);
+  });
+
+  it('reuses the same idempotencyKey when retrying after a transient network error in the same open drawer', async () => {
+    vi.mocked(disputeApi.getAdminDisputes).mockResolvedValue(mockDisputeList as any);
+    vi.mocked(disputeApi.getAdminDisputeDetail).mockResolvedValue(mockDisputeDetail as any);
+    vi.mocked(disputeApi.resolveDispute)
+      .mockRejectedValueOnce(new Error('Network Error'))
+      .mockResolvedValueOnce({
+        ...mockDisputeDetail,
+        status: 'UPHELD',
+        resolution: 'Chấp thuận sau khi thử lại',
+        resolvedAt: '2026-10-19T12:00:00Z',
+        concurrencyToken: '22222222-2222-2222-2222-222222222222',
+      } as any);
+
+    renderComponent();
+
+    fireEvent.click(await screen.findByRole('button', { name: /chi tiết/i }));
+    const resolutionInput = await screen.findByPlaceholderText(/nêu rõ lý do và căn cứ bằng chứng/i);
+    fireEvent.change(resolutionInput, { target: { value: 'Chấp thuận sau khi thử lại' } });
+
+    const submitBtn = screen.getByRole('button', { name: /xác nhận giải quyết khiếu nại/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(disputeApi.resolveDispute).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(disputeApi.resolveDispute).toHaveBeenCalledTimes(2);
+    });
+
+    const firstCallPayload = vi.mocked(disputeApi.resolveDispute).mock.calls[0][1];
+    const secondCallPayload = vi.mocked(disputeApi.resolveDispute).mock.calls[1][1];
+    expect(firstCallPayload.idempotencyKey).toBe(secondCallPayload.idempotencyKey);
+  });
+
+  it('on 409 STALE_DISPUTE_RESOLUTION shows reload notice, refetches detail, and preserves Admin input', async () => {
+    const updatedDetail = {
+      ...mockDisputeDetail,
+      concurrencyToken: '22222222-2222-2222-2222-222222222222',
+    };
+    vi.mocked(disputeApi.getAdminDisputes).mockResolvedValue(mockDisputeList as any);
+    vi.mocked(disputeApi.getAdminDisputeDetail)
+      .mockResolvedValueOnce(mockDisputeDetail as any)
+      .mockResolvedValue(updatedDetail as any);
+
+    const staleError = Object.assign(new Error('Conflict'), {
+      isAxiosError: true,
+      response: {
+        status: 409,
+        data: {
+          code: 'STALE_DISPUTE_RESOLUTION',
+          message: 'Khiếu nại vừa được cập nhật. Vui lòng tải lại chi tiết mới nhất.',
+        },
+      },
+    });
+    vi.mocked(disputeApi.resolveDispute)
+      .mockRejectedValueOnce(staleError)
+      .mockResolvedValueOnce({
+        ...updatedDetail,
+        status: 'REJECTED',
+        resolution: 'Giữ nguyên quyết định sau khi tải lại',
+        resolvedAt: '2026-10-19T12:05:00Z',
+      } as any);
+
+    renderComponent();
+
+    fireEvent.click(await screen.findByRole('button', { name: /chi tiết/i }));
+    const resolutionInput = (await screen.findByPlaceholderText(
+      /nêu rõ lý do và căn cứ bằng chứng/i
+    )) as HTMLTextAreaElement;
+
+    fireEvent.click(screen.getByLabelText(/từ chối khiếu nại/i));
+    fireEvent.change(resolutionInput, {
+      target: { value: 'Giữ nguyên quyết định sau khi tải lại' },
+    });
+
+    const submitBtn = screen.getByRole('button', { name: /xác nhận giải quyết khiếu nại/i });
+    fireEvent.click(submitBtn);
+
+    expect(
+      await screen.findByText('Khiếu nại vừa được cập nhật, đang tải lại')
+    ).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(disputeApi.getAdminDisputeDetail).toHaveBeenCalledTimes(2);
+    });
+
+    // Admin's typed resolution and selected decision must not be lost after reload
+    expect(resolutionInput.value).toBe('Giữ nguyên quyết định sau khi tải lại');
+
+    // Submitting again sends the refreshed concurrencyToken and same idempotencyKey
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(disputeApi.resolveDispute).toHaveBeenCalledTimes(2);
+    });
+    expect(vi.mocked(disputeApi.resolveDispute).mock.calls[1][1]).toEqual({
+      decision: 'REJECTED',
+      resolution: 'Giữ nguyên quyết định sau khi tải lại',
+      concurrencyToken: '22222222-2222-2222-2222-222222222222',
+      idempotencyKey: vi.mocked(disputeApi.resolveDispute).mock.calls[0][1].idempotencyKey,
     });
   });
 });

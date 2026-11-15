@@ -82,11 +82,15 @@ describe('disputeApi', () => {
     const res = await disputeApi.resolveDispute('dsp-1', {
       decision: 'UPHELD',
       resolution: 'Chấp thuận',
+      concurrencyToken: '11111111-1111-1111-1111-111111111111',
+      idempotencyKey: 'idem-key-1',
     });
 
     expect(apiClient.post).toHaveBeenCalledWith('/admin/disputes/dsp-1/resolve', {
       decision: 'UPHELD',
       resolution: 'Chấp thuận',
+      concurrencyToken: '11111111-1111-1111-1111-111111111111',
+      idempotencyKey: 'idem-key-1',
     });
     expect(res).toEqual(mockResolved);
   });

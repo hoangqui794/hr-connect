@@ -3,7 +3,7 @@
  * @description Platform Admin management for SF-04 Duplicate & Attribution Disputes.
  */
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Table,
   Tag,
@@ -29,9 +29,38 @@ import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { disputeApi } from '@/services/api/disputeApi';
-import { getApiErrorMessage } from '@/services/apiClient';
+import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import { FilterPills, PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
-import type { AdminDisputeListItemDto, AdminDisputeDetailDto } from '@/types/api/dispute';
+import type { AdminDisputeListItemDto, AdminDisputeDetailDto, ResolveDisputeRequest } from '@/types/api/dispute';
+
+const createIdempotencyKey = (): string =>
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+const isStaleDisputeError = (err: unknown): boolean => {
+  const apiErr = getApiError(err);
+  if (
+    apiErr.code === 'STALE_DISPUTE_RESOLUTION' ||
+    (apiErr.status === 409 && (!apiErr.code || apiErr.code === 'STALE_DISPUTE_RESOLUTION'))
+  ) {
+    return true;
+  }
+  if (err && typeof err === 'object') {
+    const raw = err as {
+      status?: number;
+      code?: string;
+      errorCode?: string;
+      response?: { status?: number; data?: { code?: string; errorCode?: string } };
+    };
+    const status = raw.status ?? raw.response?.status;
+    const code = raw.code ?? raw.errorCode ?? raw.response?.data?.code ?? raw.response?.data?.errorCode;
+    if (code === 'STALE_DISPUTE_RESOLUTION' || (status === 409 && (!code || code === 'STALE_DISPUTE_RESOLUTION'))) {
+      return true;
+    }
+  }
+  return false;
+};
 
 const fmt = (v?: string | null) => (v ? dayjs(v).format('HH:mm DD/MM/YYYY') : '—');
 
@@ -100,6 +129,17 @@ export const AdminDisputesPage: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [selectedDisputeId, setSelectedDisputeId] = useState<string | null>(null);
   const [resolveForm] = Form.useForm();
+  const idempotencyKeyRef = useRef<string>('');
+
+  const handleOpenDispute = (disputeId: string) => {
+    idempotencyKeyRef.current = createIdempotencyKey();
+    setSelectedDisputeId(disputeId);
+  };
+
+  const handleCloseDrawer = () => {
+    idempotencyKeyRef.current = '';
+    setSelectedDisputeId(null);
+  };
 
   // Fetch disputes list
   const listQuery = useQuery({
@@ -121,15 +161,23 @@ export const AdminDisputesPage: React.FC = () => {
 
   // Resolve mutation
   const resolveMutation = useMutation({
-    mutationFn: (values: { decision: 'UPHELD' | 'REJECTED'; resolution: string }) =>
+    mutationFn: (values: ResolveDisputeRequest) =>
       disputeApi.resolveDispute(selectedDisputeId!, values),
-    onSuccess: (data) => {
+    onSuccess: () => {
       message.success('Đã giải quyết khiếu nại thành công.');
       resolveForm.resetFields();
+      idempotencyKeyRef.current = createIdempotencyKey();
       queryClient.invalidateQueries({ queryKey: ['admin-disputes'] });
       queryClient.invalidateQueries({ queryKey: ['admin-dispute-detail', selectedDisputeId] });
     },
-    onError: (err) => message.error(getApiErrorMessage(err, 'Không thể xử lý khiếu nại.')),
+    onError: (err) => {
+      if (isStaleDisputeError(err)) {
+        message.warning('Khiếu nại vừa được cập nhật, đang tải lại');
+        void detailQuery.refetch();
+        return;
+      }
+      message.error(getApiErrorMessage(err, 'Không thể xử lý khiếu nại.'));
+    },
   });
 
   const d = detailQuery.data;
@@ -185,7 +233,7 @@ export const AdminDisputesPage: React.FC = () => {
         <Button
           size="small"
           icon={<EyeOutlined />}
-          onClick={() => setSelectedDisputeId(r.disputeId)}
+          onClick={() => handleOpenDispute(r.disputeId)}
         >
           Chi tiết
         </Button>
@@ -246,7 +294,7 @@ export const AdminDisputesPage: React.FC = () => {
       {/* Drawer: Dispute Details & Resolution */}
       <Drawer
         open={Boolean(selectedDisputeId)}
-        onClose={() => setSelectedDisputeId(null)}
+        onClose={handleCloseDrawer}
         width="min(720px, 100vw)"
         title="Chi tiết khiếu nại"
         destroyOnHidden
@@ -361,9 +409,20 @@ export const AdminDisputesPage: React.FC = () => {
                 <h4 className="m-0 text-base font-semibold text-[#111827]">Ra quyết định giải quyết</h4>
                 <Form
                   form={resolveForm}
+                  preserve={false}
                   layout="vertical"
                   initialValues={{ decision: 'UPHELD' }}
-                  onFinish={(v) => resolveMutation.mutate(v)}
+                  onFinish={(v: { decision: 'UPHELD' | 'REJECTED'; resolution: string }) => {
+                    if (!idempotencyKeyRef.current) {
+                      idempotencyKeyRef.current = createIdempotencyKey();
+                    }
+                    resolveMutation.mutate({
+                      decision: v.decision,
+                      resolution: v.resolution,
+                      concurrencyToken: d.concurrencyToken,
+                      idempotencyKey: idempotencyKeyRef.current,
+                    });
+                  }}
                 >
                   <Form.Item
                     name="decision"
