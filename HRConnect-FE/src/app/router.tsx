@@ -228,10 +228,10 @@ export const router = createBrowserRouter([
       // Old entry points open the unified queue pre-filtered by type.
       { path: 'companies', element: <AppRoutes.ConsoleApprovalsPage presetType="CLIENT" /> },
       { path: 'affiliates', element: <AppRoutes.ConsoleApprovalsPage presetType="AFFILIATE" /> },
-      // Redirect job review and placement reconciliation to Internal HR workspace
+      // Redirect job review to Internal HR workspace; Admin resolves flagged placement reconciliations here.
       { path: 'jobs', element: <Navigate to="/hr/jobs" replace /> },
       { path: 'job-templates', element: <Navigate to="/hr/job-templates" replace /> },
-      { path: 'placement-reconciliations', element: <Navigate to="/hr/placement-reconciliations" replace /> },
+      { path: 'placement-reconciliations', element: <AppRoutes.AdminPlacementReconciliationPage /> },
       { path: 'users', element: <AppRoutes.ConsoleUsersPage /> },
       { path: 'contact-requests', element: <AppRoutes.AdminContactRequestsPage /> },
       { path: 'service-types', element: <AppRoutes.ConsoleServiceTypesPage /> },
