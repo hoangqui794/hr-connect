@@ -652,4 +652,156 @@ public class ServiceAgreementFlowTests
         (await act.Should().ThrowAsync<ConflictException>()).Which.ErrorCode.Should().Be("SOURCING_DEPOSIT_NOT_CREATED");
         job.Status.Should().Be(JobStatuses.PendingAgreement);
     }
+
+    [Fact]
+    public async Task CreateProposal_CvSourcing_WithDefaultValues_ShouldPersistResolvedTerms_AndAllowSignWithoutConflict()
+    {
+        // Arrange
+        var (job, company, clientUser, clientMember) = CreateTestJob("CV_SOURCING");
+        job.ProposedPricePerCv = null;
+        job.ProposedPaymentDueDays = null;
+        job.SourcingTarget = null;
+        job.ReviewDays = null;
+        job.DepositPercent = null;
+
+        var internalHrId = Guid.NewGuid();
+
+        _jobs.Setup(x => x.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job);
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync("CV_SOURCING");
+        _agreements.Setup(x => x.GetHistoryByJobIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(new List<ServiceAgreement>());
+
+        var adminSettings = new Mock<IAdminBusinessSettings>();
+        adminSettings.Setup(x => x.GetDecimalAsync(BusinessSettingKeys.CvSourcingPricePerCv, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(600_000m);
+        adminSettings.Setup(x => x.GetIntAsync(BusinessSettingKeys.CvSourcingReviewDays, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(7);
+        adminSettings.Setup(x => x.GetIntAsync(BusinessSettingKeys.CvSourcingPaymentDueDays, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(20);
+        adminSettings.Setup(x => x.GetDecimalAsync(BusinessSettingKeys.CvSourcingDepositPercent, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(50m);
+
+        ServiceAgreement? addedAgreement = null;
+        _agreements.Setup(x => x.AddAsync(It.IsAny<ServiceAgreement>(), It.IsAny<CancellationToken>()))
+            .Callback<ServiceAgreement, CancellationToken>((sa, _) => addedAgreement = sa)
+            .Returns(Task.CompletedTask);
+
+        var createHandler = new CreateServiceAgreementProposalCommandHandler(
+            _jobs.Object, _agreements.Object, _pdfRenderer.Object, _storage.Object, _notifications.Object, _audit.Object, _uow.Object, adminSettings.Object);
+
+        // Act - create proposal with all terms null (default values)
+        var proposalResult = await createHandler.Handle(new CreateServiceAgreementProposalCommand
+        {
+            JobId = job.JobId,
+            UserId = internalHrId,
+            ConcurrencyToken = job.ConcurrencyToken
+        }, CancellationToken.None);
+
+        // Assert - proposal has resolved non-null values
+        proposalResult.PricePerQualifiedCv.Should().Be(600_000m);
+        proposalResult.SourcingTarget.Should().Be(10);
+        proposalResult.ReviewDays.Should().Be(7);
+        proposalResult.PaymentDueDays.Should().Be(20);
+        proposalResult.DepositPercent.Should().Be(50m);
+
+        addedAgreement.Should().NotBeNull();
+        addedAgreement!.PricePerQualifiedCv.Should().Be(600_000m);
+        addedAgreement.SourcingTarget.Should().Be(10);
+        addedAgreement.ReviewDays.Should().Be(7);
+        addedAgreement.PaymentDueDays.Should().Be(20);
+
+        // Client accepts proposal
+        addedAgreement.Status = ServiceAgreementStatuses.Accepted;
+
+        var challenge = new ServiceAgreementSignatureChallenge
+        {
+            ChallengeId = Guid.NewGuid(),
+            ServiceAgreementId = addedAgreement.ServiceAgreementId,
+            SignerUserId = clientUser.UserId,
+            OtpHash = "HASH_123456",
+            ExpiresAt = DateTime.UtcNow.AddMinutes(10)
+        };
+
+        _agreements.Setup(x => x.GetByIdForUpdateAsync(addedAgreement.ServiceAgreementId, It.IsAny<CancellationToken>())).ReturnsAsync(addedAgreement);
+        _agreements.Setup(x => x.GetActiveChallengeAsync(addedAgreement.ServiceAgreementId, clientUser.UserId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).ReturnsAsync(challenge);
+        _companyUsers.Setup(x => x.GetByUserIdAsync(clientUser.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(clientMember);
+        _users.Setup(x => x.GetByIdAsync(clientUser.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(clientUser);
+
+        var sourcingFinance = new Mock<ISourcingFinanceService>();
+        sourcingFinance.Setup(x => x.EnsureDepositAsync(job, clientUser.UserId, It.IsAny<CancellationToken>(), ServiceTypeCodes.CvSourcing))
+            .ReturnsAsync(new ServiceFee { ServiceFeeId = Guid.NewGuid(), Kind = ServiceFeeKinds.Deposit, Amount = 3_000_000m });
+
+        var signHandler = new SignServiceAgreementCommandHandler(
+            _agreements.Object, _jobs.Object, _companyUsers.Object, _users.Object, _otpService.Object,
+            _pdfRenderer.Object, _storage.Object, _notifications.Object, _audit.Object, _uow.Object,
+            sourcingFinance.Object, adminSettings.Object);
+
+        // Act - Client signs with OTP
+        var signResult = await signHandler.Handle(new SignServiceAgreementCommand
+        {
+            JobId = job.JobId,
+            AgreementId = addedAgreement.ServiceAgreementId,
+            Otp = "123456",
+            ConsentAccepted = true,
+            UserId = clientUser.UserId,
+            ConcurrencyToken = addedAgreement.ConcurrencyToken
+        }, CancellationToken.None);
+
+        // Assert - Successfully signed and transitioned to PendingPayment
+        signResult.Status.Should().Be(ServiceAgreementStatuses.Signed);
+        job.Status.Should().Be(JobStatuses.PendingPayment);
+        job.SourcingPricePerCv.Should().Be(600_000m);
+        job.SourcingTarget.Should().Be(10);
+        job.DepositPercent.Should().Be(50m);
+        sourcingFinance.Verify(x => x.EnsureDepositAsync(job, clientUser.UserId, It.IsAny<CancellationToken>(), ServiceTypeCodes.CvSourcing), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateProposal_HeadhuntCod_WithDefaultValues_ShouldPersistResolvedTerms()
+    {
+        // Arrange
+        var (job, company, clientUser, clientMember) = CreateTestJob("HEADHUNT_COD");
+        job.ProposedFeeMultiplier = null;
+        job.ProposedWarrantyDays = null;
+        job.ProposedPaymentDueDays = null;
+
+        var internalHrId = Guid.NewGuid();
+
+        _jobs.Setup(x => x.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job);
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>())).ReturnsAsync("HEADHUNT_COD");
+        _agreements.Setup(x => x.GetHistoryByJobIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(new List<ServiceAgreement>());
+
+        var adminSettings = new Mock<IAdminBusinessSettings>();
+        adminSettings.Setup(x => x.GetDecimalAsync(BusinessSettingKeys.HeadhuntFeeMultiplier, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1.5m);
+        adminSettings.Setup(x => x.GetIntAsync(BusinessSettingKeys.HeadhuntWarrantyDays, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(30);
+        adminSettings.Setup(x => x.GetIntAsync(BusinessSettingKeys.HeadhuntPaymentDueDays, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(20);
+
+        ServiceAgreement? addedAgreement = null;
+        _agreements.Setup(x => x.AddAsync(It.IsAny<ServiceAgreement>(), It.IsAny<CancellationToken>()))
+            .Callback<ServiceAgreement, CancellationToken>((sa, _) => addedAgreement = sa)
+            .Returns(Task.CompletedTask);
+
+        var createHandler = new CreateServiceAgreementProposalCommandHandler(
+            _jobs.Object, _agreements.Object, _pdfRenderer.Object, _storage.Object, _notifications.Object, _audit.Object, _uow.Object, adminSettings.Object);
+
+        // Act - create proposal with all terms null
+        var proposalResult = await createHandler.Handle(new CreateServiceAgreementProposalCommand
+        {
+            JobId = job.JobId,
+            UserId = internalHrId,
+            ConcurrencyToken = job.ConcurrencyToken
+        }, CancellationToken.None);
+
+        // Assert - proposal has resolved non-null values
+        proposalResult.FeeMultiplier.Should().Be(1.5m);
+        proposalResult.WarrantyDays.Should().Be(30);
+        proposalResult.PaymentDueDays.Should().Be(20);
+
+        addedAgreement.Should().NotBeNull();
+        addedAgreement!.FeeMultiplier.Should().Be(1.5m);
+        addedAgreement.WarrantyDays.Should().Be(30);
+        addedAgreement.PaymentDueDays.Should().Be(20);
+    }
 }
