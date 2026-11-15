@@ -2,6 +2,7 @@ using System.Security.Claims;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Features.Payments;
+using HRConnect.Presentation.Authorization;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,6 +11,8 @@ namespace HRConnect.Presentation.Endpoints.V1.Finance;
 /// <summary>Client pays a fee on the Công nợ page through VNPay; the IPN marks it paid without Platform Admin.</summary>
 public static class VnPayPaymentEndpoints
 {
+    private const string PlacementConfirm = "placement.confirm";
+
     public sealed record CreateVnPayPaymentRequest(string TargetType, Guid TargetId);
 
     public static IEndpointRouteBuilder MapVnPayPaymentEndpoints(this IEndpointRouteBuilder app)
@@ -30,6 +33,11 @@ public static class VnPayPaymentEndpoints
                 if (!Guid.TryParse(idClaim, out var userId))
                 {
                     return Results.Unauthorized();
+                }
+
+                if (!PermissionAuthorization.HasPermission(user, PlacementConfirm))
+                {
+                    return PermissionAuthorization.Forbidden(PlacementConfirm);
                 }
 
                 var ip = http.Connection.RemoteIpAddress?.MapToIPv4().ToString() ?? "127.0.0.1";

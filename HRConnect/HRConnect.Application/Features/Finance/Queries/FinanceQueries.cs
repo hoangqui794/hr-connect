@@ -129,9 +129,7 @@ public sealed class FinanceQueryHandlers :
         Guid? companyId = null;
         if (request.CompanyUserId is Guid companyUserId)
         {
-            var companyUser = await _companyUserRepository.GetByUserIdAsync(companyUserId, cancellationToken)
-                ?? throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
-            companyId = companyUser.CompanyId;
+            companyId = await ResolveActiveCompanyIdAsync(companyUserId, cancellationToken);
         }
 
         var (items, total) = await _financeRepository.GetServiceFeesAsync(
@@ -222,13 +220,7 @@ public sealed class FinanceQueryHandlers :
         Guid? companyId = request.CompanyId;
         if (request.CompanyUserId is Guid companyUserId)
         {
-            var member = await _companyUserRepository.GetByUserIdAsync(companyUserId, cancellationToken);
-            if (!CompanyMembershipPolicy.IsActive(member))
-            {
-                throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
-            }
-
-            companyId = member.CompanyId;
+            companyId = await ResolveActiveCompanyIdAsync(companyUserId, cancellationToken);
         }
 
         var buckets = await _financeRepository.GetServiceFeeSummaryBucketsAsync(companyId, request.JobId, cancellationToken)
@@ -368,9 +360,7 @@ public sealed class FinanceQueryHandlers :
         Guid? companyId = null;
         if (request.CompanyUserId is Guid companyUserId)
         {
-            var companyUser = await _companyUserRepository.GetByUserIdAsync(companyUserId, cancellationToken)
-                ?? throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
-            companyId = companyUser.CompanyId;
+            companyId = await ResolveActiveCompanyIdAsync(companyUserId, cancellationToken);
         }
 
         var (items, total) = await _financeRepository.GetWarrantiesAsync(companyId, Upper(request.Status), page, pageSize, cancellationToken);
@@ -424,6 +414,17 @@ public sealed class FinanceQueryHandlers :
                 slot?.ExpiresAt,
                 w.Placement?.ServiceFee?.DueDate);
         }).ToList(), total, page, pageSize);
+    }
+
+    private async Task<Guid> ResolveActiveCompanyIdAsync(Guid companyUserId, CancellationToken cancellationToken)
+    {
+        var member = await _companyUserRepository.GetByUserIdAsync(companyUserId, cancellationToken);
+        if (!CompanyMembershipPolicy.IsActive(member))
+        {
+            throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
+        }
+
+        return member.CompanyId;
     }
 
     private static (int Page, int PageSize) Normalize(int page, int pageSize) =>

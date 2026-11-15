@@ -2018,4 +2018,86 @@ public class Mf05FinanceTests
                 e.NewValues.ToString()!.Contains(originalFee.ServiceFeeId.ToString())),
             It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("INACTIVE")]
+    public async Task Client_service_fees_rejects_missing_or_inactive_company_member(string? status)
+    {
+        await ResignationReportedAsync(feePaid: false);
+        var inactiveOrMissing = status is null
+            ? new Mock<ICompanyUserRepository>()
+            : ClientOf(_companyId, status);
+
+        await new FinanceQueryHandlers(Repository, inactiveOrMissing.Object)
+            .Invoking(h => h.Handle(new GetServiceFeesQuery(_actor, null, 1, 20), default))
+            .Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("Tài khoản không thuộc doanh nghiệp nào.");
+
+        var activeFees = await new FinanceQueryHandlers(Repository, ClientOf(_companyId).Object)
+            .Handle(new GetServiceFeesQuery(_actor, null, 1, 20), default);
+        activeFees.TotalCount.Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("INACTIVE")]
+    public async Task Client_warranties_rejects_missing_or_inactive_company_member(string? status)
+    {
+        await ResignationReportedAsync(feePaid: false);
+        var inactiveOrMissing = status is null
+            ? new Mock<ICompanyUserRepository>()
+            : ClientOf(_companyId, status);
+
+        await new FinanceQueryHandlers(Repository, inactiveOrMissing.Object)
+            .Invoking(h => h.Handle(new GetWarrantiesQuery(_actor, null, 1, 20), default))
+            .Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("Tài khoản không thuộc doanh nghiệp nào.");
+
+        var activeWarranties = await new FinanceQueryHandlers(Repository, ClientOf(_companyId).Object)
+            .Handle(new GetWarrantiesQuery(_actor, null, 1, 20), default);
+        activeWarranties.TotalCount.Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("INACTIVE")]
+    public async Task Client_report_resignation_rejects_missing_or_inactive_company_member(string? status)
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        await InitializeAsync(placement, offer);
+        var inactiveOrMissing = status is null
+            ? new Mock<ICompanyUserRepository>()
+            : ClientOf(_companyId, status);
+
+        await new ReportResignationCommandHandler(Repository, inactiveOrMissing.Object, UnitOfWork, _audit.Object)
+            .Invoking(h => h.Handle(new ReportResignationCommand(placement.PlacementId, Start.AddDays(5), "Ứng viên xin nghỉ", _actor), default))
+            .Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("Tài khoản không thuộc doanh nghiệp nào.");
+
+        var claimed = await ReportHandler().Handle(
+            new ReportResignationCommand(placement.PlacementId, Start.AddDays(5), "Ứng viên xin nghỉ", _actor), default);
+        claimed.WarrantyStatus.Should().Be(WarrantyStates.Claimed);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("INACTIVE")]
+    public async Task Client_job_replacement_slots_rejects_missing_or_inactive_company_member(string? status)
+    {
+        var (placement, _) = await ResignationReportedAsync(feePaid: true);
+        await ConfirmResignationAsync(placement.PlacementId);
+        var inactiveOrMissing = status is null
+            ? new Mock<ICompanyUserRepository>()
+            : ClientOf(_companyId, status);
+
+        await new GetJobReplacementSlotsQueryHandler(Repository, inactiveOrMissing.Object)
+            .Invoking(h => h.Handle(new GetJobReplacementSlotsQuery(placement.Application.JobId, _actor), default))
+            .Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("Tài khoản không thuộc doanh nghiệp nào.");
+
+        var activeSlots = await new GetJobReplacementSlotsQueryHandler(Repository, ClientOf(_companyId).Object)
+            .Handle(new GetJobReplacementSlotsQuery(placement.Application.JobId, _actor), default);
+        activeSlots.Should().ContainSingle();
+    }
 }

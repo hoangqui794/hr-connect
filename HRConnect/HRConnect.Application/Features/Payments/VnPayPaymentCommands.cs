@@ -4,6 +4,7 @@ using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Finance.Commands.Settlement;
 using HRConnect.Application.Features.Jobs.Commands.RecordJobPostingFeePayment;
 using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using MediatR;
@@ -55,8 +56,11 @@ public sealed class VnPayPaymentCommandHandlers(
             throw new ConflictException("Thanh toán VNPay chưa được bật. Vui lòng chuyển khoản theo hướng dẫn.", "VNPAY_DISABLED");
         }
 
-        var companyUser = await companyUsers.GetByUserIdAsync(request.UserId, cancellationToken)
-            ?? throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
+        var companyUser = await companyUsers.GetByUserIdAsync(request.UserId, cancellationToken);
+        if (!CompanyMembershipPolicy.IsActive(companyUser))
+        {
+            throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
+        }
         var (amount, currency, orderInfo) = await ResolvePayableAsync(request.TargetType, request.TargetId, companyUser.CompanyId, cancellationToken);
 
         if (currency != "VND" || amount != decimal.Truncate(amount))

@@ -1,6 +1,8 @@
 using System.Net;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
@@ -10,7 +12,14 @@ using HRConnect.Application.Features.Payments;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Services.Payments;
+using HRConnect.Presentation.Endpoints.V1.Finance;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Moq;
 
@@ -260,7 +269,7 @@ public sealed class VnPayPaymentTests
         var h = new Harness();
         var userId = Guid.NewGuid();
         h.CompanyUsers.Setup(c => c.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = Guid.NewGuid() });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = Guid.NewGuid(), Status = "ACTIVE" });
         h.Finance.Setup(f => f.GetServiceFeeForUpdateAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ServiceFee { ServiceFeeId = Guid.NewGuid(), CompanyId = Guid.NewGuid(), Amount = 1_000, CurrencyCode = "VND", Status = ServiceFeeStates.Pending });
 
@@ -286,7 +295,7 @@ public sealed class VnPayPaymentTests
         var companyId = Guid.NewGuid();
         var feeId = Guid.NewGuid();
         h.CompanyUsers.Setup(c => c.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
         h.Finance.Setup(f => f.GetServiceFeeForUpdateAsync(feeId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ServiceFee { ServiceFeeId = feeId, CompanyId = companyId, Amount = 42_000_000, CurrencyCode = "VND", Status = ServiceFeeStates.Due });
 
@@ -310,7 +319,7 @@ public sealed class VnPayPaymentTests
         existing.CompanyId = companyId;
         existing.CreatedAt = DateTime.UtcNow.AddMinutes(-2);
         h.CompanyUsers.Setup(c => c.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
         h.Finance.Setup(f => f.GetServiceFeeForUpdateAsync(feeId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ServiceFee { ServiceFeeId = feeId, CompanyId = companyId, Amount = 1_000_000, CurrencyCode = "VND", Status = ServiceFeeStates.Due });
         h.Payments.Setup(p => p.GetActiveByTargetAsync(OnlinePaymentTargets.ServiceFee, feeId, It.IsAny<CancellationToken>()))
@@ -336,7 +345,7 @@ public sealed class VnPayPaymentTests
         expired.CompanyId = companyId;
         expired.CreatedAt = DateTime.UtcNow.AddHours(-1);
         h.CompanyUsers.Setup(c => c.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId });
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
         h.Finance.Setup(f => f.GetServiceFeeForUpdateAsync(feeId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ServiceFee { ServiceFeeId = feeId, CompanyId = companyId, Amount = 1_000_000, CurrencyCode = "VND", Status = ServiceFeeStates.Due });
         h.Payments.Setup(p => p.GetActiveByTargetAsync(OnlinePaymentTargets.ServiceFee, feeId, It.IsAny<CancellationToken>()))
@@ -348,5 +357,115 @@ public sealed class VnPayPaymentTests
         expired.Status.Should().Be(OnlinePaymentStates.Failed);
         expired.LastError.Should().Contain("hết hạn");
         h.Payments.Verify(p => p.TryAddPendingAsync(It.IsAny<OnlinePayment>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("INACTIVE")]
+    public async Task CreateVnPayPayment_rejects_missing_or_inactive_company_member(string? status)
+    {
+        var h = new Harness();
+        var userId = Guid.NewGuid();
+        if (status is not null)
+        {
+            h.CompanyUsers.Setup(c => c.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = Guid.NewGuid(), Status = status });
+        }
+
+        await h.Handlers()
+            .Invoking(handler => handler.Handle(
+                new CreateVnPayPaymentCommand(OnlinePaymentTargets.ServiceFee, Guid.NewGuid(), userId, "127.0.0.1"), default))
+            .Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("Tài khoản không thuộc doanh nghiệp nào.");
+
+        h.Payments.Verify(p => p.TryAddPendingAsync(It.IsAny<OnlinePayment>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(null, StatusCodes.Status403Forbidden)]
+    [InlineData("job.view", StatusCodes.Status403Forbidden)]
+    [InlineData("placement.confirm", StatusCodes.Status200OK)]
+    public async Task CreateVnPayPaymentEndpoint_requires_placement_confirm_permission(string? grantedPermission, int expectedStatusCode)
+    {
+        var userId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
+        var sender = new Mock<ISender>();
+        sender.Setup(s => s.Send(It.IsAny<CreateVnPayPaymentCommand>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VnPayPaymentLinkResponse(Guid.NewGuid(), "https://sandbox.vnpayment.vn/pay"));
+
+        var (statusCode, body) = await InvokeCreateVnPayPaymentEndpointAsync(grantedPermission, userId, targetId, sender);
+
+        statusCode.Should().Be(expectedStatusCode, "response body was: {0}", body);
+        if (expectedStatusCode == StatusCodes.Status403Forbidden)
+        {
+            body.Should().Contain("MISSING_PERMISSION").And.Contain("placement.confirm");
+            sender.Verify(s => s.Send(It.IsAny<CreateVnPayPaymentCommand>(), It.IsAny<CancellationToken>()), Times.Never);
+            return;
+        }
+
+        sender.Verify(
+            s => s.Send(
+                It.Is<CreateVnPayPaymentCommand>(c =>
+                    c.TargetType == OnlinePaymentTargets.ServiceFee &&
+                    c.TargetId == targetId &&
+                    c.UserId == userId),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    private static async Task<(int StatusCode, string Body)> InvokeCreateVnPayPaymentEndpointAsync(
+        string? grantedPermission,
+        Guid userId,
+        Guid targetId,
+        Mock<ISender> sender)
+    {
+        var builder = WebApplication.CreateBuilder();
+        builder.Services.Configure<RouteHandlerOptions>(o => o.ThrowOnBadRequest = true);
+        builder.Services.AddAuthorization();
+        builder.Services.AddSingleton(sender.Object);
+        builder.Services.AddSingleton(Mock.Of<IVnPayGateway>());
+        await using var app = builder.Build();
+        app.MapVnPayPaymentEndpoints();
+
+        var endpoint = ((IEndpointRouteBuilder)app).DataSources
+            .SelectMany(ds => ds.Endpoints)
+            .OfType<RouteEndpoint>()
+            .Single(e =>
+                e.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods.Contains("POST") == true &&
+                string.Equals(e.RoutePattern.RawText?.TrimEnd('/'), "/api/v1/payments/vnpay", StringComparison.OrdinalIgnoreCase));
+
+        endpoint.Metadata.GetMetadata<IAuthorizeData>().Should().NotBeNull();
+
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, userId.ToString()) };
+        if (!string.IsNullOrWhiteSpace(grantedPermission))
+        {
+            claims.Add(new Claim("permission", grantedPermission));
+        }
+
+        var responseStream = new MemoryStream();
+        var context = new DefaultHttpContext
+        {
+            RequestServices = app.Services,
+            User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test")),
+            Response = { Body = responseStream },
+        };
+        var payload = Encoding.UTF8.GetBytes(
+            JsonSerializer.Serialize(new { targetType = OnlinePaymentTargets.ServiceFee, targetId }));
+        context.Features.Set<IHttpRequestBodyDetectionFeature>(new AlwaysHasBodyFeature());
+        context.Request.Method = HttpMethods.Post;
+        context.Request.ContentType = "application/json";
+        context.Request.ContentLength = payload.Length;
+        context.Request.Body = new MemoryStream(payload);
+
+        await endpoint.RequestDelegate!(context);
+
+        responseStream.Position = 0;
+        using var reader = new StreamReader(responseStream);
+        return (context.Response.StatusCode, await reader.ReadToEndAsync());
+    }
+
+    private sealed class AlwaysHasBodyFeature : IHttpRequestBodyDetectionFeature
+    {
+        public bool CanHaveBody => true;
     }
 }

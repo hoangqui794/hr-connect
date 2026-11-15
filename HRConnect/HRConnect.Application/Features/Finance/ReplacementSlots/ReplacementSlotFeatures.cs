@@ -73,16 +73,24 @@ public sealed class GetJobReplacementSlotsQueryHandler : IRequestHandler<GetJobR
 
     public async Task<IReadOnlyList<ReplacementSlotDto>> Handle(GetJobReplacementSlotsQuery request, CancellationToken cancellationToken)
     {
-        var companyId = await _financeRepository.GetJobCompanyIdAsync(request.JobId, cancellationToken)
-            ?? throw new NotFoundException("Không tìm thấy job.");
+        Guid? clientCompanyId = null;
         if (request.ClientUserId is Guid clientUserId)
         {
             var companyUser = await _companyUserRepository.GetByUserIdAsync(clientUserId, cancellationToken);
-            if (companyUser == null || companyUser.CompanyId != companyId)
+            if (!CompanyMembershipPolicy.IsActive(companyUser))
             {
-                // Same answer as a missing job: do not reveal other companies' jobs.
-                throw new NotFoundException("Không tìm thấy job.");
+                throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
             }
+
+            clientCompanyId = companyUser.CompanyId;
+        }
+
+        var companyId = await _financeRepository.GetJobCompanyIdAsync(request.JobId, cancellationToken)
+            ?? throw new NotFoundException("Không tìm thấy job.");
+        if (clientCompanyId is Guid expectedCompanyId && expectedCompanyId != companyId)
+        {
+            // Same answer as a missing job: do not reveal other companies' jobs.
+            throw new NotFoundException("Không tìm thấy job.");
         }
 
         var slots = await _financeRepository.GetReplacementSlotsByJobAsync(request.JobId, cancellationToken);

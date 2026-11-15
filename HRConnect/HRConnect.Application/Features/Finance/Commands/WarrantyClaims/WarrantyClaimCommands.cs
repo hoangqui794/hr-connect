@@ -5,6 +5,7 @@ using HRConnect.Application.Common.Models;
 using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Finance.Common;
 using HRConnect.Application.Features.Finance.ReplacementSlots;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using MediatR;
@@ -52,10 +53,15 @@ public sealed class ReportResignationCommandHandler : IRequestHandler<ReportResi
             throw new BadRequestException("Lý do nghỉ việc là bắt buộc và tối đa 2000 ký tự.");
         }
 
+        var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
+        if (!CompanyMembershipPolicy.IsActive(companyUser))
+        {
+            throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
+        }
+
         var placement = await _financeRepository.GetPlacementForFinanceAsync(request.PlacementId, cancellationToken)
             ?? throw new NotFoundException("Không tìm thấy thông tin nhận việc (Placement).");
-        var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
-        if (companyUser == null || placement.Application.Job.CompanyId != companyUser.CompanyId)
+        if (placement.Application.Job.CompanyId != companyUser.CompanyId)
         {
             // Same answer as a missing placement: do not reveal other companies' placements.
             throw new NotFoundException("Không tìm thấy thông tin nhận việc (Placement).");
