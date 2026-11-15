@@ -460,15 +460,26 @@ public class FinanceRepository : IFinanceRepository
                 || (fee.Placement != null && fee.Placement.Application.JobId == jobId.Value));
         }
 
-        return await query
+        var rows = await query
             .GroupBy(fee => new { fee.Kind, fee.Status, fee.CurrencyCode })
-            .Select(g => new HRConnect.Application.Features.Finance.Queries.ServiceFeeSummaryBucket(
+            .Select(g => new
+            {
                 g.Key.Kind,
                 g.Key.Status,
                 g.Key.CurrencyCode,
-                g.Count(),
-                g.Sum(fee => fee.Amount)))
+                Count = g.Count(),
+                Amount = g.Sum(fee => fee.Amount),
+            })
             .ToListAsync(cancellationToken);
+
+        return rows
+            .Select(r => new HRConnect.Application.Features.Finance.Queries.ServiceFeeSummaryBucket(
+                r.Kind,
+                r.Status,
+                r.CurrencyCode,
+                r.Count,
+                r.Amount))
+            .ToList();
     }
 
     public async Task<(IReadOnlyList<Commission> Items, int TotalCount)> GetCommissionsAsync(

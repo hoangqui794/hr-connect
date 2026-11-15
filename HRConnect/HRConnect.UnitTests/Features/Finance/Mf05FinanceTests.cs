@@ -1798,4 +1798,87 @@ public class Mf05FinanceTests
         var act = () => handlers.Handle(new GetServiceFeesSummaryQuery(_actor), default);
         await act.Should().ThrowAsync<ForbiddenException>();
     }
+
+    [Fact]
+    public async Task Service_fee_summary_keeps_primary_currency_counts_consistent_with_amounts_and_tracks_breakdowns()
+    {
+        var now = DateTime.UtcNow;
+        var due = DateOnly.FromDateTime(now).AddDays(5);
+        ServiceFee Fee(string kind, string status, decimal amount, string currency) => new()
+        {
+            ServiceFeeId = Guid.NewGuid(),
+            CompanyId = _companyId,
+            Kind = kind,
+            Status = status,
+            Amount = amount,
+            BaseSalary = amount,
+            FeeMultiplier = 1m,
+            CurrencyCode = currency,
+            DueDate = due,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        _context.ServiceFees.AddRange(
+            Fee(ServiceFeeKinds.Placement, ServiceFeeStates.Pending, 12_000_000m, "VND"),
+            Fee(ServiceFeeKinds.Placement, ServiceFeeStates.Overdue, 8_000_000m, "VND"),
+            Fee(ServiceFeeKinds.Placement, ServiceFeeStates.Pending, 1_500m, "USD"),
+            Fee(ServiceFeeKinds.ReplacementRefund, ServiceFeeStates.Pending, 250m, "USD"));
+        await _context.SaveChangesAsync();
+
+        var handlers = new FinanceQueryHandlers(Repository, ClientOf(_companyId).Object);
+        var summary = await handlers.Handle(new GetServiceFeesSummaryQuery(_actor), default);
+
+        summary.CurrencyCode.Should().Be("VND");
+        summary.UnpaidAmount.Should().Be(20_000_000m);
+        summary.UnpaidCount.Should().Be(2, "top-level count must match primary currency (VND) amount, excluding USD rows");
+        summary.OverdueAmount.Should().Be(8_000_000m);
+        summary.OverdueCount.Should().Be(1);
+        summary.PendingRefundAmount.Should().Be(0m);
+        summary.PendingRefundCount.Should().Be(0);
+        summary.TotalCount.Should().Be(4, "totalCount still tracks all fees across currencies");
+        summary.CurrencyBreakdowns.Should().HaveCount(2);
+        summary.CurrencyBreakdowns!.Single(b => b.CurrencyCode == "USD").Should().Match<ServiceFeeCurrencySummaryDto>(b =>
+            b.UnpaidAmount == 1_500m && b.UnpaidCount == 1 && b.PendingRefundAmount == 250m && b.PendingRefundCount == 1);
+    }
+
+    [Fact]
+    public async Task Finance_repository_get_service_fee_summary_buckets_filters_by_company_and_job_including_placement_fees()
+    {
+        var now = DateTime.UtcNow;
+        var due = DateOnly.FromDateTime(now).AddDays(7);
+        var targetJobId = Guid.NewGuid();
+        var otherJobId = Guid.NewGuid();
+        var candidateId = Guid.NewGuid();
+        var applicationId = Guid.NewGuid();
+        var placementId = Guid.NewGuid();
+
+        _context.Companies.AddRange(
+            new Company { CompanyId = _companyId, CompanyName = "Target Co", VerificationStatus = "VERIFIED", CreatedAt = now, UpdatedAt = now },
+            new Company { CompanyId = _otherCompanyId, CompanyName = "Other Co", VerificationStatus = "VERIFIED", CreatedAt = now, UpdatedAt = now });
+        _context.Jobs.AddRange(
+            new Job { JobId = targetJobId, CompanyId = _companyId, ServiceTypeId = _serviceTypeId, CreatedBy = _actor, Title = "Target", CurrencyCode = "VND", Quantity = 1, Status = "ACTIVE", CreatedAt = now, UpdatedAt = now, ConcurrencyToken = Guid.NewGuid() },
+            new Job { JobId = otherJobId, CompanyId = _companyId, ServiceTypeId = _serviceTypeId, CreatedBy = _actor, Title = "Other", CurrencyCode = "VND", Quantity = 1, Status = "ACTIVE", CreatedAt = now, UpdatedAt = now, ConcurrencyToken = Guid.NewGuid() });
+        _context.Candidates.Add(new Candidate { CandidateId = candidateId, FullName = "Nguyễn Văn Test", ProfileVisibility = "PRIVATE", Status = "ACTIVE", CreatedAt = now, UpdatedAt = now });
+        _context.Applications.Add(new JobApplication { ApplicationId = applicationId, JobId = targetJobId, CandidateId = candidateId, Status = ApplicationStates.Placed, AppliedAt = now, UpdatedAt = now, ConcurrencyToken = Guid.NewGuid() });
+        _context.Placements.Add(new Placement { PlacementId = placementId, ApplicationId = applicationId, OfferId = Guid.NewGuid(), ActualStartDate = Start, Status = PlacementStates.Started, ConfirmedAt = now, CreatedAt = now, UpdatedAt = now });
+
+        _context.ServiceFees.AddRange(
+            new ServiceFee { ServiceFeeId = Guid.NewGuid(), CompanyId = _companyId, JobId = targetJobId, Kind = ServiceFeeKinds.Deposit, Status = ServiceFeeStates.Pending, Amount = 2_000_000m, BaseSalary = 2_000_000m, FeeMultiplier = 1m, CurrencyCode = "VND", DueDate = due, CreatedAt = now, UpdatedAt = now },
+            new ServiceFee { ServiceFeeId = Guid.NewGuid(), CompanyId = _companyId, JobId = targetJobId, Kind = ServiceFeeKinds.Deposit, Status = ServiceFeeStates.Pending, Amount = 3_000_000m, BaseSalary = 3_000_000m, FeeMultiplier = 1m, CurrencyCode = "VND", DueDate = due, CreatedAt = now, UpdatedAt = now },
+            new ServiceFee { ServiceFeeId = Guid.NewGuid(), CompanyId = _companyId, PlacementId = placementId, Kind = ServiceFeeKinds.Placement, Status = ServiceFeeStates.Paid, Amount = 15_000_000m, BaseSalary = 15_000_000m, FeeMultiplier = 1m, CurrencyCode = "VND", DueDate = due, CreatedAt = now, UpdatedAt = now },
+            new ServiceFee { ServiceFeeId = Guid.NewGuid(), CompanyId = _companyId, JobId = otherJobId, Kind = ServiceFeeKinds.Settlement, Status = ServiceFeeStates.Pending, Amount = 4_000_000m, BaseSalary = 4_000_000m, FeeMultiplier = 1m, CurrencyCode = "USD", DueDate = due, CreatedAt = now, UpdatedAt = now },
+            new ServiceFee { ServiceFeeId = Guid.NewGuid(), CompanyId = _otherCompanyId, Kind = ServiceFeeKinds.Placement, Status = ServiceFeeStates.Overdue, Amount = 9_000_000m, BaseSalary = 9_000_000m, FeeMultiplier = 1m, CurrencyCode = "VND", DueDate = due, CreatedAt = now, UpdatedAt = now });
+        await _context.SaveChangesAsync();
+
+        var companyBuckets = await Repository.GetServiceFeeSummaryBucketsAsync(_companyId, null, default);
+        companyBuckets.Should().HaveCount(3);
+        companyBuckets.Single(b => b.Kind == ServiceFeeKinds.Deposit && b.Status == ServiceFeeStates.Pending && b.CurrencyCode == "VND")
+            .Should().Be(new ServiceFeeSummaryBucket(ServiceFeeKinds.Deposit, ServiceFeeStates.Pending, "VND", 2, 5_000_000m));
+
+        var jobBuckets = await Repository.GetServiceFeeSummaryBucketsAsync(_companyId, targetJobId, default);
+        jobBuckets.Should().HaveCount(2);
+        jobBuckets.Should().Contain(new ServiceFeeSummaryBucket(ServiceFeeKinds.Deposit, ServiceFeeStates.Pending, "VND", 2, 5_000_000m));
+        jobBuckets.Should().Contain(new ServiceFeeSummaryBucket(ServiceFeeKinds.Placement, ServiceFeeStates.Paid, "VND", 1, 15_000_000m));
+    }
 }

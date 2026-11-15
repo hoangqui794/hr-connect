@@ -267,15 +267,15 @@ public sealed class FinanceQueryHandlers :
         var primary = breakdowns.FirstOrDefault() ?? new ServiceFeeCurrencySummaryDto("VND", 0m, 0, 0m, 0, 0m, 0, 0m, 0, 0m, 0);
         return new ServiceFeeSummaryDto(
             primary.UnpaidAmount,
-            breakdowns.Sum(b => b.UnpaidCount),
+            primary.UnpaidCount,
             primary.OverdueAmount,
-            breakdowns.Sum(b => b.OverdueCount),
+            primary.OverdueCount,
             primary.PaidAmount,
-            breakdowns.Sum(b => b.PaidCount),
+            primary.PaidCount,
             primary.PendingRefundAmount,
-            breakdowns.Sum(b => b.PendingRefundCount),
+            primary.PendingRefundCount,
             primary.PaidRefundAmount,
-            breakdowns.Sum(b => b.PaidRefundCount),
+            primary.PaidRefundCount,
             buckets.Sum(b => b.Count),
             primary.CurrencyCode,
             breakdowns);
