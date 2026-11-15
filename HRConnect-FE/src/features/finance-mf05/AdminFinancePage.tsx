@@ -7,6 +7,7 @@
  */
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AnimatePresence, motion } from 'motion/react';
 import { Alert, App, Button, DatePicker, Drawer, Dropdown, Form, Input, InputNumber, Modal, Pagination, Radio, Select, Spin, Tag, Tooltip } from 'antd';
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, ReloadOutlined, SwapOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
@@ -240,10 +241,13 @@ export const AdminFinancePage: React.FC = () => {
                   })}
                 </tr>
               </thead>
-              <tbody className="bg-white">
-                {sorted.map((row) => (
-                  <tr
+              <tbody key={`${tab}-${commissionStatus}-${feeStatus}-${page}`} className="bg-white">
+                {sorted.map((row, idx) => (
+                  <motion.tr
                     key={getKey(row)}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.24, delay: Math.min(idx, 10) * 0.025, ease: [0.22, 1, 0.36, 1] }}
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
                     className={`group transition-colors duration-150 hover:bg-slate-50/90 [&:last-child>td]:border-b-0 ${onRowClick ? 'cursor-pointer' : ''}`}
                   >
@@ -255,7 +259,7 @@ export const AdminFinancePage: React.FC = () => {
                         </td>
                       );
                     })}
-                  </tr>
+                  </motion.tr>
                 ))}
               </tbody>
             </table>
@@ -711,13 +715,21 @@ export const AdminFinancePage: React.FC = () => {
                   role="tab"
                   aria-selected={selected}
                   onClick={() => { setTab(s.value); setPage(1); }}
-                  className={`cursor-pointer rounded-lg border-0 px-3.5 py-1.5 text-[13.5px] transition-[background-color,color,box-shadow] duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
+                  className={`relative cursor-pointer rounded-lg border-0 bg-transparent px-3.5 py-1.5 text-[13.5px] transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
                     selected
-                      ? 'bg-white font-semibold text-[#111827] shadow-[0_1px_2px_rgba(17,24,39,0.06)]'
-                      : 'bg-transparent font-medium text-[#4B5565] hover:text-[#111827]'
+                      ? 'font-semibold text-[#111827]'
+                      : 'font-medium text-[#4B5565] hover:text-[#111827]'
                   }`}
                 >
-                  {s.label}
+                  {selected && (
+                    <motion.span
+                      layoutId="finance-tab-pill"
+                      transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                      className="absolute inset-0 rounded-lg bg-white shadow-[0_1px_2px_rgba(17,24,39,0.06)]"
+                      aria-hidden
+                    />
+                  )}
+                  <span className="relative z-10">{s.label}</span>
                 </button>
               );
             })}
@@ -745,10 +757,20 @@ export const AdminFinancePage: React.FC = () => {
             </label>
           )}
         </div>
-        {tab === 'commissions' && renderDataTable(commissionColumns, commissions.data?.items, (c) => c.commissionId, commissions.isFetching, 'Chưa có hoa hồng nào.', (c) => setDetail({ kind: 'commission', item: c }))}
-        {tab === 'fees' && renderDataTable(feeColumns, fees.data?.items, (f) => f.serviceFeeId, fees.isFetching, 'Chưa có công nợ phí nào.', (f) => setDetail({ kind: 'fee', item: f }))}
-        {tab === 'postingFees' && <PostingFeePaymentsPanel enabled={tab === 'postingFees'} />}
-        {tab === 'payouts' && renderDataTable(payoutColumns, payouts.data?.items, (p) => p.payoutId, payouts.isFetching, 'Chưa có lần chi nào.', (p) => setDetail({ kind: 'payout', item: p }))}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={tab}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {tab === 'commissions' && renderDataTable(commissionColumns, commissions.data?.items, (c) => c.commissionId, commissions.isFetching, 'Chưa có hoa hồng nào.', (c) => setDetail({ kind: 'commission', item: c }))}
+            {tab === 'fees' && renderDataTable(feeColumns, fees.data?.items, (f) => f.serviceFeeId, fees.isFetching, 'Chưa có công nợ phí nào.', (f) => setDetail({ kind: 'fee', item: f }))}
+            {tab === 'postingFees' && <PostingFeePaymentsPanel enabled={tab === 'postingFees'} />}
+            {tab === 'payouts' && renderDataTable(payoutColumns, payouts.data?.items, (p) => p.payoutId, payouts.isFetching, 'Chưa có lần chi nào.', (p) => setDetail({ kind: 'payout', item: p }))}
+          </motion.div>
+        </AnimatePresence>
       </section>
 
       <Drawer

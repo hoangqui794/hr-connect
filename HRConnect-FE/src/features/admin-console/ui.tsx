@@ -4,9 +4,10 @@
  * soft surfaces instead of hard borders, coloured initials, status dots with text, pill filters
  * with counts. Colour pairs used for text meet WCAG AA 4.5:1.
  */
-import React from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
+import { AnimatePresence, animate, motion } from 'motion/react';
 import './admin-console.css';
 
 // Text/background pairs for initials — all ≥ 4.5:1 (dark text on light tint).
@@ -109,6 +110,28 @@ export const StatusDot: React.FC<{ tone: Tone; children: React.ReactNode }> = ({
   </span>
 );
 
+const AnimatedCount: React.FC<{ value: number }> = ({ value }) => {
+  const [display, setDisplay] = useState(value);
+  const prevRef = useRef(value);
+
+  useEffect(() => {
+    const from = prevRef.current;
+    prevRef.current = value;
+    if (from === value) {
+      setDisplay(value);
+      return;
+    }
+    const controls = animate(from, value, {
+      duration: 0.45,
+      ease: [0.16, 1, 0.3, 1],
+      onUpdate: (latest) => setDisplay(Math.round(latest)),
+    });
+    return () => controls.stop();
+  }, [value]);
+
+  return <>{display}</>;
+};
+
 /** Small metric tile for list pages (values are totals from the API). */
 export const StatTile: React.FC<{
   label: string;
@@ -118,39 +141,62 @@ export const StatTile: React.FC<{
   active?: boolean;
   onClick?: () => void;
 }> = ({ label, value, hint, tone = 'neutral', active, onClick }) => {
-  const Tag = onClick ? 'button' : 'div';
-  return (
-    <Tag
-      type={onClick ? 'button' : undefined}
-      onClick={onClick}
-      aria-pressed={onClick ? Boolean(active) : undefined}
-      className={`admin-surface relative flex w-full flex-col gap-1.5 p-4 text-left transition-[background-color,border-color,box-shadow,transform] duration-150 ${
-        onClick
-          ? 'cursor-pointer select-none border border-solid active:scale-[0.985] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]'
-          : 'border border-solid border-black/[0.08]'
-      } ${
-        active
-          ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent-soft)]/50 admin-surface--active'
-          : onClick
-            ? 'border-black/[0.08] bg-white hover:border-black/[0.18] hover:bg-[#F9FAFC]'
-            : 'border-black/[0.08] bg-white'
-      }`}
-    >
+  const content = (
+    <>
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-2 text-[12.5px] font-medium text-[#4b5565]">
           <span className="h-2 w-2 rounded-full" style={{ background: DOT[tone] }} aria-hidden />
           {label}
         </span>
-        {active && (
-          <span className="rounded-full bg-[color:var(--console-accent-soft)] px-2 py-0.5 text-[11px] font-medium text-[color:var(--console-accent-strong)]">
-            Đang lọc
-          </span>
-        )}
+        <AnimatePresence>
+          {active && (
+            <motion.span
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.16 }}
+              className="rounded-full bg-[color:var(--console-accent-soft)] px-2 py-0.5 text-[11px] font-medium text-[color:var(--console-accent-strong)]"
+            >
+              Đang lọc
+            </motion.span>
+          )}
+        </AnimatePresence>
       </div>
-      <span className="text-[28px] font-semibold leading-none tabular-nums tracking-[-0.025em] text-[#111827]">{value}</span>
+      <span className="text-[28px] font-semibold leading-none tabular-nums tracking-[-0.025em] text-[#111827]">
+        {typeof value === 'number' ? <AnimatedCount value={value} /> : value}
+      </span>
       {hint && <span className="text-xs text-[#6b7487]">{hint}</span>}
-    </Tag>
+    </>
   );
+
+  const baseCls = `admin-surface relative flex w-full flex-col gap-1.5 p-4 text-left transition-[background-color,border-color,box-shadow] duration-150 ${
+    onClick
+      ? 'cursor-pointer select-none border border-solid focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)]'
+      : 'border border-solid border-black/[0.08]'
+  } ${
+    active
+      ? 'border-[color:var(--console-accent)] bg-[color:var(--console-accent-soft)]/50 admin-surface--active'
+      : onClick
+        ? 'border-black/[0.08] bg-white hover:border-black/[0.18] hover:bg-[#F9FAFC]'
+        : 'border-black/[0.08] bg-white'
+  }`;
+
+  if (onClick) {
+    return (
+      <motion.button
+        type="button"
+        onClick={onClick}
+        aria-pressed={Boolean(active)}
+        whileTap={{ scale: 0.985 }}
+        transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+        className={baseCls}
+      >
+        {content}
+      </motion.button>
+    );
+  }
+
+  return <div className={baseCls}>{content}</div>;
 };
 
 /** Pill tabs with counts; keyboard-friendly radio-like buttons. */
@@ -166,6 +212,7 @@ export function FilterPills<T extends string>({
   options: { value: T; label: string; count?: number }[];
   label: string;
 }) {
+  const pillGroupId = useId();
   return (
     <div role="radiogroup" aria-label={label} className="inline-flex flex-wrap gap-2 rounded-3xl border border-solid border-black/[0.06] bg-[#ECEFF4] p-1 sm:gap-1 sm:rounded-full">
       {options.map((o) => {
@@ -177,20 +224,45 @@ export function FilterPills<T extends string>({
             role="radio"
             aria-checked={active}
             onClick={() => onChange(o.value)}
-            className={`inline-flex min-h-11 cursor-pointer items-center rounded-full border-0 px-3.5 py-1.5 text-[13px] sm:min-h-9 font-medium transition-[background-color,color,box-shadow] duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
-              active ? 'bg-white text-[#111827] shadow-[0_1px_2px_rgba(17,24,39,0.06)]' : 'bg-transparent text-[#4b5565] hover:text-[#111827]'
+            className={`relative inline-flex min-h-11 cursor-pointer items-center rounded-full border-0 bg-transparent px-3.5 py-1.5 text-[13px] sm:min-h-9 font-medium transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
+              active ? 'text-[#111827]' : 'text-[#4b5565] hover:text-[#111827]'
             }`}
           >
-            {o.label}
-            {o.count !== undefined && (
-              <span className={`ml-1.5 tabular-nums ${active ? 'text-[color:var(--console-accent-strong)]' : 'text-[#6b7487]'}`}>{o.count}</span>
+            {active && (
+              <motion.span
+                layoutId={`filter-pill-${pillGroupId}`}
+                transition={{ type: 'spring', stiffness: 460, damping: 36 }}
+                className="absolute inset-0 rounded-full bg-white shadow-[0_1px_2px_rgba(17,24,39,0.06)]"
+                aria-hidden
+              />
             )}
+            <span className="relative z-10 inline-flex items-center">
+              {o.label}
+              {o.count !== undefined && (
+                <span className={`ml-1.5 tabular-nums ${active ? 'text-[color:var(--console-accent-strong)]' : 'text-[#6b7487]'}`}>{o.count}</span>
+              )}
+            </span>
           </button>
         );
       })}
     </div>
   );
 }
+
+/** Motion-enabled AntD table body row for smooth data reveal on mount & page/filter changes. */
+export const MotionTableRow: React.FC<React.HTMLAttributes<HTMLTableRowElement>> = (props) => {
+  const { children, ...rest } = props;
+  return (
+    <motion.tr
+      {...(rest as Record<string, unknown>)}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
+    >
+      {children}
+    </motion.tr>
+  );
+};
 
 /** Name + secondary line with initials, for table cells and lists. */
 export const PersonCell: React.FC<{ name: string; secondary?: string | null; size?: number }> = ({ name, secondary, size = 36 }) => (

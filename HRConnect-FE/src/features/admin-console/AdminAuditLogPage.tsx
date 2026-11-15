@@ -11,11 +11,12 @@ import dayjs from 'dayjs';
 import { Alert, Button, DatePicker, Drawer, Input, Select, Skeleton, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { CloseOutlined, ReloadOutlined, RightOutlined } from '@ant-design/icons';
+import { motion } from 'motion/react';
 import { adminAuditApi } from '@/services/api/adminApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { AuditLogItem } from '@/types/api/admin';
 import { adminTokens, formatDateTime } from './adminTheme';
-import { PageHero, PersonCell, Surface } from './ui';
+import { MotionTableRow, PageHero, PersonCell, Surface } from './ui';
 import { describeAuditAction, describeEntityType } from './auditLabels';
 
 const PAGE_SIZE = 25;
@@ -317,6 +318,7 @@ export const AdminAuditLogPage: React.FC = () => {
             loading={list.isLoading}
             columns={columns}
             dataSource={page?.items ?? []}
+            components={{ body: { row: MotionTableRow } }}
             locale={{ emptyText: 'Không có sự kiện nào phù hợp bộ lọc.' }}
             onRow={(r) => ({
               onClick: () => setSelectedId(r.auditLogId),
@@ -353,7 +355,12 @@ export const AdminAuditLogPage: React.FC = () => {
           <Alert type="error" showIcon message={getApiErrorMessage(detail.error, 'Không tải được sự kiện.')} />
         ) : (
           <div className="space-y-4">
-            <div className="rounded-xl border border-slate-200/80 bg-white p-4">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+              className="rounded-xl border border-slate-200/80 bg-white p-4"
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="text-base font-semibold text-slate-900">{describeAuditAction(log.action)}</div>
@@ -366,9 +373,14 @@ export const AdminAuditLogPage: React.FC = () => {
               <div className="mt-3 font-mono text-xs text-slate-400 tabular-nums">
                 {formatDateTime(log.createdAt)}
               </div>
-            </div>
+            </motion.div>
 
-            <div className="rounded-xl border border-slate-200/80 bg-white p-4">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.26, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
+              className="rounded-xl border border-slate-200/80 bg-white p-4"
+            >
               <h4 className="mb-3 text-xs font-semibold text-slate-500">Thông tin truy vết</h4>
               <dl className="grid grid-cols-[130px_1fr] gap-y-2.5 gap-x-3 text-[13px]">
                 <dt className="text-slate-500">Người thao tác</dt>
@@ -399,12 +411,17 @@ export const AdminAuditLogPage: React.FC = () => {
                 <dt className="text-slate-500">Trình duyệt</dt>
                 <dd className="m-0 break-all text-xs text-slate-600">{log.userAgent ?? '—'}</dd>
               </dl>
-            </div>
+            </motion.div>
 
-            <div className="rounded-xl border border-slate-200/80 bg-white p-4">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.28, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+              className="rounded-xl border border-slate-200/80 bg-white p-4"
+            >
               <h4 className="mb-3 text-xs font-semibold text-slate-500">Dữ liệu thay đổi</h4>
               <ValueDiff oldValues={log.oldValues} newValues={log.newValues} />
-            </div>
+            </motion.div>
           </div>
         )}
       </Drawer>

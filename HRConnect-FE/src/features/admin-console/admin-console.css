@@ -285,24 +285,45 @@
 }
 
 .admin-stagger > * {
-  animation: admin-stagger-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: admin-stagger-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .admin-stagger > *:nth-child(1) { animation-delay: 0ms; }
-.admin-stagger > *:nth-child(2) { animation-delay: 45ms; }
-.admin-stagger > *:nth-child(3) { animation-delay: 90ms; }
-.admin-stagger > *:nth-child(4) { animation-delay: 135ms; }
-.admin-stagger > *:nth-child(5) { animation-delay: 180ms; }
-.admin-stagger > *:nth-child(6) { animation-delay: 225ms; }
+.admin-stagger > *:nth-child(2) { animation-delay: 40ms; }
+.admin-stagger > *:nth-child(3) { animation-delay: 80ms; }
+.admin-stagger > *:nth-child(4) { animation-delay: 120ms; }
+.admin-stagger > *:nth-child(5) { animation-delay: 160ms; }
+.admin-stagger > *:nth-child(6) { animation-delay: 200ms; }
 
 @keyframes admin-stagger-in {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: none; }
 }
 
+/* Data rows gently reveal sequentially when tables finish loading. */
+.admin-console .admin-soft-table .ant-table-tbody > tr.ant-table-row {
+  animation: admin-row-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.admin-console .admin-soft-table .ant-table-tbody > tr.ant-table-row:nth-child(1) { animation-delay: 20ms; }
+.admin-console .admin-soft-table .ant-table-tbody > tr.ant-table-row:nth-child(2) { animation-delay: 45ms; }
+.admin-console .admin-soft-table .ant-table-tbody > tr.ant-table-row:nth-child(3) { animation-delay: 70ms; }
+.admin-console .admin-soft-table .ant-table-tbody > tr.ant-table-row:nth-child(4) { animation-delay: 95ms; }
+.admin-console .admin-soft-table .ant-table-tbody > tr.ant-table-row:nth-child(5) { animation-delay: 120ms; }
+.admin-console .admin-soft-table .ant-table-tbody > tr.ant-table-row:nth-child(6) { animation-delay: 145ms; }
+.admin-console .admin-soft-table .ant-table-tbody > tr.ant-table-row:nth-child(7) { animation-delay: 170ms; }
+.admin-console .admin-soft-table .ant-table-tbody > tr.ant-table-row:nth-child(8) { animation-delay: 195ms; }
+.admin-console .admin-soft-table .ant-table-tbody > tr.ant-table-row:nth-child(9) { animation-delay: 220ms; }
+.admin-console .admin-soft-table .ant-table-tbody > tr.ant-table-row:nth-child(n+10) { animation-delay: 245ms; }
+
+@keyframes admin-row-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .admin-page-enter,
   .admin-stagger > *,
+  .admin-console .admin-soft-table .ant-table-tbody > tr.ant-table-row,
   .admin-skeleton-wrap,
   .admin-skeleton {
     animation: none;

@@ -5,7 +5,8 @@
  * breadcrumb and account menu, and a soft canvas. Every other role keeps AppShell.
  */
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate, useOutlet } from 'react-router-dom';
+import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { Dropdown, Tooltip } from 'antd';
 import {
   AppstoreOutlined,
@@ -32,7 +33,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { authService } from '@/services/authService';
 import { useCompactLayout } from './useCompactLayout';
 import { AccountAvatar } from '@/components/common/AccountAvatar';
-import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from './AdminRouteProgress';
+import { AdminPageSkeleton, AdminTopProgress } from './AdminRouteProgress';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { BrandMark } from '@/components/common/BrandMark';
 
@@ -117,9 +118,11 @@ export const AdminLayout: React.FC = () => {
 
   const name = user?.name || 'Quản trị viên';
   const width = collapsed ? 72 : 256;
+  const outlet = useOutlet();
 
   return (
-    <div className="admin-console min-h-screen bg-[#F5F7FA] text-[#111827]">
+    <MotionConfig reducedMotion="user">
+      <div className="admin-console min-h-screen bg-[#F5F7FA] text-[#111827]">
       {/* ── Sidebar: Deep-Ink Command Rail ──────────────────────────────── */}
       {compact && menuOpen && (
         <div className="fixed inset-0 z-[25] bg-[#0B0D14]/50 backdrop-blur-[1px] transition-opacity duration-200" onClick={() => setMenuOpen(false)} aria-hidden />
@@ -159,19 +162,31 @@ export const AdminLayout: React.FC = () => {
                         to={item.to}
                         className={({ isActive }) =>
                           [
-                            'relative flex min-h-11 lg:min-h-9 lg:h-9 items-center gap-3 rounded-lg px-3 text-[13.5px] no-underline transition-[background-color,color,transform] duration-150 active:scale-[0.985]',
+                            'relative flex min-h-11 lg:min-h-9 lg:h-9 items-center gap-3 rounded-lg px-3 text-[13.5px] no-underline transition-colors duration-150 active:scale-[0.985]',
                             'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-blue-400',
                             collapsed ? 'justify-center' : '',
                             isActive
-                              ? 'bg-[#171B26] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-r before:bg-[#3B82F6] before:content-[""]'
+                              ? 'font-medium text-white'
                               : 'font-normal text-[#A3A9B8] hover:bg-white/[0.05] hover:text-[#EEF0F5]',
                           ].join(' ')
                         }
                       >
-                        <span className="text-[16px] shrink-0" aria-hidden>
-                          {item.icon}
-                        </span>
-                        {!collapsed && <span className="truncate">{item.label}</span>}
+                        {({ isActive }) => (
+                          <>
+                            {isActive && (
+                              <motion.span
+                                layoutId="admin-sidebar-active-pill"
+                                transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                                className="absolute inset-0 rounded-lg bg-[#171B26] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-r before:bg-[#3B82F6] before:content-['']"
+                                aria-hidden
+                              />
+                            )}
+                            <span className="relative z-10 text-[16px] shrink-0" aria-hidden>
+                              {item.icon}
+                            </span>
+                            {!collapsed && <span className="relative z-10 truncate">{item.label}</span>}
+                          </>
+                        )}
                       </NavLink>
                     </Tooltip>
                   </li>
@@ -251,14 +266,31 @@ export const AdminLayout: React.FC = () => {
 
         <AdminTopProgress offsetLeft={compact ? 0 : width} />
         <main className="mx-auto max-w-[1360px] px-4 py-6 lg:px-8 lg:py-8">
-          <AdminPageEnter pathKey={location.pathname}>
-            <Suspense fallback={<AdminPageSkeleton />}>
-              <Outlet />
-            </Suspense>
-          </AdminPageEnter>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{
+                opacity: 1,
+                y: 0,
+                transition: { duration: 0.34, ease: [0.16, 1, 0.3, 1] },
+              }}
+              exit={{
+                opacity: 0,
+                y: -6,
+                transition: { duration: 0.11, ease: [0.4, 0, 1, 1] },
+              }}
+              style={{ willChange: 'transform, opacity' }}
+            >
+              <Suspense fallback={<AdminPageSkeleton />}>
+                {outlet}
+              </Suspense>
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
     </div>
+    </MotionConfig>
   );
 };
 
