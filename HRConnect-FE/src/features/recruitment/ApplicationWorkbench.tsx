@@ -1470,7 +1470,7 @@ export const ApplicationWorkbench: React.FC<{
               <Form.Item noStyle shouldUpdate={(a, b) => a.reasonCode !== b.reasonCode}>
                 {({ getFieldValue }) => {
                   const code = getFieldValue('reasonCode');
-                  const required = code === 'CANDIDATE_OTHER';
+                  const required = code === 'CANDIDATE_OTHER' || code === 'EMPLOYER_CANCELLED';
                   return (
                     <Form.Item name="reason" label={required ? 'Ghi chú (bắt buộc)' : 'Ghi chú (không bắt buộc)'} rules={[{ required, whitespace: required, message: 'Vui lòng ghi chú lý do.' }, { max: 1000, message: 'Tối đa 1000 ký tự.' }]}>
                       <Input.TextArea rows={3} maxLength={1000} showCount />
