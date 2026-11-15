@@ -77,6 +77,27 @@ export const SOURCING_REJECT_REASONS: { value: SourcingRejectReasonCode; label: 
   },
 ];
 
+export const REJECTION_REVIEW_STATUS: Record<
+  string,
+  { label: string; tagColor: string; description: string }
+> = {
+  PENDING_HR_REVIEW: {
+    label: 'Chờ HR Connect xác minh',
+    tagColor: 'warning',
+    description: 'Lý do khác (OTHER) đang chờ Internal HR kiểm tra tính hợp lệ.',
+  },
+  UPHELD: {
+    label: 'HR Connect xác nhận hợp lệ',
+    tagColor: 'default',
+    description: 'Internal HR đã xác nhận lý do từ chối của Doanh nghiệp.',
+  },
+  OVERTURNED: {
+    label: 'HR Connect bác bỏ từ chối · tính phí',
+    tagColor: 'blue',
+    description: 'Lý do từ chối không hợp lệ nên CV được chuyển sang Đã chấp nhận.',
+  },
+};
+
 export const getRejectReasonLabel = (reasonCode?: string | null): string => {
   if (!reasonCode) return '—';
   const found = SOURCING_REJECT_REASONS.find((r) => r.value === reasonCode);
@@ -89,6 +110,7 @@ export const getRejectReasonLabel = (reasonCode?: string | null): string => {
  */
 export const calculateDaysLeft = (reviewDueAt: string | Date, now: Date = new Date()): number => {
   const due = dayjs(reviewDueAt);
+  if (!due.isValid()) return 0;
   const current = dayjs(now);
   const diffDays = due.diff(current, 'day', true);
   return Math.max(0, Math.ceil(diffDays));
@@ -98,7 +120,9 @@ export const calculateDaysLeft = (reviewDueAt: string | Date, now: Date = new Da
  * Checks whether the review window has closed (now > reviewDueAt).
  */
 export const isReviewWindowClosed = (reviewDueAt: string | Date, now: Date = new Date()): boolean => {
-  return dayjs(now).isAfter(dayjs(reviewDueAt));
+  const due = dayjs(reviewDueAt);
+  if (!due.isValid()) return false;
+  return dayjs(now).isAfter(due);
 };
 
 export interface DeadlineInfo {
@@ -121,9 +145,10 @@ export const getSourcingReviewDeadlineInfo = (
   },
   now: Date = new Date()
 ): DeadlineInfo => {
+  const due = dayjs(delivery.reviewDueAt);
   const isExpired = isReviewWindowClosed(delivery.reviewDueAt, now);
   const daysLeft = delivery.daysLeft != null ? Math.max(0, delivery.daysLeft) : calculateDaysLeft(delivery.reviewDueAt, now);
-  const formattedDueAt = dayjs(delivery.reviewDueAt).format('HH:mm DD/MM/YYYY');
+  const formattedDueAt = due.isValid() ? due.format('HH:mm DD/MM/YYYY') : '—';
 
   if (delivery.status !== 'DELIVERED') {
     return {

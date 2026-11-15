@@ -266,4 +266,86 @@ describe('SourcingDeliveriesView', () => {
     expect(await screen.findByText('Quá hạn xem xét', {}, { timeout: 10000 })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Chấp nhận CV/i })).not.toBeInTheDocument();
   });
+
+  it('shows reviewDays, remaining count, finance totals, rejection review notes, replacement candidate and AI score', async () => {
+    vi.mocked(sourcingApi.getDeliveries).mockResolvedValue({
+      summary: {
+        ...mockSummary,
+        reviewDays: 5,
+        pricePerCv: 2_000_000,
+        counted: 3,
+        countedAmount: 6_000_000,
+        depositPaidAmount: 3_500_000,
+        remainingToDeliver: 7,
+        jobStatus: 'ACTIVE',
+      },
+      items: [
+        {
+          ...mockDeliveries[1],
+          deliveryId: 'del-overturned',
+          candidateName: 'Ứng Viên Bị Bác Từ Chối',
+          status: 'ACCEPTED',
+          rejectionReviewStatus: 'OVERTURNED',
+          rejectionReviewNote: 'Hồ sơ khớp toàn bộ tiêu chí bắt buộc',
+          rejectionReviewedAt: '2026-10-13T08:30:00Z',
+          aiMatchScore: 92.4,
+        },
+        {
+          ...mockDeliveries[2],
+          deliveryId: 'del-pending-review',
+          candidateName: 'Ứng Viên Chờ HR Duyệt',
+          status: 'REJECTED',
+          rejectReasonCode: 'OTHER',
+          rejectNote: 'Chưa phù hợp văn hóa',
+          rejectionReviewStatus: 'PENDING_HR_REVIEW',
+        },
+        {
+          ...mockDeliveries[2],
+          deliveryId: 'del-replaced',
+          candidateName: 'Ứng Viên Đã Đổi',
+          status: 'REPLACED',
+          replacedByDeliveryId: 'del-new',
+          replacementCandidateName: 'Đỗ Thị D',
+        },
+      ],
+    });
+
+    renderComponent({ role: 'client' });
+
+    expect(await screen.findByText('Hạn xem xét: 5 ngày/CV', {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(screen.getByText('Còn thiếu 7/10 CV')).toBeInTheDocument();
+    expect(screen.getByText('2.000.000 đ')).toBeInTheDocument();
+    expect(screen.getByText('6.000.000 đ')).toBeInTheDocument();
+    expect(screen.getByText('3.500.000 đ')).toBeInTheDocument();
+    expect(screen.getByText('2.500.000 đ')).toBeInTheDocument();
+    expect(screen.getByText('Cần quyết toán dự kiến')).toBeInTheDocument();
+
+    expect(screen.getByText('AI 92%')).toBeInTheDocument();
+    expect(screen.getByText('HR Connect bác bỏ từ chối · tính phí')).toBeInTheDocument();
+    expect(screen.getByText('"Hồ sơ khớp toàn bộ tiêu chí bắt buộc"')).toBeInTheDocument();
+    expect(screen.getByText('Chờ HR Connect xác minh')).toBeInTheDocument();
+    expect(screen.getByText('Đã thay bằng: Đỗ Thị D')).toBeInTheDocument();
+  });
+
+  it('explains why no CVs have been delivered yet when job is PENDING_PAYMENT', async () => {
+    vi.mocked(sourcingApi.getDeliveries).mockResolvedValueOnce({
+      summary: {
+        sourcingTarget: 5,
+        delivered: 0,
+        accepted: 0,
+        autoAccepted: 0,
+        rejected: 0,
+        pendingReview: 0,
+        counted: 0,
+        jobStatus: 'PENDING_PAYMENT',
+      },
+      items: [],
+    });
+
+    renderComponent({ role: 'client' });
+
+    expect(
+      await screen.findByText(/Tin đang chờ thanh toán tiền cọc CV Sourcing/i, {}, { timeout: 10000 })
+    ).toBeInTheDocument();
+  });
 });

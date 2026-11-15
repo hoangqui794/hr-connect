@@ -32,7 +32,9 @@ public class SourcingDeliveryRepository : ISourcingDeliveryRepository
     public async Task<IReadOnlyList<SourcingDelivery>> GetByJobAsync(Guid jobId, CancellationToken cancellationToken = default) =>
         await _context.SourcingDeliveries
             .Include(d => d.Application).ThenInclude(a => a.Candidate)
+            .Include(d => d.Application).ThenInclude(a => a.AiMatchResults)
             .Where(d => d.JobId == jobId)
+            .AsSplitQuery()
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyDictionary<Guid, int>> GetCountedCountsByJobIdsAsync(
@@ -51,6 +53,8 @@ public class SourcingDeliveryRepository : ISourcingDeliveryRepository
         _context.SourcingDeliveries
             .Include(d => d.Job).ThenInclude(j => j.ServiceType)
             .Include(d => d.Application).ThenInclude(a => a.Candidate)
+            .Include(d => d.Application).ThenInclude(a => a.AiMatchResults)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(d => d.DeliveryId == deliveryId, cancellationToken);
 
     public async Task<IReadOnlyList<Guid>> GetDueForAutoAcceptAsync(DateTime now, int batchSize, CancellationToken cancellationToken = default) =>
@@ -63,4 +67,21 @@ public class SourcingDeliveryRepository : ISourcingDeliveryRepository
 
     public async Task AddAsync(SourcingDelivery delivery, CancellationToken cancellationToken = default) =>
         await _context.SourcingDeliveries.AddAsync(delivery, cancellationToken);
+
+    public async Task<IReadOnlyList<AuditLog>> GetRejectionReviewAuditLogsAsync(
+        IReadOnlyCollection<Guid> deliveryIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (deliveryIds.Count == 0)
+            return Array.Empty<AuditLog>();
+
+        return await _context.AuditLogs.AsNoTracking()
+            .Where(log => log.EntityType == "SOURCING_DELIVERY"
+                          && log.Action == "SOURCING_REJECTION_REVIEWED"
+                          && log.EntityId.HasValue
+                          && deliveryIds.Contains(log.EntityId.Value))
+            .OrderByDescending(log => log.CreatedAt)
+            .ThenByDescending(log => log.AuditLogId)
+            .ToListAsync(cancellationToken);
+    }
 }

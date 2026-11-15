@@ -48,7 +48,9 @@ import type {
   SourcingDeliveryDto,
   SourcingDeliveryStatus,
 } from '@/types/api/sourcing';
+import { money } from '@/features/finance-mf05/financeLabels';
 import {
+  REJECTION_REVIEW_STATUS,
   SOURCING_REJECT_REASONS,
   SOURCING_STATUS_CONFIG,
   getRejectReasonLabel,
@@ -214,6 +216,30 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
 
   const summary = data?.summary;
   const items = data?.items || [];
+  const reviewMetaMap = REJECTION_REVIEW_STATUS;
+
+  const emptyDetailText = (() => {
+    if (activeTab === 'DELIVERED') {
+      return role === 'client'
+        ? 'Internal HR sẽ tiếp tục tìm kiếm và bàn giao các ứng viên đạt tiêu chuẩn.'
+        : 'Hãy sàng lọc và giao các hồ sơ đạt yêu cầu cho Doanh nghiệp.';
+    }
+    if (role === 'client' && activeTab === 'ALL') {
+      const st = summary?.jobStatus?.toUpperCase();
+      if (st === 'DRAFT' || st === 'PENDING_REVIEW' || st === 'CHANGE_REQUESTED') {
+        return 'Tin tuyển dụng chưa được duyệt và kích hoạt nên HR Connect chưa thể bắt đầu bàn giao CV.';
+      }
+      if (st === 'PENDING_PAYMENT') {
+        return 'Tin đang chờ thanh toán tiền cọc CV Sourcing. Sau khi xác nhận cọc và tin chuyển sang Đang mở, HR Connect sẽ bắt đầu giao CV.';
+      }
+      if (st === 'PAUSED' || st === 'CLOSED') {
+        return 'Tin tuyển dụng hiện đang tạm dừng hoặc đã đóng.';
+      }
+    }
+    return role === 'client'
+      ? 'Internal HR sẽ tiếp tục tìm kiếm và bàn giao các ứng viên đạt tiêu chuẩn.'
+      : 'Hãy sàng lọc và giao các hồ sơ đạt yêu cầu cho Doanh nghiệp.';
+  })();
 
   const columns: ColumnsType<SourcingDeliveryDto> = [
     {
@@ -221,11 +247,16 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
       key: 'candidate',
       render: (_, r) => (
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             <span className="font-semibold text-slate-900">{r.candidateName || 'Ứng viên'}</span>
-            {r.replacedByDeliveryId && (
+            {r.aiMatchScore != null && (
+              <Tag color="geekblue" className="text-[11px] font-semibold m-0">
+                AI {Math.round(r.aiMatchScore)}%
+              </Tag>
+            )}
+            {(r.replacementCandidateName || r.replacedByDeliveryId) && (
               <Tag color="default" className="text-[11px] m-0">
-                Đã đổi CV
+                {r.replacementCandidateName ? `Đã thay bằng: ${r.replacementCandidateName}` : 'Đã đổi CV'}
               </Tag>
             )}
           </div>
@@ -248,19 +279,27 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
       dataIndex: 'deliveredAt',
       key: 'deliveredAt',
       width: 140,
-      render: (v) => <span className="tabular-nums text-slate-700">{dayjs(v).format('HH:mm DD/MM/YYYY')}</span>,
+      render: (v) => (
+        <span className="tabular-nums text-slate-700">
+          {v && dayjs(v).isValid() ? dayjs(v).format('HH:mm DD/MM/YYYY') : '—'}
+        </span>
+      ),
     },
     {
       title: 'Trạng thái & Thời hạn phản hồi',
       key: 'status',
-      width: 290,
+      width: 310,
       render: (_, r) => {
         const cfg = SOURCING_STATUS_CONFIG[r.status] || SOURCING_STATUS_CONFIG.DELIVERED;
         const deadline = getSourcingReviewDeadlineInfo(r);
+        const reviewMeta = r.rejectionReviewStatus ? reviewMetaMap[r.rejectionReviewStatus] : null;
+        const dueValid = dayjs(r.reviewDueAt).isValid();
+        const decidedValid = Boolean(r.decidedAt && dayjs(r.decidedAt).isValid());
+        const reviewedValid = Boolean(r.rejectionReviewedAt && dayjs(r.rejectionReviewedAt).isValid());
 
         return (
           <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
               <Tag color={cfg.tagColor} className="font-medium m-0">
                 {cfg.label}
               </Tag>
@@ -273,23 +312,50 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
                   {deadline.countdownText}
                 </Tag>
               )}
+              {reviewMeta && (
+                <Tag color={reviewMeta.tagColor} className="font-medium m-0 text-[11px]">
+                  {reviewMeta.label}
+                </Tag>
+              )}
             </div>
 
             {r.status === 'DELIVERED' && (
               <div className="text-xs text-slate-500">
-                Hạn phản hồi: <span className="font-medium text-slate-700">{dayjs(r.reviewDueAt).format('DD/MM/YYYY')}</span>
-                {deadline.isExpired ? '' : ` (còn ${deadline.daysLeft} ngày)`}
+                Hạn phản hồi:{' '}
+                <span className="font-medium text-slate-700">
+                  {dueValid ? dayjs(r.reviewDueAt).format('DD/MM/YYYY') : '—'}
+                </span>
+                {!dueValid || deadline.isExpired ? '' : ` (còn ${deadline.daysLeft} ngày)`}
               </div>
             )}
 
             {r.status === 'REJECTED' && (
-              <div className="rounded bg-red-50 p-1.5 text-xs text-red-900 border border-solid border-red-100">
-                <span className="font-semibold">Lý do:</span> {getRejectReasonLabel(r.rejectReasonCode)}
-                {r.rejectNote && <div className="mt-0.5 text-slate-700 italic">"{r.rejectNote}"</div>}
+              <div className="rounded bg-red-50 p-1.5 text-xs text-red-900 border border-solid border-red-100 space-y-0.5">
+                <div>
+                  <span className="font-semibold">Lý do:</span> {getRejectReasonLabel(r.rejectReasonCode)}
+                </div>
+                {r.rejectNote && <div className="text-slate-700 italic">"{r.rejectNote}"</div>}
+                {r.rejectionReviewStatus === 'UPHELD' && r.rejectionReviewNote && (
+                  <div className="text-[11px] text-slate-600">
+                    Xác minh HR: {r.rejectionReviewNote}
+                  </div>
+                )}
               </div>
             )}
 
-            {r.decidedAt && (
+            {r.rejectionReviewStatus === 'OVERTURNED' && (
+              <div className="rounded bg-sky-50 p-1.5 text-xs text-sky-950 border border-solid border-sky-200 space-y-0.5">
+                <div className="font-semibold">Từ chối trước đó bị bác bỏ (tính phí CV)</div>
+                {r.rejectionReviewNote && <div className="text-slate-700 italic">"{r.rejectionReviewNote}"</div>}
+                {reviewedValid && (
+                  <div className="text-[11px] text-slate-500">
+                    Xác minh lúc: {dayjs(r.rejectionReviewedAt).format('HH:mm DD/MM/YYYY')}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {decidedValid && (
               <div className="text-[11px] text-slate-400">
                 Phản hồi lúc: {dayjs(r.decidedAt).format('HH:mm DD/MM/YYYY')}
               </div>
@@ -401,17 +467,29 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
         >
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h3 className="m-0 text-base font-bold text-slate-900">Tiến độ bàn giao CV Sourcing</h3>
                 {summary.sourcingTarget != null && (
                   <Tag color="blue" className="font-semibold m-0">
                     Mục tiêu: {summary.sourcingTarget} CV
                   </Tag>
                 )}
+                {summary.reviewDays != null && (
+                  <Tag color="purple" className="font-medium m-0">
+                    Hạn xem xét: {summary.reviewDays} ngày/CV
+                  </Tag>
+                )}
+                {summary.remainingToDeliver != null && summary.sourcingTarget != null && (
+                  <Tag color={summary.remainingToDeliver === 0 ? 'success' : 'gold'} className="font-medium m-0">
+                    {summary.remainingToDeliver === 0
+                      ? 'Đã giao đủ mục tiêu'
+                      : `Còn thiếu ${summary.remainingToDeliver}/${summary.sourcingTarget} CV`}
+                  </Tag>
+                )}
               </div>
               <p className="m-0 text-xs text-slate-500">
                 {role === 'client'
-                  ? 'Quý doanh nghiệp vui lòng chấp nhận hoặc từ chối mỗi CV trước hạn phản hồi ghi ở từng hồ sơ.'
+                  ? `Quý doanh nghiệp vui lòng chấp nhận hoặc từ chối mỗi CV trong thời hạn${summary.reviewDays != null ? ` ${summary.reviewDays} ngày` : ''} ghi ở từng hồ sơ.`
                   : 'Theo dõi tiến độ bàn giao và phản hồi từ Doanh nghiệp.'}
               </p>
             </div>
@@ -446,6 +524,46 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
                 status={summary.counted >= summary.sourcingTarget ? 'success' : 'active'}
                 strokeColor={{ '0%': '#108ee9', '100%': '#52c41a' }}
               />
+            </div>
+          )}
+
+          {summary.pricePerCv != null && (
+            <div className="mt-3 pt-3 border-0 border-t border-solid border-slate-200/80 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div>
+                <div className="text-slate-500">Đơn giá / CV</div>
+                <div className="font-bold text-slate-900 tabular-nums">{money(summary.pricePerCv)}</div>
+              </div>
+              <div>
+                <div className="text-slate-500">Đã tính phí ({summary.counted} CV)</div>
+                <div className="font-bold text-emerald-700 tabular-nums">
+                  {money(summary.countedAmount ?? summary.counted * summary.pricePerCv)}
+                </div>
+              </div>
+              {summary.depositPaidAmount != null && (
+                <>
+                  <div>
+                    <div className="text-slate-500">Cọc đã nộp</div>
+                    <div className="font-bold text-slate-900 tabular-nums">{money(summary.depositPaidAmount)}</div>
+                  </div>
+                  <div>
+                    {(() => {
+                      const billed = summary.countedAmount ?? summary.counted * summary.pricePerCv;
+                      const balance = billed - summary.depositPaidAmount;
+                      return balance >= 0 ? (
+                        <>
+                          <div className="text-slate-500">Cần quyết toán dự kiến</div>
+                          <div className="font-bold text-indigo-700 tabular-nums">{money(balance)}</div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-slate-500">Dự kiến hoàn / cấn trừ</div>
+                          <div className="font-bold text-amber-700 tabular-nums">{money(Math.abs(balance))}</div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </Card>
@@ -510,9 +628,7 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
                     : 'Chưa có hồ sơ CV nào trong danh sách này.'}
                 </span>
                 <p className="text-xs text-slate-400">
-                  {role === 'client'
-                    ? 'Internal HR sẽ tiếp tục tìm kiếm và bàn giao các ứng viên đạt tiêu chuẩn.'
-                    : 'Hãy sàng lọc và giao các hồ sơ đạt yêu cầu cho Doanh nghiệp.'}
+                  {emptyDetailText}
                 </p>
               </div>
             }
@@ -557,7 +673,8 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
           <strong className="text-slate-900">{acceptModalItem?.candidateName || 'Ứng viên'}</strong>?
         </p>
         <p className="text-xs text-slate-500">
-          Hồ sơ sẽ được tính vào số lượng CV hoàn thành theo hợp đồng dịch vụ CV Sourcing và chuyển sang các vòng tiếp theo.
+          Hồ sơ sẽ được tính vào số lượng CV hoàn thành theo hợp đồng dịch vụ CV Sourcing
+          {summary?.pricePerCv != null ? ` (${money(summary.pricePerCv)}/CV)` : ''} và chuyển sang các vòng tiếp theo.
         </p>
       </Modal>
 
