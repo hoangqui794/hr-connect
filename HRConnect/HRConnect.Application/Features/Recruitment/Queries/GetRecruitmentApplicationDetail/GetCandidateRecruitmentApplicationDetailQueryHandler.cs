@@ -78,7 +78,7 @@ public class GetCandidateRecruitmentApplicationDetailQueryHandler
                 Location = i.Location,
                 MeetingLink = i.MeetingLink,
                 Status = i.Status,
-                ConcurrencyToken = i.ConcurrencyToken
+                ConcurrencyToken = null
             }).ToList();
 
         var offers = (app.Offers ?? new List<Domain.Entities.Offer>())
@@ -157,7 +157,9 @@ public class GetCandidateRecruitmentApplicationDetailQueryHandler
             CandidateId = app.CandidateId,
             Status = app.Status,
             CurrentStage = app.CurrentStage,
-            StatusReason = app.StatusReason,
+            StatusReason = string.Equals(app.Status, ApplicationStates.Withdrawn, StringComparison.OrdinalIgnoreCase)
+                ? app.StatusReason
+                : null,
             AppliedAt = app.AppliedAt,
             UpdatedAt = app.UpdatedAt,
             PlannedStartDate = app.PlannedStartDate,

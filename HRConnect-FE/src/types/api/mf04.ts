@@ -105,7 +105,7 @@ export interface CandidateInterviewSummaryDto {
   location?: string | null;
   meetingLink?: string | null;
   status: string;
-  concurrencyToken: string;
+  concurrencyToken?: null;
 }
 
 export interface CandidateOfferSummaryDto {
