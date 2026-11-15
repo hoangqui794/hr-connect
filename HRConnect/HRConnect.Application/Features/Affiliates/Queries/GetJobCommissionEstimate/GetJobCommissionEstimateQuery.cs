@@ -62,7 +62,7 @@ public sealed class GetJobCommissionEstimateQueryHandler : IRequestHandler<GetJo
             var share = await _settings.GetDecimalAsync(BusinessSettingKeys.CvSourcingAffiliateSharePercent, cancellationToken);
             var perCv = decimal.Round(price * share / 100m, 0, MidpointRounding.AwayFromZero);
             return new JobCommissionEstimateDto(job.JobId, code, perCv > 0, "PERCENT", share, null, null, null, null, perCv, currency,
-                $"Mỗi CV được Client chấp nhận: {share.ToString("0.##", Vi)}% × giá {price.ToString("N0", Vi)} {currency}/CV. Hoa hồng ghi nhận khi CV được chấp nhận.");
+                $"Mỗi CV được Client chấp nhận: {perCv.ToString("N0", Vi)} {currency}/CV. Hoa hồng ghi nhận khi CV được chấp nhận.");
         }
 
         if (!string.Equals(code, ServiceTypeCodes.HeadhuntCod, StringComparison.OrdinalIgnoreCase))

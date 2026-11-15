@@ -56,6 +56,26 @@ public class JobCommissionEstimateTests
         var result = await Handler().Handle(new GetJobCommissionEstimateQuery(job.JobId, ["AFFILIATE"]), default);
 
         result.AmountPerCv.Should().Be(180_000m);
+        result.Explanation.Should().Contain("180.000").And.Contain("VND").And.Contain("CV được chấp nhận");
+        result.Explanation.Should().NotContain("600.000").And.NotContain("600000").And.NotContain("30%").And.NotContain("×");
+    }
+
+    [Fact]
+    public async Task Sourcing_ExplanationShouldHideClientPricePerCvAndShareFormula()
+    {
+        var job = SetupJob("CV_SOURCING", j =>
+        {
+            j.SourcingPricePerCv = 850_000m;
+            j.CurrencyCode = "VND";
+        });
+        _settings.Setup(s => s.GetDecimalAsync(BusinessSettingKeys.CvSourcingAffiliateSharePercent, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(40m);
+
+        var result = await Handler().Handle(new GetJobCommissionEstimateQuery(job.JobId, ["AFFILIATE"]), default);
+
+        result.AmountPerCv.Should().Be(340_000m);
+        result.Explanation.Should().Contain("340.000").And.Contain("VND").And.Contain("CV được chấp nhận");
+        result.Explanation.Should().NotContain("850.000").And.NotContain("850000").And.NotContain("40%").And.NotContain("×");
     }
 
     [Fact]
