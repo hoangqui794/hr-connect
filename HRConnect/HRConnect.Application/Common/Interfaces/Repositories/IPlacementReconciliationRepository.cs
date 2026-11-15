@@ -7,6 +7,7 @@ public interface IPlacementReconciliationRepository
     Task AddAsync(PlacementReconciliation reconciliation, CancellationToken cancellationToken = default);
     Task<PlacementReconciliation?> GetByApplicationIdAsync(Guid applicationId, bool tracking = true, CancellationToken cancellationToken = default);
     Task<PlacementReconciliation?> GetByServiceFeeIdAsync(Guid serviceFeeId, CancellationToken cancellationToken = default);
+    Task<PlacementReconciliation?> GetByPlacementIdAsync(Guid placementId, CancellationToken cancellationToken = default);
     Task<(IReadOnlyList<PlacementReconciliation> Items, int TotalCount)> GetPageAsync(
         string? status,
         int page,

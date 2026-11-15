@@ -240,6 +240,14 @@ public class FinanceRepository : IFinanceRepository
             .Select(a => (Guid?)a.Affiliate.UserId)
             .FirstOrDefaultAsync(cancellationToken);
 
+    public async Task<bool> IsAffiliateSuspendedAsync(Guid attributionId, CancellationToken cancellationToken = default) =>
+        await _context.Attributions.AsNoTracking()
+            .Where(a => a.AttributionId == attributionId)
+            .AnyAsync(a => a.Affiliate != null &&
+                           (a.Affiliate.Status == SuspendedUser ||
+                            (a.Affiliate.User != null && a.Affiliate.User.Status == SuspendedUser)),
+                cancellationToken);
+
     public async Task<IReadOnlyList<ReplacementSlot>> GetReplacementSlotsByOriginalPlacementIdsAsync(
         IReadOnlyCollection<Guid> originalPlacementIds,
         CancellationToken cancellationToken = default)

@@ -25,6 +25,9 @@ public interface IFinanceRepository
     /// <summary>The affiliate's user id behind an attribution, for notifications.</summary>
     Task<Guid?> GetAffiliateUserIdAsync(Guid attributionId, CancellationToken cancellationToken = default);
 
+    /// <summary>Whether the affiliate behind an attribution currently has SUSPENDED status.</summary>
+    Task<bool> IsAffiliateSuspendedAsync(Guid attributionId, CancellationToken cancellationToken = default);
+
     Task<ServiceFee?> GetServiceFeeForUpdateAsync(Guid serviceFeeId, CancellationToken cancellationToken = default);
 
     /// <summary>

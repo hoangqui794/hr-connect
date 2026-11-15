@@ -31,6 +31,10 @@ public sealed class PlacementReconciliationRepository : IPlacementReconciliation
                                           item.Placement.ServiceFee.ServiceFeeId == serviceFeeId,
                 cancellationToken);
 
+    public Task<PlacementReconciliation?> GetByPlacementIdAsync(Guid placementId, CancellationToken cancellationToken = default) =>
+        _context.PlacementReconciliations.AsNoTracking()
+            .SingleOrDefaultAsync(item => item.PlacementId == placementId, cancellationToken);
+
     public async Task<(IReadOnlyList<PlacementReconciliation> Items, int TotalCount)> GetPageAsync(
         string? status,
         int page,

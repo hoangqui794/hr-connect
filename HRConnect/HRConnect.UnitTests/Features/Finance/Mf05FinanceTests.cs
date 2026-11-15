@@ -2100,4 +2100,192 @@ public class Mf05FinanceTests
             .Handle(new GetJobReplacementSlotsQuery(placement.Application.JobId, _actor), default);
         activeSlots.Should().ContainSingle();
     }
+
+    private async Task SeedAffiliateStatusAsync(Guid affiliateId, string userStatus, string profileStatus)
+    {
+        var now = DateTime.UtcNow;
+        var user = new AppUser
+        {
+            UserId = Guid.NewGuid(),
+            Email = $"aff-{Guid.NewGuid():N}@example.com",
+            PasswordHash = "x",
+            Status = userStatus,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        _context.Add(user);
+        _context.Add(new AffiliateProfile
+        {
+            AffiliateId = affiliateId,
+            UserId = user.UserId,
+            AffiliateType = "STANDARD",
+            Status = profileStatus,
+            CreatedAt = now,
+            UpdatedAt = now,
+        });
+        await _context.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task CompleteWarranty_holds_until_reconciliation_is_confirmed()
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        await InitializeAsync(placement, offer);
+        var reconciliation = new PlacementReconciliation
+        {
+            ReconciliationId = Guid.NewGuid(),
+            ApplicationId = placement.ApplicationId,
+            PlacementId = placement.PlacementId,
+            ClaimedOutcome = PlacementReconciliationOutcomes.Started,
+            Status = PlacementReconciliationStates.Pending,
+            ConcurrencyToken = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        _context.PlacementReconciliations.Add(reconciliation);
+        await _context.SaveChangesAsync();
+
+        (await ReconciliationAwareProgress().CompleteWarrantyAsync(placement.PlacementId, Start.AddDays(30)))
+            .Should().BeFalse();
+        (await _context.Warranties.SingleAsync()).Status.Should().Be(WarrantyStates.Active);
+        (await CommissionAsync()).Status.Should().Be(CommissionStates.InWarranty);
+
+        reconciliation.Status = PlacementReconciliationStates.Flagged;
+        await _context.SaveChangesAsync();
+
+        (await ReconciliationAwareProgress().CompleteWarrantyAsync(placement.PlacementId, Start.AddDays(30)))
+            .Should().BeFalse();
+        (await _context.Warranties.SingleAsync()).Status.Should().Be(WarrantyStates.Active);
+        (await CommissionAsync()).Status.Should().Be(CommissionStates.InWarranty);
+
+        reconciliation.Status = PlacementReconciliationStates.Confirmed;
+        await _context.SaveChangesAsync();
+
+        (await ReconciliationAwareProgress().CompleteWarrantyAsync(placement.PlacementId, Start.AddDays(30)))
+            .Should().BeTrue();
+        (await _context.Warranties.SingleAsync()).Status.Should().Be(WarrantyStates.Passed);
+        (await CommissionAsync()).Status.Should().Be(CommissionStates.Earned);
+    }
+
+    [Fact]
+    public async Task CompleteWarranty_without_service_fee_checks_reconciliation_by_placement_id()
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        await InitializeAsync(placement, offer);
+        _context.ServiceFees.Remove(await _context.ServiceFees.SingleAsync());
+        var reconciliation = new PlacementReconciliation
+        {
+            ReconciliationId = Guid.NewGuid(),
+            ApplicationId = placement.ApplicationId,
+            PlacementId = placement.PlacementId,
+            ClaimedOutcome = PlacementReconciliationOutcomes.Started,
+            Status = PlacementReconciliationStates.Pending,
+            ConcurrencyToken = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        _context.PlacementReconciliations.Add(reconciliation);
+        await _context.SaveChangesAsync();
+
+        (await ReconciliationAwareProgress().CompleteWarrantyAsync(placement.PlacementId, Start.AddDays(30)))
+            .Should().BeFalse();
+        (await _context.Warranties.SingleAsync()).Status.Should().Be(WarrantyStates.Active);
+
+        reconciliation.Status = PlacementReconciliationStates.Confirmed;
+        await _context.SaveChangesAsync();
+
+        (await ReconciliationAwareProgress().CompleteWarrantyAsync(placement.PlacementId, Start.AddDays(30)))
+            .Should().BeTrue();
+        (await _context.Warranties.SingleAsync()).Status.Should().Be(WarrantyStates.Passed);
+        (await CommissionAsync()).Status.Should().Be(CommissionStates.Earned);
+    }
+
+    [Theory]
+    [InlineData("SUSPENDED", "ACTIVE", CommissionStates.OnHold)]
+    [InlineData("ACTIVE", "SUSPENDED", CommissionStates.OnHold)]
+    [InlineData("ACTIVE", "ACTIVE", CommissionStates.Earned)]
+    public async Task CompleteWarranty_holds_commission_with_audit_when_affiliate_suspended(
+        string userStatus,
+        string profileStatus,
+        string expectedCommissionStatus)
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        await InitializeAsync(placement, offer);
+        var attribution = await _context.Attributions.SingleAsync();
+        await SeedAffiliateStatusAsync(attribution.AffiliateId, userStatus, profileStatus);
+        _context.PlacementReconciliations.Add(new PlacementReconciliation
+        {
+            ReconciliationId = Guid.NewGuid(),
+            ApplicationId = placement.ApplicationId,
+            PlacementId = placement.PlacementId,
+            ClaimedOutcome = PlacementReconciliationOutcomes.Started,
+            Status = PlacementReconciliationStates.Confirmed,
+            ConcurrencyToken = Guid.NewGuid(),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        });
+        await _context.SaveChangesAsync();
+
+        var notifier = new Mock<IAppNotifier>();
+        var progress = new WarrantyProgressService(
+            Repository,
+            UnitOfWork,
+            _audit.Object,
+            reconciliationRepository: new PlacementReconciliationRepository(_context),
+            notifier: notifier.Object);
+
+        (await progress.CompleteWarrantyAsync(placement.PlacementId, Start.AddDays(30)))
+            .Should().BeTrue();
+
+        (await _context.Warranties.SingleAsync()).Status.Should().Be(WarrantyStates.Passed);
+        var commission = await CommissionAsync();
+        commission.Status.Should().Be(expectedCommissionStatus);
+
+        _audit.Verify(
+            a => a.AddAsync(
+                It.Is<AuditEntry>(e => e.Action == AuditActions.WarrantyPassed),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        if (expectedCommissionStatus == CommissionStates.OnHold)
+        {
+            _audit.Verify(
+                a => a.AddAsync(
+                    It.Is<AuditEntry>(e =>
+                        e.Action == AuditActions.CommissionHeldAffiliateSuspended &&
+                        e.EntityType == "COMMISSION" &&
+                        e.EntityId == commission.CommissionId),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+            _audit.Verify(
+                a => a.AddAsync(
+                    It.Is<AuditEntry>(e => e.Action == AuditActions.CommissionEarned),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+            notifier.Verify(
+                n => n.NotifyRoleAsync("PLATFORM_ADMIN", It.IsAny<AppNotice>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+        else
+        {
+            _audit.Verify(
+                a => a.AddAsync(
+                    It.Is<AuditEntry>(e =>
+                        e.Action == AuditActions.CommissionEarned &&
+                        e.EntityId == commission.CommissionId),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+            _audit.Verify(
+                a => a.AddAsync(
+                    It.Is<AuditEntry>(e => e.Action == AuditActions.CommissionHeldAffiliateSuspended),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+            notifier.Verify(
+                n => n.NotifyRoleAsync(
+                    "PLATFORM_ADMIN",
+                    It.Is<AppNotice>(x => x.Title == "Hoa hồng Affiliate chờ duyệt chi"),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+    }
 }

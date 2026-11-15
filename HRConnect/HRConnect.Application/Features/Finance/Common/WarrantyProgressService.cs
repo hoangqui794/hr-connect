@@ -65,18 +65,41 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
             return false;
         }
 
+        if (!await CanCompleteWarrantyAsync(placement, cancellationToken))
+        {
+            return false;
+        }
+
         var now = DateTime.UtcNow;
         warranty.Status = WarrantyStates.Passed;
         warranty.ResultNote = $"Ứng viên đã làm đủ thời hạn bảo hành đến {endDate:yyyy-MM-dd}.";
         warranty.UpdatedAt = now;
 
-        var earned = placement.Commissions
+        var inWarranty = placement.Commissions
             .Where(c => c.Status == CommissionStates.InWarranty)
             .ToList();
-        foreach (var commission in earned)
+        var earned = new List<Commission>();
+        var held = new List<Commission>();
+        var suspendedByAttribution = new Dictionary<Guid, bool>();
+        foreach (var commission in inWarranty)
         {
-            commission.Status = CommissionStates.Earned;
+            if (!suspendedByAttribution.TryGetValue(commission.AttributionId, out var isSuspended))
+            {
+                isSuspended = await _financeRepository.IsAffiliateSuspendedAsync(commission.AttributionId, cancellationToken);
+                suspendedByAttribution[commission.AttributionId] = isSuspended;
+            }
+
             commission.UpdatedAt = now;
+            if (isSuspended)
+            {
+                commission.Status = CommissionStates.OnHold;
+                held.Add(commission);
+            }
+            else
+            {
+                commission.Status = CommissionStates.Earned;
+                earned.Add(commission);
+            }
         }
 
         await _auditLogService.AddAsync(new AuditEntry
@@ -100,6 +123,25 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
                 ServiceName = "WarrantyProgressWorker",
                 OldValues = new { status = CommissionStates.InWarranty },
                 NewValues = new { status = commission.Status, amount = commission.Amount },
+            }, cancellationToken);
+        }
+        foreach (var commission in held)
+        {
+            await _auditLogService.AddAsync(new AuditEntry
+            {
+                Action = AuditActions.CommissionHeldAffiliateSuspended,
+                EntityType = "COMMISSION",
+                EntityId = commission.CommissionId,
+                ActorType = AuditActorTypes.Service,
+                ServiceName = "WarrantyProgressWorker",
+                OldValues = new { status = CommissionStates.InWarranty },
+                NewValues = new
+                {
+                    status = commission.Status,
+                    amount = commission.Amount,
+                    attributionId = commission.AttributionId,
+                    reason = "Bảo hành đã đạt nhưng Affiliate đang bị tạm khóa (SUSPENDED), giữ hoa hồng ON_HOLD thay vì chuyển EARNED.",
+                },
             }, cancellationToken);
         }
 
@@ -230,9 +272,26 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
         }
 
         var reconciliation = await _reconciliationRepository.GetByServiceFeeIdAsync(serviceFeeId, cancellationToken);
-        return reconciliation == null ||
-               string.Equals(reconciliation.Status, PlacementReconciliationStates.Confirmed, StringComparison.OrdinalIgnoreCase);
+        return IsReconciliationConfirmedOrAbsent(reconciliation);
     }
+
+    private async Task<bool> CanCompleteWarrantyAsync(Placement placement, CancellationToken cancellationToken)
+    {
+        if (_reconciliationRepository == null)
+        {
+            return true;
+        }
+
+        var reconciliation = placement.ServiceFee is { } serviceFee
+            ? await _reconciliationRepository.GetByServiceFeeIdAsync(serviceFee.ServiceFeeId, cancellationToken)
+            : await _reconciliationRepository.GetByPlacementIdAsync(placement.PlacementId, cancellationToken);
+
+        return IsReconciliationConfirmedOrAbsent(reconciliation);
+    }
+
+    private static bool IsReconciliationConfirmedOrAbsent(PlacementReconciliation? reconciliation) =>
+        reconciliation == null ||
+        string.Equals(reconciliation.Status, PlacementReconciliationStates.Confirmed, StringComparison.OrdinalIgnoreCase);
 
     public async Task<bool> ExpireReplacementSlotAsync(Guid replacementSlotId, DateTime now, CancellationToken cancellationToken = default)
     {
