@@ -343,7 +343,7 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
                   className="mb-4"
                   type="warning"
                   showIcon
-                  message={`${target.candidateName ?? 'Ứng viên'} — bảo hành đến ${date(target.endDate)}. Internal HR sẽ xác minh; nếu đúng, HR Connect áp dụng chính sách tìm ứng viên thay thế miễn phí theo hợp đồng Headhunt hoặc điều chỉnh phí.`}
+                  message={`${target.candidateName ?? 'Ứng viên'} — bảo hành đến ${date(target.endDate)}. Sau khi báo nghỉ, Internal HR sẽ tiếp nhận để xác minh và mở suất tìm ứng viên thay thế miễn phí theo thỏa thuận.`}
                 />
                 <Form.Item name="lastWorkingDate" label="Ngày làm việc cuối cùng" rules={[{ required: true, message: 'Chọn ngày.' }]}>
                   <DatePicker

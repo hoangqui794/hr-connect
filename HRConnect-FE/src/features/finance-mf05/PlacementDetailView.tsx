@@ -332,7 +332,11 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
             {placement.warranty?.endDate ? date(placement.warranty.endDate) : 'Đang cập nhật'}
           </div>
           <div className="text-[11px] text-amber-600 font-semibold mt-0.5">
-            {warrantyProgress.daysLeft > 0 ? `Còn ${warrantyProgress.daysLeft} ngày bảo hành` : 'Đã hết bảo hành'}
+            {placement.warranty?.status === 'VOIDED'
+              ? 'Bảo hành đã dừng'
+              : warrantyProgress.daysLeft > 0
+                ? `Còn ${warrantyProgress.daysLeft} ngày bảo hành`
+                : 'Đã hết bảo hành'}
           </div>
         </Card>
       </div>
@@ -353,7 +357,15 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
           <div className="py-2 space-y-3">
             <div className="flex items-center justify-between text-xs text-slate-600">
               <span>Đã qua: <strong>{warrantyProgress.daysPassed} ngày</strong></span>
-              <span>Còn lại: <strong className="text-amber-700">{warrantyProgress.daysLeft} ngày</strong></span>
+              <span>
+                {placement.warranty?.status === 'VOIDED' ? (
+                  <strong className="text-rose-600">Bảo hành đã dừng</strong>
+                ) : (
+                  <>
+                    Còn lại: <strong className="text-amber-700">{warrantyProgress.daysLeft} ngày</strong>
+                  </>
+                )}
+              </span>
             </div>
             <Progress
               percent={warrantyProgress.percent}
@@ -669,7 +681,7 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
       >
         <div className="text-xs text-slate-600 mb-4 bg-amber-50 p-3 rounded-lg border border-amber-200">
           Ứng viên <strong>{placement.candidate.fullName}</strong> được bảo hành đến{' '}
-          <strong>{date(placement.warranty?.endDate)}</strong>. Sau khi báo nghỉ, Internal HR sẽ xác minh để áp dụng chính sách tìm ứng viên thay thế miễn phí hoặc hoàn phí theo hợp đồng.
+          <strong>{date(placement.warranty?.endDate)}</strong>. Sau khi báo nghỉ, Internal HR sẽ tiếp nhận để xác minh và mở suất tìm ứng viên thay thế miễn phí theo thỏa thuận.
         </div>
 
         <Form form={resignationForm} layout="vertical">

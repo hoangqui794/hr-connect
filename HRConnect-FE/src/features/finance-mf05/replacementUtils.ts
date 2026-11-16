@@ -47,7 +47,7 @@ export const REPLACEMENT_STATUS_CONFIG: Record<ReplacementSlotStatus, Replacemen
     tagColor: 'red',
     tone: 'danger',
     badgeStatus: 'error',
-    description: 'Đã quá thời hạn 30 ngày tìm người thay thế.',
+    description: 'Đã quá thời hạn tìm ứng viên thay thế.',
   },
 };
 

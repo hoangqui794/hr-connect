@@ -21,6 +21,7 @@ describe('replacementUtils', () => {
         expect(REPLACEMENT_STATUS_CONFIG[status].tagColor).toBeTruthy();
         expect(REPLACEMENT_STATUS_CONFIG[status].tone).toBeTruthy();
       });
+      expect(REPLACEMENT_STATUS_CONFIG.EXPIRED.description).not.toMatch(/\b30\s*ngày\b/i);
     });
   });
 

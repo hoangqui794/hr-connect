@@ -351,4 +351,37 @@ describe('MF-05 Client warranty page', () => {
     expect(screen.getByText('Suất #AA11BB22')).toBeTruthy();
     expect(screen.getByText('Chờ xác minh')).toBeTruthy();
   });
+
+  it('shows replacement-only wording without fee adjustment when opening client resignation modal', async () => {
+    const activeWarranty: Warranty = {
+      warrantyId: 'w-act-2',
+      placementId: 'p-act-2',
+      jobId: 'job-act-2',
+      companyName: 'ABC Tech',
+      jobTitle: 'Senior Backend .NET',
+      candidateName: 'Nguyễn Minh Quân',
+      startDate: '2026-11-01',
+      endDate: '2026-12-01',
+      status: 'ACTIVE',
+      daysRemaining: 6,
+      placementStatus: 'ACTIVE',
+      serviceFeeStatus: 'PENDING',
+      serviceFeeAmount: 20_000_000,
+    };
+
+    vi.mocked(financeApi.replacementSlots).mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 100 } as never);
+    vi.mocked(financeApi.warranties).mockResolvedValue(page([activeWarranty]));
+    vi.mocked(financeApi.serviceFees).mockResolvedValue(page<ServiceFee>([]));
+
+    renderWith(<ClientWarrantyPage />);
+
+    const reportBtn = await screen.findByRole('button', { name: 'Báo nghỉ việc' }, { timeout: 10000 });
+    fireEvent.click(reportBtn);
+
+    expect(
+      await screen.findByText(/để xác minh và mở suất tìm ứng viên thay thế miễn phí theo thỏa thuận/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/điều chỉnh phí/i)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Đóng' }));
+  });
 });

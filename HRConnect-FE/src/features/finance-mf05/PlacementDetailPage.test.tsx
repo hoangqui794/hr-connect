@@ -205,6 +205,10 @@ describe('PlacementDetailPage & PlacementDetailView', () => {
     await waitFor(() => {
       expect(screen.getByText(/Báo ứng viên nghỉ việc trong thời gian bảo hành/i)).toBeInTheDocument();
     });
+    expect(
+      screen.getByText(/để xác minh và mở suất tìm ứng viên thay thế miễn phí theo thỏa thuận/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/hoặc hoàn phí/i)).toBeNull();
 
     const reasonInput = screen.getByPlaceholderText(/Ứng viên xin nghỉ vì lý do cá nhân/i);
     fireEvent.change(reasonInput, { target: { value: 'Ứng viên tìm được cơ hội mới' } });
@@ -395,5 +399,24 @@ describe('PlacementDetailPage & PlacementDetailView', () => {
 
     expect(await screen.findByText('Không xác định')).toBeInTheDocument();
     expect(screen.queryByText('UNKNOWN_FUTURE_STATUS')).toBeNull();
+  });
+
+  it('shows "Bảo hành đã dừng" instead of remaining days when warranty status is VOIDED', async () => {
+    const futureEnd = dayjs().add(20, 'day').format('YYYY-MM-DD');
+    vi.mocked(placementApi.getPlacementDetail).mockResolvedValueOnce({
+      ...mockPlacement,
+      warranty: {
+        ...mockPlacement.warranty,
+        status: 'VOIDED',
+        endDate: futureEnd,
+      },
+    } as any);
+
+    renderWithProviders(<PlacementDetailPage />, '/client/placements/plc-1');
+
+    const stoppedLabels = await screen.findAllByText('Bảo hành đã dừng');
+    expect(stoppedLabels).toHaveLength(2);
+    expect(screen.queryByText(/Còn \d+ ngày bảo hành/i)).toBeNull();
+    expect(screen.queryByText(/Còn lại:/i)).toBeNull();
   });
 });

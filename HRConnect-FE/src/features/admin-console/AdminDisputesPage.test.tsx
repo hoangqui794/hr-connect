@@ -244,4 +244,24 @@ describe('AdminDisputesPage', () => {
       idempotencyKey: vi.mocked(disputeApi.resolveDispute).mock.calls[0][1].idempotencyKey,
     });
   });
+
+  it('distinguishes PENDING and IN_WARRANTY commission statuses in dispute detail', async () => {
+    vi.mocked(disputeApi.getAdminDisputes).mockResolvedValue(mockDisputeList as any);
+    vi.mocked(disputeApi.getAdminDisputeDetail).mockResolvedValue({
+      ...mockDisputeDetail,
+      currentAttribution: {
+        ...mockDisputeDetail.currentAttribution,
+        commissionStatuses: ['PENDING', 'IN_WARRANTY'],
+      },
+    } as any);
+
+    renderComponent();
+
+    const detailBtn = await screen.findByRole('button', { name: /chi tiết/i });
+    fireEvent.click(detailBtn);
+
+    expect(
+      await screen.findByText(/Hoa hồng liên quan:\s*Đang chờ ứng viên đi làm,\s*Đang trong thời gian bảo hành/)
+    ).toBeInTheDocument();
+  });
 });

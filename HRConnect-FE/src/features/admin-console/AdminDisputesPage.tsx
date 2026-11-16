@@ -108,7 +108,8 @@ const ATTRIBUTION_RULE_LABEL: Record<string, string> = {
 };
 
 const COMMISSION_STATUS_LABEL: Record<string, string> = {
-  PENDING: 'Đang trong thời gian bảo hành',
+  PENDING: 'Đang chờ ứng viên đi làm',
+  IN_WARRANTY: 'Đang trong thời gian bảo hành',
   ON_HOLD: 'Tạm giữ xác minh',
   EARNED: 'Đủ điều kiện nhận',
   PAYABLE: 'Chờ chuyển tiền',
