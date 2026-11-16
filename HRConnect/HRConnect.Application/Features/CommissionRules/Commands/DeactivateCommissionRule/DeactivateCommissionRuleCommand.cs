@@ -1,6 +1,8 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.CommissionRules.Common;
 using MediatR;
 
 namespace HRConnect.Application.Features.CommissionRules.Commands.DeactivateCommissionRule;
@@ -23,13 +25,16 @@ public sealed class DeactivateCommissionRuleCommandHandler
 {
     private readonly ICommissionRuleRepository _rules;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditLogService _auditLogService;
 
     public DeactivateCommissionRuleCommandHandler(
         ICommissionRuleRepository rules,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IAuditLogService auditLogService)
     {
         _rules = rules;
         _unitOfWork = unitOfWork;
+        _auditLogService = auditLogService;
     }
 
     public async Task<DeactivateCommissionRuleResponse> Handle(
@@ -41,8 +46,16 @@ public sealed class DeactivateCommissionRuleCommandHandler
 
         if (rule.IsActive)
         {
+            var oldValues = CommissionRuleAudit.Snapshot(rule);
             rule.IsActive = false;
             rule.UpdatedAt = DateTime.UtcNow;
+            await _auditLogService.AddAsync(
+                CommissionRuleAudit.CreateEntry(
+                    AuditActions.CommissionRuleDeactivated,
+                    rule,
+                    oldValues: oldValues,
+                    newValues: CommissionRuleAudit.Snapshot(rule)),
+                cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 

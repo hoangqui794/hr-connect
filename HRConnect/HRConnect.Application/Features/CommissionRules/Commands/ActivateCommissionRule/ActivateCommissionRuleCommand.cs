@@ -1,6 +1,8 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.CommissionRules.Common;
 using MediatR;
 
 namespace HRConnect.Application.Features.CommissionRules.Commands.ActivateCommissionRule;
@@ -23,13 +25,16 @@ public sealed class ActivateCommissionRuleCommandHandler
 {
     private readonly ICommissionRuleRepository _rules;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditLogService _auditLogService;
 
     public ActivateCommissionRuleCommandHandler(
         ICommissionRuleRepository rules,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IAuditLogService auditLogService)
     {
         _rules = rules;
         _unitOfWork = unitOfWork;
+        _auditLogService = auditLogService;
     }
 
     public async Task<ActivateCommissionRuleResponse> Handle(
@@ -53,8 +58,16 @@ public sealed class ActivateCommissionRuleCommandHandler
                     "Không thể kích hoạt vì đã có quy tắc hoa hồng đang hoạt động cho loại dịch vụ, mốc và thời điểm hiệu lực này.");
             }
 
+            var oldValues = CommissionRuleAudit.Snapshot(rule);
             rule.IsActive = true;
             rule.UpdatedAt = DateTime.UtcNow;
+            await _auditLogService.AddAsync(
+                CommissionRuleAudit.CreateEntry(
+                    AuditActions.CommissionRuleActivated,
+                    rule,
+                    oldValues: oldValues,
+                    newValues: CommissionRuleAudit.Snapshot(rule)),
+                cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 

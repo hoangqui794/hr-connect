@@ -26,6 +26,7 @@ public class FinanceRepository : IFinanceRepository
     public Task<CommissionRule?> GetActiveCommissionRuleAsync(Guid serviceTypeId, DateTime at, CancellationToken cancellationToken = default) =>
         _context.CommissionRules.AsNoTracking()
             .Where(rule => rule.ServiceTypeId == serviceTypeId && rule.IsActive
+                && rule.MilestoneType == CommissionMilestoneCodes.WarrantyPassed
                 && (rule.EffectiveFrom == null || rule.EffectiveFrom <= at)
                 && (rule.EffectiveTo == null || rule.EffectiveTo > at))
             // The most recently effective rule wins when several overlap.

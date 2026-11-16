@@ -111,6 +111,10 @@ public static class AuditActions
     public const string PayoutRecorded = "PAYOUT_RECORDED";
     public const string BusinessSettingUpdated = "BUSINESS_SETTING_UPDATED";
     public const string PostingPackageUpdated = "POSTING_PACKAGE_UPDATED";
+    public const string CommissionRuleCreated = "COMMISSION_RULE_CREATED";
+    public const string CommissionRuleUpdated = "COMMISSION_RULE_UPDATED";
+    public const string CommissionRuleActivated = "COMMISSION_RULE_ACTIVATED";
+    public const string CommissionRuleDeactivated = "COMMISSION_RULE_DEACTIVATED";
     public const string CandidateCvDownloadUrlIssued = "CANDIDATE_CV_DOWNLOAD_URL_ISSUED";
     public const string CandidateAffiliateCvDownloadUrlIssued = "CANDIDATE_AFFILIATE_CV_DOWNLOAD_URL_ISSUED";
     public const string CandidateAffiliateCvAdopted = "CANDIDATE_AFFILIATE_CV_ADOPTED";

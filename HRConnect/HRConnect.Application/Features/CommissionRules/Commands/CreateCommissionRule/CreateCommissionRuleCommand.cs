@@ -2,6 +2,8 @@ using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.CommissionRules.Common;
 using HRConnect.Domain.Entities;
 using MediatR;
 
@@ -65,17 +67,20 @@ public sealed class CreateCommissionRuleCommandHandler
     private readonly ICommissionMilestoneRepository _milestones;
     private readonly ICommissionRuleRepository _rules;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditLogService _auditLogService;
 
     public CreateCommissionRuleCommandHandler(
         IServiceTypeRepository serviceTypes,
         ICommissionMilestoneRepository milestones,
         ICommissionRuleRepository rules,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IAuditLogService auditLogService)
     {
         _serviceTypes = serviceTypes;
         _milestones = milestones;
         _rules = rules;
         _unitOfWork = unitOfWork;
+        _auditLogService = auditLogService;
     }
 
     public async Task<CreateCommissionRuleResponse> Handle(CreateCommissionRuleCommand request, CancellationToken cancellationToken)
@@ -115,6 +120,13 @@ public sealed class CreateCommissionRuleCommandHandler
         };
 
         await _rules.AddAsync(rule, cancellationToken);
+        await _auditLogService.AddAsync(
+            CommissionRuleAudit.CreateEntry(
+                AuditActions.CommissionRuleCreated,
+                rule,
+                oldValues: null,
+                newValues: CommissionRuleAudit.Snapshot(rule)),
+            cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new(true, "Commission Rule created successfully.", new(

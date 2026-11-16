@@ -2,6 +2,8 @@ using FluentValidation;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.CommissionRules.Common;
 using MediatR;
 
 namespace HRConnect.Application.Features.CommissionRules.Commands.UpdateCommissionRule;
@@ -67,13 +69,16 @@ public sealed class UpdateCommissionRuleCommandHandler
 {
     private readonly ICommissionRuleRepository _rules;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditLogService _auditLogService;
 
     public UpdateCommissionRuleCommandHandler(
         ICommissionRuleRepository rules,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IAuditLogService auditLogService)
     {
         _rules = rules;
         _unitOfWork = unitOfWork;
+        _auditLogService = auditLogService;
     }
 
     public async Task<UpdateCommissionRuleResponse> Handle(
@@ -94,6 +99,8 @@ public sealed class UpdateCommissionRuleCommandHandler
                 "Đã có quy tắc hoa hồng đang hoạt động cho loại dịch vụ, mốc và thời điểm hiệu lực này.");
         }
 
+        var oldValues = CommissionRuleAudit.Snapshot(rule);
+
         rule.RateType = request.RateType.Trim().ToUpperInvariant();
         rule.RateValue = request.RateValue;
         rule.WarrantyRequired = request.WarrantyRequired;
@@ -101,6 +108,13 @@ public sealed class UpdateCommissionRuleCommandHandler
         rule.EffectiveTo = request.EffectiveTo;
         rule.UpdatedAt = DateTime.UtcNow;
 
+        await _auditLogService.AddAsync(
+            CommissionRuleAudit.CreateEntry(
+                AuditActions.CommissionRuleUpdated,
+                rule,
+                oldValues: oldValues,
+                newValues: CommissionRuleAudit.Snapshot(rule)),
+            cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new(true, "Cập nhật quy tắc hoa hồng thành công.", ToDto(rule));

@@ -1,7 +1,9 @@
+using System.Text.Json;
 using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.CommissionRules.Commands.ActivateCommissionRule;
 using HRConnect.Domain.Entities;
 using Moq;
@@ -12,9 +14,11 @@ public class ActivateCommissionRuleCommandHandlerTests
 {
     private readonly Mock<ICommissionRuleRepository> _rules = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IAuditLogService> _auditLogService = new();
     private readonly ActivateCommissionRuleCommandHandler _handler;
 
-    public ActivateCommissionRuleCommandHandlerTests() => _handler = new(_rules.Object, _unitOfWork.Object);
+    public ActivateCommissionRuleCommandHandlerTests() =>
+        _handler = new(_rules.Object, _unitOfWork.Object, _auditLogService.Object);
 
     [Fact]
     public async Task Handle_ActivatesInactiveRuleWhenNoActiveRuleConflicts()
@@ -27,10 +31,22 @@ public class ActivateCommissionRuleCommandHandlerTests
                 rule.CommissionRuleId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
+        AuditEntry? capturedAudit = null;
+        _auditLogService.Setup(audit => audit.AddAsync(It.IsAny<AuditEntry>(), It.IsAny<CancellationToken>()))
+            .Callback<AuditEntry, CancellationToken>((entry, _) => capturedAudit = entry)
+            .Returns(Task.CompletedTask);
+
         var result = await _handler.Handle(new ActivateCommissionRuleCommand(rule.CommissionRuleId), CancellationToken.None);
 
         result.Success.Should().BeTrue();
         result.Data.IsActive.Should().BeTrue();
+        capturedAudit.Should().NotBeNull();
+        capturedAudit!.Action.Should().Be(AuditActions.CommissionRuleActivated);
+        capturedAudit.EntityType.Should().Be("COMMISSION_RULE");
+        capturedAudit.EntityId.Should().Be(rule.CommissionRuleId);
+        JsonSerializer.Serialize(capturedAudit.OldValues).Should().Contain("\"isActive\":false");
+        JsonSerializer.Serialize(capturedAudit.NewValues).Should().Contain("\"isActive\":true");
+        _auditLogService.Verify(audit => audit.AddAsync(It.IsAny<AuditEntry>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -48,6 +64,7 @@ public class ActivateCommissionRuleCommandHandlerTests
         var action = () => _handler.Handle(new ActivateCommissionRuleCommand(rule.CommissionRuleId), CancellationToken.None);
 
         await action.Should().ThrowAsync<ConflictException>();
+        _auditLogService.Verify(audit => audit.AddAsync(It.IsAny<AuditEntry>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -63,6 +80,7 @@ public class ActivateCommissionRuleCommandHandlerTests
         result.Data.IsActive.Should().BeTrue();
         _rules.Verify(repository => repository.ExistsAnotherActiveAtEffectiveFromAsync(
             It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _auditLogService.Verify(audit => audit.AddAsync(It.IsAny<AuditEntry>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 

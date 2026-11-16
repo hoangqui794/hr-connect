@@ -1,7 +1,9 @@
+using System.Text.Json;
 using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.CommissionRules.Commands.DeactivateCommissionRule;
 using HRConnect.Domain.Entities;
 using Moq;
@@ -12,9 +14,11 @@ public class DeactivateCommissionRuleCommandHandlerTests
 {
     private readonly Mock<ICommissionRuleRepository> _rules = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IAuditLogService> _auditLogService = new();
     private readonly DeactivateCommissionRuleCommandHandler _handler;
 
-    public DeactivateCommissionRuleCommandHandlerTests() => _handler = new(_rules.Object, _unitOfWork.Object);
+    public DeactivateCommissionRuleCommandHandlerTests() =>
+        _handler = new(_rules.Object, _unitOfWork.Object, _auditLogService.Object);
 
     [Fact]
     public async Task Handle_DeactivatesActiveRuleWithoutDeletingIt()
@@ -23,11 +27,23 @@ public class DeactivateCommissionRuleCommandHandlerTests
         _rules.Setup(repository => repository.GetForUpdateAsync(rule.CommissionRuleId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(rule);
 
+        AuditEntry? capturedAudit = null;
+        _auditLogService.Setup(audit => audit.AddAsync(It.IsAny<AuditEntry>(), It.IsAny<CancellationToken>()))
+            .Callback<AuditEntry, CancellationToken>((entry, _) => capturedAudit = entry)
+            .Returns(Task.CompletedTask);
+
         var result = await _handler.Handle(new DeactivateCommissionRuleCommand(rule.CommissionRuleId), CancellationToken.None);
 
         result.Success.Should().BeTrue();
         result.Data.IsActive.Should().BeFalse();
         rule.IsActive.Should().BeFalse();
+        capturedAudit.Should().NotBeNull();
+        capturedAudit!.Action.Should().Be(AuditActions.CommissionRuleDeactivated);
+        capturedAudit.EntityType.Should().Be("COMMISSION_RULE");
+        capturedAudit.EntityId.Should().Be(rule.CommissionRuleId);
+        JsonSerializer.Serialize(capturedAudit.OldValues).Should().Contain("\"isActive\":true");
+        JsonSerializer.Serialize(capturedAudit.NewValues).Should().Contain("\"isActive\":false");
+        _auditLogService.Verify(audit => audit.AddAsync(It.IsAny<AuditEntry>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -42,6 +58,7 @@ public class DeactivateCommissionRuleCommandHandlerTests
 
         result.Success.Should().BeTrue();
         result.Data.IsActive.Should().BeFalse();
+        _auditLogService.Verify(audit => audit.AddAsync(It.IsAny<AuditEntry>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 

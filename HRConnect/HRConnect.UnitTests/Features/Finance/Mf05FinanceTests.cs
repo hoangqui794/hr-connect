@@ -2288,4 +2288,71 @@ public class Mf05FinanceTests
                 Times.Once);
         }
     }
+
+    [Fact]
+    public async Task GetActiveCommissionRuleAsync_IgnoresNonWarrantyPassedMilestones_EvenWhenNewer()
+    {
+        var now = new DateTime(2026, 10, 10, 0, 0, 0, DateTimeKind.Utc);
+        var warrantyRule = new CommissionRule
+        {
+            CommissionRuleId = Guid.NewGuid(),
+            ServiceTypeId = _serviceTypeId,
+            Name = "Warranty rule",
+            MilestoneType = CommissionMilestoneCodes.WarrantyPassed,
+            RateType = "PERCENT",
+            RateValue = 30m,
+            WarrantyRequired = true,
+            IsActive = true,
+            EffectiveFrom = now.AddDays(-10),
+            CreatedAt = now.AddDays(-10),
+            UpdatedAt = now.AddDays(-10),
+        };
+        var newerProbationRule = new CommissionRule
+        {
+            CommissionRuleId = Guid.NewGuid(),
+            ServiceTypeId = _serviceTypeId,
+            Name = "Probation rule",
+            MilestoneType = "PROBATION_PASSED",
+            RateType = "PERCENT",
+            RateValue = 15m,
+            WarrantyRequired = false,
+            IsActive = true,
+            EffectiveFrom = now.AddDays(-1),
+            CreatedAt = now.AddDays(-1),
+            UpdatedAt = now.AddDays(-1),
+        };
+        _context.AddRange(warrantyRule, newerProbationRule);
+        await _context.SaveChangesAsync();
+
+        var resolved = await Repository.GetActiveCommissionRuleAsync(_serviceTypeId, now);
+
+        resolved.Should().NotBeNull();
+        resolved!.CommissionRuleId.Should().Be(warrantyRule.CommissionRuleId);
+        resolved.MilestoneType.Should().Be(CommissionMilestoneCodes.WarrantyPassed);
+    }
+
+    [Fact]
+    public async Task GetActiveCommissionRuleAsync_ReturnsNull_WhenOnlyOtherMilestonesExist()
+    {
+        var now = new DateTime(2026, 10, 10, 0, 0, 0, DateTimeKind.Utc);
+        _context.Add(new CommissionRule
+        {
+            CommissionRuleId = Guid.NewGuid(),
+            ServiceTypeId = _serviceTypeId,
+            Name = "Start work rule",
+            MilestoneType = "START_WORK",
+            RateType = "PERCENT",
+            RateValue = 10m,
+            WarrantyRequired = false,
+            IsActive = true,
+            EffectiveFrom = now.AddDays(-2),
+            CreatedAt = now.AddDays(-2),
+            UpdatedAt = now.AddDays(-2),
+        });
+        await _context.SaveChangesAsync();
+
+        var resolved = await Repository.GetActiveCommissionRuleAsync(_serviceTypeId, now);
+
+        resolved.Should().BeNull();
+    }
 }

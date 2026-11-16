@@ -1,7 +1,9 @@
+using System.Text.Json;
 using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.CommissionRules.Commands.CreateCommissionRule;
 using HRConnect.Domain.Entities;
 using Moq;
@@ -14,11 +16,12 @@ public class CreateCommissionRuleCommandHandlerTests
     private readonly Mock<ICommissionMilestoneRepository> _milestones = new();
     private readonly Mock<ICommissionRuleRepository> _rules = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IAuditLogService> _auditLogService = new();
     private readonly CreateCommissionRuleCommandHandler _handler;
 
     public CreateCommissionRuleCommandHandlerTests()
     {
-        _handler = new(_serviceTypes.Object, _milestones.Object, _rules.Object, _unitOfWork.Object);
+        _handler = new(_serviceTypes.Object, _milestones.Object, _rules.Object, _unitOfWork.Object, _auditLogService.Object);
     }
 
     [Fact]
@@ -44,6 +47,11 @@ public class CreateCommissionRuleCommandHandlerTests
                 serviceTypeId, "PROBATION_PASSED", effectiveFrom, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
+        AuditEntry? capturedAudit = null;
+        _auditLogService.Setup(audit => audit.AddAsync(It.IsAny<AuditEntry>(), It.IsAny<CancellationToken>()))
+            .Callback<AuditEntry, CancellationToken>((entry, _) => capturedAudit = entry)
+            .Returns(Task.CompletedTask);
+
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.Success.Should().BeTrue();
@@ -58,6 +66,13 @@ public class CreateCommissionRuleCommandHandlerTests
                 rule.RateType == "PERCENT" &&
                 rule.EffectiveFrom == effectiveFrom),
             It.IsAny<CancellationToken>()), Times.Once);
+        capturedAudit.Should().NotBeNull();
+        capturedAudit!.Action.Should().Be(AuditActions.CommissionRuleCreated);
+        capturedAudit.EntityType.Should().Be("COMMISSION_RULE");
+        capturedAudit.EntityId.Should().Be(result.Data.CommissionRuleId);
+        capturedAudit.OldValues.Should().BeNull();
+        JsonSerializer.Serialize(capturedAudit.NewValues).Should().Contain("\"milestoneType\":\"PROBATION_PASSED\"").And.Contain("\"rateValue\":8");
+        _auditLogService.Verify(audit => audit.AddAsync(It.IsAny<AuditEntry>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -79,6 +94,7 @@ public class CreateCommissionRuleCommandHandlerTests
         await action.Should().ThrowAsync<BadRequestException>();
         _milestones.Verify(repository => repository.GetByCodeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         _rules.Verify(repository => repository.AddAsync(It.IsAny<CommissionRule>(), It.IsAny<CancellationToken>()), Times.Never);
+        _auditLogService.Verify(audit => audit.AddAsync(It.IsAny<AuditEntry>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -107,6 +123,7 @@ public class CreateCommissionRuleCommandHandlerTests
 
         await action.Should().ThrowAsync<ConflictException>();
         _rules.Verify(repository => repository.AddAsync(It.IsAny<CommissionRule>(), It.IsAny<CancellationToken>()), Times.Never);
+        _auditLogService.Verify(audit => audit.AddAsync(It.IsAny<AuditEntry>(), It.IsAny<CancellationToken>()), Times.Never);
         _unitOfWork.Verify(unitOfWork => unitOfWork.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }
