@@ -1160,4 +1160,61 @@ public class ServiceAgreementFlowTests
         var ex = await act.Should().ThrowAsync<ConflictException>();
         ex.Which.ErrorCode.Should().Be("SOURCING_DEPOSIT_TERMS_MISSING");
     }
+
+    [Fact]
+    public async Task CreateProposal_ResendV2WhilePendingAgreement_ShouldRecordJobStatusHistoryWithVersion()
+    {
+        var (job, _, _, _) = CreateTestJob(ServiceTypeCodes.HeadhuntCod);
+        job.Status = JobStatuses.PendingAgreement;
+        var existingV1 = new ServiceAgreement
+        {
+            ServiceAgreementId = Guid.NewGuid(),
+            JobId = job.JobId,
+            CompanyId = job.CompanyId,
+            Version = 1,
+            IsCurrent = true,
+            Status = ServiceAgreementStatuses.ChangeRequested,
+            ConcurrencyToken = Guid.NewGuid(),
+        };
+
+        var hrUserId = Guid.NewGuid();
+        _jobs.Setup(x => x.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job);
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceTypeCodes.HeadhuntCod);
+        _agreements.Setup(x => x.GetHistoryByJobIdAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ServiceAgreement> { existingV1 });
+
+        var adminSettings = new Mock<IAdminBusinessSettings>();
+        adminSettings.Setup(x => x.GetDecimalAsync(BusinessSettingKeys.HeadhuntFeeMultiplier, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1.5m);
+        adminSettings.Setup(x => x.GetIntAsync(BusinessSettingKeys.HeadhuntWarrantyDays, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(30);
+        adminSettings.Setup(x => x.GetIntAsync(BusinessSettingKeys.HeadhuntPaymentDueDays, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(20);
+
+        var handler = new CreateServiceAgreementProposalCommandHandler(
+            _jobs.Object, _agreements.Object, _pdfRenderer.Object, _storage.Object,
+            _notifications.Object, _audit.Object, _uow.Object, adminSettings.Object);
+
+        var result = await handler.Handle(new CreateServiceAgreementProposalCommand
+        {
+            JobId = job.JobId,
+            UserId = hrUserId,
+            ConcurrencyToken = job.ConcurrencyToken,
+            FeeMultiplier = 1.8m,
+            WarrantyDays = 45,
+            PaymentDueDays = 25,
+        }, CancellationToken.None);
+
+        result.Version.Should().Be(2);
+        existingV1.IsCurrent.Should().BeFalse();
+        job.Status.Should().Be(JobStatuses.PendingAgreement);
+        job.JobStatusHistories.Should().ContainSingle(h =>
+            h.OldStatus == JobStatuses.PendingAgreement &&
+            h.NewStatus == JobStatuses.PendingAgreement &&
+            h.ChangedBy == hrUserId &&
+            h.ReasonCode == JobReasonCodes.AgreementProposed &&
+            h.ReasonText != null &&
+            h.ReasonText.Contains("v2"));
+    }
 }

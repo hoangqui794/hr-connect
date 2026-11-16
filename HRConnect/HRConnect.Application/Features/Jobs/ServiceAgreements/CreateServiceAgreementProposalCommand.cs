@@ -248,14 +248,18 @@ public sealed class CreateServiceAgreementProposalCommandHandler : IRequestHandl
         job.UpdatedAt = now;
         job.ConcurrencyToken = Guid.NewGuid();
 
-        if (job.Status == JobStatuses.PendingReview)
+        if (job.Status == JobStatuses.PendingReview || job.Status == JobStatuses.PendingAgreement)
         {
+            var statusReason = job.Status == JobStatuses.PendingAgreement
+                ? $"HR đã gửi lại dự thảo thỏa thuận dịch vụ (v{nextVersion}) cho Client xem xét."
+                : $"HR đã gửi dự thảo thỏa thuận dịch vụ (v{nextVersion}) cho Client xem xét.";
+
             JobTransitions.ChangeStatus(
                 job,
                 JobStatuses.PendingAgreement,
                 request.UserId,
                 JobReasonCodes.AgreementProposed,
-                $"HR đã gửi dự thảo thỏa thuận dịch vụ (v{nextVersion}) cho Client xem xét.");
+                statusReason);
         }
 
         // Notify Client Company
