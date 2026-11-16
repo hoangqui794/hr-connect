@@ -1,8 +1,11 @@
 using System.Text.Json.Serialization;
 using FluentValidation;
+using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Domain.Constants;
 using MediatR;
 
 namespace HRConnect.Application.Features.Jobs.Commands.RejectJob;
@@ -21,15 +24,77 @@ public sealed class RejectJobCommandHandler : IRequestHandler<RejectJobCommand, 
     private readonly IJobRepository _jobs;
     private readonly INotificationRepository _notifications;
     private readonly IUnitOfWork _uow;
+    private readonly IServiceAgreementRepository? _agreements;
+    private readonly IAuditLogService? _audit;
 
-    public RejectJobCommandHandler(IJobRepository jobs, INotificationRepository notifications, IUnitOfWork uow)
-        => (_jobs, _notifications, _uow) = (jobs, notifications, uow);
+    public RejectJobCommandHandler(
+        IJobRepository jobs,
+        INotificationRepository notifications,
+        IUnitOfWork uow,
+        IServiceAgreementRepository? agreements = null,
+        IAuditLogService? audit = null)
+        => (_jobs, _notifications, _uow, _agreements, _audit) = (jobs, notifications, uow, agreements, audit);
 
     public async Task<JobActionResponse> Handle(RejectJobCommand request, CancellationToken ct)
     {
-        var job = await JobHandlerGuards.GetJobAsync(_jobs, request.JobId, ct); JobHandlerGuards.RequireStatus(job, JobStatuses.PendingReview);
+        var job = await JobHandlerGuards.GetJobAsync(_jobs, request.JobId, ct);
+        JobHandlerGuards.RequireStatus(job, JobStatuses.PendingReview, JobStatuses.PendingAgreement);
         JobTransitions.RequireCurrentToken(job, request.ConcurrencyToken);
-        JobTransitions.ChangeStatus(job, JobStatuses.Rejected, request.UserId, request.ReasonCode.Trim().ToUpperInvariant(), request.ReasonText.Trim());
+
+        var reasonCode = request.ReasonCode.Trim().ToUpperInvariant();
+        var reasonText = request.ReasonText.Trim();
+
+        if (string.Equals(job.Status, JobStatuses.PendingAgreement, StringComparison.OrdinalIgnoreCase))
+        {
+            var currentAgreement = (job.CurrentServiceAgreement is { Status: not ServiceAgreementStatuses.Void } cur && cur.IsCurrent ? cur : null)
+                ?? job.ServiceAgreements?.FirstOrDefault(a => a.IsCurrent && a.Status != ServiceAgreementStatuses.Void)
+                ?? (_agreements != null ? await _agreements.GetCurrentByJobIdAsync(job.JobId, ct) : null);
+
+            if (currentAgreement != null)
+            {
+                if (currentAgreement.Status == ServiceAgreementStatuses.Signed)
+                {
+                    throw new ConflictException(
+                        "Không thể từ chối tin tuyển dụng khi thỏa thuận dịch vụ hiện tại đã được ký kết chính thức.",
+                        "AGREEMENT_ALREADY_SIGNED");
+                }
+
+                var now = DateTime.UtcNow;
+                var oldAgreementStatus = currentAgreement.Status;
+                currentAgreement.Status = ServiceAgreementStatuses.Void;
+                currentAgreement.IsCurrent = false;
+                currentAgreement.VoidedAt = now;
+                currentAgreement.VoidedByUserId = request.UserId;
+                currentAgreement.VoidReason = reasonText;
+                currentAgreement.ConcurrencyToken = Guid.NewGuid();
+                if (job.CurrentServiceAgreementId == currentAgreement.ServiceAgreementId)
+                {
+                    job.CurrentServiceAgreementId = null;
+                    job.CurrentServiceAgreement = null;
+                }
+
+                if (_audit != null)
+                {
+                    await _audit.AddAsync(new AuditEntry
+                    {
+                        Action = "SERVICE_AGREEMENT_VOIDED",
+                        EntityType = "ServiceAgreement",
+                        EntityId = currentAgreement.ServiceAgreementId,
+                        ActorUserId = request.UserId,
+                        OldValues = new { Status = oldAgreementStatus, IsCurrent = true },
+                        NewValues = new
+                        {
+                            Status = currentAgreement.Status,
+                            IsCurrent = currentAgreement.IsCurrent,
+                            Reason = currentAgreement.VoidReason,
+                            JobId = job.JobId
+                        }
+                    }, ct);
+                }
+            }
+        }
+
+        JobTransitions.ChangeStatus(job, JobStatuses.Rejected, request.UserId, reasonCode, reasonText);
         await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct);
 
         await _notifications.AddAsync(new HRConnect.Domain.Entities.Notification
@@ -38,15 +103,15 @@ public sealed class RejectJobCommandHandler : IRequestHandler<RejectJobCommand, 
             UserId = job.CreatedBy,
             NotificationType = "JOB",
             Title = "Tin tuyển dụng bị từ chối duyệt",
-            Message = $"Tin tuyển dụng \"{job.Title}\" đã bị từ chối: {request.ReasonText.Trim()}.",
+            Message = $"Tin tuyển dụng \"{job.Title}\" đã bị từ chối: {reasonText}.",
             RelatedEntityType = "JOB",
             RelatedEntityId = job.JobId,
             Metadata = System.Text.Json.JsonSerializer.Serialize(new
             {
                 jobId = job.JobId,
                 status = JobStatuses.Rejected,
-                reasonCode = request.ReasonCode.Trim().ToUpperInvariant(),
-                reasonText = request.ReasonText.Trim(),
+                reasonCode,
+                reasonText,
                 actionRoute = $"/client/jobs?highlight={job.JobId}&openDetail=true"
             }),
             IsRead = false,

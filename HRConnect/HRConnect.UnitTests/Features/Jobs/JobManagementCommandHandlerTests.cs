@@ -2,6 +2,7 @@ using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Jobs.Commands.ApproveJob;
 using HRConnect.Application.Features.Jobs.Commands.CloseJob;
@@ -15,6 +16,7 @@ using HRConnect.Application.Features.Jobs.Commands.Deposit;
 using HRConnect.Application.Features.Jobs.Commands.RecordJobPostingFeePayment;
 using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Application.Features.Jobs.Queries.GetJobPostingFee;
+using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using Moq;
 
@@ -979,6 +981,110 @@ public class JobManagementCommandHandlerTests
 
         job.PostingPackageId.Should().BeNull();
         existingFee.Status.Should().Be(JobPostingFeeStatuses.Cancelled);
+    }
+
+    [Fact]
+    public async Task Reject_FromPendingAgreement_ShouldVoidUnsignedAgreementAndRejectJob()
+    {
+        var job = SetupJob(JobStatuses.PendingAgreement);
+        job.Title = "Senior .NET";
+        var reviewer = Guid.NewGuid();
+        var agreement = new ServiceAgreement
+        {
+            ServiceAgreementId = Guid.NewGuid(),
+            JobId = job.JobId,
+            CompanyId = job.CompanyId,
+            Version = 1,
+            IsCurrent = true,
+            Status = ServiceAgreementStatuses.ChangeRequested,
+            ConcurrencyToken = Guid.NewGuid(),
+        };
+        job.CurrentServiceAgreementId = agreement.ServiceAgreementId;
+
+        var agreements = new Mock<IServiceAgreementRepository>();
+        agreements.Setup(x => x.GetCurrentByJobIdAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(agreement);
+
+        var result = await new RejectJobCommandHandler(_jobs.Object, _notifications.Object, _uow.Object, agreements.Object, _audit.Object)
+            .Handle(new RejectJobCommand
+            {
+                JobId = job.JobId,
+                UserId = reviewer,
+                ConcurrencyToken = job.ConcurrencyToken,
+                ReasonCode = JobReasonCodes.RejectedTermsNotAgreed,
+                ReasonText = "Không thống nhất điều khoản"
+            }, default);
+
+        result.Data.Status.Should().Be(JobStatuses.Rejected);
+        job.StatusReasonCode.Should().Be(JobReasonCodes.RejectedTermsNotAgreed);
+        job.CurrentServiceAgreementId.Should().BeNull();
+        agreement.Status.Should().Be(ServiceAgreementStatuses.Void);
+        agreement.IsCurrent.Should().BeFalse();
+        agreement.VoidReason.Should().Be("Không thống nhất điều khoản");
+        agreement.VoidedByUserId.Should().Be(reviewer);
+        agreement.VoidedAt.Should().NotBeNull();
+        _jobs.Verify(x => x.AddStatusHistoryAsync(It.Is<JobStatusHistory>(h =>
+            h.OldStatus == JobStatuses.PendingAgreement && h.NewStatus == JobStatuses.Rejected), It.IsAny<CancellationToken>()), Times.Once);
+        _audit.Verify(x => x.AddAsync(It.Is<AuditEntry>(a =>
+            a.Action == "SERVICE_AGREEMENT_VOIDED" && a.EntityId == agreement.ServiceAgreementId), It.IsAny<CancellationToken>()), Times.Once);
+        _notifications.Verify(x => x.AddAsync(It.Is<Notification>(n =>
+            n.NotificationType == "JOB" && n.UserId == job.CreatedBy && n.RelatedEntityId == job.JobId), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Reject_FromActiveStatus_ShouldThrowConflict()
+    {
+        var job = SetupJob(JobStatuses.Active);
+
+        var act = () => new RejectJobCommandHandler(_jobs.Object, _notifications.Object, _uow.Object)
+            .Handle(new RejectJobCommand
+            {
+                JobId = job.JobId,
+                UserId = Guid.NewGuid(),
+                ConcurrencyToken = job.ConcurrencyToken,
+                ReasonCode = JobReasonCodes.RejectedOther,
+                ReasonText = "Không hợp lệ"
+            }, default);
+
+        await act.Should().ThrowAsync<ConflictException>();
+        _notifications.Verify(x => x.AddAsync(It.IsAny<Notification>(), It.IsAny<CancellationToken>()), Times.Never);
+        _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Reject_FromPendingAgreement_WhenAgreementSigned_ShouldThrowConflict()
+    {
+        var job = SetupJob(JobStatuses.PendingAgreement);
+        var agreement = new ServiceAgreement
+        {
+            ServiceAgreementId = Guid.NewGuid(),
+            JobId = job.JobId,
+            CompanyId = job.CompanyId,
+            Version = 1,
+            IsCurrent = true,
+            Status = ServiceAgreementStatuses.Signed,
+            ConcurrencyToken = Guid.NewGuid(),
+        };
+        var agreements = new Mock<IServiceAgreementRepository>();
+        agreements.Setup(x => x.GetCurrentByJobIdAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(agreement);
+
+        var act = () => new RejectJobCommandHandler(_jobs.Object, _notifications.Object, _uow.Object, agreements.Object, _audit.Object)
+            .Handle(new RejectJobCommand
+            {
+                JobId = job.JobId,
+                UserId = Guid.NewGuid(),
+                ConcurrencyToken = job.ConcurrencyToken,
+                ReasonCode = JobReasonCodes.RejectedTermsNotAgreed,
+                ReasonText = "Thử từ chối sau khi đã ký"
+            }, default);
+
+        var ex = await act.Should().ThrowAsync<ConflictException>();
+        ex.Which.ErrorCode.Should().Be("AGREEMENT_ALREADY_SIGNED");
+        job.Status.Should().Be(JobStatuses.PendingAgreement);
+        agreement.Status.Should().Be(ServiceAgreementStatuses.Signed);
+        agreement.IsCurrent.Should().BeTrue();
+        _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     private (Job Job, Guid User) SetupOwnedJob(string status)
