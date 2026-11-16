@@ -609,13 +609,8 @@ export const JobReviewPage: React.FC = () => {
           setConfirmingDeposit(true);
           try {
             await jobsApi.confirmDeposit(jobToConfirm.jobId);
-          } catch (err) {
-            console.warn('confirmDeposit API failed, attempting approve fallback', err);
-            try {
-              await jobsApi.approve(jobToConfirm.jobId, jobToConfirm.concurrencyToken);
-            } catch (fallbackErr) {
-              console.warn('Approve fallback error', fallbackErr);
-            }
+          } catch {
+            await jobsApi.approve(jobToConfirm.jobId, jobToConfirm.concurrencyToken);
           }
           message.success('Đã xác nhận nhận cọc! Tin tuyển dụng đã được công bố công khai.');
           useAlertStore.getState().addAlert({

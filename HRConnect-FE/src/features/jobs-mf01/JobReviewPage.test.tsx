@@ -378,4 +378,105 @@ describe('JobReviewPage tab switching with highlight query param', () => {
       );
     });
   });
+
+  it('shows API error and does not show success or invalidate queries when both confirmDeposit and approve fallback fail', async () => {
+    const messageSuccessSpy = vi.fn();
+    const messageErrorSpy = vi.fn();
+    let onOkPromise: Promise<unknown> | undefined;
+
+    vi.spyOn(AntApp, 'useApp').mockReturnValue({
+      message: {
+        success: messageSuccessSpy,
+        error: messageErrorSpy,
+        warning: vi.fn(),
+        info: vi.fn(),
+        loading: vi.fn(),
+      } as any,
+      modal: {
+        confirm: vi.fn((config: any) => {
+          onOkPromise = config.onOk();
+        }),
+      } as any,
+      notification: {} as any,
+    });
+
+    const pendingPaymentJob = {
+      jobId: 'job-deposit-fail-1',
+      title: 'DevOps Sourcing Deposit Fail',
+      companyName: 'Ops Corp',
+      companyId: 'comp-ops-1',
+      serviceTypeId: 'srv-sourcing',
+      serviceTypeCode: 'CV_SOURCING',
+      currencyCode: 'VND',
+      quantity: 1,
+      status: 'PENDING_PAYMENT',
+      createdAt: '2026-11-01T10:00:00Z',
+      updatedAt: '2026-11-01T12:00:00Z',
+      concurrencyToken: 'token-deposit-1',
+      requirements: [],
+      skills: [],
+      statusHistories: [],
+      hasSubmittedDeposit: true,
+      commercialTerms: {
+        sourcingTarget: 10,
+        pricePerCv: 600000,
+        depositPercent: 50,
+        reviewDays: 7,
+        paymentDueDays: 20,
+      },
+    };
+
+    vi.spyOn(jobsApi, 'getReviewQueue').mockImplementation(async (status) => {
+      if (status === 'PENDING_PAYMENT') return [pendingPaymentJob] as any;
+      if (status === 'ALL') return [pendingPaymentJob] as any;
+      return [];
+    });
+    vi.spyOn(jobsApi, 'getById').mockResolvedValue(pendingPaymentJob as any);
+
+    const confirmDepositSpy = vi.spyOn(jobsApi, 'confirmDeposit').mockRejectedValue(
+      Object.assign(new Error('Phiếu cọc chưa hợp lệ'), {
+        isAxiosError: true,
+        response: { status: 409, data: { message: 'Phiếu cọc chưa hợp lệ' } },
+      })
+    );
+    const approveSpy = vi.spyOn(jobsApi, 'approve').mockRejectedValue(
+      Object.assign(new Error('Không thể duyệt tin ở trạng thái hiện tại'), {
+        isAxiosError: true,
+        response: { status: 400, data: { message: 'Không thể duyệt tin ở trạng thái hiện tại' } },
+      })
+    );
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    render(
+      <MemoryRouter initialEntries={['/hr/jobs?status=PENDING_PAYMENT']}>
+        <QueryClientProvider client={queryClient}>
+          <Routes>
+            <Route path="/hr/jobs" element={<JobReviewPage />} />
+          </Routes>
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('DevOps Sourcing Deposit Fail')).toBeInTheDocument();
+    });
+
+    const confirmDepositBtn = await screen.findByRole(
+      'button',
+      { name: /Xác nhận đã nhận cọc & Công khai tin/i },
+      { timeout: 8000 }
+    );
+    fireEvent.click(confirmDepositBtn);
+
+    await waitFor(() => {
+      expect(confirmDepositSpy).toHaveBeenCalledWith('job-deposit-fail-1');
+      expect(approveSpy).toHaveBeenCalledWith('job-deposit-fail-1', 'token-deposit-1');
+    });
+
+    await onOkPromise;
+
+    expect(messageErrorSpy).toHaveBeenCalledWith('Không thể duyệt tin ở trạng thái hiện tại');
+    expect(messageSuccessSpy).not.toHaveBeenCalled();
+    expect(invalidateSpy).not.toHaveBeenCalled();
+  });
 });
