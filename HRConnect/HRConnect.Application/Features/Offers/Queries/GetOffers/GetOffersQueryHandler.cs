@@ -70,6 +70,7 @@ public class GetOffersQueryHandler : IRequestHandler<GetOffersQuery, GetOffersRe
             request.ApplicationId,
             request.CandidateId,
             request.Status,
+            request.Keyword,
             hideDraftForCandidate,
             page,
             pageSize,

@@ -18,6 +18,7 @@ public interface IInterviewRepository
         string? result,
         DateTime? fromDate,
         DateTime? toDate,
+        string? keyword,
         int page,
         int pageSize,
         string? sortDirection = "DESC",

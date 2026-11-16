@@ -45,6 +45,7 @@ public static class InterviewEndpoints
             [FromQuery] string? result,
             [FromQuery] DateTime? fromDate,
             [FromQuery] DateTime? toDate,
+            [FromQuery] string? keyword,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10,
             [FromQuery] string? sortDirection = "DESC",
@@ -82,6 +83,7 @@ public static class InterviewEndpoints
                     Result: result,
                     FromDate: fromDate,
                     ToDate: toDate,
+                    Keyword: keyword,
                     Page: page,
                     PageSize: pageSize,
                     SortDirection: sortDirection
@@ -101,7 +103,7 @@ public static class InterviewEndpoints
         })
         .WithName("GetInterviews")
         .WithSummary("Lấy danh sách lịch phỏng vấn")
-        .WithDescription("Hỗ trợ lọc theo jobId, applicationId, interviewerId, status, result, khoảng thời gian và phân trang. Tự động áp dụng phân quyền theo Client Company (interview.view_company), Internal HR (application.view), hoặc Candidate (interview.view_own).")
+        .WithDescription("Hỗ trợ lọc theo jobId, applicationId, interviewerId, status, result, tên ứng viên/vị trí, khoảng thời gian và phân trang. Tự động áp dụng phân quyền theo Client Company (interview.view_company), Internal HR (application.view), hoặc Candidate (interview.view_own).")
         .Produces<GetInterviewsResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)

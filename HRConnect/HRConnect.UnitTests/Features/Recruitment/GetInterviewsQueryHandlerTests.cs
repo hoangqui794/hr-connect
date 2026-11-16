@@ -46,6 +46,7 @@ public class GetInterviewsQueryHandlerTests
                 null,
                 null,
                 null,
+                "DevOps",
                 1,
                 10,
                 It.IsAny<string?>(),
@@ -55,7 +56,8 @@ public class GetInterviewsQueryHandlerTests
         var query = new GetInterviewsQuery(
             UserId: userId,
             IsClientCompanyUser: true,
-            IsInternalHrOrAdmin: false
+            IsInternalHrOrAdmin: false,
+            Keyword: "DevOps"
         );
 
         // Act
@@ -111,6 +113,7 @@ public class GetInterviewsQueryHandlerTests
                 null,
                 null,
                 null,
+                null,
                 1,
                 10,
                 It.IsAny<string?>(),
@@ -131,7 +134,7 @@ public class GetInterviewsQueryHandlerTests
         result.Data.Total.Should().Be(1);
         _companyUserRepositoryMock.Verify(r => r.GetByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         _interviewRepositoryMock.Verify(r => r.GetInterviewsAsync(
-            null, null, null, null, null, null, null, null, null, 1, 10, "DESC", It.IsAny<CancellationToken>()), Times.Once);
+            null, null, null, null, null, null, null, null, null, null, 1, 10, "DESC", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -153,6 +156,7 @@ public class GetInterviewsQueryHandlerTests
             .Setup(r => r.GetInterviewsAsync(
                 null,
                 candidateUserId,
+                null,
                 null,
                 null,
                 null,
@@ -184,7 +188,7 @@ public class GetInterviewsQueryHandlerTests
         result.Data.Items[0].ConcurrencyToken.Should().BeNull();
         result.Data.Items[0].Participants.Should().BeEmpty();
         _interviewRepositoryMock.Verify(r => r.GetInterviewsAsync(
-            null, candidateUserId, null, null, null, null, null, null, null, 1, 10, "DESC", It.IsAny<CancellationToken>()), Times.Once);
+            null, candidateUserId, null, null, null, null, null, null, null, null, 1, 10, "DESC", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -232,7 +236,7 @@ public class GetInterviewsQueryHandlerTests
 
         _interviewRepositoryMock
             .Setup(r => r.GetInterviewsAsync(
-                null, null, null, null, null, null, null, null, null, 1, 10, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                null, null, null, null, null, null, null, null, null, null, 1, 10, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(([interview], 1));
 
         var query = new GetInterviewsQuery(
@@ -347,7 +351,7 @@ public class GetInterviewsQueryHandlerTests
 
         _interviewRepositoryMock
             .Setup(r => r.GetInterviewsAsync(
-                It.IsAny<Guid?>(), It.IsAny<Guid?>(), null, null, null, null, null, null, null, 1, 10, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                It.IsAny<Guid?>(), It.IsAny<Guid?>(), null, null, null, null, null, null, null, null, 1, 10, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(([interview], 1));
 
         var clientResult = await CreateHandler().Handle(

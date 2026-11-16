@@ -143,10 +143,16 @@ export const ClientInterviewsOffersPage: React.FC = () => {
   };
 
   const [searchKeyword, setSearchKeyword] = useState<string>('');
+  const [debouncedKeyword, setDebouncedKeyword] = useState<string>('');
   const [resigningPlacement, setResigningPlacement] = useState<PlacementItem | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<string>('all');
 
   const { data: myJobs = [], isLoading: loadingJobs } = useMyJobs();
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedKeyword(searchKeyword.trim()), 350);
+    return () => window.clearTimeout(timer);
+  }, [searchKeyword]);
 
   // Queries for counts
   const interviewScheduledCountQ = useQuery({
@@ -168,17 +174,17 @@ export const ClientInterviewsOffersPage: React.FC = () => {
 
   // Query for current tab data
   const listQ = useQuery({
-    queryKey: ['client-pipeline', tab, page, statusFilter === 'all' ? undefined : statusFilter, selectedJobId],
+    queryKey: ['client-pipeline', tab, page, statusFilter === 'all' ? undefined : statusFilter, selectedJobId, debouncedKeyword],
     queryFn: async () => {
       const st = statusFilter === 'all' ? undefined : statusFilter;
       const jobId = selectedJobId === 'all' ? undefined : selectedJobId;
       if (tab === 'interviews') {
-        return await pipelineApi.interviews({ page, pageSize: PAGE_SIZE, status: st, jobId });
+        return await pipelineApi.interviews({ page, pageSize: PAGE_SIZE, status: st, jobId, keyword: debouncedKeyword || undefined });
       }
       if (tab === 'offers') {
-        return await pipelineApi.offers({ page, pageSize: PAGE_SIZE, status: st, jobId });
+        return await pipelineApi.offers({ page, pageSize: PAGE_SIZE, status: st, jobId, keyword: debouncedKeyword || undefined });
       }
-      return await pipelineApi.placements({ page, pageSize: PAGE_SIZE, status: st, jobId });
+      return await pipelineApi.placements({ page, pageSize: PAGE_SIZE, status: st, jobId, keyword: debouncedKeyword || undefined });
     },
   });
 
@@ -220,23 +226,16 @@ export const ClientInterviewsOffersPage: React.FC = () => {
     setSearchParams(next, { replace: true });
   };
 
-  // Keyword search remains local to the current server-filtered page.
-  const filteredItems = useMemo(() => {
-    const rawItems = (listQ.data?.items ?? []) as any[];
-    return rawItems.filter((item) => {
-      if (searchKeyword.trim()) {
-        const q = searchKeyword.trim().toLowerCase();
-        const candName = (item.candidateName || item.candidate?.fullName || '').toLowerCase();
-        const candEmail = (item.candidateEmail || item.candidate?.email || '').toLowerCase();
-        const jobTitle = (item.jobTitle || item.job?.title || '').toLowerCase();
-        if (!candName.includes(q) && !candEmail.includes(q) && !jobTitle.includes(q)) {
-          return false;
-        }
-      }
+  const handleKeywordChange = (value: string) => {
+    setSearchKeyword(value);
+    if (page !== 1) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('page');
+      setSearchParams(next, { replace: true });
+    }
+  };
 
-      return true;
-    });
-  }, [listQ.data?.items, searchKeyword]);
+  const listItems = (listQ.data?.items ?? []) as Array<InterviewItem | OfferItem | PlacementItem>;
 
   // ── Columns Definitions ──────────────────────────────────────────
   const interviewColumns: ColumnsType<InterviewItem> = useMemo(
@@ -921,7 +920,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
               prefix={<SearchOutlined className="text-slate-400" />}
               allowClear
               value={searchKeyword}
-              onChange={(e) => setSearchKeyword(e.target.value)}
+              onChange={(e) => handleKeywordChange(e.target.value)}
               className="!rounded-xl"
             />
           </div>
@@ -1037,7 +1036,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
           </div>
 
           <span className="text-xs font-medium text-slate-500 tabular-nums">
-            Tìm thấy <b>{filteredItems.length}</b> kết quả
+            Tìm thấy <b>{listQ.data?.total ?? 0}</b> kết quả
           </span>
         </div>
 
@@ -1052,7 +1051,7 @@ export const ClientInterviewsOffersPage: React.FC = () => {
               action={<Button onClick={() => listQ.refetch()}>Thử lại</Button>}
             />
           </div>
-        ) : filteredItems.length === 0 ? (
+        ) : listItems.length === 0 ? (
           <div className="py-14 text-center">
             <Empty
               description={
@@ -1092,13 +1091,13 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             className="admin-soft-table"
             rowKey="interviewId"
             columns={interviewColumns}
-            dataSource={filteredItems}
+            dataSource={listItems as InterviewItem[]}
             loading={listQ.isFetching}
             scroll={{ x: 'max-content' }}
             pagination={{ itemRender: a11yItemRender,
               current: page,
               pageSize: PAGE_SIZE,
-              total: listQ.data?.total ?? filteredItems.length,
+              total: listQ.data?.total ?? listItems.length,
               onChange: setPage,
               showSizeChanger: false,
             }}
@@ -1112,13 +1111,13 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             className="admin-soft-table"
             rowKey="offerId"
             columns={offerColumns}
-            dataSource={filteredItems}
+            dataSource={listItems as OfferItem[]}
             loading={listQ.isFetching}
             scroll={{ x: 'max-content' }}
             pagination={{ itemRender: a11yItemRender,
               current: page,
               pageSize: PAGE_SIZE,
-              total: listQ.data?.total ?? filteredItems.length,
+              total: listQ.data?.total ?? listItems.length,
               onChange: setPage,
               showSizeChanger: false,
             }}
@@ -1132,13 +1131,13 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             className="admin-soft-table"
             rowKey="placementId"
             columns={placementColumns}
-            dataSource={filteredItems}
+            dataSource={listItems as PlacementItem[]}
             loading={listQ.isFetching}
             scroll={{ x: 'max-content' }}
             pagination={{ itemRender: a11yItemRender,
               current: page,
               pageSize: PAGE_SIZE,
-              total: listQ.data?.total ?? filteredItems.length,
+              total: listQ.data?.total ?? listItems.length,
               onChange: setPage,
               showSizeChanger: false,
             }}
