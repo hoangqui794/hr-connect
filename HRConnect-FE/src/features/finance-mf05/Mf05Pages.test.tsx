@@ -171,6 +171,65 @@ describe('MF-05 admin finance', () => {
     const feesTab = screen.getByRole('tab', { name: 'Công nợ phí' });
     expect(feesTab.getAttribute('aria-selected')).toBe('true');
   });
+
+  it('sets the fees table filter to PENDING when clicking the "Phí chờ thu" KPI tile', async () => {
+    vi.mocked(financeApi.commissions).mockResolvedValue(page([]));
+    vi.mocked(financeApi.serviceFees).mockReset().mockResolvedValue(page<ServiceFee>([]));
+
+    renderWith(<AdminFinancePage />);
+
+    const pendingTile = await screen.findByRole('button', { name: /Phí chờ thu/ });
+    fireEvent.click(pendingTile);
+
+    await waitFor(() =>
+      expect(financeApi.serviceFees).toHaveBeenCalledWith({ status: 'PENDING', page: 1, pageSize: 20 })
+    );
+    expect(screen.getByRole('tab', { name: 'Công nợ phí' }).getAttribute('aria-selected')).toBe('true');
+    expect(pendingTile.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('combobox', { name: 'Trạng thái phí' })).toBeInTheDocument();
+    expect(screen.getByText('Chờ thanh toán')).toBeInTheDocument();
+  });
+
+  it('shows baseSalary × feeMultiplier formula only for PLACEMENT fees, not SETTLEMENT or CREDIT', async () => {
+    vi.mocked(financeApi.commissions).mockResolvedValue(page([]));
+    const placementFee: ServiceFee = {
+      serviceFeeId: 'fee-plc', placementId: 'p-1', kind: 'PLACEMENT', companyId: 'co-1', companyName: 'Công ty Placement',
+      jobTitle: 'Backend Engineer', candidateName: 'Nguyễn Văn A', baseSalary: 20_000_000, feeMultiplier: 1.5,
+      amount: 30_000_000, currencyCode: 'VND', dueDate: '2026-11-10', status: 'PAID', paidAt: '2026-11-05T10:00:00Z',
+      createdAt: '2026-11-01',
+    };
+    const settlementFee: ServiceFee = {
+      serviceFeeId: 'fee-set', placementId: null, kind: 'SETTLEMENT', companyId: 'co-2', companyName: 'Công ty Settlement',
+      jobTitle: 'QA Engineer', candidateName: null, baseSalary: 5_000_000, feeMultiplier: 1,
+      amount: 3_800_000, currencyCode: 'VND', dueDate: '2026-11-10', status: 'PAID', paidAt: '2026-11-05T10:00:00Z',
+      createdAt: '2026-11-01',
+    };
+    const creditFee: ServiceFee = {
+      serviceFeeId: 'fee-crd', placementId: null, kind: 'CREDIT', companyId: 'co-3', companyName: 'Công ty Credit',
+      jobTitle: 'FE Engineer', candidateName: null, baseSalary: 2_000_000, feeMultiplier: 1,
+      amount: 1_200_000, currencyCode: 'VND', dueDate: '2026-11-10', status: 'PAID', paidAt: '2026-11-05T10:00:00Z',
+      createdAt: '2026-11-01',
+    };
+    vi.mocked(financeApi.serviceFees).mockResolvedValue(page([placementFee, settlementFee, creditFee]));
+
+    renderWith(<AdminFinancePage />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Công nợ phí' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Xem chi tiết khoản phí Công ty Placement' }, { timeout: 10000 }));
+    expect(await screen.findByText(/Công thức:.*20\.000\.000.*×\s*1\.5/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Xem chi tiết khoản phí Công ty Settlement' }));
+    expect(await screen.findByText('fee-set')).toBeInTheDocument();
+    expect(screen.queryByText(/Công thức:/)).toBeNull();
+    expect(screen.queryByText(/×\s*1\b/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Xem chi tiết khoản phí Công ty Credit' }));
+    expect(await screen.findByText('fee-crd')).toBeInTheDocument();
+    expect(screen.queryByText(/Công thức:/)).toBeNull();
+    expect(screen.queryByText(/×\s*1\b/)).toBeNull();
+  });
 });
 
 describe('MF-05 HR warranty verification', () => {

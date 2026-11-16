@@ -892,9 +892,11 @@ export const AdminFinancePage: React.FC = () => {
                   <div>
                     <div className="text-xs text-slate-500">{labelOf(SERVICE_FEE_KIND, kind).label}</div>
                     <div className="mt-1 font-mono text-2xl font-bold text-slate-900 tabular-nums">{money(f.amount, f.currencyCode)}</div>
-                    <div className="mt-1 font-mono text-xs text-slate-500 tabular-nums">
-                      Công thức: {money(f.baseSalary, f.currencyCode)} × {f.feeMultiplier}
-                    </div>
+                    {kind === 'PLACEMENT' && (
+                      <div className="mt-1 font-mono text-xs text-slate-500 tabular-nums">
+                        Công thức: {money(f.baseSalary, f.currencyCode)} × {f.feeMultiplier}
+                      </div>
+                    )}
                   </div>
                   <StatusDot tone={s.tone}>{s.label}</StatusDot>
                 </div>
