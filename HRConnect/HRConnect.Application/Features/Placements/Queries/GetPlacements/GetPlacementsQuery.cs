@@ -9,6 +9,7 @@ public record GetPlacementsQuery(
     Guid? JobId = null,
     Guid? CandidateId = null,
     string? Status = null,
+    string? Keyword = null,
     DateOnly? FromDate = null,
     DateOnly? ToDate = null,
     int Page = 1,
