@@ -110,18 +110,40 @@ export const AffiliateCommissionsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get('tab')?.toUpperCase();
   const defaultFilter: FilterTab = FILTER_TABS.some((t) => t.key === initialTab) ? (initialTab as FilterTab) : 'ALL';
+  const [commissionPage, setCommissionPage] = useState(1);
   const [payoutPage, setPayoutPage] = useState(1);
   const [filter, setFilter] = useState<FilterTab>(defaultFilter);
   useEffect(() => {
     const tabParam = searchParams.get('tab')?.toUpperCase();
     if (tabParam && FILTER_TABS.some((t) => t.key === tabParam)) {
       setFilter(tabParam as FilterTab);
+      setCommissionPage(1);
     }
   }, [searchParams]);
-  // One page of up to 100 (the API maximum) covers an affiliate's commissions; the totals need all of them.
+
   const commissions = useQuery({
-    queryKey: ['mf05-my-commissions'],
-    queryFn: () => financeApi.commissions({ page: 1, pageSize: 100 }),
+    queryKey: ['mf05-my-commissions', commissionPage],
+    queryFn: () => financeApi.commissions({ page: commissionPage, pageSize: PAGE_SIZE }),
+    placeholderData: (previous) => previous,
+  });
+  // Separate summary query keeps KPI totals and filter tab counts accurate across paginated pages.
+  const commissionSummary = useQuery({
+    queryKey: ['mf05-my-commissions', 'summary'],
+    queryFn: async () => {
+      const summaryPageSize = 100;
+      const first = await financeApi.commissions({ page: 1, pageSize: summaryPageSize });
+      if (first.totalCount <= first.items.length || first.items.length === 0) {
+        return first;
+      }
+      const allItems = [...first.items];
+      const totalPages = Math.ceil(first.totalCount / summaryPageSize);
+      for (let p = 2; p <= totalPages; p += 1) {
+        const next = await financeApi.commissions({ page: p, pageSize: summaryPageSize });
+        allItems.push(...next.items);
+        if (next.items.length === 0) break;
+      }
+      return { ...first, items: allItems };
+    },
   });
   const payouts = useQuery({
     queryKey: ['mf05-my-payouts', payoutPage],
@@ -130,15 +152,30 @@ export const AffiliateCommissionsPage: React.FC = () => {
   });
   const account = useQuery({ queryKey: ['mf05-my-bank-account'], queryFn: () => affiliateBankApi.get() });
 
-  const items = useMemo(() => commissions.data?.items ?? [], [commissions.data?.items]);
-  const inStatus = (statuses: CommissionStatus[]) => items.filter((c) => statuses.includes(c.status));
+  const pageItems = useMemo(() => commissions.data?.items ?? [], [commissions.data?.items]);
+  const summaryItems = useMemo(() => commissionSummary.data?.items ?? [], [commissionSummary.data?.items]);
+  const inStatus = (statuses: CommissionStatus[]) => summaryItems.filter((c) => statuses.includes(c.status));
   const sum = (statuses: CommissionStatus[]) => inStatus(statuses).reduce((t, c) => t + c.amount, 0);
   const count = (statuses: CommissionStatus[]) => `${inStatus(statuses).length} khoản`;
 
-  const visibleItems = useMemo(() => {
+  const { visibleItems, listTotal } = useMemo(() => {
+    if (filter === 'ALL') {
+      return {
+        visibleItems: pageItems,
+        listTotal: commissions.data?.totalCount ?? pageItems.length,
+      };
+    }
     const tab = FILTER_TABS.find((t) => t.key === filter);
-    return tab ? items.filter((c) => tab.matches(c.status)) : items;
-  }, [items, filter]);
+    const filtered = tab ? summaryItems.filter((c) => tab.matches(c.status)) : summaryItems;
+    const start = (commissionPage - 1) * PAGE_SIZE;
+    return {
+      visibleItems: filtered.slice(start, start + PAGE_SIZE),
+      listTotal: filtered.length,
+    };
+  }, [filter, pageItems, summaryItems, commissions.data?.totalCount, commissionPage]);
+
+  const listLoading = filter === 'ALL' ? commissions.isLoading : commissionSummary.isLoading;
+  const listHasData = filter === 'ALL' ? (commissions.data?.totalCount ?? pageItems.length) > 0 : summaryItems.length > 0;
 
   const kpis = [
     { label: 'Đang bảo hành', statuses: ['PENDING', 'IN_WARRANTY'] as CommissionStatus[], note: 'Ứng viên đang đi làm', accent: 'border-l-sky-500', color: 'text-slate-900' },
@@ -153,13 +190,22 @@ export const AffiliateCommissionsPage: React.FC = () => {
   return (
     <div className="affiliate-commissions-page flex flex-col gap-5">
       <h1 className="sr-only">Hoa hồng và chi trả</h1>
-      {commissions.isError && (
+      {(commissions.isError || commissionSummary.isError) && (
         <Alert
           type="error"
           showIcon
           message="Không tải được hoa hồng"
-          description={getApiErrorMessage(commissions.error)}
-          action={<Button onClick={() => commissions.refetch()}>Thử lại</Button>}
+          description={getApiErrorMessage(commissions.error ?? commissionSummary.error)}
+          action={
+            <Button
+              onClick={() => {
+                void commissions.refetch();
+                void commissionSummary.refetch();
+              }}
+            >
+              Thử lại
+            </Button>
+          }
         />
       )}
 
@@ -172,7 +218,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
           >
             <div className="text-[13px] font-medium text-slate-600">{k.label}</div>
             <div className={`mt-1.5 text-xl font-extrabold tabular-nums sm:text-[22px] ${k.color}`}>
-              {commissions.isLoading ? <Skeleton.Input active size="small" /> : money(sum(k.statuses))}
+              {commissionSummary.isLoading ? <Skeleton.Input active size="small" /> : money(sum(k.statuses))}
             </div>
             <div className="mt-1 text-xs text-slate-500">{k.note} · {count(k.statuses)}</div>
           </section>
@@ -196,7 +242,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
           <h2 id="aff-commission-list" className="m-0 text-[15px] font-bold text-slate-900">Danh sách hoa hồng</h2>
           <div role="tablist" aria-label="Lọc theo trạng thái hoa hồng" className="flex flex-wrap items-center gap-1.5">
             {FILTER_TABS.map((t) => {
-              const cnt = items.filter((c) => t.matches(c.status)).length;
+              const cnt = summaryItems.filter((c) => t.matches(c.status)).length;
               const active = filter === t.key;
               return (
                 <button
@@ -204,7 +250,10 @@ export const AffiliateCommissionsPage: React.FC = () => {
                   type="button"
                   role="tab"
                   aria-selected={active}
-                  onClick={() => setFilter(t.key)}
+                  onClick={() => {
+                    setFilter(t.key);
+                    setCommissionPage(1);
+                  }}
                   className={`inline-flex min-h-[30px] cursor-pointer items-center gap-1.5 rounded-full border border-solid px-3 text-xs font-medium transition-colors ${
                     active
                       ? 'border-[#0284C7] bg-sky-50 text-[#0369A1]'
@@ -219,9 +268,9 @@ export const AffiliateCommissionsPage: React.FC = () => {
           </div>
         </div>
 
-        {commissions.isLoading ? (
+        {listLoading ? (
           <div className="p-4"><Skeleton active paragraph={{ rows: 4 }} /></div>
-        ) : items.length === 0 ? (
+        ) : !listHasData ? (
           <div className="px-4 py-10 text-center">
             <div className="font-semibold text-slate-900">Chưa có hoa hồng</div>
             <p className="m-0 mt-1 text-sm text-slate-600">Hoa hồng xuất hiện khi ứng viên bạn giới thiệu đi làm hoặc doanh nghiệp nhận CV.</p>
@@ -300,6 +349,11 @@ export const AffiliateCommissionsPage: React.FC = () => {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+        {listTotal > PAGE_SIZE && (
+          <div className="flex justify-end border-0 border-t border-solid border-slate-100 p-3">
+            <Pagination current={commissionPage} pageSize={PAGE_SIZE} total={listTotal} showSizeChanger={false} onChange={setCommissionPage} />
           </div>
         )}
       </section>

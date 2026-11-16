@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from 'antd';
 import { MemoryRouter } from 'react-router-dom';
@@ -32,17 +32,20 @@ const commission = (over: Partial<Commission>): Commission => ({
   ...over,
 });
 
-const renderPage = () =>
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+const renderPage = (queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })) => ({
+  queryClient,
+  ...render(
+    <QueryClientProvider client={queryClient}>
       <MemoryRouter>
         <App><AffiliateCommissionsPage /></App>
       </MemoryRouter>
     </QueryClientProvider>
-  );
+  ),
+});
 
 describe('Affiliate › Hoa hồng và chi trả', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.mocked(financeApi.payouts).mockResolvedValue(page([]));
     vi.mocked(affiliateBankApi.get).mockResolvedValue({ bankName: 'VCB', bankAccountNumber: '0123456789', bankAccountHolder: 'NGUYEN VAN A' });
   });
@@ -169,5 +172,114 @@ describe('Affiliate › Hoa hồng và chi trả', () => {
     const noneRow = screen.getByText('Ứng viên Không suất').closest('tr')!;
     expect(within(noneRow).queryByRole('link', { name: 'Giới thiệu thay thế' })).not.toBeInTheDocument();
     expect(within(noneRow).getByText('Ứng viên nghỉ trong bảo hành · Không còn suất thay thế')).toBeInTheDocument();
+  });
+
+  it('paginates commissions at PAGE_SIZE=20 with page in queryKey while keeping KPI totals accurate across pages', async () => {
+    const allItems: Commission[] = [
+      ...Array.from({ length: 20 }, (_, i) =>
+        commission({
+          commissionId: `w-${i + 1}`,
+          candidateName: `Ứng viên BH ${i + 1}`,
+          status: 'IN_WARRANTY',
+          amount: 1_000_000,
+        })
+      ),
+      ...Array.from({ length: 5 }, (_, i) =>
+        commission({
+          commissionId: `p-${i + 1}`,
+          candidateName: `Ứng viên Paid ${i + 1}`,
+          status: 'PAID',
+          amount: 2_000_000,
+        })
+      ),
+    ];
+
+    vi.mocked(financeApi.commissions).mockImplementation(async ({ page: p, pageSize }) => {
+      const start = (p - 1) * pageSize;
+      return {
+        items: allItems.slice(start, start + pageSize),
+        totalCount: allItems.length,
+        page: p,
+        pageSize,
+      };
+    });
+
+    const { queryClient } = renderPage();
+
+    expect(await screen.findByText('Ứng viên BH 1')).toBeInTheDocument();
+    expect(screen.queryByText('Ứng viên Paid 1')).not.toBeInTheDocument();
+
+    expect(financeApi.commissions).toHaveBeenCalledWith({ page: 1, pageSize: 20 });
+    expect(financeApi.commissions).toHaveBeenCalledWith({ page: 1, pageSize: 100 });
+    expect(queryClient.getQueryData(['mf05-my-commissions', 1])).toBeDefined();
+    expect(queryClient.getQueryData(['mf05-my-commissions', 'summary'])).toBeDefined();
+
+    // Totals reflect all 25 commissions even though page 1 only renders the 20 IN_WARRANTY items.
+    const warrantyCard = screen.getByRole('region', { name: 'Đang bảo hành' });
+    const paidCard = screen.getByRole('region', { name: 'Đã nhận tiền' });
+    expect(within(warrantyCard).getByText(/20\.000\.000/)).toBeInTheDocument();
+    expect(within(warrantyCard).getByText(/20 khoản/)).toBeInTheDocument();
+    expect(within(paidCard).getByText(/10\.000\.000/)).toBeInTheDocument();
+    expect(within(paidCard).getByText(/5 khoản/)).toBeInTheDocument();
+
+    const listSection = screen.getByRole('heading', { name: 'Danh sách hoa hồng' }).closest('section')!;
+    fireEvent.click(within(listSection).getByTitle('2'));
+
+    await waitFor(() => {
+      expect(financeApi.commissions).toHaveBeenCalledWith({ page: 2, pageSize: 20 });
+      expect(screen.getByText('Ứng viên Paid 1')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Ứng viên BH 1')).not.toBeInTheDocument();
+    expect(queryClient.getQueryData(['mf05-my-commissions', 2])).toBeDefined();
+
+    // KPI totals stay unchanged after switching to page 2.
+    expect(within(warrantyCard).getByText(/20\.000\.000/)).toBeInTheDocument();
+    expect(within(paidCard).getByText(/10\.000\.000/)).toBeInTheDocument();
+
+    // Filtering resets back to page 1 so matches from any page are visible immediately.
+    fireEvent.click(within(listSection).getByRole('tab', { name: /Đang bảo hành/ }));
+    expect(await screen.findByText('Ứng viên BH 1')).toBeInTheDocument();
+    expect(screen.queryByText('Ứng viên Paid 1')).not.toBeInTheDocument();
+  });
+
+  it('aggregates all summary pages when totalCount exceeds 100', async () => {
+    const allItems: Commission[] = [
+      ...Array.from({ length: 100 }, (_, i) =>
+        commission({
+          commissionId: `w-${i + 1}`,
+          candidateName: `Ứng viên BH ${i + 1}`,
+          status: 'IN_WARRANTY',
+          amount: 1_000_000,
+        })
+      ),
+      ...Array.from({ length: 5 }, (_, i) =>
+        commission({
+          commissionId: `p-${i + 1}`,
+          candidateName: `Ứng viên Paid ${i + 1}`,
+          status: 'PAID',
+          amount: 2_000_000,
+        })
+      ),
+    ];
+
+    vi.mocked(financeApi.commissions).mockImplementation(async ({ page: p, pageSize }) => {
+      const start = (p - 1) * pageSize;
+      return {
+        items: allItems.slice(start, start + pageSize),
+        totalCount: allItems.length,
+        page: p,
+        pageSize,
+      };
+    });
+
+    renderPage();
+
+    expect(await screen.findByText('Ứng viên BH 1')).toBeInTheDocument();
+    const paidCard = screen.getByRole('region', { name: 'Đã nhận tiền' });
+    await waitFor(() => {
+      expect(financeApi.commissions).toHaveBeenCalledWith({ page: 2, pageSize: 100 });
+      expect(within(paidCard).getByText(/10\.000\.000/)).toBeInTheDocument();
+      expect(within(paidCard).getByText(/5 khoản/)).toBeInTheDocument();
+    });
   });
 });
