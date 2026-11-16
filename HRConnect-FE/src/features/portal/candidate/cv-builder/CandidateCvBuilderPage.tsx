@@ -302,7 +302,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
         phone: currentUser?.phone || DEFAULT_EDITOR_CONTENT.phone,
       });
       initializedDataRef.current = true;
-      setAvailableDraft(null);
+      setAvailableDraft(readCvBuilderDraft(draftKey));
       setDraftReady(true);
     }
   }, [mode, existingCv, currentUser, draftKey]);
@@ -576,7 +576,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
     },
   });
 
-  const handleDownloadPdf = async () => {
+  const handleDownloadPdf = useCallback(async () => {
     const directUrl = saveSuccessData?.pdfUrl || existingCv?.pdfUrl;
     if (directUrl) {
       window.open(directUrl, '_blank', 'noopener,noreferrer');
@@ -595,7 +595,7 @@ export const CandidateCvBuilderPage: React.FC = () => {
       }
     }
     window.print();
-  };
+  }, [cvId, existingCv?.pdfUrl, saveSuccessData?.cvId, saveSuccessData?.pdfUrl]);
 
   // Handle back
   const handleBack = () => {
@@ -605,6 +605,19 @@ export const CandidateCvBuilderPage: React.FC = () => {
       navigate('/candidate/cvs');
     }
   };
+
+  const initialActionHandledRef = useRef(false);
+  useEffect(() => {
+    if (initialActionHandledRef.current || !draftReady) return;
+    const action = searchParams.get('action');
+    if (action === 'preview') {
+      initialActionHandledRef.current = true;
+      setPreviewOpen(true);
+    } else if (action === 'download') {
+      initialActionHandledRef.current = true;
+      void handleDownloadPdf();
+    }
+  }, [draftReady, handleDownloadPdf, searchParams]);
 
   if (mode === 'edit' && isLoadingExisting) {
     return (

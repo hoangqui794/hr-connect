@@ -107,6 +107,17 @@ export const PublicSubmissionConsentPage: React.FC = () => {
     },
   });
 
+  const reportUnauthorized = useMutation({
+    mutationFn: () => candidateConsentApi.reportUnauthorizedPublic(token!),
+    onSuccess: (result) => {
+      message.success(result.message || 'Đã ghi nhận báo cáo và khóa yêu cầu xác nhận.');
+      setCompleted('CONSENT_REJECTED');
+    },
+    onError: (error) => {
+      message.error(getApiError(error, 'Không thể gửi báo cáo lúc này.').message);
+    },
+  });
+
   if (submissionId) {
     return <Navigate to={`/candidate/submission-consents/${encodeURIComponent(submissionId)}`} replace />;
   }
@@ -160,10 +171,48 @@ export const PublicSubmissionConsentPage: React.FC = () => {
           <div className="min-w-0 flex-1">
             <div className="break-words text-[16px] font-bold">{consent.jobTitle}</div>
             <div className="break-words text-[#4B5563]">{consent.companyName}</div>
+            {(consent.jobLocation || consent.workMode) && (
+              <div className="mt-0.5 break-words text-[13px] text-[#4B5563]">
+                {[
+                  consent.jobLocation,
+                  consent.workMode === 'ONSITE'
+                    ? 'Làm tại văn phòng'
+                    : consent.workMode === 'HYBRID'
+                      ? 'Linh hoạt (Hybrid)'
+                      : consent.workMode === 'REMOTE'
+                        ? 'Làm từ xa (Remote)'
+                        : consent.workMode,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </div>
+            )}
+            {(consent.salaryMin != null || consent.salaryMax != null || consent.salaryNegotiable || consent.experienceRequirement) && (
+              <div className="mt-0.5 break-words text-[13px] text-[#4B5563]">
+                {[
+                  consent.salaryMin != null && consent.salaryMax != null
+                    ? `${Math.round(consent.salaryMin / 1_000_000)} – ${Math.round(consent.salaryMax / 1_000_000)} triệu ${consent.currencyCode || 'VND'}${consent.salaryNegotiable ? ' (Thương lượng)' : ''}`
+                    : consent.salaryNegotiable
+                      ? 'Thỏa thuận'
+                      : null,
+                  consent.experienceRequirement,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </div>
+            )}
           </div>
         </div>
 
         <dl className="m-0 mt-4 grid grid-cols-1 gap-x-5 gap-y-3 text-[13px] sm:grid-cols-2">
+          {consent.affiliateDisplayName && (
+            <div className="min-w-0">
+              <dt className="text-[#6B7280]">Người giới thiệu</dt>
+              <dd className="m-0 mt-0.5 break-words font-semibold text-[#1F2937]">
+                {consent.affiliateDisplayName} (Affiliate đối tác của HR Connect)
+              </dd>
+            </div>
+          )}
           <div className="min-w-0">
             <dt className="text-[#6B7280]">CV được gửi kèm</dt>
             <dd className="m-0 mt-0.5 break-words">
@@ -203,7 +252,26 @@ export const PublicSubmissionConsentPage: React.FC = () => {
         <ul className="m-0 pl-5 text-[13px] leading-[1.7] text-[#4B5563]">
           <li>Chỉ nhà tuyển dụng của vị trí này nhận được CV của bạn.</li>
           <li>Với một số vị trí, nhà tuyển dụng chỉ thấy CV đã che thông tin liên hệ cho đến khi bạn đi làm.</li>
-          <li>Không phải bạn? <Link to="/contact" className={LINK}>Báo cho HR Connect</Link> để chúng tôi xử lý.</li>
+          <li>
+            Không phải bạn?{' '}
+            <Popconfirm
+              title="Báo cáo không nhận ra hồ sơ này?"
+              description="HR Connect sẽ đóng yêu cầu xác nhận này và thu hồi quyền dùng lại CV."
+              okText="Báo cáo"
+              okButtonProps={{ danger: true, loading: reportUnauthorized.isPending }}
+              cancelText="Hủy"
+              onConfirm={() => reportUnauthorized.mutate()}
+            >
+              <button
+                type="button"
+                disabled={reportUnauthorized.isPending}
+                className={`cursor-pointer border-0 bg-transparent p-0 font-semibold ${LINK}`}
+              >
+                Báo cho HR Connect
+              </button>
+            </Popconfirm>{' '}
+            để chúng tôi xử lý.
+          </li>
         </ul>
       </section>
     </Frame>

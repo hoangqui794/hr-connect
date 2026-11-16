@@ -25,7 +25,23 @@ const BY_ENTITY: Record<string, string[][]> = {
   COMPANY: [['client-company'], ['admin-approvals'], ['admin-overview'], ['client-overview']],
   AFFILIATE: [['aff-profile'], ['aff-profile-detail'], ['admin-approvals'], ['admin-overview']],
   APPLICATION,
-  SUBMISSION: [...APPLICATION, ['candidate-submission-consents'], ['aff-submissions']],
+  SUBMISSION: [
+    ...APPLICATION,
+    ['candidate-submission-consents'],
+    ['candidate-submission-consent'],
+    ['candidate-affiliate-cvs'],
+    ['aff-submissions'],
+    ['aff-attributions'],
+  ],
+  SUBMISSION_CONSENT: [
+    ...APPLICATION,
+    ['candidate-submission-consents'],
+    ['candidate-submission-consent'],
+    ['candidate-affiliate-cvs'],
+    ['aff-submissions'],
+    ['aff-attributions'],
+  ],
+  ATTRIBUTION: [...APPLICATION, ['aff-attributions'], ['aff-submissions']],
   SOURCING_DELIVERY: [...APPLICATION, ...FINANCE],
   INTERVIEW: [...APPLICATION, ['interview-history'], ['client-interview-detail'], ['candidate', 'interviews']],
   OFFER: [...APPLICATION, ['candidate-offer'], ['candidate-offer-versions'], ['candidate-offer-impact']],
@@ -39,8 +55,20 @@ const BY_ENTITY: Record<string, string[][]> = {
   DISPUTE: [['affiliate-my-disputes'], ['admin-disputes'], ['admin-dispute-detail'], ['aff-attributions'], ...FINANCE],
   CONTACT_REQUEST: [['admin-contact-requests']],
   PLACEMENT_RECONCILIATION: [['placement-reconciliations'], ['mf04-placement-correction'], ...APPLICATION, ...FINANCE],
-  CANDIDATE_IDENTITY_CLAIM: [['admin-candidate-identity-claims'], ['candidate']],
-  CANDIDATE_DUPLICATE_CASE: [['admin-candidate-identity-claims'], ...APPLICATION],
+  CANDIDATE_IDENTITY_CLAIM: [
+    ['admin-candidate-identity-claims'],
+    ['admin-candidate-identity-claim'],
+    ['candidate'],
+    ['candidate-email-identities'],
+    ['candidate-duplicate-cases'],
+  ],
+  CANDIDATE_DUPLICATE_CASE: [
+    ['admin-candidate-identity-claims'],
+    ['admin-candidate-identity-claim'],
+    ['candidate-email-identities'],
+    ['candidate-duplicate-cases'],
+    ...APPLICATION,
+  ],
 };
 
 export function refreshKeysFor(relatedEntityType: string | null | undefined): string[][] {

@@ -1099,11 +1099,17 @@ const PROGRESS_HINT: Record<string, string> = {
   LEFT_IN_WARRANTY: 'Ứng viên nghỉ trong thời gian bảo hành nên hoa hồng của lượt này đã bị hủy.',
 };
 
-/** The list API filters by one status and the page groups several, so it reads every page and groups here. */
+/** The list API filters by one status and the page groups several; fetch remaining pages in small sequential batches to avoid request bursts. */
 const readAllPages = async <T,>(read: (page: number) => Promise<{ items: T[]; totalPages: number }>): Promise<T[]> => {
   const first = await read(1);
-  const rest = await Promise.all(Array.from({ length: Math.max(0, first.totalPages - 1) }, (_, i) => read(i + 2)));
-  return [first, ...rest].flatMap((p) => p.items);
+  const items = [...first.items];
+  const maxPages = Math.min(first.totalPages, 20);
+  for (let start = 2; start <= maxPages; start += 3) {
+    const batch = Array.from({ length: Math.min(3, maxPages - start + 1) }, (_, idx) => read(start + idx));
+    const pages = await Promise.all(batch);
+    pages.forEach((p) => items.push(...p.items));
+  }
+  return items;
 };
 
 const REFERRALS_PER_PAGE = 10;

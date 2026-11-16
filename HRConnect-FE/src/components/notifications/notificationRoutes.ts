@@ -114,6 +114,7 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
     // 1D. Nghi trùng danh tính Candidate / Claim
     if (
       entityType === 'CANDIDATE_DUPLICATE_CASE' ||
+      entityType === 'CANDIDATE_IDENTITY_CLAIM' ||
       entityType === 'IDENTITY_CLAIM' ||
       titleLower.includes('danh tính') ||
       titleLower.includes('nghi trùng')
@@ -385,6 +386,14 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
     if (entityType === 'SERVICE_AGREEMENT' || titleLower.includes('thỏa thuận') || titleLower.includes('hợp đồng')) {
       const sep = targetHighlight ? `?jobId=${encodeURIComponent(targetHighlight)}` : '';
       return `/client/agreements${sep}`;
+    }
+    if (
+      entityType === 'SOURCING_DELIVERY' ||
+      titleLower.includes('cv mới được giao') ||
+      titleLower.includes('cv thay thế')
+    ) {
+      const jobId = meta?.jobId || item.relatedEntityId;
+      return jobId ? `/client/jobs/${encodeURIComponent(jobId)}/sourcing` : '/client/jobs';
     }
     if (entityType === 'JOB') {
       const sep = targetHighlight ? `?highlight=${encodeURIComponent(targetHighlight)}&openDetail=true` : '';

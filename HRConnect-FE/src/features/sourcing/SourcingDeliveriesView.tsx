@@ -41,6 +41,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { sourcingApi } from '@/services/api/sourcingApi';
+import { screeningApi } from '@/services/api/hrApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type {
   DecideSourcingDeliveryRequest,
@@ -109,6 +110,12 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
     queryKey: ['sourcing-deliveries', jobId, activeTab],
     queryFn: () => sourcingApi.getDeliveries(jobId, activeTab === 'ALL' ? undefined : activeTab),
     enabled: Boolean(jobId),
+  });
+
+  const backupCandidatesQuery = useQuery({
+    queryKey: ['hr-sourcing-backup-candidates', jobId],
+    queryFn: () => screeningApi.list({ jobId, status: 'SHORTLISTED', page: 1, pageSize: 100 }),
+    enabled: role === 'hr' && Boolean(replaceModalItem) && Boolean(jobId),
   });
 
   const invalidateQueries = () => {
@@ -217,6 +224,13 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
   const summary = data?.summary;
   const items = data?.items || [];
   const reviewMetaMap = REJECTION_REVIEW_STATUS;
+  const deliveredAppIds = new Set(items.filter((d) => d.status !== 'REPLACED').map((d) => d.applicationId));
+  const backupOptions = (backupCandidatesQuery.data?.items ?? [])
+    .filter((app) => !deliveredAppIds.has(app.applicationId))
+    .map((app) => ({
+      value: app.applicationId,
+      label: `${app.candidateName || 'Ứng viên'}${app.candidateEmail ? ` · ${app.candidateEmail}` : ''}`,
+    }));
 
   const emptyDetailText = (() => {
     if (activeTab === 'DELIVERED') {
@@ -820,19 +834,31 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
         destroyOnHidden
       >
         <p className="text-xs text-slate-600 mb-3">
-          Nhập mã hồ sơ ứng viên (Application ID) đạt yêu cầu dự phòng để bàn giao thay thế cho ứng viên{' '}
+          Chọn hồ sơ ứng viên đạt yêu cầu (SHORTLISTED) dự phòng để bàn giao thay thế cho ứng viên{' '}
           <strong>{replaceModalItem?.candidateName}</strong>. CV mới sẽ có hạn phản hồi mới do hệ thống tính.
         </p>
 
         <Form form={replaceForm} layout="vertical" onFinish={handleReplaceSubmit}>
           <Form.Item
             name="applicationId"
-            label="Mã hồ sơ ứng viên thay thế (Application ID)"
+            label="Hồ sơ ứng viên thay thế"
             rules={[
-              { required: true, whitespace: true, message: 'Vui lòng nhập Application ID của CV dự phòng.' },
+              { required: true, message: 'Vui lòng chọn hồ sơ ứng viên dự phòng.' },
             ]}
           >
-            <Input placeholder="Nhập UUID hồ sơ ứng viên đạt yêu cầu..." />
+            <Select
+              showSearch
+              allowClear
+              loading={backupCandidatesQuery.isLoading}
+              placeholder="Chọn ứng viên đạt yêu cầu dự phòng..."
+              optionFilterProp="label"
+              options={backupOptions}
+              notFoundContent={
+                backupCandidatesQuery.isLoading
+                  ? 'Đang tải danh sách ứng viên...'
+                  : 'Không còn hồ sơ đạt yêu cầu (SHORTLISTED) dự phòng nào.'
+              }
+            />
           </Form.Item>
         </Form>
       </Modal>

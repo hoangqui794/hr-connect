@@ -664,7 +664,8 @@ export const CandidateHomePage: React.FC = () => {
                           type="button"
                           onClick={async () => {
                             try {
-                              if (isOnline) {
+                              const isOnlyLocalDraft = !cv.cvId || String(cv.cvId).startsWith('cv_builder_');
+                              if (isOnlyLocalDraft) {
                                 setPrimarySavedCv(cvIdentifier);
                               } else {
                                 await candidateCvApi.setPrimary(cv.cvId);

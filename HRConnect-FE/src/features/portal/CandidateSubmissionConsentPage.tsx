@@ -35,6 +35,7 @@ export const CandidateSubmissionConsentPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { message } = AntApp.useApp();
   const [allowFutureReuse, setAllowFutureReuse] = useState(false);
+  const [completedStatus, setCompletedStatus] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
 
   const review = useQuery({
@@ -59,10 +60,13 @@ export const CandidateSubmissionConsentPage: React.FC = () => {
       candidateConsentApi.respond(submissionId, decision, allowFutureReuse),
     onSuccess: async (result) => {
       message.success(result.message);
+      setCompletedStatus(result.submissionStatus);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: consentKey(submissionId) }),
         queryClient.invalidateQueries({ queryKey: ['candidate-submission-consents'] }),
         queryClient.invalidateQueries({ queryKey: ['candidate-applications'] }),
+        queryClient.invalidateQueries({ queryKey: ['candidate-affiliate-cvs'] }),
+        queryClient.invalidateQueries({ queryKey: ['candidate-duplicate-cases'] }),
       ]);
     },
     onError: async (error) => {
@@ -73,6 +77,22 @@ export const CandidateSubmissionConsentPage: React.FC = () => {
           : apiError.message
       );
       if (apiError.status === 409) await queryClient.invalidateQueries({ queryKey: consentKey(submissionId) });
+    },
+  });
+
+  const reportUnauthorized = useMutation({
+    mutationFn: () => candidateConsentApi.reportUnauthorized(submissionId),
+    onSuccess: async (result) => {
+      message.success(result.message || 'Đã ghi nhận báo cáo và khóa yêu cầu xác nhận.');
+      setCompletedStatus('CONSENT_REJECTED');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: consentKey(submissionId) }),
+        queryClient.invalidateQueries({ queryKey: ['candidate-submission-consents'] }),
+        queryClient.invalidateQueries({ queryKey: ['candidate-affiliate-cvs'] }),
+      ]);
+    },
+    onError: (error) => {
+      message.error(getApiError(error, 'Không thể gửi báo cáo lúc này.').message);
     },
   });
 
@@ -104,22 +124,36 @@ export const CandidateSubmissionConsentPage: React.FC = () => {
   }
 
   const consent = review.data;
-  const isPending = consent.status === 'PENDING' && dayjs(consent.expiresAt).isAfter(now);
+  const isPending = !completedStatus && consent.status === 'PENDING' && dayjs(consent.expiresAt).isAfter(now);
 
   if (!isPending) {
-    const confirmed = consent.status === 'CONFIRMED';
+    const isIdentityReview = completedStatus === 'PENDING_IDENTITY_REVIEW';
+    const confirmed = isIdentityReview || consent.status === 'CONFIRMED' || completedStatus === 'ACCEPTED';
     return (
       <div className={`${FONT} mx-auto flex max-w-[768px] flex-col gap-4 py-2 text-[14px] text-[#1F2937]`}>
         <section className={`${CARD} p-7 text-center`}>
           <h1 className="m-0 text-[22px] font-bold text-[#1F2937]">
-            {confirmed ? 'Bạn đã đồng ý nộp hồ sơ' : consent.status === 'DECLINED' ? 'Bạn đã từ chối hồ sơ' : 'Yêu cầu xác nhận đã kết thúc'}
+            {isIdentityReview
+              ? 'Đã xác nhận — Đang đối chiếu danh tính'
+              : confirmed
+                ? 'Bạn đã đồng ý nộp hồ sơ'
+                : consent.status === 'DECLINED' || completedStatus === 'CONSENT_REJECTED'
+                  ? 'Bạn đã từ chối hồ sơ'
+                  : 'Yêu cầu xác nhận đã kết thúc'}
           </h1>
           <p className="m-0 mt-2 text-[#4B5563]">
-            {confirmed
-              ? 'HR Connect đã tạo đơn ứng tuyển và chuyển hồ sơ của bạn sang bước đánh giá tiếp theo.'
-              : 'Yêu cầu này đã được đóng và không thể phản hồi thêm.'}
+            {isIdentityReview
+              ? 'HR Connect phát hiện hồ sơ có dấu hiệu trùng khớp và đang xác minh danh tính trước khi chuyển sang bước tuyển dụng tiếp theo.'
+              : confirmed
+                ? 'HR Connect đã tạo đơn ứng tuyển và chuyển hồ sơ của bạn sang bước đánh giá tiếp theo.'
+                : 'Yêu cầu này đã được đóng và không thể phản hồi thêm.'}
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-2.5">
+            {isIdentityReview && (
+              <button type="button" onClick={() => navigate('/candidate/identity')} className={`${SECONDARY} min-w-[180px]`}>
+                Xem đối chiếu danh tính
+              </button>
+            )}
             <button type="button" onClick={() => navigate('/candidate/applications')} className={`${PRIMARY} min-w-[180px]`}>
               Xem đơn ứng tuyển
             </button>
@@ -267,7 +301,24 @@ export const CandidateSubmissionConsentPage: React.FC = () => {
           <li>Chỉ nhà tuyển dụng của vị trí này nhận được CV của bạn.</li>
           <li>Thông tin liên hệ được che khi nhà tuyển dụng xem hồ sơ ở vòng đầu.</li>
           <li>
-            Không phải bạn? <Link to="/contact" className={LINK}>Báo cho HR Connect</Link> để chúng tôi xử lý.
+            Không phải bạn?{' '}
+            <Popconfirm
+              title="Báo cáo không nhận ra hồ sơ này?"
+              description="HR Connect sẽ đóng yêu cầu xác nhận này và thu hồi quyền dùng lại CV."
+              okText="Báo cáo"
+              okButtonProps={{ danger: true, loading: reportUnauthorized.isPending }}
+              cancelText="Hủy"
+              onConfirm={() => reportUnauthorized.mutate()}
+            >
+              <button
+                type="button"
+                disabled={reportUnauthorized.isPending}
+                className={`cursor-pointer border-0 bg-transparent p-0 font-semibold ${LINK}`}
+              >
+                Báo cho HR Connect
+              </button>
+            </Popconfirm>{' '}
+            để chúng tôi xử lý.
           </li>
         </ul>
       </section>

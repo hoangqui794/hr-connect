@@ -40,6 +40,8 @@ public sealed class FinalizeIdentityReviewedSubmissionService : IFinalizeIdentit
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICandidateCompanyTransactionLock _candidateCompanyLock;
     private readonly IAdminBusinessSettings _businessSettings;
+    private readonly IJobRepository? _jobs;
+    private readonly IAppNotifier? _notifier;
 
     public FinalizeIdentityReviewedSubmissionService(
         ISubmissionRepository submissions,
@@ -52,7 +54,9 @@ public sealed class FinalizeIdentityReviewedSubmissionService : IFinalizeIdentit
         IAuditLogService audit,
         IUnitOfWork unitOfWork,
         ICandidateCompanyTransactionLock candidateCompanyLock,
-        IAdminBusinessSettings businessSettings)
+        IAdminBusinessSettings businessSettings,
+        IJobRepository? jobs = null,
+        IAppNotifier? notifier = null)
     {
         _submissions = submissions;
         _applications = applications;
@@ -65,6 +69,8 @@ public sealed class FinalizeIdentityReviewedSubmissionService : IFinalizeIdentit
         _unitOfWork = unitOfWork;
         _candidateCompanyLock = candidateCompanyLock;
         _businessSettings = businessSettings;
+        _jobs = jobs;
+        _notifier = notifier;
     }
 
     public async Task<IdentityReviewFinalizationResult> FinalizeAsync(
@@ -92,8 +98,16 @@ public sealed class FinalizeIdentityReviewedSubmissionService : IFinalizeIdentit
                 submission.SubmissionId, "SKIPPED", ReasonCode: "SUBMISSION_NOT_READY");
         }
 
-        if (submission.Job.Status != JobStatuses.Active)
+        if (submission.Job.Status != JobStatuses.Active ||
+            (submission.Job.ApplicationDeadline.HasValue && submission.Job.ApplicationDeadline.Value <= now))
             return Block(submission, "CANCELLED", "JOB_NOT_ACTIVE", now);
+
+        if (submission.Job.MaxApplications is > 0 && _jobs != null)
+        {
+            var acceptedCount = await _jobs.CountAcceptedApplicationsByJobIdAsync(submission.JobId, cancellationToken);
+            if (acceptedCount >= submission.Job.MaxApplications.Value)
+                return Block(submission, "CANCELLED", "JOB_QUOTA_REACHED", now);
+        }
 
         var affiliate = await _affiliates.GetByUserIdWithDetailsAsync(
             submission.SubmittedBy, cancellationToken);
@@ -114,10 +128,11 @@ public sealed class FinalizeIdentityReviewedSubmissionService : IFinalizeIdentit
             }
         }
 
+        await _candidateCompanyLock.AcquireAsync(
+            submission.CandidateId, submission.Job.CompanyId, cancellationToken);
+
         if (SubmissionAcceptancePolicy.EnforcesClientOwnership(submission.Job.ServiceType?.Code))
         {
-            await _candidateCompanyLock.AcquireAsync(
-                submission.CandidateId, submission.Job.CompanyId, cancellationToken);
             var ownershipDays = await _businessSettings.GetIntAsync(
                 BusinessSettingKeys.Mf02ClientOwnershipDays, cancellationToken);
             var isOwnedByClient = await _applications.ExistsForCandidateAndCompanySinceAsync(

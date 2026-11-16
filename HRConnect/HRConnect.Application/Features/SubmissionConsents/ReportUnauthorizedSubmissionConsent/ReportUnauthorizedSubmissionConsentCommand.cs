@@ -26,7 +26,9 @@ public sealed class ReportUnauthorizedSubmissionConsentCommandHandler(
     ISubmissionRepository submissionRepository,
     ICandidateCvRepository cvRepository,
     IAuditLogService audit,
-    IUnitOfWork unitOfWork)
+    IUnitOfWork unitOfWork,
+    INotificationRepository? notificationRepository = null,
+    IAppNotifier? notifier = null)
     : IRequestHandler<ReportUnauthorizedSubmissionConsentCommand, ReportUnauthorizedSubmissionConsentResponse>
 {
     public async Task<ReportUnauthorizedSubmissionConsentResponse> Handle(
@@ -44,7 +46,14 @@ public sealed class ReportUnauthorizedSubmissionConsentCommandHandler(
         {
             consent.Status = "DECLINED";
             consent.RespondedAt = now;
+            consent.ResponseIp = string.IsNullOrWhiteSpace(request.IpAddress)
+                ? null
+                : (request.IpAddress.Length <= 64 ? request.IpAddress : request.IpAddress[..64]);
+            consent.ResponseUserAgent = string.IsNullOrWhiteSpace(request.UserAgent)
+                ? null
+                : (request.UserAgent.Length <= 512 ? request.UserAgent : request.UserAgent[..512]);
             consent.UpdatedAt = now;
+            consent.ConcurrencyToken = Guid.NewGuid();
             consentRepository.Update(consent);
 
             if (consent.Submission.Status == "PENDING_CONSENT")
@@ -63,6 +72,36 @@ public sealed class ReportUnauthorizedSubmissionConsentCommandHandler(
                     consent.Submission.CandidateCv.Status = "ARCHIVED";
                 consent.Submission.CandidateCv.UpdatedAt = now;
                 cvRepository.Update(consent.Submission.CandidateCv);
+            }
+
+            if (notificationRepository != null && consent.Submission.Candidate != null && consent.Submission.Job != null)
+            {
+                var exists = await notificationRepository.ExistsAsync(
+                    consent.Submission.SubmittedBy,
+                    SubmissionConsentNotificationFactory.NotificationType,
+                    "SUBMISSION",
+                    consent.SubmissionId,
+                    cancellationToken);
+                if (!exists)
+                {
+                    await notificationRepository.AddAsync(
+                        SubmissionConsentNotificationFactory.CreateAffiliateResult(consent.Submission, "DECLINED", now),
+                        cancellationToken);
+                }
+            }
+
+            if (notifier != null)
+            {
+                await notifier.NotifyUsersAsync(
+                    [consent.Submission.SubmittedBy],
+                    new AppNotice(
+                        SubmissionConsentNotificationFactory.NotificationType,
+                        "Candidate đã từ chối nộp hồ sơ",
+                        $"Candidate đã báo cáo không nhận ra hoặc từ chối hồ sơ giới thiệu vào vị trí {consent.Submission.Job?.Title ?? "tuyển dụng"}.",
+                        "SUBMISSION",
+                        consent.SubmissionId,
+                        "/affiliate/submissions"),
+                    cancellationToken);
             }
         }
 
