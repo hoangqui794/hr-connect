@@ -6,8 +6,8 @@
  * Every number, default and allowed range comes from the backend; nothing is hard-coded here.
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Form, Input, InputNumber, Modal, Skeleton, Tag, Tooltip, Upload, App } from 'antd';
-import { CheckCircleFilled, EditOutlined, FilePdfOutlined, InfoCircleOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
+import { Alert, Button, Form, Input, InputNumber, Modal, Skeleton, Tag, Tooltip, App } from 'antd';
+import { EditOutlined, FilePdfOutlined, InfoCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import type { CommercialTermsInput, ApproveJobInput, Job, ServiceAgreementDto } from '@/types/api/jobs';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useCommercialTermsDefaults } from './useJobQueries';
@@ -97,9 +97,6 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({
   const isSourcing = job.serviceTypeCode === 'CV_SOURCING';
   const fields = isSourcing ? SOURCING_FIELDS : HEADHUNT_FIELDS;
   const data = defaults.data;
-  const [contractFileName, setContractFileName] = useState<string>(
-    `Hop_dong_dich_vu_${job.serviceTypeCode === 'HEADHUNT_COD' ? 'Headhunt' : 'CV_Sourcing'}_${job.title.replace(/\s+/g, '_')}_signed.pdf`
-  );
 
   const watchedValues = Form.useWatch([], form);
   const values = useMemo(() => watchedValues ?? {}, [watchedValues]);
@@ -349,43 +346,18 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({
                 2. Văn bản hợp đồng dịch vụ gửi Doanh nghiệp
               </span>
 
-              {/* Tệp hợp đồng có sẵn chữ ký */}
-              <div className="rounded-xl border border-solid border-indigo-200 bg-indigo-50/50 p-4 space-y-3 overflow-hidden">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-10 h-10 rounded-lg bg-indigo-100/80 border border-indigo-200 flex items-center justify-center text-indigo-700 text-xl shrink-0">
-                      <FilePdfOutlined />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-semibold text-slate-800 truncate" title={contractFileName}>
-                        {contractFileName}
-                      </div>
-                      <div className="text-xs text-emerald-700 flex items-center gap-1.5 mt-0.5 font-medium truncate">
-                        <CheckCircleFilled className="text-emerald-600 shrink-0" />
-                        <span className="truncate">Đã đính kèm văn bản hợp đồng có sẵn chữ ký HR Connect</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Upload
-                    maxCount={1}
-                    accept=".pdf,.doc,.docx"
-                    showUploadList={false}
-                    className="shrink-0"
-                    beforeUpload={(file) => {
-                      setContractFileName(file.name);
-                      message.success(`Đã đính kèm tệp hợp đồng mới: ${file.name}`);
-                      return false;
-                    }}
-                  >
-                    <Button size="small" icon={<UploadOutlined />} className="text-xs shrink-0 whitespace-nowrap">
-                      Tải lên file khác
-                    </Button>
-                  </Upload>
+              {/* Văn bản hợp đồng tự động xuất PDF từ điều khoản */}
+              <div className="rounded-xl border border-solid border-indigo-200 bg-indigo-50/50 p-4 flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-indigo-100/80 border border-indigo-200 flex items-center justify-center text-indigo-700 text-xl shrink-0">
+                  <FilePdfOutlined />
                 </div>
-
-                <div className="text-xs text-slate-500 bg-white/90 p-2.5 rounded-lg border border-solid border-indigo-100 leading-relaxed">
-                  Hợp đồng tạo và upload lên đã có sẵn chữ ký từ HR Connect. Doanh nghiệp sẽ tải file này xuống để xem xét và thực hiện ký kết bên ngoài hệ thống nền tảng.
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="text-sm font-semibold text-slate-800">
+                    Hợp đồng được tạo tự động từ điều khoản bên dưới
+                  </div>
+                  <div className="text-xs text-slate-600 leading-relaxed">
+                    Hệ thống sẽ tự động xuất bản PDF từ các điều khoản và mã số hợp đồng khi gửi cho Doanh nghiệp xem xét và ký kết.
+                  </div>
                 </div>
               </div>
 

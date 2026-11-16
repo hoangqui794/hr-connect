@@ -113,4 +113,34 @@ describe('CommercialTermsApprovalModal', () => {
     expect(screen.getByText('4.000.000 đ')).toBeInTheDocument();
     expect(screen.queryByText(/30%/)).toBeNull();
   });
+
+  it('does not render a fake file upload button and explains PDF auto-generation', async () => {
+    vi.mocked(useCommercialTermsDefaults).mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: {
+        serviceTypeCode: 'CV_SOURCING',
+        proposed: { sourcingTarget: 10, pricePerCv: 600_000, depositPercent: 50, reviewDays: 7, paymentDueDays: 20 },
+        adminDefaults: { sourcingTarget: 10, pricePerCv: 600_000, depositPercent: 50, reviewDays: 7, paymentDueDays: 20 },
+        prefill: { sourcingTarget: 10, pricePerCv: 600_000, depositPercent: 50, reviewDays: 7, paymentDueDays: 20 },
+        ranges: {},
+      },
+    } as never);
+
+    render(
+      <App>
+        <CommercialTermsApprovalModal
+          job={baseJob}
+          open={true}
+          loading={false}
+          onCancel={vi.fn()}
+          onApprove={vi.fn()}
+        />
+      </App>
+    );
+
+    expect(await screen.findByText('Hợp đồng được tạo tự động từ điều khoản bên dưới')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Tải lên file khác/i })).toBeNull();
+    expect(document.querySelector('input[type="file"]')).toBeNull();
+  });
 });
