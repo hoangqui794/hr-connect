@@ -77,6 +77,7 @@ public class GetInterviewsQueryHandler : IRequestHandler<GetInterviewsQuery, Get
             request.Result,
             ToUtc(request.FromDate),
             ToUtc(request.ToDate),
+            request.Keyword,
             page,
             pageSize,
             request.SortDirection,
