@@ -11,13 +11,23 @@
 
 ## Tổng quan Kết quả
 
-| Hạng mục | Trạng thái hiện tại | Chi tiết |
+> **Cập nhật 16/11/2026:** danh sách lỗi chi tiết bên dưới được giữ làm dấu vết kiểm toán. Bảng này là trạng thái hiện hành và thay thế các con số tại thời điểm audit ban đầu.
+
+| Nhóm | Trạng thái hiện tại | Ghi chú |
 | :--- | :--- | :--- |
-| **Backend Unit/Integration Tests** | ✅ Pass `505/505` | Toàn bộ test `Interviews`, `Offers`, `Placements`, `Recruitment` chạy xanh |
-| **Frontend Unit Tests (`vitest`)** | ✅ Pass `37/37` (7 files) | Toàn bộ test màn hình MF-04 của Client, Candidate, Internal HR chạy xanh |
-| **🔴 Critical Bugs** | **0 vấn đề** | Kiến trúc phân quyền Company-owned hiring flow, che thông tin liên hệ `HEADHUNT_COD` và khóa giao dịch đều vững chắc |
-| **🟠 Major Issues (Cần sửa để chuẩn Production)** | **10 vấn đề** | **4 Backend + 6 Frontend** (Rò rỉ ghi chú/reason nội bộ sang API Candidate, email hết hạn Offer mất tên Job/Company, thiếu chặn trùng Placement Full-time, lệch validation `400 Bad Request` & thiếu invalidate SignalR) |
-| **🟡 Minor Polish (UI/UX, Thuật ngữ & Code Hygiene)** | **7 vấn đề** | **2 Backend + 5 Frontend** (Lệch công thức tính "Quá giờ phỏng vấn", hiển thị mã trạng thái tiếng Anh trong lịch sử phỏng vấn, giới hạn lùi ngày dự kiến đi làm) |
+| **Critical** | ✅ Không phát hiện | Không có lỗi vượt quyền ghi hoặc làm sập luồng MF-04 trong phạm vi đã kiểm tra |
+| **Major đã xử lý** | ✅ `BE-M01` → `BE-M03`, `FE-M01` → `FE-M06` | Đã che dữ liệu nội bộ, sửa email Offer hết hạn, đồng bộ realtime/validation/filter/phân trang và luồng sửa ngày đi làm |
+| **Major chờ quyết định nghiệp vụ** | ⏸️ `BE-M04` | Không tự thêm chặn Placement full-time thứ hai: hệ thống hiện cho Candidate cam kết chuyển việc nhưng chưa có luồng kết thúc Placement tổng quát cho mọi loại dịch vụ; bật chặn ngay có thể tạo deadlock nghiệp vụ |
+| **Minor đã xử lý** | ✅ `FE-m01` → `FE-m05`, `BE-m01` | Công thức quá giờ, nhãn trạng thái/type cũ, giới hạn dời ngày, refresh 409 và quyền xem hồ sơ dự phòng đã được cập nhật |
+| **Minor ngoài phạm vi lần sửa này** | ⏸️ `BE-m02` | Thay đổi quyền `PLATFORM_ADMIN` là thay đổi RBAC liên phân hệ, cần được nhóm chốt riêng |
+| **Bổ sung sau audit** | ✅ Tìm kiếm server-side | Interview, Offer và Placement tìm theo tên ứng viên/vị trí **trước phân trang**; FE không còn lọc cục bộ 10 dòng hiện tại |
+
+### Kết quả kiểm tra của lần cập nhật này
+
+- Backend: test tập trung cho `GetInterviewsQueryHandler`, `GetOffersQueryHandler`, `GetPlacementsQueryHandler` đều pass.
+- Frontend: `ClientInterviewsOffersPage.test.tsx` pass `6/6`; `npx tsc --noEmit` pass.
+- Không thêm bảng/migration; không sửa quy tắc phí, hoa hồng, bảo hành hoặc settlement thuộc MF-05.
+- Không triển khai lại `BE-M04` cho đến khi có quy tắc kết thúc/chuyển tiếp Placement rõ ràng.
 
 ---
 
