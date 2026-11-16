@@ -287,7 +287,8 @@ internal static class SourcingDeliveryRules
                 $"Hồ sơ {application.ApplicationId} chưa được Internal HR xác nhận đạt (SHORTLISTED).", "APPLICATION_NOT_QUALIFIED");
         }
 
-        if (!string.Equals(application.Submission?.Consent?.Status, ConsentConfirmed, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(application.Submission?.Source, "CANDIDATE", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(application.Submission?.Consent?.Status, ConsentConfirmed, StringComparison.OrdinalIgnoreCase))
         {
             throw new ConflictException(
                 $"Ứng viên của hồ sơ {application.ApplicationId} chưa xác nhận đồng ý gửi hồ sơ.", "CONSENT_NOT_CONFIRMED");
@@ -534,15 +535,17 @@ public sealed class ReviewSourcingRejectionCommandHandler : IRequestHandler<Revi
     private readonly IAuditLogService _audit;
 
     private readonly ISourcingFinanceService? _finance;
+    private readonly IAppNotifier? _notifier;
 
     public ReviewSourcingRejectionCommandHandler(
         ISourcingDeliveryRepository deliveries, IUnitOfWork unitOfWork, IAuditLogService audit,
-        ISourcingFinanceService? finance = null)
+        ISourcingFinanceService? finance = null, IAppNotifier? notifier = null)
     {
         _deliveries = deliveries;
         _unitOfWork = unitOfWork;
         _audit = audit;
         _finance = finance;
+        _notifier = notifier;
     }
 
     public async Task<SourcingDeliveryDto> Handle(ReviewSourcingRejectionCommand request, CancellationToken cancellationToken)
@@ -589,6 +592,17 @@ public sealed class ReviewSourcingRejectionCommandHandler : IRequestHandler<Revi
             await _finance.OnDeliveryCountedAsync(delivery, request.CurrentUserId, cancellationToken);
         }
 
+        if (_notifier != null && delivery.Job != null)
+        {
+            var title = request.Upheld ? "Đã xác nhận từ chối CV" : "Đã bác bỏ từ chối CV";
+            var msg = request.Upheld
+                ? $"HR Connect đã chấp nhận lý do từ chối CV cho tin \"{delivery.Job.Title}\"."
+                : $"HR Connect đã bác bỏ lý do từ chối CV cho tin \"{delivery.Job.Title}\": {note}";
+            await _notifier.NotifyCompanyAsync(delivery.Job.CompanyId, new AppNotice(
+                "SOURCING", title, msg,
+                "SOURCING_DELIVERY", delivery.JobId, $"/client/jobs/{delivery.JobId}/sourcing"), cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var reviewStatus = request.Upheld
@@ -604,14 +618,17 @@ public sealed class ReplaceSourcingDeliveryCommandHandler : IRequestHandler<Repl
     private readonly IAdminBusinessSettings _settings;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _audit;
+    private readonly IAppNotifier? _notifier;
 
     public ReplaceSourcingDeliveryCommandHandler(
-        ISourcingDeliveryRepository deliveries, IAdminBusinessSettings settings, IUnitOfWork unitOfWork, IAuditLogService audit)
+        ISourcingDeliveryRepository deliveries, IAdminBusinessSettings settings, IUnitOfWork unitOfWork, IAuditLogService audit,
+        IAppNotifier? notifier = null)
     {
         _deliveries = deliveries;
         _settings = settings;
         _unitOfWork = unitOfWork;
         _audit = audit;
+        _notifier = notifier;
     }
 
     public async Task<SourcingDeliveryDto> Handle(ReplaceSourcingDeliveryCommand request, CancellationToken cancellationToken)
@@ -628,13 +645,20 @@ public sealed class ReplaceSourcingDeliveryCommandHandler : IRequestHandler<Repl
         }
 
         SourcingDeliveryRules.RequireSourcingJob(old.Job);
+        if (old.Job.Status != JobStatuses.Active)
+        {
+            throw new ConflictException("Chỉ giao CV thay thế khi job đang ACTIVE.", "JOB_NOT_ACTIVE");
+        }
+
         var existing = await _deliveries.GetByJobAsync(old.JobId, cancellationToken);
         var applications = await _deliveries.GetApplicationsAsync(old.JobId, [request.ApplicationId], cancellationToken);
         var application = applications.FirstOrDefault()
             ?? throw new NotFoundException("Hồ sơ thay thế không thuộc công việc này.");
         SourcingDeliveryRules.RequireDeliverable(application, existing);
 
-        var reviewDays = await _settings.GetIntAsync(BusinessSettingKeys.CvSourcingReviewDays, cancellationToken);
+        var reviewDays = old.Job.ReviewDays is > 0
+            ? old.Job.ReviewDays.Value
+            : await _settings.GetIntAsync(BusinessSettingKeys.CvSourcingReviewDays, cancellationToken);
         var now = DateTime.UtcNow;
         var replacement = new SourcingDelivery
         {
@@ -664,6 +688,15 @@ public sealed class ReplaceSourcingDeliveryCommandHandler : IRequestHandler<Repl
             OldValues = new { Status = SourcingDeliveryStates.Rejected, old.ApplicationId },
             NewValues = new { Status = SourcingDeliveryStates.Replaced, ReplacedByDeliveryId = replacement.DeliveryId, replacement.ApplicationId }
         }, cancellationToken);
+
+        if (_notifier != null)
+        {
+            await _notifier.NotifyCompanyAsync(old.Job.CompanyId, new AppNotice(
+                "SOURCING", "Đã giao CV thay thế",
+                $"HR Connect vừa giao CV thay thế cho tin \"{old.Job.Title}\". Vui lòng xem xét trước ngày {now.AddDays(reviewDays):dd/MM/yyyy}.",
+                "SOURCING_DELIVERY", old.JobId, $"/client/jobs/{old.JobId}/sourcing"), cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return SourcingDeliveryRules.ToDto(replacement, now);

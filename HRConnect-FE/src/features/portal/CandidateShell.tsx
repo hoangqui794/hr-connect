@@ -3,10 +3,10 @@
  * @description Persistent Candidate workspace with unified Navbar navigation matching homepage
  * and mobile bottom navigation bar (mockup 03/11, Pages 35 & 38).
  */
-import React, { Suspense } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Navbar } from '@/features/landing/components/Navbar';
-import { AdminTopProgress } from '@/features/admin-console/AdminRouteProgress';
+import { AdminTopProgress, MotionPageOutlet } from '@/features/admin-console/AdminRouteProgress';
 import { prefetchRoute } from '@/app/routePrefetch';
 import '@/features/admin-console/admin-console.css';
 import './candidate/candidate.css';
@@ -119,9 +119,7 @@ export const CandidateShell: React.FC = () => {
       {!isEditorRoute && <Navbar />}
       <AdminTopProgress offsetLeft={0} />
       <main className={mainClassName}>
-        <Suspense fallback={null}>
-          <Outlet />
-        </Suspense>
+        <MotionPageOutlet fallback={null} className={isCvBuilder ? 'flex min-h-0 flex-1 flex-col w-full' : undefined} />
       </main>
       <MobileBottomNav pathname={location.pathname} />
     </div>

@@ -38,6 +38,14 @@ public class UpdateCandidateProfileCommandHandler : IRequestHandler<UpdateCandid
             throw new NotFoundException("Không tìm thấy hồ sơ ứng viên tương ứng với tài khoản này.");
         }
 
+        if (!string.Equals(candidate.Status, "ACTIVE", StringComparison.OrdinalIgnoreCase) ||
+            candidate.MergedIntoCandidateId.HasValue)
+        {
+            throw new ConflictException(
+                "Hồ sơ ứng viên đã bị khóa, lưu trữ hoặc hợp nhất và không thể cập nhật.",
+                "CANDIDATE_PROFILE_NOT_ELIGIBLE");
+        }
+
         var now = DateTime.UtcNow;
         var normalizedPhone = _phoneNormalizer.Normalize(request.Phone);
 

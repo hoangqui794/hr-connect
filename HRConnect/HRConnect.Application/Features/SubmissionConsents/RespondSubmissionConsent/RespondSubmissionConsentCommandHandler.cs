@@ -30,6 +30,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
     private readonly IAdminBusinessSettings _businessSettings;
     private readonly ICandidateDuplicateRepository _candidateDuplicateRepository;
     private readonly IAppNotifier? _notifier;
+    private readonly IJobRepository? _jobRepository;
 
     public RespondSubmissionConsentCommandHandler(
         ISubmissionConsentRepository consentRepository,
@@ -47,7 +48,8 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         ICandidateCompanyTransactionLock candidateCompanyLock,
         IAdminBusinessSettings businessSettings,
         ICandidateDuplicateRepository candidateDuplicateRepository,
-        IAppNotifier? notifier = null)
+        IAppNotifier? notifier = null,
+        IJobRepository? jobRepository = null)
     {
         _consentRepository = consentRepository;
         _submissionRepository = submissionRepository;
@@ -65,6 +67,7 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
         _businessSettings = businessSettings;
         _candidateDuplicateRepository = candidateDuplicateRepository;
         _notifier = notifier;
+        _jobRepository = jobRepository;
     }
 
     public async Task<RespondSubmissionConsentResponse> Handle(RespondSubmissionConsentCommand request, CancellationToken cancellationToken)
@@ -99,10 +102,21 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
             };
         }
 
-        if (consent.Submission.Job.Status != JobStatuses.Active)
+        if (consent.Submission.Job.Status != JobStatuses.Active ||
+            (consent.Submission.Job.ApplicationDeadline.HasValue && consent.Submission.Job.ApplicationDeadline.Value <= now))
         {
             await SetTerminalWithoutApplicationAsync(consent, "CANCELLED", "CANCELLED", request, now, cancellationToken);
             throw new ConflictException("Công việc hiện không còn nhận hồ sơ.");
+        }
+
+        if (consent.Submission.Job.MaxApplications is > 0 && _jobRepository != null)
+        {
+            var acceptedCount = await _jobRepository.CountAcceptedApplicationsByJobIdAsync(consent.Submission.JobId, cancellationToken);
+            if (acceptedCount >= consent.Submission.Job.MaxApplications.Value)
+            {
+                await SetTerminalWithoutApplicationAsync(consent, "CANCELLED", "CANCELLED", request, now, cancellationToken);
+                throw new ConflictException("Tin tuyển dụng đã nhận đủ số lượng hồ sơ tối đa theo gói đăng tin.");
+            }
         }
 
         var candidate = consent.Submission.Candidate;
@@ -217,29 +231,29 @@ public sealed class RespondSubmissionConsentCommandHandler : IRequestHandler<Res
                 }
             }
 
+            await _candidateCompanyLock.AcquireAsync(
+                consent.Submission.CandidateId,
+                consent.Submission.Job.CompanyId,
+                cancellationToken);
+
+            existingSubmission = await _submissionRepository.GetAcceptedSubmissionAsync(
+                consent.Submission.CandidateId, consent.Submission.JobId, cancellationToken);
+            existingApplication = await _applicationRepository.GetByCandidateAndJobAsync(
+                consent.Submission.CandidateId, consent.Submission.JobId, cancellationToken);
+            if (existingSubmission != null || existingApplication != null)
+            {
+                consent.Submission.DuplicateOfSubmissionId = existingSubmission?.SubmissionId;
+                await SetTerminalWithoutApplicationAsync(
+                    consent, "CANCELLED", "BLOCKED_DUPLICATE", request, now, cancellationToken);
+                await _unitOfWork.CommitTransactionAsync(cancellationToken);
+                transactionCompleted = true;
+                throw new ConflictException(
+                    "Candidate đã có hồ sơ được tiếp nhận cho công việc này.",
+                    "CANDIDATE_ALREADY_SUBMITTED");
+            }
+
             if (enforcesClientOwnership)
             {
-                await _candidateCompanyLock.AcquireAsync(
-                    consent.Submission.CandidateId,
-                    consent.Submission.Job.CompanyId,
-                    cancellationToken);
-
-                existingSubmission = await _submissionRepository.GetAcceptedSubmissionAsync(
-                    consent.Submission.CandidateId, consent.Submission.JobId, cancellationToken);
-                existingApplication = await _applicationRepository.GetByCandidateAndJobAsync(
-                    consent.Submission.CandidateId, consent.Submission.JobId, cancellationToken);
-                if (existingSubmission != null || existingApplication != null)
-                {
-                    consent.Submission.DuplicateOfSubmissionId = existingSubmission?.SubmissionId;
-                    await SetTerminalWithoutApplicationAsync(
-                        consent, "CANCELLED", "BLOCKED_DUPLICATE", request, now, cancellationToken);
-                    await _unitOfWork.CommitTransactionAsync(cancellationToken);
-                    transactionCompleted = true;
-                    throw new ConflictException(
-                        "Candidate đã có hồ sơ được tiếp nhận cho công việc này.",
-                        "CANDIDATE_ALREADY_SUBMITTED");
-                }
-
                 var isOwnedByClient = await _applicationRepository.ExistsForCandidateAndCompanySinceAsync(
                     consent.Submission.CandidateId,
                     consent.Submission.Job.CompanyId,

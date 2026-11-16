@@ -137,6 +137,16 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
             throw new BadRequestException("Công việc đã hết hạn nhận hồ sơ ứng viên.");
         }
 
+        if (job.MaxApplications.HasValue && job.MaxApplications.Value > 0)
+        {
+            var acceptedCount = await _jobRepository.CountAcceptedApplicationsByJobIdAsync(job.JobId, cancellationToken);
+            if (acceptedCount >= job.MaxApplications.Value)
+            {
+                _logger.LogWarning("JobId {JobId} đã đạt giới hạn tối đa hồ sơ ({Quota}).", job.JobId, job.MaxApplications.Value);
+                throw new BadRequestException("Tin tuyển dụng đã nhận đủ số lượng hồ sơ tối đa theo gói đăng tin.");
+            }
+        }
+
         // 3. Phân quyền can_submit dựa trên Service Type và Roles
         if (!JobAccessPolicy.CanAffiliateSubmit(job, request.RoleCodes))
         {
@@ -238,8 +248,8 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
             if (candidateResolvedByEmail != null && candidateByPhone != null &&
                 candidateResolvedByEmail.CandidateId != candidateByPhone.CandidateId)
             {
-                _logger.LogWarning("Xung đột danh tính ứng viên: Email {Email} (CandidateId {EmailCandId}) và Phone {Phone} (CandidateId {PhoneCandId})",
-                    normalizedEmail, candidateResolvedByEmail.CandidateId, normalizedPhone, candidateByPhone.CandidateId);
+                _logger.LogWarning("Xung đột danh tính ứng viên giữa CandidateId {EmailCandId} và CandidateId {PhoneCandId}",
+                    candidateResolvedByEmail.CandidateId, candidateByPhone.CandidateId);
                 throw new ConflictException("Email và số điện thoại này thuộc về hai ứng viên khác nhau trong hệ thống.");
             }
 
@@ -626,6 +636,20 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                     IsRead = false,
                     CreatedAt = now
                 }, cancellationToken);
+
+                if (_notifier != null)
+                {
+                    await _notifier.NotifyUsersAsync(
+                        [candidate.UserId.Value],
+                        new AppNotice(
+                            "SUBMISSION",
+                            "Yêu cầu xác nhận hồ sơ ứng tuyển",
+                            $"Một Cộng tác viên (Affiliate) đã giới thiệu bạn vào vị trí {job.Title}. Vui lòng kiểm tra và xác nhận.",
+                            "SUBMISSION",
+                            submission.SubmissionId,
+                            $"/candidate/consents/{submission.SubmissionId}"),
+                        cancellationToken);
+                }
             }
 
             await _auditLogService.AddAsync(new AuditEntry

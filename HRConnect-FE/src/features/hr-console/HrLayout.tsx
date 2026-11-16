@@ -5,9 +5,10 @@
  * soft-UI kit; the `.hr-console` class switches its accent variables to sky.
  * Menu follows the backend: MF-01 job review, MF-03 screening, MF-04 read-only progress.
  */
-import React, { Suspense, useEffect, useMemo, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { MotionConfig, motion } from 'motion/react';
 import { Dropdown, Tooltip } from 'antd';
 import {
   AuditOutlined,
@@ -33,7 +34,7 @@ import { HR_SCREENED_SERVICE_TYPES, placementReconciliationApi, screeningApi } f
 import { contactApi } from '@/services/api/contactApi';
 import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
 import { AccountAvatar } from '@/components/common/AccountAvatar';
-import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from '@/features/admin-console/AdminRouteProgress';
+import { AdminTopProgress, MotionPageOutlet } from '@/features/admin-console/AdminRouteProgress';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { ChangePasswordModal } from '@/components/common/ChangePasswordModal';
 import '@/features/admin-console/admin-console.css';
@@ -240,11 +241,11 @@ export const HrLayout: React.FC = () => {
                         to={item.to}
                         className={({ isActive }) =>
                           [
-                            'flex h-10 items-center gap-3 rounded-lg px-3 text-[13.5px] font-medium no-underline transition-colors duration-150',
+                            'relative flex h-10 items-center gap-3 rounded-lg px-3 text-[13.5px] font-medium no-underline transition-colors duration-150',
                             'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-blue-600',
-                            collapsed ? 'justify-center relative' : '',
+                            collapsed ? 'justify-center' : '',
                             isActive
-                              ? 'bg-blue-50/70 font-semibold text-blue-900 border-l-2 border-blue-600 rounded-lg'
+                              ? 'font-semibold text-blue-900'
                               : item.muted
                                 ? 'font-normal text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                                 : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900',
@@ -253,14 +254,22 @@ export const HrLayout: React.FC = () => {
                       >
                         {({ isActive }) => (
                           <>
-                            <span className="text-[16px]" aria-hidden>
+                            {isActive && (
+                              <motion.span
+                                layoutId="hr-sidebar-active-pill"
+                                transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                                className="absolute inset-0 rounded-lg border-0 border-l-2 border-solid border-blue-600 bg-blue-50/80"
+                                aria-hidden
+                              />
+                            )}
+                            <span className="relative z-10 text-[16px]" aria-hidden>
                               {item.icon}
                             </span>
-                            {!collapsed && <span className="min-w-0 flex-1 truncate">{item.label}</span>}
+                            {!collapsed && <span className="relative z-10 min-w-0 flex-1 truncate">{item.label}</span>}
                             {!collapsed && pendingCount > 0 && (
                               <span
                                 aria-label={`${pendingCount} chờ xử lý`}
-                                className={`ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold tabular-nums leading-none ${
+                                className={`relative z-10 ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold tabular-nums leading-none ${
                                   isActive ? 'bg-blue-600 text-white' : 'bg-sky-100 text-sky-800'
                                 }`}
                               >
@@ -270,7 +279,7 @@ export const HrLayout: React.FC = () => {
                             {collapsed && pendingCount > 0 && (
                               <span
                                 aria-hidden
-                                className="absolute right-2.5 top-2 h-2 w-2 rounded-full bg-sky-600 ring-2 ring-white"
+                                className="absolute right-2.5 top-2 z-10 h-2 w-2 rounded-full bg-sky-600 ring-2 ring-white"
                               />
                             )}
                           </>
@@ -358,11 +367,9 @@ export const HrLayout: React.FC = () => {
 
         <AdminTopProgress offsetLeft={compact ? 0 : width} />
         <main className="mx-auto max-w-[1360px] px-4 py-6 lg:px-8 lg:py-8">
-          <AdminPageEnter pathKey={location.pathname}>
-            <Suspense fallback={<AdminPageSkeleton />}>
-              <Outlet />
-            </Suspense>
-          </AdminPageEnter>
+          <MotionConfig reducedMotion="user">
+            <MotionPageOutlet />
+          </MotionConfig>
         </main>
       </div>
 

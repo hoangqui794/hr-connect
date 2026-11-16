@@ -84,13 +84,15 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({
     return () => window.clearInterval(timer);
   }, [retryUntil]);
 
+  const serverCvs = (cvs.data ?? []).filter((c) => !String(c.cvId).startsWith('cv_builder_'));
+
   // Preselect the primary CV (or the newest) once the vault is loaded.
   useEffect(() => {
-    if (open && !source && cvs.data?.length) {
-      const primary = cvs.data.find((c) => c.isPrimary) ?? cvs.data[0];
+    if (open && !source && serverCvs.length) {
+      const primary = serverCvs.find((c) => c.isPrimary) ?? serverCvs[0];
       setSource({ kind: 'vault', cvId: primary.cvId });
     }
-  }, [open, cvs.data, source]);
+  }, [open, serverCvs, source]);
 
   const apply = useMutation({
     mutationFn: () => {
@@ -135,8 +137,8 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({
 
   const chosenFile = source?.kind === 'file' ? source.file : null;
   const companyLine = [job.companyName, job.location].filter(Boolean).join(' · ');
-  const hasExistingCvs = Boolean(cvs.data && cvs.data.length > 0);
-  const noCvs = Boolean(!cvs.isLoading && !cvs.isError && (!cvs.data || cvs.data.length === 0));
+  const hasExistingCvs = serverCvs.length > 0;
+  const noCvs = Boolean(!cvs.isLoading && !cvs.isError && serverCvs.length === 0);
 
   return (
     <Modal
@@ -301,7 +303,7 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({
                   </div>
                 ) : (
                   <>
-                    {(cvs.data ?? []).map((cv) => {
+                    {serverCvs.map((cv) => {
                       const selected = source?.kind === 'vault' && source.cvId === cv.cvId;
                       return (
                         <label

@@ -4,8 +4,9 @@
  * and an orange "Giới thiệu ứng viên" CTA (mockup canvas 03/11).
  * Derived from HrLayout: same off-canvas menu below lg, loading feedback and Escape handling.
  */
-import React, { Suspense, useEffect, useMemo, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { MotionConfig, motion } from 'motion/react';
 import { Dropdown, Tooltip } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { affiliateApi } from '@/services/api/mf02Api';
@@ -33,7 +34,7 @@ import { authService } from '@/services/authService';
 import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
 import { AccountAvatar } from '@/components/common/AccountAvatar';
 import { ChangePasswordModal } from '@/components/common/ChangePasswordModal';
-import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from '@/features/admin-console/AdminRouteProgress';
+import { AdminTopProgress, MotionPageOutlet } from '@/features/admin-console/AdminRouteProgress';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import '@/features/admin-console/admin-console.css';
 import './affiliate/affiliate.css';
@@ -169,12 +170,24 @@ export const AffiliateShell: React.FC = () => {
                       ].join(' ')
                     }
                   >
-                    <span className="text-[16px]" aria-hidden>
-                      {item.icon}
-                    </span>
-                    {!collapsed && <span className="truncate">{item.label}</span>}
-                    {!collapsed && item.to === '/affiliate/submissions' && Boolean(pendingCount.data) && (
-                      <span className="ml-auto text-xs text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-200/60 font-semibold" aria-label={`${pendingCount.data} lượt chờ xác nhận`}>{pendingCount.data}</span>
+                    {({ isActive }) => (
+                      <>
+                        {isActive && (
+                          <motion.span
+                            layoutId="affiliate-sidebar-active-pill"
+                            transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                            className="absolute inset-0 rounded-md bg-sky-50/90"
+                            aria-hidden
+                          />
+                        )}
+                        <span className="relative z-10 text-[16px]" aria-hidden>
+                          {item.icon}
+                        </span>
+                        {!collapsed && <span className="relative z-10 truncate">{item.label}</span>}
+                        {!collapsed && item.to === '/affiliate/submissions' && Boolean(pendingCount.data) && (
+                          <span className="relative z-10 ml-auto text-xs text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-200/60 font-semibold" aria-label={`${pendingCount.data} lượt chờ xác nhận`}>{pendingCount.data}</span>
+                        )}
+                      </>
                     )}
                   </NavLink>
                 </Tooltip>
@@ -259,11 +272,9 @@ export const AffiliateShell: React.FC = () => {
 
         <AdminTopProgress offsetLeft={compact ? 0 : width} />
         <main className="affiliate-main min-w-0 max-w-full overflow-x-hidden mx-auto px-4 py-5 pb-24 md:pb-5 lg:px-6 lg:py-6">
-          <AdminPageEnter pathKey={location.pathname}>
-            <Suspense fallback={<AdminPageSkeleton />}>
-              <Outlet />
-            </Suspense>
-          </AdminPageEnter>
+          <MotionConfig reducedMotion="user">
+            <MotionPageOutlet />
+          </MotionConfig>
         </main>
       </div>
       <nav aria-label="Menu chính" className="fixed inset-x-0 bottom-0 z-20 grid h-16 grid-cols-4 border-0 border-t border-solid border-gray-200 bg-white md:hidden">

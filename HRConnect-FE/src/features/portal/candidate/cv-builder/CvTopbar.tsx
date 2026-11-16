@@ -4,6 +4,7 @@
  * with a custom polished dropdown for font family selection.
  */
 import React, { useState, useRef, useEffect } from 'react';
+import { motion } from 'motion/react';
 import type { CvFontFamily } from '@/types/api/cvBuilder';
 
 export interface CvTopbarProps {
@@ -73,6 +74,8 @@ const DENSITY_OPTIONS: Array<{ label: string; value: 'compact' | 'normal' | 'spa
 export const CvTopbar: React.FC<CvTopbarProps> = ({
   title,
   onTitleChange,
+  isPrimary,
+  onPrimaryChange,
   onPreview,
   onDownloadPdf,
   onSave,
@@ -224,6 +227,21 @@ export const CvTopbar: React.FC<CvTopbarProps> = ({
                 <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13" />
               </svg>
             </button>
+
+            <motion.button
+              type="button"
+              aria-pressed={isPrimary}
+              whileTap={{ scale: 0.97 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+              onClick={() => onPrimaryChange(!isPrimary)}
+              className={`hidden h-[34px] cursor-pointer items-center gap-1.5 rounded-[7px] border border-solid px-2.5 text-[12px] font-semibold transition-colors duration-150 sm:inline-flex ${
+                isPrimary
+                  ? 'border-[#10B981] bg-[#ECFDF5] text-[#047857]'
+                  : 'border-[#CBD5E1] bg-white text-[#475569] hover:bg-[#F8FAFC]'
+              }`}
+            >
+              <span>{isPrimary ? '✓ CV chính' : 'Đặt làm CV chính'}</span>
+            </motion.button>
 
             <button
               type="button"

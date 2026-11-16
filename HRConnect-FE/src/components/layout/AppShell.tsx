@@ -4,12 +4,12 @@
  * High-End Modern Light SaaS Design (Stripe / Linear Light aesthetic).
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Layout } from 'antd';
-import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { AppHeader } from './Header';
 import { CandidateHeader } from './CandidateHeader';
+import { MotionPageOutlet } from '@/features/admin-console/AdminRouteProgress';
 import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
 
@@ -66,13 +66,12 @@ export const AppShell: React.FC = () => {
         >
           {/* Full-width container with comfortable max-width for candidate view */}
           <div
-            className="animate-fade-in"
             style={{
               maxWidth: isCandidate ? 1280 : '100%',
               margin: isCandidate ? '0 auto' : '0',
             }}
           >
-            <Outlet />
+            <MotionPageOutlet fallback={null} />
           </div>
         </Content>
       </Layout>

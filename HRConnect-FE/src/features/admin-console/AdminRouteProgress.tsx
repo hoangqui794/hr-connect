@@ -6,8 +6,10 @@
  *  - AdminPageSkeleton: Suspense fallback shaped like an admin page (hero + stats + table).
  *  - AdminPageEnter: fades/slides the new page in; disabled under prefers-reduced-motion.
  */
-import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import React, { Suspense, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useLocation, useOutlet } from 'react-router-dom';
 import { useIsFetching } from '@tanstack/react-query';
+import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import './admin-console.css';
 
 // ── Tiny store: how many route chunks are loading right now ─────────────────
@@ -103,3 +105,36 @@ export const AdminPageEnter: React.FC<{ pathKey: string; children: React.ReactNo
     {children}
   </div>
 );
+
+/** Shared smooth route transition across all role shells (Admin, Client, HR, Affiliate, Candidate). */
+export const MotionPageOutlet: React.FC<{
+  fallback?: React.ReactNode;
+  className?: string;
+}> = ({ fallback = <AdminPageSkeleton />, className }) => {
+  const location = useLocation();
+  const outlet = useOutlet();
+  return (
+    <MotionConfig reducedMotion="user">
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={location.pathname}
+          className={className}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{
+            opacity: 1,
+            y: 0,
+            transition: { duration: 0.34, ease: [0.16, 1, 0.3, 1] },
+          }}
+          exit={{
+            opacity: 0,
+            y: -6,
+            transition: { duration: 0.11, ease: [0.4, 0, 1, 1] },
+          }}
+          style={{ willChange: 'transform, opacity' }}
+        >
+          <Suspense fallback={fallback}>{outlet}</Suspense>
+        </motion.div>
+      </AnimatePresence>
+    </MotionConfig>
+  );
+};

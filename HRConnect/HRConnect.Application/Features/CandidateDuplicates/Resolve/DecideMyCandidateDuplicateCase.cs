@@ -101,6 +101,14 @@ public sealed class DecideMyCandidateDuplicateCaseCommandHandler(
 
             if (isDismiss)
             {
+                if (string.Equals(duplicateCase.RiskLevel, "HIGH", StringComparison.OrdinalIgnoreCase) ||
+                    duplicateCase.JobId.HasValue)
+                {
+                    throw new ConflictException(
+                        "Hồ sơ nghi trùng mức độ cao hoặc trùng trên cùng một vị trí tuyển dụng cần Ban quản trị thẩm định.",
+                        "DUPLICATE_CASE_REQUIRES_ADMIN_REVIEW");
+                }
+
                 var reason = string.IsNullOrWhiteSpace(request.Reason)
                     ? "Ứng viên xác nhận đây không phải hồ sơ của mình."
                     : request.Reason.Trim();

@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
@@ -43,7 +44,7 @@ public sealed class StructuredCvService : IStructuredCvService
         CancellationToken cancellationToken = default)
     {
         var cvId = Guid.NewGuid();
-        var (key, size) = await RenderAndUploadAsync(candidateId, actorUserId, cvId, 1, template, content, cancellationToken);
+        var (key, size, contentSha256) = await RenderAndUploadAsync(candidateId, actorUserId, cvId, 1, template, content, cancellationToken);
         var now = DateTime.UtcNow;
         try
         {
@@ -73,6 +74,8 @@ public sealed class StructuredCvService : IStructuredCvService
                 FileName = FileName(title),
                 MimeType = "application/pdf",
                 FileSizeBytes = size,
+                ContentSha256 = contentSha256,
+                FingerprintVersion = "binary-sha256-v1",
                 IsPrimary = isPrimary,
                 Status = "ACTIVE",
                 AffiliateReuseConcurrencyToken = Guid.NewGuid(),
@@ -98,7 +101,7 @@ public sealed class StructuredCvService : IStructuredCvService
         // A new object key per version: applications already sent keep pointing at the PDF they were sent with.
         var version = DateTime.UtcNow.Ticks;
         var previousKey = cv.SourceFileUrl;
-        var (key, size) = await RenderAndUploadAsync(cv.CandidateId, actorUserId, cv.CvId, version, template, content, cancellationToken);
+        var (key, size, contentSha256) = await RenderAndUploadAsync(cv.CandidateId, actorUserId, cv.CvId, version, template, content, cancellationToken);
         try
         {
             cv.Title = title;
@@ -109,6 +112,8 @@ public sealed class StructuredCvService : IStructuredCvService
             cv.RenderedFileUrl = key;
             cv.FileName = FileName(title);
             cv.FileSizeBytes = size;
+            cv.ContentSha256 = contentSha256;
+            cv.FingerprintVersion = "binary-sha256-v1";
             cv.UpdatedAt = DateTime.UtcNow;
             _cvs.Update(cv);
             await AuditAsync(cv, actorUserId, "UPDATED", cancellationToken);
@@ -123,7 +128,7 @@ public sealed class StructuredCvService : IStructuredCvService
         }
     }
 
-    private async Task<(string Key, long Size)> RenderAndUploadAsync(
+    private async Task<(string Key, long Size, string ContentSha256)> RenderAndUploadAsync(
         Guid candidateId, Guid actorUserId, Guid cvId, long version, CvTemplate? template, StructuredCvContent content, CancellationToken cancellationToken)
     {
         var avatarBytes = await LoadAvatarAsync(
@@ -133,9 +138,10 @@ public sealed class StructuredCvService : IStructuredCvService
             cancellationToken);
         var pdf = _renderer.Render(content, template?.TemplateConfig, avatarBytes);
         _validator.Validate(pdf); // same rules as an uploaded CV
+        var contentSha256 = Convert.ToHexString(SHA256.HashData(pdf)).ToLowerInvariant();
         await using var stream = new MemoryStream(pdf, writable: false);
         var key = await _storage.UploadAsync(stream, $"candidates/{candidateId}/cvs/{cvId}-v{version}.pdf", "application/pdf", cancellationToken);
-        return (key, pdf.LongLength);
+        return (key, pdf.LongLength, contentSha256);
     }
 
     private async Task<byte[]?> LoadAvatarAsync(Guid actorUserId, bool showAvatar, string? avatarDataUrl, CancellationToken cancellationToken)
