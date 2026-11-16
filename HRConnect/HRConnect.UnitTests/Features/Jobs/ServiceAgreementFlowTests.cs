@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -803,5 +804,128 @@ public class ServiceAgreementFlowTests
         addedAgreement!.FeeMultiplier.Should().Be(1.5m);
         addedAgreement.WarrantyDays.Should().Be(30);
         addedAgreement.PaymentDueDays.Should().Be(20);
+    }
+
+    [Fact]
+    public async Task UploadSigned_FirstTimeAndReuploadBeforeHrConfirm_ShouldUploadAndUpdateSha256Hash()
+    {
+        var (job, company, clientUser, clientMember) = CreateTestJob("HEADHUNT_COD");
+        var agreement = new ServiceAgreement
+        {
+            ServiceAgreementId = Guid.NewGuid(),
+            JobId = job.JobId,
+            CompanyId = company.CompanyId,
+            CompanyNameSnapshot = company.CompanyName,
+            Version = 1,
+            IsCurrent = true,
+            Status = ServiceAgreementStatuses.SentToClient,
+            CreatedByUserId = Guid.NewGuid(),
+            ConcurrencyToken = Guid.NewGuid(),
+        };
+
+        _agreements.Setup(x => x.GetByIdForUpdateAsync(agreement.ServiceAgreementId, It.IsAny<CancellationToken>())).ReturnsAsync(agreement);
+        _jobs.Setup(x => x.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job);
+        _companyUsers.Setup(x => x.GetByUserIdAsync(clientUser.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(clientMember);
+        _users.Setup(x => x.GetByIdAsync(clientUser.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(clientUser);
+
+        var uploadedBytes = new List<byte[]>();
+        _storage.Setup(x => x.UploadAsync(It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<Stream, string, string, CancellationToken>((s, _, _, _) =>
+            {
+                using var copy = new MemoryStream();
+                s.CopyTo(copy);
+                uploadedBytes.Add(copy.ToArray());
+            })
+            .ReturnsAsync("agreements/signed.pdf");
+
+        var handler = new UploadSignedServiceAgreementCommandHandler(
+            _agreements.Object, _jobs.Object, _companyUsers.Object, _users.Object,
+            _storage.Object, _notifications.Object, _audit.Object, _uow.Object);
+
+        var firstBytes = new byte[] { 10, 20, 30, 40 };
+        var expectedFirstHash = Convert.ToHexString(SHA256.HashData(firstBytes)).ToLowerInvariant();
+        await using (var firstStream = new MemoryStream(firstBytes))
+        {
+            var firstResult = await handler.Handle(new UploadSignedServiceAgreementCommand
+            {
+                JobId = job.JobId,
+                AgreementId = agreement.ServiceAgreementId,
+                UserId = clientUser.UserId,
+                FileStream = firstStream,
+                FileName = "signed-v1.pdf",
+                ContentType = "application/pdf",
+                FileLength = firstBytes.Length,
+            }, CancellationToken.None);
+
+            firstResult.DocumentSha256Hash.Should().Be(expectedFirstHash);
+            agreement.DocumentSha256Hash.Should().Be(expectedFirstHash);
+        }
+
+        // Re-upload before HR confirms (agreement status is still SENT_TO_CLIENT, not SIGNED)
+        var secondBytes = new byte[] { 50, 60, 70, 80, 90 };
+        var expectedSecondHash = Convert.ToHexString(SHA256.HashData(secondBytes)).ToLowerInvariant();
+        await using (var secondStream = new MemoryStream(secondBytes))
+        {
+            var secondResult = await handler.Handle(new UploadSignedServiceAgreementCommand
+            {
+                JobId = job.JobId,
+                AgreementId = agreement.ServiceAgreementId,
+                UserId = clientUser.UserId,
+                FileStream = secondStream,
+                FileName = "signed-v2.pdf",
+                ContentType = "application/pdf",
+                FileLength = secondBytes.Length,
+            }, CancellationToken.None);
+
+            secondResult.DocumentSha256Hash.Should().Be(expectedSecondHash);
+            secondResult.DocumentSha256Hash.Should().NotBe(expectedFirstHash);
+            agreement.DocumentSha256Hash.Should().Be(expectedSecondHash);
+        }
+
+        uploadedBytes.Should().HaveCount(2);
+        uploadedBytes[0].Should().Equal(firstBytes);
+        uploadedBytes[1].Should().Equal(secondBytes);
+    }
+
+    [Theory]
+    [InlineData(ServiceAgreementStatuses.Signed, "AGREEMENT_ALREADY_SIGNED")]
+    [InlineData(ServiceAgreementStatuses.ChangeRequested, "AGREEMENT_CHANGE_REQUESTED")]
+    public async Task UploadSigned_WhenSignedOrChangeRequested_ShouldThrowConflict(string status, string expectedErrorCode)
+    {
+        var (job, company, clientUser, _) = CreateTestJob("HEADHUNT_COD");
+        var agreement = new ServiceAgreement
+        {
+            ServiceAgreementId = Guid.NewGuid(),
+            JobId = job.JobId,
+            CompanyId = company.CompanyId,
+            Version = 1,
+            IsCurrent = true,
+            Status = status,
+            DocumentSha256Hash = "existing-hash",
+        };
+
+        _agreements.Setup(x => x.GetByIdForUpdateAsync(agreement.ServiceAgreementId, It.IsAny<CancellationToken>())).ReturnsAsync(agreement);
+        _jobs.Setup(x => x.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job);
+
+        var handler = new UploadSignedServiceAgreementCommandHandler(
+            _agreements.Object, _jobs.Object, _companyUsers.Object, _users.Object,
+            _storage.Object, _notifications.Object, _audit.Object, _uow.Object);
+
+        await using var stream = new MemoryStream(new byte[] { 1, 2, 3, 4 });
+        var act = () => handler.Handle(new UploadSignedServiceAgreementCommand
+        {
+            JobId = job.JobId,
+            AgreementId = agreement.ServiceAgreementId,
+            UserId = clientUser.UserId,
+            FileStream = stream,
+            FileName = "signed.pdf",
+            ContentType = "application/pdf",
+            FileLength = 4,
+        }, CancellationToken.None);
+
+        var ex = await act.Should().ThrowAsync<ConflictException>();
+        ex.Which.ErrorCode.Should().Be(expectedErrorCode);
+        agreement.DocumentSha256Hash.Should().Be("existing-hash");
+        _storage.Verify(x => x.UploadAsync(It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

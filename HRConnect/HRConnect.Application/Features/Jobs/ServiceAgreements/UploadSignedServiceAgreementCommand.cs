@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -88,6 +89,20 @@ public sealed class UploadSignedServiceAgreementCommandHandler : IRequestHandler
             throw new ConflictException("Thỏa thuận dịch vụ này không còn hiệu lực để tải lên văn bản ký kết.");
         }
 
+        if (agreement.Status == ServiceAgreementStatuses.Signed)
+        {
+            throw new ConflictException(
+                "Thỏa thuận dịch vụ này đã được ký kết chính thức, không thể tải lại bản ký kết.",
+                "AGREEMENT_ALREADY_SIGNED");
+        }
+
+        if (agreement.Status == ServiceAgreementStatuses.ChangeRequested)
+        {
+            throw new ConflictException(
+                "Thỏa thuận dịch vụ đang được yêu cầu điều chỉnh, không thể tải lên bản ký kết.",
+                "AGREEMENT_CHANGE_REQUESTED");
+        }
+
         var companyUser = await _companyUsers.GetByUserIdAsync(request.UserId, ct);
         if (companyUser == null || companyUser.CompanyId != agreement.CompanyId || companyUser.Status != "ACTIVE")
         {
@@ -96,11 +111,29 @@ public sealed class UploadSignedServiceAgreementCommandHandler : IRequestHandler
 
         var user = await _users.GetByIdAsync(request.UserId, ct);
 
+        // Buffer once so SHA-256 hashing and storage upload both read the full payload cleanly.
+        using var buffer = new MemoryStream();
+        await request.FileStream.CopyToAsync(buffer, ct);
+        var fileBytes = buffer.ToArray();
+        if (fileBytes.Length == 0)
+        {
+            throw new BadRequestException("Vui lòng đính kèm tập tin hợp đồng đã ký.");
+        }
+
+        if (fileBytes.Length > 25 * 1024 * 1024)
+        {
+            throw new BadRequestException("Kích thước tệp tin không được vượt quá 25MB.");
+        }
+
+        buffer.Position = 0;
+        var documentSha256Hash = Convert.ToHexString(SHA256.HashData(fileBytes)).ToLowerInvariant();
+
         // Upload to storage
         var objectKey = $"companies/{agreement.CompanyId}/service-agreements/{agreement.ServiceAgreementId}/v{agreement.Version}/signed_{Guid.NewGuid()}{ext}";
-        await _storage.UploadAsync(request.FileStream, objectKey, string.IsNullOrWhiteSpace(request.ContentType) ? "application/pdf" : request.ContentType, ct);
+        await _storage.UploadAsync(buffer, objectKey, string.IsNullOrWhiteSpace(request.ContentType) ? "application/pdf" : request.ContentType, ct);
 
         agreement.SignedDocumentStorageKey = objectKey;
+        agreement.DocumentSha256Hash = documentSha256Hash;
         agreement.SignedAt = DateTime.UtcNow;
         agreement.SignerUserId = request.UserId;
         agreement.SignerNameSnapshot = user?.DisplayName ?? "Đại diện Doanh nghiệp";
@@ -142,6 +175,7 @@ public sealed class UploadSignedServiceAgreementCommandHandler : IRequestHandler
                 agreementId = agreement.ServiceAgreementId,
                 version = agreement.Version,
                 signedDocumentStorageKey = objectKey,
+                documentSha256Hash,
                 fileName = request.FileName
             }
         }, ct);
