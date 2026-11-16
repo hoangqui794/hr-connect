@@ -1,6 +1,7 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Constants;
 using MediatR;
 
@@ -23,6 +24,10 @@ public sealed class GetMyJobsQueryHandler : IRequestHandler<GetMyJobsQuery, IRea
     public async Task<IReadOnlyList<JobDto>> Handle(GetMyJobsQuery request, CancellationToken ct)
     {
         var member = await _members.GetByUserIdAsync(request.UserId, ct) ?? throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
+        if (!CompanyMembershipPolicy.IsActive(member))
+        {
+            throw new ForbiddenException("Tài khoản doanh nghiệp hiện không hoạt động.");
+        }
         var jobs = await _jobs.GetByCompanyIdAsync(member.CompanyId, ct);
         var filtered = jobs
             .Where(x => string.IsNullOrWhiteSpace(request.Status) || x.Status.Equals(request.Status, StringComparison.OrdinalIgnoreCase))

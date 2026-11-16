@@ -1,5 +1,6 @@
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Entities;
 
 namespace HRConnect.Application.Features.Jobs.Common;
@@ -16,6 +17,10 @@ public static class JobHandlerGuards
     {
         var member = await companyUserRepository.GetByUserIdAsync(userId, cancellationToken)
             ?? throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
+        if (!CompanyMembershipPolicy.IsActive(member))
+        {
+            throw new ForbiddenException("Tài khoản doanh nghiệp hiện không hoạt động.");
+        }
         var job = await GetJobAsync(jobRepository, jobId, cancellationToken);
         if (!JobAccessPolicy.CanManageJob(job, member.CompanyId))
             throw new ForbiddenException("Bạn không có quyền thao tác công việc của doanh nghiệp khác.");

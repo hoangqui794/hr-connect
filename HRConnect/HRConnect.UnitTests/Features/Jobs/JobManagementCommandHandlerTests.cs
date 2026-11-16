@@ -1299,6 +1299,26 @@ public class JobManagementCommandHandlerTests
         _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Theory]
+    [InlineData("SUSPENDED")]
+    [InlineData("INACTIVE")]
+    public async Task OwnedJobAction_WhenCompanyMemberNotActive_ShouldThrowForbidden(string memberStatus)
+    {
+        var job = SetupJob(JobStatuses.Active);
+        var user = Guid.NewGuid();
+        var member = Member(user, job.CompanyId);
+        member.Status = memberStatus;
+        _members.Setup(x => x.GetByUserIdAsync(user, It.IsAny<CancellationToken>())).ReturnsAsync(member);
+
+        var act = () => new PauseJobCommandHandler(_jobs.Object, _members.Object, _uow.Object)
+            .Handle(new PauseJobCommand { JobId = job.JobId, UserId = user, ConcurrencyToken = job.ConcurrencyToken, ReasonText = "Tạm dừng" }, default);
+
+        await act.Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("Tài khoản doanh nghiệp hiện không hoạt động.");
+        job.Status.Should().Be(JobStatuses.Active);
+        _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private (Job Job, Guid User) SetupOwnedJob(string status)
     {
         var job = SetupJob(status); var user = Guid.NewGuid();

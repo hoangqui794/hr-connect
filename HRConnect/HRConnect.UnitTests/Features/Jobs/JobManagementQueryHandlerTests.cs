@@ -273,6 +273,24 @@ public class JobManagementQueryHandlerTests
         n.PaymentDueAt.Should().BeNull();
     }
 
+    [Theory]
+    [InlineData("SUSPENDED")]
+    [InlineData("INACTIVE")]
+    public async Task GetMyJobs_WhenCompanyMemberNotActive_ShouldThrowForbidden(string memberStatus)
+    {
+        var user = Guid.NewGuid();
+        var company = Guid.NewGuid();
+        var member = Member(user, company);
+        member.Status = memberStatus;
+        _members.Setup(x => x.GetByUserIdAsync(user, It.IsAny<CancellationToken>())).ReturnsAsync(member);
+
+        var act = () => new GetMyJobsQueryHandler(_jobs.Object, _members.Object).Handle(new GetMyJobsQuery(user, null), default);
+
+        await act.Should().ThrowAsync<ForbiddenException>()
+            .WithMessage("Tài khoản doanh nghiệp hiện không hoạt động.");
+        _jobs.Verify(x => x.GetByCompanyIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private static CompanyUser Member(Guid user, Guid company) => new() { CompanyUserId = Guid.NewGuid(), UserId = user, CompanyId = company, Status = "ACTIVE" };
     private static Job Job(Guid company, string status) => new() { JobId = Guid.NewGuid(), CompanyId = company, ServiceTypeId = Guid.NewGuid(), CreatedBy = Guid.NewGuid(), Title = "Job", Benefits = "Insurance and training", CurrencyCode = "VND", Quantity = 1, Status = status, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
 }
