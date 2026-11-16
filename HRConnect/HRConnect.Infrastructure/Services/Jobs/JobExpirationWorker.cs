@@ -80,6 +80,7 @@ public sealed class JobExpirationWorker : BackgroundService
 
             var job = await context.Jobs
                 .Include(j => j.JobStatusHistories)
+                .Include(j => j.PostingPackage)
                 .SingleOrDefaultAsync(j => j.JobId == jobId, cancellationToken);
 
             if (job == null || job.Status != JobStatuses.Active || job.ExpiresAt == null || job.ExpiresAt.Value > now)
@@ -125,7 +126,7 @@ public sealed class JobExpirationWorker : BackgroundService
                     UserId = recipientId,
                     NotificationType = "JOB",
                     Title = "Gói đăng tin đã hết hạn hiển thị",
-                    Message = $"Tin tuyển dụng \"{job.Title}\" đã hết thời hạn hiển thị theo gói (30 ngày) và tự động đóng. Bạn có thể đăng tin mới với Gói Tiêu Chuẩn (STANDARD) để tiếp tục tuyển dụng.",
+                    Message = BuildExpirationNotificationMessage(job),
                     RelatedEntityType = "JOB",
                     RelatedEntityId = job.JobId,
                     Metadata = System.Text.Json.JsonSerializer.Serialize(new
@@ -150,5 +151,20 @@ public sealed class JobExpirationWorker : BackgroundService
         }
 
         return expiredCount;
+    }
+
+    internal static string BuildExpirationNotificationMessage(Job job)
+    {
+        var durationText = job.PostingPackage is { DurationDays: > 0 } pkg
+            ? $" ({pkg.DurationDays} ngày)"
+            : string.Empty;
+        var isFreePackage = string.Equals(
+            job.PostingPackage?.Code,
+            JobPostingPackageCodes.Free,
+            StringComparison.OrdinalIgnoreCase);
+
+        return isFreePackage
+            ? $"Tin tuyển dụng \"{job.Title}\" đã hết thời hạn hiển thị theo gói{durationText} và tự động đóng. Bạn có thể đăng tin mới với Gói Tiêu Chuẩn (STANDARD) để tiếp tục tuyển dụng."
+            : $"Tin tuyển dụng \"{job.Title}\" đã hết thời hạn hiển thị theo gói{durationText} và tự động đóng. Bạn có thể đăng tin mới để tiếp tục tuyển dụng.";
     }
 }
