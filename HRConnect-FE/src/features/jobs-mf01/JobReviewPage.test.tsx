@@ -318,6 +318,7 @@ describe('JobReviewPage tab switching with highlight query param', () => {
       },
     } as any);
 
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
     const createProposalSpy = vi.spyOn(serviceAgreementsApi, 'createProposal').mockResolvedValue({
       serviceAgreementId: 'agr-sourcing-1',
       jobId: 'job-sourcing-1',
@@ -376,6 +377,8 @@ describe('JobReviewPage tab switching with highlight query param', () => {
           paymentDueDays: 20,
         })
       );
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['mf01-jobs'] });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['service-fees'] });
     });
   });
 
@@ -478,5 +481,96 @@ describe('JobReviewPage tab switching with highlight query param', () => {
     expect(messageErrorSpy).toHaveBeenCalledWith('Không thể duyệt tin ở trạng thái hiện tại');
     expect(messageSuccessSpy).not.toHaveBeenCalled();
     expect(invalidateSpy).not.toHaveBeenCalled();
+  });
+
+  it('invalidates mf01-jobs and service-fees queries when confirmDeposit succeeds', async () => {
+    const messageSuccessSpy = vi.fn();
+    let onOkPromise: Promise<unknown> | undefined;
+
+    vi.spyOn(AntApp, 'useApp').mockReturnValue({
+      message: {
+        success: messageSuccessSpy,
+        error: vi.fn(),
+        warning: vi.fn(),
+        info: vi.fn(),
+        loading: vi.fn(),
+      } as any,
+      modal: {
+        confirm: vi.fn((config: any) => {
+          onOkPromise = config.onOk();
+        }),
+      } as any,
+      notification: {} as any,
+    });
+
+    const pendingPaymentJob = {
+      jobId: 'job-deposit-ok-1',
+      title: 'DevOps Sourcing Deposit OK',
+      companyName: 'Ops Corp',
+      companyId: 'comp-ops-1',
+      serviceTypeId: 'srv-sourcing',
+      serviceTypeCode: 'CV_SOURCING',
+      currencyCode: 'VND',
+      quantity: 1,
+      status: 'PENDING_PAYMENT',
+      createdAt: '2026-11-01T10:00:00Z',
+      updatedAt: '2026-11-01T12:00:00Z',
+      concurrencyToken: 'token-deposit-ok-1',
+      requirements: [],
+      skills: [],
+      statusHistories: [],
+      hasSubmittedDeposit: true,
+      commercialTerms: {
+        sourcingTarget: 10,
+        pricePerCv: 600000,
+        depositPercent: 50,
+        reviewDays: 7,
+        paymentDueDays: 20,
+      },
+    };
+
+    vi.spyOn(jobsApi, 'getReviewQueue').mockImplementation(async (status) => {
+      if (status === 'PENDING_PAYMENT') return [pendingPaymentJob] as any;
+      if (status === 'ALL') return [pendingPaymentJob] as any;
+      return [];
+    });
+    vi.spyOn(jobsApi, 'getById').mockResolvedValue(pendingPaymentJob as any);
+    const confirmDepositSpy = vi.spyOn(jobsApi, 'confirmDeposit').mockResolvedValue({
+      jobId: 'job-deposit-ok-1',
+      status: 'ACTIVE',
+      message: 'OK',
+    } as any);
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    render(
+      <MemoryRouter initialEntries={['/hr/jobs?status=PENDING_PAYMENT']}>
+        <QueryClientProvider client={queryClient}>
+          <Routes>
+            <Route path="/hr/jobs" element={<JobReviewPage />} />
+          </Routes>
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('DevOps Sourcing Deposit OK')).toBeInTheDocument();
+    });
+
+    const confirmDepositBtn = await screen.findByRole(
+      'button',
+      { name: /Xác nhận đã nhận cọc & Công khai tin/i },
+      { timeout: 8000 }
+    );
+    fireEvent.click(confirmDepositBtn);
+
+    await waitFor(() => {
+      expect(confirmDepositSpy).toHaveBeenCalledWith('job-deposit-ok-1');
+    });
+
+    await onOkPromise;
+
+    expect(messageSuccessSpy).toHaveBeenCalled();
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['mf01-jobs'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['service-fees'] });
   });
 });

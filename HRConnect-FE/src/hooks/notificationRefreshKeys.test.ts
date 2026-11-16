@@ -25,6 +25,8 @@ describe('refreshKeysFor', () => {
 
   it('maps ONLINE_PAYMENT and finance entities to all active finance query keys', () => {
     const financeKeys = [
+      ['mf01-jobs'],
+      ['service-fees'],
       ['client-billing'],
       ['mf05-count'],
       ['mf05-replacement-refunds'],

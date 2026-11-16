@@ -457,7 +457,13 @@ export const JobReviewPage: React.FC = () => {
           actionRoute: `/client/agreements?jobId=${encodeURIComponent(job.jobId)}`,
           relatedEntityId: job.jobId,
         });
-        await Promise.all([detail.refetch(), queue.refetch(), currentAgreementQuery.refetch()]);
+        await Promise.all([
+          detail.refetch(),
+          queue.refetch(),
+          currentAgreementQuery.refetch(),
+          queryClient.invalidateQueries({ queryKey: jobQueryKeys.all }),
+          queryClient.invalidateQueries({ queryKey: ['service-fees'] }),
+        ]);
       } else {
         const res = await approve.mutateAsync({ jobId: job.jobId, token: job.concurrencyToken, input });
         message.success(res.message);
@@ -633,6 +639,7 @@ export const JobReviewPage: React.FC = () => {
           });
           await Promise.all([
             queryClient.invalidateQueries({ queryKey: jobQueryKeys.all }),
+            queryClient.invalidateQueries({ queryKey: ['service-fees'] }),
             queryClient.invalidateQueries({ queryKey: ['jobs', 'review'] }),
             queryClient.invalidateQueries({ queryKey: ['job', jobToConfirm.jobId] }),
             queryClient.invalidateQueries({ queryKey: ['notifications'] }),

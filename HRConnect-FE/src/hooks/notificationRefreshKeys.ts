@@ -13,6 +13,7 @@ const APPLICATION = [
   ['aff-attributions'], ['aff-submissions'], ['sourcing-deliveries'],
 ];
 const FINANCE = [
+  ['mf01-jobs'], ['service-fees'],
   ['mf05-fees'], ['mf05-client-fees'], ['mf05-posting-fees'], ['mf05-commissions'], ['mf05-my-commissions'],
   ['mf05-payouts'], ['mf05-my-payouts'], ['mf05-warranties'], ['mf05-replacement-slots'],
   ['mf05-replacement-slots-summary'], ['mf05-replacement-refunds'], ['mf05-count'],
