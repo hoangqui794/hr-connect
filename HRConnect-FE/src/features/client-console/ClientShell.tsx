@@ -5,8 +5,9 @@
  * account, and a full-width content area with no side gaps. Below 1024px the sidebar becomes an off-canvas menu and
  * phones get a bottom bar with the four most used pages.
  */
-import React, { Suspense, useEffect, useMemo, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { MotionConfig, motion } from 'motion/react';
 import { Dropdown, Tooltip } from 'antd';
 import {
   AppstoreOutlined,
@@ -30,7 +31,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { authService } from '@/services/authService';
 import { AccountAvatar } from '@/components/common/AccountAvatar';
 import { ChangePasswordModal } from '@/components/common/ChangePasswordModal';
-import { AdminPageEnter, AdminPageSkeleton, AdminTopProgress } from '@/features/admin-console/AdminRouteProgress';
+import { AdminTopProgress, MotionPageOutlet } from '@/features/admin-console/AdminRouteProgress';
 import { useCompactLayout } from '@/features/admin-console/useCompactLayout';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import '@/features/admin-console/admin-console.css';
@@ -103,6 +104,7 @@ export const ClientShell: React.FC = () => {
   const fullBleed = location.pathname === '/client/services';
 
   return (
+    <MotionConfig reducedMotion="user">
     <div className={`${FONT} client-console min-h-screen max-w-full overflow-x-clip bg-[#F8FAFC] text-slate-900`}>
       {compact && menuOpen && <div className="fixed inset-0 z-[25] bg-slate-900/40" onClick={() => setMenuOpen(false)} aria-hidden />}
 
@@ -151,13 +153,25 @@ export const ClientShell: React.FC = () => {
                         focusRing,
                         collapsed ? 'justify-center' : '',
                         isActive
-                          ? 'bg-sky-50/90 font-bold text-[#0284C7] shadow-2xs before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-r before:bg-[#0284C7] before:content-[""]'
+                          ? 'font-bold text-[#0284C7]'
                           : 'font-medium text-slate-700 hover:bg-slate-100/80 hover:text-[#0284C7]',
                       ].join(' ')
                     }
                   >
-                    <span className="text-[16px]" aria-hidden>{item.icon}</span>
-                    {!collapsed && <span className="truncate">{item.label}</span>}
+                    {({ isActive }) => (
+                      <>
+                        {isActive && (
+                          <motion.span
+                            layoutId="client-sidebar-active-pill"
+                            transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                            className="absolute inset-0 rounded-lg bg-sky-50/90 shadow-2xs before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-r before:bg-[#0284C7] before:content-['']"
+                            aria-hidden
+                          />
+                        )}
+                        <span className="relative z-10 text-[16px]" aria-hidden>{item.icon}</span>
+                        {!collapsed && <span className="relative z-10 truncate">{item.label}</span>}
+                      </>
+                    )}
                   </NavLink>
                 </Tooltip>
               </li>
@@ -238,11 +252,7 @@ export const ClientShell: React.FC = () => {
 
         <AdminTopProgress offsetLeft={compact ? 0 : width} />
         <main className={fullBleed ? 'w-full min-w-0 pb-24 md:pb-0' : 'w-full min-w-0 px-4 py-5 pb-24 md:pb-6 lg:px-6 lg:py-6'}>
-          <AdminPageEnter pathKey={location.pathname}>
-            <Suspense fallback={<AdminPageSkeleton />}>
-              <Outlet />
-            </Suspense>
-          </AdminPageEnter>
+          <MotionPageOutlet />
         </main>
       </div>
 
@@ -263,6 +273,7 @@ export const ClientShell: React.FC = () => {
 
       <ChangePasswordModal open={showPasswordModal} onClose={() => setShowPasswordModal(false)} />
     </div>
+    </MotionConfig>
   );
 };
 

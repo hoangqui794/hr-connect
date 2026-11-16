@@ -35,11 +35,15 @@ vi.mock('@/features/admin-console/useCompactLayout', () => ({
   useCompactLayout: () => false,
 }));
 
-vi.mock('@/features/admin-console/AdminRouteProgress', () => ({
-  AdminPageEnter: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  AdminPageSkeleton: () => <div data-testid="page-skeleton" />,
-  AdminTopProgress: () => null,
-}));
+vi.mock('@/features/admin-console/AdminRouteProgress', async () => {
+  const { Outlet } = await import('react-router-dom');
+  return {
+    AdminPageEnter: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    AdminPageSkeleton: () => <div data-testid="page-skeleton" />,
+    AdminTopProgress: () => null,
+    MotionPageOutlet: () => <Outlet />,
+  };
+});
 
 vi.mock('@/components/notifications/NotificationBell', () => ({
   NotificationBell: () => <div data-testid="notification-bell" />,

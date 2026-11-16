@@ -6,6 +6,7 @@
  */
 import React, { useLayoutEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { MotionConfig, motion } from 'motion/react';
 import { App as AntApp, Popconfirm, Skeleton } from 'antd';
 import dayjs from 'dayjs';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
@@ -15,10 +16,10 @@ import { candidateConsentApi } from '@/services/api/mf02Api';
 import { getApiError } from '@/services/apiClient';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
-const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
-const CARD = 'rounded-xl border border-solid border-slate-200/80 bg-white shadow-sm';
-const BUTTON = `${FONT} box-border flex h-11 cursor-pointer items-center justify-center rounded-xl px-5 text-[14px] font-semibold no-underline transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`;
-const PRIMARY = `${BUTTON} border-0 bg-[#0369A1] text-white shadow-md shadow-sky-500/20 hover:opacity-95 hover:text-white`;
+const LINK = 'text-[#0369A1] no-underline transition-colors duration-150 hover:text-[#075985] hover:underline';
+const CARD = 'rounded-xl border border-solid border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]';
+const BUTTON = `${FONT} box-border flex h-11 cursor-pointer items-center justify-center rounded-xl px-5 text-[14px] font-semibold no-underline transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-60`;
+const PRIMARY = `${BUTTON} border-0 bg-[#0369A1] text-white hover:bg-[#075985] hover:text-white`;
 const SECONDARY = `${BUTTON} border border-solid border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900`;
 
 const timeLeft = (expiresAt: string) => {
@@ -28,17 +29,19 @@ const timeLeft = (expiresAt: string) => {
 const webLink = (url?: string | null) => (url && /^https?:\/\//i.test(url) ? url : undefined);
 
 const Frame: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className={`${FONT} min-h-screen bg-slate-50 text-[14px] text-slate-900 [line-height:normal]`}>
-    <header className="bg-gradient-to-r from-[#0B132B] via-[#0369A1] to-[#0284C7] text-white shadow-sm">
-      <div className="mx-auto flex h-16 max-w-[1248px] items-center px-6">
-        <Link to="/" className="flex items-center gap-2 text-[18px] font-bold text-white no-underline hover:text-white hover:no-underline">
-          <BrandMark size={32} tone="light" className="block" /> HR Connect
-        </Link>
-        <Link to="/login" className="ml-auto rounded-lg border border-solid border-white/30 bg-white/10 px-4 py-2 text-sm font-medium text-white no-underline backdrop-blur hover:bg-white/20 transition-colors">Đăng nhập</Link>
-      </div>
-    </header>
-    <main className="mx-auto flex max-w-[768px] flex-col gap-4 px-4 pb-14 pt-8 sm:px-6">{children}</main>
-  </div>
+  <MotionConfig reducedMotion="user">
+    <div className={`${FONT} min-h-screen bg-[#F5F7FA] text-[14px] text-slate-900 [line-height:normal]`}>
+      <header className="border-0 border-b border-solid border-white/[0.08] bg-[#0B0D14] text-white">
+        <div className="mx-auto flex h-16 max-w-[1248px] items-center px-6">
+          <Link to="/" className="flex items-center gap-2 text-[18px] font-semibold text-white no-underline hover:text-white hover:no-underline">
+            <BrandMark size={32} tone="light" className="block" /> HR Connect
+          </Link>
+          <Link to="/login" className="ml-auto rounded-lg border border-solid border-white/15 bg-white/[0.08] px-4 py-2 text-sm font-medium text-white no-underline transition-colors hover:bg-white/15">Đăng nhập</Link>
+        </div>
+      </header>
+      <main className="mx-auto flex max-w-[768px] flex-col gap-4 px-4 pb-14 pt-8 sm:px-6">{children}</main>
+    </div>
+  </MotionConfig>
 );
 
 const Notice: React.FC<{ title: string; text: string; action?: React.ReactNode }> = ({ title, text, action }) => (
@@ -161,7 +164,13 @@ export const PublicSubmissionConsentPage: React.FC = () => {
 
   return (
     <Frame>
-      <section aria-labelledby="ct" className={`${CARD} p-5 sm:p-7`}>
+      <motion.section
+        aria-labelledby="ct"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        className={`${CARD} p-5 sm:p-7`}
+      >
         <p className="m-0 text-[#4B5563]">Xin chào <b className="text-[#111827]">{consent.candidateName}</b>,</p>
         <h1 id="ct" className="m-0 mb-2 mt-1.5 text-[22px] font-bold">Bạn được giới thiệu ứng tuyển vào một vị trí</h1>
         <p className="m-0 text-[#4B5563]">Một Affiliate của HR Connect muốn gửi hồ sơ của bạn đến nhà tuyển dụng dưới đây. Hồ sơ <b>chỉ được gửi khi bạn đồng ý</b>.</p>
@@ -245,9 +254,15 @@ export const PublicSubmissionConsentPage: React.FC = () => {
           </Popconfirm>
         </div>
         <p className="m-0 mt-[14px] text-[13px] text-[#6B7280]">Quá hạn mà bạn chưa trả lời, lời giới thiệu sẽ tự hủy. Bạn có thể đăng ký tài khoản sau khi đồng ý để theo dõi kết quả ứng tuyển.</p>
-      </section>
+      </motion.section>
 
-      <section aria-labelledby="privacy" className={`${CARD} px-[22px] py-[18px]`}>
+      <motion.section
+        aria-labelledby="privacy"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.32, delay: 0.06, ease: [0.16, 1, 0.3, 1] }}
+        className={`${CARD} px-[22px] py-[18px]`}
+      >
         <h2 id="privacy" className="m-0 mb-1.5 text-[15px] font-bold">Dữ liệu của bạn được dùng thế nào?</h2>
         <ul className="m-0 pl-5 text-[13px] leading-[1.7] text-[#4B5563]">
           <li>Chỉ nhà tuyển dụng của vị trí này nhận được CV của bạn.</li>
@@ -273,7 +288,7 @@ export const PublicSubmissionConsentPage: React.FC = () => {
             để chúng tôi xử lý.
           </li>
         </ul>
-      </section>
+      </motion.section>
     </Frame>
   );
 };

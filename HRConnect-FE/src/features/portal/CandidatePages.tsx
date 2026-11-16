@@ -7,6 +7,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { motion } from 'motion/react';
 import {
   App as AntApp,
   Button,
@@ -558,7 +559,7 @@ export const CandidateHomePage: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-              {cvList.slice(0, 3).map((cv) => {
+              {cvList.slice(0, 3).map((cv, idx) => {
                 const cvIdentifier = cv.cvId || cv.id || '';
                 const isOnline = Boolean(
                   cv.isOnlineCv ||
@@ -570,18 +571,21 @@ export const CandidateHomePage: React.FC = () => {
                 );
 
                 return (
-                  <div
+                  <motion.div
                     key={cvIdentifier}
-                    className={`rounded-xl p-4 border transition-all duration-200 flex flex-col justify-between ${
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.26, delay: Math.min(idx, 6) * 0.04, ease: [0.16, 1, 0.3, 1] }}
+                    className={`rounded-xl p-4 border transition-[border-color,box-shadow] duration-150 flex flex-col justify-between ${
                       cv.isPrimary
-                        ? 'border-blue-300 bg-blue-50/20 shadow-xs'
+                        ? 'border-blue-300 bg-blue-50/20 shadow-[0_1px_2px_rgba(37,99,235,0.06)]'
                         : 'border-slate-200/80 bg-white hover:border-slate-300'
                     }`}
                   >
                     <div>
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-600 border border-red-200/60 font-black text-xs">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-600 border border-red-200/60 font-semibold text-xs">
                             PDF
                           </span>
                           <div className="min-w-0">
@@ -682,7 +686,7 @@ export const CandidateHomePage: React.FC = () => {
                         </button>
                       )}
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>

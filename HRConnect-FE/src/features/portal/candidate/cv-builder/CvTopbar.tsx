@@ -4,6 +4,7 @@
  * with a custom polished dropdown for font family selection.
  */
 import React, { useState, useRef, useEffect } from 'react';
+import { motion } from 'motion/react';
 import type { CvFontFamily } from '@/types/api/cvBuilder';
 
 export interface CvTopbarProps {
@@ -227,9 +228,11 @@ export const CvTopbar: React.FC<CvTopbarProps> = ({
               </svg>
             </button>
 
-            <button
+            <motion.button
               type="button"
               aria-pressed={isPrimary}
+              whileTap={{ scale: 0.97 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 32 }}
               onClick={() => onPrimaryChange(!isPrimary)}
               className={`hidden h-[34px] cursor-pointer items-center gap-1.5 rounded-[7px] border border-solid px-2.5 text-[12px] font-semibold transition-colors duration-150 sm:inline-flex ${
                 isPrimary
@@ -238,7 +241,7 @@ export const CvTopbar: React.FC<CvTopbarProps> = ({
               }`}
             >
               <span>{isPrimary ? '✓ CV chính' : 'Đặt làm CV chính'}</span>
-            </button>
+            </motion.button>
 
             <button
               type="button"

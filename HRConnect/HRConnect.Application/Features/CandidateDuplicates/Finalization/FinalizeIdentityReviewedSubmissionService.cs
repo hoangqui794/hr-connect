@@ -216,6 +216,20 @@ public sealed class FinalizeIdentityReviewedSubmissionService : IFinalizeIdentit
                 application.ApplicationId,
                 now,
                 cancellationToken);
+
+            if (_notifier != null)
+            {
+                await _notifier.NotifyUsersAsync(
+                    [submission.Candidate.UserId.Value],
+                    new AppNotice(
+                        "ACCOUNT",
+                        "Hồ sơ đã được tiếp nhận",
+                        $"Hồ sơ của bạn cho vị trí {submission.Job.Title} đã hoàn tất đối chiếu và được tiếp nhận.",
+                        "APPLICATION",
+                        application.ApplicationId,
+                        $"/candidate/applications/{application.ApplicationId}"),
+                    cancellationToken);
+            }
         }
         await AddNotificationAsync(
             submission.SubmittedBy,
@@ -225,6 +239,19 @@ public sealed class FinalizeIdentityReviewedSubmissionService : IFinalizeIdentit
             submission.SubmissionId,
             now,
             cancellationToken);
+        if (_notifier != null)
+        {
+            await _notifier.NotifyUsersAsync(
+                [submission.SubmittedBy],
+                new AppNotice(
+                    "ACCOUNT",
+                    "Ứng viên đã hoàn tất đối chiếu",
+                    $"Hồ sơ giới thiệu cho vị trí {submission.Job.Title} đã được tiếp nhận.",
+                    "SUBMISSION",
+                    submission.SubmissionId,
+                    "/affiliate/submissions"),
+                cancellationToken);
+        }
 
         return new IdentityReviewFinalizationResult(
             submission.SubmissionId,

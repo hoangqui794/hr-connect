@@ -636,6 +636,20 @@ public class SubmitCandidateCommandHandler : IRequestHandler<SubmitCandidateComm
                     IsRead = false,
                     CreatedAt = now
                 }, cancellationToken);
+
+                if (_notifier != null)
+                {
+                    await _notifier.NotifyUsersAsync(
+                        [candidate.UserId.Value],
+                        new AppNotice(
+                            "SUBMISSION",
+                            "Yêu cầu xác nhận hồ sơ ứng tuyển",
+                            $"Một Cộng tác viên (Affiliate) đã giới thiệu bạn vào vị trí {job.Title}. Vui lòng kiểm tra và xác nhận.",
+                            "SUBMISSION",
+                            submission.SubmissionId,
+                            $"/candidate/consents/{submission.SubmissionId}"),
+                        cancellationToken);
+                }
             }
 
             await _auditLogService.AddAsync(new AuditEntry

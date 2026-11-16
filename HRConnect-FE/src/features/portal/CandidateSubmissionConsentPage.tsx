@@ -5,6 +5,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { MotionConfig, motion } from 'motion/react';
 import { App as AntApp, Popconfirm, Skeleton } from 'antd';
 import dayjs from 'dayjs';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -13,10 +14,10 @@ import { candidateConsentApi } from '@/services/api/mf02Api';
 import { getApiError } from '@/services/apiClient';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
-const LINK = 'text-[#0369A1] no-underline transition-colors duration-200 hover:text-[#075985] hover:underline';
-const CARD = 'rounded-xl border border-solid border-slate-200/80 bg-white shadow-sm';
-const BUTTON = `${FONT} box-border inline-flex h-11 cursor-pointer items-center justify-center rounded-xl px-5 text-[14px] font-semibold no-underline transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`;
-const PRIMARY = `${BUTTON} border-0 bg-[#0369A1] text-white shadow-md shadow-sky-500/20 hover:opacity-95 hover:text-white`;
+const LINK = 'text-[#0369A1] no-underline transition-colors duration-150 hover:text-[#075985] hover:underline';
+const CARD = 'rounded-xl border border-solid border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]';
+const BUTTON = `${FONT} box-border inline-flex h-11 cursor-pointer items-center justify-center rounded-xl px-5 text-[14px] font-semibold no-underline transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-60`;
+const PRIMARY = `${BUTTON} border-0 bg-[#0369A1] text-white hover:bg-[#075985] hover:text-white`;
 const SECONDARY = `${BUTTON} border border-solid border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900`;
 
 const consentKey = (submissionId: string) => ['candidate-submission-consent', submissionId] as const;
@@ -166,14 +167,25 @@ export const CandidateSubmissionConsentPage: React.FC = () => {
   const cvUrl = webLink(consent.cvDownloadUrl);
 
   return (
-    <div className={`${FONT} candidate-page candidate-consent-page mx-auto flex max-w-[768px] flex-col gap-4 py-2 text-[14px] text-[#1F2937] [line-height:normal] animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
-      <div>
-        <Link to="/candidate/applications" className={`inline-flex items-center text-[13.5px] font-medium ${LINK}`}>
-          ‹ Quay lại đơn ứng tuyển
-        </Link>
-      </div>
+    <MotionConfig reducedMotion="user">
+      <div className={`${FONT} candidate-page candidate-consent-page mx-auto flex max-w-[768px] flex-col gap-4 py-2 text-[14px] text-[#1F2937] [line-height:normal]`}>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <Link to="/candidate/applications" className={`inline-flex items-center text-[13.5px] font-medium ${LINK}`}>
+            ‹ Quay lại đơn ứng tuyển
+          </Link>
+        </motion.div>
 
-      <section aria-labelledby="consent-heading" className={`${CARD} p-5 sm:p-7`}>
+        <motion.section
+          aria-labelledby="consent-heading"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.32, delay: 0.04, ease: [0.16, 1, 0.3, 1] }}
+          className={`${CARD} p-5 sm:p-7`}
+        >
         <p className="m-0 text-[#4B5563]">
           Xin chào <b className="font-semibold text-[#111827]">{consent.candidateName}</b>,
         </p>
@@ -291,9 +303,15 @@ export const CandidateSubmissionConsentPage: React.FC = () => {
         <p className="m-0 mt-[14px] text-[13px] text-[#6B7280]">
           Quá hạn mà bạn chưa trả lời, lời giới thiệu sẽ tự hủy. Sau khi đồng ý, bạn có thể theo dõi tiến trình trực tiếp tại mục Đơn ứng tuyển.
         </p>
-      </section>
+      </motion.section>
 
-      <section aria-labelledby="consent-privacy" className={`${CARD} px-[22px] py-[18px]`}>
+      <motion.section
+        aria-labelledby="consent-privacy"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.34, delay: 0.09, ease: [0.16, 1, 0.3, 1] }}
+        className={`${CARD} px-[22px] py-[18px]`}
+      >
         <h2 id="consent-privacy" className="m-0 mb-1.5 text-[15px] font-bold text-[#1F2937]">
           Dữ liệu của bạn được dùng thế nào?
         </h2>
@@ -321,8 +339,9 @@ export const CandidateSubmissionConsentPage: React.FC = () => {
             để chúng tôi xử lý.
           </li>
         </ul>
-      </section>
-    </div>
+      </motion.section>
+      </div>
+    </MotionConfig>
   );
 };
 

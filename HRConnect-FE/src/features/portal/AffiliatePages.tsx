@@ -7,6 +7,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { motion } from 'motion/react';
 import {
   Alert,
   App as AntApp,
@@ -1188,7 +1189,7 @@ export const AffiliateSubmissionsPage: React.FC = () => {
   return (
     <div className="affiliate-submissions-page">
       <h1 className="sr-only">Lượt giới thiệu</h1>
-      <div role="tablist" aria-label="Lọc theo trạng thái" className="mb-4 flex flex-wrap gap-2">
+      <div role="tablist" aria-label="Lọc theo trạng thái" className="mb-4 inline-flex flex-wrap items-center gap-1 rounded-2xl bg-slate-200/70 p-1">
         {REFERRAL_GROUPS.map((g) => {
           const active = g.key === group;
           const count = g.key === 'all' ? all.length : all.filter((r) => r.rowGroup === g.key).length;
@@ -1199,13 +1200,21 @@ export const AffiliateSubmissionsPage: React.FC = () => {
               role="tab"
               aria-selected={active}
               onClick={() => update({ status: g.key === 'all' ? undefined : g.key })}
-              className={`h-9 cursor-pointer rounded-full border border-solid px-3.5 text-[13px] font-semibold transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0284C7] ${
+              className={`relative h-8 cursor-pointer rounded-xl border-0 bg-transparent px-3.5 text-[13px] transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0284C7] ${
                 active
-                  ? 'border-[#0284C7] bg-[#0284C7] text-white shadow-sm shadow-sky-500/25'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                  ? 'font-semibold text-slate-900'
+                  : 'font-medium text-slate-600 hover:text-slate-900'
               }`}
             >
-              {g.label} · {list.isLoading ? '…' : count}
+              {active && (
+                <motion.span
+                  layoutId="affiliate-submission-filter-pill"
+                  transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                  className="absolute inset-0 rounded-xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)]"
+                  aria-hidden
+                />
+              )}
+              <span className="relative z-10">{g.label} · {list.isLoading ? '…' : count}</span>
             </button>
           );
         })}
