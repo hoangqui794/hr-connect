@@ -990,4 +990,174 @@ public class ServiceAgreementFlowTests
             It.IsAny<CancellationToken>()), Times.Once);
         _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task CreateProposal_CvSourcing_WithExplicitDepositPercent_ShouldUpdateJobAndCalculateDepositWithNewPercent()
+    {
+        var (job, company, clientUser, clientMember) = CreateTestJob(ServiceTypeCodes.CvSourcing);
+        job.DepositPercent = 50m;
+        job.ServiceType = new ServiceType { ServiceTypeId = job.ServiceTypeId, Code = ServiceTypeCodes.CvSourcing };
+
+        var internalHrId = Guid.NewGuid();
+        _jobs.Setup(x => x.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job);
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceTypeCodes.CvSourcing);
+        _agreements.Setup(x => x.GetHistoryByJobIdAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ServiceAgreement>());
+
+        var adminSettings = new Mock<IAdminBusinessSettings>();
+        adminSettings.Setup(x => x.GetDecimalAsync(BusinessSettingKeys.CvSourcingPricePerCv, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(600_000m);
+        adminSettings.Setup(x => x.GetIntAsync(BusinessSettingKeys.CvSourcingReviewDays, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(7);
+        adminSettings.Setup(x => x.GetIntAsync(BusinessSettingKeys.CvSourcingPaymentDueDays, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(20);
+        adminSettings.Setup(x => x.GetDecimalAsync(BusinessSettingKeys.CvSourcingDepositPercent, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(50m);
+
+        ServiceAgreement? addedAgreement = null;
+        _agreements.Setup(x => x.AddAsync(It.IsAny<ServiceAgreement>(), It.IsAny<CancellationToken>()))
+            .Callback<ServiceAgreement, CancellationToken>((sa, _) => addedAgreement = sa)
+            .Returns(Task.CompletedTask);
+
+        var createHandler = new CreateServiceAgreementProposalCommandHandler(
+            _jobs.Object, _agreements.Object, _pdfRenderer.Object, _storage.Object,
+            _notifications.Object, _audit.Object, _uow.Object, adminSettings.Object);
+
+        var proposalResult = await createHandler.Handle(new CreateServiceAgreementProposalCommand
+        {
+            JobId = job.JobId,
+            UserId = internalHrId,
+            ConcurrencyToken = job.ConcurrencyToken,
+            SourcingTarget = 10,
+            PricePerQualifiedCv = 600_000m,
+            ReviewDays = 7,
+            PaymentDueDays = 20,
+            DepositPercent = 35m
+        }, CancellationToken.None);
+
+        job.DepositPercent.Should().Be(35m);
+        proposalResult.DepositPercent.Should().Be(35m);
+        addedAgreement.Should().NotBeNull();
+
+        addedAgreement!.Status = ServiceAgreementStatuses.Accepted;
+        var challenge = new ServiceAgreementSignatureChallenge
+        {
+            ChallengeId = Guid.NewGuid(),
+            ServiceAgreementId = addedAgreement.ServiceAgreementId,
+            SignerUserId = clientUser.UserId,
+            OtpHash = "HASH_123456",
+            ExpiresAt = DateTime.UtcNow.AddMinutes(10)
+        };
+
+        _agreements.Setup(x => x.GetByIdForUpdateAsync(addedAgreement.ServiceAgreementId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(addedAgreement);
+        _agreements.Setup(x => x.GetActiveChallengeAsync(addedAgreement.ServiceAgreementId, clientUser.UserId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(challenge);
+        _companyUsers.Setup(x => x.GetByUserIdAsync(clientUser.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(clientMember);
+        _users.Setup(x => x.GetByIdAsync(clientUser.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(clientUser);
+
+        var financeRepo = new Mock<IFinanceRepository>();
+        financeRepo.Setup(x => x.GetJobServiceFeesForUpdateAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ServiceFee>());
+        ServiceFee? createdDeposit = null;
+        financeRepo.Setup(x => x.AddServiceFeeAsync(It.IsAny<ServiceFee>(), It.IsAny<CancellationToken>()))
+            .Callback<ServiceFee, CancellationToken>((fee, _) => createdDeposit = fee)
+            .Returns(Task.CompletedTask);
+
+        var sourcingFinance = new SourcingFinanceService(
+            financeRepo.Object,
+            Mock.Of<ISourcingDeliveryRepository>(),
+            _audit.Object,
+            adminSettings.Object,
+            Mock.Of<Microsoft.Extensions.Logging.ILogger<SourcingFinanceService>>());
+
+        var signHandler = new SignServiceAgreementCommandHandler(
+            _agreements.Object, _jobs.Object, _companyUsers.Object, _users.Object, _otpService.Object,
+            _pdfRenderer.Object, _storage.Object, _notifications.Object, _audit.Object, _uow.Object,
+            sourcingFinance, adminSettings.Object);
+
+        await signHandler.Handle(new SignServiceAgreementCommand
+        {
+            JobId = job.JobId,
+            AgreementId = addedAgreement.ServiceAgreementId,
+            Otp = "123456",
+            ConsentAccepted = true,
+            UserId = clientUser.UserId,
+            ConcurrencyToken = addedAgreement.ConcurrencyToken
+        }, CancellationToken.None);
+
+        createdDeposit.Should().NotBeNull();
+        createdDeposit!.Kind.Should().Be(ServiceFeeKinds.Deposit);
+        createdDeposit.Amount.Should().Be(2_100_000m); // 10 * 600,000 * 35%
+        createdDeposit.FeeMultiplier.Should().Be(0.35m);
+    }
+
+    [Fact]
+    public async Task CreateProposal_CvSourcing_WithOutOfRangeDepositPercent_ShouldThrowBadRequest()
+    {
+        var (job, _, _, _) = CreateTestJob(ServiceTypeCodes.CvSourcing);
+        _jobs.Setup(x => x.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job);
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceTypeCodes.CvSourcing);
+
+        var depositBounds = BusinessSettingKeys.Get(BusinessSettingKeys.CvSourcingDepositPercent);
+        var invalidPercent = depositBounds.Max + 10m;
+
+        var adminSettings = new Mock<IAdminBusinessSettings>();
+        adminSettings.Setup(x => x.GetDecimalAsync(BusinessSettingKeys.CvSourcingPricePerCv, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(600_000m);
+        adminSettings.Setup(x => x.GetIntAsync(BusinessSettingKeys.CvSourcingReviewDays, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(7);
+        adminSettings.Setup(x => x.GetIntAsync(BusinessSettingKeys.CvSourcingPaymentDueDays, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(20);
+
+        var createHandler = new CreateServiceAgreementProposalCommandHandler(
+            _jobs.Object, _agreements.Object, _pdfRenderer.Object, _storage.Object,
+            _notifications.Object, _audit.Object, _uow.Object, adminSettings.Object);
+
+        var act = () => createHandler.Handle(new CreateServiceAgreementProposalCommand
+        {
+            JobId = job.JobId,
+            UserId = Guid.NewGuid(),
+            ConcurrencyToken = job.ConcurrencyToken,
+            SourcingTarget = 10,
+            PricePerQualifiedCv = 600_000m,
+            ReviewDays = 7,
+            PaymentDueDays = 20,
+            DepositPercent = invalidPercent
+        }, CancellationToken.None);
+
+        var ex = await act.Should().ThrowAsync<BadRequestException>();
+        ex.Which.ErrorCode.Should().Be("TERM_OUT_OF_RANGE");
+    }
+
+    [Fact]
+    public async Task CreateProposal_CvSourcing_MissingAdminSettingsAndNoDepositPercent_ShouldThrowConflict()
+    {
+        var (job, _, _, _) = CreateTestJob(ServiceTypeCodes.CvSourcing);
+        job.DepositPercent = null;
+        _jobs.Setup(x => x.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(job);
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceTypeCodes.CvSourcing);
+
+        var createHandler = new CreateServiceAgreementProposalCommandHandler(
+            _jobs.Object, _agreements.Object, _pdfRenderer.Object, _storage.Object,
+            _notifications.Object, _audit.Object, _uow.Object, adminSettings: null);
+
+        var act = () => createHandler.Handle(new CreateServiceAgreementProposalCommand
+        {
+            JobId = job.JobId,
+            UserId = Guid.NewGuid(),
+            ConcurrencyToken = job.ConcurrencyToken,
+            SourcingTarget = 10,
+            PricePerQualifiedCv = 600_000m,
+            ReviewDays = 7,
+            PaymentDueDays = 20,
+            DepositPercent = null
+        }, CancellationToken.None);
+
+        var ex = await act.Should().ThrowAsync<ConflictException>();
+        ex.Which.ErrorCode.Should().Be("SOURCING_DEPOSIT_TERMS_MISSING");
+    }
 }

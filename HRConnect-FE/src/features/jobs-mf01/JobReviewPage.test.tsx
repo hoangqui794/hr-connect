@@ -252,4 +252,130 @@ describe('JobReviewPage tab switching with highlight query param', () => {
       );
     });
   });
+
+  it('includes depositPercent from CommercialTermsApprovalModal in createProposal payload for CV_SOURCING job', async () => {
+    const sourcingJob = {
+      jobId: 'job-sourcing-1',
+      title: 'Backend .NET Sourcing',
+      companyName: 'Sourcing Corp',
+      companyId: 'comp-sourcing-1',
+      serviceTypeId: 'srv-sourcing',
+      serviceTypeCode: 'CV_SOURCING',
+      currencyCode: 'VND',
+      quantity: 2,
+      status: 'PENDING_REVIEW',
+      createdAt: '2026-11-01T10:00:00Z',
+      updatedAt: '2026-11-01T12:00:00Z',
+      concurrencyToken: 'token-sourcing-1',
+      requirements: [],
+      skills: [],
+      statusHistories: [],
+      commercialTerms: {
+        sourcingTarget: 10,
+        pricePerCv: 600000,
+        depositPercent: 50,
+        reviewDays: 7,
+        paymentDueDays: 20,
+      },
+    };
+
+    vi.spyOn(jobsApi, 'getReviewQueue').mockImplementation(async (status) => {
+      if (status === 'PENDING_REVIEW') return [sourcingJob] as any;
+      if (status === 'ALL') return [sourcingJob] as any;
+      return [];
+    });
+    vi.spyOn(jobsApi, 'getById').mockResolvedValue(sourcingJob as any);
+    vi.spyOn(jobsApi, 'getCommercialTermsDefaults').mockResolvedValue({
+      jobId: 'job-sourcing-1',
+      serviceTypeCode: 'CV_SOURCING',
+      proposed: {
+        sourcingTarget: 10,
+        pricePerCv: 600000,
+        depositPercent: 50,
+        reviewDays: 7,
+        paymentDueDays: 20,
+      },
+      adminDefaults: {
+        sourcingTarget: 10,
+        pricePerCv: 600000,
+        depositPercent: 50,
+        reviewDays: 7,
+        paymentDueDays: 20,
+      },
+      prefill: {
+        sourcingTarget: 10,
+        pricePerCv: 600000,
+        depositPercent: 35,
+        reviewDays: 7,
+        paymentDueDays: 20,
+      },
+      ranges: {
+        sourcingTarget: { min: 1, max: 500 },
+        pricePerCv: { min: 1000, max: 100000000 },
+        depositPercent: { min: 0, max: 100 },
+        reviewDays: { min: 1, max: 30 },
+        paymentDueDays: { min: 1, max: 120 },
+      },
+    } as any);
+
+    const createProposalSpy = vi.spyOn(serviceAgreementsApi, 'createProposal').mockResolvedValue({
+      serviceAgreementId: 'agr-sourcing-1',
+      jobId: 'job-sourcing-1',
+      companyId: 'comp-sourcing-1',
+      version: 1,
+      serviceTypeCode: 'CV_SOURCING',
+      status: 'SENT_TO_CLIENT',
+      concurrencyToken: 'agr-token-1',
+      isCurrent: true,
+      sourcingTarget: 10,
+      pricePerQualifiedCv: 600000,
+      depositPercent: 35,
+      reviewDays: 7,
+      paymentDueDays: 20,
+      hasSignedDocument: false,
+      hasUnsignedDocument: true,
+      companyName: 'Sourcing Corp',
+      createdByUserId: 'hr-1',
+      createdAt: '2026-11-01T12:05:00Z',
+    } as any);
+
+    render(
+      <AntApp>
+        <MemoryRouter initialEntries={['/hr/jobs?status=PENDING_REVIEW']}>
+          <QueryClientProvider client={queryClient}>
+            <Routes>
+              <Route path="/hr/jobs" element={<JobReviewPage />} />
+            </Routes>
+          </QueryClientProvider>
+        </MemoryRouter>
+      </AntApp>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Backend .NET Sourcing')).toBeInTheDocument();
+    });
+
+    const openModalBtn = await screen.findByRole('button', { name: /Duyệt & Ký điều khoản/i }, { timeout: 8000 });
+    fireEvent.click(openModalBtn);
+
+    const depositInput = await screen.findByLabelText(/Tỷ lệ cọc/i, {}, { timeout: 8000 });
+    expect((depositInput as HTMLInputElement).value).toBe('35');
+
+    const submitBtn = await screen.findByRole('button', { name: /Gửi hợp đồng cho Doanh nghiệp/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(createProposalSpy).toHaveBeenCalledWith(
+        'job-sourcing-1',
+        expect.objectContaining({
+          concurrencyToken: 'token-sourcing-1',
+          sourcingTarget: 10,
+          pricePerQualifiedCv: 600000,
+          depositPercent: 35,
+          reviewDays: 7,
+          paymentDueDays: 20,
+        })
+      );
+    });
+  });
 });

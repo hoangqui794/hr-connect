@@ -473,6 +473,7 @@ export interface CreateServiceAgreementProposalInput {
   pricePerQualifiedCv?: number;
   sourcingTarget?: number;
   reviewDays?: number;
+  depositPercent?: number;
   agreementReference?: string;
   agreementNote?: string;
 }

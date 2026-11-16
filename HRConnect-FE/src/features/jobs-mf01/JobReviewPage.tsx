@@ -412,6 +412,7 @@ export const JobReviewPage: React.FC = () => {
     try {
       if (needsTerms) {
         const terms = input.commercialTerms;
+        const rawDepositPercent = terms?.depositPercent ?? job.commercialTerms?.depositPercent;
         await serviceAgreementsApi.createProposal(job.jobId, {
           concurrencyToken: job.concurrencyToken,
           feeMultiplier: terms?.feeMultiplier != null ? Number(terms.feeMultiplier) : undefined,
@@ -420,6 +421,7 @@ export const JobReviewPage: React.FC = () => {
           sourcingTarget: terms?.sourcingTarget != null ? Number(terms.sourcingTarget) : undefined,
           pricePerQualifiedCv: terms?.pricePerCv != null ? Number(terms.pricePerCv) : undefined,
           reviewDays: terms?.reviewDays != null ? Number(terms.reviewDays) : undefined,
+          depositPercent: rawDepositPercent != null ? Number(rawDepositPercent) : undefined,
           agreementReference: input.agreementReference || undefined,
           agreementNote: input.note || undefined,
         });

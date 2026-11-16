@@ -28,6 +28,7 @@ public sealed class CreateServiceAgreementProposalCommand : IRequest<ServiceAgre
     public decimal? PricePerQualifiedCv { get; set; }
     public int? SourcingTarget { get; set; }
     public int? ReviewDays { get; set; }
+    public decimal? DepositPercent { get; set; }
     public string? AgreementReference { get; set; }
     public string? AgreementNote { get; set; }
 }
@@ -145,11 +146,29 @@ public sealed class CreateServiceAgreementProposalCommandHandler : IRequestHandl
             resolvedReview = review;
             resolvedPaymentDue = paymentDue;
 
-            if (job.DepositPercent is not > 0m)
+            if (request.DepositPercent.HasValue)
             {
-                job.DepositPercent = _adminSettings != null
-                    ? await _adminSettings.GetDecimalAsync(BusinessSettingKeys.CvSourcingDepositPercent, ct)
-                    : 50m;
+                var depositBounds = BusinessSettingKeys.Get(BusinessSettingKeys.CvSourcingDepositPercent);
+
+                if (request.DepositPercent.Value < depositBounds.Min || request.DepositPercent.Value > depositBounds.Max)
+                {
+                    throw new BadRequestException(
+                        $"Tỷ lệ đặt cọc không hợp lệ ({request.DepositPercent.Value:G29}%). Khoảng cho phép: {depositBounds.Min:G29}% - {depositBounds.Max:G29}%.",
+                        "TERM_OUT_OF_RANGE");
+                }
+
+                job.DepositPercent = request.DepositPercent.Value;
+            }
+            else if (job.DepositPercent is not > 0m)
+            {
+                if (_adminSettings == null)
+                {
+                    throw new ConflictException(
+                        "Chưa có cấu hình tỷ lệ đặt cọc mặc định cho dịch vụ CV Sourcing.",
+                        "SOURCING_DEPOSIT_TERMS_MISSING");
+                }
+
+                job.DepositPercent = await _adminSettings.GetDecimalAsync(BusinessSettingKeys.CvSourcingDepositPercent, ct);
             }
         }
 
