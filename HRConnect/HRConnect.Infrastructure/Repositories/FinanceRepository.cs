@@ -101,10 +101,7 @@ public class FinanceRepository : IFinanceRepository
         Guid replacementSlotId,
         CancellationToken cancellationToken)
     {
-        if (string.Equals(
-                _context.Database.ProviderName,
-                "Npgsql.EntityFrameworkCore.PostgreSQL",
-                StringComparison.Ordinal))
+        if (IsNpgsql())
         {
             return _context.ReplacementSlots
                 .FromSqlInterpolated($"SELECT * FROM public.replacement_slot WHERE replacement_slot_id = {replacementSlotId} FOR UPDATE")
@@ -116,6 +113,9 @@ public class FinanceRepository : IFinanceRepository
         return _context.ReplacementSlots
             .FirstOrDefaultAsync(s => s.ReplacementSlotId == replacementSlotId, cancellationToken);
     }
+
+    private bool IsNpgsql() =>
+        string.Equals(_context.Database.ProviderName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal);
 
     public async Task<IReadOnlyList<Guid>> GetExpiredReplacementSlotIdsAsync(DateTime now, int take, CancellationToken cancellationToken = default) =>
         await _context.ReplacementSlots.AsNoTracking()
@@ -274,18 +274,38 @@ public class FinanceRepository : IFinanceRepository
             .ToListAsync(cancellationToken);
 
     public Task<ServiceFee?> GetServiceFeeForUpdateAsync(Guid serviceFeeId, CancellationToken cancellationToken = default) =>
-        _context.ServiceFees
+        BuildServiceFeeForUpdateQuery(serviceFeeId).FirstOrDefaultAsync(cancellationToken);
+
+    internal IQueryable<ServiceFee> BuildServiceFeeForUpdateQuery(Guid serviceFeeId)
+    {
+        var query = IsNpgsql()
+            ? _context.ServiceFees
+                .FromSqlInterpolated($"SELECT * FROM public.service_fee WHERE service_fee_id = {serviceFeeId} FOR UPDATE")
+                .AsTracking()
+            : _context.ServiceFees.Where(fee => fee.ServiceFeeId == serviceFeeId);
+
+        return query
             .Include(fee => fee.Company)
-            .Include(fee => fee.Placement!).ThenInclude(placement => placement.Reconciliation)
-            .FirstOrDefaultAsync(fee => fee.ServiceFeeId == serviceFeeId, cancellationToken);
+            .Include(fee => fee.Placement!).ThenInclude(placement => placement.Reconciliation);
+    }
 
     public Task<Commission?> GetCommissionForUpdateAsync(Guid commissionId, CancellationToken cancellationToken = default) =>
-        _context.Commissions
+        BuildCommissionForUpdateQuery(commissionId).FirstOrDefaultAsync(cancellationToken);
+
+    internal IQueryable<Commission> BuildCommissionForUpdateQuery(Guid commissionId)
+    {
+        var query = IsNpgsql()
+            ? _context.Commissions
+                .FromSqlInterpolated($"SELECT * FROM public.commission WHERE commission_id = {commissionId} FOR UPDATE")
+                .AsTracking()
+            : _context.Commissions.Where(c => c.CommissionId == commissionId);
+
+        return query
             .Include(c => c.Placement!).ThenInclude(p => p.ServiceFee)
             .Include(c => c.Placement!).ThenInclude(p => p.ReplacementSlot!).ThenInclude(s => s.ServiceFee)
             .Include(c => c.SourcingDelivery!).ThenInclude(d => d.Job)
-            .Include(c => c.Payouts)
-            .FirstOrDefaultAsync(c => c.CommissionId == commissionId, cancellationToken);
+            .Include(c => c.Payouts);
+    }
 
     public Task<Job?> GetJobForFinanceAsync(Guid jobId, CancellationToken cancellationToken = default) =>
         _context.Jobs

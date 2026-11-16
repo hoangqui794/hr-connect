@@ -41,6 +41,14 @@ public sealed class OnlinePaymentRepository(ApplicationDbContext context) : IOnl
     public Task<OnlinePayment?> GetByTxnRefAsync(string txnRef, CancellationToken cancellationToken = default) =>
         context.OnlinePayments.FirstOrDefaultAsync(p => p.TxnRef == txnRef, cancellationToken);
 
+    public void Update(OnlinePayment payment)
+    {
+        if (context.Entry(payment).State == EntityState.Detached)
+        {
+            context.OnlinePayments.Update(payment);
+        }
+    }
+
     public async Task<bool> TryClaimAsync(
         Guid onlinePaymentId, DateTime now, DateTime processingStaleBefore,
         CancellationToken cancellationToken = default)

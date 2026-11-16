@@ -100,153 +100,157 @@ public sealed class SettlementCommandHandlers :
             throw new BadRequestException("Ngày thanh toán không được ở tương lai.");
         }
 
-        var fee = await _financeRepository.GetServiceFeeForUpdateAsync(request.ServiceFeeId, cancellationToken)
-            ?? throw new NotFoundException("Không tìm thấy công nợ phí dịch vụ.");
-        if (fee.Status is not (ServiceFeeStates.Pending or ServiceFeeStates.Due or ServiceFeeStates.Overdue))
+        return await ExecuteInTransactionAsync(async () =>
         {
-            throw new ConflictException($"Chỉ ghi nhận thanh toán cho công nợ PENDING, DUE hoặc OVERDUE. Trạng thái hiện tại: {fee.Status}.");
-        }
-
-        if (fee.Placement?.Reconciliation is { Status: not PlacementReconciliationStates.Confirmed })
-        {
-            throw new ConflictException("Phí placement chỉ được ghi nhận thanh toán sau khi Internal HR hoàn tất đối soát.");
-        }
-
-        var oldStatus = fee.Status;
-        fee.Status = ServiceFeeStates.Paid;
-        fee.PaidAt = DateTime.SpecifyKind(request.PaidAt, DateTimeKind.Utc);
-        fee.PaymentReference = request.PaymentReference.Trim();
-        fee.RecordedBy = request.CurrentUserId;
-        fee.UpdatedAt = DateTime.UtcNow;
-
-        await AuditAsync(AuditActions.ServiceFeePaymentRecorded, "SERVICE_FEE", fee.ServiceFeeId, request.CurrentUserId,
-            new { status = oldStatus }, new { status = fee.Status, fee.PaidAt, fee.PaymentReference, fee.Amount }, cancellationToken);
-
-        // S2: a replacement slot waiting for this payment opens now (docs/main-flows.md (MF-05, suất thay thế)).
-        var slot = await _financeRepository.GetReplacementSlotByServiceFeeForUpdateAsync(fee.ServiceFeeId, cancellationToken);
-        if (slot is { Status: ReplacementSlotStates.WaitingPayment })
-        {
-            await ReplacementSlotLifecycle.OpenAsync(
-                slot, slot.Job, fee.UpdatedAt, request.CurrentUserId, _financeRepository, _notificationRepository, cancellationToken);
-            await ReplacementSlotLifecycle.NotifyAffiliateOpenAsync(
-                slot, slot.Job, extended: false, _financeRepository, _notifier, cancellationToken);
-            await AuditAsync(AuditActions.ReplacementSlotOpened, "REPLACEMENT_SLOT", slot.ReplacementSlotId, request.CurrentUserId,
-                new { status = ReplacementSlotStates.WaitingPayment }, new { slot.Status, slot.OpenedAt, slot.ExpiresAt }, cancellationToken);
-        }
-
-        // The Client sees its receivable change to paid without reloading.
-        if (_notifier != null)
-        {
-            await _notifier.NotifyCompanyAsync(fee.CompanyId, new AppNotice(
-                "SERVICE_FEE", ServiceFeeKinds.OwedToClient.Contains(fee.Kind) ? "Đã hoàn tiền" : "Đã ghi nhận thanh toán",
-                $"HR Connect đã {(ServiceFeeKinds.OwedToClient.Contains(fee.Kind) ? "hoàn" : "ghi nhận khoản thanh toán")} {fee.Amount:N0} {fee.CurrencyCode} (mã tham chiếu {fee.PaymentReference}).",
-                "SERVICE_FEE", fee.ServiceFeeId, "/client/dashboard"), cancellationToken);
-
-            if (!ServiceFeeKinds.OwedToClient.Contains(fee.Kind))
+            var fee = await _financeRepository.GetServiceFeeForUpdateAsync(request.ServiceFeeId, cancellationToken)
+                ?? throw new NotFoundException("Không tìm thấy công nợ phí dịch vụ.");
+            if (fee.Status is not (ServiceFeeStates.Pending or ServiceFeeStates.Due or ServiceFeeStates.Overdue))
             {
-                await _notifier.NotifyRoleAsync("PLATFORM_ADMIN", new AppNotice(
-                    "SERVICE_FEE",
-                    "Đã ghi nhận thanh toán phí dịch vụ",
-                    $"Đã ghi nhận khoản thanh toán {fee.Amount:N0} {fee.CurrencyCode} (mã tham chiếu {fee.PaymentReference}) cho công ty {fee.Company?.CompanyName ?? "Doanh nghiệp"}.",
-                    "SERVICE_FEE",
-                    fee.ServiceFeeId,
-                    "/admin/payouts"), cancellationToken);
+                throw new ConflictException($"Chỉ ghi nhận thanh toán cho công nợ PENDING, DUE hoặc OVERDUE. Trạng thái hiện tại: {fee.Status}.");
             }
-        }
-        if (fee.Kind == ServiceFeeKinds.Deposit && fee.JobId is Guid jobId)
-        {
-            await OpenJobAfterDepositAsync(jobId, request.CurrentUserId, cancellationToken);
-        }
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-        return new ServiceFeePaymentResponse(fee.ServiceFeeId, fee.Status, fee.PaidAt, fee.PaymentReference);
+            if (fee.Placement?.Reconciliation is { Status: not PlacementReconciliationStates.Confirmed })
+            {
+                throw new ConflictException("Phí placement chỉ được ghi nhận thanh toán sau khi Internal HR hoàn tất đối soát.");
+            }
+
+            var oldStatus = fee.Status;
+            fee.Status = ServiceFeeStates.Paid;
+            fee.PaidAt = DateTime.SpecifyKind(request.PaidAt, DateTimeKind.Utc);
+            fee.PaymentReference = request.PaymentReference.Trim();
+            fee.RecordedBy = request.CurrentUserId;
+            fee.UpdatedAt = DateTime.UtcNow;
+
+            await AuditAsync(AuditActions.ServiceFeePaymentRecorded, "SERVICE_FEE", fee.ServiceFeeId, request.CurrentUserId,
+                new { status = oldStatus }, new { status = fee.Status, fee.PaidAt, fee.PaymentReference, fee.Amount }, cancellationToken);
+
+            // S2: a replacement slot waiting for this payment opens now (docs/main-flows.md (MF-05, suất thay thế)).
+            var slot = await _financeRepository.GetReplacementSlotByServiceFeeForUpdateAsync(fee.ServiceFeeId, cancellationToken);
+            if (slot is { Status: ReplacementSlotStates.WaitingPayment })
+            {
+                await ReplacementSlotLifecycle.OpenAsync(
+                    slot, slot.Job, fee.UpdatedAt, request.CurrentUserId, _financeRepository, _notificationRepository, cancellationToken);
+                await ReplacementSlotLifecycle.NotifyAffiliateOpenAsync(
+                    slot, slot.Job, extended: false, _financeRepository, _notifier, cancellationToken);
+                await AuditAsync(AuditActions.ReplacementSlotOpened, "REPLACEMENT_SLOT", slot.ReplacementSlotId, request.CurrentUserId,
+                    new { status = ReplacementSlotStates.WaitingPayment }, new { slot.Status, slot.OpenedAt, slot.ExpiresAt }, cancellationToken);
+            }
+
+            // The Client sees its receivable change to paid without reloading.
+            if (_notifier != null)
+            {
+                await _notifier.NotifyCompanyAsync(fee.CompanyId, new AppNotice(
+                    "SERVICE_FEE", ServiceFeeKinds.OwedToClient.Contains(fee.Kind) ? "Đã hoàn tiền" : "Đã ghi nhận thanh toán",
+                    $"HR Connect đã {(ServiceFeeKinds.OwedToClient.Contains(fee.Kind) ? "hoàn" : "ghi nhận khoản thanh toán")} {fee.Amount:N0} {fee.CurrencyCode} (mã tham chiếu {fee.PaymentReference}).",
+                    "SERVICE_FEE", fee.ServiceFeeId, "/client/dashboard"), cancellationToken);
+
+                if (!ServiceFeeKinds.OwedToClient.Contains(fee.Kind))
+                {
+                    await _notifier.NotifyRoleAsync("PLATFORM_ADMIN", new AppNotice(
+                        "SERVICE_FEE",
+                        "Đã ghi nhận thanh toán phí dịch vụ",
+                        $"Đã ghi nhận khoản thanh toán {fee.Amount:N0} {fee.CurrencyCode} (mã tham chiếu {fee.PaymentReference}) cho công ty {fee.Company?.CompanyName ?? "Doanh nghiệp"}.",
+                        "SERVICE_FEE",
+                        fee.ServiceFeeId,
+                        "/admin/payouts"), cancellationToken);
+                }
+            }
+            if (fee.Kind == ServiceFeeKinds.Deposit && fee.JobId is Guid jobId)
+            {
+                await OpenJobAfterDepositAsync(jobId, request.CurrentUserId, cancellationToken);
+            }
+
+            return new ServiceFeePaymentResponse(fee.ServiceFeeId, fee.Status, fee.PaidAt, fee.PaymentReference);
+        }, cancellationToken);
     }
 
-    public async Task<CommissionActionResponse> Handle(ApproveCommissionCommand request, CancellationToken cancellationToken)
-    {
-        var commission = await LoadCommissionAsync(request.CommissionId, cancellationToken);
-        if (commission.Status == CommissionStates.InWarranty)
+    public Task<CommissionActionResponse> Handle(ApproveCommissionCommand request, CancellationToken cancellationToken) =>
+        ExecuteInTransactionAsync(async () =>
         {
-            // Warranty length is per job (MF-01 agreed terms), so the message names no fixed number of days.
-            throw new ConflictException(
-                "Hoa hồng đang trong thời hạn bảo hành (IN_WARRANTY). Chỉ có thể duyệt chi trả sau khi ứng viên làm đủ thời hạn bảo hành.");
-        }
-        if (commission.Status == CommissionStates.OnHold)
-        {
-            throw new ConflictException(
-                "Hoa hồng đang tạm giữ vì Client báo ứng viên nghỉ việc (ON_HOLD). Chờ Internal HR xác minh trước khi duyệt.");
-        }
-        if (commission.Status != CommissionStates.Earned)
-        {
-            throw new ConflictException(
-                $"Chỉ duyệt hoa hồng đã EARNED (ứng viên đi làm đủ thời hạn bảo hành). Trạng thái hiện tại: {commission.Status}.");
-        }
-
-        if (await _financeRepository.HasActiveDisputeAsync(commission.CommissionId, commission.AttributionId, cancellationToken))
-        {
-            throw new ConflictException(
-                "Hoa hồng đang có khiếu nại trùng / attribution chưa xử lý (SF-04). Xử lý khiếu nại trước khi duyệt chi.",
-                DisputeErrorCodes.CommissionUnderDispute);
-        }
-
-        var now = DateTime.UtcNow;
-        Guid? serviceFeeId;
-        if (commission.SourcingDeliveryId.HasValue)
-        {
-            serviceFeeId = await RequireSourcingPaidAsync(commission, now, cancellationToken);
-        }
-        else
-        {
-            var fee = commission.Placement?.GetEffectiveServiceFee();
-            if (fee == null || fee.Status != ServiceFeeStates.Paid)
+            var commission = await LoadCommissionAsync(request.CommissionId, cancellationToken);
+            if (commission.Status == CommissionStates.InWarranty)
+            {
+                // Warranty length is per job (MF-01 agreed terms), so the message names no fixed number of days.
+                throw new ConflictException(
+                    "Hoa hồng đang trong thời hạn bảo hành (IN_WARRANTY). Chỉ có thể duyệt chi trả sau khi ứng viên làm đủ thời hạn bảo hành.");
+            }
+            if (commission.Status == CommissionStates.OnHold)
             {
                 throw new ConflictException(
-                    "Client chưa thanh toán phí dịch vụ của placement này; hoa hồng chỉ được duyệt sau khi đã thu phí.",
-                    "SERVICE_FEE_NOT_PAID");
+                    "Hoa hồng đang tạm giữ vì Client báo ứng viên nghỉ việc (ON_HOLD). Chờ Internal HR xác minh trước khi duyệt.");
+            }
+            if (commission.Status != CommissionStates.Earned)
+            {
+                throw new ConflictException(
+                    $"Chỉ duyệt hoa hồng đã EARNED (ứng viên đi làm đủ thời hạn bảo hành). Trạng thái hiện tại: {commission.Status}.");
             }
 
-            serviceFeeId = fee.ServiceFeeId;
-        }
+            if (await _financeRepository.HasActiveDisputeAsync(commission.CommissionId, commission.AttributionId, cancellationToken))
+            {
+                throw new ConflictException(
+                    "Hoa hồng đang có khiếu nại trùng / attribution chưa xử lý (SF-04). Xử lý khiếu nại trước khi duyệt chi.",
+                    DisputeErrorCodes.CommissionUnderDispute);
+            }
 
-        commission.Status = CommissionStates.Payable;
-        commission.ApprovedBy = request.CurrentUserId;
-        commission.ApprovedAt = now;
-        commission.UpdatedAt = now;
+            var now = DateTime.UtcNow;
+            Guid? serviceFeeId;
+            if (commission.SourcingDeliveryId.HasValue)
+            {
+                serviceFeeId = await RequireSourcingPaidAsync(commission, now, cancellationToken);
+            }
+            else
+            {
+                var fee = commission.Placement?.GetEffectiveServiceFee();
+                if (fee == null || fee.Status != ServiceFeeStates.Paid)
+                {
+                    throw new ConflictException(
+                        "Client chưa thanh toán phí dịch vụ của placement này; hoa hồng chỉ được duyệt sau khi đã thu phí.",
+                        "SERVICE_FEE_NOT_PAID");
+                }
 
-        await AuditAsync(AuditActions.CommissionApproved, "COMMISSION", commission.CommissionId, request.CurrentUserId,
-            new { status = CommissionStates.Earned }, new { status = commission.Status, commission.Amount, serviceFeeId }, cancellationToken);
-        var formattedAmount = FinanceCurrency.FormatMoney(commission.Amount, FinanceCurrency.Of(commission));
-        await NotifyAsync(await _financeRepository.GetAffiliateUserIdAsync(commission.AttributionId, cancellationToken), "COMMISSION", "Hoa hồng đã được duyệt chi",
-            $"Khoản hoa hồng {formattedAmount} đã được duyệt và đang chờ chi trả.", "COMMISSION", commission.CommissionId,
-            "/affiliate/commissions", now, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-        return ToResponse(commission);
-    }
+                serviceFeeId = fee.ServiceFeeId;
+            }
 
-    public async Task<CommissionActionResponse> Handle(CancelCommissionCommand request, CancellationToken cancellationToken)
+            commission.Status = CommissionStates.Payable;
+            commission.ApprovedBy = request.CurrentUserId;
+            commission.ApprovedAt = now;
+            commission.UpdatedAt = now;
+
+            await AuditAsync(AuditActions.CommissionApproved, "COMMISSION", commission.CommissionId, request.CurrentUserId,
+                new { status = CommissionStates.Earned }, new { status = commission.Status, commission.Amount, serviceFeeId }, cancellationToken);
+            var formattedAmount = FinanceCurrency.FormatMoney(commission.Amount, FinanceCurrency.Of(commission));
+            await NotifyAsync(await _financeRepository.GetAffiliateUserIdAsync(commission.AttributionId, cancellationToken), "COMMISSION", "Hoa hồng đã được duyệt chi",
+                $"Khoản hoa hồng {formattedAmount} đã được duyệt và đang chờ chi trả.", "COMMISSION", commission.CommissionId,
+                "/affiliate/commissions", now, cancellationToken);
+            return ToResponse(commission);
+        }, cancellationToken);
+
+    public Task<CommissionActionResponse> Handle(CancelCommissionCommand request, CancellationToken cancellationToken)
     {
         RequireReason(request.Reason);
-        var commission = await LoadCommissionAsync(request.CommissionId, cancellationToken);
-        if (!CancellableStates.Contains(commission.Status))
+        return ExecuteInTransactionAsync(async () =>
         {
-            throw new ConflictException($"Không thể hủy hoa hồng ở trạng thái {commission.Status}.");
-        }
+            var commission = await LoadCommissionAsync(request.CommissionId, cancellationToken);
+            if (!CancellableStates.Contains(commission.Status))
+            {
+                throw new ConflictException($"Không thể hủy hoa hồng ở trạng thái {commission.Status}.");
+            }
 
-        var oldStatus = commission.Status;
-        commission.Status = CommissionStates.Cancelled;
-        commission.UpdatedAt = DateTime.UtcNow;
+            var oldStatus = commission.Status;
+            commission.Status = CommissionStates.Cancelled;
+            commission.UpdatedAt = DateTime.UtcNow;
 
-        await AuditAsync(AuditActions.CommissionCancelled, "COMMISSION", commission.CommissionId, request.CurrentUserId,
-            new { status = oldStatus }, new { status = commission.Status, reason = request.Reason.Trim() }, cancellationToken);
-        var formattedAmount = FinanceCurrency.FormatMoney(commission.Amount, FinanceCurrency.Of(commission));
-        await NotifyAsync(await _financeRepository.GetAffiliateUserIdAsync(commission.AttributionId, cancellationToken), "COMMISSION", "Hoa hồng đã bị hủy",
-            $"Khoản hoa hồng {formattedAmount} đã bị hủy. Lý do: {request.Reason.Trim()}", "COMMISSION", commission.CommissionId,
-            "/affiliate/commissions", DateTime.UtcNow, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-        return ToResponse(commission);
+            await AuditAsync(AuditActions.CommissionCancelled, "COMMISSION", commission.CommissionId, request.CurrentUserId,
+                new { status = oldStatus }, new { status = commission.Status, reason = request.Reason.Trim() }, cancellationToken);
+            var formattedAmount = FinanceCurrency.FormatMoney(commission.Amount, FinanceCurrency.Of(commission));
+            await NotifyAsync(await _financeRepository.GetAffiliateUserIdAsync(commission.AttributionId, cancellationToken), "COMMISSION", "Hoa hồng đã bị hủy",
+                $"Khoản hoa hồng {formattedAmount} đã bị hủy. Lý do: {request.Reason.Trim()}", "COMMISSION", commission.CommissionId,
+                "/affiliate/commissions", DateTime.UtcNow, cancellationToken);
+            return ToResponse(commission);
+        }, cancellationToken);
     }
 
-    public async Task<CommissionActionResponse> Handle(AdjustCommissionCommand request, CancellationToken cancellationToken)
+    public Task<CommissionActionResponse> Handle(AdjustCommissionCommand request, CancellationToken cancellationToken)
     {
         RequireReason(request.Reason);
         if (request.NewAmount < 0)
@@ -254,104 +258,122 @@ public sealed class SettlementCommandHandlers :
             throw new BadRequestException("Số tiền hoa hồng không được âm.");
         }
 
-        var commission = await LoadCommissionAsync(request.CommissionId, cancellationToken);
-        if (!AdjustableStates.Contains(commission.Status))
+        return ExecuteInTransactionAsync(async () =>
         {
-            throw new ConflictException($"Không thể điều chỉnh hoa hồng ở trạng thái {commission.Status}.");
-        }
+            var commission = await LoadCommissionAsync(request.CommissionId, cancellationToken);
+            if (!AdjustableStates.Contains(commission.Status))
+            {
+                throw new ConflictException($"Không thể điều chỉnh hoa hồng ở trạng thái {commission.Status}.");
+            }
 
-        if (commission.Amount == request.NewAmount)
-        {
-            throw new BadRequestException("Số tiền mới trùng với số tiền hiện tại.");
-        }
+            if (commission.Amount == request.NewAmount)
+            {
+                throw new BadRequestException("Số tiền mới trùng với số tiền hiện tại.");
+            }
 
-        var now = DateTime.UtcNow;
-        var oldAmount = commission.Amount;
-        await _financeRepository.AddCommissionAdjustmentAsync(new CommissionAdjustment
-        {
-            CommissionAdjustmentId = Guid.NewGuid(),
-            CommissionId = commission.CommissionId,
-            OldAmount = oldAmount,
-            NewAmount = request.NewAmount,
-            Reason = request.Reason.Trim(),
-            AdjustedBy = request.CurrentUserId,
-            AdjustedAt = now,
+            var now = DateTime.UtcNow;
+            var oldAmount = commission.Amount;
+            await _financeRepository.AddCommissionAdjustmentAsync(new CommissionAdjustment
+            {
+                CommissionAdjustmentId = Guid.NewGuid(),
+                CommissionId = commission.CommissionId,
+                OldAmount = oldAmount,
+                NewAmount = request.NewAmount,
+                Reason = request.Reason.Trim(),
+                AdjustedBy = request.CurrentUserId,
+                AdjustedAt = now,
+            }, cancellationToken);
+            commission.Amount = request.NewAmount;
+            commission.UpdatedAt = now;
+
+            await AuditAsync(AuditActions.CommissionAdjusted, "COMMISSION", commission.CommissionId, request.CurrentUserId,
+                new { amount = oldAmount }, new { amount = request.NewAmount, reason = request.Reason.Trim() }, cancellationToken);
+            var currency = FinanceCurrency.Of(commission);
+            var oldFormatted = FinanceCurrency.FormatMoney(oldAmount, currency);
+            var newFormatted = FinanceCurrency.FormatMoney(request.NewAmount, currency);
+            await NotifyAsync(await _financeRepository.GetAffiliateUserIdAsync(commission.AttributionId, cancellationToken), "COMMISSION", "Hoa hồng đã được điều chỉnh",
+                $"Khoản hoa hồng được điều chỉnh từ {oldFormatted} thành {newFormatted}.", "COMMISSION", commission.CommissionId,
+                "/affiliate/commissions", now, cancellationToken);
+            return ToResponse(commission);
         }, cancellationToken);
-        commission.Amount = request.NewAmount;
-        commission.UpdatedAt = now;
-
-        await AuditAsync(AuditActions.CommissionAdjusted, "COMMISSION", commission.CommissionId, request.CurrentUserId,
-            new { amount = oldAmount }, new { amount = request.NewAmount, reason = request.Reason.Trim() }, cancellationToken);
-        var currency = FinanceCurrency.Of(commission);
-        var oldFormatted = FinanceCurrency.FormatMoney(oldAmount, currency);
-        var newFormatted = FinanceCurrency.FormatMoney(request.NewAmount, currency);
-        await NotifyAsync(await _financeRepository.GetAffiliateUserIdAsync(commission.AttributionId, cancellationToken), "COMMISSION", "Hoa hồng đã được điều chỉnh",
-            $"Khoản hoa hồng được điều chỉnh từ {oldFormatted} thành {newFormatted}.", "COMMISSION", commission.CommissionId,
-            "/affiliate/commissions", now, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-        return ToResponse(commission);
     }
 
-    public async Task<PayoutResponse> Handle(RecordPayoutCommand request, CancellationToken cancellationToken)
+    public Task<PayoutResponse> Handle(RecordPayoutCommand request, CancellationToken cancellationToken) =>
+        ExecuteInTransactionAsync(async () =>
+        {
+            var commission = await LoadCommissionAsync(request.CommissionId, cancellationToken);
+            if (commission.Status != CommissionStates.Payable)
+            {
+                throw new ConflictException($"Chỉ ghi nhận chi cho hoa hồng đã duyệt (PAYABLE). Trạng thái hiện tại: {commission.Status}.");
+            }
+
+            if (request.Succeeded && string.IsNullOrWhiteSpace(request.TransactionReference))
+            {
+                throw new BadRequestException("Lần chi thành công cần mã giao dịch.");
+            }
+
+            if (request.PayoutDate > DateTime.UtcNow.AddMinutes(5))
+            {
+                throw new BadRequestException("Ngày chi không được ở tương lai.");
+            }
+
+            var now = DateTime.UtcNow;
+            var payout = new Payout
+            {
+                PayoutId = Guid.NewGuid(),
+                CommissionId = commission.CommissionId,
+                Amount = commission.Amount,
+                PayoutDate = DateTime.SpecifyKind(request.PayoutDate, DateTimeKind.Utc),
+                Method = Trim(request.Method, 50),
+                TransactionReference = Trim(request.TransactionReference, 200),
+                EvidenceUrl = Trim(request.EvidenceUrl, 1000),
+                Status = request.Succeeded ? PayoutStates.Completed : PayoutStates.Failed,
+                RecordedBy = request.CurrentUserId,
+                AttemptNo = commission.Payouts.Count + 1,
+                CreatedAt = now,
+                UpdatedAt = now,
+            };
+            await _financeRepository.AddPayoutAsync(payout, cancellationToken);
+            if (request.Succeeded)
+            {
+                commission.Status = CommissionStates.Paid;
+                commission.UpdatedAt = now;
+            }
+
+            await AuditAsync(AuditActions.PayoutRecorded, "PAYOUT", payout.PayoutId, request.CurrentUserId,
+                new { commissionStatus = CommissionStates.Payable },
+                new { payout.Status, payout.Amount, payout.AttemptNo, payout.TransactionReference, commissionStatus = commission.Status },
+                cancellationToken);
+            var payoutFormatted = FinanceCurrency.FormatMoney(commission.Amount, FinanceCurrency.Of(commission));
+            await NotifyAsync(
+                await _financeRepository.GetAffiliateUserIdAsync(commission.AttributionId, cancellationToken),
+                "COMMISSION",
+                request.Succeeded ? "Đã chuyển khoản hoa hồng" : "Chuyển khoản hoa hồng chưa thành công",
+                request.Succeeded
+                    ? $"Khoản hoa hồng {payoutFormatted} đã được chuyển khoản (mã giao dịch: {payout.TransactionReference})."
+                    : $"Lần chi trả khoản hoa hồng {payoutFormatted} chưa thành công; Admin sẽ thực hiện lại.",
+                "PAYOUT",
+                payout.PayoutId,
+                "/affiliate/commissions",
+                now,
+                cancellationToken);
+            return new PayoutResponse(payout.PayoutId, commission.CommissionId, payout.Status, commission.Status, payout.Amount, payout.AttemptNo);
+        }, cancellationToken);
+
+    private async Task<T> ExecuteInTransactionAsync<T>(Func<Task<T>> action, CancellationToken cancellationToken)
     {
-        var commission = await LoadCommissionAsync(request.CommissionId, cancellationToken);
-        if (commission.Status != CommissionStates.Payable)
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        try
         {
-            throw new ConflictException($"Chỉ ghi nhận chi cho hoa hồng đã duyệt (PAYABLE). Trạng thái hiện tại: {commission.Status}.");
+            var result = await action();
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+            return result;
         }
-
-        if (request.Succeeded && string.IsNullOrWhiteSpace(request.TransactionReference))
+        catch
         {
-            throw new BadRequestException("Lần chi thành công cần mã giao dịch.");
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            throw;
         }
-
-        if (request.PayoutDate > DateTime.UtcNow.AddMinutes(5))
-        {
-            throw new BadRequestException("Ngày chi không được ở tương lai.");
-        }
-
-        var now = DateTime.UtcNow;
-        var payout = new Payout
-        {
-            PayoutId = Guid.NewGuid(),
-            CommissionId = commission.CommissionId,
-            Amount = commission.Amount,
-            PayoutDate = DateTime.SpecifyKind(request.PayoutDate, DateTimeKind.Utc),
-            Method = Trim(request.Method, 50),
-            TransactionReference = Trim(request.TransactionReference, 200),
-            EvidenceUrl = Trim(request.EvidenceUrl, 1000),
-            Status = request.Succeeded ? PayoutStates.Completed : PayoutStates.Failed,
-            RecordedBy = request.CurrentUserId,
-            AttemptNo = commission.Payouts.Count + 1,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
-        await _financeRepository.AddPayoutAsync(payout, cancellationToken);
-        if (request.Succeeded)
-        {
-            commission.Status = CommissionStates.Paid;
-            commission.UpdatedAt = now;
-        }
-
-        await AuditAsync(AuditActions.PayoutRecorded, "PAYOUT", payout.PayoutId, request.CurrentUserId,
-            new { commissionStatus = CommissionStates.Payable },
-            new { payout.Status, payout.Amount, payout.AttemptNo, payout.TransactionReference, commissionStatus = commission.Status },
-            cancellationToken);
-        var payoutFormatted = FinanceCurrency.FormatMoney(commission.Amount, FinanceCurrency.Of(commission));
-        await NotifyAsync(
-            await _financeRepository.GetAffiliateUserIdAsync(commission.AttributionId, cancellationToken),
-            "COMMISSION",
-            request.Succeeded ? "Đã chuyển khoản hoa hồng" : "Chuyển khoản hoa hồng chưa thành công",
-            request.Succeeded
-                ? $"Khoản hoa hồng {payoutFormatted} đã được chuyển khoản (mã giao dịch: {payout.TransactionReference})."
-                : $"Lần chi trả khoản hoa hồng {payoutFormatted} chưa thành công; Admin sẽ thực hiện lại.",
-            "PAYOUT",
-            payout.PayoutId,
-            "/affiliate/commissions",
-            now,
-            cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-        return new PayoutResponse(payout.PayoutId, commission.CommissionId, payout.Status, commission.Status, payout.Amount, payout.AttemptNo);
     }
 
     private async Task NotifyAsync(

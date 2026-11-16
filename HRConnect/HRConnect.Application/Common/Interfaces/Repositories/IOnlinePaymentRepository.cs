@@ -26,6 +26,9 @@ public interface IOnlinePaymentRepository
     /// <summary>Puts a PROCESSING payment back to PENDING after an unexpected error, so VNPay's next IPN retry can apply it.</summary>
     Task ReleaseClaimAsync(Guid onlinePaymentId, CancellationToken cancellationToken = default);
 
+    /// <summary>Re-attaches a detached OnlinePayment after an inner transaction rollback so terminal status still saves.</summary>
+    void Update(OnlinePayment payment) { }
+
     /// <summary>Returns active (PROCESSING or unexpired PENDING) status per target id for UI double-pay prevention.</summary>
     Task<IReadOnlyDictionary<Guid, string>> GetActiveStatusesByTargetIdsAsync(
         string targetType,

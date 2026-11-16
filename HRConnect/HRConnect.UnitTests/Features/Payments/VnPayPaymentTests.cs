@@ -11,6 +11,8 @@ using HRConnect.Application.Features.Finance.Commands.Settlement;
 using HRConnect.Application.Features.Payments;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
+using HRConnect.Infrastructure.Persistence;
+using HRConnect.Infrastructure.Repositories;
 using HRConnect.Infrastructure.Services.Payments;
 using HRConnect.Presentation.Endpoints.V1.Finance;
 using MediatR;
@@ -19,6 +21,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -467,5 +470,77 @@ public sealed class VnPayPaymentTests
     private sealed class AlwaysHasBodyFeature : IHttpRequestBodyDetectionFeature
     {
         public bool CanHaveBody => true;
+    }
+
+    [Fact]
+    public async Task NeedsReview_persists_to_database_even_when_nested_RecordServiceFeePayment_rolls_back()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        await using var context = new ApplicationDbContext(options);
+
+        var companyId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var feeId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+
+        context.Companies.Add(new Company
+        {
+            CompanyId = companyId,
+            CompanyName = "Công ty A",
+            VerificationStatus = "VERIFIED",
+            CreatedAt = now,
+            UpdatedAt = now,
+        });
+        context.ServiceFees.Add(new ServiceFee
+        {
+            ServiceFeeId = feeId,
+            CompanyId = companyId,
+            Kind = ServiceFeeKinds.Placement,
+            BaseSalary = 20_000_000,
+            FeeMultiplier = 1m,
+            Amount = 42_000_000,
+            CurrencyCode = "VND",
+            Status = ServiceFeeStates.Paid,
+            PaidAt = now.AddMinutes(-1),
+            PaymentReference = "MANUAL-001",
+            DueDate = DateOnly.FromDateTime(now.AddDays(7)),
+            CreatedAt = now,
+            UpdatedAt = now,
+        });
+        var payment = Pending();
+        payment.CompanyId = companyId;
+        payment.TargetId = feeId;
+        payment.CreatedBy = userId;
+        payment.TxnRef = "txnconflict";
+        context.OnlinePayments.Add(payment);
+        await context.SaveChangesAsync();
+
+        var financeRepo = new FinanceRepository(context);
+        var uow = new UnitOfWork(context);
+        var audit = Mock.Of<IAuditLogService>();
+        var settlement = new SettlementCommandHandlers(financeRepo, uow, audit);
+        var sender = new Mock<ISender>();
+        sender.Setup(s => s.Send(It.IsAny<RecordServiceFeePaymentCommand>(), It.IsAny<CancellationToken>()))
+            .Returns<IRequest<ServiceFeePaymentResponse>, CancellationToken>((req, ct) =>
+                settlement.Handle((RecordServiceFeePaymentCommand)req, ct));
+
+        var handler = new VnPayPaymentCommandHandlers(
+            Gateway(),
+            new OnlinePaymentRepository(context),
+            Mock.Of<ICompanyUserRepository>(),
+            financeRepo,
+            Mock.Of<IJobRepository>(),
+            uow,
+            sender.Object,
+            Mock.Of<IAppNotifier>());
+
+        await handler.Handle(new ConfirmVnPayPaymentCommand(SignedCallback("txnconflict", 42_000_000)), default);
+
+        var persisted = await context.OnlinePayments.AsNoTracking().SingleAsync(p => p.TxnRef == "txnconflict");
+        persisted.Status.Should().Be(OnlinePaymentStates.NeedsReview);
+        persisted.ResponseCode.Should().Be("00");
+        persisted.LastError.Should().Contain("PENDING");
     }
 }

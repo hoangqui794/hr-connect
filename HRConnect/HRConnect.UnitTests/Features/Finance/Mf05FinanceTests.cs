@@ -2355,4 +2355,62 @@ public class Mf05FinanceTests
 
         resolved.Should().BeNull();
     }
+
+    [Fact]
+    public void ForUpdateQueries_UseForUpdateSql_OnPostgreSqlProvider()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseNpgsql("Host=localhost;Database=translation_only;Username=test;Password=test")
+            .Options;
+        using var pgContext = new ApplicationDbContext(options);
+        var pgRepo = new FinanceRepository(pgContext);
+        var feeId = Guid.NewGuid();
+        var commissionId = Guid.NewGuid();
+
+        var feeSql = pgRepo.BuildServiceFeeForUpdateQuery(feeId).ToQueryString();
+        var commissionSql = pgRepo.BuildCommissionForUpdateQuery(commissionId).ToQueryString();
+
+        feeSql.Should().Contain("FROM public.service_fee").And.Contain("FOR UPDATE");
+        commissionSql.Should().Contain("FROM public.commission").And.Contain("FOR UPDATE");
+    }
+
+    [Fact]
+    public async Task Duplicate_admin_settlement_actions_throw_conflict_and_rollback_transaction()
+    {
+        var (placement, offer) = await SeedPlacementAsync();
+        await InitializeAsync(placement, offer);
+        await Progress().CompleteWarrantyAsync(placement.PlacementId, Start.AddDays(30));
+
+        var fee = await _context.ServiceFees.SingleAsync();
+        var commission = await CommissionAsync();
+
+        var firstFeePay = await Settlement().Handle(
+            new RecordServiceFeePaymentCommand(fee.ServiceFeeId, DateTime.UtcNow, "REF-1", _actor), default);
+        firstFeePay.Status.Should().Be(ServiceFeeStates.Paid);
+
+        var secondFeePay = () => Settlement().Handle(
+            new RecordServiceFeePaymentCommand(fee.ServiceFeeId, DateTime.UtcNow, "REF-2", _actor), default);
+        await secondFeePay.Should().ThrowAsync<ConflictException>();
+        (await _context.ServiceFees.SingleAsync()).PaymentReference.Should().Be("REF-1");
+
+        await Settlement().Handle(new ApproveCommissionCommand(commission.CommissionId, _actor), default);
+        var secondApprove = () => Settlement().Handle(new ApproveCommissionCommand(commission.CommissionId, _actor), default);
+        await secondApprove.Should().ThrowAsync<ConflictException>();
+
+        var firstPayout = await Settlement().Handle(
+            new RecordPayoutCommand(commission.CommissionId, true, DateTime.UtcNow, "BANK", "TX-1", null, _actor), default);
+        firstPayout.AttemptNo.Should().Be(1);
+        firstPayout.CommissionStatus.Should().Be(CommissionStates.Paid);
+
+        var mockUow = new Mock<IUnitOfWork>();
+        var handlerWithMockUow = new SettlementCommandHandlers(Repository, mockUow.Object, _audit.Object);
+        var secondPayout = () => handlerWithMockUow.Handle(
+            new RecordPayoutCommand(commission.CommissionId, true, DateTime.UtcNow, "BANK", "TX-2", null, _actor), default);
+        await secondPayout.Should().ThrowAsync<ConflictException>();
+
+        mockUow.Verify(u => u.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        mockUow.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        mockUow.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+        (await _context.Payouts.CountAsync()).Should().Be(1);
+    }
 }

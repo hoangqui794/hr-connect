@@ -47,7 +47,7 @@ public class UnitOfWork : IUnitOfWork
 
     public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
     {
-        if (_currentTransaction != null)
+        if (_currentTransaction != null || !_context.Database.IsRelational())
         {
             return;
         }

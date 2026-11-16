@@ -235,6 +235,7 @@ public sealed class VnPayPaymentCommandHandlers(
                 logger?.LogWarning(ex, "Không thể gửi thông báo thanh toán VNPay {OnlinePaymentId} tới Admin.", payment.OnlinePaymentId);
             }
             payment.UpdatedAt = DateTime.UtcNow;
+            payments.Update(payment);
             await unitOfWork.SaveChangesAsync(cancellationToken);
             return new VnPayConfirmResult("00", "Confirm Success", ToDto(payment));
         }
