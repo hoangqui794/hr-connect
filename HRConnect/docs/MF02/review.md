@@ -42,12 +42,9 @@
 
 ### Backend Major Issues
 
-#### ✅ [BE-M01] Luồng CV Sourcing Delivery chặn nhầm hồ sơ do Candidate tự ứng tuyển (`409 CONSENT_NOT_CONFIRMED`) và lệch `ReviewDays` khi thay thế CV
-- **Vị trí:** `HRConnect/HRConnect.Application/Features/Recruitment/Sourcing/SourcingDeliveryFeatures.cs` (dòng `192-205`, `252-286`, `527-556`)
-- **Nguyên nhân:**
-  1. Hàm `SourcingDeliveryRules.RequireDeliverable` (dòng `200`) bắt buộc `application.Submission?.Consent?.Status == "CONFIRMED"`. Tuy nhiên, khi Candidate tự ứng tuyển vào Job `CV_SOURCING` (`ApplyJobCommandHandler.cs:179-196`), `Submission` có `Source = "CANDIDATE"` và không tạo bản ghi `SubmissionConsent` (`Consent == null`). Hệ quả là Internal HR không bao giờ giao được CV của ứng viên tự ứng tuyển cho Client (luôn lỗi `409 CONSENT_NOT_CONFIRMED`).
-  2. Tại `ReplaceSourcingDeliveryCommandHandler` (dòng `527-548`), khi HR giao CV thay thế cho một lượt giao bị từ chối, handler đọc trực tiếp cấu hình mặc định `_settings.GetIntAsync(BusinessSettingKeys.CvSourcingReviewDays)` thay vì ưu tiên `old.Job.ReviewDays` đã chốt trên Job, và chưa kiểm tra `old.Job.Status == JobStatuses.Active`.
-- **Hướng sửa:** Trong `RequireDeliverable`, chỉ bắt buộc `Consent.Status == "CONFIRMED"` khi `Submission.Source == "AFFILIATE"`; trong `ReplaceSourcingDeliveryCommandHandler`, kiểm tra `old.Job.Status == JobStatuses.Active` và ưu tiên `old.Job.ReviewDays`.
+#### ✅ [BE-M01] Bổ sung kiểm tra `JobStatuses.Active` và ưu tiên `ReviewDays` của Job khi thay thế CV Sourcing (giữ nguyên bắt buộc Consent vì `CV_SOURCING` chỉ do Affiliate nộp)
+- **Vị trí:** `HRConnect/HRConnect.Application/Features/Recruitment/Sourcing/SourcingDeliveryFeatures.cs` (dòng `290`, `620-650`)
+- **Chi tiết:** Giữ nguyên ràng buộc `Consent.Status == "CONFIRMED"` trong `RequireDeliverable` (do Candidate chỉ nộp `CV_APPLICATION`, còn `CV_SOURCING` chỉ do Affiliate nộp nên luôn phải có Consent). Trong `ReplaceSourcingDeliveryCommandHandler`, đã bổ sung kiểm tra `old.Job.Status == JobStatuses.Active` và ưu tiên `old.Job.ReviewDays`.
 
 #### ✅ [BE-M02] Candidate có thể tự `DISMISS` ca nghi trùng mức rủi ro `HIGH` (cùng Job, trùng cả CV lẫn Họ tên) để lách bước duyệt của Admin
 - **Vị trí:**

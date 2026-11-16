@@ -287,8 +287,7 @@ internal static class SourcingDeliveryRules
                 $"Hồ sơ {application.ApplicationId} chưa được Internal HR xác nhận đạt (SHORTLISTED).", "APPLICATION_NOT_QUALIFIED");
         }
 
-        if (!string.Equals(application.Submission?.Source, "CANDIDATE", StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(application.Submission?.Consent?.Status, ConsentConfirmed, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(application.Submission?.Consent?.Status, ConsentConfirmed, StringComparison.OrdinalIgnoreCase))
         {
             throw new ConflictException(
                 $"Ứng viên của hồ sơ {application.ApplicationId} chưa xác nhận đồng ý gửi hồ sơ.", "CONSENT_NOT_CONFIRMED");
