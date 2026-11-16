@@ -37,6 +37,7 @@ public static class OfferEndpoints
             [FromQuery] Guid? candidateId,
             [FromQuery] Guid? jobId,
             [FromQuery] string? status,
+            [FromQuery] string? keyword,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10,
             [FromServices] ISender sender = null!,
@@ -67,6 +68,7 @@ public static class OfferEndpoints
                     CandidateId: candidateId,
                     JobId: jobId,
                     Status: status,
+                    Keyword: keyword,
                     Page: page,
                     PageSize: pageSize,
                     IsClientCompanyUser: isClient && !isInternal && !isAdmin,
@@ -88,7 +90,7 @@ public static class OfferEndpoints
         })
         .WithName("GetOffers")
         .WithSummary("Lấy danh sách lời mời nhận việc (Offers)")
-        .WithDescription("Hỗ trợ lọc theo applicationId, candidateId, jobId, status và phân trang. Yêu cầu quyền offer.view_company (Client Company), offer.view_own (Candidate), hoặc application.view (Internal HR/Admin).")
+        .WithDescription("Hỗ trợ lọc theo applicationId, candidateId, jobId, status, tên ứng viên/vị trí và phân trang. Yêu cầu quyền offer.view_company (Client Company), offer.view_own (Candidate), hoặc application.view (Internal HR/Admin).")
         .Produces<GetOffersResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)

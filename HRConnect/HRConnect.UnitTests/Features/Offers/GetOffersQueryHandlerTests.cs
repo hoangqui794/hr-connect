@@ -49,6 +49,7 @@ public class GetOffersQueryHandlerTests
                 null,
                 null,
                 null,
+                "DevOps",
                 false,
                 1,
                 10,
@@ -57,7 +58,8 @@ public class GetOffersQueryHandlerTests
 
         var query = new GetOffersQuery(
             CurrentUserId: userId,
-            IsClientCompanyUser: true
+            IsClientCompanyUser: true,
+            Keyword: "DevOps"
         );
 
         // Act
@@ -110,6 +112,7 @@ public class GetOffersQueryHandlerTests
                 null,
                 null,
                 null,
+                null,
                 true,
                 1,
                 10,
@@ -142,6 +145,7 @@ public class GetOffersQueryHandlerTests
 
         _offerRepositoryMock
             .Setup(r => r.GetOffersAsync(
+                null,
                 null,
                 null,
                 null,
@@ -207,6 +211,7 @@ public class GetOffersQueryHandlerTests
                 null,
                 null,
                 null,
+                null,
                 false,
                 2,
                 15,
@@ -243,6 +248,7 @@ public class GetOffersQueryHandlerTests
 
         _offerRepositoryMock
             .Setup(r => r.GetOffersAsync(
+                null,
                 null,
                 null,
                 null,

@@ -15,6 +15,7 @@ public interface IOfferRepository
         Guid? applicationId,
         Guid? candidateId,
         string? status,
+        string? keyword,
         bool hideDraftForCandidate,
         int page,
         int pageSize,
