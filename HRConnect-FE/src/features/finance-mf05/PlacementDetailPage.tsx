@@ -38,22 +38,24 @@ export const PlacementDetailPage: React.FC = () => {
           items={[
             {
               title: (
-                <span
-                  className="cursor-pointer flex items-center gap-1 text-slate-500 hover:text-[#0C4A6E]"
+                <button
+                  type="button"
+                  className="cursor-pointer inline-flex items-center gap-1 border-0 bg-transparent p-0 text-slate-500 hover:text-[#0C4A6E] [font:inherit]"
                   onClick={() => navigate('/dashboard')}
                 >
                   <HomeOutlined /> Bàn làm việc
-                </span>
+                </button>
               ),
             },
             {
               title: (
-                <span
-                  className="cursor-pointer flex items-center gap-1 text-slate-500 hover:text-[#0C4A6E]"
+                <button
+                  type="button"
+                  className="cursor-pointer inline-flex items-center gap-1 border-0 bg-transparent p-0 text-slate-500 hover:text-[#0C4A6E] [font:inherit]"
                   onClick={handleBack}
                 >
                   <SafetyCertificateOutlined /> Theo dõi bảo hành
-                </span>
+                </button>
               ),
             },
             {

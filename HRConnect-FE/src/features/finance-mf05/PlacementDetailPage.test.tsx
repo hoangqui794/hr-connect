@@ -419,4 +419,15 @@ describe('PlacementDetailPage & PlacementDetailView', () => {
     expect(screen.queryByText(/Còn \d+ ngày bảo hành/i)).toBeNull();
     expect(screen.queryByText(/Còn lại:/i)).toBeNull();
   });
+
+  it('renders breadcrumb navigation controls as keyboard-accessible native buttons', async () => {
+    vi.mocked(placementApi.getPlacementDetail).mockResolvedValueOnce(mockPlacement as any);
+
+    renderWithProviders(<PlacementDetailPage />, '/client/placements/plc-1');
+
+    const dashboardBtn = await screen.findByRole('button', { name: /Bàn làm việc/i });
+    const warrantyBtn = screen.getByRole('button', { name: /Theo dõi bảo hành/i });
+    expect(dashboardBtn.tagName).toBe('BUTTON');
+    expect(warrantyBtn.tagName).toBe('BUTTON');
+  });
 });

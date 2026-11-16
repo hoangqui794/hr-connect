@@ -10,7 +10,7 @@ import { KeyOutlined } from '@ant-design/icons';
 import { apiClient, getApiErrorMessage } from '@/services/apiClient';
 import { AvatarUpload } from '@/components/common/AvatarUpload';
 import { ChangePasswordModal } from '@/components/common/ChangePasswordModal';
-import { NoApiYet, formatDateTime } from './adminTheme';
+import { formatDateTime } from './adminTheme';
 import { Initials, PageHero, StatusDot, Surface } from './ui';
 
 interface AdminProfile {
@@ -158,17 +158,3 @@ export const AdminProfilePage: React.FC = () => {
 import { AdminDisputesPage } from './AdminDisputesPage';
 
 export const AdminDisputesPlaceholder: React.FC = () => <AdminDisputesPage />;
-
-export const AdminPayoutsPlaceholder: React.FC = () => (
-  <div>
-    <PageHero eyebrow="Tài chính" title="Chi trả hoa hồng" description="Duyệt và theo dõi các khoản hoa hồng trả cho Cộng tác viên." />
-    <NoApiYet feature="Chi trả hoa hồng" detail="Tính năng đang được hoàn thiện." />
-  </div>
-);
-
-export const AdminSettingsPlaceholder: React.FC = () => (
-  <div>
-    <PageHero eyebrow="Cài đặt" title="Cài đặt hệ thống" description="Tham số vận hành chung của nền tảng." />
-    <NoApiYet feature="Cài đặt hệ thống" detail="Tính năng đang được hoàn thiện. Loại dịch vụ và quy tắc hoa hồng có thể thiết lập ở trang chuyên biệt." />
-  </div>
-);
