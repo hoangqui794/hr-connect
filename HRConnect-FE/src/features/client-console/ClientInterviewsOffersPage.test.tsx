@@ -140,6 +140,22 @@ describe('Client › Phỏng vấn & Offer', () => {
     });
   });
 
+  it('sends debounced keyword search to the server and resets pagination', async () => {
+    renderPage('/client/interviews-offers?tab=interviews&page=3');
+
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Tìm theo tên ứng viên hoặc vị trí' }), {
+      target: { value: 'Backend' },
+    });
+
+    await waitFor(() => {
+      expect(interviewsMock).toHaveBeenCalledWith(expect.objectContaining({
+        keyword: 'Backend',
+        page: 1,
+        pageSize: 10,
+      }));
+    });
+  });
+
   it('shows interview format, duration, candidate attendance badge, and overdue warning', async () => {
     const past = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
     const future = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
