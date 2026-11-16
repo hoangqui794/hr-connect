@@ -9,6 +9,7 @@ public record GetOffersQuery(
     Guid? CandidateId = null,
     Guid? JobId = null,
     string? Status = null,
+    string? Keyword = null,
     int Page = 1,
     int PageSize = 10,
     bool IsClientCompanyUser = false,

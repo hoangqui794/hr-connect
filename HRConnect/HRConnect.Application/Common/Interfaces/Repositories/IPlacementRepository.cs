@@ -13,6 +13,7 @@ public interface IPlacementRepository
         Guid? jobId,
         Guid? candidateId,
         string? status,
+        string? keyword,
         DateOnly? fromDate,
         DateOnly? toDate,
         int page,

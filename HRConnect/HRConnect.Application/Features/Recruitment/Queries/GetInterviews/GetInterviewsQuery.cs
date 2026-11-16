@@ -15,6 +15,7 @@ public record GetInterviewsQuery(
     string? Result = null,
     DateTime? FromDate = null,
     DateTime? ToDate = null,
+    string? Keyword = null,
     int Page = 1,
     int PageSize = 10,
     string? SortDirection = "DESC"

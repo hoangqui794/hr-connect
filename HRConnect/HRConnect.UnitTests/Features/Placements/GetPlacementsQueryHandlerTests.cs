@@ -115,6 +115,7 @@ public class GetPlacementsQueryHandlerTests
                 It.IsAny<Guid?>(),
                 It.IsAny<Guid?>(),
                 It.IsAny<string?>(),
+                "Backend",
                 It.IsAny<DateOnly?>(),
                 It.IsAny<DateOnly?>(),
                 1,
@@ -124,6 +125,7 @@ public class GetPlacementsQueryHandlerTests
 
         var query = new GetPlacementsQuery(
             CurrentUserId: userId,
+            Keyword: "Backend",
             Page: 1,
             PageSize: 10,
             IsClientCompanyUser: true
@@ -154,6 +156,7 @@ public class GetPlacementsQueryHandlerTests
                 It.IsAny<Guid?>(),
                 It.IsAny<Guid?>(),
                 It.IsAny<string?>(),
+                It.IsAny<string?>(),
                 It.IsAny<DateOnly?>(),
                 It.IsAny<DateOnly?>(),
                 1,
@@ -180,6 +183,7 @@ public class GetPlacementsQueryHandlerTests
 
         _placementRepositoryMock.Verify(r => r.GetPlacementsAsync(
             targetCompanyId,
+            null,
             null,
             null,
             null,
@@ -249,7 +253,7 @@ public class GetPlacementsQueryHandlerTests
 
         _placementRepositoryMock
             .Setup(r => r.GetPlacementsAsync(
-                companyId, null, null, null, null, null, 1, 10, It.IsAny<CancellationToken>()))
+                companyId, null, null, null, null, null, null, 1, 10, It.IsAny<CancellationToken>()))
             .ReturnsAsync(([claimedPlacement, normalPlacement], 2));
 
         var result = await CreateHandler().Handle(

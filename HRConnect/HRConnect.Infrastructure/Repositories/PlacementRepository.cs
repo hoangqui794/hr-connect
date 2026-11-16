@@ -24,6 +24,7 @@ public class PlacementRepository : IPlacementRepository
         Guid? jobId,
         Guid? candidateId,
         string? status,
+        string? keyword,
         DateOnly? fromDate,
         DateOnly? toDate,
         int page,
@@ -51,6 +52,14 @@ public class PlacementRepository : IPlacementRepository
         {
             var normalizedStatus = status.Trim().ToUpperInvariant();
             query = query.Where(p => p.Status == normalizedStatus);
+        }
+
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            var pattern = $"%{keyword.Trim()}%";
+            query = query.Where(p =>
+                EF.Functions.ILike(p.Application.Job.Title, pattern) ||
+                EF.Functions.ILike(p.Application.Candidate.FullName, pattern));
         }
 
         if (fromDate.HasValue)

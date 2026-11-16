@@ -59,6 +59,7 @@ public class GetPlacementsQueryHandler : IRequestHandler<GetPlacementsQuery, Get
             request.JobId,
             request.CandidateId,
             request.Status,
+            request.Keyword,
             request.FromDate,
             request.ToDate,
             page,

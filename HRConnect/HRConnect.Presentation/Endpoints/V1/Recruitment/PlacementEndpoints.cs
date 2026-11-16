@@ -28,6 +28,7 @@ public static class PlacementEndpoints
             [FromQuery] Guid? jobId,
             [FromQuery] Guid? candidateId,
             [FromQuery] string? status,
+            [FromQuery] string? keyword,
             [FromQuery] DateOnly? fromDate,
             [FromQuery] DateOnly? toDate,
             [FromQuery] int page = 1,
@@ -63,6 +64,7 @@ public static class PlacementEndpoints
                     JobId: jobId,
                     CandidateId: candidateId,
                     Status: status,
+                    Keyword: keyword,
                     FromDate: fromDate,
                     ToDate: toDate,
                     Page: page,
@@ -85,7 +87,7 @@ public static class PlacementEndpoints
         })
         .WithName("GetPlacements")
         .WithSummary("Lấy danh sách tiếp nhận việc (Placements)")
-        .WithDescription("Dành cho Client Company HR / Admin (xem các placement của công ty mình) hoặc Internal HR / Admin (xem toàn hệ thống qua quyền application.view). Hỗ trợ lọc theo doanh nghiệp, công việc, ứng viên, trạng thái, khoảng ngày đi làm và phân trang.")
+        .WithDescription("Dành cho Client Company HR / Admin (xem các placement của công ty mình) hoặc Internal HR / Admin (xem toàn hệ thống qua quyền application.view). Hỗ trợ lọc theo doanh nghiệp, công việc, ứng viên, trạng thái, tên ứng viên/vị trí, khoảng ngày đi làm và phân trang.")
         .Produces<GetPlacementsResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)

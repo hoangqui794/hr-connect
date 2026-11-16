@@ -28,6 +28,7 @@ public class OfferRepository : IOfferRepository
         Guid? applicationId,
         Guid? candidateId,
         string? status,
+        string? keyword,
         bool hideDraftForCandidate,
         int page,
         int pageSize,
@@ -69,6 +70,16 @@ public class OfferRepository : IOfferRepository
         {
             var normalizedStatus = status.Trim().ToUpperInvariant();
             query = query.Where(o => o.Status == normalizedStatus);
+        }
+
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            var pattern = $"%{keyword.Trim()}%";
+            query = query.Where(o =>
+                EF.Functions.ILike(o.Application.Job.Title, pattern) ||
+                EF.Functions.ILike(o.Application.Submission != null
+                    ? o.Application.Submission.SubmittedFullName
+                    : o.Application.Candidate.FullName, pattern));
         }
 
         var totalCount = await query.CountAsync(cancellationToken);

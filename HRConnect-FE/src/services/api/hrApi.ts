@@ -161,6 +161,7 @@ export const pipelineApi = {
   async interviews(params: {
     status?: string;
     jobId?: string;
+    keyword?: string;
     /** ISO date-time; only interviews scheduled at or after it (BE filter). */
     fromDate?: string;
     toDate?: string;
@@ -171,11 +172,11 @@ export const pipelineApi = {
     const res = await apiClient.get<ApiEnvelope<PagedItems<InterviewItem>>>('/interviews', { params: cleanParams(params) });
     return res.data.data;
   },
-  async offers(params: { status?: string; jobId?: string; page: number; pageSize: number }): Promise<PagedItems<OfferItem>> {
+  async offers(params: { status?: string; jobId?: string; keyword?: string; page: number; pageSize: number }): Promise<PagedItems<OfferItem>> {
     const res = await apiClient.get<ApiEnvelope<PagedItems<OfferItem>>>('/offers', { params: cleanParams(params) });
     return res.data.data;
   },
-  async placements(params: { status?: string; jobId?: string; page: number; pageSize: number }): Promise<PagedItems<PlacementItem>> {
+  async placements(params: { status?: string; jobId?: string; keyword?: string; page: number; pageSize: number }): Promise<PagedItems<PlacementItem>> {
     const res = await apiClient.get<{ items: PlacementItem[]; page: number; pageSize: number; totalCount: number; totalPages: number }>(
       '/placements',
       { params: cleanParams(params) }

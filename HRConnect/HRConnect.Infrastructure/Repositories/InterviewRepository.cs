@@ -29,6 +29,7 @@ public class InterviewRepository : IInterviewRepository
         string? result,
         DateTime? fromDate,
         DateTime? toDate,
+        string? keyword,
         int page,
         int pageSize,
         string? sortDirection = "DESC",
@@ -81,6 +82,16 @@ public class InterviewRepository : IInterviewRepository
         if (toDate.HasValue)
         {
             query = query.Where(i => i.ScheduledAt <= toDate.Value || (i.ScheduledAt == null && i.CreatedAt <= toDate.Value));
+        }
+
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            var pattern = $"%{keyword.Trim()}%";
+            query = query.Where(i =>
+                EF.Functions.ILike(i.Application.Job.Title, pattern) ||
+                EF.Functions.ILike(i.Application.Submission != null
+                    ? i.Application.Submission.SubmittedFullName
+                    : i.Application.Candidate.FullName, pattern));
         }
 
         var totalCount = await query.CountAsync(cancellationToken);
