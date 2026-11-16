@@ -275,9 +275,9 @@ public static class ServiceAgreementEndpoints
             string.Equals(c.Value, "INTERNAL_HR", StringComparison.OrdinalIgnoreCase)
             || string.Equals(c.Value, "PLATFORM_ADMIN", StringComparison.OrdinalIgnoreCase));
 
-    private static bool ReviewerCan(ClaimsPrincipal user, string permission) =>
+    internal static bool ReviewerCan(ClaimsPrincipal user, string permission) =>
         IsBackoffice(user) &&
-        (user.HasClaim("permission", permission) || user.IsInRole("PLATFORM_ADMIN") || user.IsInRole("INTERNAL_HR"));
+        user.HasClaim("permission", permission);
 
     private static IResult Forbidden() => Results.Json(new { success = false, message = "Bạn không có quyền thực hiện thao tác này." }, statusCode: 403);
 }

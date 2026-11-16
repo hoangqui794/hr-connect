@@ -26,4 +26,8 @@
     <ProjectReference Include="..\HRConnect.Infrastructure\HRConnect.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="HRConnect.UnitTests" />
+  </ItemGroup>
+
 </Project>
