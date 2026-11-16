@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,6 +8,7 @@ using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Constants;
+using HRConnect.Domain.Entities;
 using MediatR;
 
 namespace HRConnect.Application.Features.Jobs.ServiceAgreements;
@@ -24,15 +26,21 @@ public sealed class VoidServiceAgreementCommandHandler : IRequestHandler<VoidSer
     private readonly IServiceAgreementRepository _agreements;
     private readonly IAuditLogService _audit;
     private readonly IUnitOfWork _uow;
+    private readonly IJobRepository? _jobs;
+    private readonly INotificationRepository? _notifications;
 
     public VoidServiceAgreementCommandHandler(
         IServiceAgreementRepository agreements,
         IAuditLogService audit,
-        IUnitOfWork uow)
+        IUnitOfWork uow,
+        IJobRepository? jobs = null,
+        INotificationRepository? notifications = null)
     {
         _agreements = agreements;
         _audit = audit;
         _uow = uow;
+        _jobs = jobs;
+        _notifications = notifications;
     }
 
     public async Task<ServiceAgreementDto> Handle(VoidServiceAgreementCommand request, CancellationToken ct)
@@ -54,12 +62,53 @@ public sealed class VoidServiceAgreementCommandHandler : IRequestHandler<VoidSer
         }
 
         var now = DateTime.UtcNow;
+        var voidReason = request.VoidReason.Trim();
         agreement.Status = ServiceAgreementStatuses.Void;
         agreement.IsCurrent = false;
         agreement.VoidedAt = now;
         agreement.VoidedByUserId = request.UserId;
-        agreement.VoidReason = request.VoidReason.Trim();
+        agreement.VoidReason = voidReason;
         agreement.ConcurrencyToken = Guid.NewGuid();
+
+        var job = _jobs != null
+            ? await _jobs.GetByIdAsync(agreement.JobId, ct)
+            : agreement.Job;
+        if (job != null)
+        {
+            if (job.CurrentServiceAgreementId == agreement.ServiceAgreementId
+                || job.CurrentServiceAgreement?.ServiceAgreementId == agreement.ServiceAgreementId)
+            {
+                job.CurrentServiceAgreementId = null;
+                job.CurrentServiceAgreement = null;
+            }
+
+            job.UpdatedAt = now;
+            job.ConcurrencyToken = Guid.NewGuid();
+
+            if (_notifications != null && job.CreatedBy != Guid.Empty)
+            {
+                await _notifications.AddAsync(new Notification
+                {
+                    NotificationId = Guid.NewGuid(),
+                    UserId = job.CreatedBy,
+                    NotificationType = "JOB",
+                    Title = "Thỏa thuận dịch vụ đã bị hủy",
+                    Message = $"Dự thảo thỏa thuận dịch vụ (v{agreement.Version}) cho tin tuyển dụng \"{job.Title}\" đã bị hủy bỏ. Lý do: {voidReason}.",
+                    RelatedEntityType = "JOB",
+                    RelatedEntityId = job.JobId,
+                    Metadata = JsonSerializer.Serialize(new
+                    {
+                        jobId = job.JobId,
+                        agreementId = agreement.ServiceAgreementId,
+                        version = agreement.Version,
+                        reason = voidReason,
+                        actionRoute = $"/client/jobs?highlight={job.JobId}&openDetail=true"
+                    }),
+                    IsRead = false,
+                    CreatedAt = now
+                }, ct);
+            }
+        }
 
         await _audit.AddAsync(new AuditEntry
         {
@@ -67,7 +116,7 @@ public sealed class VoidServiceAgreementCommandHandler : IRequestHandler<VoidSer
             EntityType = "ServiceAgreement",
             EntityId = agreement.ServiceAgreementId,
             ActorUserId = request.UserId,
-            NewValues = new { Status = agreement.Status, Reason = agreement.VoidReason }
+            NewValues = new { Status = agreement.Status, IsCurrent = agreement.IsCurrent, Reason = agreement.VoidReason, JobId = agreement.JobId }
         }, ct);
 
         await _uow.SaveChangesAsync(ct);

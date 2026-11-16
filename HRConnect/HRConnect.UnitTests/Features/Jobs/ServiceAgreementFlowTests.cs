@@ -928,4 +928,66 @@ public class ServiceAgreementFlowTests
         agreement.DocumentSha256Hash.Should().Be("existing-hash");
         _storage.Verify(x => x.UploadAsync(It.IsAny<Stream>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task VoidAgreement_WhenUnsigned_ShouldClearJobCurrentAgreementNotifyClientAndHideVoidFromJobDto()
+    {
+        var (job, company, clientUser, _) = CreateTestJob("HEADHUNT_COD");
+        job.CurrencyCode = "VND";
+        var initialJobToken = job.ConcurrencyToken;
+        var agreement = new ServiceAgreement
+        {
+            ServiceAgreementId = Guid.NewGuid(),
+            JobId = job.JobId,
+            CompanyId = company.CompanyId,
+            Version = 1,
+            Status = ServiceAgreementStatuses.SentToClient,
+            IsCurrent = true,
+            ConcurrencyToken = Guid.NewGuid(),
+            Job = job,
+        };
+        job.CurrentServiceAgreementId = agreement.ServiceAgreementId;
+        job.CurrentServiceAgreement = agreement;
+        job.ServiceAgreements = new List<ServiceAgreement> { agreement };
+
+        _agreements.Setup(x => x.GetByIdForUpdateAsync(agreement.ServiceAgreementId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(agreement);
+        _jobs.Setup(x => x.GetByIdAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(job);
+
+        var reviewerId = Guid.NewGuid();
+        var handler = new VoidServiceAgreementCommandHandler(
+            _agreements.Object, _audit.Object, _uow.Object, _jobs.Object, _notifications.Object);
+
+        var dto = await handler.Handle(new VoidServiceAgreementCommand
+        {
+            JobId = job.JobId,
+            AgreementId = agreement.ServiceAgreementId,
+            UserId = reviewerId,
+            VoidReason = "Điều chỉnh lại gói dịch vụ",
+        }, CancellationToken.None);
+
+        dto.Status.Should().Be(ServiceAgreementStatuses.Void);
+        agreement.Status.Should().Be(ServiceAgreementStatuses.Void);
+        agreement.IsCurrent.Should().BeFalse();
+        agreement.VoidReason.Should().Be("Điều chỉnh lại gói dịch vụ");
+        agreement.VoidedByUserId.Should().Be(reviewerId);
+        job.CurrentServiceAgreementId.Should().BeNull();
+        job.CurrentServiceAgreement.Should().BeNull();
+        job.ConcurrencyToken.Should().NotBe(initialJobToken);
+
+        JobDto.From(job).AgreementStatus.Should().BeNull();
+        JobListItemDto.From(job).AgreementStatus.Should().BeNull();
+
+        _notifications.Verify(x => x.AddAsync(It.Is<Notification>(n =>
+            n.NotificationType == "JOB" &&
+            n.UserId == clientUser.UserId &&
+            n.RelatedEntityType == "JOB" &&
+            n.RelatedEntityId == job.JobId &&
+            n.Message.Contains("Điều chỉnh lại gói dịch vụ") &&
+            n.Metadata != null &&
+            System.Text.Json.JsonDocument.Parse(n.Metadata, default).RootElement.GetProperty("actionRoute").GetString() == $"/client/jobs?highlight={job.JobId}&openDetail=true"),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
 }
