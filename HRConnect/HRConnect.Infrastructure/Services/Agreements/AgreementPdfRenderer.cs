@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Domain.Entities;
 using SkiaSharp;
@@ -31,6 +32,9 @@ public sealed class AgreementPdfRenderer : IAgreementPdfRenderer
         Company company,
         bool isSigned)
     {
+        var documentDateUtc = agreement.SignedAt ?? agreement.CreatedAt;
+        var documentDateVn = VietnamTime.ToDateOnly(documentDateUtc);
+
         using var output = new MemoryStream();
         using (var document = SKDocument.CreatePdf(output, new SKDocumentPdfMetadata
                {
@@ -38,6 +42,8 @@ public sealed class AgreementPdfRenderer : IAgreementPdfRenderer
                    Author = "HR Connect Platform",
                    Creator = "HR Connect System",
                    Producer = "HR Connect Agreement Engine",
+                   Creation = documentDateUtc,
+                   Modified = documentDateUtc,
                }))
         {
             var writer = new PageWriter(document);
@@ -54,7 +60,7 @@ public sealed class AgreementPdfRenderer : IAgreementPdfRenderer
             writer.Rule();
 
             // Legal intro
-            writer.Body($"Hôm nay, ngày {DateTime.UtcNow:dd/MM/yyyy}, hai bên thống nhất ký kết thỏa thuận cung cấp dịch vụ tuyển dụng thông qua nền tảng công nghệ HR Connect với các nội dung sau:");
+            writer.Body($"Hôm nay, ngày {documentDateVn:dd/MM/yyyy}, hai bên thống nhất ký kết thỏa thuận cung cấp dịch vụ tuyển dụng thông qua nền tảng công nghệ HR Connect với các nội dung sau:");
 
             // Bên A
             writer.Section("BÊN A: ĐƠN VỊ CUNG CẤP DỊCH VỤ (HR CONNECT)");
