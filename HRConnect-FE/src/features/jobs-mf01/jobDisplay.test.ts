@@ -35,6 +35,22 @@ describe('CV_SOURCING deposit', () => {
     expect(sourcingDepositAmount(terms(3, null, 50))).toBeNull();
     expect(sourcingDepositAmount({ commercialTerms: null })).toBeNull();
   });
+
+  it('prefers backend depositAmount even when depositPercent or commercialTerms is missing', () => {
+    expect(
+      sourcingDepositAmount({
+        ...terms(10, 600_000, null),
+        depositAmount: 2_100_000,
+      })
+    ).toBe(2_100_000);
+    expect(sourcingDepositAmount({ commercialTerms: null, depositAmount: 1_500_000 })).toBe(1_500_000);
+    expect(
+      sourcingDepositAmount({
+        ...terms(10, 600_000, 50),
+        depositAmount: 2_400_000,
+      })
+    ).toBe(2_400_000);
+  });
 });
 
 describe('Nhãn biểu mẫu MF-01', () => {

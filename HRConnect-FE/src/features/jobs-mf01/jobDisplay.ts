@@ -185,7 +185,10 @@ export const formatHeadcount = (job: { serviceTypeCode?: string | null; quantity
 export const isAwaitingSourcingDeposit = (job: Pick<Job, 'status' | 'serviceTypeCode'>): boolean =>
   job.status === 'PENDING_PAYMENT' && job.serviceTypeCode === 'CV_SOURCING';
 
-export const sourcingDepositAmount = (job: Pick<Job, 'commercialTerms'>): number | null => {
+export const sourcingDepositAmount = (
+  job: Pick<Job, 'commercialTerms' | 'depositAmount'>
+): number | null => {
+  if (job.depositAmount != null) return job.depositAmount;
   const terms = job.commercialTerms;
   if (!terms?.sourcingTarget || !terms.pricePerCv || !terms.depositPercent) return null;
   return Math.round(terms.sourcingTarget * terms.pricePerCv * terms.depositPercent) / 100;
