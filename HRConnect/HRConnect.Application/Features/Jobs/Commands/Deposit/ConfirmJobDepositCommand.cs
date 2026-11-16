@@ -52,6 +52,16 @@ public sealed class ConfirmJobDepositCommandHandler : IRequestHandler<ConfirmJob
             throw new ConflictException("Chỉ xác nhận cọc cho tin tuyển dụng đang chờ thanh toán (PENDING_PAYMENT).");
         }
 
+        var serviceTypeCode = job.ServiceType?.Code ?? await _jobRepository.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, cancellationToken);
+        if (!string.Equals(serviceTypeCode, ServiceTypeCodes.CvSourcing, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictException("Chỉ xác nhận tiền cọc cho tin tuyển dụng dịch vụ CV Sourcing.", "JOB_NOT_SOURCING");
+        }
+
+        var fees = await _financeRepository.GetJobServiceFeesForUpdateAsync(job.JobId, cancellationToken);
+        var depositFee = fees.FirstOrDefault(f => f.Kind == ServiceFeeKinds.Deposit && f.Status != ServiceFeeStates.Cancelled)
+            ?? throw new ConflictException("Tin tuyển dụng chưa có phiếu đặt cọc (DEPOSIT) hợp lệ để xác nhận.", "DEPOSIT_FEE_NOT_FOUND");
+
         var now = DateTime.UtcNow;
 
         // Chuyển Job sang ACTIVE
@@ -78,18 +88,13 @@ public sealed class ConfirmJobDepositCommandHandler : IRequestHandler<ConfirmJob
         }
 
         // Cập nhật ServiceFee
-        var fees = await _financeRepository.GetJobServiceFeesForUpdateAsync(job.JobId, cancellationToken);
-        var depositFee = fees.FirstOrDefault(f => f.Kind == ServiceFeeKinds.Deposit && f.Status != ServiceFeeStates.Cancelled);
-        if (depositFee != null)
-        {
-            depositFee.Status = ServiceFeeStates.Paid;
-            depositFee.PaidAt = now;
-            depositFee.PaymentReference = !string.IsNullOrWhiteSpace(depositFee.PaymentReference)
-                ? depositFee.PaymentReference
-                : $"DEP-{job.JobId.ToString("N")[..8].ToUpper()}";
-            depositFee.RecordedBy = request.UserId;
-            depositFee.UpdatedAt = now;
-        }
+        depositFee.Status = ServiceFeeStates.Paid;
+        depositFee.PaidAt = now;
+        depositFee.PaymentReference = !string.IsNullOrWhiteSpace(depositFee.PaymentReference)
+            ? depositFee.PaymentReference
+            : $"DEP-{job.JobId.ToString("N")[..8].ToUpper()}";
+        depositFee.RecordedBy = request.UserId;
+        depositFee.UpdatedAt = now;
 
         // Gửi thông báo cho Doanh nghiệp
         await _notifications.AddAsync(new Notification

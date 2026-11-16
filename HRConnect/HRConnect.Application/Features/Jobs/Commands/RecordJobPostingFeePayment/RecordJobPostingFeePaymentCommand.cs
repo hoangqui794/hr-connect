@@ -66,6 +66,13 @@ public sealed class RecordJobPostingFeePaymentCommandHandler : IRequestHandler<R
                 "JOB_REQUIRES_SOURCING_DEPOSIT");
         }
 
+        if (job.Status is JobStatuses.Draft or JobStatuses.Rejected or JobStatuses.Closed)
+        {
+            throw new ConflictException(
+                $"Không thể ghi nhận thanh toán phí đăng tin khi tin tuyển dụng đang ở trạng thái {job.Status}.",
+                "JOB_INVALID_STATUS_FOR_PAYMENT");
+        }
+
         var fee = await _jobRepository.GetPostingFeeByJobIdAsync(request.JobId, cancellationToken);
         var now = DateTime.UtcNow;
         if (fee == null)

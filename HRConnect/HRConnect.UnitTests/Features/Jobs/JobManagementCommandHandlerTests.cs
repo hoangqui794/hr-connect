@@ -1087,6 +1087,218 @@ public class JobManagementCommandHandlerTests
         _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Fact]
+    public async Task ConfirmJobDeposit_WhenNotCvSourcing_ShouldThrowConflict()
+    {
+        var job = SetupJob(JobStatuses.PendingPayment); // CvApplication
+        var finance = new Mock<IFinanceRepository>();
+        var handler = new ConfirmJobDepositCommandHandler(_jobs.Object, finance.Object, _notifications.Object, _uow.Object);
+
+        var act = () => handler.Handle(new ConfirmJobDepositCommand { JobId = job.JobId, UserId = Guid.NewGuid() }, default);
+
+        var ex = await act.Should().ThrowAsync<ConflictException>();
+        ex.Which.ErrorCode.Should().Be("JOB_NOT_SOURCING");
+        job.Status.Should().Be(JobStatuses.PendingPayment);
+        _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ConfirmJobDeposit_WhenDepositFeeMissing_ShouldThrowConflictWithoutActivatingJob()
+    {
+        var job = SetupJob(JobStatuses.PendingPayment);
+        job.ServiceType!.Code = ServiceTypeCodes.CvSourcing;
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceTypeCodes.CvSourcing);
+
+        var finance = new Mock<IFinanceRepository>();
+        finance.Setup(x => x.GetJobServiceFeesForUpdateAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ServiceFee>());
+
+        var handler = new ConfirmJobDepositCommandHandler(_jobs.Object, finance.Object, _notifications.Object, _uow.Object);
+        var act = () => handler.Handle(new ConfirmJobDepositCommand { JobId = job.JobId, UserId = Guid.NewGuid() }, default);
+
+        var ex = await act.Should().ThrowAsync<ConflictException>();
+        ex.Which.ErrorCode.Should().Be("DEPOSIT_FEE_NOT_FOUND");
+        job.Status.Should().Be(JobStatuses.PendingPayment);
+        _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ConfirmJobDeposit_ValidCvSourcingWithDepositFee_ShouldActivateJobAndMarkDepositPaid()
+    {
+        var job = SetupJob(JobStatuses.PendingPayment);
+        job.Title = "Senior ReactJS";
+        job.ServiceType!.Code = ServiceTypeCodes.CvSourcing;
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceTypeCodes.CvSourcing);
+
+        var depositFee = new ServiceFee
+        {
+            ServiceFeeId = Guid.NewGuid(),
+            JobId = job.JobId,
+            CompanyId = job.CompanyId,
+            Kind = ServiceFeeKinds.Deposit,
+            Status = ServiceFeeStates.Pending,
+            Amount = 3_000_000m,
+            CurrencyCode = "VND"
+        };
+        var finance = new Mock<IFinanceRepository>();
+        finance.Setup(x => x.GetJobServiceFeesForUpdateAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ServiceFee> { depositFee });
+
+        var reviewerId = Guid.NewGuid();
+        var result = await new ConfirmJobDepositCommandHandler(_jobs.Object, finance.Object, _notifications.Object, _uow.Object)
+            .Handle(new ConfirmJobDepositCommand { JobId = job.JobId, UserId = reviewerId }, default);
+
+        result.Status.Should().Be(JobStatuses.Active);
+        depositFee.Status.Should().Be(ServiceFeeStates.Paid);
+        depositFee.PaidAt.Should().NotBeNull();
+        depositFee.RecordedBy.Should().Be(reviewerId);
+        _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task NotifyJobDeposit_WhenNotCvSourcing_ShouldThrowConflict()
+    {
+        var (job, owner) = SetupOwnedJob(JobStatuses.PendingPayment); // CvApplication
+        var users = new Mock<IUserRepository>();
+        var finance = new Mock<IFinanceRepository>();
+        var handler = new NotifyJobDepositCommandHandler(_jobs.Object, _members.Object, users.Object, _notifications.Object, finance.Object, _uow.Object);
+
+        var act = () => handler.Handle(new NotifyJobDepositCommand
+        {
+            JobId = job.JobId,
+            UserId = owner,
+            IsBackoffice = false,
+            PaymentReference = "DEP-1"
+        }, default);
+
+        var ex = await act.Should().ThrowAsync<ConflictException>();
+        ex.Which.ErrorCode.Should().Be("JOB_NOT_SOURCING");
+        job.DepositSubmittedAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task NotifyJobDeposit_WhenRepeatedAfterAlreadySubmitted_ShouldBeIdempotentWithoutResendingNotifications()
+    {
+        var (job, owner) = SetupOwnedJob(JobStatuses.PendingPayment);
+        job.Title = "CV Sourcing Lead";
+        job.ServiceType!.Code = ServiceTypeCodes.CvSourcing;
+        _jobs.Setup(x => x.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ServiceTypeCodes.CvSourcing);
+
+        var depositFee = new ServiceFee
+        {
+            ServiceFeeId = Guid.NewGuid(),
+            JobId = job.JobId,
+            CompanyId = job.CompanyId,
+            Kind = ServiceFeeKinds.Deposit,
+            Status = ServiceFeeStates.Pending,
+            Amount = 3_000_000m,
+            CurrencyCode = "VND"
+        };
+        var finance = new Mock<IFinanceRepository>();
+        finance.Setup(x => x.GetJobServiceFeesForUpdateAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ServiceFee> { depositFee });
+
+        var hrUserId = Guid.NewGuid();
+        var users = new Mock<IUserRepository>();
+        users.Setup(x => x.GetActiveUserIdsByRoleAsync("INTERNAL_HR", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Guid> { hrUserId });
+
+        var handler = new NotifyJobDepositCommandHandler(_jobs.Object, _members.Object, users.Object, _notifications.Object, finance.Object, _uow.Object);
+
+        (await handler.Handle(new NotifyJobDepositCommand
+        {
+            JobId = job.JobId,
+            UserId = owner,
+            IsBackoffice = false,
+            PaymentReference = "DEP-FIRST"
+        }, default)).Should().BeTrue();
+
+        var firstSubmittedAt = job.DepositSubmittedAt;
+        firstSubmittedAt.Should().NotBeNull();
+        depositFee.PaymentReference.Should().Be("DEP-FIRST");
+
+        // Second call: returns true idempotently without overwriting timestamp/reference or sending duplicate alerts
+        (await handler.Handle(new NotifyJobDepositCommand
+        {
+            JobId = job.JobId,
+            UserId = owner,
+            IsBackoffice = false,
+            PaymentReference = "DEP-SECOND"
+        }, default)).Should().BeTrue();
+
+        job.DepositSubmittedAt.Should().Be(firstSubmittedAt);
+        depositFee.PaymentReference.Should().Be("DEP-FIRST");
+        _notifications.Verify(x => x.AddAsync(It.IsAny<Notification>(), It.IsAny<CancellationToken>()), Times.Exactly(2)); // 1 HR + 1 Client from first call only
+        _jobs.Verify(x => x.AddStatusHistoryAsync(It.IsAny<JobStatusHistory>(), It.IsAny<CancellationToken>()), Times.Once);
+        _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(JobStatuses.Draft)]
+    [InlineData(JobStatuses.Rejected)]
+    [InlineData(JobStatuses.Closed)]
+    public async Task RecordPayment_WhenJobInBlockedStatus_ShouldThrowConflict(string invalidStatus)
+    {
+        var job = SetupJob(invalidStatus);
+        var handler = new RecordJobPostingFeePaymentCommandHandler(_jobs.Object, _notifications.Object, _uow.Object);
+
+        var act = () => handler.Handle(new RecordJobPostingFeePaymentCommand
+        {
+            JobId = job.JobId,
+            UserId = Guid.NewGuid(),
+            IsBackofficeOrSystem = true,
+            PaymentReference = "VNPAY-BLOCKED"
+        }, default);
+
+        var ex = await act.Should().ThrowAsync<ConflictException>();
+        ex.Which.ErrorCode.Should().Be("JOB_INVALID_STATUS_FOR_PAYMENT");
+        _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RecordPayment_WhenJobAlreadyActive_ShouldStillRecordPaidFeeForVnPayWithoutReTransitioning()
+    {
+        var job = SetupJob(JobStatuses.Active);
+        var stdPkg = new JobPostingPackage
+        {
+            PackageId = Guid.NewGuid(),
+            Code = JobPostingPackageCodes.Standard,
+            Name = "Gói Tiêu Chuẩn",
+            Price = 1_500_000m,
+            DurationDays = 30
+        };
+        var fee = new JobPostingFee
+        {
+            PostingFeeId = Guid.NewGuid(),
+            JobId = job.JobId,
+            PackageId = stdPkg.PackageId,
+            CompanyId = job.CompanyId,
+            Status = JobPostingFeeStatuses.Pending,
+            Amount = 1_500_000m,
+            CurrencyCode = "VND",
+            Package = stdPkg
+        };
+        _jobs.Setup(x => x.GetPostingFeeByJobIdAsync(job.JobId, It.IsAny<CancellationToken>())).ReturnsAsync(fee);
+
+        var result = await new RecordJobPostingFeePaymentCommandHandler(_jobs.Object, _notifications.Object, _uow.Object)
+            .Handle(new RecordJobPostingFeePaymentCommand
+            {
+                JobId = job.JobId,
+                UserId = Guid.NewGuid(),
+                IsBackofficeOrSystem = true,
+                PaymentReference = "VNPAY-123456"
+            }, default);
+
+        result.Status.Should().Be(JobPostingFeeStatuses.Paid);
+        fee.PaymentReference.Should().Be("VNPAY-123456");
+        job.Status.Should().Be(JobStatuses.Active);
+        _jobs.Verify(x => x.AddStatusHistoryAsync(It.IsAny<JobStatusHistory>(), It.IsAny<CancellationToken>()), Times.Never);
+        _uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     private (Job Job, Guid User) SetupOwnedJob(string status)
     {
         var job = SetupJob(status); var user = Guid.NewGuid();

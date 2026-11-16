@@ -67,6 +67,18 @@ public sealed class NotifyJobDepositCommandHandler : IRequestHandler<NotifyJobDe
             throw new ConflictException("Tin tuyển dụng hiện không ở trạng thái chờ nộp cọc / thanh toán.");
         }
 
+        var serviceTypeCode = job.ServiceType?.Code ?? await _jobRepository.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, cancellationToken);
+        if (!string.Equals(serviceTypeCode, ServiceTypeCodes.CvSourcing, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictException("Chỉ gửi thông báo nộp cọc cho tin tuyển dụng dịch vụ CV Sourcing.", "JOB_NOT_SOURCING");
+        }
+
+        // Idempotent when deposit notification was already submitted: do not overwrite timestamp/reference or resend alerts.
+        if (job.DepositSubmittedAt != null)
+        {
+            return true;
+        }
+
         var now = DateTime.UtcNow;
         var reference = string.IsNullOrWhiteSpace(request.PaymentReference)
             ? $"DEP-{job.JobId.ToString("N")[..8].ToUpper()}"
