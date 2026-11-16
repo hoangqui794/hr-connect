@@ -725,14 +725,14 @@ const submitBlockers = (
   if (!trimOrNull(v.title)) {
     missing.push({ field: ['title'], message: 'Nhập tên vị trí tuyển dụng.', step: 1 });
   }
-  if (!v.quantity || v.quantity < 1) {
-    missing.push({ field: ['quantity'], message: 'Nhập số lượng cần tuyển (tối thiểu 1).', step: 1 });
-  }
   if (!v.employmentType) {
     missing.push({ field: ['employmentType'], message: 'Chọn loại hình làm việc.', step: 1 });
   }
   if (!v.workMode) {
     missing.push({ field: ['workMode'], message: 'Chọn hình thức làm việc.', step: 1 });
+  }
+  if (!v.quantity || v.quantity < 1) {
+    missing.push({ field: ['quantity'], message: 'Nhập số lượng cần tuyển (tối thiểu 1).', step: 1 });
   }
   if (!trimOrNull(v.location)) {
     missing.push({ field: ['location'], message: 'Nhập địa điểm làm việc.', step: 1 });
@@ -808,6 +808,7 @@ export const JobFormPage: React.FC = () => {
   const [salaryRangePick, setSalaryRangePick] = useState<string | undefined>();
   const [errorSummary, setErrorSummary] = useState<string[]>([]);
   const [stepErrors, setStepErrors] = useState<Record<number, boolean>>({});
+  const [requirementsError, setRequirementsError] = useState<string | null>(null);
   const [saving, setSaving] = useState<'draft' | 'submit' | null>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
 
@@ -922,6 +923,12 @@ export const JobFormPage: React.FC = () => {
   const hasMustHaveReq = (watched.requirements ?? []).some((r) => r?.requirementType === 'MUST_HAVE' && r.content?.trim());
   const hasMustHave = hasMustHaveReq || hasSkills;
 
+  useEffect(() => {
+    if (hasMustHave && requirementsError) {
+      setRequirementsError(null);
+    }
+  }, [hasMustHave, requirementsError]);
+
   // Load existing job details
   useEffect(() => {
     if (existing.data) {
@@ -1031,6 +1038,29 @@ export const JobFormPage: React.FC = () => {
 
   // ─── Step Navigation ────────────────────────────────────────────────────────
 
+  const STEP1_FIELD_ANCHORS: Record<string, string> = {
+    title: 'form-title-item',
+    employmentType: 'form-employment-item',
+    workMode: 'form-work-mode-item',
+    quantity: 'form-quantity-item',
+    location: 'form-location-item',
+    description: 'form-desc-item',
+    benefits: 'form-benefits-item',
+    requirements: 'form-requirements-item',
+    deadline: 'form-deadline-item',
+  };
+
+  const STEP1_FORM_FIELDS = [
+    'title',
+    'employmentType',
+    'workMode',
+    'quantity',
+    'location',
+    'description',
+    'benefits',
+    'deadline',
+  ] as const;
+
   const validateStep = (step: number): boolean => {
     const values = form.getFieldsValue();
     if (step === 0) {
@@ -1041,18 +1071,37 @@ export const JobFormPage: React.FC = () => {
       return true;
     }
     if (step === 1) {
-      if (!values.title?.trim()) {
-        message.warning('Vui lòng nhập tên vị trí tuyển dụng.');
+      const step1Blockers = submitBlockers(values, effectiveCode, true).filter((b) => b.step === 1);
+      const blockerByField = new Map<string, string>();
+      step1Blockers.forEach((b) => {
+        blockerByField.set(String(b.field[0]), b.message);
+      });
+
+      form.setFields(
+        STEP1_FORM_FIELDS.map((fieldName) => ({
+          name: [fieldName],
+          errors: blockerByField.has(fieldName) ? [blockerByField.get(fieldName)!] : [],
+        })) as Parameters<typeof form.setFields>[0]
+      );
+
+      setRequirementsError(blockerByField.get('requirements') ?? null);
+
+      if (step1Blockers.length > 0) {
+        setStepErrors((prev) => ({ ...prev, 1: true }));
+        const firstBlocker = step1Blockers[0];
+        const firstFieldKey = String(firstBlocker.field[0]);
+        message.warning(firstBlocker.message);
+        const anchorId = STEP1_FIELD_ANCHORS[firstFieldKey];
+        if (firstFieldKey !== 'requirements') {
+          form.scrollToField?.(firstBlocker.field, { behavior: 'smooth', block: 'center' });
+        }
+        if (anchorId) {
+          document.getElementById(anchorId)?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+        }
         return false;
       }
-      if (!values.quantity || values.quantity < 1) {
-        message.warning('Số lượng cần tuyển phải từ 1 người trở lên.');
-        return false;
-      }
-      if (!values.deadline) {
-        message.warning('Vui lòng chọn hạn nhận hồ sơ.');
-        return false;
-      }
+
+      setStepErrors((prev) => (prev[1] ? { ...prev, 1: false } : prev));
       return true;
     }
     if (step === 2) {
@@ -1107,6 +1156,7 @@ export const JobFormPage: React.FC = () => {
             .filter((b) => b.field[0] !== 'requirements')
             .map((b) => ({ name: b.field, errors: [b.message] })) as Parameters<typeof form.setFields>[0]
         );
+        setRequirementsError(blockers.find((b) => b.field[0] === 'requirements')?.message ?? null);
 
         setErrorSummary([
           'Chưa đủ thông tin bắt buộc để gửi duyệt (bạn vẫn có thể chọn "Lưu nháp"):',
@@ -1549,6 +1599,7 @@ export const JobFormPage: React.FC = () => {
                     >
                       <Select
                         size="large"
+                        allowClear
                         placeholder="Chọn loại hình làm việc"
                         options={(Object.keys(EMPLOYMENT_TYPE_LABEL) as EmploymentType[]).map((k) => ({
                           value: k,
@@ -1566,6 +1617,7 @@ export const JobFormPage: React.FC = () => {
                     >
                       <Select
                         size="large"
+                        allowClear
                         placeholder="Chọn hình thức làm việc"
                         options={WORK_MODE_OPTIONS.map((opt) => ({
                           value: opt.value,
@@ -1575,13 +1627,15 @@ export const JobFormPage: React.FC = () => {
                     </Form.Item>
                   </div>
 
-                  <Form.Item
-                    name="quantity"
-                    label="Số lượng"
-                    rules={[{ required: true, type: 'number', min: 1, max: 1000, message: 'Từ 1 đến 1000 người.' }]}
-                  >
-                    <InputNumber size="large" min={1} max={1000} className="w-full" suffix="người" />
-                  </Form.Item>
+                  <div id="form-quantity-item">
+                    <Form.Item
+                      name="quantity"
+                      label="Số lượng"
+                      rules={[{ required: true, type: 'number', min: 1, max: 1000, message: 'Từ 1 đến 1000 người.' }]}
+                    >
+                      <InputNumber size="large" min={1} max={1000} className="w-full" suffix="người" />
+                    </Form.Item>
+                  </div>
 
                   <Form.Item
                     name="minExperienceYears"
@@ -1948,6 +2002,11 @@ export const JobFormPage: React.FC = () => {
                       </div>
                     )}
                   </Form.List>
+                  {requirementsError && (
+                    <div role="alert" className="text-sm text-[#ff4d4f]">
+                      {requirementsError}
+                    </div>
+                  )}
                 </div>
               </section>
 
