@@ -159,6 +159,18 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
                     "COMMISSION",
                     commission.CommissionId,
                     "/admin/payouts"), cancellationToken);
+
+                if (await _financeRepository.GetAffiliateUserIdAsync(commission.AttributionId, cancellationToken) is Guid affiliateUserId
+                    && affiliateUserId != Guid.Empty)
+                {
+                    await _notifier.NotifyUsersAsync([affiliateUserId], new AppNotice(
+                        "COMMISSION",
+                        "Hoa hồng đủ điều kiện chi trả",
+                        $"Ứng viên của vị trí \"{jobTitle}\" đã hoàn tất thời hạn bảo hành. Khoản hoa hồng {formatted} đã chuyển sang trạng thái đủ điều kiện nhận.",
+                        "COMMISSION",
+                        commission.CommissionId,
+                        "/affiliate/commissions"), cancellationToken);
+                }
             }
         }
 
@@ -180,8 +192,9 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
         }
 
         var oldStatus = fee.Status;
+        var now = DateTime.UtcNow;
         fee.Status = ServiceFeeStates.Overdue;
-        fee.UpdatedAt = DateTime.UtcNow;
+        fee.UpdatedAt = now;
         await _auditLogService.AddAsync(new AuditEntry
         {
             Action = AuditActions.ServiceFeeOverdue,
@@ -193,6 +206,7 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
             NewValues = new { status = fee.Status, dueDate = fee.DueDate },
         }, cancellationToken);
 
+        var formattedAmount = FinanceCurrency.FormatMoney(fee.Amount, fee.CurrencyCode);
         if (_notifier != null)
         {
             await _notifier.NotifyRoleAsync("PLATFORM_ADMIN", new AppNotice(
@@ -202,6 +216,24 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
                 "SERVICE_FEE",
                 fee.ServiceFeeId,
                 "/admin/payouts"), cancellationToken);
+        }
+
+        if (!ServiceFeeKinds.OwedToClient.Contains(fee.Kind))
+        {
+            await CompanyFinanceNotice.SendAsync(
+                _financeRepository,
+                _notifier,
+                _notificationRepository,
+                fee.CompanyId,
+                new AppNotice(
+                    "SERVICE_FEE",
+                    "Phí dịch vụ đã quá hạn thanh toán",
+                    $"Phí dịch vụ {formattedAmount} đã quá hạn thanh toán ({fee.DueDate:dd/MM/yyyy}). Vui lòng thanh toán để hoàn tất công nợ.",
+                    "SERVICE_FEE",
+                    fee.ServiceFeeId,
+                    "/client/billing"),
+                now,
+                cancellationToken);
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -431,5 +463,48 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
             NewValues = new { slot.ReplacementSlotId, originalServiceFeeId = slot.ServiceFeeId, percent, refund.Amount },
         }, cancellationToken);
         return refund;
+    }
+}
+
+/// <summary>Sends one company notice via IAppNotifier (with SignalR), falling back to INotificationRepository when notifier is absent.</summary>
+internal static class CompanyFinanceNotice
+{
+    public static async Task SendAsync(
+        IFinanceRepository financeRepository,
+        IAppNotifier? notifier,
+        INotificationRepository? notificationRepository,
+        Guid companyId,
+        AppNotice notice,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        if (notifier != null)
+        {
+            await notifier.NotifyCompanyAsync(companyId, notice, cancellationToken);
+            return;
+        }
+
+        if (notificationRepository == null)
+        {
+            return;
+        }
+
+        var metadata = System.Text.Json.JsonSerializer.Serialize(new { routeHint = notice.RouteHint, entityId = notice.RelatedEntityId });
+        foreach (var userId in await financeRepository.GetActiveCompanyUserIdsAsync(companyId, cancellationToken))
+        {
+            await notificationRepository.AddAsync(new Notification
+            {
+                NotificationId = Guid.NewGuid(),
+                UserId = userId,
+                NotificationType = notice.NotificationType,
+                Title = notice.Title,
+                Message = notice.Message,
+                RelatedEntityType = notice.RelatedEntityType,
+                RelatedEntityId = notice.RelatedEntityId,
+                Metadata = metadata,
+                IsRead = false,
+                CreatedAt = now,
+            }, cancellationToken);
+        }
     }
 }

@@ -2413,4 +2413,128 @@ public class Mf05FinanceTests
         mockUow.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
         (await _context.Payouts.CountAsync()).Should().Be(1);
     }
+
+    [Fact]
+    public async Task CompleteWarranty_NotifiesAffiliateWhenEarned_AndDoesNotNotifyWhenSuspended()
+    {
+        var (placementEarned, offerEarned) = await SeedPlacementAsync();
+        await InitializeAsync(placementEarned, offerEarned);
+        var affiliateUserId = await SeedAffiliateUserForPlacementAsync();
+        var earnedCommission = await _context.Commissions.SingleAsync(c => c.PlacementId == placementEarned.PlacementId);
+
+        var notifierEarned = new Mock<IAppNotifier>();
+        var progressEarned = new WarrantyProgressService(Repository, UnitOfWork, _audit.Object, notifier: notifierEarned.Object);
+
+        (await progressEarned.CompleteWarrantyAsync(placementEarned.PlacementId, Start.AddDays(30))).Should().BeTrue();
+
+        notifierEarned.Verify(n => n.NotifyUsersAsync(
+            It.Is<IEnumerable<Guid>>(ids => ids.Single() == affiliateUserId),
+            It.Is<AppNotice>(x =>
+                x.NotificationType == "COMMISSION" &&
+                x.RelatedEntityType == "COMMISSION" &&
+                x.RelatedEntityId == earnedCommission.CommissionId &&
+                x.RouteHint == "/affiliate/commissions"),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        var (placementHeld, offerHeld) = await SeedPlacementAsync();
+        await InitializeAsync(placementHeld, offerHeld);
+        var heldCommission = await _context.Commissions.SingleAsync(c => c.PlacementId == placementHeld.PlacementId);
+        var suspendedAttribution = await _context.Attributions.SingleAsync(a => a.AttributionId == heldCommission.AttributionId);
+        await SeedAffiliateStatusAsync(suspendedAttribution.AffiliateId, "SUSPENDED", "ACTIVE");
+
+        var notifierHeld = new Mock<IAppNotifier>();
+        var progressHeld = new WarrantyProgressService(Repository, UnitOfWork, _audit.Object, notifier: notifierHeld.Object);
+
+        (await progressHeld.CompleteWarrantyAsync(placementHeld.PlacementId, Start.AddDays(30))).Should().BeTrue();
+        (await _context.Commissions.SingleAsync(c => c.CommissionId == heldCommission.CommissionId)).Status.Should().Be(CommissionStates.OnHold);
+        notifierHeld.Verify(n => n.NotifyUsersAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<AppNotice>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task MarkServiceFeeOverdue_NotifiesClientCompany_AndSkipsRefundFees()
+    {
+        var today = new DateOnly(2026, 10, 15);
+        var fee = await FeeDueOnAsync(today.AddDays(-2));
+        var notifier = new Mock<IAppNotifier>();
+        var progress = new WarrantyProgressService(Repository, UnitOfWork, _audit.Object, notifier: notifier.Object);
+
+        (await progress.MarkServiceFeeOverdueAsync(fee.ServiceFeeId, today)).Should().BeTrue();
+
+        (await _context.ServiceFees.SingleAsync(f => f.ServiceFeeId == fee.ServiceFeeId)).Status.Should().Be(ServiceFeeStates.Overdue);
+        notifier.Verify(n => n.NotifyCompanyAsync(
+            fee.CompanyId,
+            It.Is<AppNotice>(x =>
+                x.NotificationType == "SERVICE_FEE" &&
+                x.RelatedEntityType == "SERVICE_FEE" &&
+                x.RelatedEntityId == fee.ServiceFeeId &&
+                x.Title == "Phí dịch vụ đã quá hạn thanh toán" &&
+                x.RouteHint == "/client/billing"),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        var refundFee = new ServiceFee
+        {
+            ServiceFeeId = Guid.NewGuid(),
+            JobId = fee.JobId,
+            Kind = ServiceFeeKinds.ReplacementRefund,
+            CompanyId = fee.CompanyId,
+            BaseSalary = fee.Amount,
+            FeeMultiplier = 0.3m,
+            Amount = decimal.Round(fee.Amount * 0.3m, 0),
+            CurrencyCode = fee.CurrencyCode,
+            DueDate = today.AddDays(-1),
+            Status = ServiceFeeStates.Pending,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+        _context.ServiceFees.Add(refundFee);
+        await _context.SaveChangesAsync();
+
+        var notifierRefund = new Mock<IAppNotifier>();
+        var progressRefund = new WarrantyProgressService(Repository, UnitOfWork, _audit.Object, notifier: notifierRefund.Object);
+        (await progressRefund.MarkServiceFeeOverdueAsync(refundFee.ServiceFeeId, today)).Should().BeTrue();
+        notifierRefund.Verify(n => n.NotifyCompanyAsync(It.IsAny<Guid>(), It.IsAny<AppNotice>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ResolveResignation_NotifiesClient_WhenRejected()
+    {
+        var (placementRejected, _) = await ResignationReportedAsync(feePaid: true);
+        var notifierReject = new Mock<IAppNotifier>();
+        var resolveReject = new ResolveResignationCommandHandler(
+            Repository, UnitOfWork, _audit.Object, new BusinessSettingsService(new SystemSettingRepository(_context)), notifier: notifierReject.Object);
+
+        await resolveReject.Handle(new ResolveResignationCommand(placementRejected.PlacementId, false, "Ứng viên vẫn đi làm bình thường", _actor), default);
+
+        notifierReject.Verify(n => n.NotifyCompanyAsync(
+            _companyId,
+            It.Is<AppNotice>(x =>
+                x.NotificationType == "WARRANTY" &&
+                x.RelatedEntityType == "WARRANTY" &&
+                x.Title == "Báo nghỉ việc không được xác nhận" &&
+                x.Message.Contains("Ứng viên vẫn đi làm bình thường") &&
+                x.RouteHint == "/client/warranty"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ResolveResignation_NotifiesClient_WhenConfirmedWithUnpaidFee()
+    {
+        var (placementUnpaid, _) = await ResignationReportedAsync(feePaid: false);
+        var notifierConfirmUnpaid = new Mock<IAppNotifier>();
+        var resolveConfirmUnpaid = new ResolveResignationCommandHandler(
+            Repository, UnitOfWork, _audit.Object, new BusinessSettingsService(new SystemSettingRepository(_context)), notifier: notifierConfirmUnpaid.Object);
+
+        var res = await resolveConfirmUnpaid.Handle(new ResolveResignationCommand(placementUnpaid.PlacementId, true, "Đã xác minh", _actor), default);
+
+        res.Replacement!.Status.Should().Be(ReplacementSlotStates.WaitingPayment);
+        notifierConfirmUnpaid.Verify(n => n.NotifyCompanyAsync(
+            _companyId,
+            It.Is<AppNotice>(x =>
+                x.NotificationType == "WARRANTY" &&
+                x.RelatedEntityType == "WARRANTY" &&
+                x.Title == "Đã xác nhận ứng viên nghỉ việc" &&
+                x.Message.Contains("sau khi doanh nghiệp hoàn tất thanh toán phí dịch vụ") &&
+                x.RouteHint == "/client/warranty"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
 }

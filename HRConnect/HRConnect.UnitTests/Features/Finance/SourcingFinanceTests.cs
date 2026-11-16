@@ -50,11 +50,11 @@ public class SourcingFinanceTests
     private UnitOfWork UnitOfWork => new(_context);
     private BusinessSettingsService Settings => new(new SystemSettingRepository(_context));
 
-    private SourcingFinanceService Finance() =>
-        new(Repository, Deliveries, _audit.Object, Settings, NullLogger<SourcingFinanceService>.Instance);
+    private SourcingFinanceService Finance(IAppNotifier? notifier = null) =>
+        new(Repository, Deliveries, _audit.Object, Settings, NullLogger<SourcingFinanceService>.Instance, notifier);
 
-    private DecideSourcingDeliveryCommandHandler Decide() =>
-        new(Deliveries, _companyUsers.Object, UnitOfWork, _audit.Object, Finance());
+    private DecideSourcingDeliveryCommandHandler Decide(IAppNotifier? notifier = null) =>
+        new(Deliveries, _companyUsers.Object, UnitOfWork, _audit.Object, Finance(notifier), notifier);
 
     private SourcingAutoAcceptService AutoAccept() => new(Deliveries, UnitOfWork, _audit.Object, Finance());
 
@@ -760,6 +760,63 @@ public class SourcingFinanceTests
         var notification = _context.Notifications.OrderByDescending(n => n.CreatedAt).First(n => n.RelatedEntityId == commission.CommissionId);
         notification.Message.Should().Contain("USD");
         notification.Message.Should().NotContain(" đ ");
+    }
+
+    [Fact]
+    public async Task OnDeliveryCountedAndSettle_NotifyAffiliateWhenEarned_AndNotifyClientForSettlementAndCredit()
+    {
+        var jobSettlement = SeedJob(target: 2, depositPercent: 25m);
+        await CreateDepositAsync(jobSettlement, paid: true); // 300,000 paid deposit vs 600,000 per CV
+        var d1 = SeedDelivery(jobSettlement);
+        SeedAffiliateForJob();
+        await _context.SaveChangesAsync();
+        var affiliateUserId = _context.AffiliateProfiles.Local.Single().UserId;
+
+        var notifierAccept = new Mock<IAppNotifier>();
+        await Decide(notifierAccept.Object).Handle(new DecideSourcingDeliveryCommand(
+            jobSettlement.JobId, d1.DeliveryId, DecideSourcingDeliveryCommandHandler.DecisionAccepted, null, null, _clientUserId), default);
+
+        var earnedCommission = _context.Commissions.Single(c => c.SourcingDeliveryId == d1.DeliveryId);
+        notifierAccept.Verify(n => n.NotifyUsersAsync(
+            It.Is<IEnumerable<Guid>>(ids => ids.Single() == affiliateUserId),
+            It.Is<AppNotice>(x =>
+                x.NotificationType == "COMMISSION" &&
+                x.RelatedEntityType == "COMMISSION" &&
+                x.RelatedEntityId == earnedCommission.CommissionId &&
+                x.RouteHint == "/affiliate/commissions"),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        var notifierSettle = new Mock<IAppNotifier>();
+        var settlementFee = await Finance(notifierSettle.Object).SettleAsync(jobSettlement, _actor);
+        settlementFee.Kind.Should().Be(ServiceFeeKinds.Settlement);
+        notifierSettle.Verify(n => n.NotifyCompanyAsync(
+            _companyId,
+            It.Is<AppNotice>(x =>
+                x.NotificationType == "SERVICE_FEE" &&
+                x.RelatedEntityType == "SERVICE_FEE" &&
+                x.RelatedEntityId == settlementFee.ServiceFeeId &&
+                x.Title == "Phí quyết toán CV Sourcing cần thanh toán" &&
+                x.RouteHint == "/client/billing"),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        var jobCredit = SeedJob(target: 4, depositPercent: 50m);
+        await CreateDepositAsync(jobCredit, paid: true); // 1,200,000 paid deposit
+        var d2 = SeedDelivery(jobCredit);
+        d2.Status = SourcingDeliveryStates.Accepted;
+        await _context.SaveChangesAsync();
+
+        var notifierCredit = new Mock<IAppNotifier>();
+        var creditFee = await Finance(notifierCredit.Object).SettleAsync(jobCredit, _actor);
+        creditFee.Kind.Should().Be(ServiceFeeKinds.Credit);
+        notifierCredit.Verify(n => n.NotifyCompanyAsync(
+            _companyId,
+            It.Is<AppNotice>(x =>
+                x.NotificationType == "SERVICE_FEE" &&
+                x.RelatedEntityType == "SERVICE_FEE" &&
+                x.RelatedEntityId == creditFee.ServiceFeeId &&
+                x.Title == "Có khoản hoàn tiền quyết toán CV Sourcing" &&
+                x.RouteHint == "/client/billing"),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     private void SeedAffiliateForJob()

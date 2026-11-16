@@ -244,6 +244,26 @@ public sealed class ResolveResignationCommandHandler : IRequestHandler<ResolveRe
                 await ReplacementSlotLifecycle.NotifyAffiliateOpenAsync(
                     replacement, placement.Application?.Job, extended: false, _financeRepository, _notifier, cancellationToken);
             }
+            else if (placement.Application?.Job?.CompanyId is Guid confirmCompanyId)
+            {
+                var clientMessage = replacement?.Status == ReplacementSlotStates.WaitingPayment
+                    ? $"HR Connect đã xác nhận ứng viên vị trí \"{jobTitle}\" nghỉ trong thời gian bảo hành. Suất tuyển người thay thế miễn phí sẽ mở ngay sau khi doanh nghiệp hoàn tất thanh toán phí dịch vụ."
+                    : $"HR Connect đã xác nhận ứng viên vị trí \"{jobTitle}\" nghỉ trong thời gian bảo hành; bảo hành đã đóng theo thỏa thuận.";
+                await CompanyFinanceNotice.SendAsync(
+                    _financeRepository,
+                    _notifier,
+                    _notificationRepository,
+                    confirmCompanyId,
+                    new AppNotice(
+                        "WARRANTY",
+                        "Đã xác nhận ứng viên nghỉ việc",
+                        clientMessage,
+                        "WARRANTY",
+                        warranty.WarrantyId,
+                        "/client/warranty"),
+                    now,
+                    cancellationToken);
+            }
         }
         else
         {
@@ -252,6 +272,25 @@ public sealed class ResolveResignationCommandHandler : IRequestHandler<ResolveRe
                 "Hoa hồng tiếp tục được bảo hành",
                 $"HR Connect xác nhận ứng viên bạn giới thiệu cho vị trí \"{jobTitle}\" vẫn đi làm. Hoa hồng trở lại trạng thái trong bảo hành.",
                 "WARRANTY", warranty.WarrantyId, "/affiliate/commissions"), cancellationToken);
+
+            if (placement.Application?.Job?.CompanyId is Guid rejectCompanyId)
+            {
+                var rejectReason = string.IsNullOrWhiteSpace(note) ? string.Empty : $" Lý do: {note}";
+                await CompanyFinanceNotice.SendAsync(
+                    _financeRepository,
+                    _notifier,
+                    _notificationRepository,
+                    rejectCompanyId,
+                    new AppNotice(
+                        "WARRANTY",
+                        "Báo nghỉ việc không được xác nhận",
+                        $"HR Connect đã xác minh ứng viên vị trí \"{jobTitle}\" vẫn đang làm việc; bảo hành tiếp tục có hiệu lực.{rejectReason}",
+                        "WARRANTY",
+                        warranty.WarrantyId,
+                        "/client/warranty"),
+                    now,
+                    cancellationToken);
+            }
         }
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

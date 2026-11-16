@@ -72,19 +72,22 @@ public sealed class SourcingFinanceService : ISourcingFinanceService
     private readonly IAuditLogService _auditLogService;
     private readonly IAdminBusinessSettings _settings;
     private readonly ILogger<SourcingFinanceService> _logger;
+    private readonly IAppNotifier? _notifier;
 
     public SourcingFinanceService(
         IFinanceRepository financeRepository,
         ISourcingDeliveryRepository deliveries,
         IAuditLogService auditLogService,
         IAdminBusinessSettings settings,
-        ILogger<SourcingFinanceService> logger)
+        ILogger<SourcingFinanceService> logger,
+        IAppNotifier? notifier = null)
     {
         _financeRepository = financeRepository;
         _deliveries = deliveries;
         _auditLogService = auditLogService;
         _settings = settings;
         _logger = logger;
+        _notifier = notifier;
     }
 
     public async Task<ServiceFee?> EnsureDepositAsync(
@@ -275,6 +278,35 @@ public sealed class SourcingFinanceService : ISourcingFinanceService
             }
         }, cancellationToken);
 
+        if (_notifier != null && fee.Kind is ServiceFeeKinds.Settlement or ServiceFeeKinds.Credit)
+        {
+            var formattedAmount = FinanceCurrency.FormatMoney(fee.Amount, fee.CurrencyCode);
+            var notice = fee.Kind == ServiceFeeKinds.Credit
+                ? new AppNotice(
+                    "SERVICE_FEE",
+                    "Có khoản hoàn tiền quyết toán CV Sourcing",
+                    $"Tin \"{job.Title}\" đã quyết toán ({counted} CV): HR Connect sẽ hoàn lại {formattedAmount} tiền cọc dư cho doanh nghiệp.",
+                    "SERVICE_FEE",
+                    fee.ServiceFeeId,
+                    "/client/billing")
+                : fee.Status == ServiceFeeStates.Paid
+                    ? new AppNotice(
+                        "SERVICE_FEE",
+                        "Quyết toán CV Sourcing hoàn tất",
+                        $"Tin \"{job.Title}\" đã quyết toán xong ({counted} CV); tiền cọc đã chi trả đủ chi phí phát sinh.",
+                        "SERVICE_FEE",
+                        fee.ServiceFeeId,
+                        "/client/billing")
+                    : new AppNotice(
+                        "SERVICE_FEE",
+                        "Phí quyết toán CV Sourcing cần thanh toán",
+                        $"Tin \"{job.Title}\" đã quyết toán ({counted} CV). Số tiền cần thanh toán thêm là {formattedAmount} (hạn {fee.DueDate:dd/MM/yyyy}).",
+                        "SERVICE_FEE",
+                        fee.ServiceFeeId,
+                        "/client/billing");
+            await _notifier.NotifyCompanyAsync(fee.CompanyId, notice, cancellationToken);
+        }
+
         _logger.LogInformation(
             "MF-05: job {JobId} settled: {Counted} CV, total {Total}, deposit {Deposit}, {Kind} {Amount}.",
             job.JobId, counted, total, deposit, fee.Kind, fee.Amount);
@@ -340,6 +372,20 @@ public sealed class SourcingFinanceService : ISourcingFinanceService
             ActorUserId = actorUserId,
             NewValues = new { commission.Status, commission.Amount, deliveryId = delivery.DeliveryId, jobId = job.JobId }
         }, cancellationToken);
+
+        if (_notifier != null
+            && await _financeRepository.GetAffiliateUserIdAsync(attribution.AttributionId, cancellationToken) is Guid affiliateUserId
+            && affiliateUserId != Guid.Empty)
+        {
+            var formatted = FinanceCurrency.FormatMoney(commission.Amount, job.CurrencyCode);
+            await _notifier.NotifyUsersAsync([affiliateUserId], new AppNotice(
+                "COMMISSION",
+                "Hoa hồng đủ điều kiện chi trả",
+                $"CV bạn giới thiệu cho vị trí \"{job.Title}\" đã được ghi nhận hợp lệ. Khoản hoa hồng {formatted} đã chuyển sang trạng thái đủ điều kiện nhận.",
+                "COMMISSION",
+                commission.CommissionId,
+                "/affiliate/commissions"), cancellationToken);
+        }
     }
 
     private async Task<int> PaymentDueDaysAsync(Job job, CancellationToken cancellationToken) =>
