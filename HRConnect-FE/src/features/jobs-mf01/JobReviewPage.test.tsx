@@ -356,7 +356,7 @@ describe('JobReviewPage tab switching with highlight query param', () => {
       expect(screen.getByText('Backend .NET Sourcing')).toBeInTheDocument();
     });
 
-    const openModalBtn = await screen.findByRole('button', { name: /Duyệt & Ký điều khoản/i }, { timeout: 8000 });
+    const openModalBtn = await screen.findByRole('button', { name: /Duyệt & Soạn thỏa thuận/i }, { timeout: 8000 });
     fireEvent.click(openModalBtn);
 
     const depositInput = await screen.findByLabelText(/Tỷ lệ cọc/i, {}, { timeout: 8000 });
@@ -572,5 +572,72 @@ describe('JobReviewPage tab switching with highlight query param', () => {
     expect(messageSuccessSpy).toHaveBeenCalled();
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['mf01-jobs'] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['service-fees'] });
+  });
+
+  it('shows "Duyệt tin tuyển dụng" on PENDING_REVIEW job that does not require commercial terms', async () => {
+    render(
+      <MemoryRouter initialEntries={['/hr/jobs?status=PENDING_REVIEW&highlight=3d0f8b11-fe82-4409-9585-e00df7cf41d8']}>
+        <QueryClientProvider client={queryClient}>
+          <Routes>
+            <Route path="/hr/jobs" element={<JobReviewPage />} />
+          </Routes>
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+
+    const approveBtn = await screen.findByRole('button', { name: /Duyệt tin tuyển dụng/i }, { timeout: 8000 });
+    expect(approveBtn).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Duyệt & Ký điều khoản/i })).toBeNull();
+  });
+
+  it('treats currentAgreement.status === SIGNED as signed in header and publish button even when hasSignedDocument is false', async () => {
+    const otpSignedJob = {
+      ...mockAgreementJobs[0],
+      jobId: 'job-otp-signed-1',
+      title: 'OTP Signed Tech Lead',
+      hasSignedAgreement: false,
+    };
+
+    vi.spyOn(jobsApi, 'getReviewQueue').mockImplementation(async (status) => {
+      if (status === 'PENDING_AGREEMENT') return [otpSignedJob] as any;
+      if (status === 'ALL') return [otpSignedJob] as any;
+      return [];
+    });
+    vi.spyOn(jobsApi, 'getById').mockResolvedValue(otpSignedJob as any);
+    vi.spyOn(serviceAgreementsApi, 'getCurrent').mockResolvedValue({
+      serviceAgreementId: 'agr-otp-1',
+      jobId: 'job-otp-signed-1',
+      companyId: 'comp-3',
+      version: 2,
+      serviceTypeCode: 'HEADHUNT_COD',
+      status: 'SIGNED',
+      concurrencyToken: 'agr-otp-token',
+      isCurrent: true,
+      feeMultiplier: 1.5,
+      warrantyDays: 30,
+      paymentDueDays: 14,
+      verificationCode: 'AGR-OTP-01',
+      hasSignedDocument: false,
+      hasUnsignedDocument: true,
+      companyName: 'Tech Corp',
+      createdByUserId: 'user-1',
+      createdAt: '2026-11-01T10:00:00Z',
+      signedAt: '2026-11-02T09:30:00Z',
+    } as any);
+
+    render(
+      <MemoryRouter initialEntries={['/hr/jobs?status=PENDING_AGREEMENT']}>
+        <QueryClientProvider client={queryClient}>
+          <Routes>
+            <Route path="/hr/jobs" element={<JobReviewPage />} />
+          </Routes>
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('Đã có bản ký kết', {}, { timeout: 8000 })).toBeInTheDocument();
+    expect(screen.getByText(/Doanh nghiệp đã hoàn tất ký hợp đồng \(v2\)/i)).toBeInTheDocument();
+    const publishBtn = screen.getByRole('button', { name: /Công khai tin tuyển dụng/i });
+    expect(publishBtn).not.toBeDisabled();
   });
 });

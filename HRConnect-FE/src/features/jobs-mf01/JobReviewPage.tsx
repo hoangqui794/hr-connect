@@ -401,6 +401,12 @@ export const JobReviewPage: React.FC = () => {
     job?.agreementStatus === 'CHANGE_REQUESTED' ||
     Boolean(job && storedChangeMap[job.jobId]);
 
+  const isSigned = Boolean(
+    currentAgreement?.status === 'SIGNED' ||
+    currentAgreement?.hasSignedDocument ||
+    job?.hasSignedAgreement
+  );
+
   const changeReason =
     currentAgreement?.changeRequestReason ||
     job?.agreementChangeRequestReason ||
@@ -656,8 +662,7 @@ export const JobReviewPage: React.FC = () => {
 
   const confirmPublishAgreementJob = () => {
     if (!job) return;
-    const hasSigned = Boolean(currentAgreement?.hasSignedDocument || job.hasSignedAgreement);
-    if (!hasSigned) {
+    if (!isSigned) {
       message.warning('Doanh nghiệp chưa tải lên bản hợp đồng đã ký kết trên hệ thống. Không thể duyệt khi chưa có bản ký.');
       return;
     }
@@ -749,8 +754,8 @@ export const JobReviewPage: React.FC = () => {
         ),
         okText: isSourcing ? 'Duyệt HĐ & Yêu cầu đặt cọc' : 'Duyệt HĐ & Yêu cầu thanh toán',
         okButtonProps: {
-          disabled: !hasSigned,
-          className: hasSigned ? '!bg-amber-600 hover:!bg-amber-700 text-white rounded-lg shadow-sm font-semibold' : 'rounded-lg font-semibold',
+          disabled: !isSigned,
+          className: isSigned ? '!bg-amber-600 hover:!bg-amber-700 text-white rounded-lg shadow-sm font-semibold' : 'rounded-lg font-semibold',
         },
         cancelText: 'Hủy bỏ',
         onOk: () =>
@@ -802,8 +807,8 @@ export const JobReviewPage: React.FC = () => {
       ),
       okText: 'Công khai tin tuyển dụng',
       okButtonProps: {
-        disabled: !hasSigned,
-        className: hasSigned ? '!bg-blue-600 hover:!bg-blue-700 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-semibold' : 'rounded-lg font-semibold',
+        disabled: !isSigned,
+        className: isSigned ? '!bg-blue-600 hover:!bg-blue-700 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-semibold' : 'rounded-lg font-semibold',
       },
       cancelText: 'Hủy bỏ',
       onOk: () =>
@@ -1023,7 +1028,7 @@ export const JobReviewPage: React.FC = () => {
                           disabled={reject.isPending}
                           onClick={confirmApprove}
                         >
-                          Duyệt & Ký điều khoản
+                          {needsTerms ? 'Duyệt & Soạn thỏa thuận' : 'Duyệt tin tuyển dụng'}
                         </Button>
                       </div>
                     </div>
@@ -1031,7 +1036,7 @@ export const JobReviewPage: React.FC = () => {
                 ) : job.status === 'PENDING_AGREEMENT' ? (
                   <div className={`job-review-action-bar border-0 border-b border-solid px-6 py-4 ${isAgreementChangeRequested
                     ? 'border-amber-200 bg-amber-50/80'
-                    : currentAgreement?.hasSignedDocument
+                    : isSigned
                       ? 'border-emerald-200 bg-emerald-50/80'
                       : 'border-purple-200 bg-purple-50/70'
                     }`}>
@@ -1040,13 +1045,13 @@ export const JobReviewPage: React.FC = () => {
                       <div className="flex items-center gap-3 min-w-0">
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-solid shadow-2xs ${isAgreementChangeRequested
                           ? 'bg-amber-500/15 text-amber-700 border-amber-300/80'
-                          : currentAgreement?.hasSignedDocument
+                          : isSigned
                             ? 'bg-emerald-500/15 text-emerald-700 border-emerald-300/80'
                             : 'bg-purple-500/15 text-purple-700 border-purple-200/80'
                           }`}>
                           {isAgreementChangeRequested ? (
                             <ExclamationCircleOutlined className="text-lg text-amber-600" />
-                          ) : currentAgreement?.hasSignedDocument ? (
+                          ) : isSigned ? (
                             <CheckCircleFilled className="text-xl text-emerald-600" />
                           ) : (
                             <FileDoneOutlined className="text-lg text-purple-600" />
@@ -1057,15 +1062,15 @@ export const JobReviewPage: React.FC = () => {
                             <span className="text-sm font-bold text-slate-800">
                               {isAgreementChangeRequested
                                 ? `DN gửi yêu cầu điều chỉnh (v${currentAgreement?.version ?? 1})`
-                                : currentAgreement?.hasSignedDocument
-                                  ? `Doanh nghiệp đã tải lên hợp đồng đã ký (v${currentAgreement.version})`
+                                : isSigned
+                                  ? `Doanh nghiệp đã hoàn tất ký hợp đồng (v${currentAgreement?.version ?? 1})`
                                   : `Hợp đồng đã gửi Doanh nghiệp (v${currentAgreement?.version ?? 1})`}
                             </span>
                             <Tag
                               color={
                                 isAgreementChangeRequested
                                   ? 'warning'
-                                  : currentAgreement?.hasSignedDocument
+                                  : isSigned
                                     ? 'success'
                                     : 'purple'
                               }
@@ -1073,7 +1078,7 @@ export const JobReviewPage: React.FC = () => {
                             >
                               {isAgreementChangeRequested
                                 ? 'DN yêu cầu điều chỉnh'
-                                : currentAgreement?.hasSignedDocument
+                                : isSigned
                                   ? 'Đã có bản ký kết'
                                   : 'Đã soạn xong HĐ'}
                             </Tag>
@@ -1086,10 +1091,16 @@ export const JobReviewPage: React.FC = () => {
                                   "{changeReason || 'Doanh nghiệp yêu cầu điều chỉnh thỏa thuận'}"
                                 </strong>
                               </span>
-                            ) : currentAgreement?.hasSignedDocument ? (
+                            ) : isSigned ? (
                               <span>
-                                Đã nộp ngày <strong>{dayjs(currentAgreement.signedAt).format('DD/MM/YYYY HH:mm')}</strong>
-                                {currentAgreement.signerName ? ` bởi ${currentAgreement.signerName}` : ''}
+                                {currentAgreement?.signedAt ? (
+                                  <>
+                                    Đã ký ngày <strong>{dayjs(currentAgreement.signedAt).format('DD/MM/YYYY HH:mm')}</strong>
+                                    {currentAgreement.signerName ? ` bởi ${currentAgreement.signerName}` : ''}
+                                  </>
+                                ) : (
+                                  'Doanh nghiệp đã xác nhận ký kết thỏa thuận dịch vụ'
+                                )}
                               </span>
                             ) : (
                               <span>
@@ -1127,7 +1138,6 @@ export const JobReviewPage: React.FC = () => {
                             : 'Chỉnh sửa hợp đồng'}
                         </Button>
                         {!isAgreementChangeRequested && (() => {
-                          const hasSignedDoc = Boolean(currentAgreement?.hasSignedDocument || job.hasSignedAgreement);
                           const buttonText =
                             job.serviceTypeCode === 'CV_SOURCING'
                               ? 'Duyệt HĐ & Yêu cầu đặt cọc'
@@ -1135,16 +1145,16 @@ export const JobReviewPage: React.FC = () => {
                                 ? 'Duyệt HĐ & Yêu cầu thanh toán'
                                 : 'Công khai tin tuyển dụng';
 
-                          const tooltipTitle = !hasSignedDoc
+                          const tooltipTitle = !isSigned
                             ? 'Doanh nghiệp chưa tải lên bản hợp đồng đã ký kết. Cần có bản ký để duyệt hợp đồng và tiếp tục quy trình.'
                             : undefined;
 
                           const approveButton = (
                             <Button
                               type="primary"
-                              disabled={!hasSignedDoc}
+                              disabled={!isSigned}
                               className={
-                                hasSignedDoc
+                                isSigned
                                   ? '!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-semibold h-9'
                                   : 'rounded-lg font-semibold h-9'
                               }
