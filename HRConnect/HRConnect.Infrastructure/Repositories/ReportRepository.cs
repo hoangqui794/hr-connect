@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Admin.Dashboard;
 using HRConnect.Application.Features.Reports.Common;
 using HRConnect.Application.Features.Reports.Queries.GetReportOverview;
 using HRConnect.Application.Features.Reports.Queries.GetReportRevenue;
@@ -582,6 +583,228 @@ public class ReportRepository : IReportRepository
         {
             Items = query.Take(limit).ToList()
         };
+    }
+
+    // =========================================================================
+    // Admin dashboard (GET /api/v1/admin/dashboard/metrics)
+    // Money conditions mirror GetRevenueReportAsync (collectedFees, cvAppPaidItems, completedPayouts);
+    // ReportFeaturesTests / AdminDashboardMetricsTests reconcile both against the same data.
+    // Days are Vietnam-time days (timestamp UTC + 7h), like the revenue report series.
+    // =========================================================================
+
+    private const string DashboardCurrency = "VND";
+    private const double VietnamOffsetHours = 7;
+    /// <summary>job_posting_fee.status of a collected posting fee (same literal as the revenue block).</summary>
+    private const string PostingFeePaidStatus = "PAID";
+    /// <summary>Status that ApprovalRepository.GetApprovalsAsync filters on for the Approvals page.</summary>
+    private const string ApprovalUnderReviewStatus = "UNDER_REVIEW";
+
+    /// <summary>A money movement, flattened so it can be filtered by currency and grouped by day in SQL.</summary>
+    private sealed class DashboardMoneyRow
+    {
+        public string Kind { get; init; } = string.Empty;
+        public decimal Amount { get; init; }
+        public string? CurrencyCode { get; init; }
+        public DateTime At { get; init; }
+    }
+
+    /// <summary>Same as GetRevenueReportAsync.collectedFees: PAID service fees by PaidAt.</summary>
+    private IQueryable<DashboardMoneyRow> PaidServiceFeesInPeriod(ReportTimeRange range) =>
+        _context.ServiceFees
+            .AsNoTracking()
+            .Where(sf => sf.Status == ServiceFeeStates.Paid && sf.PaidAt != null && sf.PaidAt >= range.FromUtc && sf.PaidAt < range.ToUtcPlusOne)
+            .Select(sf => new DashboardMoneyRow { Kind = sf.Kind, Amount = sf.Amount, CurrencyCode = sf.CurrencyCode, At = sf.PaidAt!.Value });
+
+    /// <summary>Same as GetRevenueReportAsync.cvAppPaidItems: PAID posting fees by PaidAt.</summary>
+    private IQueryable<DashboardMoneyRow> PaidPostingFeesInPeriod(ReportTimeRange range) =>
+        _context.JobPostingFees
+            .AsNoTracking()
+            .Where(jpf => jpf.Status == PostingFeePaidStatus && jpf.PaidAt != null && jpf.PaidAt >= range.FromUtc && jpf.PaidAt < range.ToUtcPlusOne)
+            .Select(jpf => new DashboardMoneyRow { Amount = jpf.Amount, CurrencyCode = jpf.CurrencyCode, At = jpf.PaidAt!.Value });
+
+    /// <summary>Same as GetRevenueReportAsync.completedPayouts: COMPLETED payouts by PayoutDate, currency from the commission's source.</summary>
+    private IQueryable<DashboardMoneyRow> CompletedPayoutsInPeriod(ReportTimeRange range) =>
+        _context.Payouts
+            .AsNoTracking()
+            .Where(p => p.Status == PayoutStates.Completed && p.PayoutDate != null && p.PayoutDate >= range.FromUtc && p.PayoutDate < range.ToUtcPlusOne)
+            .Select(p => new DashboardMoneyRow
+            {
+                Amount = p.Amount,
+                CurrencyCode = p.Commission != null && p.Commission.Placement != null && p.Commission.Placement.ServiceFee != null
+                    ? p.Commission.Placement.ServiceFee.CurrencyCode
+                    : (p.Commission != null && p.Commission.Placement != null && p.Commission.Placement.Application != null && p.Commission.Placement.Application.Job != null
+                        ? p.Commission.Placement.Application.Job.CurrencyCode
+                        : (p.Commission != null && p.Commission.SourcingDelivery != null && p.Commission.SourcingDelivery.Job != null
+                            ? p.Commission.SourcingDelivery.Job.CurrencyCode
+                            : null)),
+                At = p.PayoutDate!.Value
+            });
+
+    /// <summary>NormalizeCurrency(code) == VND, written so PostgreSQL can evaluate it.</summary>
+    private static IQueryable<DashboardMoneyRow> OnlyDashboardCurrency(IQueryable<DashboardMoneyRow> rows) =>
+        rows.Where(r => (r.CurrencyCode == null || r.CurrencyCode.Trim() == string.Empty ? DashboardCurrency : r.CurrencyCode.Trim().ToUpper()) == DashboardCurrency);
+
+    private static async Task<Dictionary<DateOnly, decimal>> SumByVietnamDayAsync(IQueryable<DashboardMoneyRow> rows, CancellationToken cancellationToken)
+    {
+        var grouped = await OnlyDashboardCurrency(rows)
+            .GroupBy(r => r.At.AddHours(VietnamOffsetHours).Date)
+            .Select(g => new { Day = g.Key, Amount = g.Sum(r => r.Amount) })
+            .ToListAsync(cancellationToken);
+
+        return grouped.ToDictionary(g => DateOnly.FromDateTime(g.Day), g => g.Amount);
+    }
+
+    private static async Task<Dictionary<DateOnly, int>> CountByVietnamDayAsync(IQueryable<DateTime> timestamps, CancellationToken cancellationToken)
+    {
+        var grouped = await timestamps
+            .GroupBy(t => t.AddHours(VietnamOffsetHours).Date)
+            .Select(g => new { Day = g.Key, Count = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        return grouped.ToDictionary(g => DateOnly.FromDateTime(g.Day), g => g.Count);
+    }
+
+    public async Task<IReadOnlyList<DashboardCashflowDay>> GetDashboardCashflowByDayAsync(ReportTimeRange range, CancellationToken cancellationToken = default)
+    {
+        // CREDIT / REPLACEMENT_REFUND are paid back to the Client: never counted as fees collected.
+        var serviceFees = await SumByVietnamDayAsync(
+            PaidServiceFeesInPeriod(range).Where(r => !ServiceFeeKinds.OwedToClient.Contains(r.Kind)), cancellationToken);
+        var refunds = await SumByVietnamDayAsync(
+            PaidServiceFeesInPeriod(range).Where(r => ServiceFeeKinds.OwedToClient.Contains(r.Kind)), cancellationToken);
+        // FREE_TIER packages record a 0 VND posting fee.
+        var postingFees = await SumByVietnamDayAsync(
+            PaidPostingFeesInPeriod(range).Where(r => r.Amount > 0), cancellationToken);
+        var payouts = await SumByVietnamDayAsync(CompletedPayoutsInPeriod(range), cancellationToken);
+
+        return serviceFees.Keys
+            .Concat(refunds.Keys)
+            .Concat(postingFees.Keys)
+            .Concat(payouts.Keys)
+            .Distinct()
+            .OrderBy(d => d)
+            .Select(d => new DashboardCashflowDay(
+                d,
+                serviceFees.GetValueOrDefault(d),
+                refunds.GetValueOrDefault(d),
+                postingFees.GetValueOrDefault(d),
+                payouts.GetValueOrDefault(d)))
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<DashboardActivityDay>> GetDashboardActivityByDayAsync(ReportTimeRange range, CancellationToken cancellationToken = default)
+    {
+        var newUsers = await CountByVietnamDayAsync(
+            _context.AppUsers.AsNoTracking()
+                .Where(u => u.CreatedAt >= range.FromUtc && u.CreatedAt < range.ToUtcPlusOne)
+                .Select(u => u.CreatedAt),
+            cancellationToken);
+
+        var auditEvents = await CountByVietnamDayAsync(
+            _context.AuditLogs.AsNoTracking()
+                .Where(a => a.CreatedAt >= range.FromUtc && a.CreatedAt < range.ToUtcPlusOne)
+                .Select(a => a.CreatedAt),
+            cancellationToken);
+
+        // The Approvals page lists these two sources (ApprovalRepository.GetApprovalsAsync).
+        var affiliateReviews = await CountByVietnamDayAsync(
+            _context.AffiliateApplications.AsNoTracking()
+                .Where(a => a.ReviewedAt != null && a.ReviewedAt >= range.FromUtc && a.ReviewedAt < range.ToUtcPlusOne)
+                .Select(a => a.ReviewedAt!.Value),
+            cancellationToken);
+
+        var companyReviews = await CountByVietnamDayAsync(
+            _context.CompanyVerificationRequests.AsNoTracking()
+                .Where(c => c.ReviewedAt != null && c.ReviewedAt >= range.FromUtc && c.ReviewedAt < range.ToUtcPlusOne)
+                .Select(c => c.ReviewedAt!.Value),
+            cancellationToken);
+
+        return newUsers.Keys
+            .Concat(auditEvents.Keys)
+            .Concat(affiliateReviews.Keys)
+            .Concat(companyReviews.Keys)
+            .Distinct()
+            .OrderBy(d => d)
+            .Select(d => new DashboardActivityDay(
+                d,
+                newUsers.GetValueOrDefault(d),
+                auditEvents.GetValueOrDefault(d),
+                affiliateReviews.GetValueOrDefault(d) + companyReviews.GetValueOrDefault(d)))
+            .ToList();
+    }
+
+    public async Task<DashboardKpiSnapshot> GetDashboardKpisAsync(DateTime todayStartUtc, CancellationToken cancellationToken = default)
+    {
+        var pendingAffiliateApprovals = await _context.AffiliateApplications.AsNoTracking()
+            .CountAsync(a => a.Status == ApprovalUnderReviewStatus, cancellationToken);
+        var pendingCompanyApprovals = await _context.CompanyVerificationRequests.AsNoTracking()
+            .CountAsync(c => c.Status == ApprovalUnderReviewStatus, cancellationToken);
+
+        var activeUsers = await _context.AppUsers.AsNoTracking()
+            .CountAsync(u => u.Status == UserAccountStates.Active, cancellationToken);
+        var suspendedUsers = await _context.AppUsers.AsNoTracking()
+            .CountAsync(u => u.Status == UserAccountStates.Suspended, cancellationToken);
+
+        var auditEventsToday = await _context.AuditLogs.AsNoTracking()
+            .CountAsync(a => a.CreatedAt >= todayStartUtc, cancellationToken);
+
+        // Overdue fees the Client owes HR Connect; money owed to the Client is never overdue.
+        var overdueFees = _context.ServiceFees.AsNoTracking()
+            .Where(sf => sf.Status == ServiceFeeStates.Overdue && !ServiceFeeKinds.OwedToClient.Contains(sf.Kind));
+        var overdueCount = await overdueFees.CountAsync(cancellationToken);
+        var overdueAmount = await OnlyDashboardCurrency(overdueFees.Select(sf => new DashboardMoneyRow
+            {
+                Kind = sf.Kind,
+                Amount = sf.Amount,
+                CurrencyCode = sf.CurrencyCode,
+                At = sf.CreatedAt
+            }))
+            .SumAsync(r => r.Amount, cancellationToken);
+
+        var payableCommissions = _context.Commissions.AsNoTracking()
+            .Where(c => c.Status == CommissionStates.Payable);
+        var payableCount = await payableCommissions.CountAsync(cancellationToken);
+        var payableAmount = await OnlyDashboardCurrency(payableCommissions.Select(c => new DashboardMoneyRow
+            {
+                Amount = c.Amount,
+                CurrencyCode = c.Placement != null && c.Placement.ServiceFee != null
+                    ? c.Placement.ServiceFee.CurrencyCode
+                    : (c.Placement != null && c.Placement.Application != null && c.Placement.Application.Job != null
+                        ? c.Placement.Application.Job.CurrencyCode
+                        : (c.SourcingDelivery != null && c.SourcingDelivery.Job != null
+                            ? c.SourcingDelivery.Job.CurrencyCode
+                            : null)),
+                At = c.CreatedAt
+            }))
+            .SumAsync(r => r.Amount, cancellationToken);
+
+        var openDisputes = await _context.Disputes.AsNoTracking()
+            .CountAsync(d => d.Status == DisputeStates.Open || d.Status == DisputeStates.UnderReview, cancellationToken);
+
+        return new DashboardKpiSnapshot(
+            pendingAffiliateApprovals + pendingCompanyApprovals,
+            activeUsers,
+            suspendedUsers,
+            auditEventsToday,
+            overdueCount,
+            overdueAmount,
+            payableCount,
+            payableAmount,
+            openDisputes);
+    }
+
+    public async Task<IReadOnlyList<DashboardRoleCount>> GetDashboardUserRoleCountsAsync(CancellationToken cancellationToken = default)
+    {
+        // Same assignment filter as UserRepository.GetAuthorizationSnapshotAsync, plus not revoked.
+        var counts = await _context.UserRoles.AsNoTracking()
+            .Where(ur => ur.Status == UserRoleAssignmentStates.Active && ur.RevokedAt == null && ur.Role.IsActive)
+            .GroupBy(ur => ur.Role.Code)
+            .Select(g => new { Role = g.Key, Count = g.Select(ur => ur.UserId).Distinct().Count() })
+            .ToListAsync(cancellationToken);
+
+        var byRole = counts.ToDictionary(c => c.Role, c => c.Count, StringComparer.Ordinal);
+        return RoleCodes.All
+            .Select(role => new DashboardRoleCount(role, byRole.GetValueOrDefault(role)))
+            .ToList();
     }
 
     private static string FormatPeriod(DateTime dt, string groupBy) => groupBy switch
