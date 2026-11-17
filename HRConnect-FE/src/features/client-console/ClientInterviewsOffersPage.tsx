@@ -43,6 +43,7 @@ import { SERVICE_TYPE_LABEL } from '@/features/jobs-mf01/jobDisplay';
 import type { ServiceTypeCode } from '@/types/api/jobs';
 import type { ServiceFeeStatus, WarrantyStatus } from '@/types/api/finance';
 import { ApplicationWorkbench } from '@/features/recruitment/ApplicationWorkbench';
+import { isInterviewInProgress, isInterviewOverdue } from '@/features/recruitment/interviewTiming';
 import { ClientInterviewDetailDrawer } from '@/features/client-console/ClientInterviewDetailDrawer';
 import { ReportResignationModal } from './components/ReportResignationModal';
 
@@ -345,11 +346,17 @@ export const ClientInterviewsOffersPage: React.FC = () => {
           const st = pick(INTERVIEW_STATUS, r.status);
           const res = r.result ? INTERVIEW_RESULT[r.result] ?? r.result : null;
           const isScheduled = r.status === 'SCHEDULED';
-          const isOverdue = isScheduled && Boolean(r.scheduledAt) && dayjs(r.scheduledAt).isBefore(dayjs());
+          const inProgress = isInterviewInProgress(r);
+          const isOverdue = isInterviewOverdue(r);
           const confirmed = r.candidateAttendanceStatus === 'CONFIRMED';
           return (
             <div className="py-1 space-y-1">
               <StatusDot tone={st.tone}>{st.label}</StatusDot>
+              {inProgress && (
+                <div className="pl-3.5 text-[11px] font-semibold text-sky-700">
+                  Đang trong giờ hẹn · Có thể ghi kết quả
+                </div>
+              )}
               {isOverdue && (
                 <div className="pl-3.5 text-[11px] font-semibold text-amber-800">
                   Quá giờ · Chờ ghi kết quả
