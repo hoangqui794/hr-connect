@@ -173,3 +173,54 @@ export interface CommissionRuleUpdateInput {
   effectiveFrom: string;
   effectiveTo?: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// Admin dashboard — GET /admin/dashboard/metrics (AdminDashboardMetricsDto).
+// Days are Vietnam-time days (yyyy-MM-dd); amounts are in currencyCode (VND).
+// ---------------------------------------------------------------------------
+
+export type DashboardRange = '7d' | '30d' | '90d';
+
+export interface DashboardKpis {
+  pendingApprovals: number;
+  activeUsers: number;
+  suspendedUsers: number;
+  auditEventsToday: number;
+  overdueServiceFeesCount: number;
+  overdueServiceFeesAmount: number;
+  payableCommissionsCount: number;
+  payableCommissionsAmount: number;
+  openDisputesCount: number;
+}
+
+export interface CashflowPoint {
+  date: string;
+  /** PAID PLACEMENT / DEPOSIT / SETTLEMENT; refunds to the Client are not included. */
+  serviceFeesPaidAmount: number;
+  /** PAID CREDIT / REPLACEMENT_REFUND: money returned to the Client. */
+  refundsPaidAmount: number;
+  postingFeesPaidAmount: number;
+  payoutsAmount: number;
+}
+
+export interface ActivityPoint {
+  date: string;
+  newUsers: number;
+  auditEvents: number;
+  approvalsCompleted: number;
+}
+
+export interface RoleBreakdownPoint {
+  role: RoleCode;
+  count: number;
+}
+
+export interface AdminDashboardMetrics {
+  range: DashboardRange;
+  generatedAtUtc: string;
+  currencyCode: string;
+  kpis: DashboardKpis;
+  cashflowSeries: CashflowPoint[];
+  activitySeries: ActivityPoint[];
+  userRoleBreakdown: RoleBreakdownPoint[];
+}

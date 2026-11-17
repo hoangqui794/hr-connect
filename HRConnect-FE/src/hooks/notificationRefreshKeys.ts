@@ -4,7 +4,7 @@
  * not use costs nothing. Keys are query-key roots (prefix match).
  */
 const JOB = [
-  ['mf01-jobs'], ['client-overview'], ['hr-overview'], ['admin-overview'], ['aff-jobs'],
+  ['mf01-jobs'], ['client-overview'], ['hr-overview'], ['admin-overview'], ['admin-dashboard-metrics'], ['aff-jobs'],
   ['mf05-posting-fees'], ['mf05-client-fees'], ['client-billing'],
 ];
 const APPLICATION = [
@@ -17,14 +17,14 @@ const FINANCE = [
   ['mf05-fees'], ['mf05-client-fees'], ['mf05-posting-fees'], ['mf05-commissions'], ['mf05-my-commissions'],
   ['mf05-payouts'], ['mf05-my-payouts'], ['mf05-warranties'], ['mf05-replacement-slots'],
   ['mf05-replacement-slots-summary'], ['mf05-replacement-refunds'], ['mf05-count'],
-  ['client-billing'], ['placements'], ['admin-commission'], ['admin-overview'], ['client-overview'],
+  ['client-billing'], ['placements'], ['admin-commission'], ['admin-overview'], ['admin-dashboard-metrics'], ['client-overview'],
 ];
 
 const BY_ENTITY: Record<string, string[][]> = {
   JOB,
   SERVICE_AGREEMENT: JOB,
-  COMPANY: [['client-company'], ['admin-approvals'], ['admin-overview'], ['client-overview']],
-  AFFILIATE: [['aff-profile'], ['aff-profile-detail'], ['admin-approvals'], ['admin-overview']],
+  COMPANY: [['client-company'], ['admin-approvals'], ['admin-overview'], ['admin-dashboard-metrics'], ['client-overview']],
+  AFFILIATE: [['aff-profile'], ['aff-profile-detail'], ['admin-approvals'], ['admin-overview'], ['admin-dashboard-metrics']],
   APPLICATION,
   SUBMISSION: [
     ...APPLICATION,

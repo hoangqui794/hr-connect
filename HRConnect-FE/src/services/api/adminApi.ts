@@ -5,6 +5,7 @@
  */
 import { apiClient } from '../apiClient';
 import type {
+  AdminDashboardMetrics,
   AdminUserDetail,
   AdminUserListItem,
   AdminUserSearchParams,
@@ -18,6 +19,7 @@ import type {
   CommissionRuleCreateInput,
   CommissionRuleToggleData,
   CommissionRuleUpdateInput,
+  DashboardRange,
   Paged,
   ServiceTypeAllowedRole,
   ServiceTypeInput,
@@ -145,5 +147,15 @@ export const adminCommissionApi = {
   },
   async updateStatus(id: string, isActive: boolean): Promise<ApiEnvelope<CommissionRuleToggleData>> {
     return this.setActive(id, isActive);
+  },
+};
+
+export const adminDashboardApi = {
+  /** GET /admin/dashboard/metrics?range= — requires report.view. */
+  async getMetrics(range: DashboardRange): Promise<AdminDashboardMetrics> {
+    const res = await apiClient.get<ApiEnvelope<AdminDashboardMetrics>>('/admin/dashboard/metrics', {
+      params: { range },
+    });
+    return res.data.data;
   },
 };

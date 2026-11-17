@@ -148,6 +148,25 @@ public class PermissionAuthorizationTests
         PermissionAuthorization.HasPermission(denied, requiredPermission).Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData("audit.view")]
+    [InlineData("user.view")]
+    [InlineData("job.view")]
+    [InlineData("report.view.other")]
+    public void AdminDashboardMetrics_RequiresReportView_DeniesOtherPermissions(string otherPermission)
+    {
+        const string requiredPermission = "report.view";
+        var allowed = new ClaimsPrincipal(new ClaimsIdentity(
+            new[] { new Claim("permission", requiredPermission) }, "test"));
+        var withoutReportView = new ClaimsPrincipal(new ClaimsIdentity(
+            new[] { new Claim("permission", otherPermission) }, "test"));
+        var noClaims = new ClaimsPrincipal(new ClaimsIdentity(authenticationType: "test"));
+
+        PermissionAuthorization.HasPermission(allowed, requiredPermission).Should().BeTrue();
+        PermissionAuthorization.HasPermission(withoutReportView, requiredPermission).Should().BeFalse();
+        PermissionAuthorization.HasPermission(noClaims, requiredPermission).Should().BeFalse();
+    }
+
     [Fact]
     public void AffiliateAttributionList_RequiresAttributionViewOwn()
     {
