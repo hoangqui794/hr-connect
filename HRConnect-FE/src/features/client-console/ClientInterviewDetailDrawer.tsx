@@ -37,7 +37,10 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
+import utc from 'dayjs/plugin/utc';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+dayjs.extend(utc);
 import { candidateInterviewApi } from '@/services/api/candidateInterviewApi';
 import { clientActionsApi, interviewHistoryApi } from '@/services/api/hrApi';
 import { getApiErrorMessage } from '@/services/apiClient';
@@ -55,6 +58,28 @@ export interface ClientInterviewDetailDrawerProps {
 }
 
 const fmt = (v?: string | null, format = 'HH:mm DD/MM/YYYY') => (v ? dayjs(v).format(format) : '—');
+
+const buildCalendarUrl = (item: CandidateInterviewDetailDto) => {
+  const start = dayjs(item.scheduledAt);
+  const end = start.add(item.durationMinutes ?? 60, 'minute');
+  const formatUtc = (time: Dayjs) => time.utc().format('YYYYMMDDTHHmmss[Z]');
+  const candidateName = item.candidateFullName || item.candidateName || 'Ứng viên';
+  const details = [
+    `Phỏng vấn ứng viên ${candidateName} cho vị trí ${item.jobTitle}.`,
+    item.meetingLink && `Link họp: ${item.meetingLink}`,
+    item.location && `Địa điểm: ${item.location}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: `Phỏng vấn vòng ${item.interviewRound} - ${candidateName} (${item.jobTitle})`,
+    dates: `${formatUtc(start)}/${formatUtc(end)}`,
+    details,
+    location: item.meetingLink || item.location || '',
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+};
 
 export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerProps> = ({
   interviewId,
@@ -407,6 +432,18 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                             <div className="mt-1 text-xs text-slate-500">
                               Thời lượng: {interview.durationMinutes ?? 60} phút
                             </div>
+                            {interview.scheduledAt && (
+                              <div className="mt-2">
+                                <a
+                                  href={buildCalendarUrl(interview)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#0369A1] hover:text-[#075985] hover:underline"
+                                >
+                                  <CalendarOutlined /> Thêm vào Google Calendar
+                                </a>
+                              </div>
+                            )}
                           </div>
 
                           <div className="rounded-xl bg-slate-50 p-4">
@@ -489,10 +526,29 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
 
                         {interview.location && (
                           <div className="rounded-xl bg-slate-50 p-4 text-sm">
-                            <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-                              <EnvironmentOutlined /> Địa điểm phỏng vấn
-                            </span>
-                            <div className="mt-1 text-slate-900">{interview.location}</div>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                                <EnvironmentOutlined /> Địa điểm phỏng vấn
+                              </span>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="small"
+                                  icon={<CopyOutlined />}
+                                  onClick={() => handleCopy(interview.location!, 'địa điểm phỏng vấn')}
+                                >
+                                  Sao chép địa chỉ
+                                </Button>
+                                <Button
+                                  size="small"
+                                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(interview.location)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  Xem trên Google Maps
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="mt-1.5 text-slate-900">{interview.location}</div>
                           </div>
                         )}
 
