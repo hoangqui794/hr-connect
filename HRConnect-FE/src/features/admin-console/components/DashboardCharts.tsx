@@ -5,7 +5,7 @@
  * empty axes. Points/columns are keyboard reachable (roving tabindex, arrow keys) and focus shows
  * the same tooltip as hover. Amounts are formatted with money() in the API's currency.
  */
-import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { money } from '@/features/finance-mf05/financeLabels';
 import type { ActivityPoint, CashflowPoint, RoleBreakdownPoint, RoleCode } from '@/types/api/admin';
@@ -178,20 +178,30 @@ const HitLayer: React.FC<{
   );
 };
 
-/** Tooltip card anchored above a day; flips its alignment near the edges so it never overflows. */
+/** Left edge that centres a box of boxWidth on x but keeps it inside [0, width]. */
+export const clampTooltipLeft = (x: number, boxWidth: number, width: number) =>
+  Math.max(0, Math.min(x - boxWidth / 2, width - boxWidth));
+
+/**
+ * Tooltip card centred over a day and clamped to the chart box, so it never sticks out of the card
+ * (or the phone screen) near the edges. Its own width is measured after render.
+ */
 const ChartTooltip: React.FC<{ x: number; width: number; children: React.ReactNode }> = ({ x, width, children }) => {
-  const align = x < 110 ? 'left' : x > width - 110 ? 'right' : 'center';
+  const ref = useRef<HTMLDivElement>(null);
+  const [boxWidth, setBoxWidth] = useState(200);
+
+  // Re-measure when the tooltip moves to another day (its content changes with the day).
+  useLayoutEffect(() => {
+    const measured = ref.current?.offsetWidth;
+    if (measured && measured !== boxWidth) setBoxWidth(measured);
+  }, [x, boxWidth]);
+
   return (
     <div
+      ref={ref}
       aria-hidden
       className="pointer-events-none absolute top-1 z-10 min-w-[180px] rounded-xl border border-solid border-black/[0.08] bg-white px-3 py-2 text-xs text-[#111827] shadow-[0_8px_24px_-8px_rgba(17,24,39,0.25)]"
-      style={
-        align === 'left'
-          ? { left: Math.max(0, x - 8) }
-          : align === 'right'
-            ? { right: Math.max(0, width - x - 8) }
-            : { left: x, transform: 'translateX(-50%)' }
-      }
+      style={{ left: clampTooltipLeft(x, boxWidth, width), maxWidth: width }}
     >
       {children}
     </div>
@@ -268,7 +278,8 @@ export const CashflowAreaChart: React.FC<{ points: CashflowPoint[]; currencyCode
   const totalPayouts = payouts.reduce((a, b) => a + b, 0);
   const isEmpty = points.length === 0 || points.every((p, i) => income[i] === 0 && p.payoutsAmount === 0 && p.refundsPaidAmount === 0);
 
-  const maxValue = Math.max(1, ...income, ...payouts);
+  const peak = Math.max(0, ...income, ...payouts);
+  const maxValue = Math.max(1, peak);
   const plotW = width - PAD.left - PAD.right;
   const plotH = CHART_HEIGHT - PAD.top - PAD.bottom;
   const xAt = (i: number) => (points.length === 1 ? PAD.left + plotW / 2 : PAD.left + (i * plotW) / (points.length - 1));
@@ -308,9 +319,9 @@ export const CashflowAreaChart: React.FC<{ points: CashflowPoint[]; currencyCode
             { label: 'Chi hoa hồng', color: PAYOUT_COLOR, dashed: true },
           ]}
         />
-        {!isEmpty && (
+        {peak > 0 && (
           <span className="font-mono text-[11px] tabular-nums text-[#6b7487]" aria-hidden>
-            Đỉnh {compactAmount(maxValue)}
+            Đỉnh {compactAmount(peak)}
           </span>
         )}
       </div>

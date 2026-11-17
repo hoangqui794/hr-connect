@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { ActivityBarChart, CashflowAreaChart, RoleBreakdownBar, compactAmount, shortDay } from './DashboardCharts';
+import { ActivityBarChart, CashflowAreaChart, RoleBreakdownBar, clampTooltipLeft, compactAmount, shortDay } from './DashboardCharts';
 import type { ActivityPoint, CashflowPoint, RoleBreakdownPoint } from '@/types/api/admin';
 
 const days = ['2026-11-11', '2026-11-12', '2026-11-13', '2026-11-14', '2026-11-15', '2026-11-16', '2026-11-17'];
@@ -71,6 +71,18 @@ describe('hit areas line up with what is drawn (90 days, fallback width 640)', (
 });
 
 describe('helpers', () => {
+  it('keeps the tooltip inside the chart box near both edges', () => {
+    // 294px chart (360px phone), 214px tooltip.
+    expect(clampTooltipLeft(8, 214, 294)).toBe(0);
+    expect(clampTooltipLeft(286, 214, 294)).toBe(80);
+    expect(clampTooltipLeft(147, 214, 294)).toBe(40);
+    for (let x = 0; x <= 294; x += 7) {
+      const left = clampTooltipLeft(x, 214, 294);
+      expect(left).toBeGreaterThanOrEqual(0);
+      expect(left + 214).toBeLessThanOrEqual(294);
+    }
+  });
+
   it('formats axis labels and days', () => {
     expect(shortDay('2026-11-07')).toBe('07/11');
     expect(compactAmount(45_000_000)).toBe('45 tr');
@@ -129,6 +141,15 @@ describe('CashflowAreaChart', () => {
     fireEvent.keyDown(buttons[5], { key: 'Home' });
     expect(document.activeElement).toBe(buttons[0]);
     expect(tooltipText()).toContain('11/11/2026');
+  });
+
+  it('draws a period with only refunds without a meaningless peak label', () => {
+    render(<CashflowAreaChart points={cashflow({ '2026-11-15': { refundsPaidAmount: 5_400_000 } })} currencyCode="VND" />);
+
+    expect(screen.queryByText(/^Đỉnh/)).not.toBeInTheDocument();
+    fireEvent.focus(screen.getByRole('button', { name: /^15\/11\/2026/ }));
+    expect(tooltipText()).toContain('Tổng thu0 đ');
+    expect(tooltipText()).toContain('Hoàn cho Client5.400.000 đ');
   });
 
   it('shows an empty state instead of empty axes when every value is zero', () => {
