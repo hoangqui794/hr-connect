@@ -995,33 +995,44 @@ export const ClientInterviewsOffersPage: React.FC = () => {
           />
 
           {tab === 'interviews' && (
-            <>
-              <Select
-                size="large"
-                aria-label="Lọc theo ngày phỏng vấn"
-                value={interviewDateRange}
-                onChange={handleDateRangeChange}
-                className="w-full sm:w-44 font-medium"
-                options={[
+            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Lọc theo ngày phỏng vấn">
+              {(
+                [
                   { value: 'all', label: 'Mọi ngày phỏng vấn' },
                   { value: 'today', label: 'Lịch hôm nay' },
                   { value: 'next7days', label: '7 ngày tới' },
-                ]}
-              />
-
-              <Select
-                size="large"
-                aria-label="Sắp xếp lịch phỏng vấn"
-                value={interviewSort}
-                onChange={handleSortChange}
-                className="w-full sm:w-52 font-medium"
-                options={[
-                  { value: 'DEFAULT', label: 'Sắp xếp mặc định' },
-                  { value: 'ASC', label: 'Giờ hẹn: Gần nhất trước' },
-                  { value: 'DESC', label: 'Giờ hẹn: Xa nhất trước' },
-                ]}
-              />
-            </>
+                ] as const
+              ).map((opt) => {
+                const active = interviewDateRange === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => handleDateRangeChange(opt.value)}
+                    className={`min-h-[38px] cursor-pointer rounded-xl px-3 py-1.5 text-xs font-semibold transition-all border ${
+                      active
+                        ? 'bg-sky-50 text-[#0284C7] border-sky-300 font-bold shadow-2xs'
+                        : 'bg-white text-slate-600 border-slate-200/90 hover:bg-slate-50 hover:text-slate-900'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                aria-pressed={interviewSort === 'ASC'}
+                onClick={() => handleSortChange(interviewSort === 'ASC' ? 'DESC' : 'ASC')}
+                className={`min-h-[38px] cursor-pointer rounded-xl px-3 py-1.5 text-xs font-semibold transition-all border ${
+                  interviewSort !== 'DEFAULT'
+                    ? 'bg-sky-50 text-[#0284C7] border-sky-300 font-bold shadow-2xs'
+                    : 'bg-white text-slate-600 border-slate-200/90 hover:bg-slate-50 hover:text-slate-900'
+                }`}
+              >
+                {interviewSort === 'DESC' ? 'Giờ hẹn: Xa nhất trước' : 'Giờ hẹn: Gần nhất trước'}
+              </button>
+            </div>
           )}
         </div>
 

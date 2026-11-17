@@ -381,4 +381,36 @@ describe('Client › Phỏng vấn & Offer', () => {
     const plainRow = screen.getByText('Nhân Sự Null').closest('tr')!;
     expect(within(plainRow).queryByText(/Invalid Date|undefined|Thay thế/)).toBeNull();
   });
+
+  it('sends date range and sort direction filters on the interviews tab and resets pagination', async () => {
+    interviewsMock.mockResolvedValue({ items: [makeInterview({})], total: 1, page: 1, pageSize: 10, totalPages: 1 });
+    offersMock.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 1, totalPages: 1 });
+    placementsMock.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 1, totalPages: 1 });
+
+    renderPage('/client/interviews-offers?tab=interviews&page=2');
+    await screen.findByText('Nguyễn Văn A');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lịch hôm nay' }));
+
+    await waitFor(() =>
+      expect(interviewsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          page: 1,
+          fromDate: expect.any(String),
+          toDate: expect.any(String),
+        })
+      )
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Giờ hẹn: Gần nhất trước' }));
+
+    await waitFor(() =>
+      expect(interviewsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          page: 1,
+          sortDirection: 'ASC',
+        })
+      )
+    );
+  });
 });
