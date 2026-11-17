@@ -46,7 +46,6 @@ import dayjs from 'dayjs';
 import type { ApproveJobInput, CommercialTermsInput, Job, JobRejectReasonCode, JobStatus } from '@/types/api/jobs';
 import { jobsApi, serviceAgreementsApi } from '@/services/api/jobsApi';
 import { getApiErrorMessage } from '@/services/apiClient';
-import { useAlertStore } from '@/stores/alertStore';
 import { formatMoney, jobQueryKeys, useCurrentServiceAgreement, useJobDetail, useJobFeeInfo, useJobMutations, useJobReviewQueue } from './useJobQueries';
 import { JobDetailPanel, JobTemplateOriginTag } from './JobDetailPanel';
 import { ReasonModal } from './ReasonModal';
@@ -195,14 +194,6 @@ export const JobReviewPage: React.FC = () => {
 
   // Sắp xếp bài mới nhất lên trên & lọc theo từ khóa tìm kiếm
   const jobs = useMemo(() => {
-    const changeRequestedMap = (() => {
-      try {
-        return JSON.parse(localStorage.getItem('hrconnect_change_requested_jobs') || '{}');
-      } catch {
-        return {};
-      }
-    })();
-
     let list: Job[] = [];
 
     if (statusFilter === 'CHANGE_REQUESTED') {
@@ -215,16 +206,13 @@ export const JobReviewPage: React.FC = () => {
       ];
 
       extraCandidates.forEach((j) => {
-        const isChangeReq =
-          j.agreementStatus === 'CHANGE_REQUESTED' ||
-          Boolean(changeRequestedMap[j.jobId]);
+        const isChangeReq = j.agreementStatus === 'CHANGE_REQUESTED';
 
         if (isChangeReq && !map.has(j.jobId)) {
           map.set(j.jobId, {
             ...j,
             agreementStatus: 'CHANGE_REQUESTED',
             agreementChangeRequestReason:
-              changeRequestedMap[j.jobId]?.reason ||
               j.agreementChangeRequestReason ||
               'Doanh nghiệp yêu cầu điều chỉnh các điều khoản hợp đồng.',
           });
@@ -233,12 +221,7 @@ export const JobReviewPage: React.FC = () => {
 
       list = Array.from(map.values());
     } else if (statusFilter === 'PENDING_AGREEMENT') {
-      list = (queue.data ?? []).filter((j) => {
-        const isChangeReq =
-          j.agreementStatus === 'CHANGE_REQUESTED' ||
-          Boolean(changeRequestedMap[j.jobId]);
-        return !isChangeReq;
-      });
+      list = (queue.data ?? []).filter((j) => j.agreementStatus !== 'CHANGE_REQUESTED');
     } else {
       list = [...(queue.data ?? [])];
     }
@@ -299,16 +282,7 @@ export const JobReviewPage: React.FC = () => {
             j.companyName?.toLowerCase().includes(q)
         );
         if (targetInAll) {
-          const changeRequestedMap = (() => {
-            try {
-              return JSON.parse(localStorage.getItem('hrconnect_change_requested_jobs') || '{}');
-            } catch {
-              return {};
-            }
-          })();
-          const isChangeReq =
-            targetInAll.agreementStatus === 'CHANGE_REQUESTED' ||
-            Boolean(changeRequestedMap[targetInAll.jobId]);
+          const isChangeReq = targetInAll.agreementStatus === 'CHANGE_REQUESTED';
           const actualTab: StatusFilter = isChangeReq
             ? 'CHANGE_REQUESTED'
             : STATUS_TABS.some((t) => t.value === targetInAll.status)
@@ -387,19 +361,9 @@ export const JobReviewPage: React.FC = () => {
     return Boolean(targetJob.hasSubmittedDeposit);
   };
 
-  const storedChangeMap = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem('hrconnect_change_requested_jobs') || '{}');
-    } catch {
-      return {};
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, queue.isFetching]);
-
   const isAgreementChangeRequested =
     currentAgreement?.status === 'CHANGE_REQUESTED' ||
-    job?.agreementStatus === 'CHANGE_REQUESTED' ||
-    Boolean(job && storedChangeMap[job.jobId]);
+    job?.agreementStatus === 'CHANGE_REQUESTED';
 
   const isSigned = Boolean(
     currentAgreement?.status === 'SIGNED' ||
@@ -410,7 +374,7 @@ export const JobReviewPage: React.FC = () => {
   const changeReason =
     currentAgreement?.changeRequestReason ||
     job?.agreementChangeRequestReason ||
-    (job ? storedChangeMap[job.jobId]?.reason : undefined);
+    undefined;
 
   /** F2: approve with the commercial terms Internal HR agreed (HEADHUNT_COD, CV_SOURCING) -> Send proposal to Client. */
   const approveWithTerms = async (input: ApproveJobInput) => {
@@ -436,33 +400,7 @@ export const JobReviewPage: React.FC = () => {
             ? 'Đã cập nhật và gửi lại hợp đồng cho Doanh nghiệp'
             : 'Đã gửi hợp đồng cho Doanh nghiệp'
         );
-        try {
-          const changeMap = JSON.parse(localStorage.getItem('hrconnect_change_requested_jobs') || '{}');
-          delete changeMap[job.jobId];
-          localStorage.setItem('hrconnect_change_requested_jobs', JSON.stringify(changeMap));
-        } catch {
-          // ignore
-        }
         setTermsOpen(false);
-        const isHeadhunt = job.serviceTypeCode === 'HEADHUNT_COD';
-        useAlertStore.getState().addAlert({
-          targetRole: 'INTERNAL_HR',
-          type: 'success',
-          title: isHeadhunt ? 'Đã gửi hợp đồng dịch vụ tuyển dụng' : 'Đã gửi hợp đồng tìm kiếm hồ sơ',
-          message: `Đã gửi hợp đồng có sẵn chữ ký cho "${job.title}" của ${job.companyName}. Đang chờ Doanh nghiệp xem và ký.`,
-          actionLabel: 'Xem chi tiết',
-          actionRoute: `/hr/jobs?status=PENDING_AGREEMENT&highlight=${encodeURIComponent(job.jobId)}`,
-          relatedEntityId: job.jobId,
-        });
-        useAlertStore.getState().addAlert({
-          targetRole: 'CLIENT',
-          type: 'info',
-          title: 'Hợp đồng dịch vụ đã được soạn xong',
-          message: `Đã soạn xong hợp đồng dịch vụ cho "${job.title}". Vui lòng tải hợp đồng về xem xét và thực hiện ký kết.`,
-          actionLabel: 'Xem & Tải hợp đồng',
-          actionRoute: `/client/agreements?jobId=${encodeURIComponent(job.jobId)}`,
-          relatedEntityId: job.jobId,
-        });
         await Promise.all([
           detail.refetch(),
           queue.refetch(),
@@ -529,28 +467,6 @@ export const JobReviewPage: React.FC = () => {
             .mutateAsync({ jobId: job.jobId, token: job.concurrencyToken })
             .then((res) => {
               message.success(res.message);
-
-              // 1. Thông báo cho Internal HR
-              useAlertStore.getState().addAlert({
-                targetRole: 'INTERNAL_HR',
-                type: 'info',
-                title: 'Đã duyệt nội dung & tạo đơn thanh toán',
-                message: `Tin "${job.title}" của ${job.companyName} đã duyệt thành công. Đang chờ Doanh nghiệp thanh toán ${feeText}.`,
-                actionLabel: 'Xem tin',
-                actionRoute: `/hr/jobs?status=PENDING_PAYMENT&highlight=${encodeURIComponent(job.jobId)}`,
-                relatedEntityId: job.jobId,
-              });
-
-              // 2. Thông báo trực tiếp cho Client (kèm link mở thẳng popup thanh toán)
-              useAlertStore.getState().addAlert({
-                targetRole: 'CLIENT',
-                type: 'warning',
-                title: 'Yêu cầu thanh toán',
-                message: `Tin tuyển dụng "${job.title}" đã được duyệt nội dung! Vui lòng hoàn tất thanh toán ${feeText} để kích hoạt và công khai tin.`,
-                actionLabel: 'Thanh toán ngay',
-                actionRoute: `/client/jobs?status=PENDING_PAYMENT&highlight=${encodeURIComponent(job.jobId)}&openPayment=true`,
-                relatedEntityId: job.jobId,
-              });
             })
             .catch((err) => message.error(getApiErrorMessage(err))),
       });
@@ -565,28 +481,6 @@ export const JobReviewPage: React.FC = () => {
             .mutateAsync({ jobId: job.jobId, token: job.concurrencyToken })
             .then((res) => {
               message.success(res.message);
-
-              // 1. Thông báo cho Internal HR
-              useAlertStore.getState().addAlert({
-                targetRole: 'INTERNAL_HR',
-                type: 'success',
-                title: 'Tin tuyển dụng đã được duyệt',
-                message: `Tin tuyển dụng "${job.title}" đã được bộ phận kiểm duyệt phê duyệt và công bố.`,
-                actionLabel: 'Xem tin tuyển dụng',
-                actionRoute: `/hr/jobs?status=ACTIVE&highlight=${encodeURIComponent(job.jobId)}`,
-                relatedEntityId: job.jobId,
-              });
-
-              // 2. Thông báo cho Client
-              useAlertStore.getState().addAlert({
-                targetRole: 'CLIENT',
-                type: 'success',
-                title: 'Tin tuyển dụng đã được công khai',
-                message: `Tin "${job.title}" đã được duyệt và chính thức hiển thị công khai để nhận hồ sơ ứng viên.`,
-                actionLabel: 'Xem tin tuyển dụng',
-                actionRoute: `/client/jobs?status=ACTIVE&highlight=${encodeURIComponent(job.jobId)}&openDetail=true`,
-                relatedEntityId: job.jobId,
-              });
             })
             .catch((err) => message.error(getApiErrorMessage(err))),
       });
@@ -625,24 +519,6 @@ export const JobReviewPage: React.FC = () => {
             await jobsApi.approve(jobToConfirm.jobId, jobToConfirm.concurrencyToken);
           }
           message.success('Đã xác nhận nhận cọc! Tin tuyển dụng đã được công bố công khai.');
-          useAlertStore.getState().addAlert({
-            targetRole: 'INTERNAL_HR',
-            type: 'success',
-            title: 'Đã nhận cọc & Công khai tin',
-            message: `Đã đối soát khoản cọc của "${jobToConfirm.title}". Tin đã chính thức chuyển sang trạng thái Đang tuyển.`,
-            actionLabel: 'Xem tin tuyển dụng',
-            actionRoute: `/hr/jobs?status=ACTIVE&highlight=${encodeURIComponent(jobToConfirm.jobId)}`,
-            relatedEntityId: jobToConfirm.jobId,
-          });
-          useAlertStore.getState().addAlert({
-            targetRole: 'CLIENT',
-            type: 'success',
-            title: 'Tin tuyển dụng đã được kích hoạt',
-            message: `HR Connect đã xác nhận khoản đặt cọc cho tin "${jobToConfirm.title}". Tin đã được công khai và bắt đầu tìm kiếm ứng viên.`,
-            actionLabel: 'Xem tin tuyển dụng',
-            actionRoute: `/client/jobs?status=ACTIVE&highlight=${encodeURIComponent(jobToConfirm.jobId)}&openDetail=true`,
-            relatedEntityId: jobToConfirm.jobId,
-          });
           await Promise.all([
             queryClient.invalidateQueries({ queryKey: jobQueryKeys.all }),
             queryClient.invalidateQueries({ queryKey: ['service-fees'] }),
@@ -763,24 +639,6 @@ export const JobReviewPage: React.FC = () => {
             .mutateAsync({ jobId: job.jobId, token: job.concurrencyToken, input: publishInput })
             .then((res) => {
               message.success(res.message || 'Đã duyệt hợp đồng và tạo yêu cầu đặt cọc/thanh toán.');
-              useAlertStore.getState().addAlert({
-                targetRole: 'INTERNAL_HR',
-                type: 'info',
-                title: 'Đã duyệt hợp đồng · Chờ đặt cọc',
-                message: `Hợp đồng cho "${job.title}" đã duyệt. Đang chờ Doanh nghiệp hoàn tất đặt cọc/thanh toán.`,
-                actionLabel: 'Xem tin tuyển dụng',
-                actionRoute: `/hr/jobs?status=PENDING_PAYMENT&highlight=${encodeURIComponent(job.jobId)}`,
-                relatedEntityId: job.jobId,
-              });
-              useAlertStore.getState().addAlert({
-                targetRole: 'CLIENT',
-                type: 'warning',
-                title: 'Yêu cầu đặt cọc dịch vụ',
-                message: `Hợp đồng dịch vụ cho "${job.title}" đã được xác nhận. Vui lòng hoàn tất đặt cọc để tin tuyển dụng được công khai.`,
-                actionLabel: 'Đặt cọc ngay',
-                actionRoute: `/client/agreements?jobId=${encodeURIComponent(job.jobId)}`,
-                relatedEntityId: job.jobId,
-              });
             })
             .catch((err) => message.error(getApiErrorMessage(err))),
       });
@@ -816,24 +674,6 @@ export const JobReviewPage: React.FC = () => {
           .mutateAsync({ jobId: job.jobId, token: job.concurrencyToken, input: publishInput })
           .then((res) => {
             message.success(res.message || 'Công khai tin tuyển dụng thành công.');
-            useAlertStore.getState().addAlert({
-              targetRole: 'INTERNAL_HR',
-              type: 'success',
-              title: 'Tin tuyển dụng đã được công bố',
-              message: `Hợp đồng dịch vụ cho "${job.title}" đã được duyệt và tin đang hoạt động công khai.`,
-              actionLabel: 'Xem tin tuyển dụng',
-              actionRoute: `/hr/jobs?status=ACTIVE&highlight=${encodeURIComponent(job.jobId)}`,
-              relatedEntityId: job.jobId,
-            });
-            useAlertStore.getState().addAlert({
-              targetRole: 'CLIENT',
-              type: 'success',
-              title: 'Tin tuyển dụng đã được công bố',
-              message: `Hợp đồng dịch vụ đã được duyệt! Tin "${job.title}" của quý doanh nghiệp chính thức được công bố để nhận hồ sơ.`,
-              actionLabel: 'Xem tin tuyển dụng',
-              actionRoute: `/client/jobs?status=ACTIVE&highlight=${encodeURIComponent(job.jobId)}&openDetail=true`,
-              relatedEntityId: job.jobId,
-            });
           })
           .catch((err) => message.error(getApiErrorMessage(err))),
     });
@@ -1336,27 +1176,6 @@ export const JobReviewPage: React.FC = () => {
             })
             .then((res) => {
               message.success(res.message);
-              // 1. Thông báo cho Internal HR
-              useAlertStore.getState().addAlert({
-                targetRole: 'INTERNAL_HR',
-                type: 'info',
-                title: 'Đã từ chối duyệt tin tuyển dụng',
-                message: `Đã từ chối tin "${job.title}" của ${job.companyName}. Lý do: ${reasonText || 'Không đạt chuẩn'}.`,
-                actionLabel: 'Xem tin',
-                actionRoute: `/hr/jobs?status=REJECTED&highlight=${encodeURIComponent(job.jobId)}`,
-                relatedEntityId: job.jobId,
-              });
-
-              // 2. Thông báo cho Client
-              useAlertStore.getState().addAlert({
-                targetRole: 'CLIENT',
-                type: 'error',
-                title: 'Tin tuyển dụng cần chỉnh sửa',
-                message: `Tin "${job.title}" chưa được duyệt. Lý do: ${reasonText || 'Vui lòng kiểm tra lại yêu cầu'}. Vui lòng cập nhật lại.`,
-                actionLabel: 'Xem chi tiết',
-                actionRoute: `/client/jobs?status=REJECTED&highlight=${encodeURIComponent(job.jobId)}&openDetail=true`,
-                relatedEntityId: job.jobId,
-              });
               setRejectOpen(false);
             })
             .catch((err) => message.error(getApiErrorMessage(err)))
