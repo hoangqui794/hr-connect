@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Job } from '@/types/api/jobs';
-import { formatExperience, formatMultilineText, formatPostingPackage, isAwaitingSourcingDeposit, sourcingDepositAmount } from './jobDisplay';
+import { formatExperience, formatMultilineText, formatPostingPackage, isAwaitingSourcingDeposit, SERVICE_AGREEMENT_STATUS, sourcingDepositAmount } from './jobDisplay';
 import { EXPERIENCE_YEAR_OPTIONS, JOB_EXPERIENCE_SELECT_OPTIONS } from './jobFormOptions';
 
 const terms = (sourcingTarget: number | null, pricePerCv: number | null, depositPercent: number | null) =>
@@ -77,6 +77,13 @@ describe('Nhãn biểu mẫu MF-01', () => {
     const customOpt = JOB_EXPERIENCE_SELECT_OPTIONS.find((opt) => opt.value === 'custom');
     expect(customOpt).toBeDefined();
     expect((customOpt?.label as string) === 'Khác' || customOpt?.label.includes('Tự nhập')).toBe(true);
+  });
+
+  it('hiển thị nhãn Chờ ký hợp đồng và gợi ý gồm cả ký OTP lẫn tải bản ký cho AWAITING_SIGNATURE', () => {
+    const awaiting = SERVICE_AGREEMENT_STATUS.AWAITING_SIGNATURE;
+    expect(awaiting.label).toBe('Chờ ký hợp đồng');
+    expect(awaiting.hint).toMatch(/OTP/i);
+    expect(awaiting.hint).toMatch(/tải/i);
   });
 });
 
