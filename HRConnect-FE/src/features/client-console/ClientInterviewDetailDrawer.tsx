@@ -628,6 +628,12 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
             </Form.Item>
             <Form.Item name="interviewType" label="Hình thức">
               <Select
+                onChange={() => {
+                  editForm.setFields([
+                    { name: 'meetingLink', errors: [] },
+                    { name: 'location', errors: [] },
+                  ]);
+                }}
                 options={[
                   { value: 'ONLINE', label: 'Trực tuyến (Online)' },
                   { value: 'OFFLINE', label: 'Trực tiếp (Tại văn phòng)' },
@@ -638,6 +644,7 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
           <Form.Item
             name="meetingLink"
             label="Link phòng họp trực tuyến"
+            dependencies={['interviewType']}
             rules={[
               { type: 'url', message: 'Vui lòng nhập URL hợp lệ.' },
               ...(selectedInterviewType === 'ONLINE'
@@ -650,6 +657,7 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
           <Form.Item
             name="location"
             label="Địa điểm (nếu trực tiếp)"
+            dependencies={['interviewType']}
             rules={selectedInterviewType === 'OFFLINE'
               ? [{ required: true, whitespace: true, message: 'Phỏng vấn trực tiếp cần có địa điểm.' }]
               : []}
