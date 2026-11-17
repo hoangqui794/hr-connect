@@ -43,6 +43,7 @@ import { SERVICE_TYPE_LABEL } from '@/features/jobs-mf01/jobDisplay';
 import type { ServiceTypeCode } from '@/types/api/jobs';
 import type { ServiceFeeStatus, WarrantyStatus } from '@/types/api/finance';
 import { ApplicationWorkbench } from '@/features/recruitment/ApplicationWorkbench';
+import { isInterviewInProgress, isInterviewOverdue } from '@/features/recruitment/interviewTiming';
 import { ClientInterviewDetailDrawer } from '@/features/client-console/ClientInterviewDetailDrawer';
 import { ReportResignationModal } from './components/ReportResignationModal';
 
@@ -54,6 +55,8 @@ const PAGE_SIZE = 10;
 
 type TabKey = 'interviews' | 'offers' | 'placements';
 const TABS: TabKey[] = ['interviews', 'offers', 'placements'];
+type InterviewDateRange = 'all' | 'today' | 'next7days';
+type InterviewSortOption = 'DEFAULT' | 'ASC' | 'DESC';
 
 const money = (v: number | null, currency = 'VND') =>
   v == null ? '—' : `${new Intl.NumberFormat('vi-VN').format(v)} ${currency === 'VND' ? '₫' : currency}`;
@@ -146,6 +149,8 @@ export const ClientInterviewsOffersPage: React.FC = () => {
   const [debouncedKeyword, setDebouncedKeyword] = useState<string>('');
   const [resigningPlacement, setResigningPlacement] = useState<PlacementItem | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<string>('all');
+  const [interviewDateRange, setInterviewDateRange] = useState<InterviewDateRange>('all');
+  const [interviewSort, setInterviewSort] = useState<InterviewSortOption>('DEFAULT');
 
   const { data: myJobs = [], isLoading: loadingJobs } = useMyJobs();
 
@@ -174,12 +179,41 @@ export const ClientInterviewsOffersPage: React.FC = () => {
 
   // Query for current tab data
   const listQ = useQuery({
-    queryKey: ['client-pipeline', tab, page, statusFilter === 'all' ? undefined : statusFilter, selectedJobId, debouncedKeyword],
+    queryKey: [
+      'client-pipeline',
+      tab,
+      page,
+      statusFilter === 'all' ? undefined : statusFilter,
+      selectedJobId,
+      debouncedKeyword,
+      tab === 'interviews' ? interviewDateRange : undefined,
+      tab === 'interviews' ? interviewSort : undefined,
+    ],
     queryFn: async () => {
       const st = statusFilter === 'all' ? undefined : statusFilter;
       const jobId = selectedJobId === 'all' ? undefined : selectedJobId;
       if (tab === 'interviews') {
-        return await pipelineApi.interviews({ page, pageSize: PAGE_SIZE, status: st, jobId, keyword: debouncedKeyword || undefined });
+        const fromDate =
+          interviewDateRange === 'today' || interviewDateRange === 'next7days'
+            ? dayjs().startOf('day').toISOString()
+            : undefined;
+        const toDate =
+          interviewDateRange === 'today'
+            ? dayjs().endOf('day').toISOString()
+            : interviewDateRange === 'next7days'
+            ? dayjs().add(7, 'day').endOf('day').toISOString()
+            : undefined;
+        const sortDirection = interviewSort === 'DEFAULT' ? undefined : interviewSort;
+        return await pipelineApi.interviews({
+          page,
+          pageSize: PAGE_SIZE,
+          status: st,
+          jobId,
+          keyword: debouncedKeyword || undefined,
+          fromDate,
+          toDate,
+          sortDirection,
+        });
       }
       if (tab === 'offers') {
         return await pipelineApi.offers({ page, pageSize: PAGE_SIZE, status: st, jobId, keyword: debouncedKeyword || undefined });
@@ -221,6 +255,20 @@ export const ClientInterviewsOffersPage: React.FC = () => {
 
   const handleJobChange = (jobId: string) => {
     setSelectedJobId(jobId);
+    const next = new URLSearchParams(searchParams);
+    next.delete('page');
+    setSearchParams(next, { replace: true });
+  };
+
+  const handleDateRangeChange = (nextRange: InterviewDateRange) => {
+    setInterviewDateRange(nextRange);
+    const next = new URLSearchParams(searchParams);
+    next.delete('page');
+    setSearchParams(next, { replace: true });
+  };
+
+  const handleSortChange = (nextSort: InterviewSortOption) => {
+    setInterviewSort(nextSort);
     const next = new URLSearchParams(searchParams);
     next.delete('page');
     setSearchParams(next, { replace: true });
@@ -345,11 +393,17 @@ export const ClientInterviewsOffersPage: React.FC = () => {
           const st = pick(INTERVIEW_STATUS, r.status);
           const res = r.result ? INTERVIEW_RESULT[r.result] ?? r.result : null;
           const isScheduled = r.status === 'SCHEDULED';
-          const isOverdue = isScheduled && Boolean(r.scheduledAt) && dayjs(r.scheduledAt).isBefore(dayjs());
+          const inProgress = isInterviewInProgress(r);
+          const isOverdue = isInterviewOverdue(r);
           const confirmed = r.candidateAttendanceStatus === 'CONFIRMED';
           return (
             <div className="py-1 space-y-1">
               <StatusDot tone={st.tone}>{st.label}</StatusDot>
+              {inProgress && (
+                <div className="pl-3.5 text-[11px] font-semibold text-sky-700">
+                  Đang trong giờ hẹn · Có thể ghi kết quả
+                </div>
+              )}
               {isOverdue && (
                 <div className="pl-3.5 text-[11px] font-semibold text-amber-800">
                   Quá giờ · Chờ ghi kết quả
@@ -939,6 +993,47 @@ export const ClientInterviewsOffersPage: React.FC = () => {
               })),
             ]}
           />
+
+          {tab === 'interviews' && (
+            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Lọc theo ngày phỏng vấn">
+              {(
+                [
+                  { value: 'all', label: 'Mọi ngày phỏng vấn' },
+                  { value: 'today', label: 'Lịch hôm nay' },
+                  { value: 'next7days', label: '7 ngày tới' },
+                ] as const
+              ).map((opt) => {
+                const active = interviewDateRange === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => handleDateRangeChange(opt.value)}
+                    className={`min-h-[38px] cursor-pointer rounded-xl px-3 py-1.5 text-xs font-semibold transition-all border ${
+                      active
+                        ? 'bg-sky-50 text-[#0284C7] border-sky-300 font-bold shadow-2xs'
+                        : 'bg-white text-slate-600 border-slate-200/90 hover:bg-slate-50 hover:text-slate-900'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                aria-pressed={interviewSort === 'ASC'}
+                onClick={() => handleSortChange(interviewSort === 'ASC' ? 'DESC' : 'ASC')}
+                className={`min-h-[38px] cursor-pointer rounded-xl px-3 py-1.5 text-xs font-semibold transition-all border ${
+                  interviewSort !== 'DEFAULT'
+                    ? 'bg-sky-50 text-[#0284C7] border-sky-300 font-bold shadow-2xs'
+                    : 'bg-white text-slate-600 border-slate-200/90 hover:bg-slate-50 hover:text-slate-900'
+                }`}
+              >
+                {interviewSort === 'DESC' ? 'Giờ hẹn: Xa nhất trước' : 'Giờ hẹn: Gần nhất trước'}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Filter Toolbar Bottom Row: Quick Status Pills */}
