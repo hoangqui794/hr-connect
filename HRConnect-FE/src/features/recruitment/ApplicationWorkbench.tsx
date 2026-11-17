@@ -125,6 +125,11 @@ const INTERVIEW_TYPES = [
   { value: 'OFFLINE', label: 'Trực tiếp' },
   { value: 'ONLINE', label: 'Trực tuyến' },
 ];
+const INTERVIEW_TYPE_LABEL: Record<string, string> = {
+  ONLINE: 'Trực tuyến',
+  OFFLINE: 'Trực tiếp',
+  PHONE: 'Điện thoại',
+};
 const notPast = (d: Dayjs) => d.isBefore(dayjs().startOf('day'));
 const SALARY_BASIS_OPTIONS = [
   { value: 'GROSS', label: 'Gross' },
@@ -1007,7 +1012,7 @@ export const ApplicationWorkbench: React.FC<{
                         />
                       )}
                       <div className="mt-1 text-[13px] text-slate-600">
-                        {fmt(i.scheduledAt)} · {i.durationMinutes ?? '—'} phút · {i.interviewType ?? '—'}
+                        {fmt(i.scheduledAt)} · {i.durationMinutes ?? '—'} phút · {i.interviewType ? INTERVIEW_TYPE_LABEL[i.interviewType] ?? i.interviewType : '—'}
                         {i.location ? ` · ${i.location}` : ''}
                       </div>
                       {i.meetingLink && (
