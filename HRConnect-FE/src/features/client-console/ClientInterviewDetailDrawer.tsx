@@ -670,6 +670,18 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
         confirmLoading={rescheduleMutation.isPending}
         destroyOnHidden
       >
+        {interview?.scheduledAt && (
+          <div className="mb-3 rounded-lg border border-solid border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            <div>
+              <b>Giờ hẹn hiện tại:</b> {fmt(interview.scheduledAt)} ({interview.durationMinutes ?? 60} phút)
+            </div>
+            {interview.candidateAttendanceStatus === 'CONFIRMED' && (
+              <div className="mt-0.5 text-amber-700">
+                Ứng viên đã xác nhận khung giờ hiện tại. Khi đổi sang giờ mới, hệ thống sẽ gửi thông báo để ứng viên xác nhận lại.
+              </div>
+            )}
+          </div>
+        )}
         <Form form={rescheduleForm} layout="vertical" onFinish={(v) => rescheduleMutation.mutate(v)}>
           <Form.Item
             name="newScheduledAt"
@@ -677,15 +689,21 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
             rules={[
               { required: true, message: 'Vui lòng chọn thời gian mới.' },
               {
-                validator: (_, value: Dayjs | undefined) =>
-                  !value || value.isAfter(dayjs())
-                    ? Promise.resolve()
-                    : Promise.reject(new Error('Thời gian phỏng vấn mới phải ở tương lai.')),
+                validator: (_, value: Dayjs | undefined) => {
+                  if (!value) return Promise.resolve();
+                  if (!value.isAfter(dayjs())) {
+                    return Promise.reject(new Error('Thời gian phỏng vấn mới phải ở tương lai.'));
+                  }
+                  if (interview?.scheduledAt && value.isSame(dayjs(interview.scheduledAt), 'minute')) {
+                    return Promise.reject(new Error('Thời gian mới phải khác thời gian hẹn hiện tại.'));
+                  }
+                  return Promise.resolve();
+                },
               },
             ]}
           >
             <DatePicker
-              showTime
+              showTime={{ format: 'HH:mm', minuteStep: 5 }}
               format="HH:mm DD/MM/YYYY"
               className="w-full"
               disabledDate={(current) => current.isBefore(dayjs().startOf('day'))}
