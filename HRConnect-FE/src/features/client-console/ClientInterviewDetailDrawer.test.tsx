@@ -246,4 +246,48 @@ describe('ClientInterviewDetailDrawer', () => {
       );
     });
   });
+
+  it('renders Google Calendar, Google Maps and copy location actions for offline interviews', async () => {
+    vi.mocked(candidateInterviewApi.getClientInterviewDetail).mockResolvedValueOnce({
+      ...mockInterviewDetail,
+      interviewType: 'OFFLINE',
+      meetingLink: null,
+      location: 'Tầng 12, Tòa nhà Bitexco, Quận 1',
+    } as any);
+
+    renderComponent({
+      interviewId: 'iv-test-100',
+      onClose: vi.fn(),
+    });
+
+    expect(await screen.findByText('Tầng 12, Tòa nhà Bitexco, Quận 1')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /thêm vào google calendar/i })).toHaveAttribute(
+      'href',
+      expect.stringContaining('https://calendar.google.com/calendar/render?')
+    );
+    expect(screen.getByRole('button', { name: /sao chép địa chỉ/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /xem trên google maps/i })).toHaveAttribute(
+      'href',
+      expect.stringContaining('https://www.google.com/maps/search/?api=1&query=')
+    );
+  });
+
+  it('displays current schedule and re-confirmation notice in reschedule modal', async () => {
+    vi.mocked(candidateInterviewApi.getClientInterviewDetail).mockResolvedValueOnce({
+      ...mockInterviewDetail,
+      candidateAttendanceStatus: 'CONFIRMED',
+      candidateRespondedAt: relativeIso(-1),
+    } as any);
+
+    renderComponent({
+      interviewId: 'iv-test-100',
+      onClose: vi.fn(),
+    });
+
+    await screen.findByText('Nguyễn Văn An');
+    fireEvent.click(screen.getByRole('button', { name: /dời lịch/i }));
+
+    expect(await screen.findByText(/Giờ hẹn hiện tại:/i)).toBeInTheDocument();
+    expect(screen.getByText(/ứng viên xác nhận lại/i)).toBeInTheDocument();
+  });
 });
