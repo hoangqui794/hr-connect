@@ -182,8 +182,17 @@ describe('Client › Phỏng vấn & Offer', () => {
             candidateAttendanceStatus: null,
             meetingLink: null,
           }),
+          makeInterview({
+            interviewId: 'iv-3',
+            candidateName: 'Ứng Viên Đang Phỏng Vấn',
+            interviewType: 'ONLINE',
+            durationMinutes: 60,
+            scheduledAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+            candidateAttendanceStatus: 'CONFIRMED',
+            meetingLink: 'https://meet.google.com/live',
+          }),
         ],
-        total: 2,
+        total: 3,
         page: 1,
         pageSize: 10,
       } as never;
@@ -202,6 +211,10 @@ describe('Client › Phỏng vấn & Offer', () => {
     expect(within(row2).getByText(/Tầng 5, Q\.1/)).toBeInTheDocument();
     expect(within(row2).getByText('Chưa xác nhận')).toBeInTheDocument();
     expect(within(row2).getByText('Quá giờ · Chờ ghi kết quả')).toBeInTheDocument();
+
+    const row3 = screen.getByText('Ứng Viên Đang Phỏng Vấn').closest('tr')!;
+    expect(within(row3).getByText('Đang trong giờ hẹn · Có thể ghi kết quả')).toBeInTheDocument();
+    expect(within(row3).queryByText(/Quá giờ/)).toBeNull();
   });
 
   it('distinguishes Offer action labels by status and shows basis, start date, expiry alerts and decline reason', async () => {

@@ -117,6 +117,23 @@ describe('ClientInterviewDetailDrawer', () => {
     expect(screen.getByText(/Phản hồi lúc:/i)).toBeInTheDocument();
   });
 
+  it('shows in-progress guidance and unlocks no-show while keeping edit info open during the scheduled window', async () => {
+    vi.mocked(candidateInterviewApi.getClientInterviewDetail).mockResolvedValueOnce({
+      ...mockInterviewDetail,
+      scheduledAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+      durationMinutes: 60,
+    } as any);
+
+    renderComponent({ interviewId: 'iv-test-100', onClose: vi.fn() });
+
+    expect(await screen.findByText('Đang trong giờ hẹn')).toBeInTheDocument();
+    expect(screen.getByText('Đang trong khung giờ phỏng vấn')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Vắng mặt' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /ghi kết quả/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sửa thông tin/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Hủy lịch' })).not.toBeInTheDocument();
+  });
+
   it('shows overdue guidance and only post-interview actions after the scheduled window', async () => {
     vi.mocked(candidateInterviewApi.getClientInterviewDetail).mockResolvedValueOnce({
       ...mockInterviewDetail,
