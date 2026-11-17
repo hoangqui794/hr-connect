@@ -58,6 +58,15 @@ describe('refreshKeysFor', () => {
     expect(sourcingKeys).toContainEqual(['mf05-count']);
   });
 
+  it('refreshes the admin dashboard metrics on job, finance, company and affiliate notifications', () => {
+    for (const entityType of ['JOB', 'SERVICE_AGREEMENT', 'SERVICE_FEE', 'PAYOUT', 'COMMISSION', 'COMPANY', 'AFFILIATE']) {
+      expect(refreshKeysFor(entityType)).toContainEqual(['admin-dashboard-metrics']);
+    }
+    // Pending approvals come from company and affiliate applications.
+    expect(refreshKeysFor('COMPANY')).toContainEqual(['admin-approvals']);
+    expect(refreshKeysFor('AFFILIATE')).toContainEqual(['admin-approvals']);
+  });
+
   it('returns nothing for unknown or missing types', () => {
     expect(refreshKeysFor('UNKNOWN')).toEqual([]);
     expect(refreshKeysFor(null)).toEqual([]);
