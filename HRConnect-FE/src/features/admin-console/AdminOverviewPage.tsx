@@ -4,11 +4,12 @@
  * from one endpoint (GET /admin/dashboard/metrics, permission report.view); "Hoạt động gần đây" is the
  * latest audit log and "Cấu hình & Điều hành" reads service types and commission rules.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { Alert, Button, Skeleton } from 'antd';
+import { animate, useReducedMotion } from 'motion/react';
 import { ArrowRightOutlined, AppstoreOutlined, DollarOutlined, BarChartOutlined, WalletOutlined } from '@ant-design/icons';
 import { getApiError } from '@/services/apiClient';
 import { adminAuditApi, adminCommissionApi, adminDashboardApi, adminServiceTypesApi } from '@/services/api/adminApi';
@@ -27,6 +28,34 @@ const RANGE_OPTIONS: { value: DashboardRange; label: string }[] = [
 const RANGE_TEXT: Record<DashboardRange, string> = { '7d': '7 ngày qua', '30d': '30 ngày qua', '90d': '90 ngày qua' };
 
 const isForbidden = (error: unknown) => getApiError(error).status === 403;
+
+/**
+ * KPI number with the same count animation as StatTile's AnimatedCount (0.45s, same easing, from
+ * the previous value) but grouped the Vietnamese way (1.234). StatTile renders a non-number value
+ * as is, so ui.tsx stays untouched.
+ */
+const KpiCount: React.FC<{ value: number }> = ({ value }) => {
+  const reduceMotion = useReducedMotion();
+  const [display, setDisplay] = useState(value);
+  const previous = useRef(value);
+
+  useEffect(() => {
+    const from = previous.current;
+    previous.current = value;
+    if (from === value || reduceMotion) {
+      setDisplay(value);
+      return;
+    }
+    const controls = animate(from, value, {
+      duration: 0.45,
+      ease: [0.16, 1, 0.3, 1],
+      onUpdate: (latest) => setDisplay(Math.round(latest)),
+    });
+    return () => controls.stop();
+  }, [value, reduceMotion]);
+
+  return <>{display.toLocaleString('vi-VN')}</>;
+};
 
 const relativeTime = (iso: string) => {
   const minutes = dayjs().diff(dayjs(iso), 'minute');
@@ -182,28 +211,28 @@ export const AdminOverviewPage: React.FC = () => {
           <section aria-label="Chỉ số vận hành" className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <StatTile
               label="Chờ duyệt tài khoản"
-              value={kpis.pendingApprovals}
+              value={<KpiCount value={kpis.pendingApprovals} />}
               hint="Affiliate và doanh nghiệp"
               tone="warning"
               onClick={() => navigate('/admin/approvals?status=UNDER_REVIEW')}
             />
             <StatTile
               label="Phí quá hạn"
-              value={kpis.overdueServiceFeesCount}
+              value={<KpiCount value={kpis.overdueServiceFeesCount} />}
               hint={money(kpis.overdueServiceFeesAmount, currency)}
               tone="danger"
               onClick={() => navigate('/admin/finance')}
             />
             <StatTile
               label="Hoa hồng chờ chi"
-              value={kpis.payableCommissionsCount}
+              value={<KpiCount value={kpis.payableCommissionsCount} />}
               hint={money(kpis.payableCommissionsAmount, currency)}
               tone="success"
               onClick={() => navigate('/admin/finance')}
             />
             <StatTile
               label="Sự kiện hôm nay"
-              value={kpis.auditEventsToday}
+              value={<KpiCount value={kpis.auditEventsToday} />}
               hint="Ghi nhận từ 00:00"
               tone="info"
               onClick={() =>

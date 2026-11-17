@@ -121,6 +121,18 @@ describe('AdminOverviewPage', () => {
     expect(screen.getByRole('radio', { name: '30 ngày' })).toHaveAttribute('aria-checked', 'true');
   });
 
+  it('groups KPI thousands the Vietnamese way', async () => {
+    vi.mocked(adminDashboardApi.getMetrics).mockImplementation(async (range) => {
+      const m = metrics(range);
+      return { ...m, kpis: { ...m.kpis, auditEventsToday: 1234, pendingApprovals: 12_500 } };
+    });
+    renderPage();
+
+    const kpis = await screen.findByRole('region', { name: 'Chỉ số vận hành' });
+    expect(within(kpis).getByText('Sự kiện hôm nay').closest('button')).toHaveTextContent('1.234');
+    expect(within(kpis).getByText('Chờ duyệt tài khoản').closest('button')).toHaveTextContent('12.500');
+  });
+
   it('calls the API again with the new range when the range changes', async () => {
     renderPage();
     await screen.findByRole('region', { name: 'Chỉ số vận hành' });
