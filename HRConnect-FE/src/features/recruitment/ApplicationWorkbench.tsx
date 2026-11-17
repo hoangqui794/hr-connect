@@ -43,7 +43,7 @@ import { deliveryFeedback, type CandidateDeliveryActionResult } from './candidat
 import type { RecruitmentApplicationDetail } from '@/types/api/hr';
 import { Initials, StatusDot } from '@/features/admin-console/ui';
 import { CurrencyCodeSelect, currencyCodeRules } from '@/components/common/CurrencyCodeSelect';
-import { isInterviewOverdue } from './interviewTiming';
+import { hasInterviewStarted, isInterviewInProgress, isInterviewOverdue } from './interviewTiming';
 import {
   INTERVIEW_RESULT,
   INTERVIEW_STATUS,
@@ -125,6 +125,11 @@ const INTERVIEW_TYPES = [
   { value: 'OFFLINE', label: 'Trực tiếp' },
   { value: 'ONLINE', label: 'Trực tuyến' },
 ];
+const INTERVIEW_TYPE_LABEL: Record<string, string> = {
+  ONLINE: 'Trực tuyến',
+  OFFLINE: 'Trực tiếp',
+  PHONE: 'Điện thoại',
+};
 const notPast = (d: Dayjs) => d.isBefore(dayjs().startOf('day'));
 const SALARY_BASIS_OPTIONS = [
   { value: 'GROSS', label: 'Gross' },
@@ -203,6 +208,7 @@ export const ApplicationWorkbench: React.FC<{
   const actions = d?.allowedActions ?? [];
   const has = (a: string) => actions.includes(a);
   const interview = d?.interviews.filter((i) => i.status === 'SCHEDULED').sort((a, b) => (b.scheduledAt ?? '').localeCompare(a.scheduledAt ?? ''))[0];
+  const interviewStarted = hasInterviewStarted(interview);
   const interviewOverdue = isInterviewOverdue(interview);
   const effectiveInterviewType = open === 'reschedule' ? interview?.interviewType : selectedInterviewType;
   const offer = d ? [...d.offers].sort((a, b) => b.offerVersion - a.offerVersion)[0] : undefined;
@@ -740,8 +746,8 @@ export const ApplicationWorkbench: React.FC<{
   if (has('MARK_BACKUP')) btn('backup', 'Đưa vào dự phòng', confirmBackup);
   if (has('REJECT')) btn('reject', 'Loại hồ sơ', () => openModal('reject'), { danger: true, icon: <CloseOutlined /> });
   if (has('REJECT_BACKUP')) btn('rejb', 'Loại dự phòng', () => openModal('rejectBackup'), { danger: true });
-  if (has('CANCEL_INTERVIEW') && !interviewOverdue) btn('cancel', 'Hủy lịch', () => openModal('cancel'), { danger: true });
-  if (has('RECORD_NO_SHOW') && interviewOverdue) btn('noshow', 'Vắng mặt', () => openModal('noshow'), { danger: true });
+  if (has('CANCEL_INTERVIEW') && !interviewStarted) btn('cancel', 'Hủy lịch', () => openModal('cancel'), { danger: true });
+  if (has('RECORD_NO_SHOW') && interviewStarted) btn('noshow', 'Vắng mặt', () => openModal('noshow'), { danger: true });
   if (has('UPDATE_INTERVIEW') && !interviewOverdue) btn('editInterview', 'Sửa thông tin lịch', () => openModal('editInterview'), { icon: <EditOutlined /> });
   if (has('RESCHEDULE_INTERVIEW')) btn('resched', 'Dời lịch', () => openModal('reschedule'));
   if (has('WITHDRAW_OFFER')) btn('withdraw', 'Thu hồi offer', () => openModal('withdraw'), { danger: true });
@@ -982,6 +988,7 @@ export const ApplicationWorkbench: React.FC<{
               <div className="space-y-3 text-sm">
                 {d.interviews.map((i) => {
                   const s = pick(INTERVIEW_STATUS, i.status);
+                  const inProgress = isInterviewInProgress(i);
                   const overdue = isInterviewOverdue(i);
                   return (
                     <div key={i.interviewId} className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 transition-all hover:border-slate-300">
@@ -989,6 +996,8 @@ export const ApplicationWorkbench: React.FC<{
                         <span className="font-bold text-slate-900">Phỏng vấn vòng {i.interviewRound}</span>
                         {overdue ? (
                           <StatusDot tone="warning">Quá giờ · Chờ cập nhật</StatusDot>
+                        ) : inProgress ? (
+                          <StatusDot tone="info">Đang trong giờ hẹn</StatusDot>
                         ) : (
                           <StatusDot tone={s.tone}>{s.label}</StatusDot>
                         )}
@@ -1003,7 +1012,7 @@ export const ApplicationWorkbench: React.FC<{
                         />
                       )}
                       <div className="mt-1 text-[13px] text-slate-600">
-                        {fmt(i.scheduledAt)} · {i.durationMinutes ?? '—'} phút · {i.interviewType ?? '—'}
+                        {fmt(i.scheduledAt)} · {i.durationMinutes ?? '—'} phút · {i.interviewType ? INTERVIEW_TYPE_LABEL[i.interviewType] ?? i.interviewType : '—'}
                         {i.location ? ` · ${i.location}` : ''}
                       </div>
                       {i.meetingLink && (

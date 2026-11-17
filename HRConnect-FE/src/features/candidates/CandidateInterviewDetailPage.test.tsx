@@ -200,6 +200,7 @@ describe('CandidateInterviewDetailPage & CandidateInterviewDetailView', () => {
     renderWithProviders(<CandidateInterviewDetailPage />, '/candidate/interviews/iv-online-1');
 
     expect(await screen.findByText('Đã xác nhận tham gia')).toBeInTheDocument();
+    expect(screen.getByText(/Phản hồi lúc:/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Xác nhận tham gia/i })).not.toBeInTheDocument();
   });
 

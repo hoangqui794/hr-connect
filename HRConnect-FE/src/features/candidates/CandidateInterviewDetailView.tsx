@@ -200,7 +200,14 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
           </div>
         )}
         {isConfirmed && (
-          <div className="mt-5 rounded-md border border-solid border-[#BBF7D0] bg-[#F0FDF4] px-4 py-[14px] font-semibold text-[#166534]">Đã xác nhận tham gia</div>
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-2 rounded-md border border-solid border-[#BBF7D0] bg-[#F0FDF4] px-4 py-[14px] text-[#166534]">
+            <span className="font-semibold">Đã xác nhận tham gia</span>
+            {interview.candidateRespondedAt && (
+              <span className="text-[12px] font-normal text-[#15803D]">
+                Phản hồi lúc: {dayjs(interview.candidateRespondedAt).format('HH:mm DD/MM/YYYY')}
+              </span>
+            )}
+          </div>
         )}
 
         {(start || meetingLink || (!isOnline && interview.location)) && (

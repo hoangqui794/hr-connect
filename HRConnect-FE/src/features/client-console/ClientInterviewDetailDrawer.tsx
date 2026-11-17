@@ -37,13 +37,16 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
+import utc from 'dayjs/plugin/utc';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+dayjs.extend(utc);
 import { candidateInterviewApi } from '@/services/api/candidateInterviewApi';
 import { clientActionsApi, interviewHistoryApi } from '@/services/api/hrApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { StatusDot } from '@/features/admin-console/ui';
 import { INTERVIEW_STATUS, INTERVIEW_RESULT, pick } from '@/features/hr-console/hrLabels';
-import { isInterviewOverdue } from '@/features/recruitment/interviewTiming';
+import { hasInterviewStarted, isInterviewInProgress, isInterviewOverdue } from '@/features/recruitment/interviewTiming';
 import type { CandidateInterviewDetailDto } from '@/types/api/candidateInterview';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
@@ -55,6 +58,28 @@ export interface ClientInterviewDetailDrawerProps {
 }
 
 const fmt = (v?: string | null, format = 'HH:mm DD/MM/YYYY') => (v ? dayjs(v).format(format) : '—');
+
+const buildCalendarUrl = (item: CandidateInterviewDetailDto) => {
+  const start = dayjs(item.scheduledAt);
+  const end = start.add(item.durationMinutes ?? 60, 'minute');
+  const formatUtc = (time: Dayjs) => time.utc().format('YYYYMMDDTHHmmss[Z]');
+  const candidateName = item.candidateFullName || item.candidateName || 'Ứng viên';
+  const details = [
+    `Phỏng vấn ứng viên ${candidateName} cho vị trí ${item.jobTitle}.`,
+    item.meetingLink && `Link họp: ${item.meetingLink}`,
+    item.location && `Địa điểm: ${item.location}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: `Phỏng vấn vòng ${item.interviewRound} - ${candidateName} (${item.jobTitle})`,
+    dates: `${formatUtc(start)}/${formatUtc(end)}`,
+    details,
+    location: item.meetingLink || item.location || '',
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+};
 
 export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerProps> = ({
   interviewId,
@@ -241,6 +266,8 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
 
   const st = interview ? pick(INTERVIEW_STATUS, interview.status) : null;
   const isScheduled = interview?.status === 'SCHEDULED';
+  const hasStarted = hasInterviewStarted(interview);
+  const inProgress = isInterviewInProgress(interview);
   const isOverdue = isInterviewOverdue(interview);
   const busy =
     updateMutation.isPending ||
@@ -262,7 +289,7 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
         footer={
           interview && isScheduled ? (
             <div className="flex flex-wrap justify-end gap-2 py-1">
-              {!isOverdue && (
+              {!hasStarted && (
                 <Button danger onClick={() => setCancelModalOpen(true)} disabled={busy} className="!h-9 rounded-lg font-medium">
                   Hủy lịch
                 </Button>
@@ -270,13 +297,14 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
               <Button onClick={handleOpenReschedule} disabled={busy} className="!h-9 rounded-lg border-slate-200 text-slate-700 hover:border-slate-300 font-medium">
                 Dời lịch
               </Button>
-              {isOverdue ? (
-                <Button danger onClick={() => setNoShowModalOpen(true)} disabled={busy} className="!h-9 rounded-lg font-medium">
-                  Vắng mặt
-                </Button>
-              ) : (
+              {!isOverdue && (
                 <Button icon={<EditOutlined />} onClick={handleOpenEdit} disabled={busy} className="!h-9 rounded-lg border-slate-200 text-slate-700 hover:border-slate-300 font-medium">
                   Sửa thông tin
+                </Button>
+              )}
+              {hasStarted && (
+                <Button danger onClick={() => setNoShowModalOpen(true)} disabled={busy} className="!h-9 rounded-lg font-medium">
+                  Vắng mặt
                 </Button>
               )}
               <Button
@@ -322,6 +350,8 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                     </span>
                     {isOverdue ? (
                       <StatusDot tone="warning">Quá giờ · Chờ cập nhật</StatusDot>
+                    ) : inProgress ? (
+                      <StatusDot tone="info">Đang trong giờ hẹn</StatusDot>
                     ) : st ? (
                       <StatusDot tone={st.tone}>{st.label}</StatusDot>
                     ) : null}
@@ -377,6 +407,14 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                     ),
                     children: (
                       <div className="space-y-4 pt-2">
+                        {inProgress && (
+                          <Alert
+                            type="info"
+                            showIcon
+                            message="Đang trong khung giờ phỏng vấn"
+                            description="Nếu buổi phỏng vấn kết thúc sớm hoặc ứng viên không tham gia, bạn có thể ghi kết quả hoặc đánh dấu vắng mặt ngay."
+                          />
+                        )}
                         {isOverdue && (
                           <Alert
                             type="warning"
@@ -394,6 +432,18 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                             <div className="mt-1 text-xs text-slate-500">
                               Thời lượng: {interview.durationMinutes ?? 60} phút
                             </div>
+                            {interview.scheduledAt && (
+                              <div className="mt-2">
+                                <a
+                                  href={buildCalendarUrl(interview)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#0369A1] hover:text-[#075985] hover:underline"
+                                >
+                                  <CalendarOutlined /> Thêm vào Google Calendar
+                                </a>
+                              </div>
+                            )}
                           </div>
 
                           <div className="rounded-xl bg-slate-50 p-4">
@@ -408,7 +458,7 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                                     : interview.interviewType || 'Trực tuyến'}
                             </div>
                             <div className="mt-1 text-xs text-slate-500">
-                              Trạng thái: {isOverdue ? 'Quá giờ · Chờ cập nhật' : (st?.label ?? interview.status)}
+                              Trạng thái: {isOverdue ? 'Quá giờ · Chờ cập nhật' : inProgress ? 'Đang trong giờ hẹn' : (st?.label ?? interview.status)}
                             </div>
                           </div>
                         </div>
@@ -476,10 +526,29 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
 
                         {interview.location && (
                           <div className="rounded-xl bg-slate-50 p-4 text-sm">
-                            <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-                              <EnvironmentOutlined /> Địa điểm phỏng vấn
-                            </span>
-                            <div className="mt-1 text-slate-900">{interview.location}</div>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                                <EnvironmentOutlined /> Địa điểm phỏng vấn
+                              </span>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="small"
+                                  icon={<CopyOutlined />}
+                                  onClick={() => handleCopy(interview.location!, 'địa điểm phỏng vấn')}
+                                >
+                                  Sao chép địa chỉ
+                                </Button>
+                                <Button
+                                  size="small"
+                                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(interview.location)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  Xem trên Google Maps
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="mt-1.5 text-slate-900">{interview.location}</div>
                           </div>
                         )}
 
@@ -615,6 +684,12 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
             </Form.Item>
             <Form.Item name="interviewType" label="Hình thức">
               <Select
+                onChange={() => {
+                  editForm.setFields([
+                    { name: 'meetingLink', errors: [] },
+                    { name: 'location', errors: [] },
+                  ]);
+                }}
                 options={[
                   { value: 'ONLINE', label: 'Trực tuyến (Online)' },
                   { value: 'OFFLINE', label: 'Trực tiếp (Tại văn phòng)' },
@@ -625,6 +700,7 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
           <Form.Item
             name="meetingLink"
             label="Link phòng họp trực tuyến"
+            dependencies={['interviewType']}
             rules={[
               { type: 'url', message: 'Vui lòng nhập URL hợp lệ.' },
               ...(selectedInterviewType === 'ONLINE'
@@ -637,6 +713,7 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
           <Form.Item
             name="location"
             label="Địa điểm (nếu trực tiếp)"
+            dependencies={['interviewType']}
             rules={selectedInterviewType === 'OFFLINE'
               ? [{ required: true, whitespace: true, message: 'Phỏng vấn trực tiếp cần có địa điểm.' }]
               : []}
@@ -657,6 +734,18 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
         confirmLoading={rescheduleMutation.isPending}
         destroyOnHidden
       >
+        {interview?.scheduledAt && (
+          <div className="mb-3 rounded-lg border border-solid border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            <div>
+              <b>Giờ hẹn hiện tại:</b> {fmt(interview.scheduledAt)} ({interview.durationMinutes ?? 60} phút)
+            </div>
+            {interview.candidateAttendanceStatus === 'CONFIRMED' && (
+              <div className="mt-0.5 text-amber-700">
+                Ứng viên đã xác nhận khung giờ hiện tại. Khi đổi sang giờ mới, hệ thống sẽ gửi thông báo để ứng viên xác nhận lại.
+              </div>
+            )}
+          </div>
+        )}
         <Form form={rescheduleForm} layout="vertical" onFinish={(v) => rescheduleMutation.mutate(v)}>
           <Form.Item
             name="newScheduledAt"
@@ -664,15 +753,21 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
             rules={[
               { required: true, message: 'Vui lòng chọn thời gian mới.' },
               {
-                validator: (_, value: Dayjs | undefined) =>
-                  !value || value.isAfter(dayjs())
-                    ? Promise.resolve()
-                    : Promise.reject(new Error('Thời gian phỏng vấn mới phải ở tương lai.')),
+                validator: (_, value: Dayjs | undefined) => {
+                  if (!value) return Promise.resolve();
+                  if (!value.isAfter(dayjs())) {
+                    return Promise.reject(new Error('Thời gian phỏng vấn mới phải ở tương lai.'));
+                  }
+                  if (interview?.scheduledAt && value.isSame(dayjs(interview.scheduledAt), 'minute')) {
+                    return Promise.reject(new Error('Thời gian mới phải khác thời gian hẹn hiện tại.'));
+                  }
+                  return Promise.resolve();
+                },
               },
             ]}
           >
             <DatePicker
-              showTime
+              showTime={{ format: 'HH:mm', minuteStep: 5 }}
               format="HH:mm DD/MM/YYYY"
               className="w-full"
               disabledDate={(current) => current.isBefore(dayjs().startOf('day'))}
