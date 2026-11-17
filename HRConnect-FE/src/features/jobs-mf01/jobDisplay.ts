@@ -38,7 +38,7 @@ export const SERVICE_AGREEMENT_STATUS: Record<ServiceAgreementStatus, { label: s
   SENT_TO_CLIENT: { label: 'Chờ doanh nghiệp phản hồi', color: 'processing', hint: 'Chờ Doanh nghiệp xem xét hoặc yêu cầu điều chỉnh.' },
   CHANGE_REQUESTED: { label: 'Yêu cầu điều chỉnh', color: 'warning', hint: 'Doanh nghiệp đã yêu cầu điều chỉnh các điều khoản.' },
   ACCEPTED: { label: 'Đã chấp thuận', color: 'cyan', hint: 'Doanh nghiệp đã đồng ý các điều khoản, sẵn sàng ký hợp đồng.' },
-  AWAITING_SIGNATURE: { label: 'Chờ nộp HĐ đã ký', color: 'cyan', hint: 'Đang chờ Doanh nghiệp ký và tải lên bản hợp đồng đã ký.' },
+  AWAITING_SIGNATURE: { label: 'Chờ ký hợp đồng', color: 'cyan', hint: 'Đang chờ Doanh nghiệp ký xác thực OTP hoặc tải lên bản hợp đồng đã ký.' },
   SIGNED: { label: 'Đã ký kết', color: 'success', hint: 'Thỏa thuận đã được ký kết thành công bởi đại diện doanh nghiệp.' },
   VOID: { label: 'Đã hủy', color: 'error', hint: 'Thỏa thuận đã bị hủy bỏ.' },
   LEGACY_CONFIRMED: { label: 'Đã xác nhận', color: 'default', hint: 'Thỏa thuận xác nhận theo luồng cũ.' },

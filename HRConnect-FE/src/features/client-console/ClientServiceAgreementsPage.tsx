@@ -429,16 +429,6 @@ export const ClientServiceAgreementsPage: React.FC = () => {
         changeRequestReason: revisionReason.trim(),
       });
       message.success('Đã gửi yêu cầu điều chỉnh tới HR Connect.');
-      try {
-        const changeMap = JSON.parse(localStorage.getItem('hrconnect_change_requested_jobs') || '{}');
-        changeMap[activeJobId] = {
-          reason: revisionReason.trim(),
-          updatedAt: new Date().toISOString(),
-        };
-        localStorage.setItem('hrconnect_change_requested_jobs', JSON.stringify(changeMap));
-      } catch {
-        // ignore
-      }
       setReviseModalOpen(false);
       setRevisionReason('');
       await Promise.all([refetchCurrent(), refetchHistory(), refetchJobs()]);

@@ -21,25 +21,9 @@ import { ALL_VIETNAM_PROVINCES, removeDiacritics } from './PublicJobSplitDiscove
 const { Title, Text } = Typography;
 const PAGE_SIZE = 12;
 
-const getEstimatedCommission = (job: Job): string => {
-  if (job.sourcingPricePerCv && job.sourcingPricePerCv > 0) {
-    return `${job.sourcingPricePerCv.toLocaleString('vi-VN')} đ / CV`;
-  }
-  if (job.feeMultiplier && job.feeMultiplier > 0) {
-    if (job.salaryMax && job.salaryMax > 0) {
-      const amount = Math.round(job.salaryMax * job.feeMultiplier);
-      return `${amount.toLocaleString('vi-VN')} đ`;
-    }
-    return `${job.feeMultiplier} tháng lương`;
-  }
-  if (job.salaryMax && job.salaryMax > 0) {
-    return `${job.salaryMax.toLocaleString('vi-VN')} đ`;
-  }
-  if (job.serviceTypeCode === 'HEADHUNT_COD') {
-    return '1 tháng lương';
-  }
-  return '15.000.000 đ';
-};
+// Commission estimates are fetched per-job on the detail page via GET /affiliates/jobs/{jobId}/commission-estimate;
+// never infer affiliate commission from client pricing fields or hardcode fallback amounts on list cards.
+const COMMISSION_LIST_FALLBACK = 'Theo thỏa thuận';
 
 const JobCard: React.FC<{ job: Job; detailBasePath: string; isApplied?: boolean }> = ({ job, detailBasePath, isApplied }) => {
   const isAffiliate = detailBasePath.startsWith('/affiliate');
@@ -81,7 +65,7 @@ const JobCard: React.FC<{ job: Job; detailBasePath: string; isApplied?: boolean 
         <div className="rounded-lg bg-emerald-50 border border-solid border-emerald-200/80 p-2.5 my-1">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-emerald-800">Hoa hồng dự kiến</div>
           <div className="text-lg font-extrabold text-emerald-700 font-mono tracking-tight mt-0.5">
-            {getEstimatedCommission(job)}
+            {COMMISSION_LIST_FALLBACK}
           </div>
           <div className="text-xs text-slate-500 mt-1">Lương: {formatSalary(job)}</div>
         </div>
