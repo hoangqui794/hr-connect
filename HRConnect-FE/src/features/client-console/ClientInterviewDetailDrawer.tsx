@@ -43,7 +43,7 @@ import { clientActionsApi, interviewHistoryApi } from '@/services/api/hrApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { StatusDot } from '@/features/admin-console/ui';
 import { INTERVIEW_STATUS, INTERVIEW_RESULT, pick } from '@/features/hr-console/hrLabels';
-import { isInterviewOverdue } from '@/features/recruitment/interviewTiming';
+import { hasInterviewStarted, isInterviewInProgress, isInterviewOverdue } from '@/features/recruitment/interviewTiming';
 import type { CandidateInterviewDetailDto } from '@/types/api/candidateInterview';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
@@ -241,6 +241,8 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
 
   const st = interview ? pick(INTERVIEW_STATUS, interview.status) : null;
   const isScheduled = interview?.status === 'SCHEDULED';
+  const hasStarted = hasInterviewStarted(interview);
+  const inProgress = isInterviewInProgress(interview);
   const isOverdue = isInterviewOverdue(interview);
   const busy =
     updateMutation.isPending ||
@@ -262,7 +264,7 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
         footer={
           interview && isScheduled ? (
             <div className="flex flex-wrap justify-end gap-2 py-1">
-              {!isOverdue && (
+              {!hasStarted && (
                 <Button danger onClick={() => setCancelModalOpen(true)} disabled={busy} className="!h-9 rounded-lg font-medium">
                   Hủy lịch
                 </Button>
@@ -270,13 +272,14 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
               <Button onClick={handleOpenReschedule} disabled={busy} className="!h-9 rounded-lg border-slate-200 text-slate-700 hover:border-slate-300 font-medium">
                 Dời lịch
               </Button>
-              {isOverdue ? (
-                <Button danger onClick={() => setNoShowModalOpen(true)} disabled={busy} className="!h-9 rounded-lg font-medium">
-                  Vắng mặt
-                </Button>
-              ) : (
+              {!isOverdue && (
                 <Button icon={<EditOutlined />} onClick={handleOpenEdit} disabled={busy} className="!h-9 rounded-lg border-slate-200 text-slate-700 hover:border-slate-300 font-medium">
                   Sửa thông tin
+                </Button>
+              )}
+              {hasStarted && (
+                <Button danger onClick={() => setNoShowModalOpen(true)} disabled={busy} className="!h-9 rounded-lg font-medium">
+                  Vắng mặt
                 </Button>
               )}
               <Button
@@ -322,6 +325,8 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                     </span>
                     {isOverdue ? (
                       <StatusDot tone="warning">Quá giờ · Chờ cập nhật</StatusDot>
+                    ) : inProgress ? (
+                      <StatusDot tone="info">Đang trong giờ hẹn</StatusDot>
                     ) : st ? (
                       <StatusDot tone={st.tone}>{st.label}</StatusDot>
                     ) : null}
@@ -377,6 +382,14 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                     ),
                     children: (
                       <div className="space-y-4 pt-2">
+                        {inProgress && (
+                          <Alert
+                            type="info"
+                            showIcon
+                            message="Đang trong khung giờ phỏng vấn"
+                            description="Nếu buổi phỏng vấn kết thúc sớm hoặc ứng viên không tham gia, bạn có thể ghi kết quả hoặc đánh dấu vắng mặt ngay."
+                          />
+                        )}
                         {isOverdue && (
                           <Alert
                             type="warning"
@@ -408,7 +421,7 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                                     : interview.interviewType || 'Trực tuyến'}
                             </div>
                             <div className="mt-1 text-xs text-slate-500">
-                              Trạng thái: {isOverdue ? 'Quá giờ · Chờ cập nhật' : (st?.label ?? interview.status)}
+                              Trạng thái: {isOverdue ? 'Quá giờ · Chờ cập nhật' : inProgress ? 'Đang trong giờ hẹn' : (st?.label ?? interview.status)}
                             </div>
                           </div>
                         </div>
