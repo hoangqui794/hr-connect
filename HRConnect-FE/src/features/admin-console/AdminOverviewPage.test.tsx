@@ -199,6 +199,23 @@ describe('AdminOverviewPage', () => {
     expect(await screen.findByRole('region', { name: 'Chỉ số vận hành' })).toBeInTheDocument();
   });
 
+  it('keeps the range switcher when one range fails so the user can switch back', async () => {
+    vi.mocked(adminDashboardApi.getMetrics).mockImplementation(async (range) => {
+      if (range === '7d') throw axiosError(500, 'Lỗi kỳ 7 ngày');
+      return metrics(range);
+    });
+    renderPage();
+    await screen.findByRole('region', { name: 'Chỉ số vận hành' });
+
+    fireEvent.click(screen.getByRole('radio', { name: '7 ngày' }));
+
+    expect(await screen.findByRole('alert', {}, { timeout: 4000 })).toHaveTextContent('Lỗi kỳ 7 ngày');
+    fireEvent.click(screen.getByRole('radio', { name: '30 ngày' }));
+
+    expect(await screen.findByRole('region', { name: 'Chỉ số vận hành' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('on 403 explains the missing permission, offers no retry and still shows recent activity', async () => {
     vi.mocked(adminDashboardApi.getMetrics).mockRejectedValue(axiosError(403, 'Forbidden'));
     renderPage();

@@ -90,7 +90,23 @@ export const AdminOverviewPage: React.FC = () => {
   const kpis = data?.kpis;
   const currency = data?.currencyCode ?? 'VND';
   const forbidden = metrics.isError && isForbidden(metrics.error);
-  const showMetrics = !metrics.isError || Boolean(data);
+  // KPIs need data; the chart cards stay (with the range switcher) on any error except 403,
+  // so a failing range can still be switched away from.
+  const showKpis = !metrics.isError || Boolean(data);
+  const showCards = !forbidden;
+  // While a new range loads, the previous range stays on screen, dimmed.
+  const stale = metrics.isPlaceholderData;
+
+  const cardBody = (render: () => React.ReactNode, skeletonHeight: number) =>
+    data ? (
+      <div aria-busy={stale} className={stale ? 'opacity-60 transition-opacity duration-150' : 'transition-opacity duration-150'}>
+        {render()}
+      </div>
+    ) : metrics.isError ? (
+      <p className="m-0 py-6 text-center text-sm text-[#6B7487]">Chưa tải được số liệu cho khoảng này.</p>
+    ) : (
+      <ChartSkeleton height={skeletonHeight} />
+    );
 
   const summary = metrics.isLoading
     ? 'Đang tổng hợp số liệu vận hành...'
@@ -159,7 +175,7 @@ export const AdminOverviewPage: React.FC = () => {
       )}
 
       {/* 3. KPI strip */}
-      {showMetrics &&
+      {showKpis &&
         (metrics.isLoading || !kpis ? (
           <KpiSkeleton />
         ) : (
@@ -202,20 +218,16 @@ export const AdminOverviewPage: React.FC = () => {
       {/* 4. Two columns: charts + ledger on the left, users + configuration on the right */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:items-start">
         <div className="min-w-0 space-y-5 lg:col-span-2">
-          {showMetrics && (
+          {showCards && (
             <>
               <Surface className="p-4 sm:p-5">
                 <SectionHeader title="Dòng tiền" subtitle={`Thu phí và chi hoa hồng · ${RANGE_TEXT[range]}`} action={rangePills} />
-                {data ? (
-                  <CashflowAreaChart points={data.cashflowSeries} currencyCode={currency} />
-                ) : (
-                  <ChartSkeleton height={236} />
-                )}
+                {cardBody(() => <CashflowAreaChart points={data!.cashflowSeries} currencyCode={currency} />, 236)}
               </Surface>
 
               <Surface className="p-4 sm:p-5">
                 <SectionHeader title="Nhịp hoạt động" subtitle={`Sự kiện audit và người dùng mới mỗi ngày · ${RANGE_TEXT[range]}`} />
-                {data ? <ActivityBarChart points={data.activitySeries} /> : <ChartSkeleton height={196} />}
+                {cardBody(() => <ActivityBarChart points={data!.activitySeries} />, 196)}
               </Surface>
             </>
           )}
@@ -274,10 +286,10 @@ export const AdminOverviewPage: React.FC = () => {
         </div>
 
         <div className="min-w-0 space-y-5">
-          {showMetrics && (
+          {showCards && (
             <Surface className="p-4 sm:p-5">
               <SectionHeader title="Người dùng" subtitle="Theo trạng thái và vai trò hiện tại" />
-              {kpis && data ? (
+              {cardBody(() => (
                 <>
                   <div className="mb-5 grid grid-cols-2 gap-2.5">
                     <button
@@ -287,7 +299,7 @@ export const AdminOverviewPage: React.FC = () => {
                     >
                       <span className="text-xs text-[#4b5565]">Người dùng đang hoạt động</span>
                       <span className="font-mono text-xl font-semibold tabular-nums text-[#111827]">
-                        {kpis.activeUsers.toLocaleString('vi-VN')}
+                        {data!.kpis.activeUsers.toLocaleString('vi-VN')}
                       </span>
                     </button>
                     <button
@@ -297,15 +309,13 @@ export const AdminOverviewPage: React.FC = () => {
                     >
                       <span className="text-xs text-[#4b5565]">Đang tạm khóa</span>
                       <span className="font-mono text-xl font-semibold tabular-nums text-[#111827]">
-                        {kpis.suspendedUsers.toLocaleString('vi-VN')}
+                        {data!.kpis.suspendedUsers.toLocaleString('vi-VN')}
                       </span>
                     </button>
                   </div>
-                  <RoleBreakdownBar items={data.userRoleBreakdown} />
+                  <RoleBreakdownBar items={data!.userRoleBreakdown} />
                 </>
-              ) : (
-                <ChartSkeleton height={180} />
-              )}
+              ), 180)}
             </Surface>
           )}
 

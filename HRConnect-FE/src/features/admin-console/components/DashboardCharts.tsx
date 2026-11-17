@@ -122,16 +122,28 @@ const useActiveIndex = (count: number) => {
   return { active, setActive, targets, onKeyDown };
 };
 
+/**
+ * Splits [0, width] into one band per day around each day's position (point or bar centre), so the
+ * day under the cursor is the day that gets highlighted. Edges stretch to the chart borders.
+ */
+export const hitBands = (centers: number[], width: number) =>
+  centers.map((c, i) => {
+    const left = i === 0 ? 0 : (centers[i - 1] + c) / 2;
+    const right = i === centers.length - 1 ? width : (c + centers[i + 1]) / 2;
+    return { left, width: Math.max(0, right - left) };
+  });
+
 /** Transparent column per day over the chart: hover, focus and arrow keys all pick the same day. */
 const HitLayer: React.FC<{
-  count: number;
+  centers: number[];
   width: number;
   label: string;
   describe: (index: number) => string;
   interaction: ReturnType<typeof useActiveIndex>;
-}> = ({ count, width, label, describe, interaction }) => {
+}> = ({ centers, width, label, describe, interaction }) => {
   const { active, setActive, targets, onKeyDown } = interaction;
-  const slot = width / count;
+  const count = centers.length;
+  const bands = hitBands(centers, width);
   const tabStop = active ?? count - 1;
 
   return (
@@ -159,7 +171,7 @@ const HitLayer: React.FC<{
           onFocus={() => setActive(index)}
           onKeyDown={(event) => onKeyDown(event, index)}
           className="absolute top-0 h-full cursor-crosshair border-0 bg-transparent p-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--console-accent)]"
-          style={{ left: index * slot, width: slot }}
+          style={{ left: bands[index].left, width: bands[index].width }}
         />
       ))}
     </div>
@@ -372,7 +384,7 @@ export const CashflowAreaChart: React.FC<{ points: CashflowPoint[]; currencyCode
               )}
             </svg>
 
-            <HitLayer count={points.length} width={width} label="Chi tiết dòng tiền theo ngày" describe={describe} interaction={interaction} />
+            <HitLayer centers={points.map((_, i) => xAt(i))} width={width} label="Chi tiết dòng tiền theo ngày" describe={describe} interaction={interaction} />
 
             {active !== null && points[active] && (
               <ChartTooltip x={xAt(active)} width={width}>
@@ -480,7 +492,7 @@ export const ActivityBarChart: React.FC<{ points: ActivityPoint[] }> = ({ points
               })}
             </svg>
 
-            <HitLayer count={points.length} width={width} label="Chi tiết hoạt động theo ngày" describe={describe} interaction={interaction} />
+            <HitLayer centers={points.map((_, i) => center(i))} width={width} label="Chi tiết hoạt động theo ngày" describe={describe} interaction={interaction} />
 
             {active !== null && points[active] && (
               <ChartTooltip x={center(active)} width={width}>

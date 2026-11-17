@@ -20,6 +20,56 @@ const activity = (overrides: Partial<Record<string, Partial<ActivityPoint>>> = {
 
 const tooltipText = () => document.querySelector('[aria-hidden].pointer-events-none')?.textContent ?? '';
 
+const bandOf = (button: HTMLElement) => {
+  const left = parseFloat(button.style.left);
+  return { left, right: left + parseFloat(button.style.width) };
+};
+
+describe('hit areas line up with what is drawn (90 days, fallback width 640)', () => {
+  const n = 90;
+  const width = 640;
+  const plotW = width - 16; // PAD.left + PAD.right
+
+  it('each cash-flow day band contains that day’s point and bands tile the chart', () => {
+    const points: CashflowPoint[] = Array.from({ length: n }, (_, i) => ({
+      date: `2026-08-${String((i % 28) + 1).padStart(2, '0')}`,
+      serviceFeesPaidAmount: i,
+      refundsPaidAmount: 0,
+      postingFeesPaidAmount: 0,
+      payoutsAmount: 0,
+    }));
+    render(<CashflowAreaChart points={points} currencyCode="VND" />);
+    const buttons = within(screen.getByRole('group')).getAllByRole('button');
+
+    buttons.forEach((button, i) => {
+      const x = 8 + (i * plotW) / (n - 1);
+      const band = bandOf(button);
+      expect(band.left).toBeLessThanOrEqual(x);
+      expect(band.right).toBeGreaterThanOrEqual(x);
+    });
+    expect(bandOf(buttons[0]).left).toBe(0);
+    expect(bandOf(buttons[n - 1]).right).toBeCloseTo(width);
+  });
+
+  it('each activity day band contains that day’s bar pair', () => {
+    const points: ActivityPoint[] = Array.from({ length: n }, (_, i) => ({
+      date: `2026-08-${String((i % 28) + 1).padStart(2, '0')}`,
+      newUsers: 1,
+      auditEvents: i + 1,
+      approvalsCompleted: 0,
+    }));
+    render(<ActivityBarChart points={points} />);
+    const buttons = within(screen.getByRole('group')).getAllByRole('button');
+
+    buttons.forEach((button, i) => {
+      const center = 8 + (i + 0.5) * (plotW / n);
+      const band = bandOf(button);
+      expect(band.left).toBeLessThanOrEqual(center);
+      expect(band.right).toBeGreaterThanOrEqual(center);
+    });
+  });
+});
+
 describe('helpers', () => {
   it('formats axis labels and days', () => {
     expect(shortDay('2026-11-07')).toBe('07/11');
