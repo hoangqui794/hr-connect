@@ -18,6 +18,10 @@ describe('refreshKeysFor', () => {
     ]));
   });
 
+  it('refreshes Candidate job suggestions on JOB notifications (JOB_FIT)', () => {
+    expect(refreshKeysFor('JOB')).toContainEqual(['candidate-job-matches']);
+  });
+
   it('includes client billing key for JOB and SERVICE_AGREEMENT notifications', () => {
     expect(refreshKeysFor('JOB')).toContainEqual(['client-billing']);
     expect(refreshKeysFor('SERVICE_AGREEMENT')).toContainEqual(['client-billing']);

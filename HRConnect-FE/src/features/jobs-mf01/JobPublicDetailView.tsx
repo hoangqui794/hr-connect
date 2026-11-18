@@ -21,6 +21,7 @@ import type { Job } from '@/types/api/jobs';
 import { EMPLOYMENT_TYPE_LABEL, experienceText } from './jobDisplay';
 import { WORK_MODE_LABEL, detectWorkMode } from './jobFormOptions';
 import { useJobDetail, usePublicJobSearch } from './useJobQueries';
+import { candidateKeys } from '@/features/portal/candidate/candidateKeys';
 
 const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
@@ -120,7 +121,7 @@ const JobContent: React.FC<{ job: Job }> = ({ job }) => {
   const canApply = isCandidate && !applied && job.isAcceptingApplications !== false && hasPermission('application.create');
 
   const matches = useQuery({
-    queryKey: ['candidate-job-matches'],
+    queryKey: candidateKeys.candidateJobMatches,
     queryFn: () => candidateJobMatchApi.getJobMatches(),
     enabled: isCandidate,
     staleTime: 5 * 60_000,

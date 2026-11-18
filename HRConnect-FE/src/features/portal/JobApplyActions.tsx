@@ -104,6 +104,7 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: candidateKeys.applications });
       queryClient.invalidateQueries({ queryKey: candidateKeys.cvs });
+      queryClient.invalidateQueries({ queryKey: candidateKeys.candidateJobMatches });
       if (onSuccess) onSuccess();
     },
     onError: (err) => {

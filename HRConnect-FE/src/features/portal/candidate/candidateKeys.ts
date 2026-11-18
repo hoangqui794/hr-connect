@@ -5,6 +5,8 @@
  */
 export const candidateKeys = {
   cvs: ['candidate-cvs'] as const,
+  /** Job suggestions computed from the primary CV; refresh after applying or changing CVs. */
+  candidateJobMatches: ['candidate-job-matches'] as const,
   applications: ['candidate-applications'] as const,
   applicationDetail: (applicationId: string) => ['candidate-applications', applicationId] as const,
   applicationTimeline: (applicationId: string) => ['candidate-application-timeline', applicationId] as const,

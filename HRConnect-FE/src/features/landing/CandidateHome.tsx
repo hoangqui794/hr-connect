@@ -19,6 +19,7 @@ import { candidateDisplayStage, candidateInterviewType } from '@/features/portal
 import type { CandidateJobMatchDto } from '@/types/api/candidateJobMatch';
 import { CompanyMark, JobCard, SaveJobButton, salaryText } from './components/SiteParts';
 import { companyPhoto, useFeaturedCompanies } from './useFeaturedCompanies';
+import { candidateKeys } from '@/features/portal/candidate/candidateKeys';
 
 const LINK = 'font-semibold text-sky-700 no-underline hover:text-sky-900 hover:underline';
 const H2 = 'm-0 text-[22px] font-bold text-gray-900';
@@ -113,7 +114,7 @@ const MatchCard: React.FC<{ match: CandidateJobMatchDto; onDismiss: () => void; 
 export const CandidateHome: React.FC = () => {
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
-  const matches = useQuery({ queryKey: ['candidate-job-matches'], queryFn: () => candidateJobMatchApi.getJobMatches() });
+  const matches = useQuery({ queryKey: candidateKeys.candidateJobMatches, queryFn: () => candidateJobMatchApi.getJobMatches() });
   const applications = useQuery({ queryKey: ['candidate-home', 'applications'], queryFn: () => candidateApplicationsApi.list({ page: 1, pageSize: 50 }) });
   const consents = useQuery({ queryKey: ['candidate-home', 'consents'], queryFn: () => candidateConsentApi.list({ status: 'PENDING', page: 1, pageSize: 1 }) });
   const cvs = useQuery({ queryKey: ['candidate-home', 'cvs'], queryFn: () => candidateCvApi.list() });
@@ -134,7 +135,7 @@ export const CandidateHome: React.FC = () => {
 
   const dismiss = useMutation({
     mutationFn: (id: string) => candidateJobMatchApi.dismissJobMatch(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['candidate-job-matches'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: candidateKeys.candidateJobMatches }),
     onError: (e) => message.error(getApiErrorMessage(e, 'Chưa ẩn được việc này.')),
   });
 

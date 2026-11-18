@@ -19,6 +19,7 @@ import { UserRole } from '@/types/roles';
 import type { EmploymentType, Job, JobSearchParams } from '@/types/api/jobs';
 import { EMPLOYMENT_TYPE_LABEL, experienceText } from './jobDisplay';
 import { usePublicJobSearch } from './useJobQueries';
+import { candidateKeys } from '@/features/portal/candidate/candidateKeys';
 import { useIndustryOptions } from './useIndustryOptions';
 
 const PAGE_SIZE = 10;
@@ -329,7 +330,7 @@ export const PublicJobSplitDiscovery: React.FC = () => {
   }, [activeProvinces, otherProvinces, activeLocationCounts]);
 
   const matches = useQuery({
-    queryKey: ['candidate-job-matches'],
+    queryKey: candidateKeys.candidateJobMatches,
     queryFn: () => candidateJobMatchApi.getJobMatches(),
     enabled: isCandidate,
     staleTime: 5 * 60_000,
