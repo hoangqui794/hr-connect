@@ -268,6 +268,28 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
             )}
           </div>
         )}
+
+        {isActiveInterview && (
+          <div
+            aria-label="Lưu ý chuẩn bị phỏng vấn"
+            className="mt-4 rounded-md border border-solid border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-[13px] text-[#334155]"
+          >
+            <div className="font-semibold text-[#0F172A]">Lưu ý chuẩn bị trước buổi phỏng vấn</div>
+            <ul className="m-0 mt-1.5 list-disc space-y-1 pl-5">
+              {isOnline ? (
+                <>
+                  <li>Kiểm tra trước micro, camera và đường truyền internet ổn định.</li>
+                  <li>Chọn không gian yên tĩnh, đủ ánh sáng và mở sẵn CV để tiện trao đổi.</li>
+                </>
+              ) : (
+                <>
+                  <li>Có mặt trước giờ hẹn 10–15 phút để làm thủ tục tại quầy lễ tân.</li>
+                  <li>Mang theo giấy tờ tùy thân (CCCD) và chuẩn bị sẵn thông tin người liên hệ nếu cần.</li>
+                </>
+              )}
+            </ul>
+          </div>
+        )}
       </section>
 
       {isError && <div className="px-[22px]"><Alert type="warning" showIcon message="Chưa tải được dữ liệu mới nhất." /></div>}
