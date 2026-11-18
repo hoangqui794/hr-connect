@@ -428,9 +428,7 @@ export const CandidateOfferPage: React.FC = () => {
               </span>
             ) : (
               <span>
-                Bạn đang chọn <b>Chấp nhận offer</b> với mức lương <b>{money(offer.salary, offer.currencyCode)}</b>
-                {terms ? ` (${terms})` : ''}
-                {offer.startDate ? `, dự kiến bắt đầu ngày ${dayjs(offer.startDate).format('DD/MM/YYYY')}` : ''}.
+                {`Bạn đang chọn Chấp nhận offer với mức lương ${money(offer.salary, offer.currencyCode)}${terms ? ` (${terms})` : ''}${offer.startDate ? `, dự kiến bắt đầu ngày ${dayjs(offer.startDate).format('DD/MM/YYYY')}` : ''}.`}
               </span>
             )}
           </div>

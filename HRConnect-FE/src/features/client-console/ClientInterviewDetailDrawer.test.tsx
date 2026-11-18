@@ -290,4 +290,35 @@ describe('ClientInterviewDetailDrawer', () => {
     expect(await screen.findByText(/Giờ hẹn hiện tại:/i)).toBeInTheDocument();
     expect(screen.getByText(/ứng viên xác nhận lại/i)).toBeInTheDocument();
   });
+
+  it('surfaces candidate attendance badge in drawer header and hides stale calendar link when cancelled', async () => {
+    vi.mocked(candidateInterviewApi.getClientInterviewDetail).mockResolvedValueOnce({
+      ...mockInterviewDetail,
+      candidateAttendanceStatus: 'CONFIRMED',
+      candidateRespondedAt: relativeIso(-1),
+    } as any);
+
+    const { unmount } = renderComponent({
+      interviewId: 'iv-test-100',
+      onClose: vi.fn(),
+    });
+
+    expect(await screen.findByTestId('drawer-header-attendance')).toHaveTextContent('Ứng viên đã xác nhận');
+    unmount();
+
+    vi.mocked(candidateInterviewApi.getClientInterviewDetail).mockResolvedValueOnce({
+      ...mockInterviewDetail,
+      status: 'CANCELLED',
+    } as any);
+
+    renderComponent({
+      interviewId: 'iv-test-100',
+      onClose: vi.fn(),
+    });
+
+    await screen.findByText('Nguyễn Văn An');
+    expect(screen.queryByTestId('drawer-header-attendance')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /thêm vào google calendar/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Lịch vẫn được giữ nguyên/i)).not.toBeInTheDocument();
+  });
 });
