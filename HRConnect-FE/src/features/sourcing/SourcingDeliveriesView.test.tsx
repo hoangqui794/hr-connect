@@ -382,6 +382,38 @@ describe('SourcingDeliveriesView HR rejection review (FE-C02, FE-M03)', () => {
 
     expect(await within(dialog).findByText('Nhập lý do bác bỏ từ chối của Doanh nghiệp.')).toBeInTheDocument();
     expect(sourcingApi.reviewRejection).not.toHaveBeenCalled();
+
+    // Switching back to "keep the rejection" makes the note optional again and clears the error.
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Giữ nguyên từ chối/ }));
+    expect(await within(dialog).findByText('Ghi chú xác minh (Không bắt buộc)')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(within(dialog).queryByText('Nhập lý do bác bỏ từ chối của Doanh nghiệp.')).not.toBeInTheDocument()
+    );
+  });
+
+  it('sends the trimmed note when HR overturns an OTHER rejection with a note', async () => {
+    vi.mocked(sourcingApi.getDeliveries).mockResolvedValue({
+      summary: mockSummary,
+      items: [rejectedOther({ deliveryId: 'del-pending', candidateName: 'Ứng Viên Chờ HR Duyệt', rejectionReviewStatus: 'PENDING_HR_REVIEW' })],
+    });
+    vi.mocked(sourcingApi.reviewRejection).mockResolvedValue({} as any);
+
+    renderComponent({ role: 'hr' });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Xác minh' }, { timeout: 10000 }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Bác bỏ từ chối/ }));
+    fireEvent.change(within(dialog).getByPlaceholderText('Ghi chú nội dung xác minh...'), {
+      target: { value: '  Hồ sơ khớp tiêu chí bắt buộc  ' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Lưu kết quả xác minh' }));
+
+    await waitFor(() =>
+      expect(sourcingApi.reviewRejection).toHaveBeenCalledWith('job-123', 'del-pending', {
+        upheld: false,
+        note: 'Hồ sơ khớp tiêu chí bắt buộc',
+      })
+    );
   });
 
   it('hides the Xác minh button once HR has already upheld the rejection', async () => {
