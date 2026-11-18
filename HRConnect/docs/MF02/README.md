@@ -1,9 +1,8 @@
 # Tài liệu Đặc tả Toàn diện — MF-02 (Ứng tuyển, CV, Affiliate Giới thiệu, Consent, Attribution & Chống trùng)
 
-> **Tài liệu liên quan trong thư mục:**
-> - [`candidate-consent.md`](candidate-consent.md): Chi tiết nghiệp vụ & API xác nhận Consent (Public & Authenticated).
-> - [`CODE-EXECUTION-FLOW.md`](CODE-EXECUTION-FLOW.md): Bản đồ thực thi chi tiết từ Endpoint → Handler → Repository → Database.
+> **Tài liệu liên quan:**
 > - [`review.md`](review.md): Nhật ký kiểm định Production Readiness (đã hoàn tất **20/20** hạng mục Critical, Major, Minor).
+> - [`../main-flows.md`](../main-flows.md): Đặc tả luồng nghiệp vụ mục MF-02.
 > - Hợp đồng tích hợp Frontend: [`../../../HRConnect-FE/docs/integration/MF02/`](../../../HRConnect-FE/docs/integration/MF02/).
 
 ---
@@ -38,7 +37,7 @@
 ### 3.1. Nhánh A — Candidate Tự ứng tuyển (`CV_APPLICATION`)
 1. Kiểm tra hồ sơ Candidate `ACTIVE` (chưa bị khóa/lưu trữ/merge `MergedIntoCandidateId`) và tài khoản còn quyền Candidate.
 2. Kiểm tra Job: `Status == "ACTIVE"`, chưa quá `ApplicationDeadline`, chưa vượt `MaxApplications`, và loại dịch vụ cho phép Candidate nộp.
-3. Kiểm tra trùng lặp `(CandidateId, JobId)` trong khóa giao dịch.
+3. Kiểm tra trùng lặp `(CandidateId, JobId)` trong khóa giao dịch `_candidateCompanyLock` (cho phép nộp lại nếu đơn cũ đã `WITHDRAWN`).
 4. Tạo `Submission (Source = "CANDIDATE", Status = "ACCEPTED")` + `Application (Status = "SUBMITTED")`, gửi thông báo và kích hoạt chấm điểm AI (MF-03).
 
 ### 3.2. Nhánh B — Affiliate Giới thiệu & Candidate Consent (`HEADHUNT_COD`, `CV_SOURCING`)
@@ -46,6 +45,10 @@
    - Hỗ trợ 2 nguồn CV:
      - Tải CV PDF mới cho ứng viên.
      - Dùng lại CV từ Kho CV của Affiliate (`CandidateId` + `CvId`), bắt buộc đủ 5 điều kiện: `AFFILIATE_UPLOAD`, đúng `UploadedByUserId`, `Status == "ACTIVE"`, `AffiliateReuseStatus == "ALLOWED"`, và đã có ít nhất 1 `Submission` `ACCEPTED` trước đó.
+   - **Định danh & Bảo toàn Snapshot Liên hệ (`SubmissionContactSnapshot`):**
+     - Nếu Candidate đã có hồ sơ xác thực (`Mail A + Phone A`), hệ thống áp dụng **Strict Identity Match**: chặn `409 Conflict` nếu Affiliate gửi kèm `Phone B != Phone A` hoặc nếu Email & SĐT trỏ về 2 ứng viên khác nhau, nhằm chống gian lận liên hệ (Contact Hijacking) và tránh sinh SĐT trôi nổi.
+     - Nếu Candidate chưa có tài khoản (`UserId == null`) hoặc chưa từng lưu SĐT trên hồ sơ gốc (`Phone == null`), thông tin do Affiliate nộp được lưu snapshot vào `Submission.SubmittedFullName`, `Submission.SubmittedPhone`, `Submission.NormalizedSubmittedPhone`.
+     - Khi ứng viên sau đó dùng `Mail A` để đăng ký tài khoản chính chủ (`RegisterCandidateCommand` & `VerifyEmailOtpCommand` qua `CandidateRegistrationIdentity`), chính chủ được phép đăng ký SĐT cá nhân (`Phone A` cập nhật vào `Candidate.Phone`), trong khi các lượt nộp trước đó của Affiliate vẫn giữ nguyên `Submission.SubmittedPhone = Phone B`.
    - Kiểm tra Affiliate `ACTIVE`/`VERIFIED`, Job `ACTIVE`, `ApplicationDeadline`, `MaxApplications`, Replacement Slot (nếu nộp thay thế), Client Ownership (với `HEADHUNT_COD`).
    - Tạo `Submission (PENDING_CONSENT)` + `SubmissionConsent (PENDING)` (token 32 bytes ngẫu nhiên, chỉ lưu `SHA-256` hash trong DB), ghi `EmailOutbox`, tạo `Notification` và đẩy SignalR nếu Candidate đã có tài khoản.
    - *Lưu ý bảo mật:* Log cảnh báo xung đột danh tính chỉ ghi `CandidateId`, không ghi plaintext email/phone.
