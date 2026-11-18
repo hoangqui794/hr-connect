@@ -42,6 +42,12 @@ const fileNameOf = (url: string) => {
 };
 
 const FULL_TIME_CONFLICT_CODES = ['ACCEPTED_FULL_TIME_OFFER_EXISTS', 'ACTIVE_FULL_TIME_PLACEMENT_EXISTS', 'ACTIVE_FULL_TIME_PLACEMENT_CONFLICT'];
+const DECLINE_SUGGESTIONS = [
+  'Đã nhận một offer khác phù hợp hơn',
+  'Mức đãi ngộ chưa đáp ứng kỳ vọng',
+  'Định hướng công việc cá nhân thay đổi',
+  'Thời gian bắt đầu chưa phù hợp',
+];
 
 const salaryTerms = (basis?: string | null, period?: string | null) =>
   [
@@ -251,6 +257,28 @@ export const CandidateOfferPage: React.FC = () => {
                   }}
                   className={`${FONT} mt-2.5 w-full resize-y rounded-md border border-solid px-3 py-2.5 text-[14px] text-[#1F2937] outline-none focus:border-[#0369A1] focus:ring-1 focus:ring-[#0369A1] ${reasonMissing ? 'border-[#B91C1C]' : 'border-[#D1D5DB]'}`}
                 />
+                {declining && (
+                  <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Gợi ý lý do từ chối">
+                    {DECLINE_SUGGESTIONS.map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => {
+                          setChoice('DECLINED');
+                          setReason(item);
+                          setReasonMissing(false);
+                        }}
+                        className={`${FONT} cursor-pointer rounded-full border border-solid px-2.5 py-1 text-[12px] transition-colors ${
+                          reason === item
+                            ? 'border-[#0369A1] bg-[#E0F2FE] font-semibold text-[#075985]'
+                            : 'border-[#D1D5DB] bg-white text-[#4B5563] hover:border-[#9CA3AF] hover:bg-[#F9FAFB]'
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {reasonMissing && <span role="alert" className="mt-1 block text-[12px] text-[#B91C1C]">Vui lòng nhập lý do từ chối.</span>}
               </span>
             </label>
