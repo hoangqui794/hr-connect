@@ -344,7 +344,7 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
             <div className="rounded-2xl border border-solid border-slate-200/80 bg-white p-5 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-semibold uppercase tracking-wider text-blue-600">
                       Phỏng vấn vòng {interview.interviewRound}
                     </span>
@@ -355,6 +355,17 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                     ) : st ? (
                       <StatusDot tone={st.tone}>{st.label}</StatusDot>
                     ) : null}
+                    {isScheduled && (
+                      <Tag
+                        data-testid="drawer-header-attendance"
+                        color={interview.candidateAttendanceStatus === 'CONFIRMED' ? 'success' : 'warning'}
+                        className="!m-0"
+                      >
+                        {interview.candidateAttendanceStatus === 'CONFIRMED'
+                          ? 'Ứng viên đã xác nhận'
+                          : 'Chờ ứng viên xác nhận'}
+                      </Tag>
+                    )}
                   </div>
                   <h2 className="m-0 mt-1 text-xl font-bold text-slate-900">
                     {interview.candidateFullName || interview.candidateName || 'Ứng viên'}
@@ -432,7 +443,7 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                             <div className="mt-1 text-xs text-slate-500">
                               Thời lượng: {interview.durationMinutes ?? 60} phút
                             </div>
-                            {interview.scheduledAt && (
+                            {isScheduled && !isOverdue && interview.scheduledAt && (
                               <div className="mt-2">
                                 <a
                                   href={buildCalendarUrl(interview)}
@@ -483,7 +494,7 @@ export const ClientInterviewDetailDrawer: React.FC<ClientInterviewDetailDrawerPr
                               </span>
                             )}
                           </div>
-                          {interview.candidateAttendanceStatus !== 'CONFIRMED' && (
+                          {isScheduled && interview.candidateAttendanceStatus !== 'CONFIRMED' && (
                             <div className="mt-1 text-xs text-slate-600">
                               {isOverdue
                                 ? 'Ứng viên chưa xác nhận tham gia và thời gian phỏng vấn đã qua. Vui lòng ghi kết quả hoặc đánh dấu vắng mặt.'
