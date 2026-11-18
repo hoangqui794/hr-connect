@@ -209,4 +209,65 @@ describe('CandidateOfferPage', () => {
     expect(await screen.findByText(/Offer vừa thay đổi/)).toBeInTheDocument();
     await waitFor(() => expect(mf04Api.getOfferDetail).toHaveBeenCalledTimes(2));
   });
+
+  it('shows salary basis explanation, version diff delta, and live reply summary', async () => {
+    vi.spyOn(mf04Api, 'getOffers').mockResolvedValue([
+      {
+        offerId: 'off-1',
+        offerVersion: 1,
+        salary: 30_000_000,
+        currencyCode: 'VND',
+        startDate: '2099-11-25',
+        status: 'WITHDRAWN',
+        concurrencyToken: 'x',
+        canRespond: false,
+      },
+      {
+        offerId: 'off-2',
+        offerVersion: 2,
+        salary: 32_000_000,
+        currencyCode: 'VND',
+        startDate: '2099-12-01',
+        status: 'SENT',
+        concurrencyToken: 'y',
+        canRespond: true,
+      },
+    ]);
+    renderPage();
+
+    expect(await screen.findByText(/Lương Gross \(đã gồm thuế TNCN & bảo hiểm theo quy định\)/)).toBeInTheDocument();
+    const diff = await screen.findByTestId('offer-version-diff');
+    expect(diff).toHaveTextContent('+2.000.000 VND');
+    expect(diff).toHaveTextContent('25/11/2099 → 01/12/2099');
+
+    const summary = screen.getByRole('note', { name: 'Tóm tắt phản hồi' });
+    expect(summary).toHaveTextContent(/Bạn đang chọn Chấp nhận offer với mức lương 32\.000\.000 VND/);
+
+    fireEvent.click(screen.getByRole('radio', { name: /Từ chối offer/ }));
+    expect(summary).toHaveTextContent(/Bạn đang chọn Từ chối offer/);
+  });
+
+  it('lets the candidate pick a quick decline reason chip and flags urgent expiry', async () => {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    vi.mocked(mf04Api.getOfferDetail).mockResolvedValue({
+      ...offer,
+      expiryDate: todayIso,
+    } as never);
+    const respond = vi.spyOn(mf04Api, 'respondOffer').mockResolvedValue({ success: true, message: 'Đã từ chối' });
+    renderPage();
+
+    expect(await screen.findByTestId('offer-expiry-urgent')).toHaveTextContent('Hết hạn hôm nay');
+
+    fireEvent.click(screen.getByRole('radio', { name: /Từ chối offer/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Đã nhận một offer khác phù hợp hơn' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Gửi trả lời' }));
+
+    await waitFor(() =>
+      expect(respond).toHaveBeenCalledWith('off-2', {
+        response: 'DECLINED',
+        declineReason: 'Đã nhận một offer khác phù hợp hơn',
+        concurrencyToken: 'tok-2',
+      })
+    );
+  });
 });
