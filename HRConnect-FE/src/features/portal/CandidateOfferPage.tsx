@@ -347,6 +347,27 @@ export const CandidateOfferPage: React.FC = () => {
               </Link>
             </div>
           )}
+          <div
+            role="note"
+            aria-label="Tóm tắt phản hồi"
+            className={`mt-4 rounded-lg border border-solid px-3.5 py-2.5 text-[13px] ${
+              declining
+                ? 'border-[#FED7AA] bg-[#FFF7ED] text-[#9A3412]'
+                : 'border-[#BAE6FD] bg-[#F0F9FF] text-[#075985]'
+            }`}
+          >
+            {declining ? (
+              <span>
+                Bạn đang chọn <b>Từ chối offer</b>. Sau khi gửi, thư mời nhận việc này sẽ khép lại và nhà tuyển dụng sẽ nhận được lý do của bạn.
+              </span>
+            ) : (
+              <span>
+                Bạn đang chọn <b>Chấp nhận offer</b> với mức lương <b>{money(offer.salary, offer.currencyCode)}</b>
+                {terms ? ` (${terms})` : ''}
+                {offer.startDate ? `, dự kiến bắt đầu ngày ${dayjs(offer.startDate).format('DD/MM/YYYY')}` : ''}.
+              </span>
+            )}
+          </div>
           <div className="mt-[18px] flex justify-end">
             <button type="button" disabled={respond.isPending || acceptBlocked} onClick={submit} className={`${FONT} h-11 cursor-pointer rounded-xl border-0 bg-[#0369A1] px-[22px] text-[14px] font-bold text-white transition-all hover:from-[#0369A1] hover:to-[#1D4ED8] shadow-md shadow-sky-500/25 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-none disabled:bg-[#9CA3AF] disabled:shadow-none`}>
               {respond.isPending ? 'Đang gửi…' : 'Gửi trả lời'}
