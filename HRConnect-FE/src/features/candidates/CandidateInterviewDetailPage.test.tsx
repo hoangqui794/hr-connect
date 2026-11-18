@@ -230,4 +230,45 @@ describe('CandidateInterviewDetailPage & CandidateInterviewDetailView', () => {
     await waitFor(() => expect(screen.getByTestId('interview-detail-content')).toBeInTheDocument());
     expect(screen.queryByText('Nội bộ')).not.toBeInTheDocument();
   });
+
+  it('shows live countdown, early-join hint, and online preparation checklist for upcoming online interview', async () => {
+    vi.mocked(candidateInterviewApi.getInterviewDetail).mockResolvedValueOnce(mockOnlineInterview as any);
+
+    renderWithProviders(<CandidateInterviewDetailPage />, '/candidate/interviews/iv-online-1');
+
+    expect(await screen.findByTestId('interview-countdown')).toHaveTextContent(/Còn 3 ngày nữa/i);
+    expect(screen.getByText(/Nên vào phòng họp trước giờ hẹn 10–15 phút/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Lưu ý chuẩn bị phỏng vấn')).toHaveTextContent(
+      /Kiểm tra trước micro, camera và đường truyền internet ổn định/i
+    );
+  });
+
+  it('shows onsite preparation checklist for active offline interviews', async () => {
+    vi.mocked(candidateInterviewApi.getInterviewDetail).mockResolvedValueOnce(mockOfflineInterview as any);
+
+    renderWithProviders(<CandidateInterviewDetailPage />, '/candidate/interviews/iv-offline-2');
+
+    expect(await screen.findByLabelText('Lưu ý chuẩn bị phỏng vấn')).toHaveTextContent(
+      /Có mặt trước giờ hẹn 10–15 phút để làm thủ tục tại quầy lễ tân/i
+    );
+  });
+
+  it('hides join, maps and calendar actions and shows next-step guidance when interview is cancelled', async () => {
+    vi.mocked(candidateInterviewApi.getInterviewDetail).mockResolvedValueOnce({
+      ...mockOnlineInterview,
+      status: 'CANCELLED',
+    } as any);
+
+    renderWithProviders(<CandidateInterviewDetailPage />, '/candidate/interviews/iv-online-1');
+
+    expect(await screen.findByTestId('interview-status-guidance')).toHaveTextContent(/Buổi phỏng vấn này đã bị hủy/i);
+    expect(screen.queryByRole('link', { name: /Vào phòng họp ngay/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Google Calendar/i })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Lưu ý chuẩn bị phỏng vấn')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Xem đơn ứng tuyển/i })).toHaveAttribute(
+      'href',
+      '/candidate/applications/app-1'
+    );
+    expect(screen.getByRole('link', { name: /Tìm việc làm khác/i })).toHaveAttribute('href', '/jobs');
+  });
 });
