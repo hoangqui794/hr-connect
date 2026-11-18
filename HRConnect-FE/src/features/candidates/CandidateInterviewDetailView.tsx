@@ -143,6 +143,7 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
   const inProgress = isScheduledOrRescheduled && isInterviewInProgress({ ...interview, status: 'SCHEDULED' }, now);
   const isOverdue = isScheduledOrRescheduled && isInterviewOverdue({ ...interview, status: 'SCHEDULED' }, now);
   const isActiveInterview = isScheduledOrRescheduled && !isOverdue;
+  const isJoiningWindow = Boolean(isActiveInterview && start && start.diff(now, 'minute') <= 15);
   const canConfirm = statusUpper === 'SCHEDULED' && Boolean(start?.isAfter(now)) && !isConfirmed;
   const meetingLink = webLink(interview.meetingLink);
   const histories = [...(interview.statusHistories ?? [])].sort((a, b) => dayjs(b.changedAt).valueOf() - dayjs(a.changedAt).valueOf());
@@ -245,13 +246,26 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
         )}
 
         {((isActiveInterview && (start || meetingLink || (!isOnline && interview.location))) || (showBackAction && onBack)) && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {isActiveInterview && meetingLink && <a href={meetingLink} target="_blank" rel="noopener noreferrer" className={PRIMARY}>Vào phòng họp ngay</a>}
-            {isActiveInterview && !isOnline && interview.location && (
-              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(interview.location)}`} target="_blank" rel="noopener noreferrer" className={SECONDARY}>Xem trên Google Maps</a>
+          <div className="mt-4">
+            <div className="flex flex-wrap gap-2">
+              {isActiveInterview && meetingLink && (
+                <a href={meetingLink} target="_blank" rel="noopener noreferrer" className={isJoiningWindow ? PRIMARY : SECONDARY}>
+                  Vào phòng họp ngay
+                </a>
+              )}
+              {isActiveInterview && !isOnline && interview.location && (
+                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(interview.location)}`} target="_blank" rel="noopener noreferrer" className={SECONDARY}>Xem trên Google Maps</a>
+              )}
+              {isActiveInterview && start && <a href={calendarUrl(interview)} target="_blank" rel="noopener noreferrer" className={SECONDARY}>Thêm vào Google Calendar</a>}
+              {showBackAction && onBack && <button type="button" onClick={onBack} className={SECONDARY}>Quay lại</button>}
+            </div>
+            {isActiveInterview && isOnline && meetingLink && (
+              <p className="m-0 mt-2 text-[12px] text-[#4B5563]">
+                {isJoiningWindow
+                  ? 'Phòng họp đã sẵn sàng để tham gia. Hãy kiểm tra micro và camera trước khi vào.'
+                  : 'Gợi ý: Nên vào phòng họp trước giờ hẹn 10–15 phút để kiểm tra kết nối.'}
+              </p>
             )}
-            {isActiveInterview && start && <a href={calendarUrl(interview)} target="_blank" rel="noopener noreferrer" className={SECONDARY}>Thêm vào Google Calendar</a>}
-            {showBackAction && onBack && <button type="button" onClick={onBack} className={SECONDARY}>Quay lại</button>}
           </div>
         )}
       </section>
