@@ -1,10 +1,12 @@
 import { App as AntApp } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import dayjs from 'dayjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApplicationWorkbench } from './ApplicationWorkbench';
 import { clientActionsApi, interviewHistoryApi, screeningApi } from '@/services/api/hrApi';
+import { sourcingApi } from '@/services/api/sourcingApi';
+import { AxiosError } from 'axios';
 
 vi.mock('@/services/api/hrApi', () => ({
   clientActionsApi: {
@@ -31,6 +33,14 @@ vi.mock('@/services/api/hrApi', () => ({
     updateStatus: vi.fn(),
     retryAiScoring: vi.fn(),
     cvDownloadUrl: vi.fn(),
+  },
+}));
+
+vi.mock('@/services/api/sourcingApi', () => ({
+  sourcingApi: {
+    getDeliveries: vi.fn(),
+    deliverCvs: vi.fn(),
+    decideDelivery: vi.fn(),
   },
 }));
 
@@ -388,5 +398,64 @@ describe('ApplicationWorkbench MF-04', () => {
     await waitFor(() => {
       expect(clientActionsApi.sendOffer).toHaveBeenCalledWith('offer-1', 'offer-token');
     });
+  }, 60000);
+});
+
+describe('ApplicationWorkbench MF-03 CV Sourcing shortlist', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(interviewHistoryApi.get).mockResolvedValue([]);
+    vi.mocked(sourcingApi.getDeliveries).mockResolvedValue({
+      summary: { sourcingTarget: 5, delivered: 0, accepted: 0, autoAccepted: 0, rejected: 0, pendingReview: 0, counted: 0, reviewDays: 5 },
+      items: [],
+    } as any);
+  });
+
+  it('keeps the shortlist and warns when the hand-over to the Client is rejected with 409', async () => {
+    vi.mocked(screeningApi.updateStatus).mockResolvedValue({} as any);
+    vi.mocked(sourcingApi.deliverCvs).mockRejectedValue(
+      new AxiosError('Conflict', 'ERR_BAD_REQUEST', undefined, undefined, {
+        status: 409,
+        statusText: 'Conflict',
+        headers: {},
+        config: {} as any,
+        data: { success: false, code: 'CONSENT_NOT_CONFIRMED', message: 'Ứng viên chưa xác nhận đồng ý chia sẻ CV.' },
+      })
+    );
+
+    renderWorkbench(
+      {
+        ...baseApplication,
+        status: 'SCREENING',
+        currentStage: 'SCREENING',
+        serviceTypeCode: 'CV_SOURCING',
+        allowedActions: ['SHORTLIST'],
+        offers: [],
+      },
+      'hr'
+    );
+
+    const shortlistButton = await screen.findByRole('button', { name: /Chọn gửi Client/ });
+    await waitFor(() => expect(sourcingApi.getDeliveries).toHaveBeenCalledWith('job-1'));
+    await act(async () => {});
+    fireEvent.click(shortlistButton);
+    expect(await screen.findByText(/Doanh nghiệp sẽ chấp nhận hoặc từ chối CV trong 5 ngày\./)).toBeInTheDocument();
+    const fetchesBefore = vi.mocked(screeningApi.get).mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: /Chọn & giao Client/ }));
+
+    expect(
+      await screen.findByText(
+        'Đã chuyển hồ sơ sang danh sách Đạt, nhưng chưa bàn giao được cho Doanh nghiệp: Ứng viên chưa xác nhận đồng ý chia sẻ CV.'
+      )
+    ).toBeInTheDocument();
+    expect(screeningApi.updateStatus).toHaveBeenCalledWith('job-1', 'app-1', {
+      targetStatus: 'SHORTLISTED',
+      concurrencyToken: 'application-token',
+    });
+    expect(sourcingApi.deliverCvs).toHaveBeenCalledWith('job-1', ['app-1']);
+    expect(screen.queryByText('Ứng viên chưa xác nhận đồng ý chia sẻ CV.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Không thực hiện được thao tác.')).not.toBeInTheDocument();
+    expect(vi.mocked(screeningApi.get).mock.calls.length).toBeGreaterThan(fetchesBefore);
+    await waitFor(() => expect(vi.mocked(sourcingApi.getDeliveries).mock.calls.length).toBeGreaterThanOrEqual(2));
   }, 60000);
 });
