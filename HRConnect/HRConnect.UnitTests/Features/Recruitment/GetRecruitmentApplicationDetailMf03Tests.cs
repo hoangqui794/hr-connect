@@ -130,6 +130,78 @@ public sealed class GetRecruitmentApplicationDetailMf03Tests
         result.Data.AllowedActions.Should().BeEmpty();
     }
 
+    private static void AddAiAttempt(HRConnect.Domain.Entities.Application app, AiMatchResult result)
+    {
+        result.ApplicationId = app.ApplicationId;
+        app.AiMatchResults.Add(result);
+    }
+
+    [Fact]
+    public async Task InternalHr_WhenLatestAiAttemptFailed_ShouldSeeFailureCodeAndMessage()
+    {
+        var app = Setup("HEADHUNT_COD", ApplicationStates.Screening);
+        AddAiAttempt(app, new AiMatchResult { MatchResultId = Guid.NewGuid(), AttemptNo = 1, Status = "COMPLETED", MatchScore = 70m });
+        AddAiAttempt(app, new AiMatchResult
+        {
+            MatchResultId = Guid.NewGuid(),
+            AttemptNo = 2,
+            Status = "FAILED",
+            FailureCode = "AI_TIMEOUT",
+            ErrorMessage = "AI chấm quá 600 giây. Hồ sơ cần HR xem thủ công."
+        });
+
+        var result = await CreateHandler().Handle(
+            new GetRecruitmentApplicationDetailQuery(app.ApplicationId, Guid.NewGuid(), false, true, ScreeningActor.InternalHr),
+            CancellationToken.None);
+
+        result.Data.AiMatch!.Status.Should().Be("FAILED");
+        result.Data.AiMatch.FailureCode.Should().Be("AI_TIMEOUT");
+        result.Data.AiMatch.ErrorMessage.Should().Be("AI chấm quá 600 giây. Hồ sơ cần HR xem thủ công.");
+    }
+
+    [Fact]
+    public async Task Client_WhenLatestAiAttemptFailed_ShouldSeeTheCodeButNotTheTechnicalMessage()
+    {
+        var app = Setup("CV_APPLICATION", ApplicationStates.Submitted);
+        AddAiAttempt(app, new AiMatchResult
+        {
+            MatchResultId = Guid.NewGuid(),
+            AttemptNo = 1,
+            Status = "FAILED",
+            FailureCode = "MF03_DISPATCH_RETRY_EXHAUSTED",
+            ErrorMessage = "Connection refused (ai-service:8000)"
+        });
+
+        var result = await CreateHandler().Handle(ClientQuery(app), CancellationToken.None);
+
+        result.Data.AiMatch!.FailureCode.Should().Be("MF03_DISPATCH_RETRY_EXHAUSTED");
+        result.Data.AiMatch.ErrorMessage.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CompletedAiAttempt_ShouldReturnRequirementResultsAsStoredJson()
+    {
+        const string mustHave = "[{\"requirement\":\"3 năm .NET\",\"type\":\"MUST_HAVE\",\"matched\":true,\"matchStatus\":\"MATCHED\"}]";
+        const string shouldHave = "[{\"requirement\":\"Azure\",\"type\":\"SHOULD_HAVE\",\"matched\":false,\"matchStatus\":\"MISSING\"}]";
+        var app = Setup("CV_APPLICATION", ApplicationStates.Submitted);
+        AddAiAttempt(app, new AiMatchResult
+        {
+            MatchResultId = Guid.NewGuid(),
+            AttemptNo = 1,
+            Status = "COMPLETED",
+            MatchScore = 82m,
+            MustHaveResult = mustHave,
+            ShouldHaveResult = shouldHave
+        });
+
+        var result = await CreateHandler().Handle(ClientQuery(app), CancellationToken.None);
+
+        result.Data.AiMatch!.MustHaveResult.Should().Be(mustHave);
+        result.Data.AiMatch.ShouldHaveResult.Should().Be(shouldHave);
+        result.Data.AiMatch.FailureCode.Should().BeNull();
+        result.Data.AiMatch.ErrorMessage.Should().BeNull();
+    }
+
     private GetRecruitmentApplicationDetailQuery ClientQuery(HRConnect.Domain.Entities.Application app) =>
         new(app.ApplicationId, _clientUserId, IsClientCompanyUser: true, IsInternalHrOrAdmin: false, ScreeningActor.ClientCompany);
 
