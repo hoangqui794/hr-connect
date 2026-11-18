@@ -287,6 +287,32 @@ public class SourcingDeliveryTests
     }
 
     [Fact]
+    public async Task ReviewRejection_ShouldRefuseASecondReviewOnceTheRejectionWasUpheld()
+    {
+        var job = SeedJob();
+        var delivered = await DeliverOneAsync(job, SeedApplication(job));
+        await Decide().Handle(new DecideSourcingDeliveryCommand(job.JobId, delivered.DeliveryId, "REJECTED", SourcingRejectReasons.Other, "Không hợp", _clientUserId), default);
+        // The audit service is mocked here, so persist the review log the first (upheld) review would have written.
+        _context.AuditLogs.Add(new AuditLog
+        {
+            Action = SourcingDeliveryAudit.RejectionReviewed,
+            EntityType = SourcingDeliveryAudit.EntityType,
+            EntityId = delivered.DeliveryId,
+            ActorType = AuditActorTypes.User,
+            ActorUserId = _hrUserId,
+            Source = AuditSources.Application,
+            NewValues = "{\"status\":\"REJECTED\",\"upheld\":true,\"note\":null}",
+            CreatedAt = DateTime.UtcNow,
+        });
+        await _context.SaveChangesAsync();
+
+        var act = () => ReviewRejection().Handle(new ReviewSourcingRejectionCommand(job.JobId, delivered.DeliveryId, false, "Đổi ý", _hrUserId), default);
+
+        (await act.Should().ThrowAsync<ConflictException>()).Which.ErrorCode.Should().Be("REJECTION_ALREADY_REVIEWED");
+        (await _context.SourcingDeliveries.FindAsync(delivered.DeliveryId))!.Status.Should().Be(SourcingDeliveryStates.Rejected);
+    }
+
+    [Fact]
     public async Task Replace_ShouldSwapARejectedCvForAnotherQualifiedOne()
     {
         var job = SeedJob(sourcingTarget: 1);

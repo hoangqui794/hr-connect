@@ -560,6 +560,13 @@ public sealed class ReviewSourcingRejectionCommandHandler : IRequestHandler<Revi
             throw new ConflictException("Chỉ xác minh CV đang bị Client từ chối.", "DELIVERY_NOT_REJECTED");
         }
 
+        // An upheld rejection stays REJECTED, so the status check alone would let HR review it again.
+        var existingReviews = await SourcingDeliveryRules.LoadRejectionReviewsAsync(_deliveries, [delivery], cancellationToken);
+        if (existingReviews.ContainsKey(delivery.DeliveryId))
+        {
+            throw new ConflictException("Lý do từ chối của CV này đã được xác minh.", "REJECTION_ALREADY_REVIEWED");
+        }
+
         var note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
         if (!request.Upheld && note == null)
         {
