@@ -55,6 +55,13 @@ const salaryTerms = (basis?: string | null, period?: string | null) =>
     { MONTHLY: 'theo tháng', MONTH: 'theo tháng', YEARLY: 'theo năm', ANNUAL: 'theo năm', YEAR: 'theo năm' }[String(period).toUpperCase()],
   ].filter(Boolean).join(', ');
 
+const salaryBasisHint = (basis?: string | null) => {
+  const key = String(basis ?? '').toUpperCase();
+  if (key === 'GROSS') return 'Lương Gross (đã gồm thuế TNCN & bảo hiểm theo quy định)';
+  if (key === 'NET') return 'Lương Net (thực nhận sau khi trừ thuế TNCN & bảo hiểm)';
+  return null;
+};
+
 export const CandidateOfferPage: React.FC = () => {
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
@@ -162,6 +169,7 @@ export const CandidateOfferPage: React.FC = () => {
   const status = String(offer.status).toUpperCase();
   const color = STATUS_COLOR[status] ?? STATUS_COLOR.DECLINED;
   const terms = salaryTerms(offer.salaryBasis, offer.salaryPeriod);
+  const basisHint = salaryBasisHint(offer.salaryBasis);
   const documentUrl = webLink(offer.offerDocumentUrl);
   const daysLeft = offer.expiryDate ? dayjs(offer.expiryDate).startOf('day').diff(dayjs().startOf('day'), 'day') : null;
   const previous = (versions.data ?? []).filter((item) => item.offerVersion < offer.offerVersion).sort((a, b) => b.offerVersion - a.offerVersion)[0];
@@ -204,6 +212,7 @@ export const CandidateOfferPage: React.FC = () => {
             <dt className="text-[12px] text-[#6B7280]">Mức lương</dt>
             <dd className="m-0 mt-0.5 text-[20px] font-bold text-[#059669]">{money(offer.salary, offer.currencyCode)}</dd>
             {terms && <dd className="m-0 text-[13px] text-[#4B5563]">{terms}</dd>}
+            {basisHint && <dd className="m-0 mt-0.5 text-[12px] text-[#6B7280]">{basisHint}</dd>}
           </div>
           <div>
             <dt className="text-[12px] text-[#6B7280]">Ngày bắt đầu dự kiến</dt>
@@ -212,7 +221,18 @@ export const CandidateOfferPage: React.FC = () => {
           <div>
             <dt className="text-[12px] text-[#6B7280]">Hạn trả lời</dt>
             <dd className="m-0 mt-0.5 text-[16px] font-semibold">{offer.expiryDate ? `23:59, ${dayjs(offer.expiryDate).format('DD/MM/YYYY')}` : 'Không đặt hạn'}</dd>
-            {canAnswer && daysLeft !== null && <dd className="m-0 text-[13px] text-[#9A3412]">{daysLeft > 0 ? `Còn ${daysLeft} ngày` : 'Hết hạn hôm nay'}</dd>}
+            {canAnswer && daysLeft !== null && (
+              <dd
+                data-testid={daysLeft <= 1 ? 'offer-expiry-urgent' : undefined}
+                className={
+                  daysLeft <= 1
+                    ? 'm-0 mt-1 inline-block rounded bg-[#FEF2F2] px-2 py-0.5 text-[12px] font-semibold text-[#B91C1C]'
+                    : 'm-0 text-[13px] text-[#9A3412]'
+                }
+              >
+                {daysLeft > 0 ? `Còn ${daysLeft} ngày` : 'Hết hạn hôm nay'}
+              </dd>
+            )}
           </div>
           <div className="min-w-0">
             <dt className="text-[12px] text-[#6B7280]">Thư mời chi tiết</dt>
@@ -415,7 +435,7 @@ export const CandidateOfferPage: React.FC = () => {
             )}
           </div>
           <div className="mt-[18px] flex justify-end">
-            <button type="button" disabled={respond.isPending || acceptBlocked} onClick={submit} className={`${FONT} h-11 cursor-pointer rounded-xl border-0 bg-[#0369A1] px-[22px] text-[14px] font-bold text-white transition-all hover:from-[#0369A1] hover:to-[#1D4ED8] shadow-md shadow-sky-500/25 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-none disabled:bg-[#9CA3AF] disabled:shadow-none`}>
+            <button type="button" disabled={respond.isPending || acceptBlocked} onClick={submit} className={`${FONT} h-11 cursor-pointer rounded-xl border-0 bg-[#0369A1] px-[22px] text-[14px] font-bold text-white transition-all hover:bg-[#075985] shadow-md shadow-sky-500/25 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-none disabled:bg-[#9CA3AF] disabled:shadow-none`}>
               {respond.isPending ? 'Đang gửi…' : 'Gửi trả lời'}
             </button>
           </div>
