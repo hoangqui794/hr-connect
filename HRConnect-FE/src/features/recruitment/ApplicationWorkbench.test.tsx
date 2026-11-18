@@ -459,3 +459,32 @@ describe('ApplicationWorkbench MF-03 CV Sourcing shortlist', () => {
     await waitFor(() => expect(vi.mocked(sourcingApi.getDeliveries).mock.calls.length).toBeGreaterThanOrEqual(2));
   }, 60000);
 });
+
+describe('ApplicationWorkbench withdrawn application (Client)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(interviewHistoryApi.get).mockResolvedValue([]);
+  });
+
+  it('opens a withdrawn application from a notification with its status and no actions', async () => {
+    renderWorkbench(
+      {
+        ...baseApplication,
+        status: 'WITHDRAWN',
+        currentStage: 'CLOSED',
+        statusReason: 'Đã nhận công việc khác.',
+        allowedActions: [],
+        offers: [],
+        interviews: [],
+      },
+      'client'
+    );
+
+    expect(await screen.findByText('Nguyễn Văn A', {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.getAllByText('Đã rút hồ sơ').length).toBeGreaterThan(0);
+    for (const action of [/Chọn ứng viên/, /Loại hồ sơ/, /Lên lịch phỏng vấn/, /Gửi offer/, /dự phòng/]) {
+      expect(screen.queryByRole('button', { name: action })).not.toBeInTheDocument();
+    }
+    expect(screeningApi.startScreening).not.toHaveBeenCalled();
+  }, 60000);
+});
