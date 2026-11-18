@@ -17,6 +17,7 @@ import { candidateInterviewApi } from '@/services/api/candidateInterviewApi';
 import { candidateInterviewKeys, useCandidateInterviewDetail } from '@/hooks/useCandidateInterviewDetail';
 import type { CandidateInterviewDetailDto } from '@/types/api/candidateInterview';
 import { candidateInterviewStatus, candidateInterviewType } from '@/features/portal/mf02Labels';
+import { isInterviewOverdue } from '@/features/recruitment/interviewTiming';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
@@ -130,13 +131,15 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
     );
   }
 
-  const status = STATUS_STYLE[String(interview.status).toUpperCase()] ?? { label: candidateInterviewStatus(interview.status), text: '#374151', background: '#F3F4F6' };
+  const statusUpper = String(interview.status).toUpperCase();
+  const status = STATUS_STYLE[statusUpper] ?? { label: candidateInterviewStatus(interview.status), text: '#374151', background: '#F3F4F6' };
   const interviewTypeLabel = candidateInterviewType(interview.interviewType);
   const isOnline = (interview.interviewType || '').toUpperCase() === 'ONLINE' || Boolean(interview.meetingLink);
   const start = interview.scheduledAt ? dayjs(interview.scheduledAt).locale('vi') : null;
   const duration = interview.durationMinutes || 45;
   const isConfirmed = interview.candidateAttendanceStatus === 'CONFIRMED';
-  const canConfirm = interview.status === 'SCHEDULED' && Boolean(start?.isAfter(dayjs())) && !isConfirmed;
+  const isActiveInterview = (statusUpper === 'SCHEDULED' || statusUpper === 'RESCHEDULED') && !isInterviewOverdue(interview);
+  const canConfirm = statusUpper === 'SCHEDULED' && Boolean(start?.isAfter(dayjs())) && !isConfirmed;
   const meetingLink = webLink(interview.meetingLink);
   const histories = [...(interview.statusHistories ?? [])].sort((a, b) => dayjs(b.changedAt).valueOf() - dayjs(a.changedAt).valueOf());
 
@@ -210,13 +213,13 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
           </div>
         )}
 
-        {(start || meetingLink || (!isOnline && interview.location)) && (
+        {((isActiveInterview && (start || meetingLink || (!isOnline && interview.location))) || (showBackAction && onBack)) && (
           <div className="mt-4 flex flex-wrap gap-2">
-            {meetingLink && <a href={meetingLink} target="_blank" rel="noopener noreferrer" className={PRIMARY}>Vào phòng họp ngay</a>}
-            {!isOnline && interview.location && (
+            {isActiveInterview && meetingLink && <a href={meetingLink} target="_blank" rel="noopener noreferrer" className={PRIMARY}>Vào phòng họp ngay</a>}
+            {isActiveInterview && !isOnline && interview.location && (
               <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(interview.location)}`} target="_blank" rel="noopener noreferrer" className={SECONDARY}>Xem trên Google Maps</a>
             )}
-            {start && <a href={calendarUrl(interview)} target="_blank" rel="noopener noreferrer" className={SECONDARY}>Thêm vào Google Calendar</a>}
+            {isActiveInterview && start && <a href={calendarUrl(interview)} target="_blank" rel="noopener noreferrer" className={SECONDARY}>Thêm vào Google Calendar</a>}
             {showBackAction && onBack && <button type="button" onClick={onBack} className={SECONDARY}>Quay lại</button>}
           </div>
         )}
