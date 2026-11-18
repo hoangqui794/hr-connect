@@ -50,6 +50,8 @@ import {
   OFFER_STATUS,
   REJECTION_REASONS,
   SERVICE_TYPE,
+  aiFailureLabel,
+  mergeAiEvidence,
   parseHighlights,
   pick,
   reasonLabel,
@@ -748,7 +750,8 @@ export const ApplicationWorkbench: React.FC<{
   };
 
   const st = d ? applicationStatusOf(d.status, d.serviceTypeCode, sourcingDelivery?.status) : null;
-  const highlights = parseHighlights(d?.aiMatch?.candidateHighlight);
+  // FE-M04: highlights alone can be empty while the matching reasons still explain the score.
+  const highlights = mergeAiEvidence(parseHighlights(d?.aiMatch?.candidateHighlight), d?.aiMatch?.matchingReasons);
 
   // Footer buttons: secondary/danger on the left, the main step on the right.
   const footer: React.ReactNode[] = [];
@@ -1193,6 +1196,7 @@ export const ApplicationWorkbench: React.FC<{
                 );
               }
               if (aiStatus === 'FAILED') {
+                const failureReason = aiFailureLabel(d.aiMatch.failureCode);
                 return (
                   <div className="rounded-xl border border-solid border-amber-200 bg-amber-50/70 p-4 text-amber-950">
                     <div className="flex items-start gap-3">
@@ -1201,9 +1205,25 @@ export const ApplicationWorkbench: React.FC<{
                         <div className="font-semibold text-amber-900">
                           AI chưa chấm được hồ sơ này, vui lòng xem CV trực tiếp
                         </div>
-                        <div className="mt-1 text-xs text-amber-700">
-                          Quá trình chấm điểm tự động không thành công hoặc không trích xuất được thông tin CV.
+                        <div className="mt-1 text-xs text-amber-800">
+                          {failureReason ?? 'Quá trình chấm điểm tự động không thành công hoặc không trích xuất được thông tin CV.'}
                         </div>
+                        {audience === 'hr' && (d.aiMatch.failureCode || d.aiMatch.errorMessage) && (
+                          <dl className="m-0 mt-2 space-y-0.5 text-xs text-amber-900">
+                            {d.aiMatch.failureCode && (
+                              <div className="flex flex-wrap gap-1">
+                                <dt className="font-medium">Mã lỗi:</dt>
+                                <dd className="m-0 font-mono">{d.aiMatch.failureCode}</dd>
+                              </div>
+                            )}
+                            {d.aiMatch.errorMessage && (
+                              <div className="flex flex-wrap gap-1">
+                                <dt className="font-medium">Chi tiết:</dt>
+                                <dd className="m-0 break-words">{d.aiMatch.errorMessage}</dd>
+                              </div>
+                            )}
+                          </dl>
+                        )}
                         {audience === 'hr' && (
                           <div className="mt-3">
                             <Button

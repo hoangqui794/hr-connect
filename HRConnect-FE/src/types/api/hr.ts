@@ -142,6 +142,17 @@ export interface RecruitmentAiMatch {
   warnings: string[];
   missingRequirements: string[];
   matchingReasons: string[];
+  /**
+   * JSON array encoded as a string, stored as MF-03 sent it: one item per must-have requirement
+   * ({ requirement, type, matched, matchStatus, evidence, reason, ... }). Null until COMPLETED.
+   */
+  mustHaveResult?: string | null;
+  /** Same encoding as mustHaveResult, for should-have requirements. */
+  shouldHaveResult?: string | null;
+  /** Why the latest attempt FAILED, e.g. AI_TIMEOUT, UNSUPPORTED_CV_FORMAT, MF03_DISPATCH_RETRY_EXHAUSTED. */
+  failureCode?: string | null;
+  /** Failure detail for Internal HR/Admin; always null for Client Company users. */
+  errorMessage?: string | null;
 }
 
 /** GET /recruitment/applications/{id} data. */

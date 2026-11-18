@@ -126,3 +126,37 @@ export const parseHighlights = (raw?: string | null): string[] => {
     return [raw];
   }
 };
+
+/**
+ * AI evidence shown in the Workbench: the candidate highlights plus the matching reasons, without
+ * repeats (case and spacing ignored). Either list may be empty.
+ */
+export const mergeAiEvidence = (highlights: string[], matchingReasons?: string[] | null): string[] => {
+  const seen = new Set<string>();
+  const merged: string[] = [];
+  for (const item of [...highlights, ...(matchingReasons ?? [])]) {
+    const text = item?.trim();
+    if (!text) continue;
+    const key = text.replace(/\s+/g, ' ').toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(text);
+  }
+  return merged;
+};
+
+/** MF-03 scoring failure codes written by the AI service (scoring_jobs.py) and the dispatcher (Mf03ScoringDispatcher). */
+export const AI_FAILURE_LABEL: Record<string, string> = {
+  AI_TIMEOUT: 'AI chấm quá thời gian cho phép.',
+  UNSUPPORTED_CV_FORMAT: 'Định dạng CV không được hỗ trợ hoặc không đọc được nội dung CV.',
+  AI_SCORING_FAILED: 'Dịch vụ AI gặp lỗi khi chấm hồ sơ này.',
+  MF03_DISPATCH_RETRY_EXHAUSTED: 'Không gửi được yêu cầu tới dịch vụ AI sau nhiều lần thử.',
+  MF03_PROCESSING_TIMEOUT_RETRY_EXHAUSTED: 'Dịch vụ AI không trả kết quả sau nhiều lần thử.',
+  ACCEPTED_SUBMISSION_MISSING: 'Không tìm thấy lượt giới thiệu đã được ứng viên đồng ý cho hồ sơ này.',
+};
+
+/** Vietnamese reason for a failure code; unknown codes still show the code so HR can report it. */
+export const aiFailureLabel = (code?: string | null): string | null => {
+  if (!code) return null;
+  return AI_FAILURE_LABEL[code.trim().toUpperCase()] ?? `Lỗi chấm điểm (mã ${code}).`;
+};

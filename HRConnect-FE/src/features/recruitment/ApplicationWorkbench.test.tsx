@@ -488,3 +488,122 @@ describe('ApplicationWorkbench withdrawn application (Client)', () => {
     expect(screeningApi.startScreening).not.toHaveBeenCalled();
   }, 60000);
 });
+
+describe('ApplicationWorkbench AI evidence (FE-M04)', () => {
+  const aiMatch = (overrides: Record<string, unknown>) => ({
+    matchScore: 78,
+    matchTier: 'MEDIUM_HIGH',
+    candidateHighlight: null,
+    status: 'COMPLETED',
+    parseConfidence: null,
+    requiresManualReview: false,
+    semanticScore: null,
+    warnings: [],
+    missingRequirements: [],
+    matchingReasons: [],
+    ...overrides,
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(interviewHistoryApi.get).mockResolvedValue([]);
+  });
+
+  it('shows the matching reasons when the highlight list is empty', async () => {
+    renderWorkbench(
+      {
+        ...baseApplication,
+        status: 'SHORTLISTED',
+        allowedActions: [],
+        offers: [],
+        aiMatch: aiMatch({ candidateHighlight: '[]', matchingReasons: ['5 năm .NET đáp ứng yêu cầu 3 năm', 'Đã làm Azure'] }),
+      },
+      'hr'
+    );
+
+    expect(await screen.findByText('5 năm .NET đáp ứng yêu cầu 3 năm', {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.getByText('Đã làm Azure')).toBeInTheDocument();
+    expect(screen.queryByText('AI chưa trả về giải thích chi tiết.')).not.toBeInTheDocument();
+  }, 60000);
+
+  it('merges highlights and matching reasons without repeating the same line', async () => {
+    renderWorkbench(
+      {
+        ...baseApplication,
+        status: 'SHORTLISTED',
+        allowedActions: [],
+        offers: [],
+        aiMatch: aiMatch({ candidateHighlight: JSON.stringify(['Đã làm Azure']), matchingReasons: ['đã làm  azure', 'Có chứng chỉ AWS'] }),
+      },
+      'hr'
+    );
+
+    expect(await screen.findByText('Có chứng chỉ AWS', {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.getAllByText(/azure/i)).toHaveLength(1);
+  }, 60000);
+
+  it('still says no explanation only when highlights, reasons and missing items are all empty', async () => {
+    renderWorkbench(
+      { ...baseApplication, status: 'SHORTLISTED', allowedActions: [], offers: [], aiMatch: aiMatch({}) },
+      'hr'
+    );
+
+    expect(await screen.findByText('AI chưa trả về giải thích chi tiết.', {}, { timeout: 5000 })).toBeInTheDocument();
+  }, 60000);
+
+  it('explains a FAILED scoring to Internal HR with the reason, code and detail', async () => {
+    renderWorkbench(
+      {
+        ...baseApplication,
+        status: 'SCREENING',
+        allowedActions: [],
+        offers: [],
+        aiMatch: aiMatch({
+          status: 'FAILED',
+          matchScore: null,
+          failureCode: 'AI_TIMEOUT',
+          errorMessage: 'AI chấm quá 600 giây. Hồ sơ cần HR xem thủ công.',
+        }),
+      },
+      'hr'
+    );
+
+    expect(await screen.findByText('AI chấm quá thời gian cho phép.', {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.getByText('AI_TIMEOUT')).toBeInTheDocument();
+    expect(screen.getByText('AI chấm quá 600 giây. Hồ sơ cần HR xem thủ công.')).toBeInTheDocument();
+  }, 60000);
+
+  it('shows the Client a readable reason but no technical code or detail', async () => {
+    renderWorkbench(
+      {
+        ...baseApplication,
+        status: 'SUBMITTED',
+        allowedActions: [],
+        offers: [],
+        aiMatch: aiMatch({ status: 'FAILED', matchScore: null, failureCode: 'UNSUPPORTED_CV_FORMAT', errorMessage: null }),
+      },
+      'client'
+    );
+
+    expect(
+      await screen.findByText('Định dạng CV không được hỗ trợ hoặc không đọc được nội dung CV.', {}, { timeout: 5000 })
+    ).toBeInTheDocument();
+    expect(screen.queryByText('UNSUPPORTED_CV_FORMAT')).not.toBeInTheDocument();
+    expect(screen.queryByText('Mã lỗi:')).not.toBeInTheDocument();
+  }, 60000);
+
+  it('falls back to the code for a failure code it does not know', async () => {
+    renderWorkbench(
+      {
+        ...baseApplication,
+        status: 'SCREENING',
+        allowedActions: [],
+        offers: [],
+        aiMatch: aiMatch({ status: 'FAILED', matchScore: null, failureCode: 'SOMETHING_NEW' }),
+      },
+      'hr'
+    );
+
+    expect(await screen.findByText('Lỗi chấm điểm (mã SOMETHING_NEW).', {}, { timeout: 5000 })).toBeInTheDocument();
+  }, 60000);
+});
