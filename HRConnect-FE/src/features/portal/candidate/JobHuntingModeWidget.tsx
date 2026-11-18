@@ -68,6 +68,7 @@ export const JobHuntingModeWidget: React.FC<JobHuntingModeWidgetProps> = ({
     mutationFn: (cvId: string) => candidateCvApi.setPrimary(cvId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: candidateKeys.cvs });
+      queryClient.invalidateQueries({ queryKey: candidateKeys.candidateJobMatches });
       void message.success('Đã cập nhật CV chính cho các cơ hội nghề nghiệp!');
     },
     onError: () => {
