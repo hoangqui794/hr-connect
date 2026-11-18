@@ -5,17 +5,23 @@
 
 **AI-Powered Recruitment & Affiliate Headhunting Platform**
 
-HR Connect là nền tảng tuyển dụng hiện đại dành cho Agency, kết nối Doanh nghiệp đối tác (Client Company), Ứng viên (Candidate) và Mạng lưới Cộng tác viên (Affiliate / OPR Hub). Hệ thống hỗ trợ đánh giá và khớp nối CV tự động bằng AI, truy vết nguồn giới thiệu (Attribution tracking), và tự động hóa chính sách hoa hồng (Commission & Payout).
+HR Connect là nền tảng tuyển dụng hiện đại dành cho Agency, kết nối Doanh nghiệp đối tác (**Client Company**), Ứng viên (**Candidate**), Đội ngũ Tuyển dụng nội bộ (**Internal HR**), Quản trị viên (**Platform Admin**) và Mạng lưới Cộng tác viên (**Affiliate**). Hệ thống tự động hóa xuyên suốt từ khâu đăng tin, ký kết hợp đồng dịch vụ thương mại, tiếp nhận & xác nhận Consent ứng viên, chống trùng lặp danh tính, chấm điểm & hậu kiểm bằng chứng bằng AI (`ai-service-v2`), điều phối phỏng vấn – Offer – nhận việc, đến đối soát công nợ, thanh toán VNPay, bảo hành 30 ngày, suất tuyển thay thế và chi trả hoa hồng.
 
 > **Dự án Capstone — SEP490, Đại học FPT**  
-> **Trạng thái:** Đang phát triển (In Active Development)  
+> **Trạng thái:** Hoàn thiện toàn luồng MF-01 → MF-05 (Production-Ready)  
 > **Giảng viên hướng dẫn:** Thầy Phạm Minh Trí  
 
 ## Tài liệu dự án
 
 - [Mục lục tài liệu chung](docs/README.md)
-- [Tài liệu Backend](HRConnect/docs/README.md)
+- [Tài liệu Backend & Đặc tả MF-01 → MF-05](HRConnect/docs/README.md)
+  - [MF-01 — Quản lý Tin tuyển dụng, Hợp đồng dịch vụ & Đặt cọc](HRConnect/docs/MF01/README.md)
+  - [MF-02 — Ứng tuyển, CV Builder, Affiliate Consent, Attribution & Chống trùng](HRConnect/docs/MF02/README.md)
+  - [MF-03 — AI Matching, Tiền sàng lọc, Giao CV Sourcing & Gợi ý việc làm](HRConnect/docs/MF03/README.md)
+  - [MF-04 — Phỏng vấn, Offer, Nhận việc (Placement) & Đối soát độc lập](HRConnect/docs/MF04/README.md)
+  - [MF-05 — Phí dịch vụ, VNPay, Bảo hành, Suất thay thế, Hoa hồng & Payout](HRConnect/docs/MF05/README.md)
 - [Tài liệu Frontend](HRConnect-FE/docs/README.md)
+- [Tài liệu AI Service v2](ai-service-v2/README.md)
 
 ---
 
@@ -27,461 +33,290 @@ HR Connect là nền tảng tuyển dụng hiện đại dành cho Agency, kết
 | 2 | **Lê Thị Trà Mi** | SE184379 | **Member** | Phân tích nghiệp vụ, Backend Developer, Frontend Developer |
 | 3 | **Cao Hữu Trí** | SE184047 | **Member** | Phân tích nghiệp vụ, Backend Developer, Thiết kế kiến trúc Backend, Database, DevOps & CI/CD |
 | 4 | **Khúc Ngọc Sơn** | SE184040 | **Member** | Phân tích nghiệp vụ, Backend Developer, Frontend Developer |
-| 5 | **Nguyễn Văn Sang** | SE183276 | **Member** | Frontend Develope, UI/UX Designer |
+| 5 | **Nguyễn Văn Sang** | SE183276 | **Member** | Frontend Developer, UI/UX Designer |
 
 ---
 
 ## 📑 Mục Lục
-1. [Mục Tiêu & Dịch Vụ Cốt Lõi](#1-mục-tiêu--dịch-vụ-cốt-lõi)
+1. [Mục Tiêu & Ba Mô Hình Dịch Vụ Cốt Lõi](#1-mục-tiêu--ba-mô-hình-dịch-vụ-cốt-lõi)
 2. [Các Vai Trò Người Dùng (Actor & Roles)](#2-các-vai-trò-người-dùng-actor--roles)
-3. [Kiến Trúc Hệ Thống (Clean Architecture + CQRS)](#3-kiến-trúc-hệ-thống-clean-architecture--cqrs)
-4. [Cơ Chế Tự Động Hóa Database (Auto Migration & Seeder)](#4-cơ-chế-tự-động-hóa-database-auto-migration--seeder)
-5. [Chi Tiết Toàn Bộ File Cấu Hình (Configuration Deep-Dive)](#5-chi-tiết-toàn-bộ-file-cấu-hình-configuration-deep-dive)
-6. [Hướng Dẫn Khởi Chạy Nhanh (Getting Started)](#6-hướng-dẫn-khởi-chạy-nhanh-getting-started)
-7. [Quy Chuẩn Code Dành Cho Lập Trình Viên & AI Agent](#7-quy-chuẩn-code-dành-cho-lập-trình-viên--ai-agent)
-8. [Tài Liệu API & Luồng Nghiệp Vụ Auth Đã Hoàn Thiện](#8-tài-liệu-api--luồng-nghiệp-vụ-auth-đã-hoàn-thiện)
-9. [Quy Trình Git Flow & CI/CD Pipeline](#9-quy-trình-git-flow--cicd-pipeline)
+3. [Kiến Trúc Hệ Thống (Clean Architecture + CQRS + AI Microservice)](#3-kiến-trúc-hệ-thống-clean-architecture--cqrs--ai-microservice)
+4. [Tổng Quan 5 Luồng Nghiệp Vụ Chính (MF-01 → MF-05) & Luồng Bổ Trợ](#4-tổng-quan-5-luồng-nghiệp-vụ-chính-mf-01--mf-05--luồng-bổ-trợ)
+5. [Cơ Chế Tự Động Hóa Database (Auto Migration & Seeder)](#5-cơ-chế-tự-động-hóa-database-auto-migration--seeder)
+6. [Chi Tiết Toàn Bộ File Cấu Hình (Configuration Deep-Dive)](#6-chi-tiết-toàn-bộ-file-cấu-hình-configuration-deep-dive)
+7. [Hướng Dẫn Khởi Chạy Nhanh (Getting Started)](#7-hướng-dẫn-khởi-chạy-nhanh-getting-started)
+8. [Quy Chuẩn Code Dành Cho Lập Trình Viên & AI Agent](#8-quy-chuẩn-code-dành-cho-lập-trình-viên--ai-agent)
+9. [Bản Đồ API Endpoints Theo Phân Hệ](#9-bản-đồ-api-endpoints-theo-phân-hệ)
+10. [Quy Trình Git Flow & CI/CD Pipeline](#10-quy-trình-git-flow--cicd-pipeline)
 
 ---
 
-## 1. Mục Tiêu & Dịch Vụ Cốt Lõi
+## 1. Mục Tiêu & Ba Mô Hình Dịch Vụ Cốt Lõi
 
 ### 1.1. Mục tiêu dự án
-- Tập trung hóa dữ liệu Doanh nghiệp, Job tuyển dụng, Ứng viên và CV trên cùng một hệ thống.
-- Sử dụng mô hình AI hỗ trợ đối soát, phân tích độ phù hợp giữa CV và Job Description (JD).
-- Quản lý và chống trùng lặp ứng viên thông qua hệ thống truy vết nguồn giới thiệu (Attribution).
-- Tự động hóa tính toán hoa hồng (Commission), điều kiện nghiệm thu thử việc (Warranty/Probation) và thanh toán cho Affiliate (Payout).
+- Tập trung hóa toàn bộ quy trình tuyển dụng của Doanh nghiệp, Ứng viên, Affiliate và Agency trên một nền tảng duy nhất.
+- Ứng dụng mô hình AI (`ai-service-v2` kết hợp LLM & Sentence-BERT) để chấm điểm độ phù hợp CV – JD, trích xuất bằng chứng kèm hậu kiểm chống ảo giác (Hallucination Verification) và gợi ý việc làm tự động.
+- Minh bạch hóa quyền sở hữu nguồn giới thiệu (**Attribution**) thông qua cơ chế **Candidate Consent** qua email/in-app và hệ thống phát hiện – hợp nhất hồ sơ nghi trùng (**Candidate Duplicate Cases**).
+- Tự động hóa hợp đồng thương mại điện tử (ký OTP / ký ướt), cổng thanh toán **VNPay**, đối soát nhận việc, theo dõi bảo hành 30 ngày, mở suất tuyển thay thế miễn phí (**Replacement Slot**) và quyết toán hoa hồng (**Commission & Payout**).
 
-### 1.2. Ba mô hình dịch vụ tuyển dụng
-| Mã dịch vụ | Tên dịch vụ | Mô tả hoạt động |
-|---|---|---|
-| `HEADHUNT_COD` | **Tuyển dụng theo phí hoa hồng (Contingency)** | Thu phí khi ứng viên nhận việc và vượt qua thời gian bảo hành (Probation period). |
-| `CV_SOURCING` | **Tìm kiếm & Cung cấp hồ sơ** | Agency và Affiliate tìm ứng viên; Internal HR tiền sàng lọc hồ sơ đạt chuẩn trước khi chuyển Company phỏng vấn. |
-| `CV_APPLICATION` | **Tiếp nhận hồ sơ ứng tuyển trực tiếp** | Đăng tin Job công khai, tiếp nhận CV ứng viên nộp qua cổng thông tin. |
+### 1.2. Ba mô hình dịch vụ tuyển dụng (`ServiceType`)
+
+| Mã dịch vụ | Tên dịch vụ | Nguồn hồ sơ | Người sàng lọc | Cơ chế Phí, Bảo hành & Hoa hồng |
+|---|---|---|---|---|
+| **`HEADHUNT_COD`** | **Tuyển dụng trọn gói (Contingency Headhunt)** | **Affiliate** giới thiệu (bắt buộc Candidate `CONFIRMED` Consent) | **Internal HR** tiền sàng lọc; Client che thông tin liên hệ tới khi `PLACED` | Ký `ServiceAgreement`. Thu phí `BaseSalary × FeeMultiplier` khi ứng viên đi làm (`PLACED`) và qua đối soát. Bảo hành **30 ngày** (nghỉ sớm được đổi **1 Suất thay thế** miễn phí). Affiliate nhận **100% hoa hồng** khi qua 30 ngày bảo hành và phí đã `PAID`. |
+| **`CV_SOURCING`** | **Tìm kiếm & Cung cấp CV đạt chuẩn** | **Affiliate** giới thiệu (bắt buộc Candidate `CONFIRMED` Consent) | **Internal HR** tiền sàng lọc & bàn giao CV (`SourcingDelivery`) theo `SourcingTarget` | Ký `ServiceAgreement`, đóng cọc (`DEPOSIT`) trước khi mở Job. Client có `ReviewDays` để chấp nhận/từ chối CV (quá hạn tự động `AUTO_ACCEPTED`). Mỗi CV được chấp nhận sinh ngay hoa hồng `EARNED` cho Affiliate; cuối kỳ quyết toán thu thêm (`SETTLEMENT`) hoặc hoàn cọc dư (`CREDIT`). |
+| **`CV_APPLICATION`** | **Đăng tin & Tiếp nhận ứng tuyển trực tiếp** | **Candidate** tự nộp trực tiếp | **Client Company** trực tiếp sàng lọc | Mua gói đăng tin (`PostingPackage`: `FREE` có giới hạn hoặc trả phí `STANDARD`). Không qua bước Consent của Affiliate, không phát sinh phí tuyển dụng thành công hay hoa hồng. |
 
 ---
 
 ## 2. Các Vai Trò Người Dùng (Actor & Roles)
 
-Hệ thống quản lý 5 nhóm vai trò (`Role`) chuẩn hóa:
+Hệ thống quản lý 5 nhóm vai trò (`Role`) chuẩn hóa cùng ma trận hơn **72+ quyền hạn (`Permission`)** chi tiết:
 
-| Role Code | Tên vai trò | Mô tả quyền hạn |
+| Role Code | Tên vai trò | Mô tả quyền hạn thực tế trong hệ thống |
 |---|---|---|
-| `PLATFORM_ADMIN` | **Quản trị viên nền tảng** | Toàn quyền kiểm soát tài khoản, phê duyệt hồ sơ Doanh nghiệp/Affiliate, cấu hình hệ thống và giám sát giao dịch. |
-| `INTERNAL_HR` | **Chuyên viên tuyển dụng Agency** | Tiền sàng lọc hồ sơ `HEADHUNT_COD` và `CV_SOURCING` bằng dữ liệu AI; không điều phối Interview, Offer hoặc Placement. |
-| `CLIENT_COMPANY_USER` | **Khách hàng Doanh nghiệp** | Sàng lọc `CV_APPLICATION`; từ `SHORTLISTED` trở đi thực hiện phỏng vấn, Offer và xác nhận đi làm cho mọi Service Type. |
-| `AFFILIATE` | **Cộng tác viên** | Giới thiệu ứng viên, theo dõi trạng thái tuyển dụng tổng quát của lượt giới thiệu và nhận hoa hồng theo điều kiện áp dụng. Không xem lịch phỏng vấn, phản hồi, thư mời nhận việc hoặc dữ liệu nội bộ. |
-| `CANDIDATE` | **Ứng viên** | Quản lý hồ sơ cá nhân, CV, tìm kiếm và nộp đơn ứng tuyển các Job công khai, theo dõi tiến độ ứng tuyển. |
+| `PLATFORM_ADMIN` | **Quản trị viên nền tảng** | Phê duyệt đăng ký Doanh nghiệp/Affiliate, quản lý người dùng & RBAC, cấu hình tham số nghiệp vụ động (`BusinessSettings`), xử lý ca nghi trùng danh tính (`CandidateDuplicateCases`), giải quyết khiếu nại (`Disputes`), ghi nhận thu phí/hoàn tiền, duyệt hoa hồng, tạo đợt chi trả (`Payouts`) và theo dõi Dashboard phân tích dòng tiền. |
+| `INTERNAL_HR` | **Chuyên viên tuyển dụng Agency** | Duyệt Job, thương lượng & phát hành Hợp đồng dịch vụ (`ServiceAgreement`), quản lý thư viện mẫu JD (`JobTemplates`), tiền sàng lọc hồ sơ `HEADHUNT_COD` & `CV_SOURCING`, bàn giao & xác minh từ chối CV Sourcing, đối soát độc lập kết quả nhận việc (`PlacementReconciliation`) và xác minh báo nghỉ trong bảo hành. |
+| `CLIENT_COMPANY_USER` | **Khách hàng Doanh nghiệp** | Tạo và quản lý Job, ký Hợp đồng dịch vụ (OTP hoặc tải bản ký ướt), thanh toán phí đăng tin/đặt cọc/phí dịch vụ qua VNPay, nghiệm thu CV Sourcing, và **trực tiếp sở hữu toàn bộ quyết định tuyển dụng từ `SHORTLISTED` trở đi** (Phỏng vấn, Offer, Xác nhận đi làm `PLACED`, Báo nghỉ bảo hành). |
+| `AFFILIATE` | **Cộng tác viên tuyển dụng** | Khám phá các Job `HEADHUNT_COD` & `CV_SOURCING`, giới thiệu ứng viên mới hoặc tái sử dụng từ Kho CV Affiliate (khi được Candidate cho phép), gửi lại email Consent, theo dõi tiến độ giới thiệu đã che thông tin nhạy cảm, gửi khiếu nại Attribution và quản lý hoa hồng / lịch sử Payout. |
+| `CANDIDATE` | **Ứng viên** | Quản lý hồ sơ cá nhân & tính năng liên kết danh tính, tải CV PDF hoặc tạo CV bằng **CV Builder**, nhận gợi ý việc làm AI, tự ứng tuyển vào Job `CV_APPLICATION`, xác nhận/từ chối/báo cáo giả mạo đối với lời giới thiệu của Affiliate (`SubmissionConsent`), xác nhận lịch phỏng vấn và phản hồi Offer. |
 
 ---
 
-## 3. Kiến Trúc Hệ Thống (Clean Architecture + CQRS)
+## 3. Kiến Trúc Hệ Thống (Clean Architecture + CQRS + AI Microservice)
 
-Dự án Backend xây dựng trên nền tảng **.NET 8 Web API** áp dụng nghiêm ngặt nguyên lý **Clean Architecture (Onion)**, kết hợp mẫu kiến trúc **CQRS (MediatR)** và phân chia chức năng theo lát cắt dọc (**Vertical Slice Architecture**).
+Dự án được xây dựng theo kiến trúc đa tầng hiện đại:
+- **Backend (`HRConnect/`):** **.NET 8 Minimal API** theo chuẩn **Clean Architecture (Onion)** kết hợp **CQRS (`MediatR`)**, **FluentValidation**, **EF Core 8 + PostgreSQL (`Npgsql`)**, **SignalR** (Realtime Notification Hub), **Cloudflare R2** (lưu trữ CV PDF & hợp đồng), **QuestPDF** (render CV Builder & hợp đồng PDF) và **VNPay Gateway**.
+- **AI Service (`ai-service-v2/`):** Microservice **Python FastAPI** độc lập, kết hợp **Google Gemini** và **Sentence-BERT**, thực hiện phân tích CV – JD, trích xuất bằng chứng kèm bộ hậu kiểm văn bản (`verification.py`) và tính điểm gợi ý việc làm ngữ nghĩa.
+- **Frontend (`HRConnect-FE/`):** **React 18 + TypeScript + Vite**, sử dụng **Tailwind CSS**, **Ant Design**, **TanStack React Query**, **Zustand**, **SignalR Client** và hệ thống chuyển động **`motion/react`** theo tiêu chuẩn thiết kế **`unslop`**.
 
-### 3.1. Sơ đồ phụ thuộc (Dependency Diagram)
+### 3.1. Sơ đồ phụ thuộc Backend (Dependency Diagram)
 
-```
+```text
        ┌─────────────────────────────────────────┐
-       │         HRConnect.Presentation          │  (Web API / Endpoints / Swagger / JWT Auth)
+       │         HRConnect.Presentation          │  (Minimal APIs / SignalR Hub / Middlewares / Auth)
        └──────────────┬──────────────────────────┘
                       │ phụ thuộc
        ┌──────────────▼─────────────┐   ┌───────────────────────────┐
-       │   HRConnect.Infrastructure │   │   HRConnect.Application   │ (MediatR CQRS, Validators)
+       │   HRConnect.Infrastructure │   │   HRConnect.Application   │ (MediatR CQRS, Validators, Policies)
        └──────────────┬─────────────┘   └─────────────┬─────────────┘
                       │ phụ thuộc                     │ phụ thuộc
        ┌──────────────▼───────────────────────────────▼─────────────┐
-       │                      HRConnect.Domain                      │ (Pure Entities, Rules, Enums)
+       │                      HRConnect.Domain                      │ (Entities, Constants, Value Objects)
        └────────────────────────────────────────────────────────────┘
 ```
 
-> [!IMPORTANT]
-> **Quy tắc phụ thuộc một chiều (Dependency Rule):**
-> - `HRConnect.Domain`: Tầng trung tâm, **tuyệt đối KHÔNG phụ thuộc** vào bất kỳ project nào khác, không phụ thuộc thư viện bên ngoài (trừ C# Core).
-> - `HRConnect.Application`: Chỉ phụ thuộc vào `HRConnect.Domain`. Chứa toàn bộ business use case, interfaces, validation. Không phụ thuộc vào database hay HTTP.
-> - `HRConnect.Infrastructure`: Phụ thuộc vào `HRConnect.Application` và `HRConnect.Domain`. Triển khai database (EF Core, Npgsql), dịch vụ ngoài (Email, Cloudinary, AI...).
-> - `HRConnect.Presentation`: Tầng khởi động ứng dụng, định tuyến API, Middleware.
-
-### 3.2. Cấu trúc thư mục chi tiết
+### 3.2. Cấu trúc thư mục toàn dự án
 
 ```text
 d:/Ki_9/HRConnect/
 ├── .github/workflows/
-│   └── ci-cd.yml                     # Pipeline GitHub Actions (CI: test, CD: buildx Docker GHCR)
-├── .env.example                      # Template cấu hình biến môi trường
-├── .gitignore                        # Cấu hình bỏ qua các file nhạy cảm và build rác
-├── README.md                         # Tài liệu hướng dẫn chuẩn cho Team & AI
-│__ HRConnect-FE
-└── HRConnect/
-    ├── Dockerfile                    # Multi-stage Dockerfile cho .NET 8 (Non-root user)
-    ├── .dockerignore                 # Tối ưu hóa dung lượng build Docker
+│   ├── ci.yml                        # CI — Quality Gates (BE Test + FE Lint/Test/Build + AI v2 Pytest + Docker)
+│   └── deploy-cloud.yml              # CD — Cloud Server (Build GHCR Image + Health Check + Auto Rollback)
+├── docs/                             # Tài liệu kiến trúc, Sơ đồ (.mmd/.svg), Kế hoạch & Database
+├── ai-service-v2/                    # [AI MICROSERVICE] Python FastAPI + Gemini + Sentence-BERT
+│   ├── app/                          # Pipeline chấm điểm, hậu kiểm bằng chứng (verification.py), semantic match
+│   └── tests/                        # Bộ kiểm thử tự động pytest cho AI Service
+├── HRConnect-FE/                     # [FRONTEND] React 18 + TypeScript + Vite + Tailwind + Antd + Motion
+│   ├── src/
+│   │   ├── app/                      # Router, AppShell, Providers
+│   │   ├── components/               # Role Shells (Admin, HR, Client, Affiliate, Candidate), Motion primitives
+│   │   ├── features/                 # Các phân hệ: admin-console, hr-console, client-console, jobs-mf01,
+│   │   │                             #   recruitment, sourcing, finance-mf05, portal, cv-builder, auth...
+│   │   ├── hooks/                    # SignalR realtime (useNotificationSignalR, notificationRefreshKeys)...
+│   │   └── services/api/             # Axios API clients đồng bộ hoàn toàn với Backend
+│   └── docs/                         # Tài liệu tích hợp FE theo từng Main Flow
+└── HRConnect/                        # [BACKEND] .NET 8 Clean Architecture Solution
+    ├── Dockerfile                    # Multi-stage Dockerfile (Non-root user)
     ├── HRConnect.sln                 # Solution quản lý 5 projects
     ├── Permission.md                 # Từ điển ma trận phân quyền chi tiết của hệ thống
-    │
-    ├── HRConnect.Domain/             # [DOMAIN LAYER] Nghiệp vụ cốt lõi
-    │   ├── Common/                   # BaseEntity, ValueObject, DomainEvent
-    │   ├── Entities/                 # AppUser, Candidate, Job, Submission, Commission, Role...
-    │   └── Enums/                    # UserRole, ServiceType, JobStatus, SubmissionStatus...
-    │
-    ├── HRConnect.Application/        # [APPLICATION LAYER] Business Logic & CQRS Slices
-    │   ├── Common/
-    │   │   ├── Exceptions/           # BadRequestException, ConflictException, ForbiddenException...
-    │   │   ├── Interfaces/           # IEmailService, IPasswordHasher, IOtpService, IUnitOfWork...
-    │   │   │   └── Repositories/     # IUserRepository, ICandidateRepository, IRoleRepository...
-    │   │   └── Models/               # AuthenticationSettings, JwtSettings, EmailResult...
-    │   ├── Features/                 # Vertical Slices phân chia theo phân hệ chức năng
-    │   │   └── Auth/                 # Phân hệ Xác thực & Tài khoản
-    │   │       ├── Commands/         # Đăng ký Candidate, Affiliate, Client, VerifyOtp, Login...
-    │   │       └── Queries/          # Các truy vấn dữ liệu đọc (Read-only)
-    │   └── DependencyInjection.cs    # Tự động đăng ký MediatR, FluentValidation, Pipeline Behaviors
-    │
-    ├── HRConnect.Infrastructure/     # [INFRASTRUCTURE LAYER] Công nghệ & Dịch vụ ngoài
-    │   ├── Migrations/               # Toàn bộ file Database Migrations của EF Core
-    │   ├── Persistence/              # ApplicationDbContext, DatabaseSeeder (Tự động seed Data)
-    │   ├── Repositories/             # Triển khai Repository Pattern (UserRepository, CandidateRepository...)
-    │   ├── Services/
-    │   │   ├── Admin/                # AdminApprovalService (Duyệt Affiliate, Client)
-    │   │   ├── Email/                # ResendEmailService (REST API Resend)
-    │   │   └── Identity/             # PasswordHasher (BCrypt), OtpService, JwtTokenGenerator...
-    │   └── DependencyInjection.cs    # Đăng ký DbContext, PostgreSQL Npgsql, Repositories, Services
-    │
-    ├── HRConnect.Presentation/       # [PRESENTATION LAYER] Web API & Endpoints
-    │   ├── Endpoints/
-    │   │   └── V1/
-    │   │       ├── Auth/             # Minimal API Endpoints (/api/auth/*)
-    │   │       └── Emails/           # Minimal API Endpoints (/api/v1/emails/*)
-    │   ├── Properties/
-    │   │   └── launchSettings.json   # Cấu hình Port: HTTP 5041, HTTPS 7289, Swagger UI
-    │   ├── appsettings.json          # Cấu hình Logging, OTP policy
-    │   ├── appsettings.Development.json
-    │   └── Program.cs                # Nhạc trưởng: nạp .env, CORS, Auth, Swagger, Auto-Migrate/Seed
-    │
-    └── HRConnect.UnitTests/          # [TEST LAYER] 126+ Automated Unit Tests
-        ├── Common/                   # Test helpers, Mock factories
-        ├── Features/Auth/            # Test toàn bộ Command, Handler, Validator, Login, OTP
-        └── Services/                 # Test PasswordHasher, OtpService, TokenGenerator
+    ├── docs/                         # Tài liệu đặc tả & báo cáo audit MF01 -> MF05
+    ├── HRConnect.Domain/             # [DOMAIN LAYER] Entities, Constants (JobStatuses, FinanceStates...)
+    ├── HRConnect.Application/        # [APPLICATION LAYER] CQRS Features (Admin, Affiliates, Auth, Candidates,
+    │                                 #   CommissionRules, Disputes, Finance, Interviews, Jobs, JobTemplates,
+    │                                 #   Notifications, Offers, Payments, Placements, Recruitment, Reports,
+    │                                 #   SubmissionConsents, Users...)
+    ├── HRConnect.Infrastructure/     # [INFRASTRUCTURE LAYER] EF Core PostgreSQL, Migrations, Seeder,
+    │                                 #   Repositories, Cloudflare R2, QuestPDF, VNPay, AI Client, Background Workers
+    ├── HRConnect.Presentation/       # [PRESENTATION LAYER] Minimal API Endpoints (/api/v1/*), SignalR Hub
+    └── HRConnect.UnitTests/          # [TEST LAYER] Hệ thống Unit & Integration Tests toàn diện
 ```
 
 ---
 
-## 4. Cơ Chế Tự Động Hóa Database (Auto Migration & Seeder)
+## 4. Tổng Quan 5 Luồng Nghiệp Vụ Chính (MF-01 → MF-05) & Luồng Bổ Trợ
+
+Chi tiết kỹ thuật đầy đủ của từng phân hệ được đặt tại thư mục `HRConnect/docs/MF01..MF05/`:
+
+1. **[MF-01 — Tạo, Duyệt, Hợp đồng Dịch vụ & Công bố Job](HRConnect/docs/MF01/README.md):**
+   - Quản lý vòng đời Job, thư viện 13 mẫu JD (`JobTemplates`), phân quyền hiển thị/nộp đơn động theo `service_type_allowed_role`.
+   - Luồng thương lượng & ký Hợp đồng dịch vụ (`ServiceAgreement` qua OTP điện tử hoặc tải bản PDF ký ướt có kiểm tra `SHA-256`), thu phí gói đăng tin `CV_APPLICATION` và đặt cọc `CV_SOURCING` trước khi kích hoạt `ACTIVE`.
+2. **[MF-02 — Ứng tuyển, Kho CV / CV Builder, Consent, Attribution & Chống trùng](HRConnect/docs/MF02/README.md):**
+   - Hỗ trợ Candidate tải PDF hoặc dựng CV bằng **CV Builder** (render PDF chuẩn hóa trên server, lưu R2, tính `ContentSha256`).
+   - Xử lý 2 nhánh nộp đơn: Candidate tự ứng tuyển (`CV_APPLICATION`) và Affiliate giới thiệu (`HEADHUNT_COD`, `CV_SOURCING`) kèm xác nhận **Consent** của ứng viên (`CONFIRM`, `DECLINE`, `REPORT_UNAUTHORIZED`).
+   - Cấp quyền `Attribution` theo nguyên tắc `CANDIDATE_CONSENT_THEN_FIRST_ACCEPTED` và xử lý ca nghi trùng danh tính (`CandidateDuplicateCases`).
+3. **[MF-03 — AI Matching, Tiền sàng lọc, Giao CV Sourcing & Gợi ý Việc làm](HRConnect/docs/MF03/README.md):**
+   - Chấm điểm CV – JD bất đồng bộ qua `Mf03ScoringDispatcher` (retry exponential backoff) và `ai-service-v2` (có hậu kiểm chống ảo giác LLM).
+   - Phân tách người sàng lọc theo dịch vụ (`ScreeningPolicy`), che thông tin liên hệ & tạo CV ẩn danh (`MaskedCvService`) cho `HEADHUNT_COD` trước khi nhận việc, điều phối bàn giao & nghiệm thu CV Sourcing (`SourcingDelivery`), và gợi ý việc làm tự động (`JobMatchWorker`).
+4. **[MF-04 — Phỏng vấn, Offer, Nhận việc (`Placement`) & Đối soát Độc lập](HRConnect/docs/MF04/README.md):**
+   - Thực thi mô hình **Company-Owned Hiring Flow**: Doanh nghiệp trực tiếp điều phối phỏng vấn đa vòng, gửi/thu hồi Offer có phiên bản hóa (`OfferVersion`), xác nhận ứng viên đi làm (`PLACED`) hoặc không đi làm (`NOT_STARTED`).
+   - Internal HR thực hiện bước **Đối soát độc lập (`PlacementReconciliation` — UC-41)** trước khi mở khóa thu phí dịch vụ và hoàn tất bảo hành.
+5. **[MF-05 — Công nợ Phí, VNPay, Bảo hành, Suất thay thế, Hoa hồng & Payout](HRConnect/docs/MF05/README.md):**
+   - Quản lý công nợ `ServiceFee`, tích hợp cổng thanh toán trực tuyến **VNPay** (`POSTING_FEE`, `SOURCING_DEPOSIT`, `SERVICE_FEE`) với cơ chế đồng bộ atomic giữa IPN và Browser Return.
+   - Theo dõi bảo hành 30 ngày (`Warranty`), xử lý báo nghỉ việc và mở **Suất tuyển thay thế miễn phí (`ReplacementSlot`)** (tự gia hạn 1 lần, hoàn phí một phần nếu hết hạn chưa có CV thay thế), quyết toán `CV_SOURCING`, giải quyết khiếu nại (`Dispute`) và chi trả hoa hồng (`Commission` & `Payout`).
+
+---
+
+## 5. Cơ Chế Tự Động Hóa Database (Auto Migration & Seeder)
 
 > [!TIP]
-> **Thành viên mới trong nhóm KHÔNG cần phải tự tạo bảng hay chạy bất kỳ script SQL nào!**
+> **Thành viên trong nhóm KHÔNG cần tạo bảng thủ công!** Khi khởi chạy ứng dụng Backend (`dotnet run`), `Program.cs` tự động thực thi Migration và Seeder theo cơ chế Idempotent.
 
-Khi khởi chạy ứng dụng Backend (`dotnet run`), hệ thống tại file `Program.cs` đã được lập trình sẵn quy trình tự động 2 bước:
-
-```csharp
-// Tự động kiểm tra và áp dụng Migration + Seed Data khi khởi động
-using var scope = app.Services.CreateScope();
-var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-await dbContext.Database.MigrateAsync();
-await DatabaseSeeder.SeedAsync(dbContext);
-```
-
-### Chi tiết hành vi tự động:
 1. **`await dbContext.Database.MigrateAsync()`**:
-   - Tự động kết nối vào PostgreSQL server được khai báo trong `.env`.
-   - Tự động tạo mới cơ sở dữ liệu nếu chưa có.
-   - Tự động tạo bảng lịch sử `__EFMigrationsHistory` nằm trong schema `public`.
-   - Tự động áp dụng toàn bộ các bản Migration để sinh ra hơn **40+ bảng** với đầy đủ khóa chính UUID, khóa ngoại, quan hệ ràng buộc và index.
+   - Tự động áp dụng toàn bộ EF Core Migrations trong schema `public` (`__EFMigrationsHistory`), khởi tạo đầy đủ các bảng nghiệp vụ, khóa ngoại, unique partial index và cấu hình PostgreSQL.
 2. **`await DatabaseSeeder.SeedAsync(dbContext)`**:
-   - **Seed Roles**: Tự động kiểm tra và nạp **5 vai trò hệ thống** (`CANDIDATE`, `AFFILIATE`, `CLIENT_COMPANY_USER`, `INTERNAL_HR`, `PLATFORM_ADMIN`).
-   - **Seed Permissions**: Tự động kiểm tra và nạp **72+ quyền hạn** chia theo 11 phân hệ chức năng từ file chuẩn `HRConnect/Permission.md`.
-   - **Seed Role-Permissions**: Tự động gán toàn bộ ma trận quyền hạn cho từng vai trò tương ứng.
-   - Cơ chế hoạt động là **Idempotent (an toàn)**: Nếu bảng đã có dữ liệu rồi, seeder sẽ tự động bỏ qua, không gây lỗi trùng lặp.
+   - Seed **5 vai trò hệ thống** (`CANDIDATE`, `AFFILIATE`, `CLIENT_COMPANY_USER`, `INTERNAL_HR`, `PLATFORM_ADMIN`), **72+ quyền hạn** và ma trận `RolePermission`.
+   - Seed **3 loại dịch vụ** (`HEADHUNT_COD`, `CV_SOURCING`, `CV_APPLICATION`), ma trận `service_type_allowed_role`, các gói đăng tin (`PostingPackage`), quy tắc hoa hồng mặc định (`CommissionRule`), cấu hình tham số hệ thống (`BusinessSettings`), 13 mẫu JD (`JobTemplates`), 3 mẫu CV Builder (`CvTemplates`) và danh mục Ngành nghề (`Industry` 3 cấp) + Quy mô công ty (`CompanySize`).
 
 ---
 
-## 5. Chi Tiết Toàn Bộ File Cấu Hình (Configuration Deep-Dive)
+## 6. Chi Tiết Toàn Bộ File Cấu Hình (Configuration Deep-Dive)
 
-Để dự án vận hành mượt mà cả ở môi trường phát triển cục bộ (Local), Docker và CI/CD, hệ thống sử dụng các file cấu hình sau:
-
-### 5.1. File `.env` và `.env.example`
-File `.env` là nơi lưu trữ toàn bộ thông tin nhạy cảm (Chuỗi kết nối DB, Khóa bí mật JWT, API Key Email...). 
-Hệ thống sử dụng thư viện `DotNetEnv.Env.TraversePath().Load();` trong `Program.cs` để tự động dò tìm file `.env` từ thư mục hiện tại ngược lên thư mục cha.
+### 6.1. File `.env` và `.env.example`
+Hệ thống sử dụng `DotNetEnv.Env.TraversePath().Load();` trong `Program.cs` để nạp biến môi trường từ file `.env`:
 
 ```env
-# ==============================================================================
-# HRConnect Environment Configuration Template
-# ==============================================================================
-
-# 1. Môi trường chạy của ASP.NET Core (Development | Staging | Production)
 ASPNETCORE_ENVIRONMENT=Development
 
-# 2. Thông tin cơ sở dữ liệu PostgreSQL
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=HRConnect
-DB_USER=postgres
-DB_PASSWORD=your_secure_password
-
-# 3. Chuỗi kết nối PostgreSQL (EF Core Npgsql đọc tự động)
-# Lưu ý: Luôn chỉ định SearchPath=public để bảng nằm đúng schema chuẩn
+# 1. PostgreSQL Connection
 ConnectionStrings__DefaultConnection=Host=localhost;Port=5432;Database=HRConnect;Username=postgres;Password=your_secure_password;SearchPath=public
 
-# 4. Cấu hình JWT Authentication
-# Secret bắt buộc phải có độ dài tối thiểu 32 ký tự (256-bit key)
+# 2. JWT Authentication (Tối thiểu 32 ký tự)
 JwtSettings__Secret=YourSuperSecretKeyWithAtLeast32CharactersLong!123456
 JwtSettings__Issuer=HRConnect
 JwtSettings__Audience=HRConnectApp
 JwtSettings__ExpiryMinutes=60
 
-# 5. Dịch vụ gửi Email (Resend API)
-RESEND_API_KEY=re_your_resend_api_key_here
+# 3. Email Service (Resend API)
 Resend__ApiKey=re_your_resend_api_key_here
 Resend__FromEmail=support@vcloset.vn
 Resend__FromName=HRConnect System
+
+# 4. Cloudflare R2 Storage (CV PDF, Hợp đồng, Avatar/Logo)
+R2Storage__AccountId=your_r2_account_id
+R2Storage__AccessKeyId=your_r2_access_key
+R2Storage__SecretAccessKey=your_r2_secret_key
+R2Storage__BucketName=hrconnect-files
+
+# 5. AI Service v2 Integration
+AiService__BaseUrl=http://localhost:8000
+AiService__ServiceToken=your_shared_internal_service_token
+
+# 6. VNPay Sandbox / Production
+VnPay__TmnCode=your_vnpay_tmn_code
+VnPay__HashSecret=your_vnpay_hash_secret
+VnPay__BaseUrl=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+VnPay__ReturnUrl=http://localhost:5173/client/payments/vnpay-return
 ```
 
 > [!CAUTION]
-> File `.env` chứa mật khẩu thực tế của máy bạn và đã được đưa vào `.gitignore`. **TUYỆT ĐỐI KHÔNG commit file `.env` lên GitHub!**
+> File `.env` chứa khóa bí mật thực tế và đã nằm trong `.gitignore`. **TUYỆT ĐỐI KHÔNG commit file `.env` lên GitHub!**
 
-### 5.2. File `HRConnect.Presentation/appsettings.json`
-Lưu các cấu hình không nhạy cảm của ứng dụng:
-- **`Logging`**: Mức độ ghi log hệ thống (`Information`, lọc bớt cảnh báo thừa từ Microsoft framework).
-- **`Authentication:Otp`**:
-  - `Length: 6`: Mã OTP gồm 6 chữ số ngẫu nhiên.
-  - `ExpirationMinutes: 15`: Mã OTP có hiệu lực trong vòng 15 phút kể từ lúc gửi qua email.
-
-### 5.3. File `HRConnect.Presentation/Properties/launchSettings.json`
-Quy định cổng mạng (Port) khi chạy ở môi trường phát triển cục bộ:
-- **HTTP**: `http://localhost:5041`
-- **HTTPS**: `https://localhost:7289`
-- **Swagger Documentation URL**: `http://localhost:5041/swagger`
-
-### 5.4. File `HRConnect/Dockerfile` & `.dockerignore`
-Được thiết kế theo tiêu chuẩn Multi-stage build nhằm tối ưu tốc độ build và kích thước image:
-- **Stage 1 (`base`)**: Sử dụng base image siêu nhẹ `mcr.microsoft.com/dotnet/aspnet:8.0`, mở cổng `8080`.
-- **Stage 2 (`build`)**: Sử dụng `mcr.microsoft.com/dotnet/sdk:8.0`. Để tối ưu cache layer, Dockerfile copy toàn bộ các file `.csproj` của cả 5 project (bao gồm cả `HRConnect.UnitTests.csproj`) trước khi chạy `dotnet restore "HRConnect.sln"`.
-- **Stage 3 (`publish`)**: Build và publish duy nhất project `HRConnect.Presentation` sang thư mục `/app/publish`.
-- **Stage 4 (`final`)**: Copy file biên dịch từ stage publish, chuyển quyền sang tài khoản an toàn không có đặc quyền root (`USER $APP_UID`) để ngăn ngừa tấn công leo thang đặc quyền container.
-
-### 5.5. GitHub Actions CI/CD
-Pipeline được tách thành hai workflow:
-- **CI — Quality Gates** (`.github/workflows/ci.yml`): kiểm tra Backend, Frontend, AI v2 và Dockerfile trên các nhánh làm việc. Bất kỳ quality gate nào lỗi đều chặn triển khai.
-- **CD — Cloud Server** (`.github/workflows/deploy-cloud.yml`): chỉ chạy cho commit `main` đã qua CI, build Backend và AI v2 trên GitHub, đẩy image bất biến theo commit SHA lên GHCR, sau đó triển khai lên Cloud Server. Hệ thống kiểm tra health và tự quay lại bản trước nếu bản mới không hoạt động.
-
-### 5.6. File `HRConnect.Infrastructure/DependencyInjection.cs` (Cấu Hình Hạ Tầng & Dịch Vụ)
-Đây là **file cấu hình trung tâm của toàn bộ tầng Hạ tầng (Infrastructure Layer)**. Để đảm bảo tính đóng gói của Clean Architecture, `Program.cs` chỉ cần gọi duy nhất:
-```csharp
-builder.Services.AddInfrastructureServices(builder.Configuration);
-```
-File này cung cấp phương thức mở rộng `AddInfrastructureServices` chịu trách nhiệm cấu hình toàn bộ 6 nhóm thành phần sau:
-
-```csharp
-public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
-```
-
-1. **Kết nối PostgreSQL & EF Core (`services.AddDbContext<ApplicationDbContext>`)**:
-   - Đọc chuỗi kết nối `connectionString` từ `configuration.GetConnectionString("DefaultConnection")` (được bind tự động từ file `.env`).
-   - Cấu hình provider Npgsql: `options.UseNpgsql(connectionString, o => o.MigrationsHistoryTable("__EFMigrationsHistory", "public"))`.
-   - **Lưu ý sống còn:** Tham số `MigrationsHistoryTable("__EFMigrationsHistory", "public")` bắt buộc EF Core luôn quản lý bảng lịch sử migration trong schema `public`, tránh lỗi lệch schema khi chạy trên Docker hoặc môi trường PostgreSQL khác nhau.
-2. **Cấu hình Dịch vụ Gửi Email (`services.AddHttpClient<IEmailService, ResendEmailService>`)**:
-   - Sử dụng **Options Pattern**: `services.Configure<ResendSettings>(...)` để nạp API Key và email người gửi.
-   - Sử dụng **Typed HttpClient**: Đăng ký `ResendEmailService` với `HttpClientFactory` gắn sẵn `BaseAddress = new Uri("https://api.resend.com/")`. Cách này giúp quản lý vòng đời socket tối ưu, chống hiện tượng cạn kiệt socket (Socket Exhaustion) khi gửi email hàng loạt.
-3. **Cấu hình Authentication, OTP & JWT Settings**:
-   - Bind cấu hình `AuthenticationSettings` (độ dài OTP 6 số, hạn 15 phút) từ `appsettings.json`.
-   - Bind cấu hình `JwtSettings` (Secret, Issuer, Audience, ExpiryMinutes) từ `.env`.
-4. **Đăng ký Dịch vụ Identity & Bảo mật (`Singleton` Lifetime)**:
-   - `IPasswordHasher -> PasswordHasher`: Băm và so khớp mật khẩu bằng thuật toán an toàn BCrypt.
-   - `IOtpService -> OtpService`: Sinh mã OTP ngẫu nhiên bằng `RandomNumberGenerator` chuẩn mật mã học.
-   - `IPhoneNormalizer -> PhoneNormalizer`: Chuẩn hóa số điện thoại theo định dạng chuẩn quốc tế E.164 (+84).
-   - `IEmailNormalizer -> EmailNormalizer`: Chuẩn hóa email về chữ thường và loại bỏ khoảng trắng.
-   - `IJwtTokenGenerator -> JwtTokenGenerator`: Tạo mã Access Token (JWT) và Refresh Token chứa các Claims và Permissions.
-   - *(Vì các dịch vụ này hoàn toàn không giữ trạng thái riêng (Stateless), việc đăng ký `AddSingleton` giúp tiết kiệm bộ nhớ và đạt hiệu năng tối đa).*
-5. **Đăng ký Toàn Bộ Repositories & UnitOfWork (`Scoped` Lifetime)**:
-   - Đăng ký interface với implementation tương ứng: `IUserRepository -> UserRepository`, `ICandidateRepository -> CandidateRepository`, `IAffiliateApplicationRepository -> AffiliateApplicationRepository`, `ICompanyRepository -> CompanyRepository`, `IRoleRepository -> RoleRepository`, `IRefreshTokenRepository -> RefreshTokenRepository`, `IEmailOutboxRepository -> EmailOutboxRepository`...
-   - Đăng ký `IUnitOfWork -> UnitOfWork` để quản lý giao dịch dữ liệu tập trung.
-   - *(Bắt buộc dùng `Scoped` để mỗi HTTP Request có một phiên làm việc riêng biệt cùng chia sẻ chung một instance `ApplicationDbContext`).*
-6. **Đăng ký Dịch vụ Nghiệp vụ Quản trị (`Scoped` Lifetime)**:
-   - `IAdminApprovalService -> AdminApprovalService`: Điều phối nghiệp vụ phê duyệt/từ chối đơn đăng ký của Affiliate và Client Company, cấp quyền hoạt động và gửi email thông báo.
-
-> [!TIP]
-> **HƯỚNG DẪN CHO DEV & AI:**  
-> Mỗi khi tạo mới một Repository hoặc một dịch vụ hạ tầng bên ngoài (ví dụ: Cloudinary Service, S3 Service, Notification Hub...), bạn **PHẢI** vào file này để khai báo `services.AddScoped<IMyRepository, MyRepository>()`. Tuyệt đối không khai báo thủ công rải rác bên trong `Program.cs`.
-
-### 5.7. Health Check khi triển khai
-
-- **`GET /health/live`**: kiểm tra tiến trình API đang hoạt động. Endpoint này không phụ thuộc database, dùng cho liveness probe.
-- **`GET /health/ready`**: kiểm tra API có kết nối được PostgreSQL hay không. Trả HTTP `200` khi sẵn sàng và `503` khi database không khả dụng.
-- Hai endpoint không yêu cầu đăng nhập, không cache response và không trả exception, hostname hoặc chuỗi kết nối ra ngoài.
-
-### 5.8. File `HRConnect.Application/DependencyInjection.cs` (Nạp Tự Động CQRS & Validation)
-Tương tự tầng Infrastructure, tầng Application có file `DependencyInjection.cs` riêng để tự quản lý:
-```csharp
-public static IServiceCollection AddApplicationServices(this IServiceCollection services)
-{
-    // 1. Quét toàn bộ Assembly để tự động đăng ký tất cả MediatR Handlers (Commands & Queries)
-    services.AddMediatR(cfg =>
-        cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
-
-    // 2. Quét toàn bộ Assembly để tự động đăng ký tất cả FluentValidation Validators
-    services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
-
-    return services;
-}
-```
-👉 Khi bạn hoặc AI tạo thêm một Command/Query mới hoặc một Validator mới trong thư mục `Features/`, **bạn KHÔNG cần phải đăng ký thủ công**, MediatR và FluentValidation sẽ tự động phát hiện thông qua kỹ thuật Assembly Scanning!
+### 6.2. Health Check Endpoints
+- **`GET /health/live`**: Liveness probe kiểm tra tiến trình API đang hoạt động (không phụ thuộc DB).
+- **`GET /health/ready`**: Readiness probe kiểm tra kết nối PostgreSQL (`200 OK` hoặc `503 Service Unavailable`).
 
 ---
 
-## 6. Hướng Dẫn Khởi Chạy Nhanh (Getting Started)
+## 7. Hướng Dẫn Khởi Chạy Nhanh (Getting Started)
 
-### Yêu cầu môi trường:
-- [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (Kiểm tra bằng lệnh: `dotnet --version` >= 8.0.xxx)
-- [PostgreSQL](https://www.postgresql.org/) version 15+ đang chạy (trên máy local hoặc Docker container)
-
-### 🚀 Khởi chạy chỉ với 4 bước:
-
-#### Bước 1: Clone mã nguồn về máy
+### 7.1. Khởi chạy Backend (.NET 8)
 ```bash
-git clone https://github.com/hoangqui794/hr-connect.git
-cd hr-connect
-```
-
-#### Bước 2: Thiết lập file môi trường `.env`
-Sao chép template cấu hình:
-```bash
-# Trên Windows PowerShell:
-Copy-Item .env.example HRConnect/.env
-
-# Hoặc trên Linux/macOS/Git Bash:
-cp .env.example HRConnect/.env
-```
-Mở file `HRConnect/.env` vừa tạo, cập nhật `DB_PASSWORD` và chuỗi `ConnectionStrings__DefaultConnection` cho khớp với mật khẩu PostgreSQL trên máy bạn.
-
-#### Bước 3: Chạy ứng dụng Backend
-```bash
-# Khôi phục dependencies cho toàn bộ solution
 dotnet restore HRConnect/HRConnect.sln
-
-# Khởi chạy API Server
 dotnet run --project HRConnect/HRConnect.Presentation
 ```
+- Swagger UI (Development): **[http://localhost:5041/swagger](http://localhost:5041/swagger)**
 
-#### Bước 4: Trải nghiệm API trên Swagger UI
-Mở trình duyệt truy cập:
-👉 **[http://localhost:5041/swagger](http://localhost:5041/swagger)**
-
-Tại giao diện Swagger, bạn có thể thực hiện đăng ký tài khoản, xác thực OTP và nhấn vào nút **Authorize 🔒** để dán JWT token kiểm tra các API bảo mật.
-
-### 🧪 Chạy Kiểm Thử Tự Động (Unit Tests)
-Để đảm bảo tất cả các chức năng hoạt động hoàn hảo và không bị hồi quy lỗi:
+### 7.2. Khởi chạy Frontend (React + Vite)
 ```bash
-dotnet test HRConnect/HRConnect.sln
+cd HRConnect-FE
+npm install
+npm run dev
 ```
-*(Kết quả chuẩn: Toàn bộ **126/126 test cases** Passed 100%).*
+- Giao diện Web: **[http://localhost:5173](http://localhost:5173)**
+
+### 7.3. Khởi chạy AI Service v2 (FastAPI)
+```bash
+cd ai-service-v2
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+
+### 7.4. Chạy Kiểm Thử Tự Động (Automated Tests)
+```bash
+# 1. Backend Unit & Integration Tests
+dotnet test HRConnect/HRConnect.sln
+
+# 2. Frontend Lint, Typecheck & Unit Tests (Vitest)
+cd HRConnect-FE
+npm run lint
+npm run build
+npx vitest run
+
+# 3. AI Service v2 Tests (Pytest)
+cd ../ai-service-v2
+pytest
+```
 
 ---
 
-## 7. Quy Chuẩn Code Dành Cho Lập Trình Viên & AI Agent
+## 8. Quy Chuẩn Code Dành Cho Lập Trình Viên & AI Agent
 
-> [!IMPORTANT]
-> **DÀNH CHO CÁC THÀNH VIÊN VÀ CÔNG CỤ TRỢ LÝ AI (Cursor, Copilot, Antigravity, Claude, ChatGPT):**  
-> Bất kỳ ai khi viết mã nguồn mới vào repository này **BẮT BUỘC** phải tuân theo các quy tắc thiết kế dưới đây để bảo toàn tính nhất quán của kiến trúc Clean Architecture.
-
-### 7.1. Cấu trúc Vertical Slice theo chuẩn CQRS
-Mỗi tính năng thay đổi dữ liệu hoặc truy vấn phải nằm trong thư mục `HRConnect.Application/Features/<ModuleName>/Commands/<ActionName>/` hoặc `Queries/<ActionName>/`.
-
-Một lát cắt chuẩn (Feature Slice) gồm 4 file cơ bản:
-1. `*Command.cs` (hoặc `*Query.cs`): Implement `IRequest<TResponse>`. Khai báo dữ liệu đầu vào.
-2. `*CommandHandler.cs`: Implement `IRequestHandler<TCommand, TResponse>`. Chứa business logic, gọi Repository, UnitOfWork.
-3. `*CommandValidator.cs`: Kế thừa `AbstractValidator<TCommand>` (FluentValidation). Tuyệt đối không hardcode validate thủ công trong Controller.
-4. `*Response.cs`: DTO trả về cho Client.
-
-### 7.2. Quy tắc Thao tác Dữ liệu & Repository Pattern
-- **Tuyệt đối KHÔNG inject `ApplicationDbContext` vào Controller/Endpoints hay tầng Application**.
-- Mọi thao tác truy xuất dữ liệu phải thông qua Repository Interface (`IUserRepository`, `ICandidateRepository`...) nằm trong `HRConnect.Application/Common/Interfaces/Repositories/`.
-- Triển khai cụ thể của Repository nằm trong `HRConnect.Infrastructure/Repositories/`.
-- Khi cần cập nhật dữ liệu, luôn gọi `await _unitOfWork.SaveChangesAsync(cancellationToken)` để đảm bảo tính toàn vẹn Transaction.
-
-### 7.3. Quy tắc Quản lý Ngoại Lệ (Exception Standards)
-Trong Handler, không trả về mã lỗi HTTP thô. Hãy ném các Exception chuẩn trong `HRConnect.Application/Common/Exceptions/`:
-- `BadRequestException`: Dữ liệu không hợp lệ hoặc vi phạm điều kiện nghiệp vụ ➔ Endpoint map về **HTTP 400 Bad Request**.
-- `ConflictException`: Dữ liệu đã tồn tại (email, số điện thoại, tax code...) ➔ Endpoint map về **HTTP 409 Conflict**.
-- `ForbiddenException`: Chưa kích hoạt email, đang chờ duyệt, bị từ chối hoặc không có quyền ➔ Endpoint map về **HTTP 403 Forbidden**.
-- `NotFoundException`: Không tìm thấy bản ghi dữ liệu ➔ Endpoint map về **HTTP 404 Not Found**.
-
-### 7.4. Quy tắc Cơ sở Dữ liệu & Migration
-- Tên bảng và tên cột trong PostgreSQL được đặt theo chuẩn `snake_case` (ví dụ: `app_user`, `created_at`, `refresh_token`).
-- Khóa chính luôn sử dụng kiểu `Guid` (UUID).
-- Mọi bảng chính đều kế thừa `BaseAuditableEntity` (có sẵn `created_at`, `updated_at`, `is_deleted`).
-- Khi thêm hoặc sửa Entity trong `HRConnect.Domain/Entities/`, phải tạo Migration mới bằng lệnh:
-  ```bash
-  dotnet ef migrations add <TenMigrationNganGon> --project HRConnect/HRConnect.Infrastructure --startup-project HRConnect/HRConnect.Presentation
-  ```
-
-### 7.5. Quy tắc Đăng ký Dịch vụ (Dependency Injection)
-- Không gom toàn bộ dịch vụ vào `Program.cs`.
-- Tầng Application tự đăng ký trong `HRConnect.Application/DependencyInjection.cs`.
-- Tầng Infrastructure tự đăng ký DbContext, Repositories và external services trong `HRConnect.Infrastructure/DependencyInjection.cs`.
+1. **Clean Architecture & CQRS Vertical Slices:**
+   - Mọi use case đặt trong `HRConnect.Application/Features/<Module>/Commands|Queries/`.
+   - **Tuyệt đối không inject `ApplicationDbContext` vào Endpoint hoặc Handler tầng Application**; mọi truy vấn đi qua Repository Interface và `IUnitOfWork`.
+2. **Chuẩn Ngoại lệ (Exceptions) & Concurrency:**
+   - Sử dụng `BadRequestException` (`400`), `ForbiddenException` (`403`), `NotFoundException` (`404`), `ConflictException` (`409` kèm `ErrorCode` rõ nghĩa).
+   - Mọi thao tác cập nhật trạng thái quan trọng đều kiểm tra `ConcurrencyToken` và ghi `IAuditLogService`.
+3. **Nguyên tắc Ponytail (Anti-Overengineering) & Chuẩn UI (`unslop` + `motion`):**
+   - Giữ phạm vi thay đổi tối thiểu (Minimal Blast Radius), không cài đặt thư viện dư thừa, tái sử dụng component/DTO sẵn có và đảm bảo đồng bộ Realtime qua `notificationRefreshKeys.ts`.
 
 ---
 
-## 8. Tài Liệu API & Luồng Nghiệp Vụ Auth Đã Hoàn Thiện
+## 9. Bản Đồ API Endpoints Theo Phân Hệ
 
-Hệ thống đã triển khai hoàn chỉnh module xác thực tài khoản đa đối tượng:
+Toàn bộ Minimal API Endpoints được định tuyến tại `HRConnect.Presentation/Endpoints/V1/`:
 
-### 8.1. Danh sách API Endpoints
-
-| Phương thức | Đường dẫn Endpoint | Mô tả | Yêu cầu xác thực |
-|:---:|---|---|:---:|
-| `POST` | `/api/auth/register/candidate` | Đăng ký tài khoản Ứng viên (tự động link với CV nếu email đã có sẵn) | Public |
-| `POST` | `/api/auth/register/affiliate` | Đăng ký tài khoản Cộng tác viên (Affiliate) | Public |
-| `POST` | `/api/auth/register/client` | Đăng ký tài khoản Khách hàng Doanh nghiệp kèm thông tin công ty | Public |
-| `POST` | `/api/auth/verify-otp` | Xác thực mã OTP 6 số gửi qua email để hoàn tất bước xác minh | Public |
-| `POST` | `/api/auth/login` | Đăng nhập bằng Email/Password, cấp JWT Token + Refresh Token + Permissions | Public |
-| `POST` | `/api/auth/refresh-token` | Làm mới Access Token đã hết hạn bằng Refresh Token hợp lệ | Public |
-| `POST` | `/api/v1/emails/test-send` | Endpoint kiểm tra kết nối dịch vụ gửi email | Public |
-
-### 8.2. Luồng xác thực 2 bước (Two-stage Approval Workflow)
-1. **Đối với Candidate**:
-   - `POST /register/candidate` ➔ Hệ thống tạo User trạng thái `PENDING`, gửi OTP 6 số qua email.
-   - `POST /verify-otp` ➔ Xác thực thành công: Gán Role `CANDIDATE`, trạng thái chuyển sang `ACTIVE`, người dùng có thể đăng nhập ngay.
-2. **Đối với Affiliate & Client Company User**:
-   - `POST /register/affiliate` hoặc `/register/client` ➔ Tạo User và Đơn đăng ký (`PENDING`).
-   - `POST /verify-otp` ➔ Xác thực OTP thành công: Email đã được xác minh (`email_verified = true`), đơn chuyển sang `UNDER_REVIEW`, gửi email thông báo Chờ Admin phê duyệt. Lúc này **chưa cấp quyền Role hoạt động**.
-   - **Cơ chế chặn đăng nhập an toàn**: Khi gọi `POST /login`, hệ thống kiểm tra nếu tài khoản đang ở trạng thái `PENDING` hoặc đơn bị `REJECTED` ➔ Lập tức chặn bằng mã **HTTP 403 Forbidden** kèm thông báo rõ ràng: *"Tài khoản của bạn đang chờ Quản trị viên xét duyệt"* hoặc *"Đơn đăng ký của bạn đã bị từ chối"*. Chỉ khi Platform Admin phê duyệt đơn (`AdminApprovalService.ApproveAffiliateAsync`), tài khoản mới được chuyển sang `ACTIVE` và cấp Role hoạt động.
+| Phân hệ | Nhóm Route chính | Mô tả chức năng |
+|---|---|---|
+| **Auth & Identity** | `/api/auth/*`, `/api/v1/candidates/me/identity/*` | Đăng ký (Candidate, Affiliate, Client), xác thực OTP, Login, Refresh Token, Quên/Đổi mật khẩu, Tách tài khoản & Liên kết email/danh tính. |
+| **MF-01 — Jobs & Agreements** | `/api/v1/jobs/*`, `/api/v1/public/jobs/*`, `/api/v1/job-templates/*` | CRUD Job, gửi duyệt, duyệt/từ chối, thương lượng & ký `ServiceAgreement` (OTP / bản ký ướt), phí gói đăng tin & đặt cọc Sourcing. |
+| **MF-02 — Submissions, CVs & Consents** | `/api/v1/candidates/cv/*`, `/api/v1/affiliates/jobs/{id}/submissions`, `/api/v1/submission-consents/*`, `/api/v1/admin/candidate-duplicate-cases/*` | Upload CV PDF, CV Builder có cấu trúc, Candidate tự ứng tuyển, Affiliate giới thiệu ứng viên, xác nhận Consent (Public & In-App), quản lý Attribution & xử lý ca nghi trùng danh tính. |
+| **MF-03 — AI Screening & Sourcing** | `/api/v1/jobs/{id}/applications/*`, `/api/v1/jobs/{id}/sourcing/deliveries/*`, `/api/v1/candidates/me/job-matches/*`, `/api/v1/internal/ai/*` | Chấm điểm AI & callback nội bộ, tiền sàng lọc (`SCREENING`, `SHORTLISTED`, `REJECTED`), xem CV ẩn danh (`masked`), giao & nghiệm thu CV Sourcing, gợi ý việc làm tự động. |
+| **MF-04 — Interviews, Offers & Placements** | `/api/v1/recruitment/interviews/*`, `/api/v1/offers/*`, `/api/v1/placements/*`, `/api/v1/hr/placement-reconciliations/*` | Lên lịch/dời/hủy/ghi kết quả phỏng vấn, quyết định hồ sơ dự phòng (`BACKUP`), tạo/gửi/phản hồi/thu hồi Offer, xác nhận đi làm (`PLACED`), đánh dấu `NOT_STARTED` & đối soát nhận việc (UC-41). |
+| **MF-05 — Finance, VNPay, Warranty & Payouts** | `/api/v1/service-fees/*`, `/api/v1/payments/vnpay/*`, `/api/v1/warranties/*`, `/api/v1/replacement-slots/*`, `/api/v1/commissions/*`, `/api/v1/payouts/*`, `/api/v1/disputes/*` | Công nợ phí dịch vụ, thanh toán VNPay (Return & IPN), bảo hành 30 ngày, báo nghỉ & mở suất thay thế, quyết toán Sourcing, duyệt hoa hồng, xử lý khiếu nại Attribution & chi trả Payout. |
+| **Admin Console & Reports** | `/api/v1/admin/*`, `/api/v1/reports/*` | Duyệt tài khoản Doanh nghiệp/Affiliate, quản lý User/RBAC, cấu hình `BusinessSettings` & `ServiceTypes`, Audit Logs, Báo cáo doanh thu & **Admin Dashboard Metrics** (`/api/v1/admin/dashboard/metrics`). |
 
 ---
 
-## 9. Quy Trình Git Flow & CI/CD Pipeline
-
-Nhóm tuân thủ quy tắc quản lý mã nguồn nghiêm ngặt:
+## 10. Quy Trình Git Flow & CI/CD Pipeline
 
 ```text
  feature/xxx ───┐
-                ├──> PR ──> dev (Staging Integration) ──> PR ──> main (Production)
-     fix/xxx ───┘                                                   │
-                                                                    ▼
-                                                         CI — Quality Gates
-                                                (BE + FE + AI + Docker image)
-                                                                     │
-                                                                     ▼
-                                                        CD — Cloud Server
-                                         (GHCR images + health check + rollback)
+                ├──> PR / Merge ──> dev (Integration) ──> Merge ──> main (Production)
+     fix/xxx ───┘                    │                                │
+                                     ▼                                ▼
+                          CI — Quality Gates               CI — Quality Gates
+                     (BE + FE + AI v2 + Docker)                       │
+                                                                      ▼
+                                                            CD — Cloud Server
+                                             (GHCR Images + Health Check + Auto Rollback)
 ```
 
-Cloud Server triển khai **Backend .NET và AI service v2**. Frontend tiếp tục được Vercel triển khai riêng nhưng vẫn phải qua quality gate chung. Xem cấu hình, secrets và quy trình rollback tại [`docs/deployment/CI-CD.md`](docs/deployment/CI-CD.md).
-
-### Quy tắc làm việc trên Git:
-1. **Tuyệt đối không commit trực tiếp vào `main` hoặc `dev`**.
-2. Khi phát triển tính năng mới, tạo nhánh từ `dev`:
-   ```bash
-   git checkout dev
-   git pull origin dev
-   git checkout -b feature/<ten-tinh-nang>
-   ```
-3. Sau khi hoàn thành, chạy các kiểm tra phù hợp cho Backend, Frontend và AI service:
-   ```bash
-   git add .
-   git commit -m "feat(module): mo ta ngan gon ve tinh nang"
-   git push origin feature/<ten-tinh-nang>
-   ```
-4. Tạo **Pull Request (PR)** trên GitHub vào nhánh `dev`.
-5. Đợi pipeline CI kiểm tra thành công (Green Tick) và ít nhất 1 thành viên review code trước khi thực hiện Merge.
+1. **Làm việc trên nhánh riêng (`feat/...`, `fix/...`, `docs/...`)** cho từng hạng mục.
+2. **Chờ CI trên nhánh riêng xanh (`completed` / `success`)** trước khi merge vào `dev`.
+3. **Chờ CI trên `dev` xanh** trước khi merge vào `main` để kích hoạt **CD — Cloud Server**.
 
 ---
 
-*Tài liệu được cập nhật định kỳ theo tiến độ dự án. Mọi thắc mắc vui lòng liên hệ nhóm phát triển HR Connect.*
+*Tài liệu được cập nhật đồng bộ với mã nguồn thực tế của dự án HR Connect.*
