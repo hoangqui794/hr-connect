@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { App, Alert, Skeleton, message as staticMessage } from 'antd';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -242,6 +243,46 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
                 Phản hồi lúc: {dayjs(interview.candidateRespondedAt).format('HH:mm DD/MM/YYYY')}
               </span>
             )}
+          </div>
+        )}
+
+        {(statusUpper === 'CANCELLED' || statusUpper === 'NO_SHOW' || statusUpper === 'COMPLETED') && (
+          <div
+            data-testid="interview-status-guidance"
+            className={`mt-5 rounded-md border border-solid px-4 py-3 text-[13px] ${
+              statusUpper === 'COMPLETED'
+                ? 'border-[#BBF7D0] bg-[#F0FDF4] text-[#166534]'
+                : statusUpper === 'CANCELLED'
+                  ? 'border-[#FECACA] bg-[#FEF2F2] text-[#991B1B]'
+                  : 'border-[#E5E7EB] bg-[#F9FAFB] text-[#374151]'
+            }`}
+          >
+            <div className="font-semibold">
+              {statusUpper === 'COMPLETED'
+                ? 'Buổi phỏng vấn đã hoàn thành'
+                : statusUpper === 'CANCELLED'
+                  ? 'Buổi phỏng vấn này đã bị hủy'
+                  : 'Ghi nhận vắng mặt buổi phỏng vấn'}
+            </div>
+            <p className="m-0 mt-1">
+              {statusUpper === 'COMPLETED'
+                ? 'Nhà tuyển dụng đang tổng hợp đánh giá và sẽ gửi thông báo kết quả cho bạn sớm nhất.'
+                : statusUpper === 'CANCELLED'
+                  ? 'Nếu nhà tuyển dụng sắp xếp lại lịch mới, bạn sẽ nhận được thông báo qua email và trên hệ thống.'
+                  : 'Hệ thống ghi nhận bạn không tham gia buổi hẹn này. Bạn có thể kiểm tra trạng thái hồ sơ trong đơn ứng tuyển.'}
+            </p>
+            <div className="mt-2.5 flex flex-wrap gap-3">
+              {interview.applicationId && (
+                <Link to={`/candidate/applications/${interview.applicationId}`} className={`font-semibold ${LINK}`}>
+                  Xem đơn ứng tuyển →
+                </Link>
+              )}
+              {statusUpper === 'CANCELLED' && (
+                <Link to="/jobs" className={`font-semibold ${LINK}`}>
+                  Tìm việc làm khác
+                </Link>
+              )}
+            </div>
           </div>
         )}
 
