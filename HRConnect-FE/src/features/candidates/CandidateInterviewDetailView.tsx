@@ -17,7 +17,7 @@ import { candidateInterviewApi } from '@/services/api/candidateInterviewApi';
 import { candidateInterviewKeys, useCandidateInterviewDetail } from '@/hooks/useCandidateInterviewDetail';
 import type { CandidateInterviewDetailDto } from '@/types/api/candidateInterview';
 import { candidateInterviewStatus, candidateInterviewType } from '@/features/portal/mf02Labels';
-import { isInterviewOverdue } from '@/features/recruitment/interviewTiming';
+import { isInterviewInProgress, isInterviewOverdue } from '@/features/recruitment/interviewTiming';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
@@ -135,13 +135,37 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
   const status = STATUS_STYLE[statusUpper] ?? { label: candidateInterviewStatus(interview.status), text: '#374151', background: '#F3F4F6' };
   const interviewTypeLabel = candidateInterviewType(interview.interviewType);
   const isOnline = (interview.interviewType || '').toUpperCase() === 'ONLINE' || Boolean(interview.meetingLink);
+  const now = dayjs();
   const start = interview.scheduledAt ? dayjs(interview.scheduledAt).locale('vi') : null;
   const duration = interview.durationMinutes || 45;
   const isConfirmed = interview.candidateAttendanceStatus === 'CONFIRMED';
-  const isActiveInterview = (statusUpper === 'SCHEDULED' || statusUpper === 'RESCHEDULED') && !isInterviewOverdue(interview);
-  const canConfirm = statusUpper === 'SCHEDULED' && Boolean(start?.isAfter(dayjs())) && !isConfirmed;
+  const isScheduledOrRescheduled = statusUpper === 'SCHEDULED' || statusUpper === 'RESCHEDULED';
+  const inProgress = isScheduledOrRescheduled && isInterviewInProgress({ ...interview, status: 'SCHEDULED' }, now);
+  const isOverdue = isScheduledOrRescheduled && isInterviewOverdue({ ...interview, status: 'SCHEDULED' }, now);
+  const isActiveInterview = isScheduledOrRescheduled && !isOverdue;
+  const canConfirm = statusUpper === 'SCHEDULED' && Boolean(start?.isAfter(now)) && !isConfirmed;
   const meetingLink = webLink(interview.meetingLink);
   const histories = [...(interview.statusHistories ?? [])].sort((a, b) => dayjs(b.changedAt).valueOf() - dayjs(a.changedAt).valueOf());
+
+  const countdownBadge = (() => {
+    if (!isScheduledOrRescheduled || !start) return null;
+    if (inProgress) {
+      return { text: 'Đang diễn ra', className: 'bg-[#DCFCE7] text-[#166534]' };
+    }
+    if (isOverdue) {
+      return { text: 'Đã qua khung giờ hẹn', className: 'bg-[#FFEDD5] text-[#9A3412]' };
+    }
+    const diffMinutes = start.diff(now, 'minute');
+    if (diffMinutes <= 60) {
+      return { text: `Bắt đầu sau ${Math.max(1, diffMinutes)} phút`, className: 'bg-[#FEF3C7] text-[#92400E]' };
+    }
+    const diffHours = start.diff(now, 'hour');
+    if (diffHours < 24) {
+      return { text: `Bắt đầu sau ${diffHours} giờ`, className: 'bg-[#E0F2FE] text-[#075985]' };
+    }
+    const diffDays = Math.max(1, start.startOf('day').diff(now.startOf('day'), 'day'));
+    return { text: `Còn ${diffDays} ngày nữa`, className: 'bg-[#E0F2FE] text-[#075985]' };
+  })();
 
   return (
     <div className={wrapper} data-testid="interview-detail-content">
@@ -159,6 +183,13 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
           <div>
             <dt className="text-[12px] text-[#6B7280]">Thời gian</dt>
             <dd className="m-0 mt-0.5 font-semibold">{start ? `${start.format('HH:mm')} – ${start.add(duration, 'minute').format('HH:mm')}, ${start.format('dddd DD/MM/YYYY')}` : 'Chưa có lịch cụ thể'}</dd>
+            {countdownBadge && (
+              <dd className="m-0 mt-1">
+                <span data-testid="interview-countdown" className={`inline-block rounded px-2 py-0.5 text-[12px] font-semibold ${countdownBadge.className}`}>
+                  {countdownBadge.text}
+                </span>
+              </dd>
+            )}
           </div>
           <div>
             <dt className="text-[12px] text-[#6B7280]">Thời lượng</dt>
