@@ -349,3 +349,58 @@ describe('SourcingDeliveriesView', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('SourcingDeliveriesView HR rejection review (FE-C02, FE-M03)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const rejectedOther = (overrides: Partial<SourcingDeliveriesResponse['items'][number]>) => ({
+    ...mockDeliveries[2],
+    rejectReasonCode: 'OTHER' as const,
+    rejectNote: 'Chưa phù hợp văn hóa',
+    ...overrides,
+  });
+
+  it('requires a note when HR overturns an OTHER rejection and does not call the API without it', async () => {
+    vi.mocked(sourcingApi.getDeliveries).mockResolvedValue({
+      summary: mockSummary,
+      items: [rejectedOther({ deliveryId: 'del-pending', candidateName: 'Ứng Viên Chờ HR Duyệt', rejectionReviewStatus: 'PENDING_HR_REVIEW' })],
+    });
+
+    renderComponent({ role: 'hr' });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Xác minh' }, { timeout: 10000 }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Ghi chú xác minh (Không bắt buộc)')).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Bác bỏ từ chối/ }));
+    expect(await within(dialog).findByText('Ghi chú xác minh (Bắt buộc)')).toBeInTheDocument();
+
+    fireEvent.change(within(dialog).getByPlaceholderText('Ghi chú nội dung xác minh...'), { target: { value: '   ' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Lưu kết quả xác minh' }));
+
+    expect(await within(dialog).findByText('Nhập lý do bác bỏ từ chối của Doanh nghiệp.')).toBeInTheDocument();
+    expect(sourcingApi.reviewRejection).not.toHaveBeenCalled();
+  });
+
+  it('hides the Xác minh button once HR has already upheld the rejection', async () => {
+    vi.mocked(sourcingApi.getDeliveries).mockResolvedValue({
+      summary: mockSummary,
+      items: [
+        rejectedOther({
+          deliveryId: 'del-upheld',
+          candidateName: 'Ứng Viên Đã Xác Minh',
+          rejectionReviewStatus: 'UPHELD',
+          rejectionReviewNote: 'Đúng là chưa phù hợp',
+        }),
+      ],
+    });
+
+    renderComponent({ role: 'hr' });
+
+    expect(await screen.findByText('Ứng Viên Đã Xác Minh', {}, { timeout: 10000 })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Thay CV dự phòng/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Xác minh' })).not.toBeInTheDocument();
+  });
+});

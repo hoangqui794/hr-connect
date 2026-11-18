@@ -96,6 +96,9 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
 
   const [rejectForm] = Form.useForm();
   const [reviewForm] = Form.useForm();
+  // BE requires a note when HR overturns the Client's rejection (upheld = false).
+  const reviewUpheld = Form.useWatch('upheld', reviewForm);
+  const reviewNoteRequired = reviewUpheld === false;
   const [replaceForm] = Form.useForm();
 
   // Query deliveries
@@ -435,7 +438,8 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
           if (r.status === 'REJECTED') {
             return (
               <Space direction="horizontal" size="small">
-                {r.rejectReasonCode === 'OTHER' && (
+                {r.rejectReasonCode === 'OTHER' &&
+                  (!r.rejectionReviewStatus || r.rejectionReviewStatus === 'PENDING_HR_REVIEW') && (
                   <Button
                     size="small"
                     onClick={() => {
@@ -813,7 +817,17 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
             </Radio.Group>
           </Form.Item>
 
-          <Form.Item name="note" label="Ghi chú xác minh (Không bắt buộc)" rules={[{ max: 2000, message: 'Tối đa 2000 ký tự.' }]}>
+          <Form.Item
+            name="note"
+            label={reviewNoteRequired ? 'Ghi chú xác minh (Bắt buộc)' : 'Ghi chú xác minh (Không bắt buộc)'}
+            dependencies={['upheld']}
+            rules={[
+              ...(reviewNoteRequired
+                ? [{ required: true, whitespace: true, message: 'Nhập lý do bác bỏ từ chối của Doanh nghiệp.' }]
+                : []),
+              { max: 2000, message: 'Tối đa 2000 ký tự.' },
+            ]}
+          >
             <Input.TextArea rows={3} maxLength={2000} showCount placeholder="Ghi chú nội dung xác minh..." />
           </Form.Item>
         </Form>
