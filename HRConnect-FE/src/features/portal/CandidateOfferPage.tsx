@@ -222,9 +222,27 @@ export const CandidateOfferPage: React.FC = () => {
           </div>
         </dl>
         {previous && (
-          <p className="m-0 mt-[14px] text-[13px] text-[#4B5563]">
-            Phiên bản {offer.offerVersion} thay thế phiên bản {previous.offerVersion} (lương {money(previous.salary, previous.currencyCode)}). Chỉ phiên bản mới nhất có hiệu lực.
-          </p>
+          <div className="mt-[14px] rounded-md border border-solid border-[#E0F2FE] bg-[#F0F9FF] px-3.5 py-2.5 text-[13px] text-[#4B5563]">
+            <p className="m-0">
+              Phiên bản {offer.offerVersion} thay thế phiên bản {previous.offerVersion} (lương {money(previous.salary, previous.currencyCode)}). Chỉ phiên bản mới nhất có hiệu lực.
+            </p>
+            <div data-testid="offer-version-diff" className="mt-1.5 flex flex-wrap gap-2 text-[12px] font-semibold text-[#075985]">
+              {offer.salary != null && previous.salary != null && offer.salary !== previous.salary && (
+                <span className="rounded bg-white px-2 py-0.5">
+                  Lương: {money(previous.salary, previous.currencyCode)} → {money(offer.salary, offer.currencyCode)} (
+                  {offer.salary > previous.salary
+                    ? `+${money(offer.salary - previous.salary, offer.currencyCode)}`
+                    : `-${money(previous.salary - offer.salary, offer.currencyCode)}`}
+                  )
+                </span>
+              )}
+              {offer.startDate && previous.startDate && offer.startDate !== previous.startDate && (
+                <span className="rounded bg-white px-2 py-0.5">
+                  Ngày bắt đầu: {dayjs(previous.startDate).format('DD/MM/YYYY')} → {dayjs(offer.startDate).format('DD/MM/YYYY')}
+                </span>
+              )}
+            </div>
+          </div>
         )}
         {offer.declineReason && <p className="m-0 mt-[14px] text-[13px] text-[#4B5563]">Lý do từ chối: {offer.declineReason}</p>}
       </section>
