@@ -13,6 +13,17 @@ public interface INotificationRepository
         Guid relatedEntityId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Metadata (JSON) of the user's notifications of one type about one entity. Only a handful of rows
+    /// exist per entity, so callers parse them in memory instead of querying inside the jsonb column.
+    /// </summary>
+    Task<IReadOnlyList<string>> GetMetadataAsync(
+        Guid userId,
+        string notificationType,
+        string relatedEntityType,
+        Guid relatedEntityId,
+        CancellationToken cancellationToken = default);
+
     Task<(IReadOnlyList<Notification> Items, int TotalCount)> GetUserNotificationsAsync(
         Guid userId,
         string? notificationType,

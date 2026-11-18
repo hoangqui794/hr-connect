@@ -2,6 +2,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Application.Features.Recruitment.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
@@ -47,6 +48,7 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _auditLogService;
     private readonly ILogger<UpdateApplicationScreeningStatusCommandHandler> _logger;
+    private readonly IAppNotifier? _notifier;
 
     public UpdateApplicationScreeningStatusCommandHandler(
         IApplicationRepository applicationRepository,
@@ -55,7 +57,8 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
         INotificationRepository notificationRepository,
         IUnitOfWork unitOfWork,
         IAuditLogService auditLogService,
-        ILogger<UpdateApplicationScreeningStatusCommandHandler> logger)
+        ILogger<UpdateApplicationScreeningStatusCommandHandler> logger,
+        IAppNotifier? notifier = null)
     {
         _applicationRepository = applicationRepository;
         _companyUserRepository = companyUserRepository;
@@ -64,6 +67,7 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
         _unitOfWork = unitOfWork;
         _auditLogService = auditLogService;
         _logger = logger;
+        _notifier = notifier;
     }
 
     public async Task<UpdateApplicationScreeningStatusResponse> Handle(
@@ -239,6 +243,15 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
             await AddScreeningNotificationsAsync(application, targetStatus, now, cancellationToken);
         }
 
+        // HEADHUNT_COD: the Client Company first sees the candidate once Internal HR shortlists it
+        // (wf-mf03-ai-screening), so tell the company's active members.
+        if (targetStatus == ApplicationStates.Shortlisted
+            && request.Actor == ScreeningActor.InternalHr
+            && serviceTypeCode == ServiceTypeCodes.HeadhuntCod)
+        {
+            await NotifyClientOfShortlistAsync(application, cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new UpdateApplicationScreeningStatusResponse
@@ -264,12 +277,7 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
     {
         var candidateUserId = application.Candidate?.UserId;
         if (candidateUserId.HasValue
-            && !await _notificationRepository.ExistsAsync(
-                candidateUserId.Value,
-                ApplicationScreeningNotificationFactory.NotificationType,
-                "APPLICATION",
-                application.ApplicationId,
-                cancellationToken))
+            && !await AlreadyNotifiedAsync(candidateUserId.Value, application.ApplicationId, targetStatus, cancellationToken))
         {
             await _notificationRepository.AddAsync(
                 ApplicationScreeningNotificationFactory.CreateCandidate(application, targetStatus, now), cancellationToken);
@@ -277,17 +285,55 @@ public sealed class UpdateApplicationScreeningStatusCommandHandler
 
         if (application.Attribution?.Affiliate?.UserId is not Guid affiliateUserId
             || affiliateUserId == candidateUserId
-            || await _notificationRepository.ExistsAsync(
-                affiliateUserId,
-                ApplicationScreeningNotificationFactory.NotificationType,
-                "APPLICATION",
-                application.ApplicationId,
-                cancellationToken))
+            || await AlreadyNotifiedAsync(affiliateUserId, application.ApplicationId, targetStatus, cancellationToken))
         {
             return;
         }
 
         await _notificationRepository.AddAsync(
             ApplicationScreeningNotificationFactory.CreateAffiliate(application, targetStatus, now), cancellationToken);
+    }
+
+    /// <summary>
+    /// A screening notice is a duplicate only when the user already has one for this application with the
+    /// same target status: an earlier SHORTLISTED notice must not block a later REJECTED one.
+    /// </summary>
+    private async Task<bool> AlreadyNotifiedAsync(
+        Guid userId,
+        Guid applicationId,
+        string targetStatus,
+        CancellationToken cancellationToken)
+    {
+        var metadata = await _notificationRepository.GetMetadataAsync(
+            userId,
+            ApplicationScreeningNotificationFactory.NotificationType,
+            "APPLICATION",
+            applicationId,
+            cancellationToken);
+
+        return metadata?.Any(m => ApplicationScreeningNotificationFactory.IsAboutStatus(m, targetStatus)) == true;
+    }
+
+    /// <summary>Name and position only; contact details stay masked for the Client.</summary>
+    private async Task NotifyClientOfShortlistAsync(
+        HRConnect.Domain.Entities.Application application,
+        CancellationToken cancellationToken)
+    {
+        if (_notifier == null || application.Job == null)
+        {
+            return;
+        }
+
+        var candidateName = string.IsNullOrWhiteSpace(application.Candidate?.FullName)
+            ? "một ứng viên"
+            : $"ứng viên {application.Candidate!.FullName}";
+
+        await _notifier.NotifyCompanyAsync(application.Job.CompanyId, new AppNotice(
+            ApplicationScreeningNotificationFactory.NotificationType,
+            "Có hồ sơ ứng viên mới",
+            $"HR Connect đã chọn hồ sơ của {candidateName} cho vị trí \"{application.Job.Title}\". Bạn có thể xem hồ sơ và lên lịch phỏng vấn.",
+            "APPLICATION",
+            application.ApplicationId,
+            $"/client/candidates?open={application.ApplicationId}"), cancellationToken);
     }
 }
