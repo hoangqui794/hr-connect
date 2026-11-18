@@ -42,12 +42,25 @@ const fileNameOf = (url: string) => {
 };
 
 const FULL_TIME_CONFLICT_CODES = ['ACCEPTED_FULL_TIME_OFFER_EXISTS', 'ACTIVE_FULL_TIME_PLACEMENT_EXISTS', 'ACTIVE_FULL_TIME_PLACEMENT_CONFLICT'];
+const DECLINE_SUGGESTIONS = [
+  'Đã nhận một offer khác phù hợp hơn',
+  'Mức đãi ngộ chưa đáp ứng kỳ vọng',
+  'Định hướng công việc cá nhân thay đổi',
+  'Thời gian bắt đầu chưa phù hợp',
+];
 
 const salaryTerms = (basis?: string | null, period?: string | null) =>
   [
     { GROSS: 'Gross', NET: 'Net' }[String(basis).toUpperCase()],
     { MONTHLY: 'theo tháng', MONTH: 'theo tháng', YEARLY: 'theo năm', ANNUAL: 'theo năm', YEAR: 'theo năm' }[String(period).toUpperCase()],
   ].filter(Boolean).join(', ');
+
+const salaryBasisHint = (basis?: string | null) => {
+  const key = String(basis ?? '').toUpperCase();
+  if (key === 'GROSS') return 'Lương Gross (đã gồm thuế TNCN & bảo hiểm theo quy định)';
+  if (key === 'NET') return 'Lương Net (thực nhận sau khi trừ thuế TNCN & bảo hiểm)';
+  return null;
+};
 
 export const CandidateOfferPage: React.FC = () => {
   const { message } = AntApp.useApp();
@@ -156,6 +169,7 @@ export const CandidateOfferPage: React.FC = () => {
   const status = String(offer.status).toUpperCase();
   const color = STATUS_COLOR[status] ?? STATUS_COLOR.DECLINED;
   const terms = salaryTerms(offer.salaryBasis, offer.salaryPeriod);
+  const basisHint = salaryBasisHint(offer.salaryBasis);
   const documentUrl = webLink(offer.offerDocumentUrl);
   const daysLeft = offer.expiryDate ? dayjs(offer.expiryDate).startOf('day').diff(dayjs().startOf('day'), 'day') : null;
   const previous = (versions.data ?? []).filter((item) => item.offerVersion < offer.offerVersion).sort((a, b) => b.offerVersion - a.offerVersion)[0];
@@ -198,6 +212,7 @@ export const CandidateOfferPage: React.FC = () => {
             <dt className="text-[12px] text-[#6B7280]">Mức lương</dt>
             <dd className="m-0 mt-0.5 text-[20px] font-bold text-[#059669]">{money(offer.salary, offer.currencyCode)}</dd>
             {terms && <dd className="m-0 text-[13px] text-[#4B5563]">{terms}</dd>}
+            {basisHint && <dd className="m-0 mt-0.5 text-[12px] text-[#6B7280]">{basisHint}</dd>}
           </div>
           <div>
             <dt className="text-[12px] text-[#6B7280]">Ngày bắt đầu dự kiến</dt>
@@ -206,7 +221,18 @@ export const CandidateOfferPage: React.FC = () => {
           <div>
             <dt className="text-[12px] text-[#6B7280]">Hạn trả lời</dt>
             <dd className="m-0 mt-0.5 text-[16px] font-semibold">{offer.expiryDate ? `23:59, ${dayjs(offer.expiryDate).format('DD/MM/YYYY')}` : 'Không đặt hạn'}</dd>
-            {canAnswer && daysLeft !== null && <dd className="m-0 text-[13px] text-[#9A3412]">{daysLeft > 0 ? `Còn ${daysLeft} ngày` : 'Hết hạn hôm nay'}</dd>}
+            {canAnswer && daysLeft !== null && (
+              <dd
+                data-testid={daysLeft <= 1 ? 'offer-expiry-urgent' : undefined}
+                className={
+                  daysLeft <= 1
+                    ? 'm-0 mt-1 inline-block rounded bg-[#FEF2F2] px-2 py-0.5 text-[12px] font-semibold text-[#B91C1C]'
+                    : 'm-0 text-[13px] text-[#9A3412]'
+                }
+              >
+                {daysLeft > 0 ? `Còn ${daysLeft} ngày` : 'Hết hạn hôm nay'}
+              </dd>
+            )}
           </div>
           <div className="min-w-0">
             <dt className="text-[12px] text-[#6B7280]">Thư mời chi tiết</dt>
@@ -216,9 +242,27 @@ export const CandidateOfferPage: React.FC = () => {
           </div>
         </dl>
         {previous && (
-          <p className="m-0 mt-[14px] text-[13px] text-[#4B5563]">
-            Phiên bản {offer.offerVersion} thay thế phiên bản {previous.offerVersion} (lương {money(previous.salary, previous.currencyCode)}). Chỉ phiên bản mới nhất có hiệu lực.
-          </p>
+          <div className="mt-[14px] rounded-md border border-solid border-[#E0F2FE] bg-[#F0F9FF] px-3.5 py-2.5 text-[13px] text-[#4B5563]">
+            <p className="m-0">
+              Phiên bản {offer.offerVersion} thay thế phiên bản {previous.offerVersion} (lương {money(previous.salary, previous.currencyCode)}). Chỉ phiên bản mới nhất có hiệu lực.
+            </p>
+            <div data-testid="offer-version-diff" className="mt-1.5 flex flex-wrap gap-2 text-[12px] font-semibold text-[#075985]">
+              {offer.salary != null && previous.salary != null && offer.salary !== previous.salary && (
+                <span className="rounded bg-white px-2 py-0.5">
+                  Lương: {money(previous.salary, previous.currencyCode)} → {money(offer.salary, offer.currencyCode)} (
+                  {offer.salary > previous.salary
+                    ? `+${money(offer.salary - previous.salary, offer.currencyCode)}`
+                    : `-${money(previous.salary - offer.salary, offer.currencyCode)}`}
+                  )
+                </span>
+              )}
+              {offer.startDate && previous.startDate && offer.startDate !== previous.startDate && (
+                <span className="rounded bg-white px-2 py-0.5">
+                  Ngày bắt đầu: {dayjs(previous.startDate).format('DD/MM/YYYY')} → {dayjs(offer.startDate).format('DD/MM/YYYY')}
+                </span>
+              )}
+            </div>
+          </div>
         )}
         {offer.declineReason && <p className="m-0 mt-[14px] text-[13px] text-[#4B5563]">Lý do từ chối: {offer.declineReason}</p>}
       </section>
@@ -251,6 +295,28 @@ export const CandidateOfferPage: React.FC = () => {
                   }}
                   className={`${FONT} mt-2.5 w-full resize-y rounded-md border border-solid px-3 py-2.5 text-[14px] text-[#1F2937] outline-none focus:border-[#0369A1] focus:ring-1 focus:ring-[#0369A1] ${reasonMissing ? 'border-[#B91C1C]' : 'border-[#D1D5DB]'}`}
                 />
+                {declining && (
+                  <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Gợi ý lý do từ chối">
+                    {DECLINE_SUGGESTIONS.map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => {
+                          setChoice('DECLINED');
+                          setReason(item);
+                          setReasonMissing(false);
+                        }}
+                        className={`${FONT} cursor-pointer rounded-full border border-solid px-2.5 py-1 text-[12px] transition-colors ${
+                          reason === item
+                            ? 'border-[#0369A1] bg-[#E0F2FE] font-semibold text-[#075985]'
+                            : 'border-[#D1D5DB] bg-white text-[#4B5563] hover:border-[#9CA3AF] hover:bg-[#F9FAFB]'
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {reasonMissing && <span role="alert" className="mt-1 block text-[12px] text-[#B91C1C]">Vui lòng nhập lý do từ chối.</span>}
               </span>
             </label>
@@ -347,8 +413,27 @@ export const CandidateOfferPage: React.FC = () => {
               </Link>
             </div>
           )}
+          <div
+            role="note"
+            aria-label="Tóm tắt phản hồi"
+            className={`mt-4 rounded-lg border border-solid px-3.5 py-2.5 text-[13px] ${
+              declining
+                ? 'border-[#FED7AA] bg-[#FFF7ED] text-[#9A3412]'
+                : 'border-[#BAE6FD] bg-[#F0F9FF] text-[#075985]'
+            }`}
+          >
+            {declining ? (
+              <span>
+                Bạn đang chọn <b>Từ chối offer</b>. Sau khi gửi, thư mời nhận việc này sẽ khép lại và nhà tuyển dụng sẽ nhận được lý do của bạn.
+              </span>
+            ) : (
+              <span>
+                {`Bạn đang chọn Chấp nhận offer với mức lương ${money(offer.salary, offer.currencyCode)}${terms ? ` (${terms})` : ''}${offer.startDate ? `, dự kiến bắt đầu ngày ${dayjs(offer.startDate).format('DD/MM/YYYY')}` : ''}.`}
+              </span>
+            )}
+          </div>
           <div className="mt-[18px] flex justify-end">
-            <button type="button" disabled={respond.isPending || acceptBlocked} onClick={submit} className={`${FONT} h-11 cursor-pointer rounded-xl border-0 bg-[#0369A1] px-[22px] text-[14px] font-bold text-white transition-all hover:from-[#0369A1] hover:to-[#1D4ED8] shadow-md shadow-sky-500/25 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-none disabled:bg-[#9CA3AF] disabled:shadow-none`}>
+            <button type="button" disabled={respond.isPending || acceptBlocked} onClick={submit} className={`${FONT} h-11 cursor-pointer rounded-xl border-0 bg-[#0369A1] px-[22px] text-[14px] font-bold text-white transition-all hover:bg-[#075985] shadow-md shadow-sky-500/25 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-none disabled:bg-[#9CA3AF] disabled:shadow-none`}>
               {respond.isPending ? 'Đang gửi…' : 'Gửi trả lời'}
             </button>
           </div>

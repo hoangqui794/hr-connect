@@ -251,12 +251,22 @@ export const ApplicationWorkbench: React.FC<{
   });
 
   const sourcingDelivery = sourcingDeliveries.data?.items.find((item) => item.applicationId === d?.applicationId);
+  // The Client's review window comes from the job (sourcing summary); omit the number when it is not loaded.
+  const reviewDays = sourcingDeliveries.data?.summary.reviewDays;
+  const reviewWindow = reviewDays ? ` trong ${reviewDays} ngày` : '';
+
+  const refreshApplication = async () => {
+    await invalidateRecruitment(queryClient, applicationId);
+    if (applicationId) {
+      await Promise.all([detail.refetch(), timeline.refetch()]);
+    }
+  };
 
   // Deliver CV to Client (Internal HR)
   const deliverMutation = useMutation({
     mutationFn: () => sourcingApi.deliverCvs(d!.jobId, [d!.applicationId]),
     onSuccess: async () => {
-      message.success('Đã giao CV cho khách hàng thành công. Doanh nghiệp có 7 ngày để phản hồi.');
+      message.success(`Đã giao CV cho khách hàng thành công. Doanh nghiệp sẽ phản hồi${reviewWindow}.`);
       await invalidateRecruitment(queryClient, applicationId);
       queryClient.invalidateQueries({ queryKey: ['sourcing-deliveries', d?.jobId] });
       if (applicationId) {
@@ -342,10 +352,43 @@ export const ApplicationWorkbench: React.FC<{
       }
     },
   });
-  const isUpdating = run.isPending || start.isPending || deliverMutation.isPending || clientDecisionMutation.isPending;
+  const token = d?.concurrencyToken ?? '';
+
+  /**
+   * CV_SOURCING (Internal HR): shortlist, then hand the CV over. The shortlist commits on its own
+   * (new concurrency token), so a failed hand-over (e.g. 409 consent / target reached) is a warning, not a failure.
+   */
+  const shortlistAndDeliver = useMutation({
+    mutationFn: async ({ jobId, appId }: { jobId: string; appId: string }) => {
+      await screeningApi.updateStatus(jobId, appId, { targetStatus: 'SHORTLISTED', concurrencyToken: token });
+      await refreshApplication();
+      try {
+        await sourcingApi.deliverCvs(jobId, [appId]);
+        return { deliveryError: null as string | null };
+      } catch (err) {
+        return { deliveryError: getApiErrorMessage(err, 'Không thể giao CV cho khách hàng.') };
+      }
+    },
+    onSuccess: async ({ deliveryError }) => {
+      if (deliveryError) {
+        message.warning(`Đã chuyển hồ sơ sang danh sách Đạt, nhưng chưa bàn giao được cho Doanh nghiệp: ${deliveryError}`, 6);
+      } else {
+        message.success(`Đã chọn và giao CV cho khách hàng thành công. Doanh nghiệp sẽ phản hồi${reviewWindow}.`);
+        await refreshApplication();
+      }
+    },
+    onError: async (err) => {
+      message.error(getApiError(err, 'Không thực hiện được thao tác.').message);
+      await refreshApplication(); // a 409 means someone else changed it
+    },
+    onSettled: async (_res, _err, vars) => {
+      await queryClient.invalidateQueries({ queryKey: ['sourcing-deliveries', vars.jobId] });
+    },
+  });
+  const isUpdating =
+    run.isPending || start.isPending || deliverMutation.isPending || clientDecisionMutation.isPending || shortlistAndDeliver.isPending;
   const isRefetching = detail.isFetching || timeline.isFetching;
   const busy = isUpdating || isRefetching || Boolean(pendingAction);
-  const token = d?.concurrencyToken ?? '';
 
   const retry = useMutation({
     mutationFn: () => screeningApi.retryAiScoring(applicationId!),
@@ -470,23 +513,16 @@ export const ApplicationWorkbench: React.FC<{
         audience !== 'hr'
           ? `${d?.candidateFullName} sẽ chuyển sang bước phỏng vấn.`
           : isCvSourcing
-            ? `Hồ sơ của ${d?.candidateFullName} sẽ được chọn và bàn giao ngay cho Doanh nghiệp. Doanh nghiệp có 7 ngày để chấp nhận hoặc từ chối CV.`
+            ? `Hồ sơ của ${d?.candidateFullName} sẽ được chọn và bàn giao ngay cho Doanh nghiệp. Doanh nghiệp sẽ chấp nhận hoặc từ chối CV${reviewWindow}.`
             : `Client sẽ thấy hồ sơ của ${d?.candidateFullName} (đã che liên hệ) và có thể lên lịch phỏng vấn.`,
       okText: audience !== 'hr' ? 'Chọn ứng viên' : isCvSourcing ? 'Chọn & giao Client' : 'Chọn gửi Client',
       cancelText: 'Hủy',
-      okButtonProps: { loading: run.isPending || pendingAction === 'short' },
+      okButtonProps: { loading: run.isPending || shortlistAndDeliver.isPending || pendingAction === 'short' },
       onOk: async () => {
         setPendingAction('short');
         try {
           if (audience === 'hr' && isCvSourcing) {
-            const jobId = d!.jobId;
-            const appId = d!.applicationId;
-            await run.mutateAsync(async () => {
-              await screeningApi.updateStatus(jobId, appId, { targetStatus: 'SHORTLISTED', concurrencyToken: token });
-              await sourcingApi.deliverCvs(jobId, [appId]);
-              return { message: 'Đã chọn và giao CV cho khách hàng thành công. Doanh nghiệp có 7 ngày để phản hồi.' };
-            });
-            await queryClient.invalidateQueries({ queryKey: ['sourcing-deliveries', jobId] });
+            await shortlistAndDeliver.mutateAsync({ jobId: d!.jobId, appId: d!.applicationId });
           } else {
             await run.mutateAsync(() => screeningApi.updateStatus(d!.jobId, d!.applicationId, { targetStatus: 'SHORTLISTED', concurrencyToken: token }));
           }
@@ -791,7 +827,7 @@ export const ApplicationWorkbench: React.FC<{
           () => {
             modal.confirm({
               title: 'Giao CV cho khách hàng?',
-              content: `Bàn giao hồ sơ của ${d.candidateFullName} cho Doanh nghiệp. Doanh nghiệp sẽ có 7 ngày để xem xét và phản hồi.`,
+              content: `Bàn giao hồ sơ của ${d.candidateFullName} cho Doanh nghiệp. Doanh nghiệp sẽ xem xét và phản hồi${reviewWindow}.`,
               okText: 'Giao CV cho khách hàng',
               cancelText: 'Hủy',
               okButtonProps: { loading: deliverMutation.isPending },
@@ -966,7 +1002,7 @@ export const ApplicationWorkbench: React.FC<{
                       onClick={() => {
                         modal.confirm({
                           title: 'Giao CV cho khách hàng?',
-                          content: `Bàn giao hồ sơ của ${d.candidateFullName} cho Doanh nghiệp. Doanh nghiệp sẽ có 7 ngày để chấp nhận hoặc từ chối CV.`,
+                          content: `Bàn giao hồ sơ của ${d.candidateFullName} cho Doanh nghiệp. Doanh nghiệp sẽ chấp nhận hoặc từ chối CV${reviewWindow}.`,
                           okText: 'Giao CV cho khách hàng',
                           cancelText: 'Hủy',
                           okButtonProps: { loading: deliverMutation.isPending },

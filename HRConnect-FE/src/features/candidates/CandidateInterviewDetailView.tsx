@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { App, Alert, Skeleton, message as staticMessage } from 'antd';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -17,6 +18,7 @@ import { candidateInterviewApi } from '@/services/api/candidateInterviewApi';
 import { candidateInterviewKeys, useCandidateInterviewDetail } from '@/hooks/useCandidateInterviewDetail';
 import type { CandidateInterviewDetailDto } from '@/types/api/candidateInterview';
 import { candidateInterviewStatus, candidateInterviewType } from '@/features/portal/mf02Labels';
+import { isInterviewInProgress, isInterviewOverdue } from '@/features/recruitment/interviewTiming';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 const LINK = 'text-[#0369A1] no-underline hover:text-[#075985] hover:underline';
@@ -130,15 +132,42 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
     );
   }
 
-  const status = STATUS_STYLE[String(interview.status).toUpperCase()] ?? { label: candidateInterviewStatus(interview.status), text: '#374151', background: '#F3F4F6' };
+  const statusUpper = String(interview.status).toUpperCase();
+  const status = STATUS_STYLE[statusUpper] ?? { label: candidateInterviewStatus(interview.status), text: '#374151', background: '#F3F4F6' };
   const interviewTypeLabel = candidateInterviewType(interview.interviewType);
   const isOnline = (interview.interviewType || '').toUpperCase() === 'ONLINE' || Boolean(interview.meetingLink);
+  const now = dayjs();
   const start = interview.scheduledAt ? dayjs(interview.scheduledAt).locale('vi') : null;
   const duration = interview.durationMinutes || 45;
   const isConfirmed = interview.candidateAttendanceStatus === 'CONFIRMED';
-  const canConfirm = interview.status === 'SCHEDULED' && Boolean(start?.isAfter(dayjs())) && !isConfirmed;
+  const isScheduledOrRescheduled = statusUpper === 'SCHEDULED' || statusUpper === 'RESCHEDULED';
+  const inProgress = isScheduledOrRescheduled && isInterviewInProgress({ ...interview, status: 'SCHEDULED' }, now);
+  const isOverdue = isScheduledOrRescheduled && isInterviewOverdue({ ...interview, status: 'SCHEDULED' }, now);
+  const isActiveInterview = isScheduledOrRescheduled && !isOverdue;
+  const isJoiningWindow = Boolean(isActiveInterview && start && start.diff(now, 'minute') <= 15);
+  const canConfirm = statusUpper === 'SCHEDULED' && Boolean(start?.isAfter(now)) && !isConfirmed;
   const meetingLink = webLink(interview.meetingLink);
   const histories = [...(interview.statusHistories ?? [])].sort((a, b) => dayjs(b.changedAt).valueOf() - dayjs(a.changedAt).valueOf());
+
+  const countdownBadge = (() => {
+    if (!isScheduledOrRescheduled || !start) return null;
+    if (inProgress) {
+      return { text: 'Đang diễn ra', className: 'bg-[#DCFCE7] text-[#166534]' };
+    }
+    if (isOverdue) {
+      return { text: 'Đã qua khung giờ hẹn', className: 'bg-[#FFEDD5] text-[#9A3412]' };
+    }
+    const diffMinutes = start.diff(now, 'minute');
+    if (diffMinutes <= 60) {
+      return { text: `Bắt đầu sau ${Math.max(1, diffMinutes)} phút`, className: 'bg-[#FEF3C7] text-[#92400E]' };
+    }
+    const diffHours = start.diff(now, 'hour');
+    if (diffHours < 24) {
+      return { text: `Bắt đầu sau ${diffHours} giờ`, className: 'bg-[#E0F2FE] text-[#075985]' };
+    }
+    const diffDays = Math.max(1, start.startOf('day').diff(now.startOf('day'), 'day'));
+    return { text: `Còn ${diffDays} ngày nữa`, className: 'bg-[#E0F2FE] text-[#075985]' };
+  })();
 
   return (
     <div className={wrapper} data-testid="interview-detail-content">
@@ -156,6 +185,13 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
           <div>
             <dt className="text-[12px] text-[#6B7280]">Thời gian</dt>
             <dd className="m-0 mt-0.5 font-semibold">{start ? `${start.format('HH:mm')} – ${start.add(duration, 'minute').format('HH:mm')}, ${start.format('dddd DD/MM/YYYY')}` : 'Chưa có lịch cụ thể'}</dd>
+            {countdownBadge && (
+              <dd className="m-0 mt-1">
+                <span data-testid="interview-countdown" className={`inline-block rounded px-2 py-0.5 text-[12px] font-semibold ${countdownBadge.className}`}>
+                  {countdownBadge.text}
+                </span>
+              </dd>
+            )}
           </div>
           <div>
             <dt className="text-[12px] text-[#6B7280]">Thời lượng</dt>
@@ -210,14 +246,89 @@ export const CandidateInterviewDetailView: React.FC<CandidateInterviewDetailView
           </div>
         )}
 
-        {(start || meetingLink || (!isOnline && interview.location)) && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {meetingLink && <a href={meetingLink} target="_blank" rel="noopener noreferrer" className={PRIMARY}>Vào phòng họp ngay</a>}
-            {!isOnline && interview.location && (
-              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(interview.location)}`} target="_blank" rel="noopener noreferrer" className={SECONDARY}>Xem trên Google Maps</a>
+        {(statusUpper === 'CANCELLED' || statusUpper === 'NO_SHOW' || statusUpper === 'COMPLETED') && (
+          <div
+            data-testid="interview-status-guidance"
+            className={`mt-5 rounded-md border border-solid px-4 py-3 text-[13px] ${
+              statusUpper === 'COMPLETED'
+                ? 'border-[#BBF7D0] bg-[#F0FDF4] text-[#166534]'
+                : statusUpper === 'CANCELLED'
+                  ? 'border-[#FECACA] bg-[#FEF2F2] text-[#991B1B]'
+                  : 'border-[#E5E7EB] bg-[#F9FAFB] text-[#374151]'
+            }`}
+          >
+            <div className="font-semibold">
+              {statusUpper === 'COMPLETED'
+                ? 'Buổi phỏng vấn đã hoàn thành'
+                : statusUpper === 'CANCELLED'
+                  ? 'Buổi phỏng vấn này đã bị hủy'
+                  : 'Ghi nhận vắng mặt buổi phỏng vấn'}
+            </div>
+            <p className="m-0 mt-1">
+              {statusUpper === 'COMPLETED'
+                ? 'Nhà tuyển dụng đang tổng hợp đánh giá và sẽ gửi thông báo kết quả cho bạn sớm nhất.'
+                : statusUpper === 'CANCELLED'
+                  ? 'Nếu nhà tuyển dụng sắp xếp lại lịch mới, bạn sẽ nhận được thông báo qua email và trên hệ thống.'
+                  : 'Hệ thống ghi nhận bạn không tham gia buổi hẹn này. Bạn có thể kiểm tra trạng thái hồ sơ trong đơn ứng tuyển.'}
+            </p>
+            <div className="mt-2.5 flex flex-wrap gap-3">
+              {interview.applicationId && (
+                <Link to={`/candidate/applications/${interview.applicationId}`} className={`font-semibold ${LINK}`}>
+                  Xem đơn ứng tuyển →
+                </Link>
+              )}
+              {statusUpper === 'CANCELLED' && (
+                <Link to="/jobs" className={`font-semibold ${LINK}`}>
+                  Tìm việc làm khác
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
+
+        {((isActiveInterview && (start || meetingLink || (!isOnline && interview.location))) || (showBackAction && onBack)) && (
+          <div className="mt-4">
+            <div className="flex flex-wrap gap-2">
+              {isActiveInterview && meetingLink && (
+                <a href={meetingLink} target="_blank" rel="noopener noreferrer" className={isJoiningWindow ? PRIMARY : SECONDARY}>
+                  Vào phòng họp ngay
+                </a>
+              )}
+              {isActiveInterview && !isOnline && interview.location && (
+                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(interview.location)}`} target="_blank" rel="noopener noreferrer" className={SECONDARY}>Xem trên Google Maps</a>
+              )}
+              {isActiveInterview && start && <a href={calendarUrl(interview)} target="_blank" rel="noopener noreferrer" className={SECONDARY}>Thêm vào Google Calendar</a>}
+              {showBackAction && onBack && <button type="button" onClick={onBack} className={SECONDARY}>Quay lại</button>}
+            </div>
+            {isActiveInterview && isOnline && meetingLink && (
+              <p className="m-0 mt-2 text-[12px] text-[#4B5563]">
+                {isJoiningWindow
+                  ? 'Phòng họp đã sẵn sàng để tham gia. Hãy kiểm tra micro và camera trước khi vào.'
+                  : 'Gợi ý: Nên vào phòng họp trước giờ hẹn 10–15 phút để kiểm tra kết nối.'}
+              </p>
             )}
-            {start && <a href={calendarUrl(interview)} target="_blank" rel="noopener noreferrer" className={SECONDARY}>Thêm vào Google Calendar</a>}
-            {showBackAction && onBack && <button type="button" onClick={onBack} className={SECONDARY}>Quay lại</button>}
+          </div>
+        )}
+
+        {isActiveInterview && (
+          <div
+            aria-label="Lưu ý chuẩn bị phỏng vấn"
+            className="mt-4 rounded-md border border-solid border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-[13px] text-[#334155]"
+          >
+            <div className="font-semibold text-[#0F172A]">Lưu ý chuẩn bị trước buổi phỏng vấn</div>
+            <ul className="m-0 mt-1.5 list-disc space-y-1 pl-5">
+              {isOnline ? (
+                <>
+                  <li>Kiểm tra trước micro, camera và đường truyền internet ổn định.</li>
+                  <li>Chọn không gian yên tĩnh, đủ ánh sáng và mở sẵn CV để tiện trao đổi.</li>
+                </>
+              ) : (
+                <>
+                  <li>Có mặt trước giờ hẹn 10–15 phút để làm thủ tục tại quầy lễ tân.</li>
+                  <li>Mang theo giấy tờ tùy thân (CCCD) và chuẩn bị sẵn thông tin người liên hệ nếu cần.</li>
+                </>
+              )}
+            </ul>
           </div>
         )}
       </section>
