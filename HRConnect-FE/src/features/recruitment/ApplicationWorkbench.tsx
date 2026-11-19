@@ -826,9 +826,16 @@ export const ApplicationWorkbench: React.FC<{
     if (audience === 'hr') {
       if (sourcingDelivery) {
         const scfg = SOURCING_STATUS_CONFIG[sourcingDelivery.status];
-        btn('sourcingStatus', `CV Sourcing: ${scfg?.label || sourcingDelivery.status}`, () => {}, {
-          icon: <CheckOutlined />,
-        });
+        footer.push(
+          <Tag
+            key="sourcingStatus"
+            icon={<CheckOutlined />}
+            color={scfg?.tagColor ?? 'default'}
+            className="!inline-flex !items-center !gap-1 !px-3 !py-1 !text-sm !rounded-lg !m-0"
+          >
+            CV Sourcing: {scfg?.label || sourcingDelivery.status}
+          </Tag>
+        );
       } else if (d?.status === 'SHORTLISTED') {
         btn(
           'deliverCv',
@@ -1174,13 +1181,29 @@ export const ApplicationWorkbench: React.FC<{
           <Panel
             title="Đánh giá của AI"
             extra={
-              audience === 'hr' && (
-                <Tooltip title="Gửi lại hồ sơ cho AI chấm điểm, ví dụ khi lần chấm trước lỗi hoặc job vừa sửa yêu cầu.">
-                  <Button size="small" icon={<ExperimentOutlined />} loading={retry.isPending} onClick={() => retry.mutate()}>
-                    Yêu cầu chấm lại
-                  </Button>
-                </Tooltip>
-              )
+              audience === 'hr' && (() => {
+                const aiSt = (d?.aiMatch?.status || '').toUpperCase();
+                const isPending = aiSt === 'PENDING' || aiSt === 'PROCESSING';
+                return (
+                  <Tooltip
+                    title={
+                      isPending
+                        ? 'AI đang chấm điểm hồ sơ này...'
+                        : 'Gửi lại hồ sơ cho AI chấm điểm, ví dụ khi lần chấm trước lỗi hoặc job vừa sửa yêu cầu.'
+                    }
+                  >
+                    <Button
+                      size="small"
+                      icon={<ExperimentOutlined />}
+                      loading={retry.isPending || isPending}
+                      disabled={isPending}
+                      onClick={() => retry.mutate()}
+                    >
+                      {isPending ? 'Đang chấm điểm…' : 'Yêu cầu chấm lại'}
+                    </Button>
+                  </Tooltip>
+                );
+              })()
             }
           >
             {(() => {
@@ -1229,20 +1252,6 @@ export const ApplicationWorkbench: React.FC<{
                               </div>
                             )}
                           </dl>
-                        )}
-                        {audience === 'hr' && (
-                          <div className="mt-3">
-                            <Button
-                              type="primary"
-                              size="small"
-                              icon={<ExperimentOutlined />}
-                              loading={retry.isPending}
-                              onClick={() => retry.mutate()}
-                              className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98]"
-                            >
-                              Yêu cầu chấm lại
-                            </Button>
-                          </div>
                         )}
                       </div>
                     </div>

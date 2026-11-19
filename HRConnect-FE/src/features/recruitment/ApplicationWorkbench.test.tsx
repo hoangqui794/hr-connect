@@ -652,4 +652,20 @@ describe('ApplicationWorkbench AI evidence (FE-M04)', () => {
 
     expect(await screen.findByText('Lỗi chấm điểm (mã SOMETHING_NEW).', {}, { timeout: 5000 })).toBeInTheDocument();
   }, 60000);
+
+  it('[FE-m02] disables re-scoring button when AI status is PENDING or PROCESSING', async () => {
+    renderWorkbench(
+      {
+        ...baseApplication,
+        status: 'SCREENING',
+        allowedActions: [],
+        offers: [],
+        aiMatch: aiMatch({ status: 'PROCESSING', matchScore: null }),
+      },
+      'hr'
+    );
+
+    const btn = await screen.findByRole('button', { name: /Đang chấm điểm…/ }, { timeout: 5000 });
+    expect(btn).toBeDisabled();
+  }, 60000);
 });
