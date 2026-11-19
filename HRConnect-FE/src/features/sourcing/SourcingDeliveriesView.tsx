@@ -206,6 +206,12 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
   // Handle HR Review Rejection submit
   const handleReviewRejectionSubmit = (values: { upheld: boolean; note?: string }) => {
     if (!reviewRejectionItem) return;
+    if (values.upheld === false && !values.note?.trim()) {
+      reviewForm.setFields([
+        { name: 'note', errors: ['Nhập lý do bác bỏ từ chối của Doanh nghiệp.'] },
+      ]);
+      return;
+    }
     reviewMutation.mutate({
       deliveryId: reviewRejectionItem.deliveryId,
       body: {
@@ -782,7 +788,16 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
           setReviewRejectionItem(null);
           reviewForm.resetFields();
         }}
-        onOk={() => reviewForm.submit()}
+        onOk={() => {
+          const values = reviewForm.getFieldsValue();
+          if (values.upheld === false && !values.note?.trim()) {
+            reviewForm.setFields([
+              { name: 'note', errors: ['Nhập lý do bác bỏ từ chối của Doanh nghiệp.'] },
+            ]);
+            return;
+          }
+          reviewForm.submit();
+        }}
         destroyOnHidden
       >
         <div className="rounded-lg bg-amber-50 p-3 mb-4 text-xs text-amber-900">
@@ -805,7 +820,14 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
             label="Kết quả xác minh"
             rules={[{ required: true, message: 'Chọn kết quả xác minh.' }]}
           >
-            <Radio.Group className="w-full space-y-2">
+            <Radio.Group
+              className="w-full space-y-2"
+              onChange={(e) => {
+                if (e.target.value === true) {
+                  reviewForm.setFields([{ name: 'note', errors: [] }]);
+                }
+              }}
+            >
               <Radio value={true}>
                 <span className="font-semibold text-slate-800">Giữ nguyên từ chối (Hợp lệ)</span>
                 <div className="text-xs text-slate-500">Chấp nhận lý do từ chối của khách hàng, có thể giao CV thay thế.</div>
