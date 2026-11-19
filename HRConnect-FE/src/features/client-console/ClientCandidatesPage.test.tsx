@@ -66,7 +66,7 @@ describe('Client › Hồ sơ ứng viên', () => {
     });
   });
 
-  it('shows the AI score with its tier, a grey "Chưa có điểm" for failed scoring and the next step', async () => {
+  it('shows the AI score with its tier, a red "Chấm lỗi" for failed scoring and the next step', async () => {
     renderPage();
 
     const good = (await screen.findByText('Ứng Viên e2e5')).closest('tr')!;
@@ -74,7 +74,7 @@ describe('Client › Hồ sơ ứng viên', () => {
     expect(within(good).getByRole('button', { name: 'Lên lịch phỏng vấn' })).toBeInTheDocument();
 
     const failed = screen.getByText('Demo Candidate 2').closest('tr')!;
-    expect(within(failed).getByText('Chưa có điểm')).toBeInTheDocument();
+    expect(within(failed).getByText('Chấm lỗi')).toBeInTheDocument();
     expect(within(failed).queryByText('Lỗi AI')).not.toBeInTheDocument();
   });
 

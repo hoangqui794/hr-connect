@@ -61,5 +61,7 @@ describe('HrScreeningPage', () => {
       expect(['HEADHUNT_COD,CV_SOURCING', 'CV_SOURCING']).toContain(params.serviceTypeCode);
     }
     expect(calls.some((params) => params.serviceTypeCode === 'HEADHUNT_COD,CV_SOURCING' && params.pageSize === 10)).toBe(true);
+    expect(screen.getByText('80%')).toBeInTheDocument();
+    expect(screen.getByText('Rất phù hợp')).toBeInTheDocument();
   });
 });

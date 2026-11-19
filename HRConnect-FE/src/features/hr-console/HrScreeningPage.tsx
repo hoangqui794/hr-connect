@@ -17,6 +17,7 @@ import { getApiErrorMessage } from '@/services/apiClient';
 import type { RecruitmentApplicationItem } from '@/types/api/hr';
 import { FilterPills, PageHero, PersonCell, StatusDot, Surface } from '@/features/admin-console/ui';
 import { ApplicationWorkbench } from '@/features/recruitment/ApplicationWorkbench';
+import { AiScore } from '@/features/screening/AiScore';
 import { applicationStatusOf } from './hrLabels';
 
 const STATUS_FILTERS = ['SUBMITTED', 'SCREENING', 'SHORTLISTED', 'REJECTED', 'all'] as const;
@@ -44,16 +45,6 @@ const useStatusCount = (status: StatusFilter) =>
   });
 
 const formatDateTime = (v?: string | null) => (v ? dayjs(v).format('HH:mm DD/MM/YYYY') : '—');
-
-const AiScore: React.FC<{ score: number | null; status: string | null }> = ({ score, status }) => {
-  if (score == null) {
-    const label = status === 'FAILED' ? 'Chấm lỗi' : status === 'PENDING' || status === 'PROCESSING' ? 'Đang chấm' : 'Chưa chấm';
-    return <span className={`text-xs ${status === 'FAILED' ? 'font-semibold text-red-700' : 'text-slate-600'}`}>{label}</span>;
-  }
-  const rounded = Math.round(score);
-  const tone = rounded >= 75 ? 'bg-emerald-50 text-emerald-800' : rounded >= 50 ? 'bg-sky-50 text-sky-900' : 'bg-amber-50 text-amber-800';
-  return <span className={`inline-flex min-w-[44px] justify-center rounded-md px-2 py-0.5 text-sm font-bold tabular-nums ${tone}`}>{rounded}</span>;
-};
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
@@ -120,7 +111,12 @@ export const HrScreeningPage: React.FC = () => {
         </div>
       ),
     },
-    { title: 'AI', key: 'ai', width: 110, render: (_, r) => <AiScore score={r.aiMatchScore} status={r.aiStatus} /> },
+    {
+      title: 'Điểm AI',
+      key: 'ai',
+      width: 170,
+      render: (_, r) => <AiScore score={r.aiMatchScore} tier={r.aiMatchTier} status={r.aiStatus} />,
+    },
     {
       title: 'Trạng thái',
       dataIndex: 'status',

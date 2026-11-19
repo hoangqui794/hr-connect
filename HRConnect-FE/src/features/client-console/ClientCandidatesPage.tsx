@@ -11,6 +11,8 @@ import { a11yItemRender } from '@/components/common/paginationA11y';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { MATCH_TIER_STYLE, matchTierOf } from '@/features/screening/matchTierStyle';
+import { AiScore } from '@/features/screening/AiScore';
+export { AiScore } from '@/features/screening/AiScore';
 import { Alert, Button, Input, Select, Skeleton, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -20,7 +22,6 @@ import {
   CheckCircleOutlined,
   ClearOutlined,
   FileTextOutlined,
-  HeartFilled,
   LockOutlined,
   ReloadOutlined,
   SearchOutlined,
@@ -92,47 +93,7 @@ const BOARD: { code: string; label: string; dot: string }[] = [
 ];
 const BOARD_LIMIT = 20;
 
-/** AI score rendered as a sleek mini progress bar with percentage. */
-export const AiScore: React.FC<{ score: number | null; tier?: string | null; status?: string | null; compact?: boolean }> = ({
-  score,
-  tier,
-  status,
-  compact,
-}) => {
-  if (score == null) {
-    const st = status?.toUpperCase();
-    if (st === 'PENDING' || st === 'PROCESSING') return <span className="text-xs text-[#0284C7] font-medium">Đang chấm…</span>;
-    return <span className="text-xs text-slate-400 font-medium">Chưa có điểm</span>;
-  }
-  const rounded = Math.round(score);
-  // Tier colours from the topic form: red heart / teal / light green / grey.
-  const t = MATCH_TIER_STYLE[matchTierOf(score, tier)!];
-  const barColor = t.bar;
-  const textColor = t.text;
 
-  return (
-    <div
-      className="inline-flex flex-col gap-1"
-      title={t?.label ? `Điểm AI: ${rounded}% (${t.label})` : `Điểm AI: ${rounded}%`}
-    >
-      <div className="inline-flex items-center gap-2 whitespace-nowrap">
-        <div className={`${compact ? 'w-10' : 'w-16'} h-2 bg-slate-100 rounded-full overflow-hidden shrink-0 ring-1 ring-black/5`}>
-          <div
-            className={`h-full rounded-full transition-all duration-300 ${barColor}`}
-            style={{ width: `${Math.min(100, Math.max(0, rounded))}%` }}
-          />
-        </div>
-        <span className={`text-xs font-bold tabular-nums min-w-[32px] ${textColor}`}>{rounded}%</span>
-      </div>
-      {t && (
-        <span className={`inline-flex items-center gap-1 text-[10.5px] font-semibold px-1.5 py-0.5 rounded border leading-none w-fit ${t.badge}`}>
-          {t.heart && <HeartFilled aria-hidden="true" />}
-          {t.label}
-        </span>
-      )}
-    </div>
-  );
-};
 
 /** The one thing the Client is expected to do next, if anything. */
 export const nextStepOf = (
