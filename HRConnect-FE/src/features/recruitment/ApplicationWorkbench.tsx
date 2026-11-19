@@ -53,6 +53,7 @@ import {
   aiFailureLabel,
   mergeAiEvidence,
   parseHighlights,
+  parseRequirementResults,
   pick,
   reasonLabel,
   applicationStatusOf,
@@ -756,8 +757,25 @@ export const ApplicationWorkbench: React.FC<{
   };
 
   const st = d ? applicationStatusOf(d.status, d.serviceTypeCode, sourcingDelivery?.status) : null;
-  // FE-M04: highlights alone can be empty while the matching reasons still explain the score.
-  const highlights = mergeAiEvidence(parseHighlights(d?.aiMatch?.candidateHighlight), d?.aiMatch?.matchingReasons);
+  // FE-M04 & BE-M04: highlights alone can be empty while matching reasons, mustHaveResult or shouldHaveResult explain the score.
+  const reqMust = parseRequirementResults(d?.aiMatch?.mustHaveResult);
+  const reqShould = parseRequirementResults(d?.aiMatch?.shouldHaveResult);
+  const matchedFromReqs = [...reqMust, ...reqShould]
+    .filter((r) => r.matched || r.matchStatus === 'MATCHED')
+    .map((r) => r.requirement)
+    .filter((r): r is string => Boolean(r));
+  const missingFromReqs = reqMust
+    .filter((r) => !r.matched && (r.matchStatus === 'MISSING' || r.matchStatus === 'NOT_FOUND'))
+    .map((r) => r.requirement)
+    .filter((r): r is string => Boolean(r));
+
+  const highlights = mergeAiEvidence(
+    parseHighlights(d?.aiMatch?.candidateHighlight),
+    [...(d?.aiMatch?.matchingReasons ?? []), ...matchedFromReqs]
+  );
+  const missingRequirements = Array.from(
+    new Set([...(d?.aiMatch?.missingRequirements ?? []), ...missingFromReqs])
+  );
 
   // Footer buttons: secondary/danger on the left, the main step on the right.
   const footer: React.ReactNode[] = [];
@@ -1306,14 +1324,14 @@ export const ApplicationWorkbench: React.FC<{
                         </ul>
                       </div>
                     )}
-                    {d.aiMatch.missingRequirements.length > 0 && (
+                    {missingRequirements.length > 0 && (
                       <div>
                         <div className="mb-1.5 font-bold text-slate-900 flex items-center gap-1.5">
                           <WarningOutlined className="text-amber-600" />
                           <span>Còn thiếu</span>
                         </div>
                         <ul className="m-0 space-y-1.5 pl-0 list-none text-slate-700">
-                          {d.aiMatch.missingRequirements.map((h) => (
+                          {missingRequirements.map((h) => (
                             <li key={h} className="flex items-start gap-2">
                               <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
                               <span className="leading-snug">{h}</span>
@@ -1327,7 +1345,7 @@ export const ApplicationWorkbench: React.FC<{
                         {d.aiMatch.warnings.join(' · ')}
                       </div>
                     )}
-                    {highlights.length === 0 && d.aiMatch.missingRequirements.length === 0 && (
+                    {highlights.length === 0 && missingRequirements.length === 0 && (
                       <p className="m-0 text-slate-500">AI chưa trả về giải thích chi tiết.</p>
                     )}
                   </div>

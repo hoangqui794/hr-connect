@@ -127,6 +127,23 @@ export const parseHighlights = (raw?: string | null): string[] => {
   }
 };
 
+export interface RequirementResultItem {
+  requirement?: string;
+  type?: string;
+  matched?: boolean;
+  matchStatus?: string;
+}
+
+export const parseRequirementResults = (raw?: string | null): RequirementResultItem[] => {
+  if (!raw) return [];
+  try {
+    const value = JSON.parse(raw);
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+};
+
 /**
  * AI evidence shown in the Workbench: the candidate highlights plus the matching reasons, without
  * repeats (case and spacing ignored). Either list may be empty.

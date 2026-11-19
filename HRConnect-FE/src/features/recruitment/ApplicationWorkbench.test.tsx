@@ -691,4 +691,32 @@ describe('ApplicationWorkbench AI evidence (FE-M04)', () => {
     expect(await screen.findByText(/Nghỉ trong bảo hành/)).toBeInTheDocument();
     expect(screen.getByText(/20\/10\/2026/)).toBeInTheDocument();
   }, 60000);
+
+  it('[BE-M04/FE] displays matching and missing requirements parsed from mustHaveResult and shouldHaveResult', async () => {
+    renderWorkbench(
+      {
+        ...baseApplication,
+        status: 'SHORTLISTED',
+        allowedActions: [],
+        offers: [],
+        aiMatch: aiMatch({
+          candidateHighlight: '[]',
+          matchingReasons: [],
+          missingRequirements: [],
+          mustHaveResult: JSON.stringify([
+            { requirement: '3 năm kinh nghiệm .NET', type: 'MUST_HAVE', matched: true, matchStatus: 'MATCHED' },
+            { requirement: 'Tiếng Anh giao tiếp tốt', type: 'MUST_HAVE', matched: false, matchStatus: 'MISSING' },
+          ]),
+          shouldHaveResult: JSON.stringify([
+            { requirement: 'Có kiến thức Docker/K8s', type: 'SHOULD_HAVE', matched: true, matchStatus: 'MATCHED' },
+          ]),
+        }),
+      },
+      'hr'
+    );
+
+    expect(await screen.findByText('3 năm kinh nghiệm .NET', {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.getByText('Có kiến thức Docker/K8s')).toBeInTheDocument();
+    expect(screen.getByText('Tiếng Anh giao tiếp tốt')).toBeInTheDocument();
+  }, 60000);
 });
