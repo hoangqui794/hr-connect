@@ -266,7 +266,7 @@ export const JobReviewPage: React.FC = () => {
 
         const timer = setTimeout(() => {
           const el = document.getElementById(`job-queue-item-${target.jobId}`);
-          if (el) {
+          if (el && typeof el.scrollIntoView === 'function') {
             el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
         }, 150);

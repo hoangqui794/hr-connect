@@ -91,6 +91,7 @@ describe('JobReviewPage tab switching with highlight query param', () => {
     });
 
     vi.spyOn(serviceAgreementsApi, 'getCurrent').mockResolvedValue(null);
+    vi.spyOn(jobsApi, 'getPostingPackages').mockResolvedValue([]);
   });
 
   it('allows user to switch tab cleanly when arriving with a highlight param matching a pending review job', async () => {
@@ -223,7 +224,8 @@ describe('JobReviewPage tab switching with highlight query param', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Senior Developer')).toBeInTheDocument();
+      expect(screen.getAllByText('Senior Developer').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText(/Doanh nghiệp đã hoàn tất ký hợp đồng/)).toBeInTheDocument();
     });
 
     const confirmBtn = await screen.findByRole('button', { name: /Công khai tin tuyển dụng/i }, { timeout: 8000 });
@@ -585,6 +587,7 @@ describe('JobReviewPage tab switching with highlight query param', () => {
       </MemoryRouter>
     );
 
+    expect(await screen.findByText('Kế Toán Kho', {}, { timeout: 8000 })).toBeInTheDocument();
     const approveBtn = await screen.findByRole('button', { name: /Duyệt tin tuyển dụng/i }, { timeout: 8000 });
     expect(approveBtn).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Duyệt & Ký điều khoản/i })).toBeNull();
