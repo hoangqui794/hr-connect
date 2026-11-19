@@ -108,9 +108,20 @@ describe('Client › Hồ sơ ứng viên', () => {
 
     fireEvent.click(screen.getByRole('radio', { name: /Kết thúc/ }));
 
-    await waitFor(() =>
-      expect(listMock).toHaveBeenCalledWith(expect.objectContaining({ pageSize: 10, status: expect.stringContaining('REJECTED,BACKUP_NOT_SELECTED') }))
-    );
+    await waitFor(() => {
+      expect(listMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageSize: 10,
+          status: expect.stringContaining('REJECTED,BACKUP_NOT_SELECTED'),
+        })
+      );
+      expect(listMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageSize: 10,
+          status: expect.stringContaining('RESIGNED,CLOSED'),
+        })
+      );
+    });
   });
 
   it('marks the cells that need the Client', async () => {

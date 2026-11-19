@@ -668,4 +668,27 @@ describe('ApplicationWorkbench AI evidence (FE-M04)', () => {
     const btn = await screen.findByRole('button', { name: /Đang chấm điểm…/ }, { timeout: 5000 });
     expect(btn).toBeDisabled();
   }, 60000);
+
+  it('[FE-m03] displays Nghỉ trong bảo hành when placement status is LEFT_DURING_WARRANTY', async () => {
+    renderWorkbench(
+      {
+        ...baseApplication,
+        status: 'PLACED',
+        allowedActions: [],
+        offers: [],
+        placement: {
+          placementId: 'pl-1',
+          actualStartDate: '2026-10-01',
+          endDate: '2026-10-20',
+          status: 'LEFT_DURING_WARRANTY',
+          guaranteeEndDate: '2026-11-01',
+          resignationReason: 'Không phù hợp văn hóa',
+        },
+      },
+      'hr'
+    );
+
+    expect(await screen.findByText(/Nghỉ trong bảo hành/)).toBeInTheDocument();
+    expect(screen.getByText(/20\/10\/2026/)).toBeInTheDocument();
+  }, 60000);
 });

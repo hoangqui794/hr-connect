@@ -60,7 +60,16 @@ const GROUPS = [
   {
     key: 'closed',
     label: 'Kết thúc',
-    statuses: ['REJECTED', 'BACKUP_NOT_SELECTED', 'INTERVIEW_FAILED', 'OFFER_DECLINED', 'NOT_STARTED', 'WITHDRAWN'],
+    statuses: [
+      'REJECTED',
+      'BACKUP_NOT_SELECTED',
+      'INTERVIEW_FAILED',
+      'OFFER_DECLINED',
+      'NOT_STARTED',
+      'WITHDRAWN',
+      'RESIGNED',
+      'CLOSED',
+    ],
   },
 ] as const;
 type GroupKey = (typeof GROUPS)[number]['key'];

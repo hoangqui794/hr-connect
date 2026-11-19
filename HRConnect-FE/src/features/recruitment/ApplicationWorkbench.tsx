@@ -1160,13 +1160,13 @@ export const ApplicationWorkbench: React.FC<{
                 {d.placement && (
                   <div
                     className={`rounded-xl border p-4 font-medium ${
-                      d.placement.status === 'RESIGNED'
+                      d.placement.status === 'RESIGNED' || d.placement.status === 'LEFT_DURING_WARRANTY'
                         ? 'border-slate-300 bg-slate-100 text-slate-800'
                         : 'border-emerald-200/80 bg-emerald-50/70 text-emerald-950'
                     }`}
                   >
-                    {d.placement.status === 'RESIGNED'
-                      ? `Đã nghỉ việc${d.placement.endDate ? ` từ ${fmt(d.placement.endDate, 'DD/MM/YYYY')}` : ''}`
+                    {d.placement.status === 'RESIGNED' || d.placement.status === 'LEFT_DURING_WARRANTY'
+                      ? `${d.placement.status === 'LEFT_DURING_WARRANTY' ? 'Nghỉ trong bảo hành' : 'Đã nghỉ việc'}${d.placement.endDate ? ` từ ${fmt(d.placement.endDate, 'DD/MM/YYYY')}` : ''}`
                       : `Đã đi làm từ ${fmt(d.placement.actualStartDate, 'DD/MM/YYYY')}`}
                     {d.placement.position ? ` · ${d.placement.position}` : ''}
                     {d.placement.department ? ` · ${d.placement.department}` : ''}
