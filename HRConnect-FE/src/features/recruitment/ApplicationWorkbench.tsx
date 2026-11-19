@@ -209,12 +209,12 @@ export const ApplicationWorkbench: React.FC<{
   const d = detail.data;
   const actions = d?.allowedActions ?? [];
   const has = (a: string) => actions.includes(a);
-  const interview = d?.interviews.filter((i) => i.status === 'SCHEDULED').sort((a, b) => (b.scheduledAt ?? '').localeCompare(a.scheduledAt ?? ''))[0];
+  const interview = (d?.interviews ?? []).filter((i) => i.status === 'SCHEDULED').sort((a, b) => (b.scheduledAt ?? '').localeCompare(a.scheduledAt ?? ''))[0];
   const interviewStarted = hasInterviewStarted(interview);
   const interviewOverdue = isInterviewOverdue(interview);
   const effectiveInterviewType = open === 'reschedule' ? interview?.interviewType : selectedInterviewType;
-  const offer = d ? [...d.offers].sort((a, b) => b.offerVersion - a.offerVersion)[0] : undefined;
-  const acceptedOffer = d?.offers.find((o) => o.status === 'ACCEPTED') ?? offer;
+  const offer = d ? [...(d.offers ?? [])].sort((a, b) => b.offerVersion - a.offerVersion)[0] : undefined;
+  const acceptedOffer = d?.offers?.find((o) => o.status === 'ACCEPTED') ?? offer;
   const actualStartDiffersFromPlan = Boolean(
     d?.plannedStartDate &&
       watchedActualStartDate &&
@@ -254,7 +254,7 @@ export const ApplicationWorkbench: React.FC<{
 
   const sourcingDelivery = sourcingDeliveries.data?.items.find((item) => item.applicationId === d?.applicationId);
   // The Client's review window comes from the job (sourcing summary); omit the number when it is not loaded.
-  const reviewDays = sourcingDeliveries.data?.summary.reviewDays;
+  const reviewDays = sourcingDeliveries.data?.summary?.reviewDays;
   const reviewWindow = reviewDays ? ` trong ${reviewDays} ngày` : '';
 
   const refreshApplication = async () => {
@@ -527,6 +527,12 @@ export const ApplicationWorkbench: React.FC<{
             await shortlistAndDeliver.mutateAsync({ jobId: d!.jobId, appId: d!.applicationId });
           } else {
             await run.mutateAsync(() => screeningApi.updateStatus(d!.jobId, d!.applicationId, { targetStatus: 'SHORTLISTED', concurrencyToken: token }));
+          }
+        } catch (err) {
+          message.error(getApiErrorMessage(err, 'Không thực hiện được thao tác.'));
+          await invalidateRecruitment(queryClient, d?.applicationId);
+          if (d?.applicationId) {
+            await Promise.all([detail.refetch(), timeline.refetch()]);
           }
         } finally {
           setPendingAction(null);
@@ -1406,6 +1412,10 @@ export const ApplicationWorkbench: React.FC<{
         onOk={() => {
           if (open === 'result' && !form.getFieldValue('feedback')?.trim()) {
             form.setFields([{ name: 'feedback', errors: ['Nhập nhận xét phỏng vấn.'] }]);
+            return;
+          }
+          if (open === 'startWork' && actualStartDiffersFromPlan && !form.getFieldValue('note')?.trim()) {
+            form.setFields([{ name: 'note', errors: ['Nhập lý do ngày thực tế khác ngày dự kiến.'] }]);
             return;
           }
           form.submit();

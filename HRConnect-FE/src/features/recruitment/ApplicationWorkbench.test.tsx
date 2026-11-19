@@ -1,8 +1,8 @@
 import { App as AntApp } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import dayjs from 'dayjs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApplicationWorkbench } from './ApplicationWorkbench';
 import { clientActionsApi, interviewHistoryApi, screeningApi } from '@/services/api/hrApi';
 import { sourcingApi } from '@/services/api/sourcingApi';
@@ -73,6 +73,7 @@ const baseApplication = {
   cv: null,
   aiMatch: null,
   interviews: [],
+  offers: [],
   placement: null,
   serviceTypeCode: 'CV_APPLICATION',
   contactOwner: 'ClientCompany',
@@ -105,6 +106,46 @@ describe('ApplicationWorkbench MF-04', () => {
     vi.mocked(interviewHistoryApi.get).mockResolvedValue([]);
     vi.mocked(clientActionsApi.updateOffer).mockResolvedValue({ message: 'Đã lưu offer.' });
     vi.mocked(clientActionsApi.recordResult).mockResolvedValue({ message: 'Đã ghi kết quả.' });
+    vi.mocked(sourcingApi.getDeliveries).mockResolvedValue({ items: [], totalCount: 0 } as any);
+  });
+
+  afterEach(() => {
+    cleanup();
+    document.body.innerHTML = '';
+  });
+
+  it('[FE-C01] decouples SHORTLISTED status update from deliverCvs when CV sourcing delivery fails', async () => {
+    vi.mocked(screeningApi.updateStatus).mockResolvedValue({ success: true, data: null, message: 'Đã duyệt hồ sơ.' } as any);
+    vi.mocked(sourcingApi.deliverCvs).mockRejectedValue({
+      response: { data: { code: 'CONSENT_NOT_CONFIRMED', message: 'Ứng viên chưa xác nhận consent' } },
+    });
+
+    renderWorkbench(
+      {
+        ...baseApplication,
+        serviceTypeCode: 'CV_SOURCING',
+        status: 'SCREENING',
+        currentStage: 'SCREENING',
+        allowedActions: ['SHORTLIST'],
+      },
+      'hr'
+    );
+
+    await screen.findByText('Đang sàng lọc');
+
+    const shortlistBtn = await screen.findByRole('button', { name: /Chọn gửi Client/i }, { timeout: 10000 });
+    fireEvent.click(shortlistBtn);
+
+    const confirmBtn = await screen.findByRole('button', { name: /Chọn & giao Client/i }, { timeout: 10000 });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(screeningApi.updateStatus).toHaveBeenCalledWith('job-1', 'app-1', {
+        targetStatus: 'SHORTLISTED',
+        concurrencyToken: 'application-token',
+      });
+      expect(sourcingApi.deliverCvs).toHaveBeenCalledWith('job-1', ['app-1']);
+    });
   });
 
   it('loads the existing offer document link and sends its edited value when Client updates a draft', async () => {
@@ -198,6 +239,7 @@ describe('ApplicationWorkbench MF-04', () => {
       ],
     });
 
+    await screen.findByText('Nguyễn Văn A');
     fireEvent.click(await screen.findByRole('button', { name: 'Xác nhận đã đi làm' }));
 
     expect(screen.getByLabelText('Ngày thực tế đi làm')).toHaveValue(plannedStart.format('DD/MM/YYYY'));
@@ -223,6 +265,7 @@ describe('ApplicationWorkbench MF-04', () => {
       ],
     });
 
+    await screen.findByText('Nguyễn Văn A');
     fireEvent.click(await screen.findByRole('button', { name: 'Xác nhận đã đi làm' }));
 
     expect(screen.getByText('Ngày thực tế khác ngày dự kiến — cần ghi rõ lý do.')).toBeInTheDocument();
@@ -261,6 +304,7 @@ describe('ApplicationWorkbench MF-04', () => {
       ]
     );
 
+    await screen.findByText('Nguyễn Văn A');
     fireEvent.click(await screen.findByRole('button', { name: 'Dời ngày nhận việc' }));
 
     expect(await screen.findByText('Đã dời 2/3 lần')).toBeInTheDocument();
@@ -369,6 +413,7 @@ describe('ApplicationWorkbench MF-04', () => {
       ],
     });
 
+    await screen.findByText('Nguyễn Văn A');
     const sendBtn = await screen.findByRole('button', { name: 'Gửi offer' });
     fireEvent.click(sendBtn);
 
@@ -435,6 +480,7 @@ describe('ApplicationWorkbench MF-03 CV Sourcing shortlist', () => {
       'hr'
     );
 
+    await screen.findByText('Nguyễn Văn A');
     const shortlistButton = await screen.findByRole('button', { name: /Chọn gửi Client/ });
     await waitFor(() => expect(sourcingApi.getDeliveries).toHaveBeenCalledWith('job-1'));
     await act(async () => {});
