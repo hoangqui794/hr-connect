@@ -104,14 +104,14 @@ public static class AiIntegrationEndpoints
             ApplicationDbContext db,
             IAuditLogService audit,
             ILoggerFactory loggerFactory,
-            IHubContext<NotificationHub> hub,
+            INotificationPublisher publisher,
             CancellationToken ct) =>
         {
             var logger = loggerFactory.CreateLogger("MF03.AiResultCallback");
             var response = await AiResultCallbackProcessor.ProcessAsync(payload, db, audit, logger, ct);
             if (response is IStatusCodeHttpResult { StatusCode: StatusCodes.Status200OK })
             {
-                await AiResultCallbackProcessor.PushScoredAsync(payload, db, hub, logger, ct);
+                await AiResultCallbackProcessor.PushScoredAsync(payload, publisher, logger, ct);
             }
             return response;
         });
@@ -297,31 +297,32 @@ public static class AiResultCallbackProcessor
     }
 
     /// <summary>
-    /// After the result is saved, tell the people who look at the score (Internal HR, Platform Admin and the
-    /// job's company users) so their screening lists refresh without a reload. A failed push never fails the callback.
+    /// After the result is saved, tell the people who are allowed to view the application (Internal HR,
+    /// Platform Admin, and the job's company users only when ClientVisibilityPolicy allows) so their
+    /// screening lists refresh without a reload. A failed push never fails the callback.
     /// </summary>
+    public static async Task PushScoredAsync(
+        AiResultCallback payload, INotificationPublisher publisher, ILogger logger, CancellationToken ct)
+    {
+        try
+        {
+            await publisher.PublishApplicationScoredAsync(payload.ApplicationId, payload.JobId, payload.Status, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Could not push application.scored for ApplicationId={ApplicationId}.", payload.ApplicationId);
+        }
+    }
+
     public static async Task PushScoredAsync(
         AiResultCallback payload, ApplicationDbContext db, IHubContext<NotificationHub> hub, ILogger logger, CancellationToken ct)
     {
         try
         {
-            var companyId = await db.Jobs.AsNoTracking().Where(j => j.JobId == payload.JobId).Select(j => (Guid?)j.CompanyId).FirstOrDefaultAsync(ct);
-            var staff = await db.UserRoles.AsNoTracking()
-                .Where(ur => ur.Status == "ACTIVE" && ur.Role.IsActive && (ur.Role.Code == "INTERNAL_HR" || ur.Role.Code == "PLATFORM_ADMIN"))
-                .Select(ur => ur.UserId).ToListAsync(ct);
-            var members = companyId == null
-                ? new List<Guid>()
-                : await db.CompanyUsers.AsNoTracking().Where(cu => cu.CompanyId == companyId && cu.Status == "ACTIVE").Select(cu => cu.UserId).ToListAsync(ct);
-            var groups = staff.Concat(members).Distinct().Select(NotificationHub.UserGroup).ToList();
-            if (groups.Count == 0) return;
-            await hub.Clients.Groups(groups).SendAsync("application.scored", new
-            {
-                applicationId = payload.ApplicationId,
-                jobId = payload.JobId,
-                status = payload.Status,
-            }, ct);
+            await SignalRNotificationPublisher.PushApplicationScoredCoreAsync(
+                payload.ApplicationId, payload.JobId, payload.Status, db, hub, ct);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "Could not push application.scored for ApplicationId={ApplicationId}.", payload.ApplicationId);
         }

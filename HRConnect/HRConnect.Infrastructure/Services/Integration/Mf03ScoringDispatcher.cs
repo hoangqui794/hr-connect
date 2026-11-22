@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
@@ -55,6 +56,7 @@ public sealed class Mf03ScoringDispatcher : BackgroundService
     {
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var publisher = scope.ServiceProvider.GetService<INotificationPublisher>();
         var processingTimeout = _settings.ProcessingTimeoutSeconds > 0
             ? TimeSpan.FromSeconds(Math.Max(30, _settings.ProcessingTimeoutSeconds))
             : TimeSpan.FromMinutes(Math.Max(1, _settings.ProcessingTimeoutMinutes));
@@ -88,6 +90,7 @@ public sealed class Mf03ScoringDispatcher : BackgroundService
                 job.CompletedAt = DateTime.UtcNow;
                 db.AuditLogs.Add(CreateSystemAudit(job, "AI_SCORING_FAILED", previousStatus));
                 await db.SaveChangesAsync(cancellationToken);
+                await TryPublishScoredAsync(publisher, application.ApplicationId, application.JobId, job.Status, cancellationToken);
                 _logger.LogError(
                     "MF-03 request {RequestId} failed because ApplicationId={ApplicationId} has no accepted submission.",
                     job.ExternalReference, job.ApplicationId);
@@ -108,6 +111,7 @@ public sealed class Mf03ScoringDispatcher : BackgroundService
                 job.CompletedAt = DateTime.UtcNow;
                 db.AuditLogs.Add(CreateSystemAudit(job, "AI_SCORING_FAILED", previousStatus));
                 await db.SaveChangesAsync(cancellationToken);
+                await TryPublishScoredAsync(publisher, application.ApplicationId, application.JobId, job.Status, cancellationToken);
                 _logger.LogError(
                     "MF-03 request {RequestId} exhausted {DispatchCount} dispatch attempts and was marked FAILED ({FailureCode}).",
                     job.ExternalReference, job.DispatchCount, job.FailureCode);
@@ -159,6 +163,7 @@ public sealed class Mf03ScoringDispatcher : BackgroundService
                 }
 
                 var failureMessage = ex.Message.Length <= 2000 ? ex.Message : ex.Message[..2000];
+                var markedFailed = false;
                 if (job.DispatchCount >= maxDispatchAttempts)
                 {
                     job.Status = "FAILED";
@@ -167,6 +172,7 @@ public sealed class Mf03ScoringDispatcher : BackgroundService
                     job.NextAttemptAt = null;
                     job.CompletedAt = DateTime.UtcNow;
                     db.AuditLogs.Add(CreateSystemAudit(job, "AI_SCORING_FAILED", "PROCESSING"));
+                    markedFailed = true;
                     _logger.LogError(
                         ex,
                         "MF-03 dispatch {RequestId} exhausted {DispatchCount} attempts and was marked FAILED.",
@@ -195,7 +201,33 @@ public sealed class Mf03ScoringDispatcher : BackgroundService
                 }
 
                 await db.SaveChangesAsync(cancellationToken);
+                if (markedFailed)
+                {
+                    await TryPublishScoredAsync(publisher, application.ApplicationId, application.JobId, job.Status, cancellationToken);
+                }
             }
+        }
+    }
+
+    private async Task TryPublishScoredAsync(
+        INotificationPublisher? publisher,
+        Guid applicationId,
+        Guid jobId,
+        string status,
+        CancellationToken cancellationToken)
+    {
+        if (publisher == null)
+        {
+            return;
+        }
+
+        try
+        {
+            await publisher.PublishApplicationScoredAsync(applicationId, jobId, status, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "Could not push application.scored for ApplicationId={ApplicationId}.", applicationId);
         }
     }
 

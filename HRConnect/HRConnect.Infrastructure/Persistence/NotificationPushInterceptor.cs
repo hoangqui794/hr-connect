@@ -149,4 +149,7 @@ public sealed class NoOpNotificationPublisher : INotificationPublisher
 {
     public Task PublishAsync(IReadOnlyList<Notification> notifications, CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
+
+    public Task PublishApplicationScoredAsync(Guid applicationId, Guid jobId, string status, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
 }

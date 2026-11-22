@@ -1,5 +1,8 @@
 using System.Text.Json;
 using FluentAssertions;
+using HRConnect.Application.Common.Interfaces;
+using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
 using HRConnect.Presentation.Endpoints.Internal;
@@ -100,16 +103,18 @@ public class AiResultCallbackProcessorTests
         var clientId = Guid.NewGuid();
         var otherClientId = Guid.NewGuid();
         var candidateId = Guid.NewGuid();
-        db.Jobs.Add(new Job { JobId = fixture.JobId, CompanyId = companyId, Title = "Dev", Status = "ACTIVE", CurrencyCode = "VND" });
-        var hrRole = new Role { RoleId = Guid.NewGuid(), Code = "INTERNAL_HR", Name = "HR", IsActive = true };
-        var candidateRole = new Role { RoleId = Guid.NewGuid(), Code = "CANDIDATE", Name = "Candidate", IsActive = true };
+        var cvAppType = new ServiceType { ServiceTypeId = Guid.NewGuid(), Code = ServiceTypeCodes.CvApplication, Name = "CV Application", IsActive = true };
+        db.ServiceTypes.Add(cvAppType);
+        db.Jobs.Add(new Job { JobId = fixture.JobId, CompanyId = companyId, ServiceTypeId = cvAppType.ServiceTypeId, ServiceType = cvAppType, Title = "Dev", Status = "ACTIVE", CurrencyCode = "VND" });
+        var hrRole = new Role { RoleId = Guid.NewGuid(), Code = RoleCodes.InternalHr, Name = "HR", IsActive = true };
+        var candidateRole = new Role { RoleId = Guid.NewGuid(), Code = RoleCodes.Candidate, Name = "Candidate", IsActive = true };
         db.Roles.AddRange(hrRole, candidateRole);
         db.UserRoles.AddRange(
-            new UserRole { UserId = hrId, RoleId = hrRole.RoleId, Status = "ACTIVE", AssignmentSource = "TEST" },
-            new UserRole { UserId = candidateId, RoleId = candidateRole.RoleId, Status = "ACTIVE", AssignmentSource = "TEST" });
+            new UserRole { UserId = hrId, RoleId = hrRole.RoleId, Status = UserRoleAssignmentStates.Active, AssignmentSource = "TEST" },
+            new UserRole { UserId = candidateId, RoleId = candidateRole.RoleId, Status = UserRoleAssignmentStates.Active, AssignmentSource = "TEST" });
         db.CompanyUsers.AddRange(
-            new CompanyUser { CompanyUserId = Guid.NewGuid(), CompanyId = companyId, UserId = clientId, Status = "ACTIVE", RoleInCompany = "OWNER" },
-            new CompanyUser { CompanyUserId = Guid.NewGuid(), CompanyId = Guid.NewGuid(), UserId = otherClientId, Status = "ACTIVE", RoleInCompany = "OWNER" });
+            new CompanyUser { CompanyUserId = Guid.NewGuid(), CompanyId = companyId, UserId = clientId, Status = UserAccountStates.Active, RoleInCompany = "OWNER" },
+            new CompanyUser { CompanyUserId = Guid.NewGuid(), CompanyId = Guid.NewGuid(), UserId = otherClientId, Status = UserAccountStates.Active, RoleInCompany = "OWNER" });
         await db.SaveChangesAsync();
 
         var proxy = new Mock<IClientProxy>();
@@ -125,6 +130,111 @@ public class AiResultCallbackProcessorTests
 
         targeted.Should().BeEquivalentTo(new[] { NotificationHub.UserGroup(hrId), NotificationHub.UserGroup(clientId) });
         proxy.Verify(p => p.SendCoreAsync("application.scored", It.IsAny<object?[]>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public void SelectApplicationScoredRecipients_HeadhuntSubmitted_ExcludesClientAndIncludesStaff()
+    {
+        var hrId = Guid.NewGuid();
+        var adminId = Guid.NewGuid();
+        var clientId = Guid.NewGuid();
+
+        var recipients = SignalRNotificationPublisher.SelectApplicationScoredRecipients(
+            [hrId, adminId],
+            [clientId],
+            ServiceTypeCodes.HeadhuntCod,
+            ApplicationStates.Submitted,
+            [],
+            hasSourcingDelivery: false);
+
+        recipients.Should().BeEquivalentTo(new[] { hrId, adminId });
+    }
+
+    [Fact]
+    public void SelectApplicationScoredRecipients_HeadhuntShortlisted_IncludesClientAndStaff()
+    {
+        var hrId = Guid.NewGuid();
+        var clientId = Guid.NewGuid();
+
+        var recipients = SignalRNotificationPublisher.SelectApplicationScoredRecipients(
+            [hrId],
+            [clientId],
+            ServiceTypeCodes.HeadhuntCod,
+            ApplicationStates.Shortlisted,
+            [],
+            hasSourcingDelivery: false);
+
+        recipients.Should().BeEquivalentTo(new[] { hrId, clientId });
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public void SelectApplicationScoredRecipients_CvSourcing_IncludesClientOnlyWhenDelivered(
+        bool hasSourcingDelivery, bool expectClientIncluded)
+    {
+        var hrId = Guid.NewGuid();
+        var clientId = Guid.NewGuid();
+
+        var recipients = SignalRNotificationPublisher.SelectApplicationScoredRecipients(
+            [hrId],
+            [clientId],
+            ServiceTypeCodes.CvSourcing,
+            ApplicationStates.Shortlisted,
+            [ApplicationStates.Shortlisted],
+            hasSourcingDelivery);
+
+        if (expectClientIncluded)
+            recipients.Should().BeEquivalentTo(new[] { hrId, clientId });
+        else
+            recipients.Should().BeEquivalentTo(new[] { hrId });
+    }
+
+    [Fact]
+    public async Task PushScoredAsync_HeadhuntSubmitted_DoesNotPushToCompanyClient()
+    {
+        await using var db = CreateContext();
+        var fixture = await SeedAttemptAsync(db);
+        var companyId = Guid.NewGuid();
+        var hrId = Guid.NewGuid();
+        var clientId = Guid.NewGuid();
+        var headhuntType = new ServiceType { ServiceTypeId = Guid.NewGuid(), Code = ServiceTypeCodes.HeadhuntCod, Name = "Headhunt", IsActive = true };
+        db.ServiceTypes.Add(headhuntType);
+        db.Jobs.Add(new Job { JobId = fixture.JobId, CompanyId = companyId, ServiceTypeId = headhuntType.ServiceTypeId, ServiceType = headhuntType, Title = "Senior Dev", Status = "ACTIVE", CurrencyCode = "VND" });
+        var hrRole = new Role { RoleId = Guid.NewGuid(), Code = RoleCodes.InternalHr, Name = "HR", IsActive = true };
+        db.Roles.Add(hrRole);
+        db.UserRoles.Add(new UserRole { UserId = hrId, RoleId = hrRole.RoleId, Status = UserRoleAssignmentStates.Active, AssignmentSource = "TEST" });
+        db.CompanyUsers.Add(new CompanyUser { CompanyUserId = Guid.NewGuid(), CompanyId = companyId, UserId = clientId, Status = UserAccountStates.Active, RoleInCompany = "OWNER" });
+        await db.SaveChangesAsync();
+
+        var proxy = new Mock<IClientProxy>();
+        var clients = new Mock<IHubClients>();
+        IReadOnlyList<string>? targeted = null;
+        clients.Setup(c => c.Groups(It.IsAny<IReadOnlyList<string>>()))
+            .Callback<IReadOnlyList<string>>(g => targeted = g).Returns(proxy.Object);
+        var hub = new Mock<IHubContext<NotificationHub>>();
+        hub.SetupGet(h => h.Clients).Returns(clients.Object);
+
+        await AiResultCallbackProcessor.PushScoredAsync(
+            CreateCallback(fixture, "COMPLETED", 82m), db, hub.Object, NullLogger.Instance, CancellationToken.None);
+
+        targeted.Should().BeEquivalentTo(new[] { NotificationHub.UserGroup(hrId) });
+        proxy.Verify(p => p.SendCoreAsync("application.scored", It.IsAny<object?[]>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task PushScoredAsync_WithPublisher_SwallowsErrorsAndCallsPublishApplicationScored()
+    {
+        var fixture = new AttemptFixture(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var payload = CreateCallback(fixture, "COMPLETED", 85m);
+        var publisher = new Mock<INotificationPublisher>();
+        publisher.Setup(p => p.PublishApplicationScoredAsync(fixture.ApplicationId, fixture.JobId, "COMPLETED", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Hub unavailable"));
+
+        var act = () => AiResultCallbackProcessor.PushScoredAsync(payload, publisher.Object, NullLogger.Instance, CancellationToken.None);
+
+        await act.Should().NotThrowAsync();
+        publisher.Verify(p => p.PublishApplicationScoredAsync(fixture.ApplicationId, fixture.JobId, "COMPLETED", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     private static ApplicationDbContext CreateContext()

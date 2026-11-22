@@ -22,6 +22,9 @@ public class NotificationPushInterceptorTests
             Pushed.AddRange(notifications.Select(n => n.NotificationId));
             return Task.CompletedTask;
         }
+
+        public Task PublishApplicationScoredAsync(Guid applicationId, Guid jobId, string status, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 
     /// <summary>InMemory has no transactions: the facade reports whichever transaction the test sets.</summary>
