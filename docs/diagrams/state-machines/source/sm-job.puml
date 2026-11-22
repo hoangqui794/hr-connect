@@ -15,8 +15,8 @@ REJECTED --> PENDING_REVIEW : Client edits & resubmits
 PENDING_REVIEW --> PENDING_PAYMENT : HR approves CV_APPLICATION (STANDARD)
 PENDING_REVIEW --> ACTIVE : HR approves CV_APPLICATION (FREE)
 PENDING_REVIEW --> PENDING_AGREEMENT : HR sends agreement (HEADHUNT / SOURCING)
-PENDING_AGREEMENT --> ACTIVE : Signed PDF uploaded & HR approves (HEADHUNT)
-PENDING_AGREEMENT --> PENDING_PAYMENT : HR approves CV_SOURCING (deposit required)
+PENDING_AGREEMENT --> ACTIVE : Agreement signed via OTP or PDF (HEADHUNT)
+PENDING_AGREEMENT --> PENDING_PAYMENT : Agreement signed for CV_SOURCING (deposit required)
 PENDING_AGREEMENT --> REJECTED : HR rejects (terms not agreed)
 PENDING_PAYMENT --> ACTIVE : VNPay / Admin records fee or deposit
 ACTIVE --> PAUSED : Client pauses

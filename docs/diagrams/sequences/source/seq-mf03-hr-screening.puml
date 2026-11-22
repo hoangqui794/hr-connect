@@ -1,5 +1,5 @@
 @startuml seq-mf03-hr-screening
-title sd MF-03b: Internal HR Screens Application (Shortlist, Backup or Reject)
+title sd MF-03b: Internal HR Screens Application (Shortlist or Reject)
 autonumber
 hide footbox
 actor "Internal HR" as HR
@@ -12,7 +12,7 @@ HR -> FE : Open candidate application & inspect AI Match evidence
 FE -> API : POST /api/v1/jobs/{jid}/applications/{aid}/start-screening
 API -> DB : Update Application SUBMITTED -> SCREENING
 API --> FE : 200 OK (Status: SCREENING)
-HR -> FE : Select decision: SHORTLISTED, BACKUP, or REJECTED (+ reason)
+HR -> FE : Select decision: SHORTLISTED or REJECTED (+ reason)
 FE -> API : PATCH /api/v1/jobs/{jid}/applications/{aid}/status (ConcurrencyToken)
 API -> H : Send(UpdateApplicationScreeningStatusCommand)
 alt Missing rejection reason or stale ConcurrencyToken

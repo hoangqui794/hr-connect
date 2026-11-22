@@ -27,7 +27,7 @@ package "HRConnect.Application" as APP {
   [Common/Interfaces · Models · Exceptions]
 }
 package "HRConnect.Domain" as DOM {
-  [Entities (71)]
+  [Entities (72)]
   [Constants (states, reason and error codes)]
 }
 package "HRConnect.Infrastructure" as INF {
