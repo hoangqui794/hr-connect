@@ -14,7 +14,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN useradd --create-home appuser
+RUN useradd --uid 1000 --create-home appuser
 
 # CPU-only torch keeps the image several GB smaller than the default CUDA build.
 COPY requirements.txt .
@@ -24,6 +24,7 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 USER appuser
 RUN python -c "import os; from sentence_transformers import SentenceTransformer; SentenceTransformer(os.environ['EMBEDDING_MODEL'])"
+ENV HF_HUB_OFFLINE=1
 
 COPY --chown=appuser:appuser app ./app
 

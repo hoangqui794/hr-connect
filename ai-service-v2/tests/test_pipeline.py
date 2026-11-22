@@ -293,3 +293,89 @@ def test_all_gemini_models_limited_raises_after_retrying_the_last():
     with pytest.raises(LlmError, match="All Gemini models are rate limited"):
         assessor.assess(metadata(REQS).job, pdf_document(), "2026-10-14")
     assert assessor._client.models == ["gemini-a"] + ["gemini-b"] * 3
+
+
+def test_gemini_transient_503_switches_to_fallback_model():
+    from app.llm import GeminiCvAssessor
+
+    class FlakyClient:
+        def __init__(self):
+            self.models = []
+            self.interactions = self
+
+        def create(self, model, **request):
+            self.models.append(model)
+            if model == "gemini-a":
+                raise RuntimeError("503 UNAVAILABLE")
+
+            class Reply:
+                output_text = ""
+                outputs = [{
+                    "type": "text",
+                    "text": LlmCvAssessment(
+                        candidate_summary="s", cv_text="", unreadable_parts="", requirements=[],
+                        overall_fit=LlmOverallFit(level=1, reason="r", evidence_quotes=[]),
+                    ).model_dump_json(),
+                }]
+
+            return Reply()
+
+    settings = Settings(_env_file=None, gemini_model="gemini-a", gemini_fallback_models="gemini-b",
+                        llm_retry_wait_seconds=0)
+    client = FlakyClient()
+    assessor = GeminiCvAssessor(settings, client=client)
+    result = assessor.assess(metadata(REQS).job, pdf_document(), "2026-10-14")
+    assert client.models == ["gemini-a", "gemini-b"]
+    assert assessor.last_model == "gemini-b"
+    assert result.candidate_summary == "s"
+
+
+def test_gemini_404_model_unavailable_falls_back_without_retrying_dead_model():
+    from app.llm import GeminiCvAssessor
+
+    class MissingModelClient:
+        def __init__(self):
+            self.models = []
+            self.interactions = self
+
+        def create(self, model, **request):
+            self.models.append(model)
+            if model == "gemini-a":
+                raise RuntimeError("404 NOT_FOUND: model not found")
+
+            class Reply:
+                output_text = LlmCvAssessment(
+                    candidate_summary="ok", cv_text="", unreadable_parts="", requirements=[],
+                    overall_fit=LlmOverallFit(level=2, reason="r", evidence_quotes=[]),
+                ).model_dump_json()
+
+            return Reply()
+
+    settings = Settings(_env_file=None, gemini_model="gemini-a", gemini_fallback_models="gemini-b",
+                        llm_retry_wait_seconds=0)
+    client = MissingModelClient()
+    assessor = GeminiCvAssessor(settings, client=client)
+    result = assessor.assess(metadata(REQS).job, pdf_document(), "2026-10-14")
+    assert client.models == ["gemini-a", "gemini-b"]
+    assert result.candidate_summary == "ok"
+
+
+def test_gemini_auth_error_fails_fast_without_fallback():
+    from app.llm import GeminiCvAssessor, LlmError
+
+    class AuthErrorClient:
+        def __init__(self):
+            self.models = []
+            self.interactions = self
+
+        def create(self, model, **request):
+            self.models.append(model)
+            raise RuntimeError("401 UNAUTHENTICATED: invalid api key")
+
+    settings = Settings(_env_file=None, gemini_model="gemini-a", gemini_fallback_models="gemini-b",
+                        llm_retry_wait_seconds=0)
+    client = AuthErrorClient()
+    assessor = GeminiCvAssessor(settings, client=client)
+    with pytest.raises(LlmError, match="Gemini request failed"):
+        assessor.assess(metadata(REQS).job, pdf_document(), "2026-10-14")
+    assert client.models == ["gemini-a"]
