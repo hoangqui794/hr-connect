@@ -24,6 +24,7 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 USER appuser
 RUN python -c "import os; from sentence_transformers import SentenceTransformer; SentenceTransformer(os.environ['EMBEDDING_MODEL'])"
+ENV HF_HUB_OFFLINE=1
 
 COPY --chown=appuser:appuser app ./app
 

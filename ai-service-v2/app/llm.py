@@ -221,9 +221,13 @@ class GeminiCvAssessor:
             raise LlmError("GEMINI_API_KEY is not set.")
         self._settings = settings
         # Without a timeout one stuck Gemini call blocks the single scoring worker for ever (milliseconds).
+        # Keep SDK internal retries short so 503/429 fails over to GEMINI_FALLBACK_MODELS before job timeout.
         self._client = client or genai.Client(
             api_key=settings.gemini_api_key,
-            http_options=types.HttpOptions(timeout=int(settings.llm_timeout_seconds * 1000)))
+            http_options=types.HttpOptions(
+                timeout=int(settings.llm_timeout_seconds * 1000),
+                retry_options=types.HttpRetryOptions(attempts=1, initial_delay=0.5, max_delay=1.0),
+            ))
         self.last_model = ""
 
     def assess(self, job: Job, document: PreparedDocument, today: str) -> LlmCvAssessment:
