@@ -5,12 +5,12 @@
 import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Button, Pagination, Select, Skeleton } from 'antd';
+import { Alert, Button, Pagination, Select, Skeleton, TreeSelect } from 'antd';
 import { a11yItemRender } from '@/components/common/paginationA11y';
 import { ALL_VIETNAM_PROVINCES } from '@/features/jobs-mf01/PublicJobSplitDiscovery';
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { companyDirectoryApi } from '@/services/api/companyDirectoryApi';
+import { companyDirectoryApi, type DirectoryIndustry } from '@/services/api/companyDirectoryApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
 import { Navbar } from './components/Navbar';
@@ -32,22 +32,54 @@ const PIN_ICON = (
 
 type CompanyFilter = 'all' | 'hiring';
 
+type IndustryTreeNode = { title: string; value: string; children?: IndustryTreeNode[] };
+
+const toIndustryTree = (nodes: DirectoryIndustry[]): IndustryTreeNode[] =>
+  nodes.map((n) => ({
+    title: n.nameVi || n.nameEn,
+    value: n.industryId,
+    children: n.children?.length ? toIndustryTree(n.children) : undefined,
+  }));
+
+const FILTER_CONTROL = 'w-full sm:w-[260px] [&_.ant-select-selector]:!min-h-[44px] [&_.ant-select-selector]:!items-center';
+
 export const CompaniesPage: React.FC = () => {
   const [draft, setDraft] = useState('');
   const [locationDraft, setLocationDraft] = useState('');
   const [search, setSearch] = useState('');
   const [location, setLocation] = useState('');
+  const [industryId, setIndustryId] = useState<string>();
+  const [companySizeId, setCompanySizeId] = useState<string>();
   const [filter, setFilter] = useState<CompanyFilter>('all');
   const [page, setPage] = useState(1);
   const featured = useQuery({ queryKey: ['public-companies', 'featured'], queryFn: () => companyDirectoryApi.featured(), staleTime: 5 * 60_000 });
+  const industries = useQuery({ queryKey: ['industries', 'tree'], queryFn: () => companyDirectoryApi.industryTree(), staleTime: 60 * 60_000 });
+  const sizes = useQuery({ queryKey: ['company-sizes'], queryFn: () => companyDirectoryApi.companySizes(), staleTime: 60 * 60_000 });
   const list = useQuery({
-    queryKey: ['public-companies', 'list', search, location, page],
-    queryFn: () => companyDirectoryApi.search({ search: search || undefined, location: location || undefined, page, pageSize: PAGE_SIZE }),
+    queryKey: ['public-companies', 'list', search, location, industryId, companySizeId, page],
+    queryFn: () =>
+      companyDirectoryApi.search({
+        search: search || undefined,
+        location: location || undefined,
+        industryId,
+        companySizeId,
+        page,
+        pageSize: PAGE_SIZE,
+      }),
     placeholderData: (prev) => prev,
   });
   // "Đang tuyển" narrows the loaded page; the API has no open-jobs filter yet.
   const items = (list.data?.items ?? []).filter((c) => filter === 'all' || c.activeJobCount > 0);
-  const filtered = Boolean(search || location);
+  const filtered = Boolean(search || location || industryId || companySizeId);
+  const clearFilters = () => {
+    setDraft('');
+    setLocationDraft('');
+    setSearch('');
+    setLocation('');
+    setIndustryId(undefined);
+    setCompanySizeId(undefined);
+    setPage(1);
+  };
 
   return (
     <Frame>
@@ -65,8 +97,8 @@ export const CompaniesPage: React.FC = () => {
           >
             <label className="flex min-w-0 flex-[3_1_320px] items-center gap-2.5 px-3 text-[#64748B]">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
-              <span className="sr-only">Tên công ty hoặc lĩnh vực</span>
-              <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Tên công ty, lĩnh vực" className="h-11 w-full border-0 bg-transparent text-[14px] text-gray-800 outline-none placeholder:text-[#64748B]" />
+              <span className="sr-only">Tên công ty</span>
+              <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Tên công ty" className="h-11 w-full border-0 bg-transparent text-[14px] text-gray-800 outline-none placeholder:text-[#64748B]" />
             </label>
             <div className="flex min-w-0 flex-[2_1_200px] items-center gap-2 px-3 text-[#64748B] sm:border-0 sm:border-l sm:border-solid sm:border-[#E2E8F0]">
               {PIN_ICON}
@@ -86,6 +118,42 @@ export const CompaniesPage: React.FC = () => {
             </div>
             <button type="submit" className="h-11 cursor-pointer border-0 bg-[#0369A1] px-[24px] text-[14px] font-bold text-white transition-all hover:from-[#0369A1] hover:to-[#1D4ED8] hover:shadow-md hover:shadow-sky-500/25 active:scale-[0.98] max-sm:w-full">Tìm công ty</button>
           </form>
+          <div role="group" aria-label="Bộ lọc công ty" className="mt-3 flex flex-wrap items-center gap-2">
+            <TreeSelect
+              aria-label="Ngành nghề"
+              allowClear
+              showSearch
+              treeNodeFilterProp="title"
+              placeholder="Tất cả ngành nghề"
+              value={industryId}
+              onChange={(v?: string) => {
+                setIndustryId(v || undefined);
+                setPage(1);
+              }}
+              treeData={toIndustryTree(industries.data ?? [])}
+              loading={industries.isLoading}
+              popupMatchSelectWidth={false}
+              className={FILTER_CONTROL}
+            />
+            <Select
+              aria-label="Quy mô công ty"
+              allowClear
+              placeholder="Tất cả quy mô"
+              value={companySizeId}
+              onChange={(v?: string) => {
+                setCompanySizeId(v || undefined);
+                setPage(1);
+              }}
+              options={(sizes.data ?? []).map((s) => ({ value: s.companySizeId, label: s.label }))}
+              loading={sizes.isLoading}
+              className={FILTER_CONTROL}
+            />
+            {filtered && (
+              <Button type="link" onClick={clearFilters} className="min-h-[44px] px-2 font-semibold">
+                Xóa bộ lọc
+              </Button>
+            )}
+          </div>
         </div>
       </section>
       <main className="hrc-fade-up mx-auto flex max-w-[1248px] flex-col gap-8 px-4 pb-14 pt-7 sm:px-6">
@@ -138,7 +206,7 @@ export const CompaniesPage: React.FC = () => {
             </p>
           ) : (
             <div
-              key={`${search}-${location}-${page}-${filter}`}
+              key={`${search}-${location}-${industryId ?? ''}-${companySizeId ?? ''}-${page}-${filter}`}
               aria-busy={list.isFetching && !list.isLoading}
               className="hrc-dim hrc-stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
             >

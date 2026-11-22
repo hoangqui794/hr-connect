@@ -33,14 +33,40 @@ export interface DirectoryIndustry {
   nameEn: string;
   nameVi?: string | null;
   level: number;
+  parentId?: string | null;
   children?: DirectoryIndustry[] | null;
+}
+
+export interface DirectoryCompanySize {
+  companySizeId: string;
+  code: string;
+  label: string;
+  minEmployees: number;
+  maxEmployees?: number | null;
+}
+
+export interface DirectorySearchParams {
+  search?: string;
+  /** Level 1/2 industries also match their child industries (server side). */
+  industryId?: string;
+  companySizeId?: string;
+  location?: string;
+  page: number;
+  pageSize: number;
 }
 
 type Envelope<T> = { success?: boolean; data: T };
 
 export const companyDirectoryApi = {
-  async search(params: { search?: string; industryId?: string; location?: string; page: number; pageSize: number }): Promise<DirectoryCompanyPage> {
+  async search(params: DirectorySearchParams): Promise<DirectoryCompanyPage> {
     return (await apiClient.get<Envelope<DirectoryCompanyPage>>('/public/companies', { params })).data.data;
+  },
+  /** Active industries as a tree (level 1 → 2 → 3) for the company directory filter. */
+  async industryTree(): Promise<DirectoryIndustry[]> {
+    return (await apiClient.get<Envelope<DirectoryIndustry[]>>('/industries', { params: { tree: true } })).data.data ?? [];
+  },
+  async companySizes(): Promise<DirectoryCompanySize[]> {
+    return (await apiClient.get<Envelope<DirectoryCompanySize[]>>('/company-sizes')).data.data ?? [];
   },
   async featured(): Promise<DirectoryCompany[]> {
     return (await apiClient.get<Envelope<DirectoryCompany[]>>('/public/companies/featured')).data.data ?? [];
