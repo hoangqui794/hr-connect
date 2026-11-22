@@ -7,7 +7,9 @@ using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Application.Features.Recruitment.Commands.DecideBackupApplication;
+using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -22,6 +24,7 @@ public class DecideBackupApplicationCommandHandlerTests
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly Mock<ILogger<DecideBackupApplicationCommandHandler>> _loggerMock = new();
     private readonly Mock<IAuditLogService> _auditLogServiceMock = new();
+    private readonly Mock<IServiceTypeRepository> _serviceTypeRepositoryMock = new();
 
     private DecideBackupApplicationCommandHandler CreateHandler() =>
         new(
@@ -29,7 +32,8 @@ public class DecideBackupApplicationCommandHandlerTests
             _companyUserRepositoryMock.Object,
             _unitOfWorkMock.Object,
             _loggerMock.Object,
-            _auditLogServiceMock.Object);
+            _auditLogServiceMock.Object,
+            _serviceTypeRepositoryMock.Object);
 
     [Theory]
     [InlineData("")]
@@ -420,5 +424,145 @@ public class DecideBackupApplicationCommandHandlerTests
 
         _applicationRepositoryMock.Verify(r => r.Update(application), Times.Once);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenCvSourcingBackupNotDeliveredToClient_ShouldThrowNotFoundException()
+    {
+        var appId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+
+        var application = new Domain.Entities.Application
+        {
+            ApplicationId = appId,
+            Status = ApplicationStates.Backup,
+            Job = new Job
+            {
+                JobId = Guid.NewGuid(),
+                CompanyId = companyId,
+                ServiceTypeId = serviceTypeId,
+                ServiceType = new ServiceType { ServiceTypeId = serviceTypeId, Code = ServiceTypeCodes.CvSourcing, Name = "CV Sourcing" }
+            },
+            SourcingDeliveries = new List<SourcingDelivery>(),
+            ApplicationStatusHistories = new List<ApplicationStatusHistory>()
+        };
+
+        _applicationRepositoryMock
+            .Setup(r => r.GetByIdAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(application);
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = UserAccountStates.Active });
+
+        var command = new DecideBackupApplicationCommand(
+            ApplicationId: appId,
+            Decision: "SELECT",
+            Reason: null,
+            Note: null,
+            ConcurrencyToken: application.ConcurrencyToken,
+            CurrentUserId: userId,
+            IsClientCompanyUser: true);
+
+        Func<Task> act = async () => await CreateHandler().Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<NotFoundException>()
+            .WithMessage("Không tìm thấy hồ sơ ứng tuyển.");
+        _applicationRepositoryMock.Verify(r => r.Update(It.IsAny<Domain.Entities.Application>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenHeadhuntApplicationNotVisibleToClient_ShouldThrowNotFoundException()
+    {
+        var appId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+
+        var application = new Domain.Entities.Application
+        {
+            ApplicationId = appId,
+            Status = ApplicationStates.Submitted,
+            Job = new Job
+            {
+                JobId = Guid.NewGuid(),
+                CompanyId = companyId,
+                ServiceTypeId = serviceTypeId
+            },
+            ApplicationStatusHistories = new List<ApplicationStatusHistory>()
+        };
+
+        _applicationRepositoryMock
+            .Setup(r => r.GetByIdAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(application);
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = UserAccountStates.Active });
+        _serviceTypeRepositoryMock
+            .Setup(r => r.GetByIdAsync(serviceTypeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ServiceType { ServiceTypeId = serviceTypeId, Code = ServiceTypeCodes.HeadhuntCod, Name = "Headhunt" });
+
+        var command = new DecideBackupApplicationCommand(
+            ApplicationId: appId,
+            Decision: "SELECT",
+            Reason: null,
+            Note: null,
+            ConcurrencyToken: application.ConcurrencyToken,
+            CurrentUserId: userId,
+            IsClientCompanyUser: true);
+
+        Func<Task> act = async () => await CreateHandler().Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<NotFoundException>()
+            .WithMessage("Không tìm thấy hồ sơ ứng tuyển.");
+    }
+
+    [Fact]
+    public async Task Handle_WhenCvSourcingBackupHasDelivery_ShouldAllowDecision()
+    {
+        var appId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var serviceTypeId = Guid.NewGuid();
+
+        var application = new Domain.Entities.Application
+        {
+            ApplicationId = appId,
+            Status = ApplicationStates.Backup,
+            Job = new Job
+            {
+                JobId = Guid.NewGuid(),
+                CompanyId = companyId,
+                ServiceTypeId = serviceTypeId,
+                ServiceType = new ServiceType { ServiceTypeId = serviceTypeId, Code = ServiceTypeCodes.CvSourcing, Name = "CV Sourcing" }
+            },
+            SourcingDeliveries = new List<SourcingDelivery>
+            {
+                new() { DeliveryId = Guid.NewGuid(), ApplicationId = appId, Status = SourcingDeliveryStates.Accepted }
+            },
+            ApplicationStatusHistories = new List<ApplicationStatusHistory>()
+        };
+
+        _applicationRepositoryMock
+            .Setup(r => r.GetByIdAsync(appId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(application);
+        _companyUserRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = UserAccountStates.Active });
+
+        var command = new DecideBackupApplicationCommand(
+            ApplicationId: appId,
+            Decision: "SELECT",
+            Reason: "Chọn CV dự phòng đã giao.",
+            Note: null,
+            ConcurrencyToken: application.ConcurrencyToken,
+            CurrentUserId: userId,
+            IsClientCompanyUser: true);
+
+        var result = await CreateHandler().Handle(command, CancellationToken.None);
+
+        result.Success.Should().BeTrue();
+        result.Data!.CurrentStatus.Should().Be(ApplicationStates.OfferPending);
     }
 }

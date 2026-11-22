@@ -21,19 +21,22 @@ public class DecideBackupApplicationCommandHandler : IRequestHandler<DecideBacku
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<DecideBackupApplicationCommandHandler> _logger;
     private readonly IAuditLogService _auditLogService;
+    private readonly IServiceTypeRepository? _serviceTypeRepository;
 
     public DecideBackupApplicationCommandHandler(
         IApplicationRepository applicationRepository,
         ICompanyUserRepository companyUserRepository,
         IUnitOfWork unitOfWork,
         ILogger<DecideBackupApplicationCommandHandler> logger,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        IServiceTypeRepository? serviceTypeRepository = null)
     {
         _applicationRepository = applicationRepository;
         _companyUserRepository = companyUserRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
         _auditLogService = auditLogService;
+        _serviceTypeRepository = serviceTypeRepository;
     }
 
     public async Task<DecideBackupApplicationResponse> Handle(DecideBackupApplicationCommand request, CancellationToken cancellationToken)
@@ -82,21 +85,10 @@ public class DecideBackupApplicationCommandHandler : IRequestHandler<DecideBacku
             throw new NotFoundException("Không tìm thấy hồ sơ ứng tuyển.");
         }
 
-        var isBackup = string.Equals(application.Status, ApplicationStates.Backup, StringComparison.OrdinalIgnoreCase);
-
-        if (!isBackup)
-        {
-            _logger.LogWarning("Hồ sơ {ApplicationId} đang ở trạng thái {Status}, không phải là ứng viên dự phòng.",
-                application.ApplicationId, application.Status);
-            throw new BadRequestException($"Hồ sơ ứng tuyển đang ở trạng thái {application.Status}, không phải là hồ sơ dự phòng (BACKUP).");
-        }
-
-        Mf04ConcurrencyGuard.EnsureMatches(request.ConcurrencyToken, application.ConcurrencyToken, "hồ sơ ứng tuyển");
-
         if (request.IsClientCompanyUser)
         {
             var companyUser = await _companyUserRepository.GetByUserIdAsync(request.CurrentUserId, cancellationToken);
-            if (!HRConnect.Application.Features.Recruitment.Common.CompanyMembershipPolicy.IsActive(companyUser))
+            if (!CompanyMembershipPolicy.IsActive(companyUser))
             {
                 _logger.LogWarning("Tài khoản {UserId} không thuộc doanh nghiệp nào.", request.CurrentUserId);
                 throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
@@ -108,8 +100,39 @@ public class DecideBackupApplicationCommandHandler : IRequestHandler<DecideBacku
                     request.CurrentUserId, companyUser.CompanyId, application.Job?.CompanyId);
                 throw new ForbiddenException("Bạn không có quyền quyết định hồ sơ dự phòng cho doanh nghiệp khác.");
             }
+
+            var serviceTypeCode = application.Job?.ServiceType?.Code;
+            if (serviceTypeCode == null && application.Job != null && _serviceTypeRepository != null)
+            {
+                serviceTypeCode = (await _serviceTypeRepository.GetByIdAsync(application.Job.ServiceTypeId, cancellationToken))?.Code;
+            }
+
+            var isVisible = ClientVisibilityPolicy.IsVisibleToClient(
+                serviceTypeCode,
+                application.Status,
+                application.ApplicationStatusHistories.Select(h => h.NewStatus),
+                application.SourcingDeliveries?.Any() ?? false);
+            if (!isVisible)
+            {
+                _logger.LogWarning(
+                    "Hồ sơ {ApplicationId} chưa được hiển thị cho Client (ServiceType={ServiceType}, Status={Status}).",
+                    application.ApplicationId, serviceTypeCode, application.Status);
+                throw new NotFoundException("Không tìm thấy hồ sơ ứng tuyển.");
+            }
         }
-        else
+
+        var isBackup = string.Equals(application.Status, ApplicationStates.Backup, StringComparison.OrdinalIgnoreCase);
+
+        if (!isBackup)
+        {
+            _logger.LogWarning("Hồ sơ {ApplicationId} đang ở trạng thái {Status}, không phải là ứng viên dự phòng.",
+                application.ApplicationId, application.Status);
+            throw new BadRequestException($"Hồ sơ ứng tuyển đang ở trạng thái {application.Status}, không phải là hồ sơ dự phòng (BACKUP).");
+        }
+
+        Mf04ConcurrencyGuard.EnsureMatches(request.ConcurrencyToken, application.ConcurrencyToken, "hồ sơ ứng tuyển");
+
+        if (!request.IsClientCompanyUser)
         {
             _logger.LogWarning("User {UserId} không có quyền quyết định ứng viên dự phòng.", request.CurrentUserId);
             throw new ForbiddenException("Bạn không có quyền quyết định ứng viên dự phòng.");
