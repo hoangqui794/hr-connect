@@ -11,7 +11,7 @@ flowchart LR
 
   subgraph CLIENT["2. PRESENTATION TIER (Frontend SPA)"]
     direction TB
-    FE_SPA["💻 HRConnect Web App<br/>(React 19 + TypeScript + Vite)<br/>Ant Design 5 · Tailwind · Zustand"]
+    FE_SPA["💻 HRConnect Web App<br/>(React 18 + TypeScript + Vite)<br/>Ant Design 5 · Tailwind · Zustand"]
     FE_COMM["🔌 Client Communication<br/>Axios REST + SignalR WebSocket"]
     FE_SPA --> FE_COMM
   end
@@ -31,8 +31,8 @@ flowchart LR
     DB[("🗄️ PostgreSQL 16 Database")]
     R2["☁️ Cloudflare R2 Storage"]
     VNPAY["💳 VNPay Payment Gateway"]
-    AUTH["✉️ Resend Email & Google OAuth 2.0"]
-    LLM["🧠 External LLM Providers"]
+    AUTH["✉️ SMTP / Resend Email Service"]
+    LLM["🧠 Google Gemini API"]
   end
 
   A_EXT & A_PART & A_INT -->|"HTTPS"| FE_SPA
@@ -41,5 +41,5 @@ flowchart LR
   BE_API -->|"EF Core / Npgsql"| DB
   BE_API -->|"S3 API"| R2
   BE_API -->|"Redirect & IPN"| VNPAY
-  BE_API -->|"HTTPS / OAuth"| AUTH
+  BE_API -->|"SMTP / HTTPS"| AUTH
   AI_SVC -->|"LLM Prompt & OCR"| LLM

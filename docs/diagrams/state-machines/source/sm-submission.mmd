@@ -3,18 +3,17 @@ title: State Machine — Submission Intake & Attribution (MF-02)
 ---
 stateDiagram-v2
   direction LR
-  [*] --> SUBMITTED : Candidate self-applies
+  [*] --> ACCEPTED : Candidate self-applies (Application created)
   [*] --> PENDING_CONSENT : Affiliate refers candidate
   [*] --> BLOCKED_DUPLICATE : Duplicate candidate in job
-  SUBMITTED --> ACCEPTED : Application created
   PENDING_CONSENT --> ACCEPTED : Candidate confirms consent
-  PENDING_CONSENT --> PENDING_IDENTITY_REVIEW : Identity conflict detected
-  PENDING_IDENTITY_REVIEW --> ACCEPTED : Internal HR resolves identity
-  PENDING_CONSENT --> CONSENT_REJECTED : Candidate declines consent
-  PENDING_CONSENT --> CONSENT_EXPIRED : Consent window expired
-  PENDING_CONSENT --> BLOCKED_CLIENT_OWNED : Candidate owned by Client
+  PENDING_CONSENT --> PENDING_IDENTITY_REVIEW : Same-job duplicate case
+  PENDING_IDENTITY_REVIEW --> ACCEPTED : Duplicate case resolved (accepted)
+  PENDING_CONSENT --> CONSENT_REJECTED : Declines / reports unauthorized
+  PENDING_CONSENT --> CONSENT_EXPIRED : Consent window expired (48h)
+  PENDING_CONSENT --> CANCELLED : Cancelled before consent
   ACCEPTED --> [*]
   CONSENT_REJECTED --> [*]
   CONSENT_EXPIRED --> [*]
-  BLOCKED_CLIENT_OWNED --> [*]
+  CANCELLED --> [*]
   BLOCKED_DUPLICATE --> [*]

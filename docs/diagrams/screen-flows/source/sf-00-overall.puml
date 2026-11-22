@@ -131,7 +131,7 @@ package "Platform Admin console (/admin)" #EEF5EC {
   rectangle "Commission rules\n<size:10>commission-rules</size>" as admin_cr
   rectangle "Business settings\n<size:10>settings</size>" as admin_set
   rectangle "Finance: posting fees, service fees, deposits, commissions, payouts\n<size:10>finance · payouts</size>" as admin_fin
-  rectangle "Disputes (empty state, FE pending)\n<size:10>disputes</size>" as admin_disp
+  rectangle "Disputes\n<size:10>disputes</size>" as admin_disp
   rectangle "Reports\n<size:10>reports</size>" as admin_rep
   rectangle "Audit trail\n<size:10>audit-trail</size>" as admin_audit
   rectangle "Contact requests\n<size:10>contact-requests</size>" as admin_contact

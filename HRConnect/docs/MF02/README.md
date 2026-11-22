@@ -1,6 +1,8 @@
 # Tài liệu Đặc tả Toàn diện — MF-02 (Ứng tuyển, CV, Affiliate Giới thiệu, Consent, Attribution & Chống trùng)
 
 > **Tài liệu liên quan:**
+> - [`business-logic-master.md`](business-logic-master.md): **Cẩm nang tổng hợp 100% Logic & Nghiệp vụ MF-02 + Bộ câu hỏi vấn đáp Review 3** (đọc file này để nắm trọn nghiệp vụ mà không cần mở nhiều file lẻ).
+> - [`code-structure-and-call-flow.md`](code-structure-and-call-flow.md): Bản đồ chi tiết các folder, file và luồng gọi hàm (Call Trace) qua 4 tầng Clean Architecture theo từng nhóm chức năng MF-02.
 > - [`review.md`](review.md): Nhật ký kiểm định Production Readiness (đã hoàn tất **20/20** hạng mục Critical, Major, Minor).
 > - [`../main-flows.md`](../main-flows.md): Đặc tả luồng nghiệp vụ mục MF-02.
 > - Hợp đồng tích hợp Frontend: [`../../../HRConnect-FE/docs/integration/MF02/`](../../../HRConnect-FE/docs/integration/MF02/).
@@ -87,3 +89,5 @@
 - **SignalR Query Invalidation (`notificationRefreshKeys.ts`):** Đã map đầy đủ entity `SUBMISSION`, `SUBMISSION_CONSENT`, `ATTRIBUTION`, `SOURCING_DELIVERY`, `CANDIDATE_IDENTITY_CLAIM`, `CANDIDATE_DUPLICATE_CASE` tới các query key tương ứng (bao gồm `candidate-submission-consent`, `candidate-affiliate-cvs`, `admin-candidate-identity-claim`, `candidate-duplicate-cases`, `aff-attributions`).
 - **Notification Routing (`notificationRoutes.ts`):** Đã hỗ trợ điều hướng đầy đủ cho `CANDIDATE_IDENTITY_CLAIM` (Admin) và `SOURCING_DELIVERY` (Client).
 - **UI/UX & Animation:** Toàn bộ các trang MF-02 (`PublicSubmissionConsentPage`, `CandidateSubmissionConsentPage`, `CandidatePages`, `AffiliatePages`, `CvTopbar`) và Shell các vai trò (`CandidateShell`, `AffiliateShell`, `ClientShell`, `HrLayout`, `AdminLayout`) đều sử dụng chuẩn **`unslop`** và **`motion`** (`MotionPageOutlet` + `layoutId` spring pill).
+
+
