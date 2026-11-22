@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Models;
@@ -33,36 +34,7 @@ public static class AiIntegrationEndpoints
                 .FirstOrDefaultAsync(item => item.JobId == jobId, ct);
             if (job == null) return Results.NotFound();
 
-            var requirementNames = new HashSet<string>(
-                job.JobRequirements.Select(item => item.Content),
-                StringComparer.OrdinalIgnoreCase);
-            var requirements = job.JobRequirements.Select(item => new
-            {
-                type = NormalizeRequirementType(item.RequirementType),
-                category = NormalizeCategory(item.Category),
-                item.Content
-            }).Cast<object>().ToList();
-
-            foreach (var item in job.JobSkills)
-            {
-                if (!requirementNames.Add(item.Skill.SkillName)) continue;
-
-                requirements.Add(new
-                {
-                    type = item.IsMandatory ? "MUST_HAVE" : "SHOULD_HAVE",
-                    category = "SKILL",
-                    content = item.Skill.SkillName
-                });
-            }
-
-            return Results.Ok(new
-            {
-                jobId = job.JobId,
-                job.Title,
-                description = string.IsNullOrWhiteSpace(job.Description) ? job.Title : job.Description,
-                requirements,
-                updatedAt = job.UpdatedAt
-            });
+            return Results.Ok(BuildJobJdPayload(job));
         });
 
         group.MapGet("/ai-results/{applicationId:guid}", async (
@@ -127,6 +99,60 @@ public static class AiIntegrationEndpoints
             .WithMetadata(new InternalServiceAuthAttribute())
             .AddEndpointFilter<InternalServiceAuthFilter>();
 
+    public static InternalJdPayload BuildJobJdPayload(Job job)
+    {
+        decimal? minExperienceYears = job.MinExperienceYears is > 0 ? job.MinExperienceYears : null;
+        var requirementNames = new HashSet<string>(
+            job.JobRequirements.Select(item => item.Content),
+            StringComparer.OrdinalIgnoreCase);
+
+        var requirements = new List<InternalJdRequirementPayload>();
+        var hasExperienceRequirement = false;
+        foreach (var item in job.JobRequirements)
+        {
+            var category = NormalizeCategory(item.Category);
+            var isExperience = string.Equals(category, "EXPERIENCE", StringComparison.Ordinal);
+            if (isExperience)
+            {
+                hasExperienceRequirement = true;
+            }
+
+            requirements.Add(new InternalJdRequirementPayload(
+                NormalizeRequirementType(item.RequirementType),
+                category,
+                item.Content,
+                isExperience ? minExperienceYears : null));
+        }
+
+        if (minExperienceYears.HasValue && !hasExperienceRequirement)
+        {
+            var formattedYears = minExperienceYears.Value.ToString("0.##", CultureInfo.InvariantCulture);
+            requirements.Add(new InternalJdRequirementPayload(
+                NormalizeRequirementType("MUST_HAVE"),
+                "EXPERIENCE",
+                $"Tối thiểu {formattedYears} năm kinh nghiệm",
+                minExperienceYears));
+        }
+
+        foreach (var item in job.JobSkills)
+        {
+            if (!requirementNames.Add(item.Skill.SkillName)) continue;
+
+            requirements.Add(new InternalJdRequirementPayload(
+                item.IsMandatory ? "MUST_HAVE" : "SHOULD_HAVE",
+                "SKILL",
+                item.Skill.SkillName,
+                null));
+        }
+
+        return new InternalJdPayload(
+            job.JobId,
+            job.Title,
+            string.IsNullOrWhiteSpace(job.Description) ? job.Title : job.Description,
+            requirements,
+            job.UpdatedAt);
+    }
+
     private static string NormalizeRequirementType(string value) =>
         value.Equals("MUST_HAVE", StringComparison.OrdinalIgnoreCase) ? "MUST_HAVE" : "SHOULD_HAVE";
 
@@ -137,6 +163,19 @@ public static class AiIntegrationEndpoints
     };
 
 }
+
+public sealed record InternalJdRequirementPayload(
+    string Type,
+    string Category,
+    string Content,
+    decimal? MinYears);
+
+public sealed record InternalJdPayload(
+    Guid JobId,
+    string Title,
+    string Description,
+    IReadOnlyList<InternalJdRequirementPayload> Requirements,
+    DateTime UpdatedAt);
 
 public sealed record AiResultCallback(
     string RequestId,
