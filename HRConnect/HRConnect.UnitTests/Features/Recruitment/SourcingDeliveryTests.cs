@@ -555,4 +555,44 @@ public class SourcingDeliveryTests
         replacedItem.Status.Should().Be(SourcingDeliveryStates.Replaced);
         replacedItem.ReplacementCandidateName.Should().Be("Ứng Viên Dự Phòng Mới");
     }
+
+    [Fact]
+    public async Task AutoAccept_WithNotifier_ShouldNotifyClientCompany()
+    {
+        var job = SeedJob();
+        var application = SeedApplication(job);
+        var delivered = await DeliverOneAsync(job, application);
+
+        var notifier = new Mock<IAppNotifier>();
+        var service = new SourcingAutoAcceptService(Repository, UnitOfWork, _audit.Object, notifier: notifier.Object);
+
+        var accepted = await service.AutoAcceptAsync(delivered.DeliveryId, delivered.ReviewDueAt.AddMinutes(1), CancellationToken.None);
+
+        accepted.Should().BeTrue();
+        var reloaded = await _context.SourcingDeliveries.SingleAsync(d => d.DeliveryId == delivered.DeliveryId);
+        reloaded.Status.Should().Be(SourcingDeliveryStates.AutoAccepted);
+        notifier.Verify(n => n.NotifyCompanyAsync(
+            job.CompanyId,
+            It.Is<AppNotice>(notice =>
+                notice.NotificationType == "SOURCING"
+                && notice.RelatedEntityType == "SOURCING_DELIVERY"
+                && notice.RelatedEntityId == job.JobId
+                && notice.Message.Contains(job.Title, StringComparison.Ordinal)
+                && notice.Message.Contains("tự động chấp nhận", StringComparison.OrdinalIgnoreCase)),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task AutoAccept_WhenNotifierIsNull_ShouldStillSucceed()
+    {
+        var job = SeedJob();
+        var application = SeedApplication(job);
+        var delivered = await DeliverOneAsync(job, application);
+
+        var accepted = await AutoAccept().AutoAcceptAsync(delivered.DeliveryId, delivered.ReviewDueAt.AddMinutes(1), CancellationToken.None);
+
+        accepted.Should().BeTrue();
+        var reloaded = await _context.SourcingDeliveries.SingleAsync(d => d.DeliveryId == delivered.DeliveryId);
+        reloaded.Status.Should().Be(SourcingDeliveryStates.AutoAccepted);
+    }
 }

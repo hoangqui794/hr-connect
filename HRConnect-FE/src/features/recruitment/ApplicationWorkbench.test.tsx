@@ -1,8 +1,8 @@
 import { App as AntApp } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import dayjs from 'dayjs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApplicationWorkbench } from './ApplicationWorkbench';
 import { clientActionsApi, interviewHistoryApi, screeningApi } from '@/services/api/hrApi';
 import { sourcingApi } from '@/services/api/sourcingApi';
@@ -73,6 +73,7 @@ const baseApplication = {
   cv: null,
   aiMatch: null,
   interviews: [],
+  offers: [],
   placement: null,
   serviceTypeCode: 'CV_APPLICATION',
   contactOwner: 'ClientCompany',
@@ -105,6 +106,95 @@ describe('ApplicationWorkbench MF-04', () => {
     vi.mocked(interviewHistoryApi.get).mockResolvedValue([]);
     vi.mocked(clientActionsApi.updateOffer).mockResolvedValue({ message: 'Đã lưu offer.' });
     vi.mocked(clientActionsApi.recordResult).mockResolvedValue({ message: 'Đã ghi kết quả.' });
+    vi.mocked(sourcingApi.getDeliveries).mockResolvedValue({ items: [], totalCount: 0 } as any);
+  });
+
+  afterEach(() => {
+    cleanup();
+    document.body.innerHTML = '';
+  });
+
+  it('[FE-C01] decouples SHORTLISTED status update from deliverCvs when CV sourcing delivery fails', async () => {
+    vi.mocked(screeningApi.updateStatus).mockResolvedValue({ success: true, data: null, message: 'Đã duyệt hồ sơ.' } as any);
+    vi.mocked(sourcingApi.deliverCvs).mockRejectedValue({
+      response: { data: { code: 'CONSENT_NOT_CONFIRMED', message: 'Ứng viên chưa xác nhận consent' } },
+    });
+
+    renderWorkbench(
+      {
+        ...baseApplication,
+        serviceTypeCode: 'CV_SOURCING',
+        status: 'SCREENING',
+        currentStage: 'SCREENING',
+        allowedActions: ['SHORTLIST'],
+      },
+      'hr'
+    );
+
+    await screen.findByText('Đang sàng lọc');
+
+    const shortlistBtn = await screen.findByRole('button', { name: /Chọn gửi Client/i }, { timeout: 10000 });
+    fireEvent.click(shortlistBtn);
+
+    const confirmBtn = await screen.findByRole('button', { name: /Chọn & giao Client/i }, { timeout: 10000 });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(screeningApi.updateStatus).toHaveBeenCalledWith('job-1', 'app-1', {
+        targetStatus: 'SHORTLISTED',
+        concurrencyToken: 'application-token',
+      });
+      expect(sourcingApi.deliverCvs).toHaveBeenCalledWith('job-1', ['app-1']);
+    });
+  });
+
+  it('[FE-CLEANUP] shows only a single error message when shortlist fails in confirmShortlist', async () => {
+    const errorSpy = vi.fn();
+    let onOkPromise: Promise<unknown> | undefined;
+    const useAppSpy = vi.spyOn(AntApp, 'useApp').mockReturnValue({
+      message: {
+        success: vi.fn(),
+        error: errorSpy,
+        warning: vi.fn(),
+        info: vi.fn(),
+        loading: vi.fn(),
+      } as any,
+      modal: {
+        confirm: vi.fn((config: any) => {
+          onOkPromise = config.onOk?.();
+        }),
+      } as any,
+      notification: {} as any,
+    });
+
+    try {
+      vi.mocked(screeningApi.updateStatus).mockRejectedValue(
+        new AxiosError('Conflict', undefined, undefined, undefined, {
+          status: 409,
+          data: { message: 'Hồ sơ đã bị thay đổi bởi người khác.' },
+        } as any)
+      );
+
+      renderWorkbench(
+        {
+          ...baseApplication,
+          serviceTypeCode: 'CV_SOURCING',
+          status: 'SCREENING',
+          currentStage: 'SCREENING',
+          allowedActions: ['SHORTLIST'],
+        },
+        'hr'
+      );
+
+      const shortlistBtn = await screen.findByRole('button', { name: /Chọn gửi Client/i }, { timeout: 10000 });
+      fireEvent.click(shortlistBtn);
+      await onOkPromise;
+
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy).toHaveBeenCalledWith('Hồ sơ đã bị thay đổi bởi người khác.');
+    } finally {
+      useAppSpy.mockRestore();
+    }
   });
 
   it('loads the existing offer document link and sends its edited value when Client updates a draft', async () => {
@@ -198,6 +288,7 @@ describe('ApplicationWorkbench MF-04', () => {
       ],
     });
 
+    await screen.findByText('Nguyễn Văn A');
     fireEvent.click(await screen.findByRole('button', { name: 'Xác nhận đã đi làm' }));
 
     expect(screen.getByLabelText('Ngày thực tế đi làm')).toHaveValue(plannedStart.format('DD/MM/YYYY'));
@@ -223,6 +314,7 @@ describe('ApplicationWorkbench MF-04', () => {
       ],
     });
 
+    await screen.findByText('Nguyễn Văn A');
     fireEvent.click(await screen.findByRole('button', { name: 'Xác nhận đã đi làm' }));
 
     expect(screen.getByText('Ngày thực tế khác ngày dự kiến — cần ghi rõ lý do.')).toBeInTheDocument();
@@ -261,6 +353,7 @@ describe('ApplicationWorkbench MF-04', () => {
       ]
     );
 
+    await screen.findByText('Nguyễn Văn A');
     fireEvent.click(await screen.findByRole('button', { name: 'Dời ngày nhận việc' }));
 
     expect(await screen.findByText('Đã dời 2/3 lần')).toBeInTheDocument();
@@ -369,6 +462,7 @@ describe('ApplicationWorkbench MF-04', () => {
       ],
     });
 
+    await screen.findByText('Nguyễn Văn A');
     const sendBtn = await screen.findByRole('button', { name: 'Gửi offer' });
     fireEvent.click(sendBtn);
 
@@ -435,6 +529,7 @@ describe('ApplicationWorkbench MF-03 CV Sourcing shortlist', () => {
       'hr'
     );
 
+    await screen.findByText('Nguyễn Văn A');
     const shortlistButton = await screen.findByRole('button', { name: /Chọn gửi Client/ });
     await waitFor(() => expect(sourcingApi.getDeliveries).toHaveBeenCalledWith('job-1'));
     await act(async () => {});
@@ -457,5 +552,220 @@ describe('ApplicationWorkbench MF-03 CV Sourcing shortlist', () => {
     expect(screen.queryByText('Không thực hiện được thao tác.')).not.toBeInTheDocument();
     expect(vi.mocked(screeningApi.get).mock.calls.length).toBeGreaterThan(fetchesBefore);
     await waitFor(() => expect(vi.mocked(sourcingApi.getDeliveries).mock.calls.length).toBeGreaterThanOrEqual(2));
+  }, 60000);
+});
+
+describe('ApplicationWorkbench withdrawn application (Client)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(interviewHistoryApi.get).mockResolvedValue([]);
+  });
+
+  it('opens a withdrawn application from a notification with its status and no actions', async () => {
+    renderWorkbench(
+      {
+        ...baseApplication,
+        status: 'WITHDRAWN',
+        currentStage: 'CLOSED',
+        statusReason: 'Đã nhận công việc khác.',
+        allowedActions: [],
+        offers: [],
+        interviews: [],
+      },
+      'client'
+    );
+
+    expect(await screen.findByText('Nguyễn Văn A', {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.getAllByText('Đã rút hồ sơ').length).toBeGreaterThan(0);
+    for (const action of [/Chọn ứng viên/, /Loại hồ sơ/, /Lên lịch phỏng vấn/, /Gửi offer/, /dự phòng/]) {
+      expect(screen.queryByRole('button', { name: action })).not.toBeInTheDocument();
+    }
+    expect(screeningApi.startScreening).not.toHaveBeenCalled();
+  }, 60000);
+});
+
+describe('ApplicationWorkbench AI evidence (FE-M04)', () => {
+  const aiMatch = (overrides: Record<string, unknown>) => ({
+    matchScore: 78,
+    matchTier: 'MEDIUM_HIGH',
+    candidateHighlight: null,
+    status: 'COMPLETED',
+    parseConfidence: null,
+    requiresManualReview: false,
+    semanticScore: null,
+    warnings: [],
+    missingRequirements: [],
+    matchingReasons: [],
+    ...overrides,
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(interviewHistoryApi.get).mockResolvedValue([]);
+  });
+
+  it('shows the matching reasons when the highlight list is empty', async () => {
+    renderWorkbench(
+      {
+        ...baseApplication,
+        status: 'SHORTLISTED',
+        allowedActions: [],
+        offers: [],
+        aiMatch: aiMatch({ candidateHighlight: '[]', matchingReasons: ['5 năm .NET đáp ứng yêu cầu 3 năm', 'Đã làm Azure'] }),
+      },
+      'hr'
+    );
+
+    expect(await screen.findByText('5 năm .NET đáp ứng yêu cầu 3 năm', {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.getByText('Đã làm Azure')).toBeInTheDocument();
+    expect(screen.queryByText('AI chưa trả về giải thích chi tiết.')).not.toBeInTheDocument();
+  }, 60000);
+
+  it('merges highlights and matching reasons without repeating the same line', async () => {
+    renderWorkbench(
+      {
+        ...baseApplication,
+        status: 'SHORTLISTED',
+        allowedActions: [],
+        offers: [],
+        aiMatch: aiMatch({ candidateHighlight: JSON.stringify(['Đã làm Azure']), matchingReasons: ['đã làm  azure', 'Có chứng chỉ AWS'] }),
+      },
+      'hr'
+    );
+
+    expect(await screen.findByText('Có chứng chỉ AWS', {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.getAllByText(/azure/i)).toHaveLength(1);
+  }, 60000);
+
+  it('still says no explanation only when highlights, reasons and missing items are all empty', async () => {
+    renderWorkbench(
+      { ...baseApplication, status: 'SHORTLISTED', allowedActions: [], offers: [], aiMatch: aiMatch({}) },
+      'hr'
+    );
+
+    expect(await screen.findByText('AI chưa trả về giải thích chi tiết.', {}, { timeout: 5000 })).toBeInTheDocument();
+  }, 60000);
+
+  it('explains a FAILED scoring to Internal HR with the reason, code and detail', async () => {
+    renderWorkbench(
+      {
+        ...baseApplication,
+        status: 'SCREENING',
+        allowedActions: [],
+        offers: [],
+        aiMatch: aiMatch({
+          status: 'FAILED',
+          matchScore: null,
+          failureCode: 'AI_TIMEOUT',
+          errorMessage: 'AI chấm quá 600 giây. Hồ sơ cần HR xem thủ công.',
+        }),
+      },
+      'hr'
+    );
+
+    expect(await screen.findByText('AI chấm quá thời gian cho phép.', {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.getByText('AI_TIMEOUT')).toBeInTheDocument();
+    expect(screen.getByText('AI chấm quá 600 giây. Hồ sơ cần HR xem thủ công.')).toBeInTheDocument();
+  }, 60000);
+
+  it('shows the Client a readable reason but no technical code or detail', async () => {
+    renderWorkbench(
+      {
+        ...baseApplication,
+        status: 'SUBMITTED',
+        allowedActions: [],
+        offers: [],
+        aiMatch: aiMatch({ status: 'FAILED', matchScore: null, failureCode: 'UNSUPPORTED_CV_FORMAT', errorMessage: null }),
+      },
+      'client'
+    );
+
+    expect(
+      await screen.findByText('Định dạng CV không được hỗ trợ hoặc không đọc được nội dung CV.', {}, { timeout: 5000 })
+    ).toBeInTheDocument();
+    expect(screen.queryByText('UNSUPPORTED_CV_FORMAT')).not.toBeInTheDocument();
+    expect(screen.queryByText('Mã lỗi:')).not.toBeInTheDocument();
+  }, 60000);
+
+  it('falls back to the code for a failure code it does not know', async () => {
+    renderWorkbench(
+      {
+        ...baseApplication,
+        status: 'SCREENING',
+        allowedActions: [],
+        offers: [],
+        aiMatch: aiMatch({ status: 'FAILED', matchScore: null, failureCode: 'SOMETHING_NEW' }),
+      },
+      'hr'
+    );
+
+    expect(await screen.findByText('Lỗi chấm điểm (mã SOMETHING_NEW).', {}, { timeout: 5000 })).toBeInTheDocument();
+  }, 60000);
+
+  it('[FE-m02] disables re-scoring button when AI status is PENDING or PROCESSING', async () => {
+    renderWorkbench(
+      {
+        ...baseApplication,
+        status: 'SCREENING',
+        allowedActions: [],
+        offers: [],
+        aiMatch: aiMatch({ status: 'PROCESSING', matchScore: null }),
+      },
+      'hr'
+    );
+
+    const btn = await screen.findByRole('button', { name: /Đang chấm điểm…/ }, { timeout: 5000 });
+    expect(btn).toBeDisabled();
+  }, 60000);
+
+  it('[FE-m03] displays Nghỉ trong bảo hành when placement status is LEFT_DURING_WARRANTY', async () => {
+    renderWorkbench(
+      {
+        ...baseApplication,
+        status: 'PLACED',
+        allowedActions: [],
+        offers: [],
+        placement: {
+          placementId: 'pl-1',
+          actualStartDate: '2026-10-01',
+          endDate: '2026-10-20',
+          status: 'LEFT_DURING_WARRANTY',
+          guaranteeEndDate: '2026-11-01',
+          resignationReason: 'Không phù hợp văn hóa',
+        },
+      },
+      'hr'
+    );
+
+    expect(await screen.findByText(/Nghỉ trong bảo hành/)).toBeInTheDocument();
+    expect(screen.getByText(/20\/10\/2026/)).toBeInTheDocument();
+  }, 60000);
+
+  it('[BE-M04/FE] displays matching and missing requirements parsed from mustHaveResult and shouldHaveResult', async () => {
+    renderWorkbench(
+      {
+        ...baseApplication,
+        status: 'SHORTLISTED',
+        allowedActions: [],
+        offers: [],
+        aiMatch: aiMatch({
+          candidateHighlight: '[]',
+          matchingReasons: [],
+          missingRequirements: [],
+          mustHaveResult: JSON.stringify([
+            { requirement: '3 năm kinh nghiệm .NET', type: 'MUST_HAVE', matched: true, matchStatus: 'MATCHED' },
+            { requirement: 'Tiếng Anh giao tiếp tốt', type: 'MUST_HAVE', matched: false, matchStatus: 'MISSING' },
+          ]),
+          shouldHaveResult: JSON.stringify([
+            { requirement: 'Có kiến thức Docker/K8s', type: 'SHOULD_HAVE', matched: true, matchStatus: 'MATCHED' },
+          ]),
+        }),
+      },
+      'hr'
+    );
+
+    expect(await screen.findByText('3 năm kinh nghiệm .NET', {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.getByText('Có kiến thức Docker/K8s')).toBeInTheDocument();
+    expect(screen.getByText('Tiếng Anh giao tiếp tốt')).toBeInTheDocument();
   }, 60000);
 });

@@ -14,18 +14,18 @@ public class WithdrawApplicationCommandHandler : IRequestHandler<WithdrawApplica
     private readonly IApplicationRepository _applicationRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _auditLogService;
-    private readonly INotificationRepository? _notificationRepository;
+    private readonly IAppNotifier? _notifier;
 
     public WithdrawApplicationCommandHandler(
         IApplicationRepository applicationRepository,
         IUnitOfWork unitOfWork,
         IAuditLogService auditLogService,
-        INotificationRepository? notificationRepository = null)
+        IAppNotifier? notifier = null)
     {
         _applicationRepository = applicationRepository;
         _unitOfWork = unitOfWork;
         _auditLogService = auditLogService;
-        _notificationRepository = notificationRepository;
+        _notifier = notifier;
     }
 
     public async Task<WithdrawApplicationResponse> Handle(WithdrawApplicationCommand request, CancellationToken cancellationToken)
@@ -83,6 +83,13 @@ public class WithdrawApplicationCommandHandler : IRequestHandler<WithdrawApplica
         }
 
         var oldStatus = application.Status;
+        // Decided before the status changes: could the Client Company see this application?
+        var serviceTypeCode = application.Job?.ServiceType?.Code;
+        var visibleToClient = ClientVisibilityPolicy.IsVisibleToClient(
+            serviceTypeCode,
+            oldStatus,
+            (application.ApplicationStatusHistories ?? []).Select(h => h.NewStatus),
+            application.SourcingDeliveries?.Any() ?? false);
         application.Status = ApplicationStates.Withdrawn;
         application.StatusReason = reason;
         application.UpdatedAt = now;
@@ -118,28 +125,7 @@ public class WithdrawApplicationCommandHandler : IRequestHandler<WithdrawApplica
             NewValues = new { status = application.Status, sourceAction = AuditActions.ApplicationWithdrawn }
         }, cancellationToken);
 
-        if (_notificationRepository != null && application.Job?.CreatedBy is { } jobOwnerId && jobOwnerId != Guid.Empty)
-        {
-            await _notificationRepository.AddAsync(new Notification
-            {
-                NotificationId = Guid.NewGuid(),
-                UserId = jobOwnerId,
-                NotificationType = "APPLICATION_STATUS",
-                Title = "Ứng viên đã rút hồ sơ ứng tuyển",
-                Message = $"Ứng viên {application.Candidate?.FullName} đã rút hồ sơ ứng tuyển vị trí {application.Job?.Title}.",
-                RelatedEntityType = "APPLICATION",
-                RelatedEntityId = application.ApplicationId,
-                Metadata = System.Text.Json.JsonSerializer.Serialize(new
-                {
-                    applicationId = application.ApplicationId,
-                    candidateId = application.CandidateId,
-                    jobId = application.JobId,
-                    reason
-                }),
-                IsRead = false,
-                CreatedAt = now
-            }, cancellationToken);
-        }
+        await NotifyWithdrawalAsync(application, visibleToClient, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -150,5 +136,47 @@ public class WithdrawApplicationCommandHandler : IRequestHandler<WithdrawApplica
             withdrawnOfferCount,
             application.ConcurrencyToken,
             now);
+    }
+
+    /// <summary>
+    /// The Client Company hears about a withdrawal only for an application it could already see
+    /// (ClientVisibilityPolicy): before a HEADHUNT_COD shortlist or a CV_SOURCING delivery the candidate is
+    /// still in Internal HR's screening queue, so Internal HR is told instead and the Client learns nothing
+    /// about a candidate it never saw. The candidate's free-text reason is not put in the message.
+    /// </summary>
+    private async Task NotifyWithdrawalAsync(
+        HRConnect.Domain.Entities.Application application,
+        bool visibleToClient,
+        CancellationToken cancellationToken)
+    {
+        if (_notifier == null || application.Job == null)
+        {
+            return;
+        }
+
+        var candidateName = string.IsNullOrWhiteSpace(application.Candidate?.FullName)
+            ? "Ứng viên"
+            : $"Ứng viên {application.Candidate!.FullName}";
+        var message = $"{candidateName} đã rút hồ sơ ứng tuyển vị trí \"{application.Job.Title}\".";
+
+        if (visibleToClient)
+        {
+            await _notifier.NotifyCompanyAsync(application.Job.CompanyId, new AppNotice(
+                ApplicationScreeningNotificationFactory.NotificationType,
+                "Ứng viên đã rút hồ sơ ứng tuyển",
+                message,
+                "APPLICATION",
+                application.ApplicationId,
+                $"/client/candidates?open={application.ApplicationId}"), cancellationToken);
+            return;
+        }
+
+        await _notifier.NotifyRoleAsync(RoleCodes.InternalHr, new AppNotice(
+            ApplicationScreeningNotificationFactory.NotificationType,
+            "Ứng viên đã rút hồ sơ ứng tuyển",
+            message,
+            "APPLICATION",
+            application.ApplicationId,
+            $"/hr/screening?status=all&open={application.ApplicationId}"), cancellationToken);
     }
 }

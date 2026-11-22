@@ -170,7 +170,7 @@ export const useNotificationSignalR = (options: UseNotificationSignalROptions = 
   // 3. AI scoring finished: refresh every list and detail that shows the score, no page reload needed.
   const handleApplicationScored = useCallback(
     (payload: ApplicationScoredPayload) => {
-      for (const key of ['hr-screening', 'hr-overview', 'client-candidates', 'client-overview', 'candidate-applications']) {
+      for (const key of ['hr-screening', 'hr-overview', 'client-candidates', 'client-overview', 'candidate-applications', 'sourcing-deliveries']) {
         void queryClient.invalidateQueries({ queryKey: [key] });
       }
       if (payload.applicationId) {

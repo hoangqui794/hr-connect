@@ -37,6 +37,43 @@ public static class ApplicationScreeningNotificationFactory
                 : $"Hồ sơ của ứng viên {application.Candidate.FullName} hiện chưa được chọn cho vị trí {application.Job.Title}.");
     }
 
+    /// <summary>
+    /// True when the metadata written by <see cref="Create"/> is about <paramref name="status"/>.
+    /// Used to skip a duplicate screening notice for the same target status only, so an earlier
+    /// SHORTLISTED notice never hides a later REJECTED one. Unreadable metadata counts as "no".
+    /// </summary>
+    public static bool IsAboutStatus(string? metadata, string status)
+    {
+        if (string.IsNullOrWhiteSpace(metadata))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(metadata);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return false;
+            }
+
+            foreach (var property in document.RootElement.EnumerateObject())
+            {
+                if (string.Equals(property.Name, "status", StringComparison.OrdinalIgnoreCase)
+                    && property.Value.ValueKind == JsonValueKind.String)
+                {
+                    return string.Equals(property.Value.GetString(), status, StringComparison.OrdinalIgnoreCase);
+                }
+            }
+
+            return false;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
     private static Notification Create(
         Guid userId,
         JobApplication application,

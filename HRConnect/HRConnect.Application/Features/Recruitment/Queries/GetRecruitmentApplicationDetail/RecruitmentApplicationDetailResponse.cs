@@ -129,6 +129,19 @@ public class RecruitmentAiMatchSummaryDto
     public List<string> MatchingReasons { get; set; } = new();
 
     public RecruitmentAiInputFingerprintsDto? InputFingerprints { get; set; }
+
+    /// <summary>Raw JSON array from MF-03 (one item per must-have requirement: requirement, type, matched,
+    /// matchStatus, evidence, reason...), stored as received; null until a COMPLETED result.</summary>
+    public string? MustHaveResult { get; set; }
+
+    /// <summary>Raw JSON array from MF-03, same shape as <see cref="MustHaveResult"/> for should-have requirements.</summary>
+    public string? ShouldHaveResult { get; set; }
+
+    /// <summary>Why the latest attempt FAILED (e.g. AI_TIMEOUT, UNSUPPORTED_CV_FORMAT, MF03_DISPATCH_RETRY_EXHAUSTED).</summary>
+    public string? FailureCode { get; set; }
+
+    /// <summary>Free-text failure detail; may hold technical exception text, so it is null for Client Company users.</summary>
+    public string? ErrorMessage { get; set; }
 }
 
 public class RecruitmentAiDiagnosticDto

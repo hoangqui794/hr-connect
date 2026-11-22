@@ -50,7 +50,10 @@ import {
   OFFER_STATUS,
   REJECTION_REASONS,
   SERVICE_TYPE,
+  aiFailureLabel,
+  mergeAiEvidence,
   parseHighlights,
+  parseRequirementResults,
   pick,
   reasonLabel,
   applicationStatusOf,
@@ -207,12 +210,12 @@ export const ApplicationWorkbench: React.FC<{
   const d = detail.data;
   const actions = d?.allowedActions ?? [];
   const has = (a: string) => actions.includes(a);
-  const interview = d?.interviews.filter((i) => i.status === 'SCHEDULED').sort((a, b) => (b.scheduledAt ?? '').localeCompare(a.scheduledAt ?? ''))[0];
+  const interview = (d?.interviews ?? []).filter((i) => i.status === 'SCHEDULED').sort((a, b) => (b.scheduledAt ?? '').localeCompare(a.scheduledAt ?? ''))[0];
   const interviewStarted = hasInterviewStarted(interview);
   const interviewOverdue = isInterviewOverdue(interview);
   const effectiveInterviewType = open === 'reschedule' ? interview?.interviewType : selectedInterviewType;
-  const offer = d ? [...d.offers].sort((a, b) => b.offerVersion - a.offerVersion)[0] : undefined;
-  const acceptedOffer = d?.offers.find((o) => o.status === 'ACCEPTED') ?? offer;
+  const offer = d ? [...(d.offers ?? [])].sort((a, b) => b.offerVersion - a.offerVersion)[0] : undefined;
+  const acceptedOffer = d?.offers?.find((o) => o.status === 'ACCEPTED') ?? offer;
   const actualStartDiffersFromPlan = Boolean(
     d?.plannedStartDate &&
       watchedActualStartDate &&
@@ -252,7 +255,7 @@ export const ApplicationWorkbench: React.FC<{
 
   const sourcingDelivery = sourcingDeliveries.data?.items.find((item) => item.applicationId === d?.applicationId);
   // The Client's review window comes from the job (sourcing summary); omit the number when it is not loaded.
-  const reviewDays = sourcingDeliveries.data?.summary.reviewDays;
+  const reviewDays = sourcingDeliveries.data?.summary?.reviewDays;
   const reviewWindow = reviewDays ? ` trong ${reviewDays} ngày` : '';
 
   const refreshApplication = async () => {
@@ -526,6 +529,8 @@ export const ApplicationWorkbench: React.FC<{
           } else {
             await run.mutateAsync(() => screeningApi.updateStatus(d!.jobId, d!.applicationId, { targetStatus: 'SHORTLISTED', concurrencyToken: token }));
           }
+        } catch {
+          // Error toast and cache refresh are already handled by shortlistAndDeliver.onError / run.onError.
         } finally {
           setPendingAction(null);
         }
@@ -748,7 +753,25 @@ export const ApplicationWorkbench: React.FC<{
   };
 
   const st = d ? applicationStatusOf(d.status, d.serviceTypeCode, sourcingDelivery?.status) : null;
-  const highlights = parseHighlights(d?.aiMatch?.candidateHighlight);
+  // FE-M04 & BE-M04: highlights alone can be empty while matching reasons, mustHaveResult or shouldHaveResult explain the score.
+  const reqMust = parseRequirementResults(d?.aiMatch?.mustHaveResult);
+  const reqShould = parseRequirementResults(d?.aiMatch?.shouldHaveResult);
+  const matchedFromReqs = [...reqMust, ...reqShould]
+    .filter((r) => r.matched || r.matchStatus === 'MATCHED')
+    .map((r) => r.requirement)
+    .filter((r): r is string => Boolean(r));
+  const missingFromReqs = reqMust
+    .filter((r) => !r.matched && (r.matchStatus === 'MISSING' || r.matchStatus === 'NOT_FOUND'))
+    .map((r) => r.requirement)
+    .filter((r): r is string => Boolean(r));
+
+  const highlights = mergeAiEvidence(
+    parseHighlights(d?.aiMatch?.candidateHighlight),
+    [...(d?.aiMatch?.matchingReasons ?? []), ...matchedFromReqs]
+  );
+  const missingRequirements = Array.from(
+    new Set([...(d?.aiMatch?.missingRequirements ?? []), ...missingFromReqs])
+  );
 
   // Footer buttons: secondary/danger on the left, the main step on the right.
   const footer: React.ReactNode[] = [];
@@ -817,9 +840,16 @@ export const ApplicationWorkbench: React.FC<{
     if (audience === 'hr') {
       if (sourcingDelivery) {
         const scfg = SOURCING_STATUS_CONFIG[sourcingDelivery.status];
-        btn('sourcingStatus', `CV Sourcing: ${scfg?.label || sourcingDelivery.status}`, () => {}, {
-          icon: <CheckOutlined />,
-        });
+        footer.push(
+          <Tag
+            key="sourcingStatus"
+            icon={<CheckOutlined />}
+            color={scfg?.tagColor ?? 'default'}
+            className="!inline-flex !items-center !gap-1 !px-3 !py-1 !text-sm !rounded-lg !m-0"
+          >
+            CV Sourcing: {scfg?.label || sourcingDelivery.status}
+          </Tag>
+        );
       } else if (d?.status === 'SHORTLISTED') {
         btn(
           'deliverCv',
@@ -1144,13 +1174,13 @@ export const ApplicationWorkbench: React.FC<{
                 {d.placement && (
                   <div
                     className={`rounded-xl border p-4 font-medium ${
-                      d.placement.status === 'RESIGNED'
+                      d.placement.status === 'RESIGNED' || d.placement.status === 'LEFT_DURING_WARRANTY'
                         ? 'border-slate-300 bg-slate-100 text-slate-800'
                         : 'border-emerald-200/80 bg-emerald-50/70 text-emerald-950'
                     }`}
                   >
-                    {d.placement.status === 'RESIGNED'
-                      ? `Đã nghỉ việc${d.placement.endDate ? ` từ ${fmt(d.placement.endDate, 'DD/MM/YYYY')}` : ''}`
+                    {d.placement.status === 'RESIGNED' || d.placement.status === 'LEFT_DURING_WARRANTY'
+                      ? `${d.placement.status === 'LEFT_DURING_WARRANTY' ? 'Nghỉ trong bảo hành' : 'Đã nghỉ việc'}${d.placement.endDate ? ` từ ${fmt(d.placement.endDate, 'DD/MM/YYYY')}` : ''}`
                       : `Đã đi làm từ ${fmt(d.placement.actualStartDate, 'DD/MM/YYYY')}`}
                     {d.placement.position ? ` · ${d.placement.position}` : ''}
                     {d.placement.department ? ` · ${d.placement.department}` : ''}
@@ -1165,13 +1195,29 @@ export const ApplicationWorkbench: React.FC<{
           <Panel
             title="Đánh giá của AI"
             extra={
-              audience === 'hr' && (
-                <Tooltip title="Gửi lại hồ sơ cho AI chấm điểm, ví dụ khi lần chấm trước lỗi hoặc job vừa sửa yêu cầu.">
-                  <Button size="small" icon={<ExperimentOutlined />} loading={retry.isPending} onClick={() => retry.mutate()}>
-                    Yêu cầu chấm lại
-                  </Button>
-                </Tooltip>
-              )
+              audience === 'hr' && (() => {
+                const aiSt = (d?.aiMatch?.status || '').toUpperCase();
+                const isPending = aiSt === 'PENDING' || aiSt === 'PROCESSING';
+                return (
+                  <Tooltip
+                    title={
+                      isPending
+                        ? 'AI đang chấm điểm hồ sơ này...'
+                        : 'Gửi lại hồ sơ cho AI chấm điểm, ví dụ khi lần chấm trước lỗi hoặc job vừa sửa yêu cầu.'
+                    }
+                  >
+                    <Button
+                      size="small"
+                      icon={<ExperimentOutlined />}
+                      loading={retry.isPending || isPending}
+                      disabled={isPending}
+                      onClick={() => retry.mutate()}
+                    >
+                      {isPending ? 'Đang chấm điểm…' : 'Yêu cầu chấm lại'}
+                    </Button>
+                  </Tooltip>
+                );
+              })()
             }
           >
             {(() => {
@@ -1193,6 +1239,7 @@ export const ApplicationWorkbench: React.FC<{
                 );
               }
               if (aiStatus === 'FAILED') {
+                const failureReason = aiFailureLabel(d.aiMatch.failureCode);
                 return (
                   <div className="rounded-xl border border-solid border-amber-200 bg-amber-50/70 p-4 text-amber-950">
                     <div className="flex items-start gap-3">
@@ -1201,22 +1248,24 @@ export const ApplicationWorkbench: React.FC<{
                         <div className="font-semibold text-amber-900">
                           AI chưa chấm được hồ sơ này, vui lòng xem CV trực tiếp
                         </div>
-                        <div className="mt-1 text-xs text-amber-700">
-                          Quá trình chấm điểm tự động không thành công hoặc không trích xuất được thông tin CV.
+                        <div className="mt-1 text-xs text-amber-800">
+                          {failureReason ?? 'Quá trình chấm điểm tự động không thành công hoặc không trích xuất được thông tin CV.'}
                         </div>
-                        {audience === 'hr' && (
-                          <div className="mt-3">
-                            <Button
-                              type="primary"
-                              size="small"
-                              icon={<ExperimentOutlined />}
-                              loading={retry.isPending}
-                              onClick={() => retry.mutate()}
-                              className="!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98]"
-                            >
-                              Yêu cầu chấm lại
-                            </Button>
-                          </div>
+                        {audience === 'hr' && (d.aiMatch.failureCode || d.aiMatch.errorMessage) && (
+                          <dl className="m-0 mt-2 space-y-0.5 text-xs text-amber-900">
+                            {d.aiMatch.failureCode && (
+                              <div className="flex flex-wrap gap-1">
+                                <dt className="font-medium">Mã lỗi:</dt>
+                                <dd className="m-0 font-mono">{d.aiMatch.failureCode}</dd>
+                              </div>
+                            )}
+                            {d.aiMatch.errorMessage && (
+                              <div className="flex flex-wrap gap-1">
+                                <dt className="font-medium">Chi tiết:</dt>
+                                <dd className="m-0 break-words">{d.aiMatch.errorMessage}</dd>
+                              </div>
+                            )}
+                          </dl>
                         )}
                       </div>
                     </div>
@@ -1271,14 +1320,14 @@ export const ApplicationWorkbench: React.FC<{
                         </ul>
                       </div>
                     )}
-                    {d.aiMatch.missingRequirements.length > 0 && (
+                    {missingRequirements.length > 0 && (
                       <div>
                         <div className="mb-1.5 font-bold text-slate-900 flex items-center gap-1.5">
                           <WarningOutlined className="text-amber-600" />
                           <span>Còn thiếu</span>
                         </div>
                         <ul className="m-0 space-y-1.5 pl-0 list-none text-slate-700">
-                          {d.aiMatch.missingRequirements.map((h) => (
+                          {missingRequirements.map((h) => (
                             <li key={h} className="flex items-start gap-2">
                               <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
                               <span className="leading-snug">{h}</span>
@@ -1292,7 +1341,7 @@ export const ApplicationWorkbench: React.FC<{
                         {d.aiMatch.warnings.join(' · ')}
                       </div>
                     )}
-                    {highlights.length === 0 && d.aiMatch.missingRequirements.length === 0 && (
+                    {highlights.length === 0 && missingRequirements.length === 0 && (
                       <p className="m-0 text-slate-500">AI chưa trả về giải thích chi tiết.</p>
                     )}
                   </div>
@@ -1386,6 +1435,10 @@ export const ApplicationWorkbench: React.FC<{
         onOk={() => {
           if (open === 'result' && !form.getFieldValue('feedback')?.trim()) {
             form.setFields([{ name: 'feedback', errors: ['Nhập nhận xét phỏng vấn.'] }]);
+            return;
+          }
+          if (open === 'startWork' && actualStartDiffersFromPlan && !form.getFieldValue('note')?.trim()) {
+            form.setFields([{ name: 'note', errors: ['Nhập lý do ngày thực tế khác ngày dự kiến.'] }]);
             return;
           }
           form.submit();

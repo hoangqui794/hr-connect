@@ -19,6 +19,7 @@ import { getApiErrorMessage } from '@/services/apiClient';
 import type { CandidateJobMatchFeed } from '@/types/api/candidateJobMatch';
 import CompanyLogo from '@/components/common/CompanyLogo';
 import { CandidateSurface } from './CandidateUi';
+import { candidateKeys } from './candidateKeys';
 
 interface CandidateJobMatchesSectionProps {
   limit?: number;
@@ -69,7 +70,7 @@ export const CandidateJobMatchesSection: React.FC<CandidateJobMatchesSectionProp
   const queryClient = useQueryClient();
   const { message, modal } = AntApp.useApp();
   const query = useQuery({
-    queryKey: ['candidate-job-matches'],
+    queryKey: candidateKeys.candidateJobMatches,
     queryFn: () => candidateJobMatchApi.getJobMatches(),
     staleTime: 5 * 60 * 1000,
   });
@@ -79,7 +80,7 @@ export const CandidateJobMatchesSection: React.FC<CandidateJobMatchesSectionProp
   const dismissMutation = useMutation({
     mutationFn: candidateJobMatchApi.dismissJobMatch,
     onSuccess: (_, matchId) => {
-      queryClient.setQueryData<CandidateJobMatchFeed>(['candidate-job-matches'], (current) =>
+      queryClient.setQueryData<CandidateJobMatchFeed>(candidateKeys.candidateJobMatches, (current) =>
         current ? { ...current, items: current.items.filter((item) => item.candidateJobMatchId !== matchId) } : current
       );
       message.success('Đã ẩn gợi ý.');

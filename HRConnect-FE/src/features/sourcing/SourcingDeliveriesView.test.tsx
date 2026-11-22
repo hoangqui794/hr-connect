@@ -10,7 +10,14 @@ import { App as AntApp } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SourcingDeliveriesView } from './SourcingDeliveriesView';
 import { sourcingApi } from '@/services/api/sourcingApi';
+import { screeningApi } from '@/services/api/hrApi';
 import type { SourcingDeliveriesResponse } from '@/types/api/sourcing';
+
+vi.mock('@/services/api/hrApi', () => ({
+  screeningApi: {
+    list: vi.fn(),
+  },
+}));
 
 vi.mock('@/services/api/sourcingApi', () => ({
   sourcingApi: {
@@ -120,6 +127,7 @@ const renderComponent = (props: {
 describe('SourcingDeliveriesView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(screeningApi.list).mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 10 } as never);
   });
 
   it('renders loading state when fetching data', () => {
@@ -434,5 +442,46 @@ describe('SourcingDeliveriesView HR rejection review (FE-C02, FE-M03)', () => {
     expect(await screen.findByText('Ứng Viên Đã Xác Minh', {}, { timeout: 10000 })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Thay CV dự phòng/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Xác minh' })).not.toBeInTheDocument();
+  });
+
+  it('opens Replace CV modal with candidate select and options from SHORTLISTED candidates', async () => {
+    vi.mocked(sourcingApi.getDeliveries).mockResolvedValue({
+      summary: mockSummary,
+      items: [
+        rejectedOther({
+          deliveryId: 'del-upheld',
+          candidateName: 'Ứng Viên Cần Thay',
+          rejectionReviewStatus: 'UPHELD',
+        }),
+      ],
+    });
+
+    vi.mocked(screeningApi.list).mockResolvedValue({
+      items: [
+        {
+          applicationId: 'app-backup-1',
+          candidateName: 'Lê Văn Dự Phòng',
+          candidateEmail: 'duphong@test.com',
+          status: 'SHORTLISTED',
+        },
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 10,
+    } as never);
+
+    renderComponent({ role: 'hr' });
+
+    expect(await screen.findByText('Ứng Viên Cần Thay', {}, { timeout: 10000 })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Thay CV dự phòng/ }));
+
+    expect(await screen.findByText('Thay thế CV bị từ chối bằng CV dự phòng')).toBeInTheDocument();
+    expect(screen.getByText('Chọn ứng viên đạt yêu cầu dự phòng...')).toBeInTheDocument();
+    expect(screeningApi.list).toHaveBeenCalledWith({
+      jobId: 'job-123',
+      status: 'SHORTLISTED',
+      page: 1,
+      pageSize: 100,
+    });
   });
 });

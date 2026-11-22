@@ -9,4 +9,5 @@ namespace HRConnect.Application.Common.Interfaces;
 public interface INotificationPublisher
 {
     Task PublishAsync(IReadOnlyList<Notification> notifications, CancellationToken cancellationToken = default);
+    Task PublishApplicationScoredAsync(Guid applicationId, Guid jobId, string status, CancellationToken cancellationToken = default);
 }

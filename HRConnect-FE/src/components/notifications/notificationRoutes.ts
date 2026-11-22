@@ -345,6 +345,17 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
     }
   }
 
+  // Client + MF-03 application notice: decided before the generic hint below, because older rows carry the
+  // server's default /candidate/applications hint; only a /client/ hint is trusted (e.g. Internal HR
+  // shortlisted a HEADHUNT_COD CV).
+  if (normRole === 'CLIENT' && (entityType === 'APPLICATION' || entityType === 'APPLICATION_STATUS')) {
+    if (route && route.startsWith('/client/')) {
+      return route;
+    }
+    const appId = meta?.applicationId || meta?.ApplicationId || meta?.entityId || item.relatedEntityId;
+    return appId ? `/client/candidates?open=${encodeURIComponent(appId)}` : '/client/candidates';
+  }
+
   // If explicit route was resolved
   if (route) {
     return portalRoute(route, role as UserRole);

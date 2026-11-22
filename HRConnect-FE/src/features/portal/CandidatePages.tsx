@@ -674,6 +674,7 @@ export const CandidateHomePage: React.FC = () => {
                               } else {
                                 await candidateCvApi.setPrimary(cv.cvId);
                               }
+                              void queryClient.invalidateQueries({ queryKey: candidateKeys.candidateJobMatches });
                               message.success(`Đã đặt "${cv.title || cv.name || cv.fileName}" làm CV chính.`);
                               void queryClient.invalidateQueries({ queryKey: candidateKeys.cvs });
                             } catch (err) {

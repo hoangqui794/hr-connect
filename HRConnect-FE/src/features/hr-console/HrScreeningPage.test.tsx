@@ -8,7 +8,7 @@ import { screeningApi } from '@/services/api/hrApi';
 
 vi.mock('@/services/api/hrApi', () => ({
   HR_SCREENED_SERVICE_TYPES: 'HEADHUNT_COD,CV_SOURCING',
-  screeningApi: { list: vi.fn() },
+  screeningApi: { list: vi.fn(), counts: vi.fn() },
 }));
 
 vi.mock('@/features/recruitment/ApplicationWorkbench', () => ({
@@ -47,11 +47,18 @@ const renderPage = () => {
 describe('HrScreeningPage', () => {
   beforeEach(() => {
     vi.mocked(screeningApi.list).mockReset();
+    vi.mocked(screeningApi.counts).mockReset();
     vi.mocked(screeningApi.list).mockResolvedValue({ items: [headhunt], total: 1, page: 1, pageSize: 10 } as never);
+    vi.mocked(screeningApi.counts).mockResolvedValue({
+      SUBMITTED: 1,
+      SCREENING: 0,
+      SHORTLISTED: 0,
+      REJECTED: 0,
+    });
   });
 
   // 27/10: CV_APPLICATION is screened by the Client, so it must never reach the Internal HR queue.
-  it('asks the backend only for Headhunt and Sourcing applications', async () => {
+  it('asks the backend only for Headhunt and Sourcing applications and consolidates counts', async () => {
     renderPage();
 
     expect(await screen.findByText('Nguyễn Văn An')).toBeTruthy();
@@ -61,5 +68,13 @@ describe('HrScreeningPage', () => {
       expect(['HEADHUNT_COD,CV_SOURCING', 'CV_SOURCING']).toContain(params.serviceTypeCode);
     }
     expect(calls.some((params) => params.serviceTypeCode === 'HEADHUNT_COD,CV_SOURCING' && params.pageSize === 10)).toBe(true);
+    expect(screen.getByText('80%')).toBeInTheDocument();
+    expect(screen.getByText('Rất phù hợp')).toBeInTheDocument();
+
+    expect(screeningApi.counts).toHaveBeenCalledWith(
+      'status',
+      { serviceTypeCode: 'HEADHUNT_COD,CV_SOURCING' },
+      ['SUBMITTED', 'SCREENING', 'SHORTLISTED', 'REJECTED']
+    );
   });
 });

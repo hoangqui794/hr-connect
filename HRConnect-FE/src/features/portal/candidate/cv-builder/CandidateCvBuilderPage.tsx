@@ -41,6 +41,7 @@ import {
   writeCvBuilderDraft,
   type CvBuilderDraft,
 } from './services/cvBuilderDraftStorage';
+import { candidateKeys } from '../candidateKeys';
 import './cv-builder.css';
 
 const DEFAULT_PRESENTATION: CvPresentationConfig = {
@@ -541,6 +542,8 @@ export const CandidateCvBuilderPage: React.FC = () => {
     },
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: ['candidate-cvs'] });
+      // A saved or newly primary CV changes the job suggestions.
+      void queryClient.invalidateQueries({ queryKey: candidateKeys.candidateJobMatches });
       if (cvId) {
         void queryClient.invalidateQueries({ queryKey: ['candidate-cv-structured', cvId] });
       }

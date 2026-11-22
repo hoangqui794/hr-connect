@@ -70,7 +70,10 @@ export const CandidateCvsPage: React.FC = () => {
   }, [action, navigate]);
 
   useEffect(() => {
-    const refresh = () => void queryClient.invalidateQueries({ queryKey: candidateKeys.cvs });
+    const refresh = () => {
+      void queryClient.invalidateQueries({ queryKey: candidateKeys.cvs });
+      void queryClient.invalidateQueries({ queryKey: candidateKeys.candidateJobMatches });
+    };
     window.addEventListener(CANDIDATE_CV_UPDATED_EVENT, refresh);
     window.addEventListener(CV_STORAGE_EVENT, refresh);
     return () => {
@@ -84,6 +87,7 @@ export const CandidateCvsPage: React.FC = () => {
     onSuccess: (result) => {
       message.success(result.message || 'Đã tải CV lên.');
       void queryClient.invalidateQueries({ queryKey: candidateKeys.cvs });
+      void queryClient.invalidateQueries({ queryKey: candidateKeys.candidateJobMatches });
     },
     onError: (error) => message.error(getApiErrorMessage(error, 'Không tải được CV lên.')),
   });
@@ -100,7 +104,11 @@ export const CandidateCvsPage: React.FC = () => {
     try {
       const result = await run();
       message.success(result.message || done);
-      await queryClient.invalidateQueries({ queryKey: candidateKeys.cvs });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: candidateKeys.cvs }),
+        // The primary CV drives job suggestions (set primary, remove).
+        queryClient.invalidateQueries({ queryKey: candidateKeys.candidateJobMatches }),
+      ]);
     } catch (error) {
       message.error(getApiErrorMessage(error));
     } finally {

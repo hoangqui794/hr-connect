@@ -66,7 +66,7 @@ describe('Client › Hồ sơ ứng viên', () => {
     });
   });
 
-  it('shows the AI score with its tier, a grey "Chưa có điểm" for failed scoring and the next step', async () => {
+  it('shows the AI score with its tier, a red "Chấm lỗi" for failed scoring and the next step', async () => {
     renderPage();
 
     const good = (await screen.findByText('Ứng Viên e2e5')).closest('tr')!;
@@ -74,7 +74,7 @@ describe('Client › Hồ sơ ứng viên', () => {
     expect(within(good).getByRole('button', { name: 'Lên lịch phỏng vấn' })).toBeInTheDocument();
 
     const failed = screen.getByText('Demo Candidate 2').closest('tr')!;
-    expect(within(failed).getByText('Chưa có điểm')).toBeInTheDocument();
+    expect(within(failed).getByText('Chấm lỗi')).toBeInTheDocument();
     expect(within(failed).queryByText('Lỗi AI')).not.toBeInTheDocument();
   });
 
@@ -108,9 +108,20 @@ describe('Client › Hồ sơ ứng viên', () => {
 
     fireEvent.click(screen.getByRole('radio', { name: /Kết thúc/ }));
 
-    await waitFor(() =>
-      expect(listMock).toHaveBeenCalledWith(expect.objectContaining({ pageSize: 10, status: expect.stringContaining('REJECTED,BACKUP_NOT_SELECTED') }))
-    );
+    await waitFor(() => {
+      expect(listMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageSize: 10,
+          status: expect.stringContaining('REJECTED,BACKUP_NOT_SELECTED'),
+        })
+      );
+      expect(listMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageSize: 10,
+          status: expect.stringContaining('RESIGNED,CLOSED'),
+        })
+      );
+    });
   });
 
   it('marks the cells that need the Client', async () => {

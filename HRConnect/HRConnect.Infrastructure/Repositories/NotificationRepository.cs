@@ -25,6 +25,22 @@ public class NotificationRepository : INotificationRepository
             notification.RelatedEntityId == relatedEntityId,
             cancellationToken);
 
+    public async Task<IReadOnlyList<string>> GetMetadataAsync(
+        Guid userId,
+        string notificationType,
+        string relatedEntityType,
+        Guid relatedEntityId,
+        CancellationToken cancellationToken = default) =>
+        await _context.Notifications
+            .AsNoTracking()
+            .Where(notification =>
+                notification.UserId == userId &&
+                notification.NotificationType == notificationType &&
+                notification.RelatedEntityType == relatedEntityType &&
+                notification.RelatedEntityId == relatedEntityId)
+            .Select(notification => notification.Metadata)
+            .ToListAsync(cancellationToken);
+
     public async Task<(IReadOnlyList<Notification> Items, int TotalCount)> GetUserNotificationsAsync(
         Guid userId,
         string? notificationType,

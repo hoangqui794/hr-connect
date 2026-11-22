@@ -148,6 +148,22 @@ describe('useNotificationSignalR', () => {
     });
   });
 
+  it('refreshes sourcing deliveries and the scored application when application.scored fires', () => {
+    vi.spyOn(signalRNotificationService, 'start').mockResolvedValue();
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    renderHook(() => useNotificationSignalR(), { wrapper });
+
+    act(() => {
+      (signalRNotificationService as any).applicationScoredListeners.forEach((fn: any) =>
+        fn({ applicationId: 'app-123' })
+      );
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['sourcing-deliveries'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['hr-application', 'app-123'] });
+  });
+
   it('refreshes the owning Candidate application and timeline for MF04 notifications', () => {
     vi.spyOn(signalRNotificationService, 'start').mockResolvedValue();
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');

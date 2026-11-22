@@ -8,4 +8,3 @@ export { ScoreTierTag } from './common/ScoreTierTag';
 export { AntiDuplicationBadge } from './common/AntiDuplicationBadge';
 export { FintechMetricCard } from './common/FintechMetricCard';
 export { LanguageSwitcher } from './common/LanguageSwitcher';
-export { AIMatchReviewer } from '@/features/screening/AIMatchReviewer';

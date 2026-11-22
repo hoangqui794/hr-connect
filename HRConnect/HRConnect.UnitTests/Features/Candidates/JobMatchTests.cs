@@ -165,6 +165,69 @@ public class JobMatchTests
     }
 
     [Fact]
+    public async Task Run_ShouldKeepADismissedJobHidden_WhenTheCvChangesTheFingerprint()
+    {
+        var job = SeedJob();
+        var (candidate, cv) = SeedCandidate();
+        _ai.Scores[cv.CvId] = new JobMatchScore(cv.CvId, 85m, null);
+        (await Runner().RunOnceAsync(5, 30)).Should().Be(1);
+        var first = _context.CandidateJobMatches.Single();
+        (await new JobMatchWriter(_context).DismissAsync(candidate.CandidateId, first.CandidateJobMatchId, DateTime.UtcNow)).Should().BeTrue();
+
+        // A new CV version / profile edit gives the (candidate, job) pair a different fingerprint.
+        candidate.TargetRole = "Senior Backend Engineer";
+        candidate.UpdatedAt = DateTime.UtcNow.AddMinutes(1);
+        cv.UpdatedAt = DateTime.UtcNow.AddMinutes(1);
+        await _context.SaveChangesAsync();
+        HybridJobMatchScorer.BuildFingerprint(candidate, cv, job).Should().NotBe(first.InputFingerprint);
+
+        (await Runner().RunOnceAsync(5, 30)).Should().Be(0);
+
+        _ai.Calls.Should().ContainSingle("the hidden job must not be scored again");
+        _context.CandidateJobMatches.Should().ContainSingle().Which.Status.Should().Be(JobMatchStates.Dismissed);
+        (await new JobMatchReader(_context).GetForCandidateAsync(candidate.CandidateId, 0m, 20, DateTime.UtcNow)).Items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Run_ShouldNotSendASecondJobFitForTheSameJob_OnALaterDay()
+    {
+        var job = SeedJob();
+        var (candidate, cv) = SeedCandidate();
+        _ai.Scores[cv.CvId] = new JobMatchScore(cv.CvId, 90m, null);
+        await Runner().RunOnceAsync(5, 30);
+        var notice = _context.Notifications.Single();
+        notice.RelatedEntityId.Should().Be(job.JobId);
+
+        // Yesterday's notice no longer counts toward today's cap; the job is re-scored with a new input.
+        notice.CreatedAt = DateTime.UtcNow.Date.AddDays(-1).AddHours(9);
+        candidate.TargetRole = "Backend Engineer";
+        candidate.UpdatedAt = DateTime.UtcNow.AddMinutes(1);
+        await _context.SaveChangesAsync();
+
+        (await Runner().RunOnceAsync(5, 30)).Should().Be(1);
+
+        _context.CandidateJobMatches.Count().Should().Be(2);
+        _context.Notifications.Count(n => n.UserId == candidate.UserId && n.NotificationType == "JOB_FIT").Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Run_ShouldStillNotifyForADifferentJob_AfterAJobFitForAnotherJob()
+    {
+        var firstJob = SeedJob();
+        var (candidate, cv) = SeedCandidate();
+        _ai.Scores[cv.CvId] = new JobMatchScore(cv.CvId, 90m, null);
+        await Runner().RunOnceAsync(5, 30);
+        _context.Notifications.Single().CreatedAt = DateTime.UtcNow.Date.AddDays(-1).AddHours(9);
+        await _context.SaveChangesAsync();
+
+        var secondJob = SeedJob();
+        await Runner().RunOnceAsync(5, 30);
+
+        _context.Notifications.Where(n => n.UserId == candidate.UserId).Select(n => n.RelatedEntityId)
+            .Should().BeEquivalentTo(new Guid?[] { firstJob.JobId, secondJob.JobId });
+    }
+
+    [Fact]
     public async Task Run_ShouldContinuePastAlreadyScoredCandidates_WhenBatchLimitIsSmall()
     {
         var job = SeedJob();

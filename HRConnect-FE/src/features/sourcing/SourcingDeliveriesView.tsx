@@ -11,10 +11,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   App as AntApp,
-  Badge,
   Button,
   Card,
-  Descriptions,
   Empty,
   Form,
   Input,
@@ -33,11 +31,9 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   CloseCircleOutlined,
-  ExclamationCircleOutlined,
   EyeOutlined,
   ReloadOutlined,
   SwapOutlined,
-  UserOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { sourcingApi } from '@/services/api/sourcingApi';
@@ -84,7 +80,7 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
   role,
   onViewCandidate,
 }) => {
-  const { message, modal } = AntApp.useApp();
+  const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<FilterTab>('ALL');
 
@@ -805,7 +801,14 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
             label="Kết quả xác minh"
             rules={[{ required: true, message: 'Chọn kết quả xác minh.' }]}
           >
-            <Radio.Group className="w-full space-y-2">
+            <Radio.Group
+              className="w-full space-y-2"
+              onChange={(e) => {
+                if (e.target.value === true) {
+                  reviewForm.setFields([{ name: 'note', errors: [] }]);
+                }
+              }}
+            >
               <Radio value={true}>
                 <span className="font-semibold text-slate-800">Giữ nguyên từ chối (Hợp lệ)</span>
                 <div className="text-xs text-slate-500">Chấp nhận lý do từ chối của khách hàng, có thể giao CV thay thế.</div>

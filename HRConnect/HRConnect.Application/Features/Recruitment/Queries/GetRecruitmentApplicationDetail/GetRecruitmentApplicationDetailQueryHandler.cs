@@ -190,7 +190,12 @@ public class GetRecruitmentApplicationDetailQueryHandler : IRequestHandler<GetRe
                 Diagnostics = aiMetadata?.Diagnostics ?? new List<RecruitmentAiDiagnosticDto>(),
                 MissingRequirements = aiMetadata?.MissingRequirements ?? new List<string>(),
                 MatchingReasons = aiMetadata?.MatchingReasons ?? new List<string>(),
-                InputFingerprints = aiMetadata?.InputFingerprints
+                InputFingerprints = aiMetadata?.InputFingerprints,
+                MustHaveResult = latestAi.MustHaveResult,
+                ShouldHaveResult = latestAi.ShouldHaveResult,
+                FailureCode = latestAi.FailureCode,
+                // ErrorMessage can be a raw exception or dispatcher text: Internal HR/Admin only.
+                ErrorMessage = request.IsClientCompanyUser ? null : latestAi.ErrorMessage
             } : null,
             Interviews = interviewsDto,
             Offers = offersDto,

@@ -6,6 +6,8 @@
 const JOB = [
   ['mf01-jobs'], ['client-overview'], ['hr-overview'], ['admin-overview'], ['admin-dashboard-metrics'], ['aff-jobs'],
   ['mf05-posting-fees'], ['mf05-client-fees'], ['client-billing'],
+  // JOB_FIT notifications: a new suggested job for the Candidate.
+  ['candidate-job-matches'],
 ];
 const APPLICATION = [
   ['hr-screening'], ['hr-overview'], ['hr-pipeline'], ['hr-application'], ['hr-application-timeline'],

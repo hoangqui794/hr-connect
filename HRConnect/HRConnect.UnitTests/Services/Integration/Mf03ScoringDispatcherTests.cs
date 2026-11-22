@@ -1,5 +1,6 @@
 using System.Net;
 using FluentAssertions;
+using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Models;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
@@ -31,6 +32,7 @@ public class Mf03ScoringDispatcherTests
         result.CompletedAt.Should().BeNull();
         fixture.Handler.RequestCount.Should().Be(1);
         (await db.AuditLogs.SingleAsync()).Action.Should().Be("AI_SCORING_RETRY_SCHEDULED");
+        fixture.Publisher.ScoredEvents.Should().BeEmpty();
     }
 
     [Fact]
@@ -50,6 +52,8 @@ public class Mf03ScoringDispatcherTests
         result.CompletedAt.Should().NotBeNull();
         fixture.Handler.RequestCount.Should().Be(1);
         (await db.AuditLogs.SingleAsync()).Action.Should().Be("AI_SCORING_FAILED");
+        fixture.Publisher.ScoredEvents.Should().ContainSingle()
+            .Which.Should().Be((result.ApplicationId, fixture.JobId, "FAILED"));
     }
 
     [Fact]
@@ -87,6 +91,26 @@ public class Mf03ScoringDispatcherTests
         result.CompletedAt.Should().NotBeNull();
         fixture.Handler.RequestCount.Should().Be(0);
         (await db.AuditLogs.SingleAsync()).Action.Should().Be("AI_SCORING_FAILED");
+        fixture.Publisher.ScoredEvents.Should().ContainSingle()
+            .Which.Should().Be((result.ApplicationId, fixture.JobId, "FAILED"));
+    }
+
+    [Fact]
+    public async Task DispatchBatchAsync_PublisherThrowsOnFailed_DoesNotBreakDispatcher()
+    {
+        var fixture = await CreateFixtureAsync(
+            status: "PROCESSING",
+            dispatchCount: 5,
+            lastDispatchedAt: DateTime.UtcNow.AddMinutes(-20),
+            publisherThrows: true);
+
+        var act = () => fixture.Dispatcher.DispatchBatchAsync(CancellationToken.None);
+
+        await act.Should().NotThrowAsync();
+        await using var scope = fixture.Provider.CreateAsyncScope();
+        var result = await scope.ServiceProvider.GetRequiredService<ApplicationDbContext>()
+            .AiMatchResults.SingleAsync();
+        result.Status.Should().Be("FAILED");
     }
 
     [Theory]
@@ -105,23 +129,28 @@ public class Mf03ScoringDispatcherTests
         string status = "PENDING",
         int dispatchCount = 0,
         DateTime? nextAttemptAt = null,
-        DateTime? lastDispatchedAt = null)
+        DateTime? lastDispatchedAt = null,
+        bool publisherThrows = false)
     {
         var services = new ServiceCollection();
         var databaseName = Guid.NewGuid().ToString();
+        var publisher = new RecordingNotificationPublisher(publisherThrows);
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseInMemoryDatabase(databaseName));
+        services.AddSingleton<INotificationPublisher>(publisher);
         var provider = services.BuildServiceProvider();
 
+        Guid jobId;
         await using (var scope = provider.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            jobId = Guid.NewGuid();
             var submission = new Submission
             {
                 SubmissionId = Guid.NewGuid(),
                 CandidateId = Guid.NewGuid(),
                 CvId = Guid.NewGuid(),
-                JobId = Guid.NewGuid(),
+                JobId = jobId,
                 SubmittedBy = Guid.NewGuid(),
                 Source = "CANDIDATE",
                 Status = "ACCEPTED"
@@ -168,13 +197,31 @@ public class Mf03ScoringDispatcherTests
             factory,
             settings,
             NullLogger<Mf03ScoringDispatcher>.Instance);
-        return new DispatcherFixture(provider, dispatcher, handler);
+        return new DispatcherFixture(provider, dispatcher, handler, publisher, jobId);
     }
 
     private sealed record DispatcherFixture(
         ServiceProvider Provider,
         Mf03ScoringDispatcher Dispatcher,
-        StubHttpMessageHandler Handler);
+        StubHttpMessageHandler Handler,
+        RecordingNotificationPublisher Publisher,
+        Guid JobId);
+
+    private sealed class RecordingNotificationPublisher(bool shouldThrow) : INotificationPublisher
+    {
+        public List<(Guid ApplicationId, Guid JobId, string Status)> ScoredEvents { get; } = [];
+
+        public Task PublishAsync(IReadOnlyList<Notification> notifications, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task PublishApplicationScoredAsync(Guid applicationId, Guid jobId, string status, CancellationToken cancellationToken = default)
+        {
+            if (shouldThrow)
+                throw new InvalidOperationException("Simulated SignalR push failure");
+            ScoredEvents.Add((applicationId, jobId, status));
+            return Task.CompletedTask;
+        }
+    }
 
     private sealed class StubHttpClientFactory(HttpClient client) : IHttpClientFactory
     {

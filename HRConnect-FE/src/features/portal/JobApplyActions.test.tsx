@@ -42,8 +42,7 @@ const job = {
   statusHistories: [],
 } satisfies Job;
 
-const renderActions = () => {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+const renderActions = (queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })) => {
   return render(
     <MemoryRouter>
       <QueryClientProvider client={queryClient}>
@@ -93,6 +92,24 @@ describe('JobApplyActions', () => {
 
     await waitFor(() => expect(apply).toHaveBeenCalledWith('job-1', { cvId: 'cv-2' }));
     expect(await screen.findByText('Đã nộp đơn ứng tuyển')).toBeInTheDocument();
+  });
+
+  it('refreshes job suggestions after a successful application', async () => {
+    vi.spyOn(candidateCvApi, 'list').mockResolvedValue([
+      { cvId: 'cv-1', title: 'CV chính thức', fileName: 'cv-1.pdf', fileSizeBytes: 1024, isPrimary: true, updatedAt: '2026-11-01T00:00:00Z' },
+    ] as never);
+    vi.spyOn(mf04Api, 'getProfile').mockResolvedValue({ fullName: 'Nguyễn An', email: 'an@example.com', phone: '0900000000' } as never);
+    vi.spyOn(applyApi, 'apply').mockResolvedValue({ data: { applicationId: 'app-1' } } as never);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+    renderActions(queryClient);
+
+    fireEvent.click(screen.getByRole('button', { name: /Ứng tuyển/i }));
+    expect(await screen.findByRole('radio', { name: /CV chính thức/ })).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: /nộp hồ sơ/i }));
+
+    expect(await screen.findByText('Đã nộp đơn ứng tuyển')).toBeInTheDocument();
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['candidate-job-matches'] });
   });
 
   it('guides candidates who have no CV to create one online or upload directly', async () => {

@@ -198,3 +198,45 @@ describe('getNotificationRoute for AFFILIATE', () => {
     expect(fallback).toBe('/affiliate/commissions');
   });
 });
+
+describe('getNotificationRoute for CLIENT application notices (MF-03 BE-M02)', () => {
+  const APP = '2c3d4e5f-0000-4000-8000-000000000002';
+  const notice = (overrides: Record<string, unknown> = {}) => ({
+    notificationId: 'n-app',
+    notificationType: 'APPLICATION_STATUS',
+    title: 'Có hồ sơ ứng viên mới',
+    message: 'HR Connect đã chọn hồ sơ của ứng viên Nguyễn Văn A cho vị trí "Backend Developer".',
+    relatedEntityType: 'APPLICATION',
+    relatedEntityId: APP,
+    isRead: false,
+    createdAt: new Date().toISOString(),
+    ...overrides,
+  });
+
+  it('opens the candidate from the client route hint sent by the server', () => {
+    const route = getNotificationRoute(
+      notice({ routeHint: `/client/candidates?open=${APP}`, metadata: JSON.stringify({ routeHint: `/client/candidates?open=${APP}`, entityId: APP }) }),
+      UserRole.CLIENT
+    );
+    expect(route).toBe(`/client/candidates?open=${APP}`);
+  });
+
+  it('falls back to the application id and ignores a non-client hint', () => {
+    expect(getNotificationRoute(notice({ routeHint: '/candidate/applications' }), UserRole.CLIENT)).toBe(
+      `/client/candidates?open=${APP}`
+    );
+    expect(
+      getNotificationRoute(notice({ relatedEntityId: undefined, metadata: JSON.stringify({ applicationId: APP, status: 'SHORTLISTED' }) }), UserRole.CLIENT)
+    ).toBe(`/client/candidates?open=${APP}`);
+  });
+
+  it('opens the candidate list when the notice carries no application id', () => {
+    expect(getNotificationRoute(notice({ relatedEntityId: undefined }), UserRole.CLIENT)).toBe('/client/candidates');
+  });
+
+  it('leaves Internal HR on the screening page for the same notice', () => {
+    expect(getNotificationRoute(notice({ metadata: JSON.stringify({ applicationId: APP, status: 'SHORTLISTED' }) }), UserRole.INTERNAL_HR)).toBe(
+      `/hr/screening?status=SHORTLISTED&open=${APP}`
+    );
+  });
+});

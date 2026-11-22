@@ -121,7 +121,8 @@ public sealed class JobMatchRunner
                     var rows = existingRows.Where(m => m.CandidateId == candidate.CandidateId).ToList();
                     var sameInput = rows.FirstOrDefault(m => m.InputFingerprint == fingerprint);
 
-                    if (sameInput?.Status == JobMatchStates.Dismissed) continue;
+                    // A job the candidate hid stays hidden, even after the CV or the job changes the fingerprint.
+                    if (rows.Any(m => m.Status == JobMatchStates.Dismissed)) continue;
                     if (sameInput?.Status == JobMatchStates.Generated && (sameInput.ExpiresAt == null || sameInput.ExpiresAt > now)) continue;
                     if (sameInput?.Status == JobMatchStates.Failed &&
                         (sameInput.RetryCount >= 3 || (sameInput.NextRetryAt.HasValue && sameInput.NextRetryAt > now))) continue;
@@ -188,6 +189,13 @@ public sealed class JobMatchRunner
 
                 if (!ok || hybrid!.Score < minScore) continue;
                 var userId = pair.Candidate.UserId!.Value;
+                // One JOB_FIT per job and user, ever: a re-score on a later day must not notify again.
+                if (await _db.Notifications.AnyAsync(
+                        n => n.UserId == userId
+                             && n.NotificationType == "JOB_FIT"
+                             && n.RelatedEntityType == "JOB"
+                             && n.RelatedEntityId == job.JobId,
+                        cancellationToken)) continue;
                 if (!sentToday.TryGetValue(userId, out var count))
                 {
                     count = await _db.Notifications.CountAsync(
