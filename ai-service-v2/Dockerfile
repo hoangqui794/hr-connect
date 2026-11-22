@@ -14,7 +14,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN useradd --create-home appuser
+RUN useradd --uid 1000 --create-home appuser
 
 # CPU-only torch keeps the image several GB smaller than the default CUDA build.
 COPY requirements.txt .

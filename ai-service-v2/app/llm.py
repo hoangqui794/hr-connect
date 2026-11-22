@@ -253,22 +253,38 @@ class GeminiCvAssessor:
                     started = time.monotonic()
                     logger.info("Gemini call model=%s attempt=%s", model, attempt)
                     interaction = self._client.interactions.create(model=model, **request)
-                    result = _parse(getattr(interaction, "output_text", None))
+                    result = _parse(_extract_interaction_text(interaction))
                     self.last_model = model
                     logger.info("Gemini answered model=%s in %.1fs", model, time.monotonic() - started)
                     return result
                 except LlmError:
                     raise
                 except Exception as exc:  # the SDK raises several transport/API error types
-                    logger.warning("Gemini call failed model=%s attempt=%s: %s", model, attempt, type(exc).__name__)
-                    if not _is_rate_limit(exc):
-                        raise LlmError(f"Gemini request failed: {type(exc).__name__}: {str(exc)[:200]}") from exc
-                    if not is_last:
-                        break  # switch model now instead of waiting
-                    if attempt == self._settings.llm_max_attempts:
-                        raise LlmError(f"All Gemini models are rate limited ({', '.join(models)}).") from exc
-                    # Last model: wait for the per-minute window to reset.
-                    time.sleep(self._settings.llm_retry_wait_seconds * attempt)
+                    logger.warning("Gemini call failed model=%s attempt=%s: %s: %s",
+                                   model, attempt, type(exc).__name__, str(exc)[:200])
+                    if _is_rate_limit(exc):
+                        if not is_last:
+                            break  # switch model now instead of waiting
+                        if attempt == self._settings.llm_max_attempts:
+                            raise LlmError(f"All Gemini models are rate limited ({', '.join(models)}).") from exc
+                        # Last model: wait for the per-minute window to reset.
+                        time.sleep(self._settings.llm_retry_wait_seconds * attempt)
+                        continue
+                    if _is_model_unavailable(exc):
+                        if not is_last:
+                            break  # try fallback model when primary model is unavailable/unsupported
+                        raise LlmError(
+                            f"Gemini model unavailable ({model}): {type(exc).__name__}: {str(exc)[:200]}") from exc
+                    if _is_transient_gemini_error(exc):
+                        if not is_last:
+                            break  # fail over to the next model on 5xx / timeout
+                        if attempt == self._settings.llm_max_attempts:
+                            raise LlmError(
+                                f"Gemini request failed after retries ({', '.join(models)}): "
+                                f"{type(exc).__name__}: {str(exc)[:200]}") from exc
+                        time.sleep(min(self._settings.llm_retry_wait_seconds, 5.0) * attempt)
+                        continue
+                    raise LlmError(f"Gemini request failed: {type(exc).__name__}: {str(exc)[:200]}") from exc
         raise LlmError("Gemini request failed after retries.")
 
 
@@ -332,6 +348,39 @@ class FallbackCvAssessor:
 def _is_rate_limit(exc: Exception) -> bool:
     text = f"{type(exc).__name__} {exc}".upper()
     return "429" in text or "RESOURCE_EXHAUSTED" in text or "RATE" in text and "LIMIT" in text
+
+
+def _is_model_unavailable(exc: Exception) -> bool:
+    text = f"{type(exc).__name__} {exc}".upper()
+    return "404" in text or "NOT_FOUND" in text or "MODEL NOT FOUND" in text or "NOT SUPPORTED" in text
+
+
+def _is_transient_gemini_error(exc: Exception) -> bool:
+    text = f"{type(exc).__name__} {exc}".upper()
+    return any(marker in text for marker in (
+        "500", "502", "503", "504",
+        "UNAVAILABLE", "INTERNAL", "DEADLINE_EXCEEDED", "OVERLOADED",
+        "TIMEOUT", "TIMED OUT", "CONNECTERROR", "READERROR", "REMOTEPROTOCOLERROR",
+    ))
+
+
+def _extract_interaction_text(interaction) -> str | None:
+    text = getattr(interaction, "output_text", None)
+    if isinstance(text, str) and text.strip():
+        return text
+    outputs = getattr(interaction, "outputs", None)
+    if isinstance(outputs, list):
+        parts: list[str] = []
+        for item in outputs:
+            item_type = item.get("type") if isinstance(item, dict) else getattr(item, "type", None)
+            if item_type == "text":
+                item_text = item.get("text") if isinstance(item, dict) else getattr(item, "text", None)
+                if isinstance(item_text, str):
+                    parts.append(item_text)
+        joined = "".join(parts)
+        if joined.strip():
+            return joined
+    return text
 
 
 def _parse(text: str | None) -> LlmCvAssessment:

@@ -402,10 +402,11 @@ class ScoringJobQueue:
                 # Shutdown mid-job: keep it in the file so the next start scores it again.
                 queue.task_done()
                 raise
-            except Exception:
+            except Exception as exc:
                 logger.exception("v2 scoring worker %s failed request=%s", worker_id, job.request_id)
+                detail = f"AI scoring failed ({type(exc).__name__}): {str(exc)[:200]}"
                 try:
-                    await self._orchestrator.callback_failed(job, "AI_SCORING_FAILED", "AI scoring failed")
+                    await self._orchestrator.callback_failed(job, "AI_SCORING_FAILED", detail)
                     callback_completed = True
                 except Exception:
                     logger.exception(

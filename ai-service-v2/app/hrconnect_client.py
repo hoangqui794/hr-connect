@@ -46,7 +46,7 @@ class HRConnectClient:
     async def download_cv(self, download_url: str) -> bytes:
         # Never forward the service token to presigned storage URLs.
         max_bytes = self._settings.max_upload_size_mb * 1024 * 1024
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
+        async with httpx.AsyncClient(timeout=self._timeout, follow_redirects=True) as client:
             async with client.stream("GET", download_url) as response:
                 response.raise_for_status()
                 content_length = response.headers.get("Content-Length")

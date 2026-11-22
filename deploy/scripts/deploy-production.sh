@@ -65,17 +65,19 @@ write_release_env() {
   local color="$2"
   local backend_image="$3"
   local ai_image="$4"
-  umask 077
-  {
-    printf 'DEPLOY_COLOR=%s\n' "$color"
-    printf 'BACKEND_HOST_PORT=%s\n' "$(color_backend_port "$color")"
-    printf 'AI_HOST_PORT=%s\n' "$(color_ai_port "$color")"
-    printf 'BACKEND_IMAGE=%s\n' "$backend_image"
-    printf 'AI_IMAGE=%s\n' "$ai_image"
-    printf 'BACKEND_ENV_FILE=%s\n' "$BACKEND_ENV_FILE"
-    printf 'AI_ENV_FILE=%s\n' "$AI_ENV_FILE"
-    printf 'AI_DATA_DIR=%s\n' "$DATA_DIR/ai-v2"
-  } > "$release_dir/release.env"
+  (
+    umask 077
+    {
+      printf 'DEPLOY_COLOR=%s\n' "$color"
+      printf 'BACKEND_HOST_PORT=%s\n' "$(color_backend_port "$color")"
+      printf 'AI_HOST_PORT=%s\n' "$(color_ai_port "$color")"
+      printf 'BACKEND_IMAGE=%s\n' "$backend_image"
+      printf 'AI_IMAGE=%s\n' "$ai_image"
+      printf 'BACKEND_ENV_FILE=%s\n' "$BACKEND_ENV_FILE"
+      printf 'AI_ENV_FILE=%s\n' "$AI_ENV_FILE"
+      printf 'AI_DATA_DIR=%s\n' "$DATA_DIR/ai-v2"
+    } > "$release_dir/release.env"
+  )
 }
 
 wait_for_url() {
@@ -214,6 +216,9 @@ atomic_write() {
   local value="$1"
   local destination="$2"
   printf '%s\n' "$value" > "$destination.tmp"
+  if [[ "$destination" == "$AI_ACTIVE_COLOR_FILE" ]]; then
+    chmod 644 "$destination.tmp"
+  fi
   mv -f "$destination.tmp" "$destination"
 }
 
@@ -237,7 +242,15 @@ docker compose version > /dev/null || fail 'Docker Compose is not available.'
 
 mkdir -p "$RELEASES_DIR" "$STATE_DIR" "$DATA_DIR/ai-v2" "$CADDY_DIR"
 chmod 700 "$STATE_DIR"
-chmod 750 "$DATA_DIR" "$DATA_DIR/ai-v2"
+chmod 755 "$DATA_DIR"
+if [[ "$(id -u)" -eq 0 ]]; then
+  chown 1000:1000 "$DATA_DIR/ai-v2"
+  chmod 750 "$DATA_DIR/ai-v2"
+elif [[ "$(id -u)" -eq 1000 ]]; then
+  chmod 750 "$DATA_DIR/ai-v2"
+else
+  chmod 777 "$DATA_DIR/ai-v2"
+fi
 exec 9>"$DEPLOY_LOCK_FILE"
 flock -n 9 || fail 'Another production deployment is already running.'
 
