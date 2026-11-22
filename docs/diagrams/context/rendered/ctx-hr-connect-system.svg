@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1160" viewBox="0 0 1800 1160" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="125%" height="125%">
+      <feDropShadow dx="2" dy="4" stdDeviation="4" flood-color="#0F172A" flood-opacity="0.14"/>
+    </filter>
+    <marker id="arrowSolid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#1E293B"/>
+    </marker>
+    <marker id="arrowDash" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#64748B"/>
+    </marker>
+  </defs>
+
+  <rect width="1800" height="1160" fill="#FFFFFF"/>
+
+  <!-- ==================== ARROWS & FLOW LABELS ==================== -->
+
+  <!-- 1. Guest <-> Core -->
+  <line x1="485" y1="220" x2="778" y2="495" stroke="#1E293B" stroke-width="1.6" marker-end="url(#arrowSolid)"/>
+  <line x1="802" y1="472" x2="509" y2="197" stroke="#64748B" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#arrowDash)"/>
+  <rect x="458" y="346" width="210" height="34" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+  <text x="563" y="360" font-size="11" fill="#0F172A" text-anchor="middle">Job search, registration, contact,</text>
+  <text x="563" y="374" font-size="11" fill="#0F172A" text-anchor="middle">identity claim, agreement verify</text>
+  <rect x="572" y="295" width="215" height="34" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+  <text x="679" y="309" font-size="11" fill="#334155" text-anchor="middle">Public job catalog, claim guidance</text>
+  <text x="679" y="323" font-size="11" fill="#334155" text-anchor="middle">&amp; agreement verification result</text>
+
+  <!-- 2. Candidate <-> Core -->
+  <line x1="882" y1="95" x2="882" y2="418" stroke="#1E293B" stroke-width="1.6" marker-end="url(#arrowSolid)"/>
+  <line x1="918" y1="418" x2="918" y2="95" stroke="#64748B" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#arrowDash)"/>
+  <rect x="665" y="160" width="208" height="34" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+  <text x="769" y="174" font-size="11" fill="#0F172A" text-anchor="middle">Profile, CVs/skills, job applications,</text>
+  <text x="769" y="188" font-size="11" fill="#0F172A" text-anchor="middle">consent, interview &amp; offer response</text>
+  <rect x="928" y="220" width="205" height="34" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+  <text x="1030" y="234" font-size="11" fill="#334155" text-anchor="middle">Job matches, application status,</text>
+  <text x="1030" y="248" font-size="11" fill="#334155" text-anchor="middle">interview schedules &amp; job offers</text>
+
+  <!-- 3. Affiliate Collaborator <-> Core -->
+  <line x1="1256" y1="168" x2="994" y2="465" stroke="#1E293B" stroke-width="1.6" marker-end="url(#arrowSolid)"/>
+  <line x1="1018" y1="488" x2="1280" y2="191" stroke="#64748B" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#arrowDash)"/>
+  <rect x="990" y="318" width="215" height="34" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+  <text x="1097" y="332" font-size="11" fill="#0F172A" text-anchor="middle">Candidate referrals &amp; CVs, consent</text>
+  <text x="1097" y="346" font-size="11" fill="#0F172A" text-anchor="middle">resend, disputes, bank info</text>
+  <rect x="1150" y="266" width="210" height="34" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+  <text x="1255" y="280" font-size="11" fill="#334155" text-anchor="middle">Partner jobs, referral tracking,</text>
+  <text x="1255" y="294" font-size="11" fill="#334155" text-anchor="middle">attribution, commissions &amp; payouts</text>
+
+  <!-- 4. Client Company User <-> Core -->
+  <line x1="1518" y1="316" x2="1050" y2="514" stroke="#1E293B" stroke-width="1.6" marker-end="url(#arrowSolid)"/>
+  <line x1="1062" y1="548" x2="1530" y2="350" stroke="#64748B" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#arrowDash)"/>
+  <rect x="1170" y="392" width="235" height="34" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+  <text x="1287" y="406" font-size="11" fill="#0F172A" text-anchor="middle">Company profile, job requests, signed</text>
+  <text x="1287" y="420" font-size="11" fill="#0F172A" text-anchor="middle">agreement PDF, interview/offer, fees</text>
+  <rect x="1220" y="445" width="225" height="34" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+  <text x="1332" y="459" font-size="11" fill="#334155" text-anchor="middle">Draft agreements, curated shortlist,</text>
+  <text x="1332" y="473" font-size="11" fill="#334155" text-anchor="middle">AI scores, warranty &amp; fee invoices</text>
+
+  <!-- 5. Internal HR <-> Core -->
+  <line x1="1518" y1="564" x2="1072" y2="564" stroke="#1E293B" stroke-width="1.6" marker-end="url(#arrowSolid)"/>
+  <line x1="1072" y1="600" x2="1518" y2="600" stroke="#64748B" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#arrowDash)"/>
+  <rect x="1195" y="524" width="230" height="34" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+  <text x="1310" y="538" font-size="11" fill="#0F172A" text-anchor="middle">Job review, agreement drafting, CV</text>
+  <text x="1310" y="552" font-size="11" fill="#0F172A" text-anchor="middle">screening, sourcing &amp; start reconcile</text>
+  <rect x="1195" y="608" width="230" height="34" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+  <text x="1310" y="622" font-size="11" fill="#334155" text-anchor="middle">Review &amp; screening queues, AI match</text>
+  <text x="1310" y="636" font-size="11" fill="#334155" text-anchor="middle">insights, SLA &amp; warranty alerts</text>
+
+  <!-- 6. Platform Admin <-> Core -->
+  <line x1="1530" y1="790" x2="1062" y2="622" stroke="#1E293B" stroke-width="1.6" marker-end="url(#arrowSolid)"/>
+  <line x1="1050" y1="656" x2="1518" y2="824" stroke="#64748B" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#arrowDash)"/>
+  <rect x="1205" y="680" width="240" height="34" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+  <text x="1325" y="694" font-size="11" fill="#0F172A" text-anchor="middle">Company/Affiliate verification, roles,</text>
+  <text x="1325" y="708" font-size="11" fill="#0F172A" text-anchor="middle">packages, disputes, fee &amp; payout record</text>
+  <rect x="1185" y="742" width="240" height="34" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+  <text x="1305" y="756" font-size="11" fill="#334155" text-anchor="middle">Verification &amp; dispute queues, financial</text>
+  <text x="1305" y="770" font-size="11" fill="#334155" text-anchor="middle">ledgers, system metrics &amp; audit logs</text>
+
+  <!-- 7. LLM Provider (Google Gemini) <-> Core -->
+  <line x1="728" y1="564" x2="282" y2="564" stroke="#64748B" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#arrowDash)"/>
+  <line x1="282" y1="600" x2="728" y2="600" stroke="#1E293B" stroke-width="1.6" marker-end="url(#arrowSolid)"/>
+  <rect x="388" y="524" width="235" height="34" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+  <text x="505" y="538" font-size="11" fill="#334155" text-anchor="middle">CV text/OCR &amp; job-candidate</text>
+  <text x="505" y="552" font-size="11" fill="#334155" text-anchor="middle">semantic evaluation prompts</text>
+  <rect x="385" y="608" width="240" height="34" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+  <text x="505" y="622" font-size="11" fill="#0F172A" text-anchor="middle">Structured CV JSON &amp; requirement</text>
+  <text x="505" y="636" font-size="11" fill="#0F172A" text-anchor="middle">evaluations with verbatim quotes</text>
+
+  <!-- 8. Object Storage (Cloudflare R2) <-> Core -->
+  <line x1="738" y1="622" x2="270" y2="790" stroke="#64748B" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#arrowDash)"/>
+  <line x1="282" y1="824" x2="750" y2="656" stroke="#1E293B" stroke-width="1.6" marker-end="url(#arrowSolid)"/>
+  <rect x="360" y="672" width="230" height="34" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+  <text x="475" y="686" font-size="11" fill="#334155" text-anchor="middle">Upload/fetch CV PDFs, signed</text>
+  <text x="475" y="700" font-size="11" fill="#334155" text-anchor="middle">agreements, logos &amp; evidence</text>
+  <rect x="385" y="742" width="225" height="34" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+  <text x="497" y="756" font-size="11" fill="#0F172A" text-anchor="middle">Stored document streams</text>
+  <text x="497" y="770" font-size="11" fill="#0F172A" text-anchor="middle">&amp; presigned download URLs</text>
+
+  <!-- 9. Email Service (SMTP / Resend) <-> Core -->
+  <line x1="794" y1="712" x2="585" y2="1032" stroke="#64748B" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#arrowDash)"/>
+  <line x1="617" y1="1048" x2="826" y2="728" stroke="#1E293B" stroke-width="1.6" marker-end="url(#arrowSolid)"/>
+  <rect x="520" y="838" width="235" height="34" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+  <text x="637" y="852" font-size="11" fill="#334155" text-anchor="middle">OTP, password reset, consent links,</text>
+  <text x="637" y="866" font-size="11" fill="#334155" text-anchor="middle">interview/offer &amp; system emails</text>
+  <rect x="650" y="925" width="190" height="34" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+  <text x="745" y="939" font-size="11" fill="#0F172A" text-anchor="middle">Email delivery status</text>
+  <text x="745" y="953" font-size="11" fill="#0F172A" text-anchor="middle">&amp; bounce webhooks</text>
+
+  <!-- 10. Payment Gateway (VNPay) <-> Core -->
+  <line x1="974" y1="728" x2="1183" y2="1048" stroke="#64748B" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#arrowDash)"/>
+  <line x1="1215" y1="1032" x2="1006" y2="712" stroke="#1E293B" stroke-width="1.6" marker-end="url(#arrowSolid)"/>
+  <rect x="928" y="925" width="195" height="34" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+  <text x="1025" y="939" font-size="11" fill="#334155" text-anchor="middle">Signed checkout URL &amp;</text>
+  <text x="1025" y="953" font-size="11" fill="#334155" text-anchor="middle">online payment request</text>
+  <rect x="1065" y="838" width="215" height="34" fill="#FFFFFF" fill-opacity="0.92" rx="3"/>
+  <text x="1172" y="852" font-size="11" fill="#0F172A" text-anchor="middle">Signed IPN / return callback</text>
+  <text x="1172" y="866" font-size="11" fill="#0F172A" text-anchor="middle">&amp; payment transaction status</text>
+
+  <!-- ==================== CORE SYSTEM NODE ==================== -->
+  <circle cx="900" cy="582" r="165" fill="#D5E8D4" stroke="#82B366" stroke-width="2.2" filter="url(#shadow)"/>
+  <text x="900" y="562" font-size="17" font-weight="bold" fill="#0F172A" text-anchor="middle">HR Connect System</text>
+  <text x="900" y="586" font-size="13" fill="#1E293B" text-anchor="middle">Web Application + Backend API</text>
+  <text x="900" y="606" font-size="13" fill="#1E293B" text-anchor="middle">+ AI Matching Service</text>
+
+  <!-- ==================== HUMAN ACTORS (6) ==================== -->
+
+  <!-- Guest -->
+  <rect x="330" y="145" width="235" height="66" rx="12" fill="#DAE8FC" stroke="#1B365D" stroke-width="1.8"/>
+  <text x="447.5" y="174" font-size="14" font-weight="bold" fill="#0F172A" text-anchor="middle">Guest</text>
+  <text x="447.5" y="194" font-size="11.5" fill="#334155" text-anchor="middle">(Unauthenticated User)</text>
+
+  <!-- Candidate -->
+  <rect x="782.5" y="24" width="235" height="66" rx="12" fill="#DAE8FC" stroke="#1B365D" stroke-width="1.8"/>
+  <text x="900" y="53" font-size="14" font-weight="bold" fill="#0F172A" text-anchor="middle">Candidate</text>
+  <text x="900" y="73" font-size="11.5" fill="#334155" text-anchor="middle">(Job Seeker)</text>
+
+  <!-- Affiliate Collaborator -->
+  <rect x="1180" y="102" width="245" height="66" rx="12" fill="#DAE8FC" stroke="#1B365D" stroke-width="1.8"/>
+  <text x="1302.5" y="131" font-size="14" font-weight="bold" fill="#0F172A" text-anchor="middle">Affiliate Collaborator</text>
+  <text x="1302.5" y="151" font-size="11.5" fill="#334155" text-anchor="middle">(Headhunter Partner)</text>
+
+  <!-- Client Company User -->
+  <rect x="1522" y="275" width="248" height="68" rx="12" fill="#DAE8FC" stroke="#1B365D" stroke-width="1.8"/>
+  <text x="1646" y="304" font-size="14" font-weight="bold" fill="#0F172A" text-anchor="middle">Client Company User</text>
+  <text x="1646" y="324" font-size="11.5" fill="#334155" text-anchor="middle">(Employer / Hiring Manager)</text>
+
+  <!-- Internal HR -->
+  <rect x="1522" y="548" width="248" height="68" rx="12" fill="#DAE8FC" stroke="#1B365D" stroke-width="1.8"/>
+  <text x="1646" y="577" font-size="14" font-weight="bold" fill="#0F172A" text-anchor="middle">Internal HR</text>
+  <text x="1646" y="597" font-size="11.5" fill="#334155" text-anchor="middle">(HR Connect Specialist)</text>
+
+  <!-- Platform Admin -->
+  <rect x="1522" y="795" width="248" height="68" rx="12" fill="#DAE8FC" stroke="#1B365D" stroke-width="1.8"/>
+  <text x="1646" y="824" font-size="14" font-weight="bold" fill="#0F172A" text-anchor="middle">Platform Admin</text>
+  <text x="1646" y="844" font-size="11.5" fill="#334155" text-anchor="middle">(System Administrator)</text>
+
+  <!-- ==================== EXTERNAL SYSTEMS (4) ==================== -->
+
+  <!-- LLM Provider (Google Gemini) -->
+  <rect x="36" y="548" width="242" height="68" fill="#F1F5F9" stroke="#475569" stroke-width="1.8"/>
+  <text x="157" y="577" font-size="14" font-weight="bold" fill="#0F172A" text-anchor="middle">LLM Provider</text>
+  <text x="157" y="597" font-size="12" fill="#334155" text-anchor="middle">(Google Gemini)</text>
+
+  <!-- Object Storage (Cloudflare R2) -->
+  <rect x="36" y="795" width="242" height="68" fill="#F1F5F9" stroke="#475569" stroke-width="1.8"/>
+  <text x="157" y="824" font-size="14" font-weight="bold" fill="#0F172A" text-anchor="middle">Object Storage</text>
+  <text x="157" y="844" font-size="12" fill="#334155" text-anchor="middle">(Cloudflare R2)</text>
+
+  <!-- Email Service (SMTP / Resend) -->
+  <rect x="445" y="1050" width="242" height="68" fill="#F1F5F9" stroke="#475569" stroke-width="1.8"/>
+  <text x="566" y="1079" font-size="14" font-weight="bold" fill="#0F172A" text-anchor="middle">Email Service</text>
+  <text x="566" y="1099" font-size="12" fill="#334155" text-anchor="middle">(SMTP / Resend)</text>
+
+  <!-- Payment Gateway (VNPay) -->
+  <rect x="1115" y="1050" width="242" height="68" fill="#F1F5F9" stroke="#475569" stroke-width="1.8"/>
+  <text x="1236" y="1079" font-size="14" font-weight="bold" fill="#0F172A" text-anchor="middle">Payment Gateway</text>
+  <text x="1236" y="1099" font-size="12" fill="#334155" text-anchor="middle">(VNPay)</text>
+</svg>

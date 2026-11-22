@@ -11,10 +11,9 @@ flowchart LR
   SYS(("<b>0<br/>HR-Connect System</b><br/>Web App + Backend API<br/>+ AI Matching Service"))
 
   subgraph External_Systems["External Systems"]
-    GGL[("<b>Google OAuth 2.0</b>")]
     MAIL[("<b>Email Service</b><br/>(SMTP / Resend)")]
     R2[("<b>Object Storage</b><br/>(Cloudflare R2)")]
-    LLM[("<b>LLM Providers</b><br/>(Gemini / OpenAI / Anthropic)")]
+    LLM[("<b>LLM Provider</b><br/>(Google Gemini)")]
     PAY[("<b>Payment Gateway</b><br/>(VNPay)")]
   end
 
@@ -35,9 +34,6 @@ flowchart LR
 
   AD -->|Company & Affiliate approvals, user/role governance, packages, identity claim & duplicate merge, dispute decisions| SYS
   SYS -->|Approval & claim queues, finance records, disputes, system metrics & audit trail| AD
-
-  SYS -->|OAuth token verification request| GGL
-  GGL -->|Verified user identity claims| SYS
 
   SYS -->|Verification OTP, password reset, consent requests, interview/offer/agreement emails| MAIL
   MAIL -->|Delivery status| SYS

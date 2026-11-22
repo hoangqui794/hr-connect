@@ -9,11 +9,9 @@ stateDiagram-v2
   SUBMITTED --> WITHDRAWN : Candidate withdraws
   SUBMITTED --> REJECTED : Client rejects (CV_APPLICATION)
   SCREENING --> SHORTLISTED : HR shortlists / CV accepted
-  SCREENING --> BACKUP : HR keeps as backup
   SCREENING --> REJECTED : Rejected (reason code)
   SHORTLISTED --> WITHDRAWN : Candidate withdraws
   SHORTLISTED --> INTERVIEW : Client schedules interview
-  BACKUP --> SHORTLISTED : Promoted from backup
   BACKUP --> OFFER_PENDING : Client selects backup
   BACKUP --> BACKUP_NOT_SELECTED : Another candidate chosen
   INTERVIEW --> BACKUP : Result BACKUP

@@ -8,7 +8,7 @@ stateDiagram-v2
   SENT_TO_CLIENT --> CHANGE_REQUESTED : Client requests changes
   CHANGE_REQUESTED --> VOID : HR issues new version (v+1)
   SENT_TO_CLIENT --> ACCEPTED : Client accepts terms
-  ACCEPTED --> SIGNED : Signed file uploaded & HR approves
+  ACCEPTED --> SIGNED : E-mail OTP verified or signed PDF approved
   SENT_TO_CLIENT --> SIGNED : Direct signed PDF upload & HR approves
   SENT_TO_CLIENT --> VOID : Superseded or job rejected
   VOID --> [*]
