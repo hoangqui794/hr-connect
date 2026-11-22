@@ -260,6 +260,23 @@ public class SourcingDeliveryTests
     }
 
     [Fact]
+    public async Task AutoAccept_AuditEntry_ShouldNameTheWorker()
+    {
+        // AuditLogService rejects a SERVICE actor without ServiceName, which made every auto-accept fail.
+        var job = SeedJob();
+        var delivered = await DeliverOneAsync(job, SeedApplication(job));
+
+        await AutoAccept().AutoAcceptAsync(delivered.DeliveryId, delivered.ReviewDueAt.AddMinutes(1));
+
+        _audit.Verify(a => a.AddAsync(It.Is<AuditEntry>(e =>
+                e.Action == SourcingDeliveryAudit.AutoAccepted
+                && e.ActorType == AuditActorTypes.Service
+                && e.Source == AuditSources.BackgroundWorker
+                && !string.IsNullOrWhiteSpace(e.ServiceName)),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task DueForAutoAccept_ShouldOnlyListUndecidedDeliveriesPastTheWindow()
     {
         var job = SeedJob();

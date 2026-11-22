@@ -802,6 +802,9 @@ public interface ISourcingAutoAcceptService
 
 public sealed class SourcingAutoAcceptService : ISourcingAutoAcceptService
 {
+    /// <summary>Audit ServiceName: a SERVICE actor must name the worker or AuditLogService rejects the entry.</summary>
+    internal const string ServiceName = "SOURCING_AUTO_ACCEPT_WORKER";
+
     private readonly ISourcingDeliveryRepository _deliveries;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _audit;
@@ -837,6 +840,8 @@ public sealed class SourcingAutoAcceptService : ISourcingAutoAcceptService
             EntityType = SourcingDeliveryAudit.EntityType,
             EntityId = delivery.DeliveryId,
             ActorType = AuditActorTypes.Service,
+            Source = AuditSources.BackgroundWorker,
+            ServiceName = ServiceName,
             OldValues = new { Status = SourcingDeliveryStates.Delivered },
             NewValues = new { delivery.Status, delivery.ReviewDueAt }
         }, cancellationToken);

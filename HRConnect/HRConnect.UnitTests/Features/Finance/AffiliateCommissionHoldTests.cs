@@ -1,5 +1,6 @@
 using FluentAssertions;
 using HRConnect.Application.Common.Interfaces;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Features.Finance.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
@@ -68,6 +69,25 @@ public class AffiliateCommissionHoldTests
 
         held.Should().Be(1);
         commission.Status.Should().Be(CommissionStates.OnHold);
+    }
+
+    [Fact]
+    public async Task HoldAndRelease_AuditEntries_ShouldNameTheWorker()
+    {
+        // AuditLogService rejects a SERVICE actor without ServiceName.
+        var (user, _, _) = Seed("SUSPENDED", CommissionStates.InWarranty, WarrantyStates.Active);
+        await Service().RunAsync();
+        user.Status = "ACTIVE";
+        _context.SaveChanges();
+        await Service().RunAsync();
+
+        _audit.Verify(a => a.AddAsync(It.Is<AuditEntry>(e =>
+                e.ActorType == AuditActorTypes.Service
+                && e.Source == AuditSources.BackgroundWorker
+                && !string.IsNullOrWhiteSpace(e.ServiceName)),
+            It.IsAny<CancellationToken>()), Times.Exactly(2));
+        _audit.Verify(a => a.AddAsync(It.Is<AuditEntry>(e => string.IsNullOrWhiteSpace(e.ServiceName)),
+            It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Theory]

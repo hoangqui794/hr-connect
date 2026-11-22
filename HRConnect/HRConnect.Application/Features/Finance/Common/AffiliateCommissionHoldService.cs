@@ -20,6 +20,9 @@ public sealed class AffiliateCommissionHoldService : IAffiliateCommissionHoldSer
 {
     private const int BatchSize = 200;
 
+    /// <summary>Audit ServiceName: a SERVICE actor must name the worker or AuditLogService rejects the entry.</summary>
+    internal const string ServiceName = "AFFILIATE_COMMISSION_HOLD_WORKER";
+
     private readonly IFinanceRepository _financeRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IAuditLogService _auditLogService;
@@ -72,6 +75,8 @@ public sealed class AffiliateCommissionHoldService : IAffiliateCommissionHoldSer
             EntityType = "COMMISSION",
             EntityId = commissionId,
             ActorType = AuditActorTypes.Service,
+            Source = AuditSources.BackgroundWorker,
+            ServiceName = ServiceName,
             OldValues = new { status = oldStatus },
             NewValues = new { status = newStatus },
         }, cancellationToken);
