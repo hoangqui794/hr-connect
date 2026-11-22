@@ -391,6 +391,11 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showSourcingDrawer, setShowSourcingDrawer] = useState(false);
   const feeInfo = useJobFeeInfo(isApplicant ? null : job);
+  // Internal HR verifies "Other" rejections and replaces CVs from the delivered list (MF-03 / UC-45).
+  const canOpenSourcingDeliveries =
+    isInternalReview &&
+    job.serviceTypeCode === 'CV_SOURCING' &&
+    (['ACTIVE', 'PAUSED', 'CLOSED'].includes(job.status) || (job.sourcingCounted ?? 0) > 0);
   const awaitingDeposit = isAwaitingSourcingDeposit(job);
   const depositAmount = sourcingDepositAmount(job);
   const feeText = awaitingDeposit
@@ -846,6 +851,28 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           </div>
         ))}
       </dl>
+
+      {canOpenSourcingDeliveries && (
+        <section
+          aria-label="Hồ sơ đã giao cho doanh nghiệp"
+          className="flex flex-col gap-3 rounded-xl border border-solid border-sky-200 bg-sky-50/60 p-4 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="min-w-0">
+            <p className="m-0 text-sm font-semibold text-slate-900">Hồ sơ đã giao cho doanh nghiệp</p>
+            <p className="m-0 mt-0.5 text-xs leading-relaxed text-slate-600">
+              Theo dõi phản hồi của doanh nghiệp, xác minh lý do từ chối &quot;Khác&quot; và thay CV dự phòng.
+            </p>
+          </div>
+          <Button
+            type="primary"
+            icon={<TeamOutlined aria-hidden />}
+            onClick={() => setShowSourcingDrawer(true)}
+            className="min-h-[44px] shrink-0 font-semibold"
+          >
+            Hồ sơ được tìm kiếm
+          </Button>
+        </section>
+      )}
 
       {isApplicant && job.company && (
         <JobCompanyCard

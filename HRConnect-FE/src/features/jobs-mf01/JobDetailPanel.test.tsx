@@ -1,8 +1,28 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
-import type { PublicJobCompany } from '@/types/api/jobs';
-import { JobCompanyCard } from './JobDetailPanel';
+import { describe, expect, it, vi } from 'vitest';
+import type { Job, PublicJobCompany } from '@/types/api/jobs';
+import { JobCompanyCard, JobDetailPanel } from './JobDetailPanel';
+
+vi.mock('@/features/sourcing/SourcingDeliveriesView', () => ({
+  SourcingDeliveriesView: ({ role, jobId }: { role: string; jobId: string }) => (
+    <div data-testid="sourcing-deliveries-view">{`${role}:${jobId}`}</div>
+  ),
+}));
+
+vi.mock('@/features/portal/candidate/useCandidateAppliedJobs', () => ({
+  useCandidateAppliedJobs: () => ({ isApplied: () => false, isWithdrawn: () => false, getApplication: () => undefined }),
+}));
+
+vi.mock('./useJobQueries', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./useJobQueries')>()),
+  useJobFeeInfo: () => ({ amount: 0, currencyCode: 'VND', packageName: null }),
+  useCurrentServiceAgreement: () => ({ data: null }),
+  useJobTemplate: () => ({ data: null }),
+  usePostingPackages: () => ({ data: [], isLoading: false }),
+  usePostingFee: () => ({ data: null, isLoading: false }),
+}));
 
 const company: PublicJobCompany = {
   companyId: '30000000-0000-0000-0000-000000000001',
@@ -66,5 +86,60 @@ describe('JobCompanyCard', () => {
     expect(screen.getByText('Doanh nghiệp chưa cập nhật phần giới thiệu.')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /website công ty/i })).not.toBeInTheDocument();
     expect(screen.queryByText('Đã xác minh')).not.toBeInTheDocument();
+  });
+});
+
+describe('JobDetailPanel sourcing deliveries (MF-03 UC-45)', () => {
+  const sourcingJob = {
+    jobId: 'job-ss-1',
+    title: 'Sales Executive B2B',
+    companyId: 'comp-1',
+    companyName: 'Lotus Commerce',
+    serviceTypeId: 'srv-ss',
+    serviceTypeCode: 'CV_SOURCING',
+    currencyCode: 'VND',
+    quantity: 1,
+    sourcingTarget: 2,
+    sourcingCounted: 1,
+    status: 'ACTIVE',
+    createdAt: '2026-11-22T08:00:00Z',
+    updatedAt: '2026-11-22T08:00:00Z',
+    concurrencyToken: 'token-1',
+    requirements: [],
+    skills: [],
+    statusHistories: [],
+  } as unknown as Job;
+
+  const renderPanel = (job: Job, isInternalReview: boolean) =>
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter>
+          <JobDetailPanel job={job} isInternalReview={isInternalReview} isApplicantView={false} />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+
+  it('lets Internal HR open the delivered CVs of a CV Sourcing job', async () => {
+    renderPanel(sourcingJob, true);
+
+    expect(screen.queryByTestId('sourcing-deliveries-view')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /hồ sơ được tìm kiếm/i }));
+
+    expect(await screen.findByTestId('sourcing-deliveries-view')).toHaveTextContent('hr:job-ss-1');
+  });
+
+  it('does not show the button outside the Internal HR review view', () => {
+    renderPanel(sourcingJob, false);
+
+    expect(screen.queryByRole('button', { name: /hồ sơ được tìm kiếm/i })).not.toBeInTheDocument();
+  });
+
+  it('does not show the button for other services or before the job is published', () => {
+    const { unmount } = renderPanel({ ...sourcingJob, serviceTypeCode: 'HEADHUNT_COD' } as Job, true);
+    expect(screen.queryByRole('button', { name: /hồ sơ được tìm kiếm/i })).not.toBeInTheDocument();
+    unmount();
+
+    renderPanel({ ...sourcingJob, status: 'PENDING_REVIEW', sourcingCounted: 0 } as Job, true);
+    expect(screen.queryByRole('button', { name: /hồ sơ được tìm kiếm/i })).not.toBeInTheDocument();
   });
 });
