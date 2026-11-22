@@ -529,12 +529,8 @@ export const ApplicationWorkbench: React.FC<{
           } else {
             await run.mutateAsync(() => screeningApi.updateStatus(d!.jobId, d!.applicationId, { targetStatus: 'SHORTLISTED', concurrencyToken: token }));
           }
-        } catch (err) {
-          message.error(getApiErrorMessage(err, 'Không thực hiện được thao tác.'));
-          await invalidateRecruitment(queryClient, d?.applicationId);
-          if (d?.applicationId) {
-            await Promise.all([detail.refetch(), timeline.refetch()]);
-          }
+        } catch {
+          // Error toast and cache refresh are already handled by shortlistAndDeliver.onError / run.onError.
         } finally {
           setPendingAction(null);
         }

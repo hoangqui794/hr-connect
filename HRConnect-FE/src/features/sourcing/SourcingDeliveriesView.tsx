@@ -11,10 +11,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
   App as AntApp,
-  Badge,
   Button,
   Card,
-  Descriptions,
   Empty,
   Form,
   Input,
@@ -33,11 +31,9 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   CloseCircleOutlined,
-  ExclamationCircleOutlined,
   EyeOutlined,
   ReloadOutlined,
   SwapOutlined,
-  UserOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { sourcingApi } from '@/services/api/sourcingApi';
@@ -84,7 +80,7 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
   role,
   onViewCandidate,
 }) => {
-  const { message, modal } = AntApp.useApp();
+  const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<FilterTab>('ALL');
 
@@ -206,12 +202,6 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
   // Handle HR Review Rejection submit
   const handleReviewRejectionSubmit = (values: { upheld: boolean; note?: string }) => {
     if (!reviewRejectionItem) return;
-    if (values.upheld === false && !values.note?.trim()) {
-      reviewForm.setFields([
-        { name: 'note', errors: ['Nhập lý do bác bỏ từ chối của Doanh nghiệp.'] },
-      ]);
-      return;
-    }
     reviewMutation.mutate({
       deliveryId: reviewRejectionItem.deliveryId,
       body: {
@@ -788,16 +778,7 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
           setReviewRejectionItem(null);
           reviewForm.resetFields();
         }}
-        onOk={() => {
-          const values = reviewForm.getFieldsValue();
-          if (values.upheld === false && !values.note?.trim()) {
-            reviewForm.setFields([
-              { name: 'note', errors: ['Nhập lý do bác bỏ từ chối của Doanh nghiệp.'] },
-            ]);
-            return;
-          }
-          reviewForm.submit();
-        }}
+        onOk={() => reviewForm.submit()}
         destroyOnHidden
       >
         <div className="rounded-lg bg-amber-50 p-3 mb-4 text-xs text-amber-900">

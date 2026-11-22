@@ -148,6 +148,55 @@ describe('ApplicationWorkbench MF-04', () => {
     });
   });
 
+  it('[FE-CLEANUP] shows only a single error message when shortlist fails in confirmShortlist', async () => {
+    const errorSpy = vi.fn();
+    let onOkPromise: Promise<unknown> | undefined;
+    const useAppSpy = vi.spyOn(AntApp, 'useApp').mockReturnValue({
+      message: {
+        success: vi.fn(),
+        error: errorSpy,
+        warning: vi.fn(),
+        info: vi.fn(),
+        loading: vi.fn(),
+      } as any,
+      modal: {
+        confirm: vi.fn((config: any) => {
+          onOkPromise = config.onOk?.();
+        }),
+      } as any,
+      notification: {} as any,
+    });
+
+    try {
+      vi.mocked(screeningApi.updateStatus).mockRejectedValue(
+        new AxiosError('Conflict', undefined, undefined, undefined, {
+          status: 409,
+          data: { message: 'Hồ sơ đã bị thay đổi bởi người khác.' },
+        } as any)
+      );
+
+      renderWorkbench(
+        {
+          ...baseApplication,
+          serviceTypeCode: 'CV_SOURCING',
+          status: 'SCREENING',
+          currentStage: 'SCREENING',
+          allowedActions: ['SHORTLIST'],
+        },
+        'hr'
+      );
+
+      const shortlistBtn = await screen.findByRole('button', { name: /Chọn gửi Client/i }, { timeout: 10000 });
+      fireEvent.click(shortlistBtn);
+      await onOkPromise;
+
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy).toHaveBeenCalledWith('Hồ sơ đã bị thay đổi bởi người khác.');
+    } finally {
+      useAppSpy.mockRestore();
+    }
+  });
+
   it('loads the existing offer document link and sends its edited value when Client updates a draft', async () => {
     renderWorkbench({
       ...baseApplication,
