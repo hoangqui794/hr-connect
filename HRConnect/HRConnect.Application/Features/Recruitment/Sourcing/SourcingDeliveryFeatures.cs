@@ -807,15 +807,17 @@ public sealed class SourcingAutoAcceptService : ISourcingAutoAcceptService
     private readonly IAuditLogService _audit;
 
     private readonly ISourcingFinanceService? _finance;
+    private readonly IAppNotifier? _notifier;
 
     public SourcingAutoAcceptService(
         ISourcingDeliveryRepository deliveries, IUnitOfWork unitOfWork, IAuditLogService audit,
-        ISourcingFinanceService? finance = null)
+        ISourcingFinanceService? finance = null, IAppNotifier? notifier = null)
     {
         _deliveries = deliveries;
         _unitOfWork = unitOfWork;
         _audit = audit;
         _finance = finance;
+        _notifier = notifier;
     }
 
     public async Task<bool> AutoAcceptAsync(Guid deliveryId, DateTime now, CancellationToken cancellationToken = default)
@@ -841,6 +843,17 @@ public sealed class SourcingAutoAcceptService : ISourcingAutoAcceptService
         if (_finance != null)
         {
             await _finance.OnDeliveryCountedAsync(delivery, null, cancellationToken);
+        }
+
+        if (_notifier != null && delivery.Job != null)
+        {
+            await _notifier.NotifyCompanyAsync(delivery.Job.CompanyId, new AppNotice(
+                "SOURCING",
+                "CV đã được tự động chấp nhận",
+                $"Tin \"{delivery.Job.Title}\": CV đã được tự động chấp nhận do quá hạn xem xét.",
+                "SOURCING_DELIVERY",
+                delivery.JobId,
+                $"/client/jobs/{delivery.JobId}/sourcing"), cancellationToken);
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
