@@ -10,12 +10,24 @@ public static class RateLimitIdentity
         var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier)
                      ?? context.User.FindFirstValue("sub")
                      ?? "anonymous";
-        var ipAddress = NormalizeIp(context.Connection.RemoteIpAddress);
+        var ipAddress = Ip(context);
 
         return $"user:{userId}:ip:{ipAddress}";
     }
 
-    public static string Ip(HttpContext context) => NormalizeIp(context.Connection.RemoteIpAddress);
+    /// <summary>
+    /// Resolves the normalized client IP, preferring Cloudflare's CF-Connecting-IP header when valid.
+    /// </summary>
+    public static string Ip(HttpContext context)
+    {
+        var cfHeader = context.Request.Headers["CF-Connecting-IP"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(cfHeader) && IPAddress.TryParse(cfHeader.Trim(), out var cfIp))
+        {
+            return NormalizeIp(cfIp);
+        }
+
+        return NormalizeIp(context.Connection.RemoteIpAddress);
+    }
 
     private static string NormalizeIp(IPAddress? address)
     {
