@@ -38,4 +38,39 @@ public class RateLimitIdentityTests
         RateLimitIdentity.UserAndIp(context)
             .Should().Be($"user:{userId}:ip:2001:db8::1");
     }
+
+    [Fact]
+    public void Ip_PrefersValidCfConnectingIpHeaderOverProxyRemoteIp()
+    {
+        var context = new DefaultHttpContext();
+        context.Connection.RemoteIpAddress = IPAddress.Parse("172.18.0.1");
+        context.Request.Headers["CF-Connecting-IP"] = "::ffff:198.51.100.42";
+
+        RateLimitIdentity.Ip(context).Should().Be("198.51.100.42");
+    }
+
+    [Fact]
+    public void Ip_IgnoresInvalidCfConnectingIpAndFallsBackToRemoteIp()
+    {
+        var context = new DefaultHttpContext();
+        context.Connection.RemoteIpAddress = IPAddress.Parse("198.51.100.99");
+        context.Request.Headers["CF-Connecting-IP"] = "not-an-ip";
+
+        RateLimitIdentity.Ip(context).Should().Be("198.51.100.99");
+    }
+
+    [Fact]
+    public void UserAndIp_UsesCfConnectingIpWhenPresent()
+    {
+        var userId = Guid.NewGuid();
+        var context = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "Bearer"))
+        };
+        context.Connection.RemoteIpAddress = IPAddress.Parse("172.18.0.1");
+        context.Request.Headers["CF-Connecting-IP"] = "203.0.113.55";
+
+        RateLimitIdentity.UserAndIp(context).Should().Be($"user:{userId}:ip:203.0.113.55");
+    }
 }
