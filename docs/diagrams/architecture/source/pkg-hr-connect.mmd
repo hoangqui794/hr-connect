@@ -1,66 +1,67 @@
 ---
-title: HR Connect – Package Diagram
+title: HR Connect – Package Diagram (UML 2.5)
 config:
   layout: elk
 ---
 flowchart LR
-  subgraph FE["HRConnect-FE (React + TypeScript)"]
+  subgraph FE["HRConnect-FE (React 18 + TypeScript)"]
     direction TB
-    FE0["app · routes"]
-    FE1["pages · features (portals per role)"]
+    FE0["app · routes · RoleGuards"]
+    FE1["pages · features (Portals per role)"]
     FE2["components"]
-    FE3["services (Axios API clients)"]
+    FE3["services (Axios REST + SignalR)"]
     FE4["stores (Zustand) · hooks"]
     FE5["i18n · types · constants"]
   end
-  subgraph PRES["HRConnect.Presentation"]
+  subgraph PRES["HRConnect.Presentation (.NET 8 Web API)"]
     direction TB
-    PRES0["Endpoints/V1 (Jobs, Recruitment, Finance, Admin, …)"]
-    PRES1["Endpoints/Internal (AI callback)"]
+    PRES0["Endpoints/V1 (Jobs, Recruitment, Finance, Payments, Admin)"]
+    PRES1["Endpoints/Internal (AiIntegrationEndpoints)"]
     PRES2["Hubs (SignalR NotificationHub)"]
-    PRES3["Authorization · Middleware · RateLimiting"]
-    PRES4["ErrorHandling · HealthChecks · Swagger"]
+    PRES3["Authorization · Middleware · RateLimiting · CORS"]
+    PRES4["ExceptionHandling · HealthChecks · Swagger"]
   end
-  subgraph APP["HRConnect.Application"]
+  subgraph APP["HRConnect.Application (CQRS + MediatR)"]
     direction TB
-    APP0["Features/Auth · Users · Admin"]
-    APP1["Features/Companies · Jobs (MF-01)"]
-    APP2["Features/Candidates · Affiliates · SubmissionConsents · CandidateDuplicates (MF-02)"]
-    APP3["Features/InternalHr · Recruitment (MF-03)"]
-    APP4["Features/Interviews · Offers · Placements (MF-04)"]
-    APP5["Features/Finance · CommissionRules · Disputes (MF-05)"]
+    APP0["Features/Auth · Users · Admin · IdentityClaims"]
+    APP1["Features/Companies · Jobs · ServiceAgreements (MF-01)"]
+    APP2["Features/Candidates · Affiliates · SubmissionConsents (MF-02)"]
+    APP3["Features/InternalHr · Recruitment · SourcingDeliveries (MF-03)"]
+    APP4["Features/Interviews · Offers · Placements · Reconciliations (MF-04)"]
+    APP5["Features/Finance · Payments · Commissions · Disputes (MF-05)"]
     APP6["Features/Notifications · Reports · Contact · Settings"]
-    APP7["Common/Interfaces · Models · Exceptions"]
+    APP7["Common (Interfaces · Policies · Models · Exceptions)"]
   end
-  subgraph DOM["HRConnect.Domain"]
+  subgraph DOM["HRConnect.Domain (Enterprise Core)"]
     direction TB
     DOM0["Entities (72)"]
-    DOM1["Constants (states, reason and error codes)"]
+    DOM1["Constants (State Machines, Reason & Error Codes)"]
+    DOM2["Value Objects & Domain Rules"]
   end
-  subgraph INF["HRConnect.Infrastructure"]
+  subgraph INF["HRConnect.Infrastructure (.NET 8)"]
     direction TB
-    INF0["Persistence (DbContext, Migrations, Seed)"]
-    INF1["Repositories"]
-    INF2["Authentication (JWT)"]
-    INF3["Services/Storage (R2) · Email (Resend)"]
-    INF4["Services/Integration (AI client, dispatcher)"]
-    INF5["Services/Agreements · CvBuilder · Finance workers"]
+    INF0["Persistence (ApplicationDbContext, Migrations, Seed)"]
+    INF1["Repositories & UnitOfWork (EF Core 8 + Npgsql)"]
+    INF2["Authentication (JWT Bearer, BCrypt)"]
+    INF3["Services/Storage (R2) · Email (Resend) · VNPayGateway"]
+    INF4["Services/Integration (AI Dispatcher, QuestPDF, Workers)"]
   end
   subgraph AI["ai-service-v2 (Python FastAPI)"]
     direction TB
     AI0["main · pipeline · scoring_jobs"]
-    AI1["documents · semantic (Sentence-BERT)"]
-    AI2["llm · verification"]
-    AI3["hrconnect_client (callback)"]
+    AI1["documents (PDF Parser & OCR)"]
+    AI2["semantic (Sentence-BERT)"]
+    AI3["llm · verification"]
+    AI4["hrconnect_client (Webhook Callback)"]
   end
-  FE -.->|"HTTP REST + SignalR"| PRES
-  PRES -.->|"uses (MediatR)"| APP
-  PRES -.->|"registers (DI)"| INF
-  APP -.->|"uses"| DOM
-  INF -.->|"implements interfaces"| APP
-  INF -.->|"maps entities"| DOM
-  INF -.->|"HTTP score request"| AI
-  AI -.->|"HTTP callback /internal"| PRES
+  FE -.->|"«call» HTTP REST + SignalR"| PRES
+  PRES -.->|"«use» MediatR CQRS"| APP
+  PRES -.->|"«use» DI Registration"| INF
+  APP -.->|"«import»"| DOM
+  INF -.->|"«use» implements interfaces"| APP
+  INF -.->|"«import» maps entities"| DOM
+  INF -.->|"«call» HTTP POST /score"| AI
+  AI -.->|"«call» HTTP webhook /internal"| PRES
   classDef default fill:#FFFFFF,stroke:#1B365D,color:#1F2A3C
   style FE fill:#F2F7FD,stroke:#1B365D
   style PRES fill:#F1F8F2,stroke:#2F6B3A

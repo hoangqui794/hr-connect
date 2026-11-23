@@ -1,55 +1,63 @@
-@startuml pkg-hr-connect pkg-hr-connect
-title HR Connect – Package Diagram
+@startuml pkg-hr-connect
+title HR Connect – Package Diagram (UML 2.5)
 skinparam packageStyle folder
-package "HRConnect-FE (React + TypeScript)" as FE {
-  [app · routes]
-  [pages · features (portals per role)]
-  [components]
-  [services (Axios API clients)]
-  [stores (Zustand) · hooks]
-  [i18n · types · constants]
+
+package "HRConnect-FE (React 18 + TypeScript)" as FE {
+  package "app · routes · RoleGuards" as FE_APP {}
+  package "pages · features (Portals per role)" as FE_FEAT {}
+  package "components" as FE_COMP {}
+  package "services (Axios REST + SignalR)" as FE_SVC {}
+  package "stores (Zustand) · hooks" as FE_STORE {}
+  package "i18n · types · constants" as FE_SHARED {}
 }
-package "HRConnect.Presentation" as PRES {
-  [Endpoints/V1 (Jobs, Recruitment, Finance, Admin, …)]
-  [Endpoints/Internal (AI callback)]
-  [Hubs (SignalR NotificationHub)]
-  [Authorization · Middleware · RateLimiting]
-  [ErrorHandling · HealthChecks · Swagger]
+
+package "HRConnect.Presentation (.NET 8 Web API)" as PRES {
+  package "Endpoints.V1 (Jobs, Recruitment, Finance, Payments, Admin)" as PRES_V1 {}
+  package "Endpoints.Internal (AiIntegrationEndpoints)" as PRES_INT {}
+  package "Hubs (SignalR NotificationHub)" as PRES_HUB {}
+  package "Authorization · Middleware · RateLimiting · CORS" as PRES_MW {}
+  package "ExceptionHandling · HealthChecks · Swagger" as PRES_CFG {}
 }
-package "HRConnect.Application" as APP {
-  [Features/Auth · Users · Admin]
-  [Features/Companies · Jobs (MF-01)]
-  [Features/Candidates · Affiliates · SubmissionConsents · CandidateDuplicates (MF-02)]
-  [Features/InternalHr · Recruitment (MF-03)]
-  [Features/Interviews · Offers · Placements (MF-04)]
-  [Features/Finance · CommissionRules · Disputes (MF-05)]
-  [Features/Notifications · Reports · Contact · Settings]
-  [Common/Interfaces · Models · Exceptions]
+
+package "HRConnect.Application (CQRS + MediatR)" as APP {
+  package "Features.Auth · Users · Admin · IdentityClaims" as APP_AUTH {}
+  package "Features.Companies · Jobs · ServiceAgreements (MF-01)" as APP_MF01 {}
+  package "Features.Candidates · Affiliates · SubmissionConsents (MF-02)" as APP_MF02 {}
+  package "Features.InternalHr · Recruitment · SourcingDeliveries (MF-03)" as APP_MF03 {}
+  package "Features.Interviews · Offers · Placements · Reconciliations (MF-04)" as APP_MF04 {}
+  package "Features.Finance · Payments · Commissions · Disputes (MF-05)" as APP_MF05 {}
+  package "Features.Notifications · Reports · Contact · Settings" as APP_MISC {}
+  package "Common (Interfaces · Policies · Models · Exceptions)" as APP_COMMON {}
 }
-package "HRConnect.Domain" as DOM {
-  [Entities (72)]
-  [Constants (states, reason and error codes)]
+
+package "HRConnect.Domain (Enterprise Core)" as DOM {
+  package "Entities (72)" as DOM_ENT {}
+  package "Constants (State Machines, Reason & Error Codes)" as DOM_CONST {}
+  package "ValueObjects & DomainRules" as DOM_RULES {}
 }
-package "HRConnect.Infrastructure" as INF {
-  [Persistence (DbContext, Migrations, Seed)]
-  [Repositories]
-  [Authentication (JWT)]
-  [Services/Storage (R2) · Email (Resend)]
-  [Services/Integration (AI client, dispatcher)]
-  [Services/Agreements · CvBuilder · Finance workers]
+
+package "HRConnect.Infrastructure (.NET 8)" as INF {
+  package "Persistence (ApplicationDbContext, Migrations, Seed)" as INF_DB {}
+  package "Repositories & UnitOfWork (EF Core 8 + Npgsql)" as INF_REPO {}
+  package "Authentication (JWT Bearer, BCrypt)" as INF_AUTH {}
+  package "Services.Storage (R2) · Email (Resend) · VNPayGateway" as INF_EXT {}
+  package "Services.Integration (AI Dispatcher, QuestPDF, Workers)" as INF_INT {}
 }
+
 package "ai-service-v2 (Python FastAPI)" as AI {
-  [main · pipeline · scoring_jobs]
-  [documents · semantic (Sentence-BERT)]
-  [llm · verification]
-  [hrconnect_client (callback)]
+  package "app.main · pipeline · scoring_jobs" as AI_MAIN {}
+  package "app.documents (PDF Parser & OCR)" as AI_DOC {}
+  package "app.semantic (Sentence-BERT)" as AI_SEM {}
+  package "app.llm · verification" as AI_LLM {}
+  package "app.hrconnect_client (Webhook Callback)" as AI_CB {}
 }
-FE ..> PRES : HTTP REST + SignalR
-PRES ..> APP : uses (MediatR)
-PRES ..> INF : registers (DI)
-APP ..> DOM : uses
-INF ..> APP : implements interfaces
-INF ..> DOM : maps entities
-INF ..> AI : HTTP score request
-AI ..> PRES : HTTP callback /internal
+
+FE ..> PRES : <<call>>\nHTTP REST + SignalR
+PRES ..> APP : <<use>>\nMediatR CQRS
+PRES ..> INF : <<use>>\nDI Registration
+APP ..> DOM : <<import>>
+INF ..> APP : <<use>>\nimplements interfaces
+INF ..> DOM : <<import>>\nmaps entities
+INF ..> AI : <<call>>\nHTTP POST /score
+AI ..> PRES : <<call>>\nHTTP webhook /internal
 @enduml
