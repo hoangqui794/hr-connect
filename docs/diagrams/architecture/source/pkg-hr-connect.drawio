@@ -127,19 +127,19 @@
         <mxCell id="n_DOM2" value="Value Objects &amp; Domain Rules (Fee &amp; Commission Snapshots)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#334155;fontSize=11;fontFamily=Helvetica;fontColor=#0F172A;spacingLeft=6;spacingRight=6;" vertex="1" parent="1">
           <mxGeometry x="980" y="807" width="490" height="50" as="geometry" />
         </mxCell>
-        <mxCell id="d0" value="«call»&#xA;HTTP REST + SignalR" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endSize=9;dashed=1;strokeColor=#1E293B;strokeWidth=1.5;fontSize=11;fontStyle=1;fontFamily=Helvetica;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="g_FE" target="g_PRES">
+        <mxCell id="d0" value="«use»" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endSize=9;dashed=1;strokeColor=#1E293B;strokeWidth=1.5;fontSize=11;fontStyle=1;fontFamily=Helvetica;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="g_FE" target="g_PRES">
           <mxGeometry relative="1" as="geometry">
           </mxGeometry>
         </mxCell>
-        <mxCell id="d1" value="«use»&#xA;MediatR CQRS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endSize=9;dashed=1;strokeColor=#1E293B;strokeWidth=1.5;fontSize=11;fontStyle=1;fontFamily=Helvetica;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.45;entryX=0;entryY=0.35;" edge="1" parent="1" source="g_PRES" target="g_APP">
+        <mxCell id="d1" value="«use»" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endSize=9;dashed=1;strokeColor=#1E293B;strokeWidth=1.5;fontSize=11;fontStyle=1;fontFamily=Helvetica;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.45;entryX=0;entryY=0.35;" edge="1" parent="1" source="g_PRES" target="g_APP">
           <mxGeometry relative="1" as="geometry">
           </mxGeometry>
         </mxCell>
-        <mxCell id="d2" value="«use»&#xA;DI Registration" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endSize=9;dashed=1;strokeColor=#1E293B;strokeWidth=1.5;fontSize=11;fontStyle=1;fontFamily=Helvetica;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="g_PRES" target="g_INF">
+        <mxCell id="d2" value="«use»" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endSize=9;dashed=1;strokeColor=#1E293B;strokeWidth=1.5;fontSize=11;fontStyle=1;fontFamily=Helvetica;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="g_PRES" target="g_INF">
           <mxGeometry relative="1" as="geometry">
           </mxGeometry>
         </mxCell>
-        <mxCell id="d3" value="«use»&#xA;implements interfaces" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endSize=9;dashed=1;strokeColor=#1E293B;strokeWidth=1.5;fontSize=11;fontStyle=1;fontFamily=Helvetica;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.25;entryX=0;entryY=0.82;" edge="1" parent="1" source="g_INF" target="g_APP">
+        <mxCell id="d3" value="«use»" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endSize=9;dashed=1;strokeColor=#1E293B;strokeWidth=1.5;fontSize=11;fontStyle=1;fontFamily=Helvetica;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.25;entryX=0;entryY=0.82;" edge="1" parent="1" source="g_INF" target="g_APP">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="925" y="595" />
@@ -147,24 +147,16 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="d4" value="«import»&#xA;maps entities" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endSize=9;dashed=1;strokeColor=#1E293B;strokeWidth=1.5;fontSize=11;fontStyle=1;fontFamily=Helvetica;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.65;entryX=0;entryY=0.5;" edge="1" parent="1" source="g_INF" target="g_DOM">
+        <mxCell id="d4" value="«import»" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endSize=9;dashed=1;strokeColor=#1E293B;strokeWidth=1.5;fontSize=11;fontStyle=1;fontFamily=Helvetica;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.65;entryX=0;entryY=0.5;" edge="1" parent="1" source="g_INF" target="g_DOM">
           <mxGeometry relative="1" as="geometry">
           </mxGeometry>
         </mxCell>
-        <mxCell id="d5" value="«import»&#xA;domain core" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endSize=9;dashed=1;strokeColor=#1E293B;strokeWidth=1.5;fontSize=11;fontStyle=1;fontFamily=Helvetica;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="g_APP" target="g_DOM">
+        <mxCell id="d5" value="«import»" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endSize=9;dashed=1;strokeColor=#1E293B;strokeWidth=1.5;fontSize=11;fontStyle=1;fontFamily=Helvetica;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="g_APP" target="g_DOM">
           <mxGeometry relative="1" as="geometry">
           </mxGeometry>
         </mxCell>
-        <mxCell id="d6" value="«call»&#xA;HTTP POST /score" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endSize=9;dashed=1;strokeColor=#1E293B;strokeWidth=1.5;fontSize=11;fontStyle=1;fontFamily=Helvetica;labelBackgroundColor=#FFFFFF;exitX=0;exitY=0.65;entryX=1;entryY=0.65;" edge="1" parent="1" source="g_INF" target="g_AI">
+        <mxCell id="d6" value="«use»" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endSize=9;dashed=1;strokeColor=#1E293B;strokeWidth=1.5;fontSize=11;fontStyle=1;fontFamily=Helvetica;labelBackgroundColor=#FFFFFF;exitX=0;exitY=0.65;entryX=1;entryY=0.65;" edge="1" parent="1" source="g_INF" target="g_AI">
           <mxGeometry relative="1" as="geometry">
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="d7" value="«call»&#xA;HTTP webhook /internal" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=open;endSize=9;dashed=1;strokeColor=#1E293B;strokeWidth=1.5;fontSize=11;fontStyle=1;fontFamily=Helvetica;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.25;entryX=0;entryY=0.82;" edge="1" parent="1" source="g_AI" target="g_PRES">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="435" y="595" />
-              <mxPoint x="435" y="386" />
-            </Array>
           </mxGeometry>
         </mxCell>
       </root>

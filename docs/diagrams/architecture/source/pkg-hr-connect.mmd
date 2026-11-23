@@ -4,64 +4,47 @@ config:
   layout: elk
 ---
 flowchart LR
-  subgraph FE["HRConnect-FE (React 18 + TypeScript)"]
+  subgraph FE["HRConnect-FE (React + TypeScript)"]
     direction TB
-    FE0["app · routes · RoleGuards"]
-    FE1["pages · features (Portals per role)"]
+    FE0["app · routes"]
+    FE1["pages · features"]
     FE2["components"]
-    FE3["services (Axios REST + SignalR)"]
-    FE4["stores (Zustand) · hooks"]
-    FE5["i18n · types · constants"]
+    FE3["services · stores · hooks"]
   end
   subgraph PRES["HRConnect.Presentation (.NET 8 Web API)"]
     direction TB
-    PRES0["Endpoints/V1 (Jobs, Recruitment, Finance, Payments, Admin)"]
-    PRES1["Endpoints/Internal (AiIntegrationEndpoints)"]
-    PRES2["Hubs (SignalR NotificationHub)"]
-    PRES3["Authorization · Middleware · RateLimiting · CORS"]
-    PRES4["ExceptionHandling · HealthChecks · Swagger"]
+    PRES0["Endpoints (V1, Internal)"]
+    PRES1["Hubs (SignalR)"]
+    PRES2["Authorization · Middleware"]
   end
   subgraph APP["HRConnect.Application (CQRS + MediatR)"]
     direction TB
-    APP0["Features/Auth · Users · Admin · IdentityClaims"]
-    APP1["Features/Companies · Jobs · ServiceAgreements (MF-01)"]
-    APP2["Features/Candidates · Affiliates · SubmissionConsents (MF-02)"]
-    APP3["Features/InternalHr · Recruitment · SourcingDeliveries (MF-03)"]
-    APP4["Features/Interviews · Offers · Placements · Reconciliations (MF-04)"]
-    APP5["Features/Finance · Payments · Commissions · Disputes (MF-05)"]
-    APP6["Features/Notifications · Reports · Contact · Settings"]
-    APP7["Common (Interfaces · Policies · Models · Exceptions)"]
+    APP0["Features (Auth, MF-01..MF-05)"]
+    APP1["Common (Interfaces, Policies, Models)"]
   end
-  subgraph DOM["HRConnect.Domain (Enterprise Core)"]
+  subgraph DOM["HRConnect.Domain (Core)"]
     direction TB
     DOM0["Entities (72)"]
-    DOM1["Constants (State Machines, Reason & Error Codes)"]
-    DOM2["Value Objects & Domain Rules"]
+    DOM1["Constants (States, Error Codes)"]
   end
   subgraph INF["HRConnect.Infrastructure (.NET 8)"]
     direction TB
-    INF0["Persistence (ApplicationDbContext, Migrations, Seed)"]
-    INF1["Repositories & UnitOfWork (EF Core 8 + Npgsql)"]
-    INF2["Authentication (JWT Bearer, BCrypt)"]
-    INF3["Services/Storage (R2) · Email (Resend) · VNPayGateway"]
-    INF4["Services/Integration (AI Dispatcher, QuestPDF, Workers)"]
+    INF0["Persistence · Repositories"]
+    INF1["Authentication (JWT)"]
+    INF2["Services (R2, Resend, VNPay, AI Client)"]
   end
   subgraph AI["ai-service-v2 (Python FastAPI)"]
     direction TB
-    AI0["main · pipeline · scoring_jobs"]
-    AI1["documents (PDF Parser & OCR)"]
-    AI2["semantic (Sentence-BERT)"]
-    AI3["llm · verification"]
-    AI4["hrconnect_client (Webhook Callback)"]
+    AI0["api · pipeline"]
+    AI1["documents · semantic · llm"]
   end
-  FE -.->|"«call» HTTP REST + SignalR"| PRES
-  PRES -.->|"«use» MediatR CQRS"| APP
-  PRES -.->|"«use» DI Registration"| INF
+  FE -.->|"«use»"| PRES
+  PRES -.->|"«use»"| APP
+  PRES -.->|"«use»"| INF
   APP -.->|"«import»"| DOM
-  INF -.->|"«use» implements interfaces"| APP
-  INF -.->|"«import» maps entities"| DOM
-  INF -.->|"«call» HTTP POST /score"| AI
-  AI -.->|"«call» HTTP webhook /internal"| PRES
+  INF -.->|"«use»"| APP
+  INF -.->|"«import»"| DOM
+  INF -.->|"«use»"| AI
   classDef default fill:#FFFFFF,stroke:#1B365D,color:#1F2A3C
   style FE fill:#F2F7FD,stroke:#1B365D
   style PRES fill:#F1F8F2,stroke:#2F6B3A
