@@ -13,7 +13,7 @@ flowchart LR
     direction TB
     FE_SPA["💻 HRConnect Web App<br/>(React 18 + TypeScript + Vite)<br/>Ant Design 5 · Tailwind · Zustand"]
     FE_COMM["🔌 Client Communication<br/>Axios REST + SignalR WebSocket"]
-    FE_SPA --> FE_COMM
+    FE_SPA <-->|"State & Events"| FE_COMM
   end
 
   subgraph BACKEND["3. APPLICATION & AI TIER (Core Services)"]
@@ -40,6 +40,6 @@ flowchart LR
   BE_API -.->|"SignalR Real-time Push"| FE_COMM
   BE_API -->|"EF Core / Npgsql"| DB
   BE_API -->|"S3 API"| R2
-  BE_API -->|"Redirect & IPN"| VNPAY
+  BE_API <-->|"Redirect & IPN"| VNPAY
   BE_API -->|"SMTP / HTTPS"| AUTH
   AI_SVC -->|"LLM Prompt & OCR"| LLM
