@@ -239,11 +239,12 @@ export async function login(page, baseUrl, email, password) {
     await page.goto(`${baseUrl}/login`, { waitUntil: 'domcontentloaded' });
   }
 
-  const emailInput = page.getByPlaceholder('ten@email.com');
+  // Stable ids of the login form (placeholders change with the UI copy).
+  const emailInput = page.locator('#login-email');
   await emailInput.waitFor({ state: 'visible', timeout: 10000 });
   await visualFill(page, emailInput, email, `Nhập tài khoản: ${email}`);
 
-  const pwdInput = page.getByPlaceholder('Nhập mật khẩu');
+  const pwdInput = page.locator('#login-password');
   await visualFill(page, pwdInput, password, `Nhập mật khẩu kiểm thử`);
 
   const submitBtn = page.locator('form button[type="submit"]');

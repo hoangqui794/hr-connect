@@ -253,10 +253,10 @@ try {
   forceBringToFront();
   await page.waitForTimeout(1200);
 
-  const emailInput = page.getByPlaceholder('ten@email.com');
+  const emailInput = page.locator('#login-email');
   await liveType(emailInput, email, `✍️ [BƯỚC 1] Con trỏ di chuyển vào ô Email và nhập: ${email}`);
 
-  const pwdInput = page.getByPlaceholder('Nhập mật khẩu');
+  const pwdInput = page.locator('#login-password');
   await liveType(pwdInput, password, '✍️ [BƯỚC 1] Con trỏ di chuyển vào ô Mật khẩu và gõ mật khẩu kiểm thử');
 
   const submitBtn = page.locator('form button[type="submit"]');
@@ -278,7 +278,7 @@ try {
   await page.waitForTimeout(1200);
 
   // Chọn dịch vụ AP
-  const apCard = page.locator('div[role="radio"]').filter({ hasText: /CV Application/i }).first();
+  const apCard = page.locator('div[role="radio"]').filter({ hasText: /CV Application|Nhận hồ sơ ứng tuyển/i }).first();
   await liveClick(apCard, '👉 [MF-01 · Bước 1] Con trỏ lướt tới chọn Dịch vụ: "CV Application (AP)"');
 
   const nextBtn1 = page.getByRole('button', { name: 'Tiếp tục' }).first();

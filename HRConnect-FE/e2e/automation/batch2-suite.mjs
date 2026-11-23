@@ -16,7 +16,7 @@ export async function runBatch2Suite(page, CONFIG) {
     await page.waitForLoadState('networkidle');
 
     // Bước 1: Chọn dịch vụ AP
-    const apCard = page.locator('div[role="radio"]').filter({ hasText: /CV Application/i }).first();
+    const apCard = page.locator('div[role="radio"]').filter({ hasText: /CV Application|Nhận hồ sơ ứng tuyển/i }).first();
     await visualClick(page, apCard, '[01-03] Chọn dịch vụ AP');
     await visualClick(page, page.getByRole('button', { name: 'Tiếp tục' }).first(), '[01-03] Sang Bước 2: JD');
 
@@ -88,7 +88,7 @@ export async function runBatch2Suite(page, CONFIG) {
     await page.waitForLoadState('networkidle');
 
     // Bước 1: Chọn dịch vụ AP
-    const apCard = page.locator('div[role="radio"]').filter({ hasText: /CV Application/i }).first();
+    const apCard = page.locator('div[role="radio"]').filter({ hasText: /CV Application|Nhận hồ sơ ứng tuyển/i }).first();
     await visualClick(page, apCard, '[01-04] Chọn dịch vụ AP');
     await visualClick(page, page.getByRole('button', { name: 'Tiếp tục' }).first(), '[01-04] Sang bước 2');
 

@@ -18,7 +18,7 @@ export async function runMf01Suite(page, CONFIG) {
     await page.waitForLoadState('networkidle');
 
     // Bước 1: Chọn dịch vụ AP
-    const apCard = page.locator('div[role="radio"]').filter({ hasText: /CV Application/i }).first();
+    const apCard = page.locator('div[role="radio"]').filter({ hasText: /CV Application|Nhận hồ sơ ứng tuyển/i }).first();
     await apCard.waitFor({ state: 'visible', timeout: 8000 });
     await visualClick(page, apCard, '[01-02] Bước 1: Chọn dịch vụ tuyển dụng CV Application (AP)');
 
@@ -75,7 +75,7 @@ export async function runMf01Suite(page, CONFIG) {
     await page.waitForLoadState('networkidle');
 
     // Bước 1: Chọn CV Application
-    const apCard = page.locator('div[role="radio"]').filter({ hasText: /CV Application/i }).first();
+    const apCard = page.locator('div[role="radio"]').filter({ hasText: /CV Application|Nhận hồ sơ ứng tuyển/i }).first();
     await visualClick(page, apCard, '[01-01] Bước 1: Chọn dịch vụ CV Application');
 
     const nextBtn1 = page.getByRole('button', { name: 'Tiếp tục' }).first();
