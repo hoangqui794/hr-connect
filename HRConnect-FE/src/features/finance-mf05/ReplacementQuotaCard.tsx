@@ -12,6 +12,7 @@ import {
   App,
   Badge,
   Button,
+  Checkbox,
   Empty,
   Form,
   Input,
@@ -26,6 +27,7 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   CloseCircleOutlined,
+  CreditCardOutlined,
   ExclamationCircleOutlined,
   EyeOutlined,
   ReloadOutlined,
@@ -73,9 +75,11 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [cancelTarget, setCancelTarget] = useState<ReplacementSlotWithMeta | null>(null);
+  const [requestCancelTarget, setRequestCancelTarget] = useState<ReplacementSlotWithMeta | null>(null);
   // Placement opened from a slot: the replacement once the slot is filled, otherwise the original hire.
   const [detailPlacementId, setDetailPlacementId] = useState<string | null>(null);
   const [cancelForm] = Form.useForm<{ reason: string }>();
+  const [requestCancelForm] = Form.useForm<{ reason: string; acknowledged: boolean }>();
 
   const slotsQuery = useQuery({
     queryKey: ['mf05-replacement-slots', mode, selectedJobId],
@@ -164,6 +168,38 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
       }
     },
     onError: (err) => {
+      if (err && typeof err === 'object' && 'errorFields' in err) return;
+      message.error(getApiErrorMessage(err));
+    },
+  });
+
+  // 3b. Request cancel slot mutation (Client 2-step flow)
+  const requestCancelMutation = useMutation({
+    mutationFn: async () => {
+      if (!requestCancelTarget) return;
+      const values = await requestCancelForm.validateFields();
+      return financeApi.requestCancelReplacementSlot(requestCancelTarget.replacementSlotId, {
+        reason: values.reason.trim(),
+        concurrencyToken: requestCancelTarget.concurrencyToken,
+      });
+    },
+    onSuccess: () => {
+      message.success('Đã gửi yêu cầu hủy suất thay thế tới HR Connect.');
+      setRequestCancelTarget(null);
+      requestCancelForm.resetFields();
+      for (const queryKey of [
+        ['mf05-replacement-slots'],
+        ['mf05-replacement-slots-summary'],
+        ['mf05-replacement-refunds'],
+        ['mf05-warranties'],
+        ['placements'],
+        ['client-overview'],
+      ]) {
+        void queryClient.invalidateQueries({ queryKey });
+      }
+    },
+    onError: (err) => {
+      if (err && typeof err === 'object' && 'errorFields' in err) return;
       message.error(getApiErrorMessage(err));
     },
   });
@@ -281,6 +317,23 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
                 {conf.label}
               </Tag>
             </Tooltip>
+            {mode === 'hr' &&
+              Boolean(slot.cancelRequestedAt) &&
+              (slot.status === 'OPEN' || slot.status === 'WAITING_PAYMENT') && (
+                <div className="space-y-0.5 pt-0.5">
+                  <Tag color="volcano" className="m-0 font-semibold">
+                    Client yêu cầu hủy
+                  </Tag>
+                  {slot.cancelRequestReason && (
+                    <div
+                      className="text-xs text-rose-700 line-clamp-2"
+                      title={slot.cancelRequestReason}
+                    >
+                      Lý do: {slot.cancelRequestReason}
+                    </div>
+                  )}
+                </div>
+              )}
             {slot.status === 'EXPIRED' && mode === 'client' && (
               <div>
                 {refundStatus === 'CANCELLED' ? (
@@ -385,7 +438,19 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
       key: 'actions',
       align: 'right',
       render: (_, slot) => (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {mode === 'client' && slot.status === 'WAITING_PAYMENT' && (
+            <Button
+              size="small"
+              type="primary"
+              icon={<CreditCardOutlined />}
+              className="!h-9 px-3 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold shadow-xs"
+              onClick={() => navigate('/client/billing')}
+            >
+              Thanh toán phí
+            </Button>
+          )}
+
           {mode === 'client' && (
             <Button
               size="small"
@@ -409,7 +474,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
             </Button>
           )}
 
-          {mode === 'client' && slot.status !== 'EXPIRED' && (
+          {mode === 'client' && (slot.status === 'OPEN' || slot.status === 'FILLED') && (
             <Button
               size="small"
               icon={<UserOutlined />}
@@ -421,15 +486,32 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
             </Button>
           )}
 
+          {mode === 'client' && (slot.status === 'OPEN' || slot.status === 'WAITING_PAYMENT') && (
+            slot.cancelRequestedAt ? (
+              <Tooltip title={slot.cancelRequestReason || 'Yêu cầu hủy đang chờ HR Connect xác nhận'}>
+                <Tag color="orange" className="m-0 py-1 px-2.5 rounded-lg font-medium">
+                  Đã gửi yêu cầu hủy
+                </Tag>
+              </Tooltip>
+            ) : (
+              <Button
+                size="small"
+                danger
+                icon={<CloseCircleOutlined />}
+                className="!h-9 px-3 rounded-lg font-medium"
+                onClick={() => setRequestCancelTarget(slot)}
+              >
+                Yêu cầu hủy
+              </Button>
+            )
+          )}
+
           {mode === 'hr' && (slot.status === 'OPEN' || slot.status === 'WAITING_PAYMENT') && (
             <Button
               size="small"
               danger
               icon={<CloseCircleOutlined />}
-              onClick={() => {
-                cancelForm.resetFields();
-                setCancelTarget(slot);
-              }}
+              onClick={() => setCancelTarget(slot)}
             >
               Hủy suất
             </Button>
@@ -621,7 +703,13 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
               }
             />
 
-            <Form form={cancelForm} layout="vertical" preserve={false}>
+            <Form
+              key={cancelTarget.replacementSlotId}
+              form={cancelForm}
+              layout="vertical"
+              preserve={false}
+              initialValues={{ reason: cancelTarget.cancelRequestReason ?? '' }}
+            >
               <Form.Item
                 name="reason"
                 label="Lý do hủy suất (bắt buộc)"
@@ -636,6 +724,71 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
                   maxLength={500}
                   placeholder="Ví dụ: Doanh nghiệp đã cơ cấu lại phòng ban và không còn nhu cầu tuyển thay thế vị trí này..."
                 />
+              </Form.Item>
+            </Form>
+          </div>
+        )}
+      </Modal>
+
+      {/* Client Request Cancel Slot Modal */}
+      <Modal
+        open={Boolean(requestCancelTarget)}
+        title={
+          <div className="flex items-center gap-2 text-red-600">
+            <ExclamationCircleOutlined />
+            <span>Yêu cầu hủy suất tuyển thay thế</span>
+          </div>
+        }
+        okText="Gửi yêu cầu hủy"
+        cancelText="Đóng"
+        okButtonProps={{ danger: true, loading: requestCancelMutation.isPending }}
+        onOk={() => requestCancelMutation.mutate()}
+        onCancel={() => {
+          setRequestCancelTarget(null);
+          requestCancelForm.resetFields();
+        }}
+        destroyOnHidden
+      >
+        {requestCancelTarget && (
+          <div className="space-y-3">
+            <Alert
+              type="error"
+              showIcon
+              message="Lưu ý quan trọng trước khi hủy suất"
+              description="Hủy suất sẽ chấm dứt quyền tuyển thay thế miễn phí và không phát sinh hoàn phí. Yêu cầu của bạn sẽ được gửi tới HR Connect để xác nhận."
+            />
+
+            <Form form={requestCancelForm} layout="vertical" preserve={false}>
+              <Form.Item
+                name="reason"
+                label="Lý do hủy suất (bắt buộc)"
+                rules={[
+                  { required: true, whitespace: true, message: 'Vui lòng nhập lý do hủy suất.' },
+                  { max: 500, message: 'Lý do tối đa 500 ký tự.' },
+                ]}
+              >
+                <Input.TextArea
+                  rows={4}
+                  showCount
+                  maxLength={500}
+                  placeholder="Ví dụ: Doanh nghiệp đã sắp xếp nhân sự nội bộ và không còn nhu cầu tuyển thay thế..."
+                />
+              </Form.Item>
+              <Form.Item
+                name="acknowledged"
+                valuePropName="checked"
+                rules={[
+                  {
+                    validator: (_, value) =>
+                      value
+                        ? Promise.resolve()
+                        : Promise.reject(new Error('Vui lòng xác nhận bạn đã hiểu điều khoản không hoàn phí.')),
+                  },
+                ]}
+              >
+                <Checkbox>
+                  Tôi hiểu rằng việc hủy suất sẽ không được hoàn phí
+                </Checkbox>
               </Form.Item>
             </Form>
           </div>

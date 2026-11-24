@@ -221,6 +221,8 @@ export interface ReplacementSlotDto {
   refundServiceFeeId?: string | null;
   refundAmount?: number | null;
   refundStatus?: ServiceFeeStatus | null;
+  cancelRequestedAt?: string | null;
+  cancelRequestReason?: string | null;
 }
 
 /** Short slot summary returned when resolving a resignation */

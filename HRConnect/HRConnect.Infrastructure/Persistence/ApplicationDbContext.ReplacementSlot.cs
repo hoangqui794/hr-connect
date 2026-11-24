@@ -95,6 +95,9 @@ public partial class ApplicationDbContext
             entity.Property(e => e.ClosedAt).HasColumnName("closed_at");
             entity.Property(e => e.ClosedBy).HasColumnName("closed_by");
             entity.Property(e => e.CancelReason).HasMaxLength(500).HasColumnName("cancel_reason");
+            entity.Property(e => e.CancelRequestedAt).HasColumnName("cancel_requested_at");
+            entity.Property(e => e.CancelRequestedBy).HasColumnName("cancel_requested_by");
+            entity.Property(e => e.CancelRequestReason).HasMaxLength(500).HasColumnName("cancel_request_reason");
             entity.Property(e => e.ConcurrencyToken).IsConcurrencyToken().HasDefaultValueSql("gen_random_uuid()").HasColumnName("concurrency_token");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()").HasColumnName("created_at");

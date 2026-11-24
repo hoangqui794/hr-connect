@@ -89,6 +89,7 @@ public static class AuditActions
     public const string ReplacementSlotFilled = "REPLACEMENT_SLOT_FILLED";
     public const string ReplacementRefundCreated = "REPLACEMENT_REFUND_CREATED";
     public const string ReplacementSlotCancelled = "REPLACEMENT_SLOT_CANCELLED";
+    public const string ReplacementSlotCancelRequested = "REPLACEMENT_SLOT_CANCEL_REQUESTED";
     public const string ReplacementSlotExpired = "REPLACEMENT_SLOT_EXPIRED";
     public const string ReplacementSlotExtended = "REPLACEMENT_SLOT_EXTENDED";
     public const string ReplacementNotAllowed = "REPLACEMENT_NOT_ALLOWED";

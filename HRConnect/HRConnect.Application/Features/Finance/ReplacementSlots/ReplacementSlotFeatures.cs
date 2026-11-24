@@ -36,7 +36,9 @@ public sealed record ReplacementSlotDto(
     decimal? RefundPercent = null,
     Guid? RefundServiceFeeId = null,
     decimal? RefundAmount = null,
-    string? RefundStatus = null);
+    string? RefundStatus = null,
+    DateTime? CancelRequestedAt = null,
+    string? CancelRequestReason = null);
 
 /// <summary>
 /// Slots of one job. <paramref name="ClientUserId"/> is set for a Client caller, who may only
@@ -54,6 +56,10 @@ public sealed record GetReplacementSlotsQuery(Guid? ClientUserId, Guid? JobId, s
 /// <summary>Internal HR cancels a WAITING_PAYMENT or OPEN slot (S4), e.g. the Client no longer needs a replacement. No refund.</summary>
 public sealed record CancelReplacementSlotCommand(
     Guid ReplacementSlotId, string Reason, Guid ConcurrencyToken, Guid CurrentUserId) : IRequest<ReplacementSlotDto>;
+
+/// <summary>Client requests cancellation of an OPEN or WAITING_PAYMENT slot; Internal HR reviews and finalizes cancellation.</summary>
+public sealed record RequestCancelReplacementSlotCommand(
+    Guid ReplacementSlotId, string Reason, Guid ConcurrencyToken, Guid ClientUserId) : IRequest<ReplacementSlotDto>;
 
 public sealed class GetJobReplacementSlotsQueryHandler : IRequestHandler<GetJobReplacementSlotsQuery, IReadOnlyList<ReplacementSlotDto>>
 {
@@ -197,6 +203,104 @@ public sealed class CancelReplacementSlotCommandHandler : IRequestHandler<Cancel
     }
 }
 
+public sealed class RequestCancelReplacementSlotCommandHandler : IRequestHandler<RequestCancelReplacementSlotCommand, ReplacementSlotDto>
+{
+    private readonly IFinanceRepository _financeRepository;
+    private readonly ICompanyUserRepository _companyUserRepository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IAuditLogService _auditLogService;
+    private readonly IAppNotifier? _notifier;
+
+    public RequestCancelReplacementSlotCommandHandler(
+        IFinanceRepository financeRepository,
+        ICompanyUserRepository companyUserRepository,
+        IUnitOfWork unitOfWork,
+        IAuditLogService auditLogService,
+        IAppNotifier? notifier = null)
+    {
+        _financeRepository = financeRepository;
+        _companyUserRepository = companyUserRepository;
+        _unitOfWork = unitOfWork;
+        _auditLogService = auditLogService;
+        _notifier = notifier;
+    }
+
+    public async Task<ReplacementSlotDto> Handle(RequestCancelReplacementSlotCommand request, CancellationToken cancellationToken)
+    {
+        var companyUser = await _companyUserRepository.GetByUserIdAsync(request.ClientUserId, cancellationToken);
+        if (!CompanyMembershipPolicy.IsActive(companyUser))
+        {
+            throw new ForbiddenException("Tài khoản không thuộc doanh nghiệp nào.");
+        }
+
+        var reason = request.Reason?.Trim();
+        if (string.IsNullOrEmpty(reason) || reason.Length > 500)
+        {
+            throw new BadRequestException("Lý do hủy suất thay thế là bắt buộc và tối đa 500 ký tự.");
+        }
+
+        var slot = await _financeRepository.GetReplacementSlotForUpdateAsync(request.ReplacementSlotId, cancellationToken);
+        if (slot == null || slot.Job == null || slot.Job.CompanyId != companyUser.CompanyId)
+        {
+            throw new NotFoundException("Không tìm thấy suất thay thế.");
+        }
+
+        if (slot.ConcurrencyToken != request.ConcurrencyToken)
+        {
+            throw new ConflictException(
+                "Suất thay thế vừa được cập nhật bởi người khác. Tải lại rồi thử lại.",
+                ReplacementSlotErrorCodes.ConcurrencyConflict);
+        }
+
+        if (slot.Status is not (ReplacementSlotStates.WaitingPayment or ReplacementSlotStates.Open))
+        {
+            throw new ConflictException(
+                $"Chỉ yêu cầu hủy được suất WAITING_PAYMENT hoặc OPEN. Trạng thái hiện tại: {slot.Status}.",
+                ReplacementSlotErrorCodes.NotCancellable);
+        }
+
+        if (slot.CancelRequestedAt != null)
+        {
+            throw new ConflictException("Yêu cầu hủy suất này đã được gửi trước đó và đang chờ HR Connect xử lý.");
+        }
+
+        var now = DateTime.UtcNow;
+        slot.CancelRequestedAt = now;
+        slot.CancelRequestedBy = request.ClientUserId;
+        slot.CancelRequestReason = reason;
+        slot.ConcurrencyToken = Guid.NewGuid();
+        slot.UpdatedAt = now;
+
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.ReplacementSlotCancelRequested,
+            EntityType = "REPLACEMENT_SLOT",
+            EntityId = slot.ReplacementSlotId,
+            ActorUserId = request.ClientUserId,
+            OldValues = new { status = slot.Status, cancelRequestedAt = (DateTime?)null },
+            NewValues = new { status = slot.Status, cancelRequestedAt = now, reason },
+        }, cancellationToken);
+
+        if (_notifier != null)
+        {
+            await _notifier.NotifyRoleAsync(
+                "INTERNAL_HR",
+                new AppNotice(
+                    "WARRANTY",
+                    "Doanh nghiệp yêu cầu hủy suất thay thế",
+                    $"Doanh nghiệp {slot.Job?.Company?.CompanyName} yêu cầu hủy suất thay thế cho vị trí \"{slot.Job?.Title}\". Lý do: {reason}",
+                    "REPLACEMENT_SLOT",
+                    slot.ReplacementSlotId,
+                    "/hr/warranty-tracking"),
+                cancellationToken);
+        }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return ReplacementSlotMapping.ToDto(slot);
+    }
+}
+
 internal static class ReplacementSlotMapping
 {
     public static ReplacementSlotDto ToDto(ReplacementSlot slot) => ToDto(slot, null, null);
@@ -228,7 +332,9 @@ internal static class ReplacementSlotMapping
             refundPercent,
             refundFee?.ServiceFeeId,
             refundFee?.Amount,
-            refundFee?.Status);
+            refundFee?.Status,
+            slot.CancelRequestedAt,
+            slot.CancelRequestReason);
     }
 
     public static async Task<IReadOnlyList<ReplacementSlotDto>> MapListAsync(

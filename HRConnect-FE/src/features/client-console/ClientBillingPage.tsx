@@ -265,7 +265,12 @@ const useBillingRows = () => {
 };
 
 type ServiceFilter = 'all' | ServiceTypeCode;
-type StatusFilter = 'all' | 'UNPAID' | 'OVERDUE' | 'PAID';
+type StatusFilter = 'all' | 'UNPAID' | 'OVERDUE' | 'PAID' | 'REFUND';
+
+const timestampOf = (iso?: string | null) => (iso ? Date.parse(iso) || 0 : 0);
+const isPendingRefundRow = (r: BillingRow) =>
+  r.owedToClient && !r.paidAt && !r.cancelled && r.statusLabel !== 'Đã hoàn tiền';
+const isPaidRefundRow = (r: BillingRow) => r.owedToClient && Boolean(r.paidAt) && !r.cancelled;
 
 const sumVnd = (rows: BillingRow[]) => rows.filter((r) => r.currencyCode === 'VND').reduce((s, r) => s + r.amount, 0);
 
@@ -277,19 +282,47 @@ const sumByMainCurrency = (list: BillingRow[]) => {
   return { amount: sumVnd(list), currency: 'VND' };
 };
 
-const Kpi: React.FC<{ label: string; value: string; hint: string; tone?: 'danger' | 'success' | 'info' }> = ({ label, value, hint, tone }) => (
-  <Surface padded className="!px-4 !py-3 shadow-xs transition-shadow hover:shadow-sm">
-    <div className="text-[13px] font-medium text-slate-600">{label}</div>
-    <div
-      className={`text-lg font-bold tabular-nums ${
-        tone === 'danger' ? 'text-red-600' : tone === 'success' ? 'text-emerald-700' : tone === 'info' ? 'text-sky-700' : 'text-slate-900'
-      }`}
+const Kpi: React.FC<{
+  label: string;
+  value: string;
+  hint: string;
+  tone?: 'danger' | 'success' | 'info';
+  onClick?: () => void;
+}> = ({ label, value, hint, tone, onClick }) => {
+  const content = (
+    <Surface
+      padded
+      className={`!px-4 !py-3 shadow-xs transition-shadow hover:shadow-sm ${onClick ? 'cursor-pointer hover:border-sky-300' : ''}`}
     >
-      {value}
+      <div className="text-[13px] font-medium text-slate-600">{label}</div>
+      <div
+        className={`text-lg font-bold tabular-nums ${
+          tone === 'danger' ? 'text-red-600' : tone === 'success' ? 'text-emerald-700' : tone === 'info' ? 'text-sky-700' : 'text-slate-900'
+        }`}
+      >
+        {value}
+      </div>
+      <div className="mt-0.5 text-xs text-slate-500">{hint}</div>
+    </Surface>
+  );
+  if (!onClick) return content;
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      className="text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 rounded-xl"
+    >
+      {content}
     </div>
-    <div className="mt-0.5 text-xs text-slate-500">{hint}</div>
-  </Surface>
-);
+  );
+};
 
 export const ClientBillingPage: React.FC = () => {
   const { rows, serviceFeeSummary, loadedServiceFees, totalServiceFees, loading, fetching, error, refetch } = useBillingRows();
@@ -299,7 +332,31 @@ export const ClientBillingPage: React.FC = () => {
   const [paying, setPaying] = useState<BillingRow | null>(null);
 
   const byService = service === 'all' ? rows : rows.filter((r) => r.service === service);
-  const visible = status === 'all' ? byService : byService.filter((r) => r.bucket === status || (status === 'UNPAID' && r.bucket === 'OVERDUE'));
+  const visible = (() => {
+    if (status === 'all') return byService;
+    if (status === 'REFUND') {
+      return byService
+        .filter((r) => r.owedToClient)
+        .sort((a, b) => {
+          const rankOf = (r: BillingRow) => (isPendingRefundRow(r) ? 0 : isPaidRefundRow(r) ? 1 : 2);
+          const rankDiff = rankOf(a) - rankOf(b);
+          if (rankDiff !== 0) return rankDiff;
+          const paidDiff = timestampOf(b.paidAt) - timestampOf(a.paidAt);
+          if (paidDiff !== 0) return paidDiff;
+          return timestampOf(b.createdAt) - timestampOf(a.createdAt);
+        });
+    }
+    if (status === 'PAID') {
+      return byService
+        .filter((r) => r.bucket === 'PAID' || isPaidRefundRow(r))
+        .sort((a, b) => {
+          const paidDiff = timestampOf(b.paidAt) - timestampOf(a.paidAt);
+          if (paidDiff !== 0) return paidDiff;
+          return timestampOf(b.createdAt) - timestampOf(a.createdAt);
+        });
+    }
+    return byService.filter((r) => r.bucket === status || (status === 'UNPAID' && r.bucket === 'OVERDUE'));
+  })();
   const unpaid = rows.filter((r) => r.bucket === 'UNPAID' || r.bucket === 'OVERDUE');
   const overdue = rows.filter((r) => r.bucket === 'OVERDUE');
   const paid = rows.filter((r) => r.bucket === 'PAID');
@@ -575,6 +632,10 @@ export const ClientBillingPage: React.FC = () => {
             value={money(Math.abs(refundTotal.amount), refundTotal.currency)}
             hint={`${pendingRefundCount} khoản chờ hoàn tiền`}
             tone="info"
+            onClick={() => {
+              setStatus('REFUND');
+              setPage(1);
+            }}
           />
         )}
       </div>
@@ -620,6 +681,7 @@ export const ClientBillingPage: React.FC = () => {
               { value: 'UNPAID', label: 'Cần thanh toán' },
               { value: 'OVERDUE', label: 'Quá hạn' },
               { value: 'PAID', label: 'Đã thanh toán' },
+              { value: 'REFUND', label: 'Hoàn tiền', count: byService.filter((r) => r.owedToClient).length },
             ]}
           />
         </div>

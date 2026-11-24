@@ -94,6 +94,14 @@ public static class FinanceEndpoints
             .WithSummary("Danh sách suất tuyển thay thế của doanh nghiệp Client (có phân trang)")
             .WithDescription("Chỉ Client (placement.confirm, thành viên ACTIVE) xem suất thay thế của doanh nghiệp mình. Lọc theo jobId và status; trả về JobTitle, CompanyName và thông tin khoản hoàn phí liên kết.");
 
+        group.MapPost("/client/replacement-slots/{replacementSlotId:guid}/cancel-request", (
+                Guid replacementSlotId, [FromBody] CancelReplacementSlotRequest body, ClaimsPrincipal user, [FromServices] ISender sender, CancellationToken ct) =>
+            Execute(user, [PlacementConfirm], userId => sender.Send(
+                new RequestCancelReplacementSlotCommand(replacementSlotId, body.Reason, body.ConcurrencyToken, userId), ct)))
+            .WithName("RequestCancelReplacementSlot")
+            .WithSummary("Client gửi yêu cầu hủy suất tuyển thay thế")
+            .WithDescription("Chỉ Client (placement.confirm, thành viên ACTIVE) sở hữu job gửi yêu cầu hủy cho suất WAITING_PAYMENT hoặc OPEN. Không tự chuyển CANCELLED và không sinh hoàn phí; thông báo tới Internal HR để xác nhận.");
+
         group.MapPost("/internal/replacement-slots/{replacementSlotId:guid}/cancel", (
                 Guid replacementSlotId, [FromBody] CancelReplacementSlotRequest body, ClaimsPrincipal user, [FromServices] ISender sender, CancellationToken ct) =>
             Execute(user, [WarrantyManage], userId => sender.Send(

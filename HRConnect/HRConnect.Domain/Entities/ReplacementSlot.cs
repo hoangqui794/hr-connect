@@ -39,6 +39,12 @@ public partial class ReplacementSlot
 
     public string? CancelReason { get; set; }
 
+    public DateTime? CancelRequestedAt { get; set; }
+
+    public Guid? CancelRequestedBy { get; set; }
+
+    public string? CancelRequestReason { get; set; }
+
     public Guid ConcurrencyToken { get; set; } = Guid.NewGuid();
 
     public Guid? CreatedBy { get; set; }

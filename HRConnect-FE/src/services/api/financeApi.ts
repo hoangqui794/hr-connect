@@ -150,6 +150,18 @@ export const financeApi = {
     return (await apiClient.get<ApiEnvelope<FinancePage<ReplacementSlotDto>>>('/client/replacement-slots', { params: clean(params) })).data.data;
   },
 
+  /** Client requests cancellation of a WAITING_PAYMENT or OPEN slot (2-step flow, confirmed by Internal HR). */
+  async requestCancelReplacementSlot(
+    replacementSlotId: string,
+    input: CancelReplacementSlotRequest
+  ): Promise<ReplacementSlotDto> {
+    const res = await apiClient.post<ApiEnvelope<ReplacementSlotDto>>(
+      `/client/replacement-slots/${replacementSlotId}/cancel-request`,
+      input
+    );
+    return res.data.data ?? (res.data as unknown as ReplacementSlotDto);
+  },
+
   /** Internal HR cancels a WAITING_PAYMENT or OPEN slot */
   async cancelReplacementSlot(
     replacementSlotId: string,
