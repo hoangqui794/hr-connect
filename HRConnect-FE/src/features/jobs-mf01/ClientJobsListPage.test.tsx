@@ -240,4 +240,38 @@ it('opens close modal with tailored description and filtered reasons for PENDING
     expect(screen.queryByText('Đã tuyển đủ người')).toBeNull();
     expect(screen.queryByText('Hết hạn đăng tin')).toBeNull();
   });
+
+  it('filters jobs in real-time when searching by title or keyword', async () => {
+    jobs.data = [
+      job({ jobId: 'j-1', title: 'Lập trình viên React Frontend' }),
+      job({ jobId: 'j-2', title: 'Kỹ sư Backend Golang' }),
+    ];
+
+    renderPage();
+
+    expect(await screen.findByText('Lập trình viên React Frontend')).toBeInTheDocument();
+    expect(screen.getByText('Kỹ sư Backend Golang')).toBeInTheDocument();
+
+    const searchInput = screen.getByPlaceholderText('Tìm theo tiêu đề, địa điểm, gói dịch vụ...');
+    fireEvent.change(searchInput, { target: { value: 'React' } });
+
+    expect(screen.getByText('Lập trình viên React Frontend')).toBeInTheDocument();
+    expect(screen.queryByText('Kỹ sư Backend Golang')).toBeNull();
+    expect(screen.getByText(/Tìm thấy/)).toBeInTheDocument();
+  });
+
+  it('paginates jobs in grid view when total count exceeds 9 items', async () => {
+    jobs.data = Array.from({ length: 11 }, (_, i) =>
+      job({ jobId: `job-${i + 1}`, title: `Vị trí tuyển dụng số ${i + 1}` })
+    );
+
+    renderPage();
+
+    expect(await screen.findByText('Vị trí tuyển dụng số 1')).toBeInTheDocument();
+    expect(screen.getByText('Vị trí tuyển dụng số 9')).toBeInTheDocument();
+    // 10th item is on page 2
+    expect(screen.queryByText('Vị trí tuyển dụng số 10')).toBeNull();
+
+    expect(screen.getByText('Hiển thị 1 - 9 trong tổng số 11 tin')).toBeInTheDocument();
+  });
 });

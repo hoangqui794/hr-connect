@@ -15,6 +15,8 @@ import {
   Drawer,
   Dropdown,
   Empty,
+  Input,
+  Pagination,
   Skeleton,
   Table,
   Tag,
@@ -33,6 +35,7 @@ import {
   MoreOutlined,
   PlusOutlined,
   ReloadOutlined,
+  SearchOutlined,
   SendOutlined,
   FileDoneOutlined,
 } from '@ant-design/icons';
@@ -113,6 +116,9 @@ export const ClientJobsListPage: React.FC = () => {
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
   const [detailJobId, setDetailJobId] = useState<string>();
+  const [searchKeyword, setSearchKeyword] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(9);
   const [pending, setPending] = useState<PendingAction>(null);
   const [paymentModalJob, setPaymentModalJob] = useState<{
     jobId: string;
@@ -224,13 +230,31 @@ export const ClientJobsListPage: React.FC = () => {
     });
   }, [jobs]);
 
-  const visibleJobs = useMemo(
-    () =>
-      [...(filter === 'ALL' ? jobs : jobs.filter((j) => j.status === filter))].sort(
-        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-      ),
-    [jobs, filter]
-  );
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, searchKeyword]);
+
+  const visibleJobs = useMemo(() => {
+    let list = filter === 'ALL' ? jobs : jobs.filter((j) => j.status === filter);
+    if (searchKeyword.trim()) {
+      const q = searchKeyword.trim().toLowerCase();
+      list = list.filter((j) => {
+        const titleMatch = j.title?.toLowerCase().includes(q);
+        const locMatch = j.location?.toLowerCase().includes(q);
+        const serviceLabel = j.serviceTypeCode && SERVICE_TYPE_LABEL[j.serviceTypeCode as ServiceTypeCode]?.label;
+        const serviceMatch = serviceLabel?.toLowerCase().includes(q);
+        return Boolean(titleMatch || locMatch || serviceMatch);
+      });
+    }
+    return [...list].sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
+  }, [jobs, filter, searchKeyword]);
+
+  const pagedJobs = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return visibleJobs.slice(start, start + pageSize);
+  }, [visibleJobs, currentPage, pageSize]);
 
   const notifyError = (err: unknown) => {
     message.error(getApiErrorMessage(err));
@@ -584,6 +608,31 @@ export const ClientJobsListPage: React.FC = () => {
                 ))}
               </div>
             </div>
+
+            {/* Thanh tìm kiếm và bộ đếm kết quả */}
+            <div className="mt-3.5 flex flex-wrap items-center justify-between gap-3 border-0 border-t border-solid border-slate-100 pt-3">
+              <div className="w-full sm:w-80 md:w-96">
+                <Input
+                  allowClear
+                  prefix={<SearchOutlined className="mr-1.5 text-slate-400" />}
+                  placeholder="Tìm theo tiêu đề, địa điểm, gói dịch vụ..."
+                  value={searchKeyword}
+                  onChange={(e) => setSearchKeyword(e.target.value)}
+                  className="!h-9 !rounded-xl !border-slate-200 hover:!border-slate-300 focus:!border-sky-500 focus:!shadow-none text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                {searchKeyword.trim() ? (
+                  <span>
+                    Tìm thấy <strong className="font-semibold text-slate-800">{visibleJobs.length}</strong> tin phù hợp
+                  </span>
+                ) : (
+                  <span>
+                    Đang hiển thị <strong className="font-semibold text-slate-800">{visibleJobs.length}</strong> tin
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
           {isLoading ? (
             <div className="p-5">
@@ -593,20 +642,25 @@ export const ClientJobsListPage: React.FC = () => {
             <Empty
               className="py-14"
               description={
-                filter === 'ALL'
-                  ? 'Bạn chưa có tin tuyển dụng nào.'
-                  : `Không có tin ở trạng thái "${JOB_STATUS[filter].label}".`
+                searchKeyword.trim()
+                  ? `Không tìm thấy tin tuyển dụng nào phù hợp với từ khóa "${searchKeyword}".`
+                  : filter === 'ALL'
+                    ? 'Bạn chưa có tin tuyển dụng nào.'
+                    : `Không có tin ở trạng thái "${JOB_STATUS[filter].label}".`
               }
             >
-              {filter === 'ALL' && (
+              {searchKeyword.trim() ? (
+                <Button onClick={() => setSearchKeyword('')}>Xóa tìm kiếm</Button>
+              ) : filter === 'ALL' ? (
                 <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/client/jobs/create')}>
                   Đăng tin đầu tiên
                 </Button>
-              )}
+              ) : null}
             </Empty>
           ) : view === 'grid' ? (
-            <div className="grid grid-cols-[minmax(0,1fr)] gap-5 p-5 pt-2 sm:grid-cols-2 xl:grid-cols-3">
-              {visibleJobs.map((job) => {
+            <div>
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-5 p-5 pt-2 sm:grid-cols-2 xl:grid-cols-3">
+                {pagedJobs.map((job) => {
                 const count = applicationsOf(job.jobId);
                 const isHighlighted = highlightedJobId === job.jobId;
                 const totalApps = count?.data ?? 0;
@@ -864,24 +918,58 @@ export const ClientJobsListPage: React.FC = () => {
                 );
               })}
             </div>
-          ) : (
-            <Table<Job>
-              className="admin-soft-table"
-              rowKey="jobId"
-              columns={columns}
-              dataSource={visibleJobs}
-              rowClassName={(record) =>
-                record.jobId === highlightedJobId
-                  ? '!bg-blue-50/90 !border-l-4 !border-l-blue-600 font-semibold transition-colors duration-300'
-                  : ''
-              }
-              onRow={(record) => ({
-                id: `job-card-${record.jobId}`,
-              })}
-              scroll={{ x: 1080 }}
-              pagination={{ itemRender: a11yItemRender, pageSize: 10, hideOnSinglePage: true, showSizeChanger: false }}
-            />
-          )}
+            {visibleJobs.length > pageSize && (
+              <div className="flex flex-wrap items-center justify-between gap-3 border-0 border-t border-solid border-slate-100 bg-slate-50/50 px-6 py-3.5 rounded-b-3xl mt-2">
+                <span className="text-xs text-slate-500">
+                  Hiển thị {Math.min((currentPage - 1) * pageSize + 1, visibleJobs.length)} - {Math.min(currentPage * pageSize, visibleJobs.length)} trong tổng số {visibleJobs.length} tin
+                </span>
+                <Pagination
+                  current={currentPage}
+                  pageSize={pageSize}
+                  total={visibleJobs.length}
+                  onChange={(p, s) => {
+                    setCurrentPage(p);
+                    if (s && s !== pageSize) setPageSize(s);
+                  }}
+                  pageSizeOptions={['9', '18', '27', '45']}
+                  showSizeChanger={visibleJobs.length > 9}
+                  itemRender={a11yItemRender}
+                  size="small"
+                />
+              </div>
+            )}
+          </div>
+        ) : (
+          <Table<Job>
+            className="admin-soft-table"
+            rowKey="jobId"
+            columns={columns}
+            dataSource={visibleJobs}
+            rowClassName={(record) =>
+              record.jobId === highlightedJobId
+                ? '!bg-blue-50/90 !border-l-4 !border-l-blue-600 font-semibold transition-colors duration-300'
+                : ''
+            }
+            onRow={(record) => ({
+              id: `job-card-${record.jobId}`,
+            })}
+            scroll={{ x: 1080 }}
+            pagination={{
+              current: currentPage,
+              pageSize: pageSize,
+              total: visibleJobs.length,
+              showSizeChanger: true,
+              pageSizeOptions: ['9', '18', '27', '45'],
+              onChange: (p, s) => {
+                setCurrentPage(p);
+                if (s && s !== pageSize) setPageSize(s);
+              },
+              itemRender: a11yItemRender,
+              showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} tin tuyển dụng`,
+              hideOnSinglePage: true,
+            }}
+          />
+        )}
         </Surface>
       )}
 
