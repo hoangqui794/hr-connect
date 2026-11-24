@@ -63,6 +63,7 @@ describe('CandidateSubmissionConsentPage', () => {
     renderPage();
     expect(await screen.findByText('Backend Developer')).toBeInTheDocument();
     expect(screen.getByText('cv-an.pdf')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Báo cáo giới thiệu trái phép' })).toBeInTheDocument();
     expect(screen.queryByText(/access token/i)).not.toBeInTheDocument();
     expect(reviewMock).toHaveBeenCalledWith('submission-1');
   });
