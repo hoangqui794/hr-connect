@@ -545,7 +545,7 @@ public class Mf05FinanceTests
 
         notifier.Verify(n => n.NotifyUsersAsync(
             It.Is<IEnumerable<Guid>>(ids => ids.Single() == candidateUser.UserId),
-            It.Is<AppNotice>(a => a.Title == "Hồ sơ nhận việc đã kết thúc" && a.NotificationType == "PLACEMENT" && a.RouteHint == "/candidate/applications"),
+            It.Is<AppNotice>(a => a.Title == "Hồ sơ nhận việc đã kết thúc" && a.NotificationType == "APPLICATION_STATUS" && a.RelatedEntityType == "PLACEMENT" && a.RouteHint == "/candidate/applications"),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
