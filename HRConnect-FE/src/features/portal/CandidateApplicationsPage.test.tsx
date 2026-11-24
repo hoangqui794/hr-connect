@@ -154,6 +154,10 @@ describe('CandidateApplicationsPage', () => {
 
     const section = await screen.findByRole('region', { name: '1 lời giới thiệu đang chờ bạn xác nhận' });
     expect(within(section).getByText(/Hết hạn xác nhận sau 31 giờ/)).toBeInTheDocument();
+    expect(within(section).getByRole('link', { name: 'Xem chi tiết' })).toHaveAttribute(
+      'href',
+      '/candidate/submission-consents/submission-1',
+    );
     fireEvent.click(within(section).getByRole('button', { name: 'Đồng ý' }));
 
     await waitFor(() => expect(candidateConsentApi.respond).toHaveBeenCalledWith('submission-1', 'CONFIRM', true));

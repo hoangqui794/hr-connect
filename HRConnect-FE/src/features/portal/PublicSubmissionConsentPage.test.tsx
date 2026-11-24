@@ -138,6 +138,7 @@ describe('PublicSubmissionConsentPage', () => {
     expect(screen.getByText('Nguyễn Văn An')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'cv-an.pdf' })).toHaveAttribute('href', 'https://example.test/cv.pdf');
     expect(screen.getByText(/còn \d+ giờ/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Báo cáo giới thiệu trái phép' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Báo cho HR Connect' })).toBeInTheDocument();
   });
 
