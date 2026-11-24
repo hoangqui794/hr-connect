@@ -106,9 +106,10 @@ adds indexes for operational filtering. It does not create another log table.
 | `PASSWORD_RESET` | `APP_USER` | A password-reset OTP is accepted and sessions are revoked |
 | `SESSION_REVOKED` | `REFRESH_TOKEN` | Logout revokes an active refresh-token session |
 | `ALL_SESSIONS_REVOKED` | `APP_USER` | An authenticated user requests logout on all devices |
-| `REFRESH_TOKEN_REUSE_DETECTED` | `REFRESH_TOKEN` | The system detects reuse of a revoked/replaced token and revokes active sessions |
+| `REFRESH_TOKEN_REUSE_DETECTED` | `REFRESH_TOKEN` | The system detects reuse of a revoked/replaced token and revokes active sessions. Actor is `SYSTEM`, or `USER` (the Bearer owner) when the request carries a valid access token; the token owner is in `affectedUserId` |
 
-Refresh-token reuse is classified as a `SYSTEM` actor with no `actor_user_id`.
+Refresh-token reuse is classified as a `SYSTEM` actor with no `actor_user_id`,
+unless the request carries a valid access token (then `USER`, the Bearer owner).
 The affected account ID is stored as small event metadata; the caller may be an
 attacker and must not be attributed to the affected user. Passwords, OTP values,
 token values, and token hashes are never included.

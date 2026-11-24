@@ -392,8 +392,10 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const [showSourcingDrawer, setShowSourcingDrawer] = useState(false);
   const feeInfo = useJobFeeInfo(isApplicant ? null : job);
   // Internal HR verifies "Other" rejections and replaces CVs from the delivered list (MF-03 / UC-45).
+  // Only Internal HR holds application.screen; Admin can open /hr/jobs too but would get 403 inside the drawer.
   const canOpenSourcingDeliveries =
     isInternalReview &&
+    currentRole === UserRole.INTERNAL_HR &&
     job.serviceTypeCode === 'CV_SOURCING' &&
     (['ACTIVE', 'PAUSED', 'CLOSED'].includes(job.status) || (job.sourcingCounted ?? 0) > 0);
   const awaitingDeposit = isAwaitingSourcingDeposit(job);

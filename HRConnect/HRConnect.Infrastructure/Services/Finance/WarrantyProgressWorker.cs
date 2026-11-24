@@ -80,13 +80,13 @@ public sealed class WarrantyProgressWorker : BackgroundService
         var due = 0;
         foreach (var feeId in dueSoonIds)
         {
-            due += await RunItemAsync(service => service.MarkServiceFeeDueAsync(feeId, today, reminderDays, cancellationToken), feeId) ? 1 : 0;
+            due += await RunItemAsync(service => service.MarkServiceFeeDueAsync(feeId, today, reminderDays, cancellationToken: cancellationToken), feeId) ? 1 : 0;
         }
 
         var overdue = 0;
         foreach (var feeId in feeIds)
         {
-            overdue += await RunItemAsync(service => service.MarkServiceFeeOverdueAsync(feeId, today, cancellationToken), feeId) ? 1 : 0;
+            overdue += await RunItemAsync(service => service.MarkServiceFeeOverdueAsync(feeId, today, cancellationToken: cancellationToken), feeId) ? 1 : 0;
         }
 
         var expired = 0;

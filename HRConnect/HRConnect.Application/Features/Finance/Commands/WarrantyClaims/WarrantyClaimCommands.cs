@@ -213,7 +213,7 @@ public sealed class ResolveResignationCommandHandler : IRequestHandler<ResolveRe
             if (candidateUserId.HasValue && candidateUserId.Value != Guid.Empty)
             {
                 await _notifier.NotifyUsersAsync([candidateUserId.Value], new AppNotice(
-                    "PLACEMENT",
+                    "APPLICATION_STATUS",
                     "Hồ sơ nhận việc đã kết thúc",
                     $"Hồ sơ nhận việc tại vị trí \"{jobTitle}\" đã kết thúc ngày {placement.UpdatedAt:dd/MM/yyyy}.",
                     "PLACEMENT",

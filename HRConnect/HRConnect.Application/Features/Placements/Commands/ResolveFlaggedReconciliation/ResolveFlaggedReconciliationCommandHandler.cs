@@ -122,12 +122,13 @@ public sealed class ResolveFlaggedReconciliationCommandHandler : IRequestHandler
         {
             var today = DateOnly.FromDateTime(now);
             if (fee.DueDate < today)
-                await _warrantyProgress.MarkServiceFeeOverdueAsync(fee.ServiceFeeId, today, cancellationToken);
+                await _warrantyProgress.MarkServiceFeeOverdueAsync(fee.ServiceFeeId, today, request.ActorUserId, cancellationToken);
             else
                 await _warrantyProgress.MarkServiceFeeDueAsync(
                     fee.ServiceFeeId,
                     today,
                     await _settings.GetIntAsync(BusinessSettingKeys.FeeDueReminderDays, cancellationToken),
+                    request.ActorUserId,
                     cancellationToken);
         }
 

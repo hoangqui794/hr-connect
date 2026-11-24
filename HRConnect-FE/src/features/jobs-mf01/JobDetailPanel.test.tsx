@@ -1,7 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useAuthStore, UserRole } from '@/stores/authStore';
 import type { Job, PublicJobCompany } from '@/types/api/jobs';
 import { JobCompanyCard, JobDetailPanel } from './JobDetailPanel';
 
@@ -110,6 +111,10 @@ describe('JobDetailPanel sourcing deliveries (MF-03 UC-45)', () => {
     statusHistories: [],
   } as unknown as Job;
 
+  beforeEach(() => {
+    useAuthStore.setState({ role: UserRole.INTERNAL_HR });
+  });
+
   const renderPanel = (job: Job, isInternalReview: boolean) =>
     render(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -126,6 +131,13 @@ describe('JobDetailPanel sourcing deliveries (MF-03 UC-45)', () => {
     fireEvent.click(screen.getByRole('button', { name: /hồ sơ được tìm kiếm/i }));
 
     expect(await screen.findByTestId('sourcing-deliveries-view')).toHaveTextContent('hr:job-ss-1');
+  });
+
+  it('does not show the button to an Admin on the HR job review (no application.screen)', () => {
+    useAuthStore.setState({ role: UserRole.ADMIN });
+    renderPanel(sourcingJob, true);
+
+    expect(screen.queryByRole('button', { name: /hồ sơ được tìm kiếm/i })).not.toBeInTheDocument();
   });
 
   it('does not show the button outside the Internal HR review view', () => {

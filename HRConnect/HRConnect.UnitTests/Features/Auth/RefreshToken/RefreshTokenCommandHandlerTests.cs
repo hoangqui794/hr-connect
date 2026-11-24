@@ -46,6 +46,7 @@ public class RefreshTokenCommandHandlerTests
             _jwtTokenGeneratorMock.Object,
             _otpServiceMock.Object,
             _auditLogServiceMock.Object,
+            Mock.Of<IRequestContext>(),
             _unitOfWorkMock.Object,
             _jwtOptions,
             _loggerMock.Object);
