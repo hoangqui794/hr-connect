@@ -6,7 +6,7 @@
  */
 import React, { useMemo, useState } from 'react';
 import { a11yItemRender } from '@/components/common/paginationA11y';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Alert,
@@ -131,6 +131,7 @@ export const ClientJobsListPage: React.FC = () => {
   // One request for everything, filtered locally so each tab can show its count.
   const { data: jobs = [], isLoading, isError, error, refetch, isFetching } = useMyJobs();
   const detail = useJobDetail(detailJobId);
+  const queryClient = useQueryClient();
   const mutations = useJobMutations();
 
   const counts = useMemo(() => {
@@ -930,10 +931,18 @@ export const ClientJobsListPage: React.FC = () => {
       <ReasonModal
         open={pending?.kind === 'close'}
         title="Đóng tin tuyển dụng"
-        description="Đóng tin là thao tác không hoàn tác: tin sẽ không nhận hồ sơ nữa và không mở lại được."
+        description={
+          pending?.job.status === 'PENDING_PAYMENT'
+            ? 'Tin chưa thanh toán sẽ được hủy và các khoản phí/cọc chờ thanh toán đi kèm sẽ được hủy tự động.'
+            : 'Đóng tin là thao tác không hoàn tác: tin sẽ không nhận hồ sơ nữa và không mở lại được.'
+        }
         confirmText="Đóng tin"
         danger
-        reasonOptions={CLOSE_REASONS}
+        reasonOptions={
+          pending?.job.status === 'PENDING_PAYMENT'
+            ? CLOSE_REASONS.filter((r) => r.value === 'CLOSED_BY_CLIENT' || r.value === 'CLOSED_OTHER')
+            : CLOSE_REASONS
+        }
         textRequired
         loading={mutations.close.isPending}
         onCancel={() => setPending(null)}
@@ -948,6 +957,8 @@ export const ClientJobsListPage: React.FC = () => {
             })
             .then((res) => {
               message.success(res.message);
+              queryClient.invalidateQueries({ queryKey: ['client-billing'] });
+              queryClient.invalidateQueries({ queryKey: ['posting-fees'] });
               setPending(null);
             })
             .catch(notifyError)

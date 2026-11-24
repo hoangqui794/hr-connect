@@ -207,6 +207,8 @@ export const useJobMutations = () => {
       queryClient.invalidateQueries({ queryKey: jobQueryKeys.all }),
       queryClient.invalidateQueries({ queryKey: ['hr-overview'] }),
       queryClient.invalidateQueries({ queryKey: ['mf05-posting-fees'] }),
+      queryClient.invalidateQueries({ queryKey: ['client-billing'] }),
+      queryClient.invalidateQueries({ queryKey: ['posting-fees'] }),
     ]);
 
   return {

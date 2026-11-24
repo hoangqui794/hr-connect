@@ -30,6 +30,7 @@ public class JobManagementCommandHandlerTests
     private readonly Mock<IAdminBusinessSettings> _adminSettings = new();
     private readonly Mock<IAuditLogService> _audit = new();
     private readonly Mock<IUnitOfWork> _uow = new();
+    private readonly Mock<IFinanceRepository> _finance = new();
 
     public JobManagementCommandHandlerTests()
     {
@@ -1352,4 +1353,85 @@ public class JobManagementCommandHandlerTests
     }
     private static CompanyUser Member(Guid user, Guid company) => new() { CompanyUserId = Guid.NewGuid(), UserId = user, CompanyId = company, Status = "ACTIVE" };
     private static JobRequirement Requirement(Guid job, string type) => new() { RequirementId = Guid.NewGuid(), JobId = job, RequirementType = type, Content = "3 years", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+[Fact]
+    public async Task ClientAction_CloseJob_WhenPendingPayment_ShouldCancelPostingFee_AndCloseJob()
+    {
+        var job = SetupJob(JobStatuses.PendingPayment);
+        var user = Guid.NewGuid();
+        _members.Setup(x => x.GetByUserIdAsync(user, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Member(user, job.CompanyId));
+
+        var postingFee = new JobPostingFee
+        {
+            PostingFeeId = Guid.NewGuid(),
+            JobId = job.JobId,
+            CompanyId = job.CompanyId,
+            Amount = 1_500_000,
+            Status = JobPostingFeeStatuses.Pending,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _jobs.Setup(x => x.GetPostingFeeByJobIdAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(postingFee);
+
+        var handler = new CloseJobCommandHandler(_jobs.Object, _members.Object, _uow.Object, _finance.Object, _audit.Object);
+        var result = await handler.Handle(new CloseJobCommand
+        {
+            JobId = job.JobId,
+            UserId = user,
+            ConcurrencyToken = job.ConcurrencyToken,
+            ReasonCode = JobReasonCodes.ClosedByClient,
+            ReasonText = "Doanh nghiệp dừng tuyển"
+        }, default);
+
+        result.Success.Should().BeTrue();
+        job.Status.Should().Be(JobStatuses.Closed);
+        job.ClosedAt.Should().NotBeNull();
+        postingFee.Status.Should().Be(JobPostingFeeStatuses.Cancelled);
+        _audit.Verify(x => x.AddAsync(It.Is<AuditEntry>(e => e.Action == AuditActions.JobClosed && e.EntityId == job.JobId), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ClientAction_CloseJob_WhenPendingPayment_ShouldCancelDepositServiceFee_AndCloseJob()
+    {
+        var job = SetupJob(JobStatuses.PendingPayment);
+        job.ServiceType = new ServiceType
+        {
+            ServiceTypeId = job.ServiceTypeId,
+            Code = ServiceTypeCodes.CvSourcing,
+            Name = "Tìm hồ sơ phù hợp"
+        };
+        var user = Guid.NewGuid();
+        _members.Setup(x => x.GetByUserIdAsync(user, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Member(user, job.CompanyId));
+
+        var depositFee = new ServiceFee
+        {
+            ServiceFeeId = Guid.NewGuid(),
+            JobId = job.JobId,
+            CompanyId = job.CompanyId,
+            Kind = ServiceFeeKinds.Deposit,
+            Amount = 3_000_000,
+            Status = ServiceFeeStates.Pending,
+            DueDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7)),
+            CurrencyCode = "VND"
+        };
+        _finance.Setup(x => x.GetJobServiceFeesForUpdateAsync(job.JobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<ServiceFee> { depositFee });
+
+        var handler = new CloseJobCommandHandler(_jobs.Object, _members.Object, _uow.Object, _finance.Object, _audit.Object);
+        var result = await handler.Handle(new CloseJobCommand
+        {
+            JobId = job.JobId,
+            UserId = user,
+            ConcurrencyToken = job.ConcurrencyToken,
+            ReasonCode = JobReasonCodes.ClosedOther,
+            ReasonText = "Hủy tuyển dụng"
+        }, default);
+
+        result.Success.Should().BeTrue();
+        job.Status.Should().Be(JobStatuses.Closed);
+        job.ClosedAt.Should().NotBeNull();
+        depositFee.Status.Should().Be(ServiceFeeStates.Cancelled);
+    }
 }

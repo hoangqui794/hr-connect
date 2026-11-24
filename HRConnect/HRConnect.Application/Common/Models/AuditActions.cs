@@ -122,4 +122,5 @@ public static class AuditActions
     public const string SubmissionConsentCvDownloadUrlIssued = "SUBMISSION_CONSENT_CV_DOWNLOAD_URL_ISSUED";
     public const string ApplicationCvDownloadUrlIssued = "APPLICATION_CV_DOWNLOAD_URL_ISSUED";
     public const string JobApproved = "JOB_APPROVED";
+    public const string JobClosed = "JOB_CLOSED";
 }

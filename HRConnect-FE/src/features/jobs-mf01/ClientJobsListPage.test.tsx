@@ -3,7 +3,7 @@
  * @description Client job cards say what is really going on: change-requested agreements, the posting
  * fee to pay, why a job is paused or closed, and no invented application progress.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from 'antd';
 import { MemoryRouter } from 'react-router-dom';
@@ -214,5 +214,30 @@ describe('ClientJobsListPage', () => {
     expect(modal.getAttribute('data-job-id')).toBe('job-posting-fee');
     expect(modal.getAttribute('data-is-deposit')).toBe('false');
     expect(modal.getAttribute('data-service-type')).toBe('CV_APPLICATION');
+  });
+it('opens close modal with tailored description and filtered reasons for PENDING_PAYMENT job', async () => {
+    jobs.data = [
+      job({
+        jobId: 'job-pending-pay',
+        title: 'Tin chờ thanh toán',
+        status: 'PENDING_PAYMENT',
+      }),
+    ];
+
+    renderPage();
+
+    const moreBtn = await screen.findByRole('button', { name: 'Thao tác khác cho Tin chờ thanh toán' });
+    fireEvent.click(moreBtn);
+
+    const closeMenuItem = await screen.findByText('Đóng tin');
+    fireEvent.click(closeMenuItem);
+
+    expect(
+      await screen.findByText('Tin chưa thanh toán sẽ được hủy và các khoản phí/cọc chờ thanh toán đi kèm sẽ được hủy tự động.')
+    ).toBeInTheDocument();
+    expect(screen.getByText('Doanh nghiệp dừng tuyển')).toBeInTheDocument();
+    expect(screen.getByText('Lý do khác')).toBeInTheDocument();
+    expect(screen.queryByText('Đã tuyển đủ người')).toBeNull();
+    expect(screen.queryByText('Hết hạn đăng tin')).toBeNull();
   });
 });
