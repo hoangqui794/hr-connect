@@ -106,12 +106,12 @@ public sealed class ReconcilePlacementCommandHandler : IRequestHandler<Reconcile
             var today = DateOnly.FromDateTime(now);
             if (fee.DueDate < today)
             {
-                await _warrantyProgress.MarkServiceFeeOverdueAsync(fee.ServiceFeeId, today, cancellationToken);
+                await _warrantyProgress.MarkServiceFeeOverdueAsync(fee.ServiceFeeId, today, request.ActorUserId, cancellationToken);
             }
             else
             {
                 var reminderDays = await _settings.GetIntAsync(BusinessSettingKeys.FeeDueReminderDays, cancellationToken);
-                await _warrantyProgress.MarkServiceFeeDueAsync(fee.ServiceFeeId, today, reminderDays, cancellationToken);
+                await _warrantyProgress.MarkServiceFeeDueAsync(fee.ServiceFeeId, today, reminderDays, request.ActorUserId, cancellationToken);
             }
         }
 

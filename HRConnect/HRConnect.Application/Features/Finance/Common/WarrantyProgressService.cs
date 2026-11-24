@@ -16,14 +16,18 @@ public interface IWarrantyProgressService
     /// </summary>
     Task<bool> CompleteWarrantyAsync(Guid placementId, DateOnly today, CancellationToken cancellationToken = default);
 
-    /// <summary>Marks a PENDING or DUE service fee past its due date as OVERDUE.</summary>
-    Task<bool> MarkServiceFeeOverdueAsync(Guid serviceFeeId, DateOnly today, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Marks a PENDING or DUE service fee past its due date as OVERDUE.
+    /// Pass <paramref name="actorUserId"/> when a user's request triggers it; null means the background worker.
+    /// </summary>
+    Task<bool> MarkServiceFeeOverdueAsync(Guid serviceFeeId, DateOnly today, Guid? actorUserId = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// PENDING -> DUE when the fee is due within <paramref name="reminderDays"/> days, and reminds the Client's
     /// active users. Returns false when there is nothing to do.
+    /// Pass <paramref name="actorUserId"/> when a user's request triggers it; null means the background worker.
     /// </summary>
-    Task<bool> MarkServiceFeeDueAsync(Guid serviceFeeId, DateOnly today, int reminderDays, CancellationToken cancellationToken = default);
+    Task<bool> MarkServiceFeeDueAsync(Guid serviceFeeId, DateOnly today, int reminderDays, Guid? actorUserId = null, CancellationToken cancellationToken = default);
 
     /// <summary>OPEN replacement slot past its deadline -> EXPIRED, and tells the Client. Returns false when there is nothing to do.</summary>
     Task<bool> ExpireReplacementSlotAsync(Guid replacementSlotId, DateTime now, CancellationToken cancellationToken = default);
@@ -178,7 +182,7 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
         return true;
     }
 
-    public async Task<bool> MarkServiceFeeOverdueAsync(Guid serviceFeeId, DateOnly today, CancellationToken cancellationToken = default)
+    public async Task<bool> MarkServiceFeeOverdueAsync(Guid serviceFeeId, DateOnly today, Guid? actorUserId = null, CancellationToken cancellationToken = default)
     {
         if (!await CanAdvanceFeeAsync(serviceFeeId, cancellationToken))
         {
@@ -200,8 +204,9 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
             Action = AuditActions.ServiceFeeOverdue,
             EntityType = "SERVICE_FEE",
             EntityId = fee.ServiceFeeId,
-            ActorType = AuditActorTypes.Service,
-            ServiceName = "WarrantyProgressWorker",
+            ActorUserId = actorUserId,
+            ActorType = actorUserId.HasValue ? AuditActorTypes.User : AuditActorTypes.Service,
+            ServiceName = actorUserId.HasValue ? null : "WarrantyProgressWorker",
             OldValues = new { status = oldStatus },
             NewValues = new { status = fee.Status, dueDate = fee.DueDate },
         }, cancellationToken);
@@ -240,7 +245,7 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
         return true;
     }
 
-    public async Task<bool> MarkServiceFeeDueAsync(Guid serviceFeeId, DateOnly today, int reminderDays, CancellationToken cancellationToken = default)
+    public async Task<bool> MarkServiceFeeDueAsync(Guid serviceFeeId, DateOnly today, int reminderDays, Guid? actorUserId = null, CancellationToken cancellationToken = default)
     {
         if (!await CanAdvanceFeeAsync(serviceFeeId, cancellationToken))
         {
@@ -262,8 +267,9 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
             Action = AuditActions.ServiceFeeDue,
             EntityType = "SERVICE_FEE",
             EntityId = fee.ServiceFeeId,
-            ActorType = AuditActorTypes.Service,
-            ServiceName = "WarrantyProgressWorker",
+            ActorUserId = actorUserId,
+            ActorType = actorUserId.HasValue ? AuditActorTypes.User : AuditActorTypes.Service,
+            ServiceName = actorUserId.HasValue ? null : "WarrantyProgressWorker",
             OldValues = new { status = ServiceFeeStates.Pending },
             NewValues = new { status = fee.Status, dueDate = fee.DueDate, reminderDays },
         }, cancellationToken);
