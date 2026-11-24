@@ -5,7 +5,7 @@
  */
 const JOB = [
   ['mf01-jobs'], ['client-overview'], ['hr-overview'], ['admin-overview'], ['admin-dashboard-metrics'], ['aff-jobs'],
-  ['mf05-posting-fees'], ['mf05-client-fees'], ['client-billing'],
+  ['mf05-posting-fees'], ['mf05-client-fees'], ['client-billing'], ['client-agreements'],
   // JOB_FIT notifications: a new suggested job for the Candidate.
   ['candidate-job-matches'],
 ];
@@ -13,6 +13,7 @@ const APPLICATION = [
   ['hr-screening'], ['hr-overview'], ['hr-pipeline'], ['hr-application'], ['hr-application-timeline'],
   ['client-candidates'], ['client-overview'], ['client-pipeline'], ['candidate-applications'], ['candidate-application-timeline'],
   ['aff-attributions'], ['aff-submissions'], ['sourcing-deliveries'],
+  ['client-interviews'], ['client-offers'], ['client-placements'],
 ];
 const FINANCE = [
   ['mf01-jobs'], ['service-fees'],
@@ -75,5 +76,6 @@ const BY_ENTITY: Record<string, string[][]> = {
 };
 
 export function refreshKeysFor(relatedEntityType: string | null | undefined): string[][] {
-  return BY_ENTITY[(relatedEntityType ?? '').trim().toUpperCase()] ?? [];
+  const normalized = (relatedEntityType ?? '').trim().toUpperCase().replace(/-/g, '_');
+  return BY_ENTITY[normalized] ?? [];
 }

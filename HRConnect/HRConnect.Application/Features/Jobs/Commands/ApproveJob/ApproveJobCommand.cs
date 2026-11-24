@@ -32,6 +32,7 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
     private readonly IUnitOfWork _uow;
     private readonly ISourcingFinanceService? _sourcingFinance;
     private readonly IServiceAgreementRepository? _agreements;
+    private readonly IAppNotifier? _notifier;
 
     public ApproveJobCommandHandler(
         IJobRepository jobs,
@@ -40,7 +41,8 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
         IAuditLogService auditLogService,
         IUnitOfWork uow,
         ISourcingFinanceService? sourcingFinance = null,
-        IServiceAgreementRepository? agreements = null)
+        IServiceAgreementRepository? agreements = null,
+        IAppNotifier? notifier = null)
     {
         _jobs = jobs;
         _adminSettings = adminSettings;
@@ -49,6 +51,7 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
         _uow = uow;
         _sourcingFinance = sourcingFinance;
         _agreements = agreements;
+        _notifier = notifier;
     }
 
     public async Task<JobActionResponse> Handle(ApproveJobCommand request, CancellationToken ct)
@@ -422,28 +425,53 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
                     : "Nội dung tin tuyển dụng đã được duyệt. Vui lòng thanh toán phí dịch vụ để công bố.");
             await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct);
 
-            await _notifications.AddAsync(new Notification
+            if (_notifier != null)
             {
-                NotificationId = Guid.NewGuid(),
-                UserId = job.CreatedBy,
-                NotificationType = "JOB",
-                Title = "Tin tuyển dụng đã được duyệt nội dung",
-                Message = awaitsSourcingDeposit
-                    ? $"Tin tuyển dụng \"{job.Title}\" đã được phê duyệt nội dung. Vui lòng đặt cọc CV Sourcing ({FinanceCurrency.FormatMoney(standardPrice, job.CurrencyCode)}) để công bố."
-                    : $"Tin tuyển dụng \"{job.Title}\" đã được phê duyệt nội dung. Vui lòng thanh toán phí đăng tin ({FinanceCurrency.FormatMoney(standardPrice, job.CurrencyCode)}) để công bố.",
-                RelatedEntityType = "JOB",
-                RelatedEntityId = job.JobId,
-                Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                await _notifier.NotifyCompanyAsync(job.CompanyId, new AppNotice(
+                    "JOB",
+                    "Tin tuyển dụng đã được duyệt nội dung",
+                    awaitsSourcingDeposit
+                        ? $"Tin tuyển dụng \"{job.Title}\" đã được phê duyệt nội dung. Vui lòng đặt cọc CV Sourcing ({FinanceCurrency.FormatMoney(standardPrice, job.CurrencyCode)}) để công bố."
+                        : $"Tin tuyển dụng \"{job.Title}\" đã được phê duyệt nội dung. Vui lòng thanh toán phí đăng tin ({FinanceCurrency.FormatMoney(standardPrice, job.CurrencyCode)}) để công bố.",
+                    "JOB",
+                    job.JobId,
+                    $"/client/jobs?highlight={job.JobId}&openPayment=true"
+                ), ct);
+
+                await _notifier.NotifyRoleAsync("INTERNAL_HR", new AppNotice(
+                    "JOB",
+                    "Tin tuyển dụng chuyển sang Chờ thanh toán",
+                    $"Tin tuyển dụng \"{job.Title}\" đã được duyệt nội dung và chuyển sang Chờ thanh toán.",
+                    "JOB",
+                    job.JobId,
+                    $"/hr/jobs?status=PENDING_PAYMENT&highlight={job.JobId}"
+                ), ct);
+            }
+            else
+            {
+                await _notifications.AddAsync(new Notification
                 {
-                    jobId = job.JobId,
-                    status = JobStatuses.PendingPayment,
-                    amount = standardPrice,
-                    paymentKind = awaitsSourcingDeposit ? ServiceFeeKinds.Deposit : "POSTING_FEE",
-                    actionRoute = $"/client/jobs?highlight={job.JobId}&openPayment=true"
-                }),
-                IsRead = false,
-                CreatedAt = now
-            }, ct);
+                    NotificationId = Guid.NewGuid(),
+                    UserId = job.CreatedBy,
+                    NotificationType = "JOB",
+                    Title = "Tin tuyển dụng đã được duyệt nội dung",
+                    Message = awaitsSourcingDeposit
+                        ? $"Tin tuyển dụng \"{job.Title}\" đã được phê duyệt nội dung. Vui lòng đặt cọc CV Sourcing ({FinanceCurrency.FormatMoney(standardPrice, job.CurrencyCode)}) để công bố."
+                        : $"Tin tuyển dụng \"{job.Title}\" đã được phê duyệt nội dung. Vui lòng thanh toán phí đăng tin ({FinanceCurrency.FormatMoney(standardPrice, job.CurrencyCode)}) để công bố.",
+                    RelatedEntityType = "JOB",
+                    RelatedEntityId = job.JobId,
+                    Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        jobId = job.JobId,
+                        status = JobStatuses.PendingPayment,
+                        amount = standardPrice,
+                        paymentKind = awaitsSourcingDeposit ? ServiceFeeKinds.Deposit : "POSTING_FEE",
+                        actionRoute = $"/client/jobs?highlight={job.JobId}&openPayment=true"
+                    }),
+                    IsRead = false,
+                    CreatedAt = now
+                }, ct);
+            }
 
             await AuditApprovalAsync(job, request, proposedTerms, adminDefaultsAtApproval, approvedTerms, ct);
             await _uow.SaveChangesAsync(ct);
@@ -455,25 +483,48 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
         job.PostedAt = now;
         job.ClosedAt = null;
 
-        await _notifications.AddAsync(new Notification
+        if (_notifier != null)
         {
-            NotificationId = Guid.NewGuid(),
-            UserId = job.CreatedBy,
-            NotificationType = "JOB",
-            Title = "Tin tuyển dụng đã được duyệt",
-            Message = $"Tin tuyển dụng \"{job.Title}\" đã được phê duyệt và công bố.",
-            RelatedEntityType = "JOB",
-            RelatedEntityId = job.JobId,
-            Metadata = System.Text.Json.JsonSerializer.Serialize(new
+            await _notifier.NotifyCompanyAsync(job.CompanyId, new AppNotice(
+                "JOB",
+                "Tin tuyển dụng đã được duyệt",
+                $"Tin tuyển dụng \"{job.Title}\" đã được phê duyệt và công bố.",
+                "JOB",
+                job.JobId,
+                $"/client/jobs?highlight={job.JobId}&openDetail=true"
+            ), ct);
+
+            await _notifier.NotifyRoleAsync("INTERNAL_HR", new AppNotice(
+                "JOB",
+                "Tin tuyển dụng đã được công bố",
+                $"Tin tuyển dụng \"{job.Title}\" đã được công bố công khai.",
+                "JOB",
+                job.JobId,
+                $"/hr/jobs?status=ACTIVE&highlight={job.JobId}"
+            ), ct);
+        }
+        else
+        {
+            await _notifications.AddAsync(new Notification
             {
-                jobId = job.JobId,
-                status = JobStatuses.Active,
-                expiresAt = job.ExpiresAt,
-                actionRoute = $"/client/jobs?highlight={job.JobId}&openDetail=true"
-            }),
-            IsRead = false,
-            CreatedAt = now
-        }, ct);
+                NotificationId = Guid.NewGuid(),
+                UserId = job.CreatedBy,
+                NotificationType = "JOB",
+                Title = "Tin tuyển dụng đã được duyệt",
+                Message = $"Tin tuyển dụng \"{job.Title}\" đã được phê duyệt và công bố.",
+                RelatedEntityType = "JOB",
+                RelatedEntityId = job.JobId,
+                Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    jobId = job.JobId,
+                    status = JobStatuses.Active,
+                    expiresAt = job.ExpiresAt,
+                    actionRoute = $"/client/jobs?highlight={job.JobId}&openDetail=true"
+                }),
+                IsRead = false,
+                CreatedAt = now
+            }, ct);
+        }
 
         await AuditApprovalAsync(job, request, proposedTerms, adminDefaultsAtApproval, approvedTerms, ct);
         await _uow.SaveChangesAsync(ct);

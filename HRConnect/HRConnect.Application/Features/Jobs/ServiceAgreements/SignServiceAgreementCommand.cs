@@ -46,6 +46,7 @@ public sealed class SignServiceAgreementCommandHandler : IRequestHandler<SignSer
     private readonly ISourcingFinanceService? _sourcingFinance;
     private readonly IAdminBusinessSettings? _adminSettings;
     private readonly IUnitOfWork _uow;
+    private readonly IAppNotifier? _notifier;
 
     public SignServiceAgreementCommandHandler(
         IServiceAgreementRepository agreements,
@@ -59,7 +60,8 @@ public sealed class SignServiceAgreementCommandHandler : IRequestHandler<SignSer
         IAuditLogService audit,
         IUnitOfWork uow,
         ISourcingFinanceService? sourcingFinance = null,
-        IAdminBusinessSettings? adminSettings = null)
+        IAdminBusinessSettings? adminSettings = null,
+        IAppNotifier? notifier = null)
     {
         _agreements = agreements;
         _jobs = jobs;
@@ -73,6 +75,7 @@ public sealed class SignServiceAgreementCommandHandler : IRequestHandler<SignSer
         _uow = uow;
         _sourcingFinance = sourcingFinance;
         _adminSettings = adminSettings;
+        _notifier = notifier;
     }
 
     public async Task<ServiceAgreementDto> Handle(SignServiceAgreementCommand request, CancellationToken ct)
@@ -337,37 +340,60 @@ public sealed class SignServiceAgreementCommandHandler : IRequestHandler<SignSer
         }
 
         // Send notifications
-        await _notifications.AddAsync(new Notification
+        if (_notifier != null)
         {
-            NotificationId = Guid.NewGuid(),
-            UserId = agreement.CreatedByUserId,
-            Title = "Thỏa thuận dịch vụ đã được ký",
-            Message = $"Đại diện doanh nghiệp '{agreement.CompanyNameSnapshot}' đã ký điện tử thành công thỏa thuận dịch vụ (v{agreement.Version}) cho tin tuyển dụng '{job.Title}'.",
-            NotificationType = "JOB",
-            RelatedEntityType = "SERVICE_AGREEMENT",
-            RelatedEntityId = agreement.ServiceAgreementId,
-            Metadata = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                agreementId = agreement.ServiceAgreementId,
-                jobId = job.JobId,
-                jobStatus = job.Status,
-                routeHint = $"/hr/jobs?status={job.Status}&highlight={job.JobId}"
-            }),
-            CreatedAt = now
-        }, ct);
+            await _notifier.NotifyRoleAsync("INTERNAL_HR", new AppNotice(
+                "JOB",
+                "Thỏa thuận dịch vụ đã được ký",
+                $"Đại diện doanh nghiệp '{agreement.CompanyNameSnapshot}' đã ký điện tử thành công thỏa thuận dịch vụ (v{agreement.Version}) cho tin tuyển dụng '{job.Title}'.",
+                "SERVICE_AGREEMENT",
+                agreement.ServiceAgreementId,
+                $"/hr/jobs?status={job.Status}&highlight={job.JobId}"
+            ), ct);
 
-        await _notifications.AddAsync(new Notification
+            await _notifier.NotifyCompanyAsync(agreement.CompanyId, new AppNotice(
+                "JOB",
+                "Ký thỏa thuận dịch vụ thành công",
+                $"Thỏa thuận dịch vụ cho vị trí '{job.Title}' đã được ký kết thành công. Mã tra cứu: {agreement.VerificationCode}.",
+                "SERVICE_AGREEMENT",
+                agreement.ServiceAgreementId,
+                $"/client/agreements?jobId={job.JobId}"
+            ), ct);
+        }
+        else
         {
-            NotificationId = Guid.NewGuid(),
-            UserId = request.UserId,
-            Title = "Ký thỏa thuận dịch vụ thành công",
-            Message = $"Bạn đã ký điện tử thành công thỏa thuận dịch vụ cho vị trí '{job.Title}'. Mã tra cứu: {agreement.VerificationCode}.",
-            NotificationType = "JOB",
-            RelatedEntityType = "SERVICE_AGREEMENT",
-            RelatedEntityId = agreement.ServiceAgreementId,
-            Metadata = System.Text.Json.JsonSerializer.Serialize(new { agreementId = agreement.ServiceAgreementId, verificationCode = agreement.VerificationCode }),
-            CreatedAt = now
-        }, ct);
+            await _notifications.AddAsync(new Notification
+            {
+                NotificationId = Guid.NewGuid(),
+                UserId = agreement.CreatedByUserId,
+                Title = "Thỏa thuận dịch vụ đã được ký",
+                Message = $"Đại diện doanh nghiệp '{agreement.CompanyNameSnapshot}' đã ký điện tử thành công thỏa thuận dịch vụ (v{agreement.Version}) cho tin tuyển dụng '{job.Title}'.",
+                NotificationType = "JOB",
+                RelatedEntityType = "SERVICE_AGREEMENT",
+                RelatedEntityId = agreement.ServiceAgreementId,
+                Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    agreementId = agreement.ServiceAgreementId,
+                    jobId = job.JobId,
+                    jobStatus = job.Status,
+                    routeHint = $"/hr/jobs?status={job.Status}&highlight={job.JobId}"
+                }),
+                CreatedAt = now
+            }, ct);
+
+            await _notifications.AddAsync(new Notification
+            {
+                NotificationId = Guid.NewGuid(),
+                UserId = request.UserId,
+                Title = "Ký thỏa thuận dịch vụ thành công",
+                Message = $"Bạn đã ký điện tử thành công thỏa thuận dịch vụ cho vị trí '{job.Title}'. Mã tra cứu: {agreement.VerificationCode}.",
+                NotificationType = "JOB",
+                RelatedEntityType = "SERVICE_AGREEMENT",
+                RelatedEntityId = agreement.ServiceAgreementId,
+                Metadata = System.Text.Json.JsonSerializer.Serialize(new { agreementId = agreement.ServiceAgreementId, verificationCode = agreement.VerificationCode }),
+                CreatedAt = now
+            }, ct);
+        }
 
         await _audit.AddAsync(new AuditEntry
         {

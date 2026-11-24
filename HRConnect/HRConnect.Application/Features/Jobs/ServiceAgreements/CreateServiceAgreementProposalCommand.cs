@@ -43,6 +43,7 @@ public sealed class CreateServiceAgreementProposalCommandHandler : IRequestHandl
     private readonly IAuditLogService _audit;
     private readonly IUnitOfWork _uow;
     private readonly IAdminBusinessSettings? _adminSettings;
+    private readonly IAppNotifier? _notifier;
 
     public CreateServiceAgreementProposalCommandHandler(
         IJobRepository jobs,
@@ -52,7 +53,8 @@ public sealed class CreateServiceAgreementProposalCommandHandler : IRequestHandl
         INotificationRepository notifications,
         IAuditLogService audit,
         IUnitOfWork uow,
-        IAdminBusinessSettings? adminSettings = null)
+        IAdminBusinessSettings? adminSettings = null,
+        IAppNotifier? notifier = null)
     {
         _jobs = jobs;
         _agreements = agreements;
@@ -62,6 +64,7 @@ public sealed class CreateServiceAgreementProposalCommandHandler : IRequestHandl
         _audit = audit;
         _uow = uow;
         _adminSettings = adminSettings;
+        _notifier = notifier;
     }
 
     public async Task<ServiceAgreementDto> Handle(CreateServiceAgreementProposalCommand request, CancellationToken ct)
@@ -262,20 +265,43 @@ public sealed class CreateServiceAgreementProposalCommandHandler : IRequestHandl
                 statusReason);
         }
 
-        // Notify Client Company
-        var notification = new Notification
+        // Notify Client Company & HR
+        if (_notifier != null)
         {
-            NotificationId = Guid.NewGuid(),
-            UserId = job.CreatedBy,
-            Title = "Đề xuất thỏa thuận dịch vụ mới",
-            Message = $"HR Connect đã gửi dự thảo thỏa thuận dịch vụ (v{nextVersion}) cho tin tuyển dụng '{job.Title}'. Vui lòng xem xét và phản hồi.",
-            NotificationType = "JOB",
-            RelatedEntityType = "SERVICE_AGREEMENT",
-            RelatedEntityId = agreementId,
-            Metadata = System.Text.Json.JsonSerializer.Serialize(new { jobId = job.JobId, agreementId, version = nextVersion }),
-            CreatedAt = now
-        };
-        await _notifications.AddAsync(notification, ct);
+            await _notifier.NotifyCompanyAsync(job.CompanyId, new AppNotice(
+                "JOB",
+                "Đề xuất thỏa thuận dịch vụ mới",
+                $"HR Connect đã gửi dự thảo thỏa thuận dịch vụ (v{nextVersion}) cho tin tuyển dụng '{job.Title}'. Vui lòng xem xét và phản hồi.",
+                "SERVICE_AGREEMENT",
+                agreementId,
+                $"/client/agreements?jobId={job.JobId}"
+            ), ct);
+
+            await _notifier.NotifyRoleAsync("INTERNAL_HR", new AppNotice(
+                "JOB",
+                "Đã gửi đề xuất thỏa thuận dịch vụ",
+                $"Dự thảo thỏa thuận (v{nextVersion}) cho tin \"{job.Title}\" đã được gửi tới Client.",
+                "SERVICE_AGREEMENT",
+                agreementId,
+                $"/hr/jobs?status=PENDING_AGREEMENT&highlight={job.JobId}"
+            ), ct);
+        }
+        else
+        {
+            var notification = new Notification
+            {
+                NotificationId = Guid.NewGuid(),
+                UserId = job.CreatedBy,
+                Title = "Đề xuất thỏa thuận dịch vụ mới",
+                Message = $"HR Connect đã gửi dự thảo thỏa thuận dịch vụ (v{nextVersion}) cho tin tuyển dụng '{job.Title}'. Vui lòng xem xét và phản hồi.",
+                NotificationType = "JOB",
+                RelatedEntityType = "SERVICE_AGREEMENT",
+                RelatedEntityId = agreementId,
+                Metadata = System.Text.Json.JsonSerializer.Serialize(new { jobId = job.JobId, agreementId, version = nextVersion }),
+                CreatedAt = now
+            };
+            await _notifications.AddAsync(notification, ct);
+        }
 
         await _audit.AddAsync(new AuditEntry
         {

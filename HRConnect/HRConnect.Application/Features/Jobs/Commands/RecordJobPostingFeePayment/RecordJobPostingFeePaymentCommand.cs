@@ -31,17 +31,20 @@ public sealed class RecordJobPostingFeePaymentCommandHandler : IRequestHandler<R
     private readonly INotificationRepository _notifications;
     private readonly IUnitOfWork _uow;
     private readonly IUserRepository? _users;
+    private readonly IAppNotifier? _notifier;
 
     public RecordJobPostingFeePaymentCommandHandler(
         IJobRepository jobRepository,
         INotificationRepository notifications,
         IUnitOfWork uow,
-        IUserRepository? users = null)
+        IUserRepository? users = null,
+        IAppNotifier? notifier = null)
     {
         _jobRepository = jobRepository;
         _notifications = notifications;
         _uow = uow;
         _users = users;
+        _notifier = notifier;
     }
 
     public async Task<JobPostingFeeDto> Handle(RecordJobPostingFeePaymentCommand request, CancellationToken cancellationToken)
@@ -152,66 +155,73 @@ public sealed class RecordJobPostingFeePaymentCommandHandler : IRequestHandler<R
             ? $"Tin tuyển dụng \"{job.Title}\" đã được thanh toán và công bố công khai (Hạn hiển thị: {fee.ExpiresAt:dd/MM/yyyy})."
             : $"Gói đăng tin cho tin \"{job.Title}\" đã được kích hoạt thành công (Hạn hiển thị: {fee.ExpiresAt:dd/MM/yyyy}).";
 
-        await _notifications.AddAsync(new Domain.Entities.Notification
+        if (_notifier != null)
         {
-            NotificationId = Guid.NewGuid(),
-            UserId = job.CreatedBy,
-            NotificationType = "JOB",
-            Title = notificationTitle,
-            Message = notificationMessage,
-            RelatedEntityType = "JOB",
-            RelatedEntityId = job.JobId,
-            Metadata = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                jobId = job.JobId,
-                status = job.Status,
-                expiresAt = fee.ExpiresAt,
-                actionRoute = $"/client/jobs?highlight={job.JobId}&openDetail=true"
-            }),
-            IsRead = false,
-            CreatedAt = now
-        }, cancellationToken);
+            await _notifier.NotifyCompanyAsync(job.CompanyId, new AppNotice(
+                "JOB",
+                notificationTitle,
+                notificationMessage,
+                "JOB",
+                job.JobId,
+                $"/client/jobs?highlight={job.JobId}&openDetail=true"
+            ), cancellationToken);
 
-        // Gửi thông báo cho Internal HR (chỉ gửi cho nhân sự có vai trò INTERNAL_HR)
-        var hrReviewerId = job.AgreedBy ?? job.JobStatusHistories?
-            .OrderByDescending(h => h.ChangedAt)
-            .FirstOrDefault(h => (h.NewStatus == JobStatuses.PendingPayment || h.NewStatus == JobStatuses.PendingReview) && h.ChangedBy != job.CreatedBy)?
-            .ChangedBy;
-
-        var activeHrIds = _users != null
-            ? await _users.GetActiveUserIdsByRoleAsync("INTERNAL_HR", cancellationToken)
-            : Array.Empty<Guid>();
-
-        var targetHrIds = new List<Guid>();
-        if (hrReviewerId.HasValue && activeHrIds.Contains(hrReviewerId.Value))
-        {
-            targetHrIds.Add(hrReviewerId.Value);
+            await _notifier.NotifyRoleAsync("INTERNAL_HR", new AppNotice(
+                "JOB",
+                "Tin tuyển dụng đã thanh toán phí đăng tin",
+                $"Doanh nghiệp đã hoàn tất thanh toán phí gói đăng tin cho vị trí \"{job.Title}\". Tin đã được kích hoạt Đang tuyển.",
+                "JOB",
+                job.JobId,
+                $"/hr/jobs?status=ACTIVE&highlight={job.JobId}"
+            ), cancellationToken);
         }
         else
-        {
-            targetHrIds.AddRange(activeHrIds);
-        }
-
-        foreach (var hrId in targetHrIds.Distinct())
         {
             await _notifications.AddAsync(new Domain.Entities.Notification
             {
                 NotificationId = Guid.NewGuid(),
-                UserId = hrId,
+                UserId = job.CreatedBy,
                 NotificationType = "JOB",
-                Title = "Tin tuyển dụng đã thanh toán phí đăng tin",
-                Message = $"Doanh nghiệp đã hoàn tất thanh toán phí gói đăng tin cho vị trí \"{job.Title}\". Tin đã được kích hoạt Đang tuyển.",
+                Title = notificationTitle,
+                Message = notificationMessage,
                 RelatedEntityType = "JOB",
                 RelatedEntityId = job.JobId,
                 Metadata = System.Text.Json.JsonSerializer.Serialize(new
                 {
                     jobId = job.JobId,
                     status = job.Status,
-                    actionRoute = $"/hr/jobs?status=ACTIVE&highlight={job.JobId}"
+                    expiresAt = fee.ExpiresAt,
+                    actionRoute = $"/client/jobs?highlight={job.JobId}&openDetail=true"
                 }),
                 IsRead = false,
                 CreatedAt = now
             }, cancellationToken);
+
+            var activeHrIds = _users != null
+                ? await _users.GetActiveUserIdsByRoleAsync("INTERNAL_HR", cancellationToken)
+                : Array.Empty<Guid>();
+
+            foreach (var hrId in activeHrIds.Distinct())
+            {
+                await _notifications.AddAsync(new Domain.Entities.Notification
+                {
+                    NotificationId = Guid.NewGuid(),
+                    UserId = hrId,
+                    NotificationType = "JOB",
+                    Title = "Tin tuyển dụng đã thanh toán phí đăng tin",
+                    Message = $"Doanh nghiệp đã hoàn tất thanh toán phí gói đăng tin cho vị trí \"{job.Title}\". Tin đã được kích hoạt Đang tuyển.",
+                    RelatedEntityType = "JOB",
+                    RelatedEntityId = job.JobId,
+                    Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        jobId = job.JobId,
+                        status = job.Status,
+                        actionRoute = $"/hr/jobs?status=ACTIVE&highlight={job.JobId}"
+                    }),
+                    IsRead = false,
+                    CreatedAt = now
+                }, cancellationToken);
+            }
         }
 
         await _uow.SaveChangesAsync(cancellationToken);

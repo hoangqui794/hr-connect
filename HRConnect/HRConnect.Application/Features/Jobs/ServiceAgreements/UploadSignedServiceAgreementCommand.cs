@@ -35,6 +35,7 @@ public sealed class UploadSignedServiceAgreementCommandHandler : IRequestHandler
     private readonly INotificationRepository _notifications;
     private readonly IAuditLogService _audit;
     private readonly IUnitOfWork _uow;
+    private readonly IAppNotifier? _notifier;
 
     public UploadSignedServiceAgreementCommandHandler(
         IServiceAgreementRepository agreements,
@@ -44,7 +45,8 @@ public sealed class UploadSignedServiceAgreementCommandHandler : IRequestHandler
         IFileStorageService storage,
         INotificationRepository notifications,
         IAuditLogService audit,
-        IUnitOfWork uow)
+        IUnitOfWork uow,
+        IAppNotifier? notifier = null)
     {
         _agreements = agreements;
         _jobs = jobs;
@@ -54,6 +56,7 @@ public sealed class UploadSignedServiceAgreementCommandHandler : IRequestHandler
         _notifications = notifications;
         _audit = audit;
         _uow = uow;
+        _notifier = notifier;
     }
 
     public async Task<ServiceAgreementDto> Handle(UploadSignedServiceAgreementCommand request, CancellationToken ct)
@@ -140,28 +143,51 @@ public sealed class UploadSignedServiceAgreementCommandHandler : IRequestHandler
         agreement.SignerEmailSnapshot = user?.Email;
         agreement.ConcurrencyToken = Guid.NewGuid();
 
-        // Gửi thông báo cho Internal HR
-        var hrRecipientId = agreement.CreatedByUserId != Guid.Empty ? agreement.CreatedByUserId : job.CreatedBy;
-        await _notifications.AddAsync(new Notification
+        // Gửi thông báo cho Internal HR và Doanh nghiệp
+        if (_notifier != null)
         {
-            NotificationId = Guid.NewGuid(),
-            UserId = hrRecipientId,
-            NotificationType = "JOB",
-            Title = "Doanh nghiệp đã tải lên hợp đồng đã ký",
-            Message = $"Doanh nghiệp {agreement.CompanyNameSnapshot} đã tải lên văn bản hợp đồng đã ký cho tin \"{job.Title}\". Vui lòng xem xét và công khai tin tuyển dụng.",
-            RelatedEntityType = "JOB",
-            RelatedEntityId = job.JobId,
-            Metadata = System.Text.Json.JsonSerializer.Serialize(new
+            await _notifier.NotifyRoleAsync("INTERNAL_HR", new AppNotice(
+                "JOB",
+                "Doanh nghiệp đã tải lên hợp đồng đã ký",
+                $"Doanh nghiệp {agreement.CompanyNameSnapshot} đã tải lên văn bản hợp đồng đã ký cho tin \"{job.Title}\". Vui lòng xem xét và công khai tin tuyển dụng.",
+                "JOB",
+                job.JobId,
+                $"/hr/jobs?status=PENDING_AGREEMENT&highlight={job.JobId}"
+            ), ct);
+
+            await _notifier.NotifyCompanyAsync(agreement.CompanyId, new AppNotice(
+                "JOB",
+                "Đã tải lên hợp đồng đã ký",
+                $"Văn bản hợp đồng đã ký cho tin \"{job.Title}\" đã được tải lên thành công và đang chờ HR duyệt.",
+                "SERVICE_AGREEMENT",
+                agreement.ServiceAgreementId,
+                $"/client/agreements?jobId={job.JobId}"
+            ), ct);
+        }
+        else
+        {
+            var hrRecipientId = agreement.CreatedByUserId != Guid.Empty ? agreement.CreatedByUserId : job.CreatedBy;
+            await _notifications.AddAsync(new Notification
             {
-                jobId = job.JobId,
-                agreementId = agreement.ServiceAgreementId,
-                status = "PENDING_AGREEMENT",
-                routeHint = $"/hr/jobs?status=PENDING_AGREEMENT&highlight={job.JobId}",
-                actionRoute = $"/hr/jobs?status=PENDING_AGREEMENT&highlight={job.JobId}"
-            }),
-            IsRead = false,
-            CreatedAt = DateTime.UtcNow
-        }, ct);
+                NotificationId = Guid.NewGuid(),
+                UserId = hrRecipientId,
+                NotificationType = "JOB",
+                Title = "Doanh nghiệp đã tải lên hợp đồng đã ký",
+                Message = $"Doanh nghiệp {agreement.CompanyNameSnapshot} đã tải lên văn bản hợp đồng đã ký cho tin \"{job.Title}\". Vui lòng xem xét và công khai tin tuyển dụng.",
+                RelatedEntityType = "JOB",
+                RelatedEntityId = job.JobId,
+                Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    jobId = job.JobId,
+                    agreementId = agreement.ServiceAgreementId,
+                    status = "PENDING_AGREEMENT",
+                    routeHint = $"/hr/jobs?status=PENDING_AGREEMENT&highlight={job.JobId}",
+                    actionRoute = $"/hr/jobs?status=PENDING_AGREEMENT&highlight={job.JobId}"
+                }),
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            }, ct);
+        }
 
         await _audit.AddAsync(new AuditEntry
         {

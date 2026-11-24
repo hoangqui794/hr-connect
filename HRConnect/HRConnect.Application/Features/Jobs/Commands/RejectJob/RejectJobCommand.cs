@@ -26,14 +26,16 @@ public sealed class RejectJobCommandHandler : IRequestHandler<RejectJobCommand, 
     private readonly IUnitOfWork _uow;
     private readonly IServiceAgreementRepository? _agreements;
     private readonly IAuditLogService? _audit;
+    private readonly IAppNotifier? _notifier;
 
     public RejectJobCommandHandler(
         IJobRepository jobs,
         INotificationRepository notifications,
         IUnitOfWork uow,
         IServiceAgreementRepository? agreements = null,
-        IAuditLogService? audit = null)
-        => (_jobs, _notifications, _uow, _agreements, _audit) = (jobs, notifications, uow, agreements, audit);
+        IAuditLogService? audit = null,
+        IAppNotifier? notifier = null)
+        => (_jobs, _notifications, _uow, _agreements, _audit, _notifier) = (jobs, notifications, uow, agreements, audit, notifier);
 
     public async Task<JobActionResponse> Handle(RejectJobCommand request, CancellationToken ct)
     {
@@ -97,26 +99,49 @@ public sealed class RejectJobCommandHandler : IRequestHandler<RejectJobCommand, 
         JobTransitions.ChangeStatus(job, JobStatuses.Rejected, request.UserId, reasonCode, reasonText);
         await _jobs.AddStatusHistoryAsync(job.JobStatusHistories.Last(), ct);
 
-        await _notifications.AddAsync(new HRConnect.Domain.Entities.Notification
+        if (_notifier != null)
         {
-            NotificationId = Guid.NewGuid(),
-            UserId = job.CreatedBy,
-            NotificationType = "JOB",
-            Title = "Tin tuyển dụng bị từ chối duyệt",
-            Message = $"Tin tuyển dụng \"{job.Title}\" đã bị từ chối: {reasonText}.",
-            RelatedEntityType = "JOB",
-            RelatedEntityId = job.JobId,
-            Metadata = System.Text.Json.JsonSerializer.Serialize(new
+            await _notifier.NotifyCompanyAsync(job.CompanyId, new AppNotice(
+                "JOB",
+                "Tin tuyển dụng bị từ chối duyệt",
+                $"Tin tuyển dụng \"{job.Title}\" đã bị từ chối: {reasonText}.",
+                "JOB",
+                job.JobId,
+                $"/client/jobs?highlight={job.JobId}&openDetail=true"
+            ), ct);
+
+            await _notifier.NotifyRoleAsync("INTERNAL_HR", new AppNotice(
+                "JOB",
+                "Tin tuyển dụng đã bị từ chối",
+                $"Tin tuyển dụng \"{job.Title}\" đã được từ chối duyệt: {reasonText}.",
+                "JOB",
+                job.JobId,
+                $"/hr/jobs?status=CLOSED_REJECTED&highlight={job.JobId}"
+            ), ct);
+        }
+        else
+        {
+            await _notifications.AddAsync(new HRConnect.Domain.Entities.Notification
             {
-                jobId = job.JobId,
-                status = JobStatuses.Rejected,
-                reasonCode,
-                reasonText,
-                actionRoute = $"/client/jobs?highlight={job.JobId}&openDetail=true"
-            }),
-            IsRead = false,
-            CreatedAt = DateTime.UtcNow
-        }, ct);
+                NotificationId = Guid.NewGuid(),
+                UserId = job.CreatedBy,
+                NotificationType = "JOB",
+                Title = "Tin tuyển dụng bị từ chối duyệt",
+                Message = $"Tin tuyển dụng \"{job.Title}\" đã bị từ chối: {reasonText}.",
+                RelatedEntityType = "JOB",
+                RelatedEntityId = job.JobId,
+                Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    jobId = job.JobId,
+                    status = JobStatuses.Rejected,
+                    reasonCode,
+                    reasonText,
+                    actionRoute = $"/client/jobs?highlight={job.JobId}&openDetail=true"
+                }),
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            }, ct);
+        }
 
         await _uow.SaveChangesAsync(ct);
         return new(true, "Từ chối công việc thành công.", JobDto.From(job));

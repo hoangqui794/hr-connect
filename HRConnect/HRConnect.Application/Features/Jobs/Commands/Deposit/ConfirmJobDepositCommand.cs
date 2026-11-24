@@ -29,17 +29,20 @@ public sealed class ConfirmJobDepositCommandHandler : IRequestHandler<ConfirmJob
     private readonly IFinanceRepository _financeRepository;
     private readonly INotificationRepository _notifications;
     private readonly IUnitOfWork _uow;
+    private readonly IAppNotifier? _notifier;
 
     public ConfirmJobDepositCommandHandler(
         IJobRepository jobRepository,
         IFinanceRepository financeRepository,
         INotificationRepository notifications,
-        IUnitOfWork uow)
+        IUnitOfWork uow,
+        IAppNotifier? notifier = null)
     {
         _jobRepository = jobRepository;
         _financeRepository = financeRepository;
         _notifications = notifications;
         _uow = uow;
+        _notifier = notifier;
     }
 
     public async Task<JobDto> Handle(ConfirmJobDepositCommand request, CancellationToken cancellationToken)
@@ -96,25 +99,48 @@ public sealed class ConfirmJobDepositCommandHandler : IRequestHandler<ConfirmJob
         depositFee.RecordedBy = request.UserId;
         depositFee.UpdatedAt = now;
 
-        // Gửi thông báo cho Doanh nghiệp
-        await _notifications.AddAsync(new Notification
+        // Gửi thông báo cho Doanh nghiệp và Internal HR
+        if (_notifier != null)
         {
-            NotificationId = Guid.NewGuid(),
-            UserId = job.CreatedBy,
-            NotificationType = "JOB",
-            Title = "Tin tuyển dụng đã được công bố",
-            Message = $"HR Connect đã xác nhận nhận tiền cọc cho tin \"{job.Title}\". Tin tuyển dụng đã được kích hoạt công khai.",
-            RelatedEntityType = "JOB",
-            RelatedEntityId = job.JobId,
-            Metadata = JsonSerializer.Serialize(new
+            await _notifier.NotifyCompanyAsync(job.CompanyId, new AppNotice(
+                "JOB",
+                "Tin tuyển dụng đã được công bố",
+                $"HR Connect đã xác nhận nhận tiền cọc cho tin \"{job.Title}\". Tin tuyển dụng đã được kích hoạt công khai.",
+                "JOB",
+                job.JobId,
+                $"/client/jobs?highlight={job.JobId}&openDetail=true"
+            ), cancellationToken);
+
+            await _notifier.NotifyRoleAsync("INTERNAL_HR", new AppNotice(
+                "JOB",
+                "Tin tuyển dụng đã kích hoạt sau khi cọc",
+                $"Tin \"{job.Title}\" đã được xác nhận cọc và chuyển sang Đang tuyển.",
+                "JOB",
+                job.JobId,
+                $"/hr/jobs?status=ACTIVE&highlight={job.JobId}"
+            ), cancellationToken);
+        }
+        else
+        {
+            await _notifications.AddAsync(new Notification
             {
-                jobId = job.JobId,
-                status = JobStatuses.Active,
-                actionRoute = $"/client/jobs?highlight={job.JobId}&openDetail=true"
-            }),
-            IsRead = false,
-            CreatedAt = now
-        }, cancellationToken);
+                NotificationId = Guid.NewGuid(),
+                UserId = job.CreatedBy,
+                NotificationType = "JOB",
+                Title = "Tin tuyển dụng đã được công bố",
+                Message = $"HR Connect đã xác nhận nhận tiền cọc cho tin \"{job.Title}\". Tin tuyển dụng đã được kích hoạt công khai.",
+                RelatedEntityType = "JOB",
+                RelatedEntityId = job.JobId,
+                Metadata = JsonSerializer.Serialize(new
+                {
+                    jobId = job.JobId,
+                    status = JobStatuses.Active,
+                    actionRoute = $"/client/jobs?highlight={job.JobId}&openDetail=true"
+                }),
+                IsRead = false,
+                CreatedAt = now
+            }, cancellationToken);
+        }
 
         await _uow.SaveChangesAsync(cancellationToken);
         return JobDto.From(job, isReviewer: true);

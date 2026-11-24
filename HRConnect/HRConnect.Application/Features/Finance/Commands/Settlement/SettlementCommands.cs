@@ -417,7 +417,27 @@ public sealed class SettlementCommandHandlers :
         job.PostedAt = now;
         job.ClosedAt = null;
 
-        if (_notificationRepository != null)
+        if (_notifier != null)
+        {
+            await _notifier.NotifyCompanyAsync(job.CompanyId, new AppNotice(
+                "JOB",
+                "Tin tuyển dụng đã được công bố",
+                $"Đã nhận tiền cọc cho tin \"{job.Title}\". Tin CV Sourcing đã được công bố.",
+                "JOB",
+                job.JobId,
+                $"/client/jobs?highlight={job.JobId}&openDetail=true"
+            ), cancellationToken);
+
+            await _notifier.NotifyRoleAsync("INTERNAL_HR", new AppNotice(
+                "JOB",
+                "Tin tuyển dụng đã chuyển sang Đang tuyển",
+                $"Tin tuyển dụng \"{job.Title}\" đã nhận cọc và được công bố.",
+                "JOB",
+                job.JobId,
+                $"/hr/jobs?status=ACTIVE&highlight={job.JobId}"
+            ), cancellationToken);
+        }
+        else if (_notificationRepository != null)
         {
             await _notificationRepository.AddAsync(new Notification
             {

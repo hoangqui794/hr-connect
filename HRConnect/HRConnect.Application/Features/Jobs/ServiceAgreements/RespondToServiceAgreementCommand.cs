@@ -31,6 +31,7 @@ public sealed class RespondToServiceAgreementCommandHandler : IRequestHandler<Re
     private readonly INotificationRepository _notifications;
     private readonly IAuditLogService _audit;
     private readonly IUnitOfWork _uow;
+    private readonly IAppNotifier? _notifier;
 
     public RespondToServiceAgreementCommandHandler(
         IServiceAgreementRepository agreements,
@@ -38,7 +39,8 @@ public sealed class RespondToServiceAgreementCommandHandler : IRequestHandler<Re
         ICompanyUserRepository companyUsers,
         INotificationRepository notifications,
         IAuditLogService audit,
-        IUnitOfWork uow)
+        IUnitOfWork uow,
+        IAppNotifier? notifier = null)
     {
         _agreements = agreements;
         _jobs = jobs;
@@ -46,6 +48,7 @@ public sealed class RespondToServiceAgreementCommandHandler : IRequestHandler<Re
         _notifications = notifications;
         _audit = audit;
         _uow = uow;
+        _notifier = notifier;
     }
 
     public async Task<ServiceAgreementDto> Handle(RespondToServiceAgreementCommand request, CancellationToken ct)
@@ -89,25 +92,48 @@ public sealed class RespondToServiceAgreementCommandHandler : IRequestHandler<Re
             agreement.ChangeRequestReason = null;
             agreement.ConcurrencyToken = Guid.NewGuid();
 
-            // Notify HR creator
-            await _notifications.AddAsync(new Notification
+            // Notify HR & Company
+            if (_notifier != null)
             {
-                NotificationId = Guid.NewGuid(),
-                UserId = agreement.CreatedByUserId,
-                Title = "Client đã đồng ý thỏa thuận dịch vụ",
-                Message = $"Doanh nghiệp '{agreement.CompanyNameSnapshot}' đã chấp thuận dự thảo thỏa thuận (v{agreement.Version}). Đang chờ người đại diện ký điện tử.",
-                NotificationType = "JOB",
-                RelatedEntityType = "SERVICE_AGREEMENT",
-                RelatedEntityId = agreement.ServiceAgreementId,
-                Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                await _notifier.NotifyRoleAsync("INTERNAL_HR", new AppNotice(
+                    "JOB",
+                    "Client đã đồng ý thỏa thuận dịch vụ",
+                    $"Doanh nghiệp '{agreement.CompanyNameSnapshot}' đã chấp thuận dự thảo thỏa thuận (v{agreement.Version}). Đang chờ người đại diện ký điện tử.",
+                    "SERVICE_AGREEMENT",
+                    agreement.ServiceAgreementId,
+                    $"/hr/jobs?status=PENDING_AGREEMENT&highlight={job.JobId}"
+                ), ct);
+
+                await _notifier.NotifyCompanyAsync(job.CompanyId, new AppNotice(
+                    "JOB",
+                    "Đã chấp thuận thỏa thuận dịch vụ",
+                    $"Doanh nghiệp đã chấp thuận dự thảo thỏa thuận (v{agreement.Version}) cho tin \"{job.Title}\".",
+                    "SERVICE_AGREEMENT",
+                    agreement.ServiceAgreementId,
+                    $"/client/agreements?jobId={job.JobId}"
+                ), ct);
+            }
+            else
+            {
+                await _notifications.AddAsync(new Notification
                 {
-                    agreementId = agreement.ServiceAgreementId,
-                    jobId = job.JobId,
-                    status = agreement.Status,
-                    routeHint = $"/hr/jobs?status=PENDING_AGREEMENT&highlight={job.JobId}"
-                }),
-                CreatedAt = now
-            }, ct);
+                    NotificationId = Guid.NewGuid(),
+                    UserId = agreement.CreatedByUserId,
+                    Title = "Client đã đồng ý thỏa thuận dịch vụ",
+                    Message = $"Doanh nghiệp '{agreement.CompanyNameSnapshot}' đã chấp thuận dự thảo thỏa thuận (v{agreement.Version}). Đang chờ người đại diện ký điện tử.",
+                    NotificationType = "JOB",
+                    RelatedEntityType = "SERVICE_AGREEMENT",
+                    RelatedEntityId = agreement.ServiceAgreementId,
+                    Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        agreementId = agreement.ServiceAgreementId,
+                        jobId = job.JobId,
+                        status = agreement.Status,
+                        routeHint = $"/hr/jobs?status=PENDING_AGREEMENT&highlight={job.JobId}"
+                    }),
+                    CreatedAt = now
+                }, ct);
+            }
 
             await _audit.AddAsync(new AuditEntry
             {
@@ -146,25 +172,48 @@ public sealed class RespondToServiceAgreementCommandHandler : IRequestHandler<Re
                 ChangedAt = now
             });
 
-            // Notify HR creator
-            await _notifications.AddAsync(new Notification
+            // Notify HR & Company
+            if (_notifier != null)
             {
-                NotificationId = Guid.NewGuid(),
-                UserId = agreement.CreatedByUserId,
-                Title = "Client yêu cầu điều chỉnh thỏa thuận dịch vụ",
-                Message = $"Doanh nghiệp '{agreement.CompanyNameSnapshot}' đã yêu cầu điều chỉnh thỏa thuận (v{agreement.Version}): {agreement.ChangeRequestReason}",
-                NotificationType = "JOB",
-                RelatedEntityType = "SERVICE_AGREEMENT",
-                RelatedEntityId = agreement.ServiceAgreementId,
-                Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                await _notifier.NotifyRoleAsync("INTERNAL_HR", new AppNotice(
+                    "JOB",
+                    "Client yêu cầu điều chỉnh thỏa thuận dịch vụ",
+                    $"Doanh nghiệp '{agreement.CompanyNameSnapshot}' đã yêu cầu điều chỉnh thỏa thuận (v{agreement.Version}): {agreement.ChangeRequestReason}",
+                    "SERVICE_AGREEMENT",
+                    agreement.ServiceAgreementId,
+                    $"/hr/jobs?status=CHANGE_REQUESTED&highlight={job.JobId}"
+                ), ct);
+
+                await _notifier.NotifyCompanyAsync(job.CompanyId, new AppNotice(
+                    "JOB",
+                    "Đã gửi yêu cầu điều chỉnh thỏa thuận",
+                    $"Yêu cầu điều chỉnh thỏa thuận cho tin \"{job.Title}\" đã được gửi tới HR Connect: {agreement.ChangeRequestReason}",
+                    "SERVICE_AGREEMENT",
+                    agreement.ServiceAgreementId,
+                    $"/client/agreements?jobId={job.JobId}"
+                ), ct);
+            }
+            else
+            {
+                await _notifications.AddAsync(new Notification
                 {
-                    agreementId = agreement.ServiceAgreementId,
-                    jobId = job.JobId,
-                    status = agreement.Status,
-                    routeHint = $"/hr/jobs?status=CHANGE_REQUESTED&highlight={job.JobId}"
-                }),
-                CreatedAt = now
-            }, ct);
+                    NotificationId = Guid.NewGuid(),
+                    UserId = agreement.CreatedByUserId,
+                    Title = "Client yêu cầu điều chỉnh thỏa thuận dịch vụ",
+                    Message = $"Doanh nghiệp '{agreement.CompanyNameSnapshot}' đã yêu cầu điều chỉnh thỏa thuận (v{agreement.Version}): {agreement.ChangeRequestReason}",
+                    NotificationType = "JOB",
+                    RelatedEntityType = "SERVICE_AGREEMENT",
+                    RelatedEntityId = agreement.ServiceAgreementId,
+                    Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        agreementId = agreement.ServiceAgreementId,
+                        jobId = job.JobId,
+                        status = agreement.Status,
+                        routeHint = $"/hr/jobs?status=CHANGE_REQUESTED&highlight={job.JobId}"
+                    }),
+                    CreatedAt = now
+                }, ct);
+            }
 
             await _audit.AddAsync(new AuditEntry
             {
