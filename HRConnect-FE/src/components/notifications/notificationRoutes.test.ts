@@ -1,8 +1,52 @@
 import { describe, expect, it } from 'vitest';
 import { UserRole } from '@/types/roles';
-import { getNotificationRoute, portalRoute } from './notificationRoutes';
+import type { NotificationDto } from '@/types/api/notification';
+import { getNotificationRoute, isOtherPortalRoute, portalRoute } from './notificationRoutes';
 
 const JOB = '1b2c3d4e-0000-4000-8000-000000000001';
+
+describe('routes meant for another role (server default per notification type)', () => {
+  const agreementNotice = {
+    notificationId: 'n-agreement',
+    notificationType: 'JOB',
+    title: 'Đề xuất thỏa thuận dịch vụ mới',
+    message: "HR Connect đã gửi dự thảo thỏa thuận dịch vụ (v1) cho tin tuyển dụng 'Senior DevOps Engineer v1'. Vui lòng xem xét và phản hồi.",
+    relatedEntityType: 'SERVICE_AGREEMENT',
+    relatedEntityId: 'agreement-1',
+    routeHint: `/hr/jobs?status=PENDING_AGREEMENT&highlight=${JOB}`,
+    metadata: JSON.stringify({ jobId: JOB, agreementId: 'agreement-1', version: 1 }),
+    isRead: false,
+    createdAt: '2026-11-23T08:00:00Z',
+  } as NotificationDto;
+
+  it('sends a Client to its own agreements page instead of the HR jobs page', () => {
+    expect(getNotificationRoute(agreementNotice, UserRole.CLIENT)).toBe(`/client/agreements?jobId=${JOB}`);
+  });
+
+  it('keeps the HR route for Internal HR', () => {
+    expect(getNotificationRoute(agreementNotice, UserRole.INTERNAL_HR)).toBe(`/hr/jobs?status=PENDING_AGREEMENT&highlight=${JOB}`);
+  });
+
+  it('sends a Client to the warranty page instead of the HR warranty tracking', () => {
+    const warranty = { ...agreementNotice, title: 'Cập nhật bảo hành', relatedEntityType: 'WARRANTY', routeHint: '/hr/warranty-tracking?highlight=w-1', metadata: null } as NotificationDto;
+    expect(getNotificationRoute(warranty, UserRole.CLIENT)).toBe('/client/warranty');
+  });
+
+  it('still maps an old /admin/jobs hint to the HR job review for Internal HR', () => {
+    const legacy = { ...agreementNotice, title: 'Tin tuyển dụng', relatedEntityType: 'JOB', routeHint: `/admin/jobs?status=ACTIVE&highlight=${JOB}` } as NotificationDto;
+    expect(getNotificationRoute(legacy, UserRole.INTERNAL_HR)).toBe(`/hr/jobs?status=ACTIVE&highlight=${JOB}`);
+  });
+
+  it('detects routes of other workspaces only', () => {
+    expect(isOtherPortalRoute('/hr/jobs?status=ACTIVE', UserRole.CLIENT)).toBe(true);
+    expect(isOtherPortalRoute('/candidate/applications', UserRole.CLIENT)).toBe(true);
+    expect(isOtherPortalRoute('/client/agreements', UserRole.CLIENT)).toBe(false);
+    expect(isOtherPortalRoute(`/jobs/${JOB}`, UserRole.CLIENT)).toBe(false);
+    expect(isOtherPortalRoute('/hr/jobs', UserRole.INTERNAL_HR)).toBe(false);
+    expect(isOtherPortalRoute('/hr/jobs', UserRole.GUEST)).toBe(false);
+    expect(isOtherPortalRoute('/hrconnect-news', UserRole.CLIENT)).toBe(false);
+  });
+});
 
 describe('portalRoute', () => {
   it('keeps a signed-in client inside the client portal', () => {

@@ -3,6 +3,34 @@ import type { NotificationDto } from '@/types/api/notification';
 
 const PUBLIC_JOB_ROUTE = /^\/jobs\/([^/?#]+)\/?$/;
 
+/** Workspace root of each signed-in role. */
+const OWN_PORTAL: Record<string, string> = {
+  CLIENT: '/client',
+  CANDIDATE: '/candidate',
+  AFFILIATE: '/affiliate',
+  INTERNAL_HR: '/hr',
+  ADMIN: '/admin',
+};
+const PORTAL_PREFIXES = ['/client', '/candidate', '/affiliate', '/hr', '/admin', '/internal'];
+
+/**
+ * True when the route belongs to another role's workspace. The server falls back to one default route per
+ * notification type (e.g. /hr/jobs for a service agreement) whoever receives it; following it would send the
+ * user to a page their role cannot open, so the router bounces them back to their dashboard.
+ */
+const normalizeRole = (role: UserRole | string | null | undefined): string =>
+  (typeof role === 'string' ? role : (role as any)?.code || '').toUpperCase();
+
+const isRole = (role: UserRole | string | null | undefined, code: string) => normalizeRole(role) === code;
+
+export function isOtherPortalRoute(route: string, role: UserRole | string | null | undefined): boolean {
+  const own = OWN_PORTAL[normalizeRole(role)];
+  if (!own) return false;
+  return PORTAL_PREFIXES.some(
+    (prefix) => prefix !== own && (route === prefix || route.startsWith(`${prefix}/`) || route.startsWith(`${prefix}?`))
+  );
+}
+
 /** Job page inside the signed-in user's own portal; guests keep the public job page. */
 export function jobRouteForRole(jobId: string, role: UserRole | string | null | undefined): string {
   const normRole = (typeof role === 'string' ? role : (role as any)?.code || '').toUpperCase();
@@ -65,6 +93,17 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
 
   if (route && route.startsWith('/internal/jobs/review')) {
     route = route.replace('/internal/jobs/review', '/hr/jobs');
+  }
+
+  // Older job notices sent Internal HR to the Admin job list; keep mapping them to the HR job review.
+  if (route && route.startsWith('/admin/jobs') && isRole(role, 'INTERNAL_HR')) {
+    route = route.replace('/admin/jobs', '/hr/jobs');
+  }
+
+  // A hint for another role's workspace is the server's per-type default, not meant for this user:
+  // drop it and let the role rules below pick the page.
+  if (route && isOtherPortalRoute(route, role)) {
+    route = undefined;
   }
 
   const normRole = (typeof role === 'string' ? role : (role as any)?.code || '').toUpperCase();
