@@ -142,14 +142,22 @@ const PendingReferral: React.FC<{ consent: CandidateSubmissionConsent }> = ({ co
           {consent.companyName} · Hết hạn xác nhận sau {remainingText(consent.remainingSeconds)}
         </div>
       </div>
-      <Popconfirm title="Từ chối lời giới thiệu này?" okText="Từ chối" cancelText="Quay lại" disabled={respond.isPending} onConfirm={() => respond.mutate('DECLINE')}>
-        <button type="button" disabled={respond.isPending} className={`${FONT} h-10 cursor-pointer rounded-md border border-solid border-[#D1D5DB] bg-white px-[14px] text-[14px] text-[#1F2937] hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:opacity-60`}>
-          Từ chối
+      <div className="flex flex-wrap items-center gap-2">
+        <Link
+          to={`/candidate/submission-consents/${consent.submissionId}`}
+          className={`${FONT} box-border inline-flex h-10 items-center justify-center rounded-md border border-solid border-[#CBD5E1] bg-white px-[14px] text-[14px] font-medium text-[#0369A1] no-underline transition-colors hover:border-[#0369A1] hover:bg-[#F0F9FF] hover:text-[#075985]`}
+        >
+          Xem chi tiết
+        </Link>
+        <Popconfirm title="Từ chối lời giới thiệu này?" okText="Từ chối" cancelText="Quay lại" disabled={respond.isPending} onConfirm={() => respond.mutate('DECLINE')}>
+          <button type="button" disabled={respond.isPending} className={`${FONT} h-10 cursor-pointer rounded-md border border-solid border-[#D1D5DB] bg-white px-[14px] text-[14px] text-[#1F2937] hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:opacity-60`}>
+            Từ chối
+          </button>
+        </Popconfirm>
+        <button type="button" disabled={respond.isPending} onClick={() => respond.mutate('CONFIRM')} className={`${FONT} h-10 cursor-pointer rounded-xl border-0 bg-[#0369A1] px-4 text-[14px] font-bold text-white shadow-sm shadow-blue-500/20 transition-all hover:bg-[#075985] hover:shadow-md hover:shadow-blue-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`}>
+          Đồng ý
         </button>
-      </Popconfirm>
-      <button type="button" disabled={respond.isPending} onClick={() => respond.mutate('CONFIRM')} className={`${FONT} h-10 cursor-pointer rounded-xl border-0 bg-[#0369A1] px-4 text-[14px] font-bold text-white shadow-sm shadow-blue-500/20 transition-all hover:bg-[#075985] hover:shadow-md hover:shadow-blue-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60`}>
-        Đồng ý
-      </button>
+      </div>
     </div>
   );
 };

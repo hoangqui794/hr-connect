@@ -292,11 +292,28 @@ export const CandidateSubmissionConsentPage: React.FC = () => {
             okText="Từ chối"
             okButtonProps={{ danger: true }}
             cancelText="Quay lại"
-            disabled={respond.isPending}
+            disabled={respond.isPending || reportUnauthorized.isPending}
             onConfirm={() => respond.mutate('DECLINE')}
           >
-            <button type="button" disabled={respond.isPending} className={`${SECONDARY} flex-[1_1_160px]`}>
+            <button type="button" disabled={respond.isPending || reportUnauthorized.isPending} className={`${SECONDARY} flex-[1_1_160px]`}>
               Từ chối
+            </button>
+          </Popconfirm>
+          <Popconfirm
+            title="Báo cáo giới thiệu trái phép?"
+            description="HR Connect sẽ đóng yêu cầu này, thu hồi quyền dùng lại CV của đối tác và ghi nhận xử lý."
+            okText="Báo cáo"
+            okButtonProps={{ danger: true, loading: reportUnauthorized.isPending }}
+            cancelText="Quay lại"
+            disabled={respond.isPending || reportUnauthorized.isPending}
+            onConfirm={() => reportUnauthorized.mutate()}
+          >
+            <button
+              type="button"
+              disabled={respond.isPending || reportUnauthorized.isPending}
+              className={`${BUTTON} flex-[1_1_200px] border border-solid border-rose-200 bg-rose-50/70 text-rose-700 hover:border-rose-300 hover:bg-rose-100/80 hover:text-rose-800`}
+            >
+              {reportUnauthorized.isPending ? 'Đang gửi báo cáo…' : 'Báo cáo giới thiệu trái phép'}
             </button>
           </Popconfirm>
         </div>
