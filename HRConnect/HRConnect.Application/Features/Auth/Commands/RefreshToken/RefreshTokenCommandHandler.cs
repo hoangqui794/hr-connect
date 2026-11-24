@@ -17,6 +17,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly IOtpService _otpService;
     private readonly IAuditLogService _auditLogService;
+    private readonly IRequestContext _requestContext;
     private readonly IUnitOfWork _unitOfWork;
     private readonly JwtSettings _jwtSettings;
     private readonly ILogger<RefreshTokenCommandHandler> _logger;
@@ -27,6 +28,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         IJwtTokenGenerator jwtTokenGenerator,
         IOtpService otpService,
         IAuditLogService auditLogService,
+        IRequestContext requestContext,
         IUnitOfWork unitOfWork,
         IOptions<JwtSettings> jwtOptions,
         ILogger<RefreshTokenCommandHandler> logger)
@@ -36,6 +38,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         _jwtTokenGenerator = jwtTokenGenerator;
         _otpService = otpService;
         _auditLogService = auditLogService;
+        _requestContext = requestContext;
         _unitOfWork = unitOfWork;
         _jwtSettings = jwtOptions.Value;
         _logger = logger;
@@ -72,14 +75,24 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
 
                 await _refreshTokenRepository.RevokeAllByUserIdAsync(existingToken.UserId, "TOKEN_REUSE_DETECTED", cancellationToken);
 
-                // Ghi audit REFRESH_TOKEN_REUSE_DETECTED trước commit cùng transaction
+                // Ghi audit REFRESH_TOKEN_REUSE_DETECTED trước commit cùng transaction.
+                // Endpoint này không bắt buộc đăng nhập nhưng request vẫn có thể kèm Bearer hợp lệ; khi đó
+                // audit chỉ chấp nhận actor USER, nếu ghi SYSTEM thì audit ném lỗi và việc thu hồi bị rollback.
+                // Actor là chủ của Bearer đã gửi request, không phải chủ của refresh token (affectedUserId).
+                var bearerUserId = _requestContext.UserId;
                 await _auditLogService.AddAsync(new AuditEntry
                 {
                     Action = AuditActions.RefreshTokenReuseDetected,
                     EntityType = "REFRESH_TOKEN",
                     EntityId = existingToken.RefreshTokenId,
-                    ActorType = AuditActorTypes.System,
-                    NewValues = new { affectedUserId = existingToken.UserId, allSessionsRevoked = true },
+                    ActorUserId = bearerUserId,
+                    ActorType = bearerUserId.HasValue ? AuditActorTypes.User : AuditActorTypes.System,
+                    NewValues = new
+                    {
+                        affectedUserId = existingToken.UserId,
+                        allSessionsRevoked = true,
+                        detectedBy = AuditActorTypes.System
+                    },
                     Source = AuditSources.Api
                 }, cancellationToken);
 
