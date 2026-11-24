@@ -3,18 +3,19 @@
  * - Client › Bảo hành: own placements, service fees, and "Báo nghỉ việc" while the warranty is active.
  * - Internal HR › Theo dõi bảo hành: every warranty, reported resignations first, confirm or reject.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { a11yItemRender } from '@/components/common/paginationA11y';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App, Button, DatePicker, Form, Input, Modal, Radio, Space, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
+import { EyeOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { financeApi } from '@/services/api/financeApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { ReplacementSlotStatus, ServiceFee, ServiceFeeStatus, Warranty, WarrantyStatus } from '@/types/api/finance';
 import { FilterPills, PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
+import { matchesSearch } from '@/utils/searchMatch';
 import { COMMISSION_STATUS, SERVICE_FEE_STATUS, WARRANTY_STATUS, date, labelOf, money } from './financeLabels';
 import { REPLACEMENT_STATUS_CONFIG } from './replacementUtils';
 import { ReplacementQuotaCard } from './ReplacementQuotaCard';
@@ -30,6 +31,7 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<WarrantyStatus | 'all'>(mode === 'hr' ? 'CLAIMED' : 'all');
   const [page, setPage] = useState(1);
+  const [searchText, setSearchText] = useState('');
   const [target, setTarget] = useState<Warranty | null>(null);
   const [detailPlacementId, setDetailPlacementId] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -53,9 +55,28 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
     staleTime: 30_000,
   });
 
-  const slotByPlacementId = new Map(
-    (replacementSlots.data?.items ?? []).map((slot) => [slot.originalPlacementId, slot] as const)
+  const slotByPlacementId = useMemo(
+    () =>
+      new Map(
+        (replacementSlots.data?.items ?? []).map((slot) => [slot.originalPlacementId, slot] as const)
+      ),
+    [replacementSlots.data?.items]
   );
+
+  const hasSearch = searchText.trim().length > 0;
+  const visibleWarranties = useMemo(() => {
+    const rows = list.data?.items ?? [];
+    if (!hasSearch) return rows;
+    return rows.filter((w) =>
+      matchesSearch(
+        searchText,
+        w.candidateName,
+        w.jobTitle,
+        w.companyName,
+        slotByPlacementId.get(w.placementId)?.replacementSlotId
+      )
+    );
+  }, [list.data?.items, hasSearch, searchText, slotByPlacementId]);
 
   const highlightParam = searchParams.get('highlight');
   useEffect(() => {
@@ -309,18 +330,36 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
             { value: 'VOIDED', label: 'Nghỉ trong bảo hành' },
           ]}
         />
-        <Button icon={<ReloadOutlined />} onClick={() => list.refetch()} loading={list.isFetching}>Làm mới</Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            allowClear
+            prefix={<SearchOutlined className="text-slate-400" />}
+            placeholder="Tìm theo ứng viên, vị trí, doanh nghiệp, mã suất..."
+            aria-label="Tìm kiếm danh sách bảo hành"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="w-full sm:w-[300px]"
+          />
+          <Button icon={<ReloadOutlined />} onClick={() => list.refetch()} loading={list.isFetching}>Làm mới</Button>
+        </div>
       </div>
       {list.isError && <Alert className="mb-4" type="error" showIcon message={getApiErrorMessage(list.error)} />}
       <Surface>
         <Table
           rowKey="warrantyId"
           columns={columns}
-          dataSource={list.data?.items}
+          dataSource={visibleWarranties}
           loading={list.isFetching}
           scroll={{ x: 760 }}
-          pagination={{ itemRender: a11yItemRender, current: page, pageSize: PAGE_SIZE, total: list.data?.totalCount ?? 0, onChange: setPage, showSizeChanger: false }}
-          locale={{ emptyText: mode === 'hr' && status === 'CLAIMED' ? 'Không có báo nghỉ nào chờ xác minh.' : 'Chưa có bảo hành nào.' }}
+          pagination={{ itemRender: a11yItemRender, current: page, pageSize: PAGE_SIZE, total: hasSearch ? visibleWarranties.length : (list.data?.totalCount ?? 0), onChange: setPage, showSizeChanger: false }}
+          locale={{
+            emptyText: hasSearch ? (
+              <div className="py-8 text-slate-600">
+                <div>Không tìm thấy hồ sơ bảo hành phù hợp trên trang này.</div>
+                <Button className="mt-3" onClick={() => setSearchText('')}>Xóa từ khóa tìm kiếm</Button>
+              </div>
+            ) : mode === 'hr' && status === 'CLAIMED' ? 'Không có báo nghỉ nào chờ xác minh.' : 'Chưa có bảo hành nào.',
+          }}
         />
       </Surface>
 

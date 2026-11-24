@@ -58,6 +58,7 @@ import {
 } from '@/types/api/rbac';
 import { adminTokens, formatDateTime } from './adminTheme';
 import { PageHero, StatTile, StatusDot, Surface, type Tone } from './ui';
+import { matchesSearch } from '@/utils/searchMatch';
 
 const PAGE_SIZE = 20;
 
@@ -154,6 +155,7 @@ export const AdminRolesPermissionsPage: React.FC = () => {
   const [matrixReasonModalOpen, setMatrixReasonModalOpen] = useState(false);
   const [stagedPermissionIds, setStagedPermissionIds] = useState<string[]>([]);
   const [matrixDrawerTab, setMatrixDrawerTab] = useState<'matrix' | 'info' | 'delete'>('matrix');
+  const [matrixPermSearch, setMatrixPermSearch] = useState('');
 
   // Role detail query
   const roleDetailQuery = useQuery({
@@ -1123,44 +1125,71 @@ export const AdminRolesPermissionsPage: React.FC = () => {
                       className="mb-4"
                     />
 
-                    <div className="admin-surface p-4 mb-4 flex items-center justify-between">
+                    <div className="admin-surface p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <span className="text-sm text-slate-600">Số quyền đang chọn cho vai trò: </span>
                         <strong className="text-base text-emerald-700">{stagedPermissionIds.length}</strong>
                       </div>
-                      <Space>
-                        <Button
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Input
                           size="small"
-                          onClick={() => {
-                            const delegableIds = (allPermissionsForMatrixQuery.data?.items ?? [])
-                              .filter(isDelegablePermission)
-                              .map((p) => p.permissionId);
-                            setStagedPermissionIds(delegableIds);
-                          }}
-                        >
-                          Chọn tất cả quyền hợp lệ
-                        </Button>
-                        <Button size="small" onClick={() => setStagedPermissionIds([])}>
-                          Bỏ chọn tất cả
-                        </Button>
-                      </Space>
+                          allowClear
+                          prefix={<SearchOutlined className="text-slate-400" />}
+                          placeholder="Lọc nhanh mã quyền, mô tả, phân hệ..."
+                          aria-label="Lọc nhanh quyền trong ma trận"
+                          value={matrixPermSearch}
+                          onChange={(e) => setMatrixPermSearch(e.target.value)}
+                          className="w-full sm:w-[240px]"
+                        />
+                        <Space>
+                          <Button
+                            size="small"
+                            onClick={() => {
+                              const delegableIds = (allPermissionsForMatrixQuery.data?.items ?? [])
+                                .filter(isDelegablePermission)
+                                .map((p) => p.permissionId);
+                              setStagedPermissionIds(delegableIds);
+                            }}
+                          >
+                            Chọn tất cả quyền hợp lệ
+                          </Button>
+                          <Button size="small" onClick={() => setStagedPermissionIds([])}>
+                            Bỏ chọn tất cả
+                          </Button>
+                        </Space>
+                      </div>
                     </div>
 
                     {allPermissionsForMatrixQuery.isLoading ? (
                       <Skeleton active paragraph={{ rows: 6 }} />
-                    ) : (
+                    ) : (() => {
+                      const filteredMatrixPerms = (allPermissionsForMatrixQuery.data?.items ?? []).filter((p) =>
+                        matchesSearch(matrixPermSearch, p.code, p.description, p.resource, p.action)
+                      );
+                      const grouped = Object.entries(
+                        filteredMatrixPerms.reduce(
+                          (acc, p) => {
+                            acc[p.resource] = acc[p.resource] || [];
+                            acc[p.resource].push(p);
+                            return acc;
+                          },
+                          {} as Record<string, RbacPermission[]>
+                        )
+                      );
+                      if (grouped.length === 0) {
+                        return (
+                          <div className="admin-surface p-8 text-center text-sm text-slate-500">
+                            <div>Không tìm thấy quyền phù hợp với từ khóa.</div>
+                            <Button size="small" className="mt-3" onClick={() => setMatrixPermSearch('')}>
+                              Xóa từ khóa tìm kiếm
+                            </Button>
+                          </div>
+                        );
+                      }
+                      return (
                       <div className="space-y-4">
                         {/* Group permissions by resource */}
-                        {Object.entries(
-                          (allPermissionsForMatrixQuery.data?.items ?? []).reduce(
-                            (acc, p) => {
-                              acc[p.resource] = acc[p.resource] || [];
-                              acc[p.resource].push(p);
-                              return acc;
-                            },
-                            {} as Record<string, RbacPermission[]>
-                          )
-                        ).map(([resource, perms]) => (
+                        {grouped.map(([resource, perms]) => (
                           <div key={resource} className="admin-surface p-4">
                             <div className="mb-3 flex items-center gap-2 border-0 border-b border-solid border-slate-100 pb-2">
                               <AppstoreOutlined className="text-slate-500" />
@@ -1221,7 +1250,8 @@ export const AdminRolesPermissionsPage: React.FC = () => {
                           </div>
                         ))}
                       </div>
-                    )}
+                      );
+                    })()}
 
                     {/* Bottom Save Action Bar */}
                     <div className="sticky bottom-0 z-10 mt-6 flex items-center justify-between rounded-xl border border-[#0369A1]/25 bg-white/95 p-4 text-slate-900 shadow-[0_-4px_24px_-4px_rgba(8,37,60,0.08)] backdrop-blur-md">

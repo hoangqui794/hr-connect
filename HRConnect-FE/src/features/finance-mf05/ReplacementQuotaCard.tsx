@@ -43,6 +43,7 @@ import {
 } from './replacementUtils';
 import { date, money } from './financeLabels';
 import { PlacementDetailDrawer } from './PlacementDetailDrawer';
+import { matchesSearch } from '@/utils/searchMatch';
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 
@@ -187,14 +188,18 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
       if (activeTab === 'FILLED' && slot.status !== 'FILLED') return false;
       if (activeTab === 'CLOSED' && slot.status !== 'EXPIRED' && slot.status !== 'CANCELLED') return false;
 
-      // Search filter
+      // Search filter (Vietnamese-normalized, including companyName)
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const cand = (slot.originalCandidateName || '').toLowerCase();
-        const repCand = (slot.replacementCandidateName || '').toLowerCase();
-        const title = (slot.jobTitle || '').toLowerCase();
-        const id = slot.replacementSlotId.toLowerCase();
-        if (!cand.includes(q) && !repCand.includes(q) && !title.includes(q) && !id.includes(q)) {
+        if (
+          !matchesSearch(
+            searchQuery,
+            slot.originalCandidateName,
+            slot.replacementCandidateName,
+            slot.jobTitle,
+            slot.companyName,
+            slot.replacementSlotId
+          )
+        ) {
           return false;
         }
       }

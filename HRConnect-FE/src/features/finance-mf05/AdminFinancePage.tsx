@@ -9,7 +9,7 @@ import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'motion/react';
 import { Alert, App, Button, DatePicker, Drawer, Dropdown, Form, Input, InputNumber, Modal, Pagination, Radio, Select, Spin, Tag, Tooltip } from 'antd';
-import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, ReloadOutlined, SwapOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, ReloadOutlined, SearchOutlined, SwapOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import { financeApi } from '@/services/api/financeApi';
@@ -17,6 +17,7 @@ import { placementReconciliationApi } from '@/services/api/hrApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { Commission, CommissionStatus, Payout, ServiceFee, ServiceFeeStatus } from '@/types/api/finance';
 import { PageHero, StatTile, StatusDot } from '@/features/admin-console/ui';
+import { matchesSearch } from '@/utils/searchMatch';
 import { PostingFeePaymentsPanel } from './PostingFeePaymentsPanel';
 import { COMMISSION_STATUS, PAYOUT_STATUS, SERVICE_FEE_KIND, SERVICE_FEE_STATUS, date, labelOf, money, OWED_FEE_STATUS, isOwedToClient } from './financeLabels';
 
@@ -78,6 +79,7 @@ export const AdminFinancePage: React.FC = () => {
   const [tab, setTab] = useState<Tab>('commissions');
   const [commissionStatus, setCommissionStatus] = useState<CommissionStatus | 'all'>('all');
   const [feeStatus, setFeeStatus] = useState<ServiceFeeStatus | 'all'>('all');
+  const [searchText, setSearchText] = useState('');
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' } | null>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -189,7 +191,7 @@ export const AdminFinancePage: React.FC = () => {
     const sorted = activeSortCol?.sortBy
       ? [...raw].sort((a, b) => (sort?.dir === 'asc' ? activeSortCol.sortBy!(a, b) : activeSortCol.sortBy!(b, a)))
       : raw;
-    const total = active?.data?.totalCount ?? 0;
+    const total = searchText.trim() ? sorted.length : (active?.data?.totalCount ?? 0);
     // Fixed layout: every column keeps its width, the column without one takes the rest (at least 200px).
     // Below that width the table scrolls horizontally instead of squeezing columns together.
     const minWidth = cols.reduce((sum, c) => sum + (c.width ? parseInt(c.width, 10) : 200), 0);
@@ -199,7 +201,12 @@ export const AdminFinancePage: React.FC = () => {
     return (
       <Spin spinning={loading}>
         {!loading && sorted.length === 0 ? (
-          <div className="px-6 py-14 text-center text-sm text-slate-400">{emptyText}</div>
+          <div className="px-6 py-14 text-center text-sm text-slate-400">
+            <div>{searchText.trim() ? 'Không tìm thấy kết quả phù hợp trên trang này.' : emptyText}</div>
+            {searchText.trim() && (
+              <Button className="mt-3" onClick={() => setSearchText('')}>Xóa từ khóa tìm kiếm</Button>
+            )}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full table-fixed border-collapse text-left text-[13px]" style={{ minWidth }}>
@@ -714,7 +721,7 @@ export const AdminFinancePage: React.FC = () => {
                   type="button"
                   role="tab"
                   aria-selected={selected}
-                  onClick={() => { setTab(s.value); setPage(1); }}
+                  onClick={() => { setTab(s.value); setPage(1); setSearchText(''); }}
                   className={`relative cursor-pointer rounded-lg border-0 bg-transparent px-3.5 py-1.5 text-[13.5px] transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
                     selected
                       ? 'font-semibold text-[#111827]'
@@ -734,28 +741,47 @@ export const AdminFinancePage: React.FC = () => {
               );
             })}
           </div>
-          {(tab === 'commissions' || tab === 'fees') && (
-            <label className="flex items-center gap-2 text-[13px] font-medium text-slate-600">
-              <span>Trạng thái</span>
-              {tab === 'commissions' ? (
-                <Select<CommissionStatus | 'all'>
-                  aria-label="Trạng thái hoa hồng"
-                  className="w-56"
-                  value={commissionStatus}
-                  onChange={(v) => { setCommissionStatus(v); setPage(1); }}
-                  options={[{ value: 'all', label: 'Tất cả' }, ...COMMISSION_FILTERS.map((s) => ({ value: s, label: COMMISSION_STATUS[s].label }))]}
-                />
-              ) : (
-                <Select<ServiceFeeStatus | 'all'>
-                  aria-label="Trạng thái phí"
-                  className="w-48"
-                  value={feeStatus}
-                  onChange={(v) => { setFeeStatus(v); setPage(1); }}
-                  options={[{ value: 'all', label: 'Tất cả' }, ...FEE_FILTERS.map((s) => ({ value: s, label: SERVICE_FEE_STATUS[s].label }))]}
-                />
-              )}
-            </label>
-          )}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Input
+              allowClear
+              prefix={<SearchOutlined className="text-slate-400" />}
+              placeholder={
+                tab === 'commissions'
+                  ? 'Tìm ứng viên, job, Affiliate...'
+                  : tab === 'fees'
+                    ? 'Tìm doanh nghiệp, job, ứng viên, mã tham chiếu...'
+                    : tab === 'postingFees'
+                      ? 'Tìm tin tuyển dụng, doanh nghiệp, gói...'
+                      : 'Tìm Affiliate, ứng viên, job, mã giao dịch...'
+              }
+              aria-label="Tìm kiếm tài chính"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className="w-full sm:w-[290px]"
+            />
+            {(tab === 'commissions' || tab === 'fees') && (
+              <label className="flex items-center gap-2 text-[13px] font-medium text-slate-600">
+                <span>Trạng thái</span>
+                {tab === 'commissions' ? (
+                  <Select<CommissionStatus | 'all'>
+                    aria-label="Trạng thái hoa hồng"
+                    className="w-56"
+                    value={commissionStatus}
+                    onChange={(v) => { setCommissionStatus(v); setPage(1); }}
+                    options={[{ value: 'all', label: 'Tất cả' }, ...COMMISSION_FILTERS.map((s) => ({ value: s, label: COMMISSION_STATUS[s].label }))]}
+                  />
+                ) : (
+                  <Select<ServiceFeeStatus | 'all'>
+                    aria-label="Trạng thái phí"
+                    className="w-48"
+                    value={feeStatus}
+                    onChange={(v) => { setFeeStatus(v); setPage(1); }}
+                    options={[{ value: 'all', label: 'Tất cả' }, ...FEE_FILTERS.map((s) => ({ value: s, label: SERVICE_FEE_STATUS[s].label }))]}
+                  />
+                )}
+              </label>
+            )}
+          </div>
         </div>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
@@ -765,10 +791,43 @@ export const AdminFinancePage: React.FC = () => {
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
           >
-            {tab === 'commissions' && renderDataTable(commissionColumns, commissions.data?.items, (c) => c.commissionId, commissions.isFetching, 'Chưa có hoa hồng nào.', (c) => setDetail({ kind: 'commission', item: c }))}
-            {tab === 'fees' && renderDataTable(feeColumns, fees.data?.items, (f) => f.serviceFeeId, fees.isFetching, 'Chưa có công nợ phí nào.', (f) => setDetail({ kind: 'fee', item: f }))}
-            {tab === 'postingFees' && <PostingFeePaymentsPanel enabled={tab === 'postingFees'} />}
-            {tab === 'payouts' && renderDataTable(payoutColumns, payouts.data?.items, (p) => p.payoutId, payouts.isFetching, 'Chưa có lần chi nào.', (p) => setDetail({ kind: 'payout', item: p }))}
+            {tab === 'commissions' && renderDataTable(
+              commissionColumns,
+              (commissions.data?.items ?? []).filter((c) =>
+                matchesSearch(searchText, c.candidateName, c.jobTitle, c.affiliateName)
+              ),
+              (c) => c.commissionId,
+              commissions.isFetching,
+              'Chưa có hoa hồng nào.',
+              (c) => setDetail({ kind: 'commission', item: c })
+            )}
+            {tab === 'fees' && renderDataTable(
+              feeColumns,
+              (fees.data?.items ?? []).filter((f) =>
+                matchesSearch(searchText, f.companyName, f.jobTitle, f.candidateName, f.paymentReference)
+              ),
+              (f) => f.serviceFeeId,
+              fees.isFetching,
+              'Chưa có công nợ phí nào.',
+              (f) => setDetail({ kind: 'fee', item: f })
+            )}
+            {tab === 'postingFees' && (
+              <PostingFeePaymentsPanel
+                enabled={tab === 'postingFees'}
+                searchText={searchText}
+                onClearSearch={() => setSearchText('')}
+              />
+            )}
+            {tab === 'payouts' && renderDataTable(
+              payoutColumns,
+              (payouts.data?.items ?? []).filter((p) =>
+                matchesSearch(searchText, p.affiliateName, p.candidateName, p.jobTitle, p.transactionReference)
+              ),
+              (p) => p.payoutId,
+              payouts.isFetching,
+              'Chưa có lần chi nào.',
+              (p) => setDetail({ kind: 'payout', item: p })
+            )}
           </motion.div>
         </AnimatePresence>
       </section>

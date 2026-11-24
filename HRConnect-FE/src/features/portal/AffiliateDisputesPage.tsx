@@ -5,15 +5,17 @@
  * the new-dispute form on the right; the referral is picked from the Affiliate's own submissions.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button, Form, Input, Radio, Select, Alert, Skeleton, App as AntApp } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { disputeApi } from '@/services/api/disputeApi';
 import { affiliateApi } from '@/services/api/mf02Api';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { CreateDisputeRequest } from '@/types/api/dispute';
+import { matchesSearch } from '@/utils/searchMatch';
 import { AffiliatePageHeader } from './affiliate/AffiliateUi';
 import { submissionStatus } from './mf02Labels';
 
@@ -37,6 +39,8 @@ export const AffiliateDisputesPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm<CreateDisputeRequest>();
+  const [searchText, setSearchText] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
   const { data: disputes = [], isLoading, isError, error } = useQuery({
     queryKey: ['affiliate-my-disputes'],
@@ -67,6 +71,22 @@ export const AffiliateDisputesPage: React.FC = () => {
     .filter((s) => ['BLOCKED_DUPLICATE', 'ACCEPTED'].includes(s.status))
     .map((s) => ({ value: s.submissionId, label: `${s.candidateName} – ${s.jobTitle} – ${submissionStatus(s.status).label}` }));
 
+  const filteredDisputes = useMemo(() => {
+    return disputes.filter((d) => {
+      if (statusFilter !== 'ALL' && d.status !== statusFilter) return false;
+      return matchesSearch(
+        searchText,
+        d.candidateName,
+        d.jobTitle,
+        d.description,
+        d.resolution,
+        TYPE_LABEL[d.disputeType] ?? d.disputeType
+      );
+    });
+  }, [disputes, searchText, statusFilter]);
+
+  const hasFilter = searchText.trim().length > 0 || statusFilter !== 'ALL';
+
   return (
     <div>
       <AffiliatePageHeader
@@ -77,14 +97,49 @@ export const AffiliateDisputesPage: React.FC = () => {
 
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <section aria-labelledby="aff-disputes-mine" className="rounded-xl border border-solid border-slate-200/80 bg-white shadow-sm overflow-hidden">
-          <h2 id="aff-disputes-mine" className="m-0 border-0 border-b border-solid border-slate-100 px-4 py-3.5 text-[15px] font-bold text-gray-900">Khiếu nại của tôi</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2.5 border-0 border-b border-solid border-slate-100 px-4 py-3.5">
+            <h2 id="aff-disputes-mine" className="m-0 text-[15px] font-bold text-gray-900">Khiếu nại của tôi</h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                allowClear
+                prefix={<SearchOutlined className="text-slate-400" />}
+                placeholder="Tìm ứng viên, việc làm, nội dung..."
+                aria-label="Tìm kiếm khiếu nại"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                className="w-full sm:w-[230px]"
+              />
+              <Select
+                aria-label="Lọc trạng thái khiếu nại"
+                value={statusFilter}
+                onChange={setStatusFilter}
+                className="w-full sm:w-[155px]"
+                options={[
+                  { value: 'ALL', label: 'Tất cả trạng thái' },
+                  { value: 'OPEN', label: 'Đã gửi' },
+                  { value: 'UNDER_REVIEW', label: 'Đang xem xét' },
+                  { value: 'UPHELD', label: 'Được chấp nhận' },
+                  { value: 'REJECTED', label: 'Không chấp nhận' },
+                ]}
+              />
+            </div>
+          </div>
           {isLoading ? (
             <div className="p-4"><Skeleton active paragraph={{ rows: 3 }} /></div>
           ) : disputes.length === 0 ? (
             <div className="px-4 py-10 text-center text-sm text-gray-600">Bạn chưa có khiếu nại nào.</div>
+          ) : filteredDisputes.length === 0 ? (
+            <div className="px-4 py-10 text-center text-sm text-gray-600">
+              <div>Không tìm thấy khiếu nại phù hợp.</div>
+              {hasFilter && (
+                <Button className="mt-3" onClick={() => { setSearchText(''); setStatusFilter('ALL'); }}>
+                  Đặt lại bộ lọc
+                </Button>
+              )}
+            </div>
           ) : (
             <ul className="m-0 list-none p-0">
-              {disputes.map((d) => {
+              {filteredDisputes.map((d) => {
                 const st = STATUS_CONFIG[d.status] ?? { label: d.status, className: 'bg-gray-100 text-gray-700' };
                 return (
                   <li key={d.disputeId} className="flex flex-wrap gap-3 border-0 border-b border-solid border-slate-100 px-4 py-3.5 last:border-b-0">

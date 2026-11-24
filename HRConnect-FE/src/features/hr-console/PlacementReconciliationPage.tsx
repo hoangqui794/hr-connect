@@ -6,7 +6,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App as AntApp, Button, Descriptions, Drawer, Form, Input, Modal, Radio, Select, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { CheckCircleOutlined, ExclamationCircleOutlined, EyeOutlined, FormOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, ExclamationCircleOutlined, EyeOutlined, FormOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
@@ -17,6 +17,7 @@ import type {
   ReconciliationContactChannel,
 } from '@/types/api/hr';
 import { FilterPills, PageHero, PersonCell, StatusDot, Surface, type Tone } from '@/features/admin-console/ui';
+import { matchesSearch } from '@/utils/searchMatch';
 
 const PAGE_SIZE = 10;
 const statusMeta: Record<PlacementReconciliationStatus, { label: string; tone: Tone }> = {
@@ -43,6 +44,7 @@ interface ActionValues {
 const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = false }) => {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<PlacementReconciliationStatus | 'ALL'>(admin ? 'FLAGGED' : 'PENDING');
+  const [searchText, setSearchText] = useState('');
   const [selected, setSelected] = useState<PlacementReconciliationItem | null>(null);
   const [actionOpen, setActionOpen] = useState(false);
   const [form] = Form.useForm<ActionValues>();
@@ -176,6 +178,22 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
   };
   const decision = Form.useWatch('decision', form);
 
+  const hasSearch = searchText.trim().length > 0;
+  const visibleItems = useMemo(() => {
+    const rows = list.data?.items ?? [];
+    if (!hasSearch) return rows;
+    return rows.filter((row) =>
+      matchesSearch(
+        searchText,
+        row.candidateName,
+        row.candidateEmail,
+        row.jobTitle,
+        row.companyName,
+        row.affiliateName
+      )
+    );
+  }, [list.data?.items, hasSearch, searchText]);
+
   return (
     <div>
       <PageHero
@@ -194,7 +212,7 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
           ? 'Ghi rõ kết quả xử lý. Khi hoàn tất, phí của placement mới được tiếp tục theo hạn thanh toán.'
           : 'Nếu Client nhập sai ngày đi làm, sửa ngày trước rồi mới xác nhận. Nếu thông tin không khớp, ghi chú và chuyển Admin xử lý.'}
       />
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <FilterPills
           label="Lọc trạng thái đối soát"
           value={status}
@@ -206,6 +224,15 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
             { value: 'CONFIRMED', label: 'Đã xác nhận' },
           ]}
         />
+        <Input
+          allowClear
+          prefix={<SearchOutlined className="text-slate-400" />}
+          placeholder="Tìm theo ứng viên, email, tin tuyển dụng, công ty, Affiliate..."
+          aria-label="Tìm kiếm đối soát nhận việc"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          className="w-full sm:w-[340px]"
+        />
       </div>
       <Surface>
         {list.isError ? (
@@ -215,10 +242,17 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
             className="admin-soft-table w-full table-auto"
             rowKey="reconciliationId"
             columns={columns}
-            dataSource={list.data?.items ?? []}
+            dataSource={visibleItems}
             loading={list.isFetching}
-            pagination={{ current: page, pageSize: PAGE_SIZE, total: list.data?.totalCount ?? 0, showSizeChanger: false, onChange: setPage }}
-            locale={{ emptyText: 'Không có hồ sơ phù hợp.' }}
+            pagination={{ current: page, pageSize: PAGE_SIZE, total: hasSearch ? visibleItems.length : (list.data?.totalCount ?? 0), showSizeChanger: false, onChange: setPage }}
+            locale={{
+              emptyText: hasSearch ? (
+                <div className="py-8 text-slate-600">
+                  <div>Không tìm thấy hồ sơ đối soát phù hợp trên trang này.</div>
+                  <Button className="mt-3" onClick={() => setSearchText('')}>Xóa từ khóa tìm kiếm</Button>
+                </div>
+              ) : 'Không có hồ sơ phù hợp.',
+            }}
           />
         )}
       </Surface>

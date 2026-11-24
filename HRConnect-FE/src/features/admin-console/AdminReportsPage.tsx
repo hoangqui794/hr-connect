@@ -4,9 +4,11 @@
  * backing GET /api/v1/reports/{overview, revenue, top-affiliates, top-companies}.
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
+  Button,
   DatePicker,
+  Input,
   Radio,
   Table,
   Tag,
@@ -23,6 +25,7 @@ import {
   TrophyOutlined,
   RiseOutlined,
   CalendarOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { type Dayjs } from 'dayjs';
@@ -30,6 +33,7 @@ import { useQuery } from '@tanstack/react-query';
 import { reportApi } from '@/services/api/reportApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { PageHero, Surface } from '@/features/admin-console/ui';
+import { matchesSearch } from '@/utils/searchMatch';
 import type {
   ReportOverviewData,
   ReportRevenueData,
@@ -50,6 +54,8 @@ export const AdminReportsPage: React.FC = () => {
     dayjs(),
   ]);
   const [revenueGroupBy, setRevenueGroupBy] = useState<'month' | 'quarter' | 'year'>('month');
+  const [affiliateSearch, setAffiliateSearch] = useState('');
+  const [companySearch, setCompanySearch] = useState('');
 
   const fromStr = dateRange[0].format('YYYY-MM-DD');
   const toStr = dateRange[1].format('YYYY-MM-DD');
@@ -74,6 +80,18 @@ export const AdminReportsPage: React.FC = () => {
     queryKey: ['admin-reports-top-companies', fromStr, toStr],
     queryFn: () => reportApi.getTopCompanies({ from: fromStr, to: toStr, limit: 10 }),
   });
+
+  const filteredTopAffiliates = useMemo(() => {
+    const rows = topAffiliatesQuery.data ?? [];
+    if (!affiliateSearch.trim()) return rows;
+    return rows.filter((a) => matchesSearch(affiliateSearch, a.fullName, a.ratingLabel));
+  }, [topAffiliatesQuery.data, affiliateSearch]);
+
+  const filteredTopCompanies = useMemo(() => {
+    const rows = topCompaniesQuery.data ?? [];
+    if (!companySearch.trim()) return rows;
+    return rows.filter((c) => matchesSearch(companySearch, c.companyName, c.industry));
+  }, [topCompaniesQuery.data, companySearch]);
 
   const ov = overviewQuery.data;
   const rev = revenueQuery.data;
@@ -352,15 +370,37 @@ export const AdminReportsPage: React.FC = () => {
                 </span>
               ),
               children: (
-                <Table
-                  className="admin-soft-table"
-                  rowKey="affiliateId"
-                  columns={affiliateColumns}
-                  dataSource={topAffiliatesQuery.data ?? []}
-                  loading={topAffiliatesQuery.isFetching}
-                  pagination={false}
-                  locale={{ emptyText: <div className="py-8 text-slate-400">Chưa có dữ liệu Affiliate trong khoảng thời gian này.</div> }}
-                />
+                <div className="space-y-3">
+                  <div className="flex justify-end">
+                    <Input
+                      allowClear
+                      prefix={<SearchOutlined className="text-slate-400" />}
+                      placeholder="Tìm theo tên Cộng tác viên..."
+                      aria-label="Tìm kiếm BXH Top Affiliate"
+                      value={affiliateSearch}
+                      onChange={(e) => setAffiliateSearch(e.target.value)}
+                      className="w-full sm:w-[260px]"
+                    />
+                  </div>
+                  <Table
+                    className="admin-soft-table"
+                    rowKey="affiliateId"
+                    columns={affiliateColumns}
+                    dataSource={filteredTopAffiliates}
+                    loading={topAffiliatesQuery.isFetching}
+                    pagination={false}
+                    locale={{
+                      emptyText: affiliateSearch.trim() ? (
+                        <div className="py-8 text-slate-400">
+                          <div>Không tìm thấy Cộng tác viên phù hợp.</div>
+                          <Button className="mt-3" onClick={() => setAffiliateSearch('')}>Xóa từ khóa tìm kiếm</Button>
+                        </div>
+                      ) : (
+                        <div className="py-8 text-slate-400">Chưa có dữ liệu Affiliate trong khoảng thời gian này.</div>
+                      ),
+                    }}
+                  />
+                </div>
               ),
             },
             {
@@ -371,15 +411,37 @@ export const AdminReportsPage: React.FC = () => {
                 </span>
               ),
               children: (
-                <Table
-                  className="admin-soft-table"
-                  rowKey="companyId"
-                  columns={companyColumns}
-                  dataSource={topCompaniesQuery.data ?? []}
-                  loading={topCompaniesQuery.isFetching}
-                  pagination={false}
-                  locale={{ emptyText: <div className="py-8 text-slate-400">Chưa có dữ liệu Doanh nghiệp trong khoảng thời gian này.</div> }}
-                />
+                <div className="space-y-3">
+                  <div className="flex justify-end">
+                    <Input
+                      allowClear
+                      prefix={<SearchOutlined className="text-slate-400" />}
+                      placeholder="Tìm theo tên doanh nghiệp, ngành nghề..."
+                      aria-label="Tìm kiếm BXH Doanh nghiệp"
+                      value={companySearch}
+                      onChange={(e) => setCompanySearch(e.target.value)}
+                      className="w-full sm:w-[280px]"
+                    />
+                  </div>
+                  <Table
+                    className="admin-soft-table"
+                    rowKey="companyId"
+                    columns={companyColumns}
+                    dataSource={filteredTopCompanies}
+                    loading={topCompaniesQuery.isFetching}
+                    pagination={false}
+                    locale={{
+                      emptyText: companySearch.trim() ? (
+                        <div className="py-8 text-slate-400">
+                          <div>Không tìm thấy Doanh nghiệp phù hợp.</div>
+                          <Button className="mt-3" onClick={() => setCompanySearch('')}>Xóa từ khóa tìm kiếm</Button>
+                        </div>
+                      ) : (
+                        <div className="py-8 text-slate-400">Chưa có dữ liệu Doanh nghiệp trong khoảng thời gian này.</div>
+                      ),
+                    }}
+                  />
+                </div>
               ),
             },
           ]}

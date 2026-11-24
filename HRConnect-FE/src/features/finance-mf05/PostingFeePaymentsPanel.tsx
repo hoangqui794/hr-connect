@@ -2,18 +2,23 @@
  * Admin › Tài chính › Phí đăng tin (N4, chốt 19/10): only Platform Admin records that a Client paid the
  * CV_APPLICATION posting fee. Recording it opens the job. Internal HR no longer records payments.
  */
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App, Button, Form, Input, Modal, Skeleton, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { jobsApi } from '@/services/api/jobsApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { Job } from '@/types/api/jobs';
+import { matchesSearch } from '@/utils/searchMatch';
 import { date, money } from './financeLabels';
 
 export const POSTING_FEE_QUERY_KEY = 'mf05-posting-fees';
 
-export const PostingFeePaymentsPanel: React.FC<{ enabled: boolean }> = ({ enabled }) => {
+export const PostingFeePaymentsPanel: React.FC<{
+  enabled: boolean;
+  searchText?: string;
+  onClearSearch?: () => void;
+}> = ({ enabled, searchText = '', onClearSearch }) => {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<Job | null>(null);
@@ -76,6 +81,15 @@ export const PostingFeePaymentsPanel: React.FC<{ enabled: boolean }> = ({ enable
     },
   ];
 
+  const hasSearch = searchText.trim().length > 0;
+  const visibleJobs = useMemo(() => {
+    const rows = jobs.data ?? [];
+    if (!hasSearch) return rows;
+    return rows.filter((job) =>
+      matchesSearch(searchText, job.title, job.companyName, job.postingPackageName ?? 'Tiêu chuẩn')
+    );
+  }, [jobs.data, hasSearch, searchText]);
+
   return (
     <>
       {jobs.isError && <Alert className="mb-4" type="error" showIcon message={getApiErrorMessage(jobs.error)} />}
@@ -83,11 +97,20 @@ export const PostingFeePaymentsPanel: React.FC<{ enabled: boolean }> = ({ enable
         className="admin-soft-table"
         rowKey="jobId"
         columns={columns}
-        dataSource={jobs.data}
+        dataSource={visibleJobs}
         loading={jobs.isFetching}
         pagination={false}
         scroll={{ x: 640 }}
-        locale={{ emptyText: 'Không có tin nào chờ thu phí đăng tin.' }}
+        locale={{
+          emptyText: hasSearch ? (
+            <div className="py-8 text-slate-500">
+              <div>Không tìm thấy tin tuyển dụng chờ thu phí phù hợp.</div>
+              {onClearSearch && (
+                <Button className="mt-3" onClick={onClearSearch}>Xóa từ khóa tìm kiếm</Button>
+              )}
+            </div>
+          ) : 'Không có tin nào chờ thu phí đăng tin.',
+        }}
       />
       <Modal
         open={Boolean(selected)}

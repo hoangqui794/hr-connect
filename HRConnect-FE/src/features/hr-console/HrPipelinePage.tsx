@@ -4,16 +4,18 @@
  * In Client mode (onOpenApplication / onOpenInterview provided), rows feature a direct "Chi tiết"
  * action button and hide redundant company branding. In Internal HR mode, rows remain read-only.
  */
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Button, Table, Tag } from 'antd';
+import { Alert, Button, Input, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import { SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { pipelineApi } from '@/services/api/hrApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { InterviewItem, OfferItem, PagedItems, PlacementItem } from '@/types/api/hr';
 import { PageHero, PersonCell, StatusDot, Surface } from '@/features/admin-console/ui';
+import { matchesSearch } from '@/utils/searchMatch';
 import { INTERVIEW_RESULT, INTERVIEW_STATUS, OFFER_STATUS, PLACEMENT_STATUS, pick } from './hrLabels';
 
 type Tab = 'interviews' | 'offers' | 'placements';
@@ -59,6 +61,7 @@ export const HrPipelinePage: React.FC<{
   emptyHints?: Partial<Record<Tab, string>>;
 }> = ({ eyebrow = 'Theo dõi', description, tip, onOpenApplication, onOpenInterview, emptyHints }) => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [searchText, setSearchText] = useState('');
   const tab = (TABS as string[]).includes(searchParams.get('tab') ?? '') ? (searchParams.get('tab') as Tab) : 'interviews';
   const page = Number(searchParams.get('page')) || 1;
   const counts = { interviews: useTabCount('interviews'), offers: useTabCount('offers'), placements: useTabCount('placements') };
@@ -329,14 +332,50 @@ export const HrPipelinePage: React.FC<{
     setSearchParams(p);
   };
 
+  const hasSearch = searchText.trim().length > 0;
+  const rawItems = useMemo(() => (list.data?.items ?? []) as unknown[], [list.data?.items]);
+  const items = useMemo(() => {
+    if (!hasSearch) return rawItems as never[];
+    return rawItems.filter((item) => {
+      if (tab === 'placements') {
+        const p = item as PlacementItem;
+        return matchesSearch(
+          searchText,
+          p.candidate?.fullName,
+          p.candidate?.email,
+          p.job?.title,
+          p.job?.companyName,
+          p.position
+        );
+      }
+      const r = item as InterviewItem | OfferItem;
+      return matchesSearch(
+        searchText,
+        r.candidateName,
+        r.candidateEmail,
+        r.jobTitle,
+        r.companyName
+      );
+    }) as never[];
+  }, [rawItems, hasSearch, searchText, tab]);
+
   const pagination = {
     current: page,
     pageSize: PAGE_SIZE,
-    total: list.data?.total ?? 0,
+    total: hasSearch ? items.length : (list.data?.total ?? 0),
     showSizeChanger: false,
     onChange: (p: number) => go({ page: p }),
   };
-  const empty = { emptyText: <div className="py-10 text-slate-600">{emptyHints?.[tab] ?? EMPTY[tab]}</div> };
+  const empty = {
+    emptyText: hasSearch ? (
+      <div className="py-10 text-slate-600">
+        <div>Không tìm thấy kết quả phù hợp trên trang này.</div>
+        <Button className="mt-3" onClick={() => setSearchText('')}>Xóa từ khóa tìm kiếm</Button>
+      </div>
+    ) : (
+      <div className="py-10 text-slate-600">{emptyHints?.[tab] ?? EMPTY[tab]}</div>
+    ),
+  };
   const rowProps = (r: { applicationId: string; interviewId?: string }) => {
     if (tab === 'interviews' && onOpenInterview) {
       return {
@@ -356,7 +395,6 @@ export const HrPipelinePage: React.FC<{
     }
     return {};
   };
-  const items = (list.data?.items ?? []) as never[];
 
   return (
     <div>
@@ -388,11 +426,11 @@ export const HrPipelinePage: React.FC<{
         />
       )}
       <Surface>
-        <div className="px-5 pb-4 pt-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 pb-4 pt-5">
           <div
             role="radiogroup"
             aria-label="Chọn giai đoạn"
-            className="grid grid-cols-3 max-w-[480px] overflow-hidden rounded-xl border border-solid border-slate-200 bg-white shadow-xs"
+            className="grid grid-cols-3 w-full max-w-[480px] overflow-hidden rounded-xl border border-solid border-slate-200 bg-white shadow-xs"
           >
             {(
               [
@@ -425,6 +463,19 @@ export const HrPipelinePage: React.FC<{
               );
             })}
           </div>
+          <Input
+            allowClear
+            prefix={<SearchOutlined className="text-slate-400" />}
+            placeholder={
+              tab === 'placements'
+                ? 'Tìm theo ứng viên, email, tin tuyển dụng, công ty, vị trí...'
+                : 'Tìm theo ứng viên, email, tin tuyển dụng, công ty...'
+            }
+            aria-label="Tìm kiếm tiến độ tuyển dụng"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="w-full sm:w-[320px]"
+          />
         </div>
         {list.isError ? (
           <div className="p-5">

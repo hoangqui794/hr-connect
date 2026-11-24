@@ -58,6 +58,7 @@ import 'dayjs/locale/vi';
 import { affiliateApi } from '@/services/api/mf02Api';
 import { jobsApi } from '@/services/api/jobsApi';
 import { financeApi } from '@/services/api/financeApi';
+import { matchesSearch } from '@/utils/searchMatch';
 import { CommissionEstimateCard, commissionEstimateApi, formatEstimate } from './CommissionEstimateCard';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
@@ -1122,6 +1123,7 @@ export const AffiliateSubmissionsPage: React.FC = () => {
   const canResend = useAuthStore((state) => state.hasPermission('submission.consent.resend_own'));
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedId, setSelectedId] = useState<string>();
+  const [searchText, setSearchText] = useState('');
   const statusParam = searchParams.get('status') as ReferralGroup | null;
   const group: ReferralGroup = REFERRAL_GROUPS.some((g) => g.key === statusParam) ? statusParam! : 'all';
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
@@ -1171,7 +1173,11 @@ export const AffiliateSubmissionsPage: React.FC = () => {
       hint: (code && PROGRESS_HINT[code]) || st.hint,
     };
   });
-  const shown = group === 'all' ? all : all.filter((r) => r.rowGroup === group);
+  const byGroup = group === 'all' ? all : all.filter((r) => r.rowGroup === group);
+  const hasSearch = searchText.trim().length > 0;
+  const shown = hasSearch
+    ? byGroup.filter((r) => matchesSearch(searchText, r.candidateName, r.jobTitle))
+    : byGroup;
   const pageItems = shown.slice((page - 1) * REFERRALS_PER_PAGE, page * REFERRALS_PER_PAGE);
   const selected = pageItems.find((r) => r.submissionId === selectedId) ?? pageItems[0];
   const selectedStep = selected
@@ -1189,40 +1195,54 @@ export const AffiliateSubmissionsPage: React.FC = () => {
   return (
     <div className="affiliate-submissions-page">
       <h1 className="sr-only">Lượt giới thiệu</h1>
-      <div role="tablist" aria-label="Lọc theo trạng thái" className="mb-4 inline-flex flex-wrap items-center gap-1 rounded-2xl bg-slate-200/70 p-1">
-        {REFERRAL_GROUPS.map((g) => {
-          const active = g.key === group;
-          const count = g.key === 'all' ? all.length : all.filter((r) => r.rowGroup === g.key).length;
-          return (
-            <button
-              key={g.key}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => update({ status: g.key === 'all' ? undefined : g.key })}
-              className={`relative h-8 cursor-pointer rounded-xl border-0 bg-transparent px-3.5 text-[13px] transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0284C7] ${
-                active
-                  ? 'font-semibold text-slate-900'
-                  : 'font-medium text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              {active && (
-                <motion.span
-                  layoutId="affiliate-submission-filter-pill"
-                  transition={{ type: 'spring', stiffness: 450, damping: 35 }}
-                  className="absolute inset-0 rounded-xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)]"
-                  aria-hidden
-                />
-              )}
-              <span className="relative z-10">{g.label} · {list.isLoading ? '…' : count}</span>
-            </button>
-          );
-        })}
-        {(jobId || candidateId) && (
-          <Button className="!h-9 rounded-full border-slate-200 text-slate-600 hover:border-slate-300" onClick={() => update({ jobId: undefined, candidateId: undefined })}>
-            Bỏ lọc theo {jobId ? 'việc làm' : 'ứng viên'}
-          </Button>
-        )}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div role="tablist" aria-label="Lọc theo trạng thái" className="inline-flex flex-wrap items-center gap-1 rounded-2xl bg-slate-200/70 p-1">
+          {REFERRAL_GROUPS.map((g) => {
+            const active = g.key === group;
+            const count = g.key === 'all' ? all.length : all.filter((r) => r.rowGroup === g.key).length;
+            return (
+              <button
+                key={g.key}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => update({ status: g.key === 'all' ? undefined : g.key })}
+                className={`relative h-8 cursor-pointer rounded-xl border-0 bg-transparent px-3.5 text-[13px] transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0284C7] ${
+                  active
+                    ? 'font-semibold text-slate-900'
+                    : 'font-medium text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {active && (
+                  <motion.span
+                    layoutId="affiliate-submission-filter-pill"
+                    transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                    className="absolute inset-0 rounded-xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06)]"
+                    aria-hidden
+                  />
+                )}
+                <span className="relative z-10">{g.label} · {list.isLoading ? '…' : count}</span>
+              </button>
+            );
+          })}
+          {(jobId || candidateId) && (
+            <Button className="!h-9 rounded-full border-slate-200 text-slate-600 hover:border-slate-300" onClick={() => update({ jobId: undefined, candidateId: undefined })}>
+              Bỏ lọc theo {jobId ? 'việc làm' : 'ứng viên'}
+            </Button>
+          )}
+        </div>
+        <Input
+          allowClear
+          prefix={<SearchOutlined className="text-slate-400" />}
+          placeholder="Tìm theo tên ứng viên, việc làm..."
+          aria-label="Tìm kiếm lượt giới thiệu"
+          value={searchText}
+          onChange={(e) => {
+            setSearchText(e.target.value);
+            if (page !== 1) update({ page: undefined });
+          }}
+          className="w-full sm:w-[290px]"
+        />
       </div>
 
       {list.isError ? (
@@ -1234,7 +1254,18 @@ export const AffiliateSubmissionsPage: React.FC = () => {
               <div className="p-5"><Skeleton active paragraph={{ rows: 5 }} /></div>
             ) : pageItems.length === 0 ? (
               <div className="px-4 py-12 text-center">
-                <div className="font-semibold text-gray-900">{all.length === 0 ? 'Bạn chưa giới thiệu ứng viên nào' : 'Không có lượt nào ở mục này'}</div>
+                <div className="font-semibold text-gray-900">
+                  {all.length === 0
+                    ? 'Bạn chưa giới thiệu ứng viên nào'
+                    : hasSearch
+                      ? 'Không tìm thấy lượt giới thiệu phù hợp'
+                      : 'Không có lượt nào ở mục này'}
+                </div>
+                {hasSearch && (
+                  <div className="mt-3">
+                    <Button onClick={() => setSearchText('')}>Xóa từ khóa tìm kiếm</Button>
+                  </div>
+                )}
                 {all.length === 0 && (
                   <>
                     <p className="m-0 mb-3 mt-1 text-sm text-gray-600">Chọn một job đang mở và gửi ứng viên phù hợp.</p>
@@ -1794,8 +1825,35 @@ export const AffiliateCandidateDetailPage: React.FC = () => {
 export const AffiliateAttributionsPage: React.FC = () => {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
+  const [searchText, setSearchText] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [selectedAttribution, setSelectedAttribution] = useState<AffiliateAttribution | null>(null);
-  const list = useQuery({ queryKey: ['aff-attributions', page], queryFn: () => affiliateApi.attributions({ page, pageSize: 10 }), placeholderData: (prev) => prev });
+  const list = useQuery({
+    queryKey: ['aff-attributions', 'all'],
+    queryFn: () => readAllPages((p) => affiliateApi.attributions({ page: p, pageSize: 100 })),
+    placeholderData: (prev) => prev,
+  });
+  const allAttributions = useMemo(() => list.data ?? [], [list.data]);
+  const statusOptions = useMemo(() => {
+    const keys = Array.from(new Set(allAttributions.map((a) => a.status)));
+    return [
+      { value: 'ALL', label: 'Tất cả trạng thái' },
+      ...keys.map((k) => ({ value: k, label: ATTRIBUTION_STATUS[k]?.label ?? k })),
+    ];
+  }, [allAttributions]);
+  const filteredAttributions = useMemo(() => {
+    return allAttributions.filter((a) => {
+      if (statusFilter !== 'ALL' && a.status !== statusFilter) return false;
+      return matchesSearch(
+        searchText,
+        a.candidateName,
+        a.jobTitle,
+        a.attributionId,
+        a.applicationId
+      );
+    });
+  }, [allAttributions, searchText, statusFilter]);
+  const hasFilter = searchText.trim().length > 0 || statusFilter !== 'ALL';
   const attributionRuleLabel = (rule: string) => {
     const labels: Record<string, string> = {
       FIRST_TOUCH: 'Ghi nhận lượt giới thiệu đầu tiên',
@@ -1844,18 +1902,53 @@ export const AffiliateAttributionsPage: React.FC = () => {
         actions={<Button size="large" icon={<TrophyOutlined />} className="!border-emerald-300 !bg-emerald-50 !text-emerald-700 hover:!bg-emerald-100 font-semibold" onClick={() => navigate('/affiliate/commissions')}>Xem hoa hồng</Button>}
       />
       <p className="m-0 mb-3.5 rounded-xl border border-solid border-sky-200/80 bg-sky-50/70 px-4 py-3 text-[13px] leading-relaxed text-sky-950 font-medium">
-        Ghi nhận nguồn là bằng chứng bạn là người giới thiệu ứng viên vào job. Chỉ lượt hợp lệ đầu tiên được ghi nhận, và hoa hồng tính theo ghi nhận này. Hiện có <strong>{list.data?.totalCount ?? 0}</strong> ghi nhận.
+        Ghi nhận nguồn là bằng chứng bạn là người giới thiệu ứng viên vào job. Chỉ lượt hợp lệ đầu tiên được ghi nhận, và hoa hồng tính theo ghi nhận này. Hiện có <strong>{allAttributions.length}</strong> ghi nhận.
       </p>
+      <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2.5">
+        <Input
+          allowClear
+          prefix={<SearchOutlined className="text-slate-400" />}
+          placeholder="Tìm theo tên ứng viên, việc làm, mã ghi nhận..."
+          aria-label="Tìm kiếm ghi nhận nguồn"
+          value={searchText}
+          onChange={(e) => {
+            setSearchText(e.target.value);
+            setPage(1);
+          }}
+          className="w-full sm:w-[320px]"
+        />
+        <Select
+          aria-label="Lọc trạng thái ghi nhận"
+          value={statusFilter}
+          onChange={(val) => {
+            setStatusFilter(val);
+            setPage(1);
+          }}
+          options={statusOptions}
+          className="w-full sm:w-[200px]"
+        />
+      </div>
       <Surface>
         <Table<AffiliateAttribution>
           className="admin-soft-table affiliate-attribution-table w-full table-auto"
           rowKey="attributionId"
           columns={columns}
-          dataSource={list.data?.items ?? []}
+          dataSource={filteredAttributions}
           loading={list.isFetching}
           scroll={{ x: 760 }}
-          pagination={{ current: page, pageSize: 10, total: list.data?.totalCount ?? 0, showSizeChanger: false, hideOnSinglePage: true, onChange: setPage }}
-          locale={{ emptyText: <div className="py-10 text-slate-600">Chưa có ghi nhận nào. Ghi nhận được tạo sau khi ứng viên đồng ý.</div> }}
+          pagination={{ current: page, pageSize: 10, total: filteredAttributions.length, showSizeChanger: false, hideOnSinglePage: true, onChange: setPage }}
+          locale={{
+            emptyText: hasFilter ? (
+              <div className="py-10 text-slate-600">
+                <div>Không tìm thấy ghi nhận nguồn phù hợp.</div>
+                <Button className="mt-3" onClick={() => { setSearchText(''); setStatusFilter('ALL'); setPage(1); }}>
+                  Đặt lại bộ lọc
+                </Button>
+              </div>
+            ) : (
+              <div className="py-10 text-slate-600">Chưa có ghi nhận nào. Ghi nhận được tạo sau khi ứng viên đồng ý.</div>
+            ),
+          }}
         />
       </Surface>
 

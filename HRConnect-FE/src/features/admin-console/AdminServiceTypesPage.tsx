@@ -5,14 +5,15 @@
  * CanSubmit gates who may submit — so saving them asks for confirmation.
  * Only roles already mapped can be toggled: the backend has no role catalog endpoint.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App as AntApp, Button, Divider, Drawer, Form, Input, Skeleton, Switch, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { adminServiceTypesApi } from '@/services/api/adminApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { AdminServiceType, ServiceTypeAllowedRole, ServiceTypeInput } from '@/types/api/admin';
+import { matchesSearch } from '@/utils/searchMatch';
 import { adminTokens, formatDateTime } from './adminTheme';
 import { PageHero, StatusDot, Surface } from './ui';
 import { ROLE_LABEL } from './AdminUsersPage';
@@ -120,8 +121,15 @@ export const AdminServiceTypesPage: React.FC = () => {
   const { message, modal } = AntApp.useApp();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<AdminServiceType | 'new' | null>(null);
+  const [searchText, setSearchText] = useState('');
   const [form] = Form.useForm<ServiceTypeInput>();
   const list = useQuery({ queryKey: ['admin-service-types'], queryFn: () => adminServiceTypesApi.list() });
+  const hasSearch = searchText.trim().length > 0;
+  const visibleServiceTypes = useMemo(() => {
+    const rows = list.data ?? [];
+    if (!hasSearch) return rows;
+    return rows.filter((r) => matchesSearch(searchText, r.code, r.name, r.description));
+  }, [list.data, hasSearch, searchText]);
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ['admin-service-types'] });
@@ -218,6 +226,17 @@ export const AdminServiceTypesPage: React.FC = () => {
       />
 
       <Surface>
+        <div className="flex flex-wrap items-center justify-end gap-3 px-5 pb-3 pt-5">
+          <Input
+            allowClear
+            prefix={<SearchOutlined className="text-slate-400" />}
+            placeholder="Tìm theo mã, tên, mô tả loại dịch vụ..."
+            aria-label="Tìm kiếm loại dịch vụ"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="w-full sm:w-[300px]"
+          />
+        </div>
         {list.isError ? (
           <div className="p-4">
             <Alert type="error" showIcon message="Không tải được loại dịch vụ" description={getApiErrorMessage(list.error)} />
@@ -228,9 +247,16 @@ export const AdminServiceTypesPage: React.FC = () => {
             rowKey="id"
             loading={list.isLoading}
             columns={columns}
-            dataSource={list.data ?? []}
+            dataSource={visibleServiceTypes}
             pagination={false}
-            locale={{ emptyText: 'Chưa có loại dịch vụ nào.' }}
+            locale={{
+              emptyText: hasSearch ? (
+                <div className="py-8 text-slate-500">
+                  <div>Không tìm thấy loại dịch vụ phù hợp.</div>
+                  <Button className="mt-3" onClick={() => setSearchText('')}>Xóa từ khóa tìm kiếm</Button>
+                </div>
+              ) : 'Chưa có loại dịch vụ nào.',
+            }}
             onRow={(r) => ({
               onClick: () => setEditing(r),
               onKeyDown: (e) => {

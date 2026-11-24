@@ -6,10 +6,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Button, Pagination, Skeleton, Tag } from 'antd';
+import { Alert, Button, Input, Pagination, Skeleton, Tag } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
 import { affiliateBankApi, financeApi } from '@/services/api/financeApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { Commission, CommissionStatus } from '@/types/api/finance';
+import { matchesSearch } from '@/utils/searchMatch';
 import { COMMISSION_STATUS, PAYOUT_STATUS, date, labelOf, money, replacementCountdownText } from './financeLabels';
 import { StatusChip } from '@/features/portal/affiliate/AffiliateUi';
 
@@ -113,6 +115,8 @@ export const AffiliateCommissionsPage: React.FC = () => {
   const [commissionPage, setCommissionPage] = useState(1);
   const [payoutPage, setPayoutPage] = useState(1);
   const [filter, setFilter] = useState<FilterTab>(defaultFilter);
+  const [commissionSearch, setCommissionSearch] = useState('');
+  const [payoutSearch, setPayoutSearch] = useState('');
   useEffect(() => {
     const tabParam = searchParams.get('tab')?.toUpperCase();
     if (tabParam && FILTER_TABS.some((t) => t.key === tabParam)) {
@@ -158,24 +162,35 @@ export const AffiliateCommissionsPage: React.FC = () => {
   const sum = (statuses: CommissionStatus[]) => inStatus(statuses).reduce((t, c) => t + c.amount, 0);
   const count = (statuses: CommissionStatus[]) => `${inStatus(statuses).length} khoản`;
 
+  const hasCommissionSearch = commissionSearch.trim().length > 0;
   const { visibleItems, listTotal } = useMemo(() => {
-    if (filter === 'ALL') {
+    if (filter === 'ALL' && !hasCommissionSearch) {
       return {
         visibleItems: pageItems,
         listTotal: commissions.data?.totalCount ?? pageItems.length,
       };
     }
     const tab = FILTER_TABS.find((t) => t.key === filter);
-    const filtered = tab ? summaryItems.filter((c) => tab.matches(c.status)) : summaryItems;
+    const byTab = tab ? summaryItems.filter((c) => tab.matches(c.status)) : summaryItems;
+    const filtered = hasCommissionSearch
+      ? byTab.filter((c) =>
+          matchesSearch(
+            commissionSearch,
+            c.candidateName,
+            c.jobTitle,
+            c.placementId ? 'Tuyển qua Affiliate Headhunt' : 'Mua CV theo số lượng Sourcing'
+          )
+        )
+      : byTab;
     const start = (commissionPage - 1) * PAGE_SIZE;
     return {
       visibleItems: filtered.slice(start, start + PAGE_SIZE),
       listTotal: filtered.length,
     };
-  }, [filter, pageItems, summaryItems, commissions.data?.totalCount, commissionPage]);
+  }, [filter, hasCommissionSearch, commissionSearch, pageItems, summaryItems, commissions.data?.totalCount, commissionPage]);
 
-  const listLoading = filter === 'ALL' ? commissions.isLoading : commissionSummary.isLoading;
-  const listHasData = filter === 'ALL' ? (commissions.data?.totalCount ?? pageItems.length) > 0 : summaryItems.length > 0;
+  const listLoading = filter === 'ALL' && !hasCommissionSearch ? commissions.isLoading : commissionSummary.isLoading;
+  const listHasData = filter === 'ALL' && !hasCommissionSearch ? (commissions.data?.totalCount ?? pageItems.length) > 0 : summaryItems.length > 0;
 
   const kpis = [
     { label: 'Đang bảo hành', statuses: ['PENDING', 'IN_WARRANTY'] as CommissionStatus[], note: 'Ứng viên đang đi làm', accent: 'border-l-sky-500', color: 'text-slate-900' },
@@ -184,7 +199,15 @@ export const AffiliateCommissionsPage: React.FC = () => {
     { label: 'Đã nhận tiền', statuses: ['PAID'] as CommissionStatus[], note: 'Đã chuyển khoản', accent: 'border-l-emerald-500', color: 'text-emerald-600' },
   ];
 
-  const payoutItems = payouts.data?.items ?? [];
+  const payoutItems = useMemo(() => payouts.data?.items ?? [], [payouts.data?.items]);
+  const hasPayoutSearch = payoutSearch.trim().length > 0;
+  const visiblePayoutItems = useMemo(() => {
+    if (!hasPayoutSearch) return payoutItems;
+    return payoutItems.filter((p) => {
+      const st = labelOf(PAYOUT_STATUS, p.status);
+      return matchesSearch(payoutSearch, p.transactionReference, st.label, p.status, date(p.payoutDate ?? p.createdAt));
+    });
+  }, [payoutItems, hasPayoutSearch, payoutSearch]);
   const hasAccount = Boolean(account.data?.bankAccountNumber);
 
   return (
@@ -239,33 +262,47 @@ export const AffiliateCommissionsPage: React.FC = () => {
 
       <section aria-labelledby="aff-commission-list" className="overflow-hidden rounded-xl border border-solid border-slate-200/80 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 border-0 border-b border-solid border-slate-100 px-4 py-3.5">
-          <h2 id="aff-commission-list" className="m-0 text-[15px] font-bold text-slate-900">Danh sách hoa hồng</h2>
-          <div role="tablist" aria-label="Lọc theo trạng thái hoa hồng" className="flex flex-wrap items-center gap-1.5">
-            {FILTER_TABS.map((t) => {
-              const cnt = summaryItems.filter((c) => t.matches(c.status)).length;
-              const active = filter === t.key;
-              return (
-                <button
-                  key={t.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => {
-                    setFilter(t.key);
-                    setCommissionPage(1);
-                  }}
-                  className={`inline-flex min-h-[30px] cursor-pointer items-center gap-1.5 rounded-full border border-solid px-3 text-xs font-medium transition-colors ${
-                    active
-                      ? 'border-[#0284C7] bg-sky-50 text-[#0369A1]'
-                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  <span>{t.label}</span>
-                  <span className={`tabular-nums ${active ? 'text-[#0284C7]' : 'text-slate-400'}`}>{cnt}</span>
-                </button>
-              );
-            })}
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 id="aff-commission-list" className="m-0 text-[15px] font-bold text-slate-900">Danh sách hoa hồng</h2>
+            <div role="tablist" aria-label="Lọc theo trạng thái hoa hồng" className="flex flex-wrap items-center gap-1.5">
+              {FILTER_TABS.map((t) => {
+                const cnt = summaryItems.filter((c) => t.matches(c.status)).length;
+                const active = filter === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => {
+                      setFilter(t.key);
+                      setCommissionPage(1);
+                    }}
+                    className={`inline-flex min-h-[30px] cursor-pointer items-center gap-1.5 rounded-full border border-solid px-3 text-xs font-medium transition-colors ${
+                      active
+                        ? 'border-[#0284C7] bg-sky-50 text-[#0369A1]'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>{t.label}</span>
+                    <span className={`tabular-nums ${active ? 'text-[#0284C7]' : 'text-slate-400'}`}>{cnt}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
+          <Input
+            allowClear
+            prefix={<SearchOutlined className="text-slate-400" />}
+            placeholder="Tìm theo ứng viên, vị trí, dịch vụ..."
+            aria-label="Tìm kiếm danh sách hoa hồng"
+            value={commissionSearch}
+            onChange={(e) => {
+              setCommissionSearch(e.target.value);
+              setCommissionPage(1);
+            }}
+            className="w-full sm:w-[270px]"
+          />
         </div>
 
         {listLoading ? (
@@ -276,7 +313,14 @@ export const AffiliateCommissionsPage: React.FC = () => {
             <p className="m-0 mt-1 text-sm text-slate-600">Hoa hồng xuất hiện khi ứng viên bạn giới thiệu đi làm hoặc doanh nghiệp nhận CV.</p>
           </div>
         ) : visibleItems.length === 0 ? (
-          <div className="px-4 py-10 text-center text-sm text-slate-500">Không có khoản hoa hồng nào ở mục này.</div>
+          <div className="px-4 py-10 text-center text-sm text-slate-500">
+            <div>{hasCommissionSearch ? 'Không tìm thấy khoản hoa hồng phù hợp.' : 'Không có khoản hoa hồng nào ở mục này.'}</div>
+            {hasCommissionSearch && (
+              <Button className="mt-3" onClick={() => { setCommissionSearch(''); setCommissionPage(1); }}>
+                Xóa từ khóa tìm kiếm
+              </Button>
+            )}
+          </div>
         ) : (
           <div className="relative overflow-x-auto">
             <table className="w-full min-w-[820px] border-collapse">
@@ -359,17 +403,28 @@ export const AffiliateCommissionsPage: React.FC = () => {
       </section>
 
       <section aria-labelledby="aff-payouts" className="overflow-hidden rounded-xl border border-solid border-slate-200/80 bg-white shadow-sm">
-        <div className="flex flex-wrap items-baseline justify-between gap-2 border-0 border-b border-solid border-slate-100 px-4 py-3.5">
-          <h2 id="aff-payouts" className="m-0 text-[15px] font-bold text-slate-900">Lịch sử chuyển khoản</h2>
-          {!account.isLoading && (
-            <span className={`text-[13px] ${hasAccount ? 'text-slate-600' : 'font-medium text-amber-700'}`}>
-              {hasAccount ? (
-                <>Nhận vào: {account.data?.bankName} {lastDigits(account.data?.bankAccountNumber ?? '')} · <Link to="/affiliate/profile" className="font-medium text-[#0284C7] hover:text-[#0369A1]">Đổi tài khoản</Link></>
-              ) : (
-                <>Chưa có tài khoản nhận tiền · <Link to="/affiliate/profile" className="font-medium text-[#0284C7] hover:text-[#0369A1]">Thêm tài khoản</Link></>
-              )}
-            </span>
-          )}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-0 border-b border-solid border-slate-100 px-4 py-3.5">
+          <div className="flex flex-wrap items-baseline gap-2.5">
+            <h2 id="aff-payouts" className="m-0 text-[15px] font-bold text-slate-900">Lịch sử chuyển khoản</h2>
+            {!account.isLoading && (
+              <span className={`text-[13px] ${hasAccount ? 'text-slate-600' : 'font-medium text-amber-700'}`}>
+                {hasAccount ? (
+                  <>Nhận vào: {account.data?.bankName} {lastDigits(account.data?.bankAccountNumber ?? '')} · <Link to="/affiliate/profile" className="font-medium text-[#0284C7] hover:text-[#0369A1]">Đổi tài khoản</Link></>
+                ) : (
+                  <>Chưa có tài khoản nhận tiền · <Link to="/affiliate/profile" className="font-medium text-[#0284C7] hover:text-[#0369A1]">Thêm tài khoản</Link></>
+                )}
+              </span>
+            )}
+          </div>
+          <Input
+            allowClear
+            prefix={<SearchOutlined className="text-slate-400" />}
+            placeholder="Tìm theo mã giao dịch, kết quả..."
+            aria-label="Tìm kiếm lịch sử chuyển khoản"
+            value={payoutSearch}
+            onChange={(e) => setPayoutSearch(e.target.value)}
+            className="w-full sm:w-[260px]"
+          />
         </div>
         {payouts.isError ? (
           <div className="p-4"><Alert type="error" showIcon message={getApiErrorMessage(payouts.error)} /></div>
@@ -377,6 +432,11 @@ export const AffiliateCommissionsPage: React.FC = () => {
           <div className="p-4"><Skeleton active paragraph={{ rows: 2 }} /></div>
         ) : payoutItems.length === 0 ? (
           <p className="m-0 px-4 py-8 text-center text-sm text-slate-600">Chưa có giao dịch chuyển khoản nào.</p>
+        ) : visiblePayoutItems.length === 0 ? (
+          <div className="px-4 py-8 text-center text-sm text-slate-500">
+            <div>Không tìm thấy giao dịch phù hợp trên trang này.</div>
+            <Button className="mt-3" onClick={() => setPayoutSearch('')}>Xóa từ khóa tìm kiếm</Button>
+          </div>
         ) : (
           <div className="relative overflow-x-auto">
             <table className="w-full min-w-[640px] border-collapse">
@@ -389,7 +449,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {payoutItems.map((p) => {
+                {visiblePayoutItems.map((p) => {
                   const st = labelOf(PAYOUT_STATUS, p.status);
                   return (
                     <tr key={p.payoutId} className="border-0 border-t border-solid border-slate-100 hover:bg-slate-50/50">

@@ -3,12 +3,14 @@
  * @description Affiliate "Hiệu suất" (mockup 03/11): quality rating and referral funnel for a chosen
  * period, plus a table of earlier periods.
  */
-import React, { useState } from 'react';
-import { Alert, Button, Select, Skeleton } from 'antd';
+import React, { useMemo, useState } from 'react';
+import { Alert, Button, Input, Select, Skeleton } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useQuery } from '@tanstack/react-query';
 import { affiliateApi } from '@/services/api/mf02/affiliateApi';
 import { getApiErrorMessage } from '@/services/apiClient';
+import { matchesSearch } from '@/utils/searchMatch';
 
 const fmtDate = (value?: string | null) => (value ? dayjs(value).format('DD/MM/YYYY') : '—');
 const periodLabel = (start?: string | null, end?: string | null) => (start && end ? `${fmtDate(start)} – ${fmtDate(end)}` : 'Kỳ hiện tại');
@@ -28,8 +30,21 @@ const CURRENT = 'current';
 export const AffiliatePerformancePage: React.FC = () => {
   const performance = useQuery({ queryKey: ['affiliate-performance'], queryFn: () => affiliateApi.performance() });
   const [periodId, setPeriodId] = useState(CURRENT);
+  const [historySearch, setHistorySearch] = useState('');
   const data = performance.data;
-  const history = data?.history ?? [];
+  const history = useMemo(() => data?.history ?? [], [data?.history]);
+  const filteredHistory = useMemo(() => {
+    if (!historySearch.trim()) return history;
+    return history.filter((h) =>
+      matchesSearch(
+        historySearch,
+        periodLabel(h.periodStart, h.periodEnd),
+        qualityLabel(h.ratingLabel),
+        h.ratingLabel,
+        Math.round(h.qualityRating)
+      )
+    );
+  }, [history, historySearch]);
   const period = history.find((h) => h.affiliatePerformanceId === periodId) ?? data;
   const top = Math.max(1, period?.totalSubmissions ?? 0);
   const funnel = [
@@ -94,11 +109,27 @@ export const AffiliatePerformancePage: React.FC = () => {
       </div>
 
       <section aria-labelledby="aff-history" className="rounded-xl border border-solid border-slate-200/80 bg-white shadow-sm overflow-hidden">
-        <h2 id="aff-history" className="m-0 border-0 border-b border-solid border-slate-100 px-4 py-3.5 text-[15px] font-bold text-gray-900">Các kỳ trước</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-0 border-b border-solid border-slate-100 px-4 py-3.5">
+          <h2 id="aff-history" className="m-0 text-[15px] font-bold text-gray-900">Các kỳ trước</h2>
+          <Input
+            allowClear
+            prefix={<SearchOutlined className="text-slate-400" />}
+            placeholder="Tìm theo thời gian kỳ, mức đánh giá..."
+            aria-label="Tìm kiếm các kỳ trước"
+            value={historySearch}
+            onChange={(e) => setHistorySearch(e.target.value)}
+            className="w-full sm:w-[270px]"
+          />
+        </div>
         {performance.isLoading ? (
           <div className="p-4"><Skeleton active paragraph={{ rows: 2 }} /></div>
         ) : history.length === 0 ? (
           <p className="m-0 px-4 py-8 text-center text-sm text-gray-600">Chưa có dữ liệu của kỳ trước.</p>
+        ) : filteredHistory.length === 0 ? (
+          <div className="px-4 py-8 text-center text-sm text-gray-600">
+            <div>Không tìm thấy kỳ phù hợp.</div>
+            <Button className="mt-3" onClick={() => setHistorySearch('')}>Xóa từ khóa tìm kiếm</Button>
+          </div>
         ) : (
           <div className="relative overflow-x-auto">
             <table className="w-full min-w-[640px] border-collapse">
@@ -113,7 +144,7 @@ export const AffiliatePerformancePage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {history.map((h) => (
+                {filteredHistory.map((h) => (
                   <tr key={h.affiliatePerformanceId} className="border-0 border-t border-solid border-slate-100">
                     <td className="px-4 py-3 font-semibold text-gray-900">{periodLabel(h.periodStart, h.periodEnd)}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{h.totalSubmissions}</td>

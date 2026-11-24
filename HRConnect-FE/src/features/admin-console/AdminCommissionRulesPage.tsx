@@ -16,6 +16,7 @@ import {
   Drawer,
   Empty,
   Form,
+  Input,
   InputNumber,
   Radio,
   Select,
@@ -25,10 +26,11 @@ import {
   Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { adminCommissionApi, adminServiceTypesApi } from '@/services/api/adminApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { CommissionRateType, CommissionRule } from '@/types/api/admin';
+import { matchesSearch } from '@/utils/searchMatch';
 import { adminTokens } from './adminTheme';
 import { FilterPills, PageHero, StatusDot, Surface } from './ui';
 
@@ -52,6 +54,7 @@ export const AdminCommissionRulesPage: React.FC = () => {
   const { message, modal } = AntApp.useApp();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [searchText, setSearchText] = useState('');
   const [editing, setEditing] = useState<CommissionRule | 'new' | null>(null);
   const [form] = Form.useForm<RuleFormValues>();
   const rateType = Form.useWatch('rateType', form);
@@ -298,26 +301,37 @@ export const AdminCommissionRulesPage: React.FC = () => {
       />
 
       <Surface>
-        <div className="flex flex-wrap items-center gap-3 px-5 pb-3 pt-5">
-          <FilterPills
-            label="Lọc theo trạng thái"
-            value={activeParam ?? 'all'}
-            onChange={(v) => setParam('active', v === 'all' ? undefined : v)}
-            options={[
-              { value: 'all', label: 'Tất cả' },
-              { value: 'true', label: 'Đang áp dụng' },
-              { value: 'false', label: 'Ngừng' },
-            ]}
-          />
-          <Select
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 pb-3 pt-5">
+          <div className="flex flex-wrap items-center gap-3">
+            <FilterPills
+              label="Lọc theo trạng thái"
+              value={activeParam ?? 'all'}
+              onChange={(v) => setParam('active', v === 'all' ? undefined : v)}
+              options={[
+                { value: 'all', label: 'Tất cả' },
+                { value: 'true', label: 'Đang áp dụng' },
+                { value: 'false', label: 'Ngừng' },
+              ]}
+            />
+            <Select
+              allowClear
+              value={params.serviceTypeId}
+              placeholder="Mọi loại dịch vụ"
+              className="w-60"
+              loading={serviceTypes.isLoading}
+              onChange={(v) => setParam('service', v)}
+              options={(serviceTypes.data ?? []).map((s) => ({ value: s.id, label: s.name }))}
+              aria-label="Lọc theo loại dịch vụ"
+            />
+          </div>
+          <Input
             allowClear
-            value={params.serviceTypeId}
-            placeholder="Mọi loại dịch vụ"
-            className="w-60"
-            loading={serviceTypes.isLoading}
-            onChange={(v) => setParam('service', v)}
-            options={(serviceTypes.data ?? []).map((s) => ({ value: s.id, label: s.name }))}
-            aria-label="Lọc theo loại dịch vụ"
+            prefix={<SearchOutlined className="text-slate-400" />}
+            placeholder="Tìm loại dịch vụ, mốc hoa hồng..."
+            aria-label="Tìm kiếm quy tắc hoa hồng"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="w-full sm:w-[270px]"
           />
         </div>
         {list.isError ? (
@@ -358,32 +372,55 @@ export const AdminCommissionRulesPage: React.FC = () => {
               </div>
             </Empty>
           </div>
-        ) : (
-          <Table<CommissionRule>
-            className="admin-soft-table w-full table-auto"
-            rowKey="commissionRuleId"
-            loading={list.isFetching && !list.isLoading}
-            columns={columns}
-            dataSource={page.items}
-            pagination={{
-              current: page.page ?? params.page,
-              pageSize: PAGE_SIZE,
-              total: page.total ?? 0,
-              showSizeChanger: false,
-              hideOnSinglePage: true,
-              onChange: (p) => setParam('page', String(p)),
-            }}
-            onRow={(r) => ({
-              onClick: () => setEditing(r),
-              onKeyDown: (e) => {
-                if (e.key === 'Enter') setEditing(r);
-              },
-              tabIndex: 0,
-              className: 'cursor-pointer',
-              'aria-label': `Sửa quy tắc ${r.name}`,
-            })}
-          />
-        )}
+        ) : (() => {
+          const hasSearch = searchText.trim().length > 0;
+          const visibleRules = hasSearch
+            ? page.items.filter((r) =>
+                matchesSearch(
+                  searchText,
+                  r.serviceTypeName,
+                  r.serviceTypeCode,
+                  r.milestoneName,
+                  r.milestoneType,
+                  r.name
+                )
+              )
+            : page.items;
+          if (visibleRules.length === 0) {
+            return (
+              <div className="p-12 text-center text-sm text-slate-500">
+                <div>Không tìm thấy quy tắc hoa hồng phù hợp.</div>
+                <Button className="mt-3" onClick={() => setSearchText('')}>Xóa từ khóa tìm kiếm</Button>
+              </div>
+            );
+          }
+          return (
+            <Table<CommissionRule>
+              className="admin-soft-table w-full table-auto"
+              rowKey="commissionRuleId"
+              loading={list.isFetching && !list.isLoading}
+              columns={columns}
+              dataSource={visibleRules}
+              pagination={{
+                current: page.page ?? params.page,
+                pageSize: PAGE_SIZE,
+                total: hasSearch ? visibleRules.length : (page.total ?? 0),
+                showSizeChanger: false,
+                hideOnSinglePage: true,
+                onChange: (p) => setParam('page', String(p)),
+              }}
+              onRow={(r) => ({
+                onClick: () => setEditing(r),
+                onKeyDown: (e) => {
+                  if (e.key === 'Enter') setEditing(r);
+                },
+                tabIndex: 0,
+                className: 'cursor-pointer',
+                'aria-label': `Sửa quy tắc ${r.name}`,
+              })}
+            />
+          );
+        })()}
       </Surface>
 
       <Drawer

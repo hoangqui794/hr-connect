@@ -3,7 +3,7 @@
  * @description Platform Admin management for SF-04 Duplicate & Attribution Disputes.
  */
 
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Table,
   Tag,
@@ -23,6 +23,7 @@ import {
   ClockCircleOutlined,
   EyeOutlined,
   ExclamationCircleOutlined,
+  SearchOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -31,6 +32,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { disputeApi } from '@/services/api/disputeApi';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import { FilterPills, PageHero, StatusDot, Surface } from '@/features/admin-console/ui';
+import { matchesSearch } from '@/utils/searchMatch';
 import type { AdminDisputeListItemDto, AdminDisputeDetailDto, ResolveDisputeRequest } from '@/types/api/dispute';
 
 const createIdempotencyKey = (): string =>
@@ -128,6 +130,7 @@ export const AdminDisputesPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
+  const [searchText, setSearchText] = useState('');
   const [selectedDisputeId, setSelectedDisputeId] = useState<string | null>(null);
   const [resolveForm] = Form.useForm();
   const idempotencyKeyRef = useRef<string>('');
@@ -242,6 +245,15 @@ export const AdminDisputesPage: React.FC = () => {
     },
   ];
 
+  const hasSearch = searchText.trim().length > 0;
+  const visibleDisputes = useMemo(() => {
+    const rows = listQuery.data?.items ?? [];
+    if (!hasSearch) return rows;
+    return rows.filter((r) =>
+      matchesSearch(searchText, r.candidateName, r.jobTitle, r.raisedByAffiliateName)
+    );
+  }, [listQuery.data?.items, hasSearch, searchText]);
+
   return (
     <div className="admin-stagger space-y-5">
       <PageHero
@@ -275,20 +287,38 @@ export const AdminDisputesPage: React.FC = () => {
               ]}
             />
           </div>
+          <Input
+            allowClear
+            prefix={<SearchOutlined className="text-slate-400" />}
+            placeholder="Tìm ứng viên, tin tuyển dụng, CTV khiếu nại..."
+            aria-label="Tìm kiếm khiếu nại"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="w-full sm:w-[300px]"
+          />
         </div>
 
         <Table
           className="admin-soft-table w-full table-auto"
           rowKey="disputeId"
           columns={columns}
-          dataSource={listQuery.data?.items ?? []}
+          dataSource={visibleDisputes}
           loading={listQuery.isFetching}
           pagination={{
-            total: listQuery.data?.totalCount ?? 0,
+            total: hasSearch ? visibleDisputes.length : (listQuery.data?.totalCount ?? 0),
             pageSize: 20,
             showSizeChanger: false,
           }}
-          locale={{ emptyText: <div className="py-12 text-slate-500">Chưa có khiếu nại nào theo điều kiện lọc.</div> }}
+          locale={{
+            emptyText: hasSearch ? (
+              <div className="py-12 text-slate-500">
+                <div>Không tìm thấy khiếu nại phù hợp trên trang này.</div>
+                <Button className="mt-3" onClick={() => setSearchText('')}>Xóa từ khóa tìm kiếm</Button>
+              </div>
+            ) : (
+              <div className="py-12 text-slate-500">Chưa có khiếu nại nào theo điều kiện lọc.</div>
+            ),
+          }}
         />
       </Surface>
 

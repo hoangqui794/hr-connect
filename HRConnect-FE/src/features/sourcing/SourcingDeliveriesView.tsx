@@ -6,7 +6,7 @@
  *   - Internal HR: monitors delivered CVs, verifies rejections (upheld/overturn), replaces rejected CVs with backups.
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
@@ -33,12 +33,14 @@ import {
   CloseCircleOutlined,
   EyeOutlined,
   ReloadOutlined,
+  SearchOutlined,
   SwapOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { sourcingApi } from '@/services/api/sourcingApi';
 import { screeningApi } from '@/services/api/hrApi';
 import { getApiErrorMessage } from '@/services/apiClient';
+import { matchesSearch } from '@/utils/searchMatch';
 import type {
   DecideSourcingDeliveryRequest,
   ReviewSourcingRejectionRequest,
@@ -83,6 +85,7 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<FilterTab>('ALL');
+  const [searchText, setSearchText] = useState('');
 
   // Modals state
   const [acceptModalItem, setAcceptModalItem] = useState<SourcingDeliveryDto | null>(null);
@@ -221,7 +224,21 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
   };
 
   const summary = data?.summary;
-  const items = data?.items || [];
+  const items = useMemo(() => data?.items ?? [], [data?.items]);
+  const hasSearch = searchText.trim().length > 0;
+  const visibleItems = useMemo(() => {
+    if (!hasSearch) return items;
+    return items.filter((d) =>
+      matchesSearch(
+        searchText,
+        d.candidateName,
+        d.replacementCandidateName,
+        d.rejectReasonCode,
+        d.rejectReasonCode ? getRejectReasonLabel(d.rejectReasonCode) : undefined,
+        d.rejectNote
+      )
+    );
+  }, [items, hasSearch, searchText]);
   const reviewMetaMap = REJECTION_REVIEW_STATUS;
   const deliveredAppIds = new Set(items.filter((d) => d.status !== 'REPLACED').map((d) => d.applicationId));
   const backupOptions = (backupCandidatesQuery.data?.items ?? [])
@@ -604,14 +621,26 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
           ))}
         </div>
 
-        <Button
-          size="small"
-          icon={<ReloadOutlined spin={isFetching} />}
-          onClick={() => refetch()}
-          aria-label="Tải lại danh sách"
-        >
-          Tải lại
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            size="small"
+            allowClear
+            prefix={<SearchOutlined className="text-slate-400" />}
+            placeholder="Tìm ứng viên, ứng viên thay thế, lý do..."
+            aria-label="Tìm kiếm CV bàn giao"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="w-full sm:w-[250px]"
+          />
+          <Button
+            size="small"
+            icon={<ReloadOutlined spin={isFetching} />}
+            onClick={() => refetch()}
+            aria-label="Tải lại danh sách"
+          >
+            Tải lại
+          </Button>
+        </div>
       </div>
 
       {/* 3 UI states: Loading, Error, Empty / Table */}
@@ -648,13 +677,18 @@ export const SourcingDeliveriesView: React.FC<SourcingDeliveriesViewProps> = ({
             }
           />
         </div>
+      ) : visibleItems.length === 0 ? (
+        <div className="p-8 bg-white rounded-xl border border-slate-200 text-center">
+          <div className="font-medium text-slate-700">Không tìm thấy hồ sơ CV phù hợp với từ khóa.</div>
+          <Button size="small" className="mt-3" onClick={() => setSearchText('')}>Xóa từ khóa tìm kiếm</Button>
+        </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xs">
           <Table<SourcingDeliveryDto>
             rowKey="deliveryId"
             columns={columns}
-            dataSource={items}
-            pagination={items.length > 10 ? { pageSize: 10, showSizeChanger: false } : false}
+            dataSource={visibleItems}
+            pagination={visibleItems.length > 10 ? { pageSize: 10, showSizeChanger: false } : false}
             size="middle"
           />
         </div>
