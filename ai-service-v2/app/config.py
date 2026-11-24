@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     # LLM that reads the CV and judges each requirement: gemini | openai | anthropic.
     # Keys come from the environment (.env): GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY.
     llm_provider: str = "gemini"
-    gemini_model: str = "gemini-3.8-flash"
+    gemini_model: str = "gemini-4-hydrogen"
     gemini_api_key: str = ""
     # Same key, other models (comma-separated), used in order when the model above is rate limited.
     gemini_fallback_models: str = ""
