@@ -278,6 +278,37 @@ internal static class SourcingDeliveryRules
         }
     }
 
+    public static async Task NotifyAffiliateFinalRejectionAsync(
+        IAppNotifier? notifier, SourcingDelivery delivery, CancellationToken cancellationToken)
+    {
+        if (notifier == null || delivery.Job == null)
+        {
+            return;
+        }
+
+        var affiliateUserId = delivery.Application?.Attribution?.Affiliate?.UserId
+            ?? delivery.Application?.Submission?.SubmittedBy;
+        if (affiliateUserId is not Guid userId || userId == Guid.Empty)
+        {
+            return;
+        }
+
+        var candidateName = string.IsNullOrWhiteSpace(delivery.Application?.Candidate?.FullName)
+            ? "ứng viên"
+            : delivery.Application.Candidate.FullName;
+        var route = delivery.Application?.Submission?.SubmissionId is Guid submissionId && submissionId != Guid.Empty
+            ? $"/affiliate/submissions/{submissionId}"
+            : "/affiliate/submissions";
+
+        await notifier.NotifyUsersAsync([userId], new AppNotice(
+            "SOURCING",
+            "Client từ chối CV đã giao",
+            $"Tin \"{delivery.Job.Title}\": CV của {candidateName} đã bị doanh nghiệp từ chối và không được tính hoa hồng.",
+            "SOURCING_DELIVERY",
+            delivery.DeliveryId,
+            route), cancellationToken);
+    }
+
     /// <summary>Same checks for a first delivery and for a replacement.</summary>
     public static void RequireDeliverable(Domain.Entities.Application application, IEnumerable<SourcingDelivery> existing)
     {
@@ -519,6 +550,12 @@ public sealed class DecideSourcingDeliveryCommandHandler : IRequestHandler<Decid
                 "SOURCING", "Client từ chối một CV đã giao",
                 $"Tin \"{delivery.Job.Title}\": CV bị từ chối (lý do {delivery.RejectReasonCode}). Vui lòng xem xét hoặc thay CV dự phòng.",
                 "SOURCING_DELIVERY", delivery.DeliveryId, $"/hr/screening?status=SHORTLISTED&open={delivery.ApplicationId}"), cancellationToken);
+
+            // Standard rejection reasons are final immediately (only OTHER awaits HR review).
+            if (reasonCode != SourcingRejectReasons.Other)
+            {
+                await SourcingDeliveryRules.NotifyAffiliateFinalRejectionAsync(_notifier, delivery, cancellationToken);
+            }
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -607,6 +644,11 @@ public sealed class ReviewSourcingRejectionCommandHandler : IRequestHandler<Revi
             await _notifier.NotifyCompanyAsync(delivery.Job.CompanyId, new AppNotice(
                 "SOURCING", title, msg,
                 "SOURCING_DELIVERY", delivery.JobId, $"/client/jobs/{delivery.JobId}/sourcing"), cancellationToken);
+
+            if (request.Upheld)
+            {
+                await SourcingDeliveryRules.NotifyAffiliateFinalRejectionAsync(_notifier, delivery, cancellationToken);
+            }
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -701,6 +743,15 @@ public sealed class ReplaceSourcingDeliveryCommandHandler : IRequestHandler<Repl
                 "SOURCING", "Đã giao CV thay thế",
                 $"HR Connect vừa giao CV thay thế cho tin \"{old.Job.Title}\". Vui lòng xem xét trước ngày {now.AddDays(reviewDays):dd/MM/yyyy}.",
                 "SOURCING_DELIVERY", old.JobId, $"/client/jobs/{old.JobId}/sourcing"), cancellationToken);
+
+            if (old.RejectReasonCode == SourcingRejectReasons.Other)
+            {
+                var reviews = await SourcingDeliveryRules.LoadRejectionReviewsAsync(_deliveries, [old], cancellationToken);
+                if (!reviews.ContainsKey(old.DeliveryId))
+                {
+                    await SourcingDeliveryRules.NotifyAffiliateFinalRejectionAsync(_notifier, old, cancellationToken);
+                }
+            }
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);

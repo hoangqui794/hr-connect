@@ -98,6 +98,8 @@ public class SubmissionRepository : ISubmissionRepository
             .Include(s => s.Applications)
                 .ThenInclude(application => application.Placement!)
                     .ThenInclude(placement => placement.Warranty)
+            .Include(s => s.Applications)
+                .ThenInclude(application => application.SourcingDeliveries)
             .Include(s => s.Attribution)
             .Include(s => s.Consent)
             .OrderByDescending(s => s.SubmittedAt)

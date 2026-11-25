@@ -60,10 +60,19 @@ public sealed class GetAffiliateReferralProgressQueryHandler : IRequestHandler<G
                 _ => "SUBMITTED"
             };
 
+        if (application.Status == ApplicationStates.Shortlisted)
+        {
+            var latestDelivery = application.SourcingDeliveries?
+                .OrderByDescending(d => d.DeliveredAt)
+                .FirstOrDefault();
+            if (latestDelivery?.Status is SourcingDeliveryStates.Rejected or SourcingDeliveryStates.Replaced)
+                return "SOURCING_REJECTED";
+            return "SHORTLISTED";
+        }
+
         return application.Status switch
         {
             ApplicationStates.Submitted or ApplicationStates.Screening => "CV_REVIEW",
-            ApplicationStates.Shortlisted => "SHORTLISTED",
             ApplicationStates.Interview => "INTERVIEW",
             ApplicationStates.OfferPending or ApplicationStates.OfferAccepted => "OFFER",
             ApplicationStates.Backup => "BACKUP",

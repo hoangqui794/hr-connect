@@ -1043,6 +1043,7 @@ const REFERRAL_PROGRESS: Record<string, string> = {
   PLACED: 'Đã đi làm',
   LEFT_REPORTED: 'Báo nghỉ, chờ xác minh',
   LEFT_IN_WARRANTY: 'Nghỉ trong bảo hành',
+  SOURCING_REJECTED: 'Client từ chối CV',
   CLOSED: 'Đã kết thúc',
 };
 
@@ -1084,7 +1085,7 @@ const WAITING_STATUSES = ['RECEIVED', 'PENDING_CONSENT', 'PENDING_IDENTITY_REVIE
 
 const referralGroupOf = (status: string, code?: string): Exclude<ReferralGroup, 'all'> => {
   if (WAITING_STATUSES.includes(status)) return 'PENDING_CONSENT';
-  if (status !== 'ACCEPTED' || code === 'CLOSED' || code === 'LEFT_IN_WARRANTY') return 'stopped';
+  if (status !== 'ACCEPTED' || code === 'CLOSED' || code === 'LEFT_IN_WARRANTY' || code === 'SOURCING_REJECTED') return 'stopped';
   if (code === 'LEFT_REPORTED') return 'placed';
   return code === 'PLACED' ? 'placed' : 'processing';
 };
@@ -1093,6 +1094,7 @@ const PROGRESS_HINT: Record<string, string> = {
   SUBMITTED: 'Ứng viên đã đồng ý. Hồ sơ đã được nộp vào job.',
   CV_REVIEW: 'Ứng viên đã đồng ý. HR đang xem hồ sơ.',
   SHORTLISTED: 'Hồ sơ đã được chọn và chuyển cho doanh nghiệp.',
+  SOURCING_REJECTED: 'Doanh nghiệp đã từ chối CV này nên lượt giới thiệu không được tính hoa hồng.',
   BACKUP: 'Hồ sơ đang ở danh sách dự phòng.',
   INTERVIEW: 'Doanh nghiệp đang phỏng vấn ứng viên.',
   OFFER: 'Doanh nghiệp đang chuẩn bị đề nghị nhận việc.',
@@ -1157,7 +1159,7 @@ export const AffiliateSubmissionsPage: React.FC = () => {
     const rowGroup = referralGroupOf(r.status, code);
     const st = submissionStatus(r.status);
     const tone =
-      code === 'LEFT_IN_WARRANTY' ? 'danger'
+      code === 'LEFT_IN_WARRANTY' || code === 'SOURCING_REJECTED' ? 'danger'
       : code === 'LEFT_REPORTED' ? 'warning'
       : rowGroup === 'PENDING_CONSENT' ? 'warning'
       : rowGroup === 'placed' ? 'success'
