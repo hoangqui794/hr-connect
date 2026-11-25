@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Button, Descriptions, Drawer, Input, Select, Skeleton, Space, Table, Tag, message } from 'antd';
+import { Alert, Button, Drawer, Input, Select, Skeleton, Space, Table, Tag, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { SearchOutlined } from '@ant-design/icons';
 import { adminIdentityClaimApi } from '@/services/api/mf02/adminIdentityClaimApi';
@@ -13,6 +13,7 @@ import type {
   AdminCandidateDuplicateParty,
   AdminCandidateDuplicateRiskLevel,
   AdminCandidateDuplicateStatus,
+  AdminCandidateDuplicateSubmission,
 } from '@/types/api/mf02';
 import { formatDateTime } from './adminTheme';
 import { PersonCell, StatusDot, type Tone } from './ui';
@@ -34,24 +35,95 @@ const RISK_META: Record<string, { label: string; tone: Tone }> = {
   REVIEW: { label: 'Cần rà soát', tone: 'warning' },
 };
 
-const SUBMISSION_STATUS_LABELS: Record<string, string> = {
-  PENDING_CONSENT: 'Chờ ứng viên xác nhận',
-  PENDING_IDENTITY_REVIEW: 'Tạm giữ đối chiếu',
-  SUBMITTED: 'Đã nộp',
-  CONSENTED: 'Đã xác nhận',
-  REJECTED_CONSENT: 'Ứng viên từ chối',
+const RESOLUTION_LABELS: Record<string, string> = {
+  MERGE: 'Đã hợp nhất về hồ sơ gốc',
+  MERGED: 'Đã hợp nhất về hồ sơ gốc',
+  DISMISS: 'Đã xác nhận không phải trùng',
+  DISMISSED: 'Đã xác nhận không phải trùng',
+  NEED_MORE_EVIDENCE: 'Yêu cầu bổ sung bằng chứng',
+};
+
+const SUBMISSION_STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  PENDING_CONSENT: { label: 'Chờ xác nhận', color: 'gold' },
+  PENDING_IDENTITY_REVIEW: { label: 'Tạm giữ đối chiếu', color: 'orange' },
+  SUBMITTED: { label: 'Đã nộp', color: 'blue' },
+  ACCEPTED: { label: 'Đã chấp nhận', color: 'green' },
+  CONSENTED: { label: 'Đã xác nhận', color: 'green' },
+  REJECTED_CONSENT: { label: 'Ứng viên từ chối', color: 'default' },
+  REPORTED_UNAUTHORIZED: { label: 'Báo cáo trái phép', color: 'red' },
+  EXPIRED: { label: 'Hết hạn', color: 'default' },
+  CANCELLED: { label: 'Đã hủy', color: 'default' },
+  BLOCKED_DUPLICATE: { label: 'Chặn trùng', color: 'red' },
+  BLOCKED_CLIENT_OWNED: { label: 'Thuộc kho DN', color: 'volcano' },
+  CLOSED_DUPLICATE: { label: 'Đóng do trùng', color: 'default' },
+};
+
+const SOURCE_LABELS: Record<string, string> = {
+  AFFILIATE: 'CTV giới thiệu',
+  CANDIDATE: 'Ứng viên tự nộp',
+  DIRECT: 'Ứng viên tự nộp',
+};
+
+const CONSENT_STATUS_LABELS: Record<string, string> = {
+  CONFIRMED: 'Đã đồng ý',
+  PENDING: 'Chờ xác nhận',
+  REJECTED: 'Từ chối',
   REPORTED_UNAUTHORIZED: 'Báo cáo trái phép',
   EXPIRED: 'Hết hạn',
-  BLOCKED_DUPLICATE: 'Chặn trùng',
-  CLOSED_DUPLICATE: 'Đóng do trùng',
+};
+
+const ATTRIBUTION_LABELS: Record<string, string> = {
+  ACTIVE: 'Đang giữ quyền',
+  SUPERSEDED: 'Đã thay thế',
+  VOIDED: 'Đã hủy',
+  REVOKED: 'Đã thu hồi',
+};
+
+const COMMISSION_LABELS: Record<string, string> = {
+  PENDING: 'Chờ duyệt HH',
+  EARNED: 'Đã ghi nhận HH',
+  PAID: 'Đã chi trả HH',
+  VOIDED: 'Đã hủy HH',
+  CANCELLED: 'Đã hủy HH',
 };
 
 const SIGNAL_LABELS: Record<string, string> = {
+  VERIFIED_EMAIL_OWNERSHIP: 'Đã xác minh quyền sở hữu email qua OTP',
   CV_CONTENT_SHA256_AND_NAME_MATCH: 'Trùng nội dung file CV (SHA-256) và Họ tên',
   CV_CONTENT_SHA256_MATCH: 'Trùng nội dung file CV (SHA-256)',
   NORMALIZED_PHONE_MATCH: 'Trùng số điện thoại chuẩn hóa',
   NORMALIZED_EMAIL_MATCH: 'Trùng email chuẩn hóa',
   CANDIDATE_IDENTITY_CLAIM: 'Yêu cầu gộp hồ sơ từ ứng viên',
+};
+
+const formatSignalEvidence = (reasonCode: string, rawEvidence: string): string | null => {
+  const trimmed = rawEvidence?.trim();
+  if (!trimmed) return null;
+
+  if (reasonCode === 'VERIFIED_EMAIL_OWNERSHIP') {
+    return 'Ứng viên đã xác thực thành công mã OTP gửi tới email cần khôi phục.';
+  }
+
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+      if (parsed.proof === 'email-otp' && parsed.ownership === 'verified') {
+        return 'Ứng viên đã xác thực thành công mã OTP qua email.';
+      }
+      const readableEntries = Object.entries(parsed)
+        .filter(([, value]) => value !== null && value !== undefined && value !== '')
+        .map(([key, value]) => `${key}: ${String(value)}`);
+      return readableEntries.length > 0 ? readableEntries.join(' · ') : null;
+    } catch {
+      return trimmed;
+    }
+  }
+
+  if (trimmed.toLowerCase().includes('sha256=')) {
+    return 'Hệ thống đối chiếu trùng khớp dấu vân tay SHA-256 của file CV và Họ tên chuẩn hóa.';
+  }
+
+  return trimmed;
 };
 
 const statusOptions = [
@@ -376,16 +448,22 @@ const DuplicateCaseDrawerContent: React.FC<DuplicateCaseDrawerContentProps> = ({
   onResolve,
 }) => {
   const canonicalId = detail.canonicalCandidateId ?? preview?.recommendedCanonicalCandidateId ?? null;
+  const isMerged = detail.status === 'MERGED';
 
   const renderPartyCard = (label: string, party: AdminCandidateDuplicateParty) => {
     const isCanonical = canonicalId === party.candidateId;
     return (
-      <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-4">
-        <div className="mb-2 flex items-center justify-between gap-2">
+      <div
+        className={`rounded-lg border p-4 ${
+          isCanonical ? 'border-emerald-200 bg-emerald-50/40' : 'border-slate-200 bg-slate-50/70'
+        }`}
+      >
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>
-          <Space size={4}>
+          <Space size={4} wrap>
             {party.hasAccount ? <Tag color="blue">Có tài khoản</Tag> : <Tag>Chưa có tài khoản</Tag>}
-            {isCanonical && <Tag color="green">Hồ sơ gốc</Tag>}
+            {isCanonical && <Tag color="green">Hồ sơ gốc (giữ lại)</Tag>}
+            {isMerged && !isCanonical && <Tag>Đã gộp vào hồ sơ gốc</Tag>}
           </Space>
         </div>
         <div className="text-base font-semibold text-slate-900">{party.fullName}</div>
@@ -397,6 +475,73 @@ const DuplicateCaseDrawerContent: React.FC<DuplicateCaseDrawerContentProps> = ({
       </div>
     );
   };
+
+  const submissionColumns: ColumnsType<AdminCandidateDuplicateSubmission> = [
+    {
+      title: 'Hồ sơ',
+      key: 'party',
+      width: 90,
+      render: (_, sub) => (
+        <span className="font-medium text-slate-800">
+          {sub.candidateId === detail.candidateA.candidateId ? 'Hồ sơ A' : 'Hồ sơ B'}
+        </span>
+      ),
+    },
+    {
+      title: 'Nguồn nộp',
+      key: 'source',
+      width: 145,
+      render: (_, sub) => (
+        <div>
+          <div className="text-sm text-slate-800">{SOURCE_LABELS[sub.source] ?? sub.source}</div>
+          <div className="text-xs text-slate-500">{formatDateTime(sub.submittedAt)}</div>
+        </div>
+      ),
+    },
+    {
+      title: 'Trạng thái đơn',
+      dataIndex: 'status',
+      width: 135,
+      render: (value: string) => {
+        const meta = SUBMISSION_STATUS_LABELS[value];
+        return <Tag color={meta?.color ?? 'default'}>{meta?.label ?? value}</Tag>;
+      },
+    },
+    {
+      title: 'Xác nhận ứng viên',
+      key: 'consent',
+      width: 145,
+      render: (_, sub) =>
+        sub.consentStatus ? (
+          <div>
+            <div className="text-sm text-slate-800">
+              {CONSENT_STATUS_LABELS[sub.consentStatus] ?? sub.consentStatus}
+            </div>
+            {sub.consentRespondedAt && (
+              <div className="text-xs text-slate-500">{formatDateTime(sub.consentRespondedAt)}</div>
+            )}
+          </div>
+        ) : (
+          <span className="text-slate-400">Không yêu cầu</span>
+        ),
+    },
+    {
+      title: 'Quyền hoa hồng',
+      key: 'attribution',
+      render: (_, sub) => {
+        const attrLabel = sub.attributionStatus
+          ? ATTRIBUTION_LABELS[sub.attributionStatus] ?? sub.attributionStatus
+          : 'Chưa ghi nhận';
+        const commLabels = sub.commissionStatuses.map((status) => COMMISSION_LABELS[status] ?? status);
+        return (
+          <div className="space-y-0.5 text-xs">
+            <div className="font-medium text-slate-800">{attrLabel}</div>
+            {commLabels.length > 0 && <div className="text-slate-500">{commLabels.join(' · ')}</div>}
+          </div>
+        );
+      },
+    },
+  ];
 
   return (
     <div className="space-y-5">
@@ -416,10 +561,10 @@ const DuplicateCaseDrawerContent: React.FC<DuplicateCaseDrawerContentProps> = ({
 
       {detail.resolution && (
         <Alert
-          type={detail.status === 'MERGED' ? 'success' : 'info'}
+          type={isMerged ? 'success' : 'info'}
           showIcon
-          message={`Kết quả xử lý: ${detail.resolution}`}
-          description={detail.resolutionReason ?? undefined}
+          message={RESOLUTION_LABELS[detail.resolution] ?? `Kết quả xử lý: ${detail.resolution}`}
+          description={detail.resolutionReason ? `Lý do: ${detail.resolutionReason}` : undefined}
         />
       )}
 
@@ -431,19 +576,22 @@ const DuplicateCaseDrawerContent: React.FC<DuplicateCaseDrawerContentProps> = ({
       <div>
         <h4 className="mb-2 text-sm font-semibold text-slate-900">Tín hiệu phát hiện trùng ({detail.signals.length})</h4>
         <div className="space-y-2">
-          {detail.signals.map((signal, index) => (
-            <div key={`${signal.reasonCode}-${index}`} className="rounded-lg border border-slate-200 p-3 text-sm">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-medium text-slate-900">
-                  {SIGNAL_LABELS[signal.reasonCode] ?? signal.reasonCode}
-                </span>
-                <Tag color={signal.score >= 0.9 ? 'red' : 'orange'}>
-                  Độ tin cậy: {Math.round(signal.score * 100)}%
-                </Tag>
+          {detail.signals.map((signal, index) => {
+            const readableEvidence = formatSignalEvidence(signal.reasonCode, signal.evidence);
+            return (
+              <div key={`${signal.reasonCode}-${index}`} className="rounded-lg border border-slate-200 p-3 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-slate-900">
+                    {SIGNAL_LABELS[signal.reasonCode] ?? signal.reasonCode}
+                  </span>
+                  <Tag color={signal.score >= 0.9 ? 'red' : 'orange'}>
+                    Độ tin cậy: {Math.round(signal.score * 100)}%
+                  </Tag>
+                </div>
+                {readableEvidence && <div className="mt-1 text-xs text-slate-600">{readableEvidence}</div>}
               </div>
-              <div className="mt-1 break-all text-xs text-slate-600">{signal.evidence}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -454,35 +602,15 @@ const DuplicateCaseDrawerContent: React.FC<DuplicateCaseDrawerContentProps> = ({
         {detail.submissions.length === 0 ? (
           <div className="text-sm text-slate-500">Chưa có lượt nộp nào gắn với cặp hồ sơ này.</div>
         ) : (
-          <div className="space-y-2">
-            {detail.submissions.map((sub) => (
-              <Descriptions
-                key={sub.submissionId}
-                size="small"
-                bordered
-                column={2}
-                className="rounded-lg bg-white"
-              >
-                <Descriptions.Item label="Hồ sơ">
-                  {sub.candidateId === detail.candidateA.candidateId ? 'Hồ sơ A' : 'Hồ sơ B'}
-                </Descriptions.Item>
-                <Descriptions.Item label="Trạng thái">
-                  {SUBMISSION_STATUS_LABELS[sub.status] ?? sub.status}
-                </Descriptions.Item>
-                <Descriptions.Item label="Nguồn">{sub.source}</Descriptions.Item>
-                <Descriptions.Item label="Nộp lúc">{formatDateTime(sub.submittedAt)}</Descriptions.Item>
-                <Descriptions.Item label="Xác nhận ứng viên">
-                  {sub.consentStatus
-                    ? `${sub.consentStatus}${sub.consentRespondedAt ? ` (${formatDateTime(sub.consentRespondedAt)})` : ''}`
-                    : '—'}
-                </Descriptions.Item>
-                <Descriptions.Item label="Attribution / Hoa hồng">
-                  {sub.attributionStatus ?? 'Chưa ghi nhận'}
-                  {sub.commissionStatuses.length > 0 ? ` · ${sub.commissionStatuses.join(', ')}` : ''}
-                </Descriptions.Item>
-              </Descriptions>
-            ))}
-          </div>
+          <Table<AdminCandidateDuplicateSubmission>
+            size="small"
+            rowKey="submissionId"
+            columns={submissionColumns}
+            dataSource={detail.submissions}
+            pagination={false}
+            scroll={{ x: 640 }}
+            className="rounded-lg border border-slate-200"
+          />
         )}
       </div>
 
@@ -503,17 +631,15 @@ const DuplicateCaseDrawerContent: React.FC<DuplicateCaseDrawerContentProps> = ({
                 <Alert
                   type="info"
                   showIcon
-                  message={`Phát hiện ${preview.collisions.length} xung đột cùng công việc`}
-                  description={preview.collisions
-                    .map((item) => `${item.jobTitle}: ${item.resolutionRule}`)
-                    .join(' · ')}
+                  message={`Phát hiện ${preview.collisions.length} lượt nộp trùng vào cùng công việc`}
+                  description="Khi hợp nhất, hệ thống giữ lại đơn của CTV được ứng viên xác nhận sớm nhất và tự động chặn trùng các đơn nộp sau."
                 />
               )}
               {preview.financeBlockers.length > 0 && (
                 <Alert
                   type="error"
                   showIcon
-                  message="Bị chặn hợp nhất do đã có chi trả hoa hồng hoàn tất (COMPLETED)"
+                  message="Bị chặn hợp nhất do đã có chi trả hoa hồng hoàn tất"
                   description={preview.financeBlockers.map((b) => `${b.reasonCode} (${b.payoutStatus})`).join(', ')}
                 />
               )}
@@ -551,6 +677,10 @@ const DuplicateCaseDrawerContent: React.FC<DuplicateCaseDrawerContentProps> = ({
               Cần thêm bằng chứng
             </Button>
           </div>
+          <p className="mb-0 text-xs text-slate-500">
+            Hợp nhất sẽ gộp mềm về Hồ sơ gốc (giữ lại toàn bộ lịch sử đối soát), giữ quyền hoa hồng cho lượt được ứng
+            viên xác nhận sớm nhất và chặn trùng các lượt nộp sau vào cùng công việc.
+          </p>
         </div>
       )}
     </div>
