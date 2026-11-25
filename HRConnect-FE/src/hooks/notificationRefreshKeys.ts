@@ -69,6 +69,8 @@ const BY_ENTITY: Record<string, string[][]> = {
   CANDIDATE_DUPLICATE_CASE: [
     ['admin-candidate-identity-claims'],
     ['admin-candidate-identity-claim'],
+    ['admin-candidate-duplicate-cases'],
+    ['admin-candidate-duplicate-case-detail'],
     ['candidate-email-identities'],
     ['candidate-duplicate-cases'],
     ...APPLICATION,

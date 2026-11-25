@@ -58,6 +58,7 @@ import {
   formatDateTime,
   formatSalary,
   isAwaitingSourcingDeposit,
+  isDeadlineExpired,
   sourcingDepositAmount,
   formatHeadcount,
 } from './jobDisplay';
@@ -126,6 +127,7 @@ export const ClientJobsListPage: React.FC = () => {
     serviceTypeCode?: string | null;
     isDeposit?: boolean;
     depositAmount?: number | null;
+    applicationDeadline?: string | null;
   } | null>(null);
 
   const highlightParam = searchParams.get('highlight') || searchParams.get('jobId');
@@ -198,6 +200,7 @@ export const ClientJobsListPage: React.FC = () => {
           serviceTypeCode: targetJob.serviceTypeCode,
           isDeposit,
           depositAmount: amount,
+          applicationDeadline: targetJob.applicationDeadline,
         });
       }
 
@@ -229,6 +232,17 @@ export const ClientJobsListPage: React.FC = () => {
       );
     });
   }, [jobs]);
+
+  const overdueDeadlineJobs = useMemo(
+    () =>
+      jobs.filter(
+        (j) =>
+          j.status !== 'CLOSED' &&
+          j.status !== 'REJECTED' &&
+          isDeadlineExpired(j.applicationDeadline)
+      ),
+    [jobs]
+  );
 
   React.useEffect(() => {
     setCurrentPage(1);
@@ -347,6 +361,7 @@ export const ClientJobsListPage: React.FC = () => {
                 title: job.title,
                 serviceTypeCode: job.serviceTypeCode,
                 isDeposit: false,
+                applicationDeadline: job.applicationDeadline,
               })
             }
           >
@@ -425,7 +440,14 @@ export const ClientJobsListPage: React.FC = () => {
             <ServiceTypeTag code={job.serviceTypeCode} />
             <span className="text-xs text-slate-500">{job.location ?? 'Chưa có địa điểm'}</span>
             {job.applicationDeadline && (
-              <span className="text-xs text-slate-500">· Hạn nộp: {formatDate(job.applicationDeadline)}</span>
+              <>
+                <span className={`text-xs ${isDeadlineExpired(job.applicationDeadline) && job.status !== 'CLOSED' ? 'font-semibold text-rose-600' : 'text-slate-500'}`}>
+                  · Hạn nộp: {formatDate(job.applicationDeadline)}
+                </span>
+                {isDeadlineExpired(job.applicationDeadline) && job.status !== 'CLOSED' && (
+                  <span className="text-xs font-semibold text-rose-600">(Đã hết hạn)</span>
+                )}
+              </>
             )}
             {job.expiresAt && (
               <span className="text-xs text-slate-500">· Hết hạn tin: {formatDate(job.expiresAt)}</span>
@@ -465,6 +487,11 @@ export const ClientJobsListPage: React.FC = () => {
           {job.postingFeeStatus === 'PAID' && (
             <div>
               <Tag color="success" className="m-0 text-[11px] font-medium">Đã nộp phí</Tag>
+            </div>
+          )}
+          {isDeadlineExpired(job.applicationDeadline) && job.status !== 'CLOSED' && (
+            <div>
+              <Tag color="error" className="m-0 text-[11px] font-semibold">Đã hết hạn tuyển dụng</Tag>
             </div>
           )}
         </div>
@@ -556,21 +583,7 @@ export const ClientJobsListPage: React.FC = () => {
         </div>
       </div>
 
-      {expiredJobs.length > 0 && (
-        <Alert
-          type="warning"
-          showIcon
-          closable
-          className="mb-4"
-          message={`Bạn có ${expiredJobs.length} tin tuyển dụng đã hết hạn hiển thị`}
-          description="Các tin đã hết thời hạn hiển thị sẽ tự động đóng. Bạn có thể tạo tin mới và chọn gói tiêu chuẩn để tiếp tục tuyển dụng."
-          action={
-            <Button size="small" type="primary" onClick={() => navigate('/client/jobs/create')}>
-              Đăng tin mới
-            </Button>
-          }
-        />
-      )}
+
 
       {isError ? (
         <Alert
@@ -742,7 +755,12 @@ export const ClientJobsListPage: React.FC = () => {
                           {job.applicationDeadline && (
                             <>
                               <span className="text-slate-300">·</span>
-                              <span>Hạn nộp: {formatDate(job.applicationDeadline)}</span>
+                              <span className={isDeadlineExpired(job.applicationDeadline) && job.status !== 'CLOSED' ? 'font-semibold text-rose-600' : ''}>
+                                Hạn nộp: {formatDate(job.applicationDeadline)}
+                              </span>
+                              {isDeadlineExpired(job.applicationDeadline) && job.status !== 'CLOSED' && (
+                                <span className="font-semibold text-rose-600">(Đã hết hạn)</span>
+                              )}
                             </>
                           )}
                           {job.expiresAt && (
@@ -755,6 +773,11 @@ export const ClientJobsListPage: React.FC = () => {
                       </div>
 
                       {/* Special Callout Banners */}
+                      {job.status === 'DRAFT' && isDeadlineExpired(job.applicationDeadline) && (
+                        <div className="mb-3 flex items-center justify-between rounded-xl bg-rose-50 border border-rose-200/80 px-3 py-2 text-xs font-semibold text-rose-700">
+                          <span>Đã hết hạn tuyển dụng · Cần sửa hạn nộp</span>
+                        </div>
+                      )}
                       {job.status === 'PENDING_AGREEMENT' &&
                         (job.hasSignedAgreement ? (
                           <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200/90 p-3 text-xs text-slate-800 mb-3.5 shadow-2xs">
@@ -829,6 +852,7 @@ export const ClientJobsListPage: React.FC = () => {
                                   serviceTypeCode: job.serviceTypeCode,
                                   isDeposit: true,
                                   depositAmount: amount,
+                                  applicationDeadline: job.applicationDeadline,
                                 });
                               }}
                             >
@@ -847,10 +871,15 @@ export const ClientJobsListPage: React.FC = () => {
                       )}
 
                       {job.status === 'PENDING_PAYMENT' && !isAwaitingSourcingDeposit(job) && (
-                        <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200/90 px-3 py-2 text-xs text-slate-700 mb-3.5">
+                        <div className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 border border-slate-200/90 px-3 py-2 text-xs text-slate-700 mb-3.5">
                           <span className="font-semibold text-xs">
                             Chờ thanh toán phí đăng tin{job.postingFee ? ` (${formatMoney(job.postingFee.amount, job.postingFee.currencyCode)})` : ''} để công bố tin
                           </span>
+                          {isDeadlineExpired(job.applicationDeadline) && (
+                            <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[11px] font-semibold text-rose-700 whitespace-nowrap shrink-0">
+                              Đã hết hạn tuyển dụng
+                            </span>
+                          )}
                         </div>
                       )}
 
@@ -878,9 +907,16 @@ export const ClientJobsListPage: React.FC = () => {
                       {/* Visual Application Progress Bar */}
                       {job.status === 'ACTIVE' && (
                         <div className="mb-2 rounded-xl bg-slate-50 border border-slate-100 p-2.5">
-                          <div className="flex items-center justify-between text-xs mb-1.5 font-medium text-slate-600">
-                            <span>Tiến độ nhận CV</span>
-                            <span className="font-bold text-slate-900 tabular-nums">
+                          <div className="flex items-center justify-between gap-2 text-xs mb-1.5 font-medium text-slate-600">
+                            <span className="flex items-center gap-1.5 min-w-0">
+                              <span>Tiến độ nhận CV</span>
+                              {isDeadlineExpired(job.applicationDeadline) && (
+                                <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[11px] font-semibold text-rose-700 whitespace-nowrap">
+                                  Đã hết hạn tuyển dụng
+                                </span>
+                              )}
+                            </span>
+                            <span className="font-bold text-slate-900 tabular-nums shrink-0">
                               {totalApps} {job.maxApplications ? `/ ${job.maxApplications}` : 'hồ sơ'}
                             </span>
                           </div>
@@ -1060,6 +1096,7 @@ export const ClientJobsListPage: React.FC = () => {
         serviceTypeCode={paymentModalJob?.serviceTypeCode}
         isDeposit={paymentModalJob?.isDeposit}
         depositAmount={paymentModalJob?.depositAmount}
+        applicationDeadline={paymentModalJob?.applicationDeadline}
         onClose={() => {
           setPaymentModalJob(null);
           if (searchParams.has('openPayment')) {

@@ -39,7 +39,7 @@ import { money } from '@/features/finance-mf05/financeLabels';
 import { useMyJobs } from '@/features/jobs-mf01/useJobQueries';
 import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
-import { SERVICE_TYPE_LABEL, formatSalary } from '@/features/jobs-mf01/jobDisplay';
+import { JOB_STATUS, SERVICE_TYPE_LABEL, formatSalary, isDeadlineExpired } from '@/features/jobs-mf01/jobDisplay';
 import type { ServiceTypeCode } from '@/types/api/jobs';
 
 dayjs.extend(relativeTimePlugin);
@@ -134,6 +134,30 @@ export const ClientOverviewPage: React.FC = () => {
 
   const list = jobs.data ?? [];
   const activeJobs = list.filter((j) => j.status === 'ACTIVE');
+
+  const expiredNoticeJobs = React.useMemo(() => {
+    const rows = jobs.data ?? [];
+    const now = Date.now();
+    const since = now - 30 * 24 * 60 * 60 * 1000;
+    return rows
+      .filter((j) => {
+        const displayExp = j.expiresAt
+          ? new Date(j.expiresAt).getTime() <= now && new Date(j.expiresAt).getTime() >= since
+          : j.status === 'CLOSED' &&
+            Boolean(j.statusReason?.toLowerCase().includes('hết hạn')) &&
+            new Date(j.updatedAt).getTime() >= since;
+        const deadlineExp =
+          j.status !== 'CLOSED' &&
+          j.status !== 'REJECTED' &&
+          isDeadlineExpired(j.applicationDeadline);
+        return displayExp || deadlineExp;
+      })
+      .sort((a, b) => {
+        const da = new Date(a.expiresAt ?? a.applicationDeadline ?? a.updatedAt).getTime();
+        const db = new Date(b.expiresAt ?? b.applicationDeadline ?? b.updatedAt).getTime();
+        return db - da;
+      });
+  }, [jobs.data]);
   const draftCount = list.filter((j) => j.status === 'DRAFT').length;
   const rejectedCount = list.filter((j) => j.status === 'REJECTED').length;
   const needFix = draftCount + rejectedCount;
@@ -271,6 +295,98 @@ export const ClientOverviewPage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* ── 1b. Thông báo tin tuyển dụng hết hạn (Mẫu thẻ lịch hẹn / Meeting) ── */}
+      {expiredNoticeJobs.length > 0 && (
+        <section
+          aria-label="Thông báo tin tuyển dụng hết hạn"
+          className="rounded-3xl border border-slate-200/90 bg-white p-6 shadow-[0_2px_12px_rgba(15,23,42,0.03)]"
+        >
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="m-0 text-base font-bold text-slate-900">
+                Thông báo tin tuyển dụng hết hạn
+              </h2>
+              <span className="inline-flex h-5 items-center rounded-full bg-amber-50 px-2.5 text-[11px] font-bold text-amber-700 border border-amber-200/70">
+                {expiredNoticeJobs.length} tin cần chú ý
+              </span>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <Button
+                size="small"
+                type="primary"
+                icon={<PlusOutlined />}
+                className="!bg-[#0284C7] hover:!bg-[#0369A1] font-semibold !rounded-lg !border-0 text-white !h-8 px-3 text-xs"
+                onClick={() => navigate('/client/jobs/create')}
+              >
+                Đăng tin mới
+              </Button>
+              <Button
+                type="link"
+                className="!px-0 text-xs font-bold text-[#0284C7] hover:text-[#0369A1]"
+                onClick={() => navigate('/client/jobs')}
+              >
+                Xem tất cả <ArrowRightOutlined className="text-xs" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {expiredNoticeJobs.slice(0, 6).map((job) => {
+              const isDisplayExp =
+                (job.expiresAt && new Date(job.expiresAt).getTime() <= Date.now()) ||
+                (job.status === 'CLOSED' && Boolean(job.statusReason?.toLowerCase().includes('hết hạn')));
+              const expDate = isDisplayExp
+                ? (job.expiresAt ?? job.updatedAt)
+                : (job.applicationDeadline ?? job.expiresAt ?? job.updatedAt);
+              const serviceLabel = job.serviceTypeCode
+                ? SERVICE_TYPE_LABEL[job.serviceTypeCode as ServiceTypeCode]?.label
+                : null;
+              const statusLabel = JOB_STATUS[job.status]?.label ?? job.status;
+
+              return (
+                <div
+                  key={job.jobId}
+                  onClick={() => navigate(`/client/jobs?highlight=${job.jobId}&openDetail=true`)}
+                  className="group flex cursor-pointer items-center gap-3.5 rounded-2xl border border-slate-100 bg-slate-50/80 p-3.5 transition-all hover:border-slate-200 hover:bg-slate-50 hover:shadow-2xs"
+                >
+                  {/* Date badge (giống mẫu thông báo cuộc meeting) */}
+                  <div className="flex w-12 shrink-0 flex-col items-center rounded-xl border border-slate-200 bg-white py-1.5 shadow-2xs">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600">
+                      {expDate ? dayjs(expDate).format('MMM') : '—'}
+                    </span>
+                    <span className="text-lg font-black leading-tight text-slate-900">
+                      {expDate ? dayjs(expDate).format('DD') : '—'}
+                    </span>
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-sm font-bold text-slate-900 group-hover:text-[#0284C7] transition-colors">
+                        {job.title || 'Vị trí chưa đặt tên'}
+                      </span>
+                      <span className="shrink-0 rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-200/60">
+                        {isDisplayExp ? 'Hết hạn hiển thị' : 'Quá hạn nộp'}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+                      <span className="flex items-center gap-1 font-medium text-slate-700 shrink-0">
+                        <ClockCircleOutlined className="text-rose-500" />
+                        {expDate ? dayjs(expDate).format('DD/MM/YYYY') : '—'}
+                      </span>
+                      <span>·</span>
+                      <span className="truncate">{serviceLabel ?? 'Tin tuyển dụng'}</span>
+                    </div>
+                    <div className="mt-0.5 truncate text-xs text-slate-500">
+                      {statusLabel} · {job.location || 'Toàn quốc'}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* ── 2. Action Priority Center (Trung tâm xử lý khẩn cấp) ──────── */}
       <section aria-labelledby="action-center-title">

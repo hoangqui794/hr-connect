@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { App, Button, Modal, Tag, Spin } from 'antd';
+import { Alert, App, Button, Modal, Tag, Spin } from 'antd';
 import {
   CheckCircleOutlined,
   CreditCardOutlined,
@@ -14,7 +14,7 @@ import {
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { formatMoney, usePostingFee, usePostingPackages } from './useJobQueries';
-import { formatPostingPackage } from './jobDisplay';
+import { formatDate, formatPostingPackage, isDeadlineExpired } from './jobDisplay';
 import { financeApi, vnPayApi } from '@/services/api/financeApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 
@@ -28,6 +28,7 @@ interface PaymentDemoModalProps {
   serviceTypeCode?: string | null;
   depositAmount?: number | null;
   isDeposit?: boolean;
+  applicationDeadline?: string | null;
   onSuccess?: () => void;
   onPaymentSuccess?: () => void;
   onClose: () => void;
@@ -41,6 +42,7 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
   serviceTypeCode,
   depositAmount,
   isDeposit,
+  applicationDeadline,
   onClose,
 }) => {
   const { message } = App.useApp();
@@ -111,6 +113,16 @@ export const PaymentDemoModal: React.FC<PaymentDemoModalProps> = ({
       }
     >
       <div className="py-2 space-y-3.5">
+        {isDeadlineExpired(applicationDeadline) && (
+          <Alert
+            type="error"
+            showIcon
+            className="rounded-xl border-rose-200 bg-rose-50/90 !py-2.5 !px-3.5"
+            message={`Đã quá hạn nhận hồ sơ (${formatDate(applicationDeadline)})`}
+            description="Tin sẽ không thể nhận hồ sơ mới sau thanh toán. Bạn nên đóng tin này."
+          />
+        )}
+
         {/* Khối tóm tắt thông tin gói & số tiền */}
         <div className="rounded-xl border border-solid border-slate-200/90 bg-slate-50 p-4">
           <div className="flex justify-between items-start gap-2 mb-2">

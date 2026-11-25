@@ -261,3 +261,16 @@ export const formatDateTime = (iso: string | null | undefined): string =>
   iso
     ? new Date(iso).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
     : '—';
+
+/**
+ * Kiểm tra hạn nhận hồ sơ (applicationDeadline) của tin tuyển dụng đã qua hay chưa.
+ * Dữ liệu seed có thể lưu T00:00:00Z của ngày hạn nộp, nên tính đến cuối ngày đó theo giờ địa phương
+ * hoặc khi timestamp thực tế đã qua.
+ */
+export const isDeadlineExpired = (applicationDeadline?: string | null): boolean => {
+  if (!applicationDeadline) return false;
+  const d = new Date(applicationDeadline);
+  if (Number.isNaN(d.getTime())) return false;
+  const endOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+  return Math.max(d.getTime(), endOfDay.getTime()) < Date.now();
+};

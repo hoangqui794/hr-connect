@@ -55,9 +55,11 @@ import {
   JOB_STATUS,
   REJECT_REASONS,
   SERVICE_TYPE_LABEL,
+  formatDate,
   formatDateTime,
   formatPostingPackage,
   isAwaitingSourcingDeposit,
+  isDeadlineExpired,
   sourcingDepositAmount,
 } from './jobDisplay';
 
@@ -156,6 +158,12 @@ const QueueItem: React.FC<{ job: Job; selected: boolean; onSelect: () => void }>
           <div className="mt-1.5 rounded bg-rose-50 px-2 py-0.5 text-[11px] text-rose-700 border border-solid border-rose-200 line-clamp-1 text-left">
             <span className="font-semibold">Lý do: </span>
             {job.statusReason}
+          </div>
+        )}
+
+        {isDeadlineExpired(job.applicationDeadline) && job.status !== 'CLOSED' && (
+          <div className="mt-1.5 rounded bg-rose-50 px-2 py-0.5 text-[11px] text-rose-700 border border-solid border-rose-200 line-clamp-1 text-left font-medium">
+            Đã hết hạn tuyển dụng (Hạn nộp: {formatDate(job.applicationDeadline)})
           </div>
         )}
       </button>
