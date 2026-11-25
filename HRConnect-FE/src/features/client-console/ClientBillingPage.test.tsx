@@ -470,4 +470,67 @@ describe('ClientBillingPage', () => {
     expect(screen.getByText('4 khoản phí')).toBeInTheDocument();
     expect(screen.queryByText('Quá hạn 7 ngày')).toBeNull();
   });
+
+  it('locks deposit and posting-fee payment when an unpublished PENDING_PAYMENT job has passed its deadline, while keeping settlement payable', async () => {
+    const pastDeadline = new Date(Date.now() - 3 * 24 * 3_600_000).toISOString();
+    vi.mocked(vnPayApi.enabled).mockResolvedValue(true);
+    vi.mocked(financeApi.serviceFees).mockResolvedValue({
+      items: [
+        fee({ serviceFeeId: 'dep-exp', kind: 'DEPOSIT', jobId: 'j-ss-exp', jobTitle: 'Data Engineer Chưa Cọc', amount: 500_000, status: 'PENDING' }),
+        fee({ serviceFeeId: 'settle-ovd', kind: 'SETTLEMENT', jobId: 'j-ss-done', jobTitle: 'Data Analyst Quyết Toán', amount: 500_000, status: 'OVERDUE' }),
+      ],
+      totalCount: 2,
+      page: 1,
+      pageSize: 100,
+    } as never);
+    vi.mocked(jobsApi.getMine).mockResolvedValue([
+      {
+        jobId: 'j-ss-exp',
+        title: 'Data Engineer Chưa Cọc',
+        status: 'PENDING_PAYMENT',
+        serviceTypeCode: 'CV_SOURCING',
+        applicationDeadline: pastDeadline,
+      },
+      {
+        jobId: 'j-ap-exp',
+        title: 'Marketing Chưa Đóng Phí',
+        status: 'PENDING_PAYMENT',
+        serviceTypeCode: 'CV_APPLICATION',
+        postingFeeStatus: 'PENDING',
+        postingPackageCode: 'STANDARD',
+        applicationDeadline: pastDeadline,
+        postingFee: {
+          postingFeeId: 'pf-exp',
+          amount: 1_500_000,
+          currencyCode: 'VND',
+          status: 'PENDING',
+          paidAt: null,
+          paymentReference: null,
+          packageName: 'Gói tiêu chuẩn',
+        },
+      },
+    ] as never);
+
+    renderPage();
+
+    expect(await screen.findByText('Data Engineer Chưa Cọc')).toBeInTheDocument();
+    expect(screen.getByText('Marketing Chưa Đóng Phí')).toBeInTheDocument();
+    expect(screen.getByText('Data Analyst Quyết Toán')).toBeInTheDocument();
+
+    // Settlement remains payable even when overdue
+    expect(screen.getByRole('button', { name: 'Thanh toán: Quyết toán theo CV · Data Analyst Quyết Toán' })).toBeInTheDocument();
+
+    // Unpublished expired deposit & posting fee are locked
+    const lockDepositBtn = screen.getByRole('button', { name: 'Đã khóa thanh toán: Đặt cọc · Data Engineer Chưa Cọc' });
+    expect(screen.getByRole('button', { name: /Đã khóa thanh toán: Gói đăng tin.*Marketing Chưa Đóng Phí/i })).toBeInTheDocument();
+
+    fireEvent.click(lockDepositBtn);
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Đã khóa thanh toán khoản phí')).toBeInTheDocument();
+    expect(within(dialog).getByText('Không thu phí')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: /Đăng tin mới/i })).toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: /Đã khóa thanh toán/i })).not.toBeInTheDocument();
+    expect(within(dialog).queryByText('Thông tin chuyển khoản ngân hàng')).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: /Thanh toán qua VNPay/i })).not.toBeInTheDocument();
+  });
 });

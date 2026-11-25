@@ -48,6 +48,7 @@ public sealed class VnPayPaymentCommandHandlers(
     IRequestHandler<ConfirmVnPayPaymentCommand, VnPayConfirmResult>
 {
     private static readonly TimeSpan ProcessingClaimTimeout = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan VietnamOffset = TimeSpan.FromHours(7);
 
     public async Task<VnPayPaymentLinkResponse> Handle(CreateVnPayPaymentCommand request, CancellationToken cancellationToken)
     {
@@ -250,6 +251,7 @@ public sealed class VnPayPaymentCommandHandlers(
     private async Task<(decimal Amount, string Currency, string OrderInfo)> ResolvePayableAsync(
         string targetType, Guid targetId, Guid companyId, CancellationToken cancellationToken)
     {
+        var nowUtc = DateTime.UtcNow;
         if (targetType == OnlinePaymentTargets.ServiceFee)
         {
             var fee = await finance.GetServiceFeeForUpdateAsync(targetId, cancellationToken);
@@ -264,6 +266,17 @@ public sealed class VnPayPaymentCommandHandlers(
             if (fee.Placement?.Reconciliation is { Status: not PlacementReconciliationStates.Confirmed })
             {
                 throw new ConflictException("Phí đang chờ HR Connect đối soát, chưa thanh toán được.", "FEE_NOT_PAYABLE");
+            }
+            if (fee.Kind == ServiceFeeKinds.Deposit && fee.JobId is Guid depositJobId)
+            {
+                var depositJob = fee.Job ?? await jobs.GetByIdAsync(depositJobId, cancellationToken);
+                if (depositJob is { Status: JobStatuses.PendingPayment }
+                    && IsApplicationDeadlineExpired(depositJob.ApplicationDeadline, nowUtc))
+                {
+                    throw new ConflictException(
+                        "Tin tuyển dụng chưa phát hành nhưng đã quá hạn nhận hồ sơ nên không thể đặt cọc.",
+                        "JOB_DEADLINE_EXPIRED");
+                }
             }
             return (fee.Amount, fee.CurrencyCode, "Thanh toan phi dich vu");
         }
@@ -280,10 +293,29 @@ public sealed class VnPayPaymentCommandHandlers(
             {
                 throw new ConflictException("Phí đăng tin này không ở trạng thái cần thanh toán.", "FEE_NOT_PAYABLE");
             }
+            if (job.Status == JobStatuses.PendingPayment
+                && IsApplicationDeadlineExpired(job.ApplicationDeadline, nowUtc))
+            {
+                throw new ConflictException(
+                    "Tin tuyển dụng chưa phát hành nhưng đã quá hạn nhận hồ sơ nên không thể thanh toán phí gói đăng tin.",
+                    "JOB_DEADLINE_EXPIRED");
+            }
             return (postingFee.Amount, postingFee.CurrencyCode, "Thanh toan phi dang tin");
         }
 
         throw new BadRequestException("Loại khoản thanh toán không hợp lệ.");
+    }
+
+    private static bool IsApplicationDeadlineExpired(DateTime? deadline, DateTime nowUtc)
+    {
+        if (!deadline.HasValue) return false;
+        var utc = JobDates.ToUtc(deadline)!.Value;
+        var vnLocal = utc + VietnamOffset;
+        var endOfVnDayUtc = DateTime.SpecifyKind(
+            new DateTime(vnLocal.Year, vnLocal.Month, vnLocal.Day, 23, 59, 59, 999, DateTimeKind.Unspecified) - VietnamOffset,
+            DateTimeKind.Utc);
+        var effectiveDeadlineUtc = utc > endOfVnDayUtc ? utc : endOfVnDayUtc;
+        return effectiveDeadlineUtc < nowUtc;
     }
 
     private string CreatePaymentUrl(OnlinePayment payment, string orderInfo, string clientIp)

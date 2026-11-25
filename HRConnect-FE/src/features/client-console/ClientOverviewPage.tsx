@@ -39,7 +39,7 @@ import { money } from '@/features/finance-mf05/financeLabels';
 import { useMyJobs } from '@/features/jobs-mf01/useJobQueries';
 import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
-import { JOB_STATUS, SERVICE_TYPE_LABEL, formatSalary, isDeadlineExpired } from '@/features/jobs-mf01/jobDisplay';
+import { JOB_STATUS, SERVICE_TYPE_LABEL, formatSalary, isDeadlineExpired, isDeadlineExpiringSoon, isUnpublishedAwaitingPayment } from '@/features/jobs-mf01/jobDisplay';
 import type { ServiceTypeCode } from '@/types/api/jobs';
 
 dayjs.extend(relativeTimePlugin);
@@ -134,6 +134,17 @@ export const ClientOverviewPage: React.FC = () => {
 
   const list = jobs.data ?? [];
   const activeJobs = list.filter((j) => j.status === 'ACTIVE');
+
+  const expiringUnpublishedJobs = React.useMemo(() => {
+    const rows = jobs.data ?? [];
+    return rows
+      .filter((j) => isUnpublishedAwaitingPayment(j) && isDeadlineExpiringSoon(j.applicationDeadline, 1))
+      .sort((a, b) => {
+        const da = new Date(a.applicationDeadline ?? a.updatedAt).getTime();
+        const db = new Date(b.applicationDeadline ?? b.updatedAt).getTime();
+        return da - db;
+      });
+  }, [jobs.data]);
 
   const expiredNoticeJobs = React.useMemo(() => {
     const rows = jobs.data ?? [];
@@ -295,6 +306,85 @@ export const ClientOverviewPage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* ── 1a. Thông báo tin chưa phát hành sắp hết hạn trước 1 ngày (Mẫu thẻ lịch hẹn / Meeting) ── */}
+      {expiringUnpublishedJobs.length > 0 && (
+        <section
+          aria-label="Thông báo tin chưa phát hành sắp hết hạn"
+          className="rounded-3xl border border-amber-200/80 bg-white p-6 shadow-[0_2px_12px_rgba(15,23,42,0.03)]"
+        >
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="m-0 text-base font-bold text-slate-900">
+                Tin chờ phát hành sắp hết hạn nhận hồ sơ
+              </h2>
+              <span className="inline-flex h-5 items-center rounded-full bg-amber-50 px-2.5 text-[11px] font-bold text-amber-700 border border-amber-200/70">
+                {expiringUnpublishedJobs.length} tin sắp hết hạn
+              </span>
+            </div>
+            <Button
+              type="link"
+              className="!px-0 text-xs font-bold text-[#0284C7] hover:text-[#0369A1]"
+              onClick={() => navigate('/client/jobs?status=PENDING_PAYMENT')}
+            >
+              Xem tin chờ thanh toán <ArrowRightOutlined className="text-xs" />
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {expiringUnpublishedJobs.slice(0, 6).map((job) => {
+              const expDate = job.applicationDeadline;
+              const isSourcing = job.serviceTypeCode === 'CV_SOURCING';
+              const isToday = expDate ? dayjs(expDate).isSame(dayjs(), 'day') : false;
+              const serviceLabel = job.serviceTypeCode
+                ? SERVICE_TYPE_LABEL[job.serviceTypeCode as ServiceTypeCode]?.label
+                : null;
+
+              return (
+                <div
+                  key={job.jobId}
+                  onClick={() => navigate(`/client/jobs?highlight=${job.jobId}&openPayment=true`)}
+                  className="group flex cursor-pointer items-center gap-3.5 rounded-2xl border border-amber-200/70 bg-amber-50/40 p-3.5 transition-all hover:border-amber-300 hover:bg-amber-50/70 hover:shadow-2xs"
+                >
+                  {/* Date badge (giống mẫu thông báo cuộc meeting) */}
+                  <div className="flex w-12 shrink-0 flex-col items-center rounded-xl border border-amber-200 bg-white py-1.5 shadow-2xs">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700">
+                      {expDate ? dayjs(expDate).format('MMM') : '—'}
+                    </span>
+                    <span className="text-lg font-black leading-tight text-slate-900">
+                      {expDate ? dayjs(expDate).format('DD') : '—'}
+                    </span>
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-sm font-bold text-slate-900 group-hover:text-[#0284C7] transition-colors">
+                        {job.title || 'Vị trí chưa đặt tên'}
+                      </span>
+                      <span className="shrink-0 rounded bg-amber-100/80 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-300/60">
+                        {isSourcing ? 'Chờ đặt cọc' : 'Chờ phí gói'}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center gap-2 text-xs text-slate-600">
+                      <span className="flex items-center gap-1 font-semibold text-amber-800 shrink-0">
+                        <ClockCircleOutlined className="text-amber-600" />
+                        {expDate ? dayjs(expDate).format('DD/MM/YYYY') : '—'}
+                      </span>
+                      <span>·</span>
+                      <span className="truncate font-medium text-amber-700">
+                        {isToday ? 'Hết hạn hôm nay' : 'Còn 1 ngày'}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 truncate text-xs text-slate-500">
+                      {serviceLabel ?? 'Tin tuyển dụng'} · Nhấn để {isSourcing ? 'đặt cọc ngay' : 'thanh toán ngay'}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* ── 1b. Thông báo tin tuyển dụng hết hạn (Mẫu thẻ lịch hẹn / Meeting) ── */}
       {expiredNoticeJobs.length > 0 && (

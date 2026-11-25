@@ -14,7 +14,7 @@ import { a11yItemRender } from '@/components/common/paginationA11y';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { ReloadOutlined } from '@ant-design/icons';
+import { LockOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { financeApi } from '@/services/api/financeApi';
 import { jobsApi } from '@/services/api/jobsApi';
@@ -22,7 +22,7 @@ import { getApiErrorMessage } from '@/services/apiClient';
 import type { ServiceFee, ServiceFeeKind, ServiceFeeStatus } from '@/types/api/finance';
 import type { ServiceTypeCode } from '@/types/api/jobs';
 import { FilterPills, StatusDot, Surface, type Tone } from '@/features/admin-console/ui';
-import { SERVICE_TYPE_LABEL } from '@/features/jobs-mf01/jobDisplay';
+import { isDeadlineExpired, SERVICE_TYPE_LABEL } from '@/features/jobs-mf01/jobDisplay';
 import { SERVICE_FEE_KIND, SERVICE_FEE_STATUS, labelOf, money, OWED_FEE_STATUS, isOwedToClient } from '@/features/finance-mf05/financeLabels';
 import { depositTransferNote, serviceFeeTransferNote, transferNote } from '@/features/finance-mf05/platformBankAccount';
 import { BillingPaymentModal } from './BillingPaymentModal';
@@ -156,10 +156,10 @@ const useBillingRows = () => {
         packageName: string | null;
         createdAt?: string | null;
       };
-      const fees: Array<{ job: (typeof paidPackageJobs)[number]; fee: Fee | null | undefined }> = paidPackageJobs.map(
+      const items: Array<{ job: (typeof paidPackageJobs)[number]; fee: Fee | null | undefined }> = paidPackageJobs.map(
         (j) => ({ job: j, fee: j.postingFee })
       );
-      const missing = fees.filter((f) => f.fee === undefined);
+      const missing = items.filter((f) => f.fee === undefined);
       for (let i = 0; i < missing.length; i += 4) {
         await Promise.all(
           missing.slice(i, i + 4).map(async (f) => {
@@ -167,11 +167,15 @@ const useBillingRows = () => {
           })
         );
       }
-      return fees.filter((f): f is { job: (typeof paidPackageJobs)[number]; fee: Fee } => !!f.fee && f.fee.amount > 0);
+      return {
+        allJobs: jobs,
+        items: items.filter((f): f is { job: (typeof paidPackageJobs)[number]; fee: Fee } => !!f.fee && f.fee.amount > 0),
+      };
     },
   });
 
   const rows = useMemo<BillingRow[]>(() => {
+    const jobById = new Map((postingFees.data?.allJobs ?? []).map((j) => [j.jobId, j]));
     const serviceRows: BillingRow[] = (fees.data?.items ?? []).map((f) => {
       const kind: ServiceFeeKind = f.kind ?? 'PLACEMENT';
       const owed = isOwedToClient(kind);
@@ -184,6 +188,14 @@ const useBillingRows = () => {
       const bucket: Bucket = owed ? 'OTHER' : bucketOf(f.status);
       const awaitingConfirm = !owed && f.status !== 'PAID' && f.status !== 'CANCELLED' && Boolean(f.paymentSubmittedAt);
       const vnpayPending = !owed && f.status !== 'PAID' && f.status !== 'CANCELLED' && Boolean(f.pendingOnlinePayment);
+      const relatedJob = kind === 'DEPOSIT' && f.jobId ? jobById.get(f.jobId) : undefined;
+      const blockedByExpiredJob =
+        !owed &&
+        f.status !== 'PAID' &&
+        f.status !== 'CANCELLED' &&
+        kind === 'DEPOSIT' &&
+        relatedJob?.status === 'PENDING_PAYMENT' &&
+        isDeadlineExpired(relatedJob.applicationDeadline);
       return {
         key: `fee-${f.serviceFeeId}`,
         service: resolveServiceType(f.serviceTypeCode, SERVICE_OF_KIND[kind]),
@@ -201,7 +213,7 @@ const useBillingRows = () => {
         paidAt: f.paidAt ?? null,
         paymentReference: f.paymentReference ?? null,
         transferNote: kind === 'DEPOSIT' && f.jobId ? depositTransferNote(f.jobId) : serviceFeeTransferNote(f.serviceFeeId),
-        payable: !reconciling && !awaitingConfirm && !vnpayPending && (bucket === 'UNPAID' || bucket === 'OVERDUE'),
+        payable: !reconciling && !awaitingConfirm && !vnpayPending && !blockedByExpiredJob && (bucket === 'UNPAID' || bucket === 'OVERDUE'),
         payTarget: { type: 'SERVICE_FEE', id: f.serviceFeeId },
         breakdown: feeBreakdown(f),
         sourcingProgress: f.sourcingTarget && f.sourcingTarget > 0
@@ -215,11 +227,17 @@ const useBillingRows = () => {
         daysOverdue: f.daysOverdue ?? null,
         paymentSubmittedAt: f.paymentSubmittedAt ?? null,
         pendingOnlinePayment: f.pendingOnlinePayment ?? false,
+        blockedByExpiredJob,
+        applicationDeadline: relatedJob?.applicationDeadline ?? null,
       };
     });
-    const postingRows: BillingRow[] = (postingFees.data ?? []).map(({ job, fee }) => {
+    const postingRows: BillingRow[] = (postingFees.data?.items ?? []).map(({ job, fee }) => {
       const st = POSTING_STATUS[fee!.status];
       const bucket = bucketOf(fee!.status);
+      const blockedByExpiredJob =
+        fee!.status === 'PENDING' &&
+        job.status === 'PENDING_PAYMENT' &&
+        isDeadlineExpired(job.applicationDeadline);
       return {
         key: `posting-${fee!.postingFeeId}`,
         service: 'CV_APPLICATION',
@@ -235,11 +253,13 @@ const useBillingRows = () => {
         paidAt: fee!.paidAt,
         paymentReference: fee!.paymentReference,
         transferNote: transferNote(job.jobId),
-        payable: bucket === 'UNPAID',
+        payable: bucket === 'UNPAID' && !blockedByExpiredJob,
         payTarget: { type: 'POSTING_FEE', id: job.jobId },
         breakdown: [{ label: 'Gói đăng tin', value: fee!.packageName ?? '—' }],
         createdAt: fee!.createdAt ?? null,
         cancelled: fee!.status === 'CANCELLED',
+        blockedByExpiredJob,
+        applicationDeadline: job.applicationDeadline ?? null,
       };
     });
     return [...serviceRows, ...postingRows].sort((a, b) => {
@@ -530,7 +550,9 @@ export const ClientBillingPage: React.FC = () => {
             : null;
         return (
           <div className="py-1 space-y-0.5 text-left">
-            <StatusDot tone={r.tone}>{r.statusLabel}</StatusDot>
+            <StatusDot tone={r.blockedByExpiredJob ? 'danger' : r.tone}>
+              {r.blockedByExpiredJob ? 'Quá hạn nhận hồ sơ' : r.statusLabel}
+            </StatusDot>
             {reconcileHint && <div className="pl-3.5 text-[11.5px] leading-snug text-sky-700">{reconcileHint}</div>}
             {!r.paidAt && !r.cancelled && r.paymentSubmittedAt && (
               <div className="pl-3.5 text-[11.5px] font-medium leading-snug text-sky-700">
@@ -573,6 +595,18 @@ export const ClientBillingPage: React.FC = () => {
               >
                 Thanh toán
               </Button>
+            ) : r.blockedByExpiredJob ? (
+              <Tooltip title="Tin chưa phát hành nhưng đã quá hạn nhận hồ sơ — đã khóa thanh toán">
+                <Button
+                  size="small"
+                  icon={<LockOutlined />}
+                  className="!border-rose-200 !bg-rose-50 !text-rose-700 hover:!border-rose-300 w-[100px] !h-8 text-xs font-semibold rounded-lg"
+                  onClick={() => setPaying(r)}
+                  aria-label={`Đã khóa thanh toán: ${r.item} · ${r.jobTitle}`}
+                >
+                  Đã khóa
+                </Button>
+              </Tooltip>
             ) : blockedByVnpay ? (
               <Tooltip title="Đang có giao dịch VNPay chờ kết quả xác nhận">
                 <span className="inline-block w-[110px] text-center text-amber-700 text-[11.5px] font-medium">VNPay chờ XL</span>
