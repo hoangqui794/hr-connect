@@ -5,7 +5,7 @@
  */
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App as AntApp, Pagination, Skeleton } from 'antd';
+import { Alert, App as AntApp, Pagination, Skeleton, Switch } from 'antd';
 import { FilePdfOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -279,6 +279,29 @@ export const CandidateAffiliateCvDetailPage: React.FC = () => {
     onError: (error) => message.error(getApiErrorMessage(error, 'Chưa thể nhận CV vào kho cá nhân.')),
   });
 
+  const updateReuse = useMutation({
+    mutationFn: (allowed: boolean) => {
+      if (!detail.data) throw new Error('Thiếu thông tin CV.');
+      return candidateAffiliateCvApi.updateReuse(cvId, allowed, detail.data.reuseConcurrencyToken);
+    },
+    onSuccess: async (result) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: candidateAffiliateCvKeys.detail(cvId) }),
+        queryClient.invalidateQueries({ queryKey: ['candidate-affiliate-cvs'] }),
+      ]);
+      message.success(
+        result.message ||
+          (result.data.affiliateReuseStatus === 'ALLOWED'
+            ? 'Đã cho phép đối tác dùng lại CV này cho các lần giới thiệu sau.'
+            : 'Đã tắt quyền dùng lại CV này đối với đối tác.')
+      );
+    },
+    onError: (error) => {
+      queryClient.invalidateQueries({ queryKey: candidateAffiliateCvKeys.detail(cvId) });
+      message.error(getApiErrorMessage(error, 'Chưa thể cập nhật quyền dùng lại CV.'));
+    },
+  });
+
   const backLink = (
     <Link
       to="/candidate/affiliate-cvs"
@@ -413,6 +436,42 @@ export const CandidateAffiliateCvDetailPage: React.FC = () => {
                 {alreadyInVault ? 'Đã có trong kho của bạn' : 'Chưa có trong kho của bạn'}
               </dd>
             </dl>
+          </section>
+
+          <section aria-labelledby="cv-reuse-heading" className={`${CARD} p-5`}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 id="cv-reuse-heading" className="m-0 text-[16px] font-bold text-[#1F2937]">
+                  Quyền dùng lại CV
+                </h2>
+                <p className="m-0 mt-1 text-[13px] leading-relaxed text-[#4B5563]">
+                  Cho phép <strong>{cv.affiliateDisplayName}</strong> dùng lại bản CV này để giới thiệu bạn vào các vị
+                  trí khác (vẫn cần bạn xác nhận từng lần nộp).
+                </p>
+              </div>
+              <Switch
+                aria-label="Cho phép đối tác dùng lại CV này"
+                checked={cv.affiliateReuseStatus === 'ALLOWED'}
+                loading={updateReuse.isPending}
+                disabled={cv.affiliateReuseStatus !== 'ALLOWED' && cv.acceptedSubmissionCount === 0}
+                onChange={(checked) => updateReuse.mutate(checked)}
+              />
+            </div>
+            <div className="mt-3 text-[12px] font-medium text-[#374151]">
+              Trạng thái:{' '}
+              {cv.affiliateReuseStatus === 'ALLOWED' ? (
+                <span className="text-emerald-700">Đang cho phép dùng lại</span>
+              ) : cv.affiliateReuseStatus === 'REVOKED' ? (
+                <span className="text-rose-700">Đã thu hồi quyền dùng lại</span>
+              ) : (
+                <span className="text-[#6B7280]">Chưa cấp quyền dùng lại</span>
+              )}
+            </div>
+            {cv.affiliateReuseStatus !== 'ALLOWED' && cv.acceptedSubmissionCount === 0 && (
+              <p className="m-0 mt-1.5 text-[12px] text-[#6B7280]">
+                Chỉ có thể bật sau khi bạn đã đồng ý ít nhất một lời giới thiệu sử dụng CV này.
+              </p>
+            )}
           </section>
 
           <section aria-labelledby="cv-keep-heading" className={`${CARD} p-5`}>

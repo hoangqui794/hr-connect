@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { App as AntApp } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CandidateAffiliateCvsPage } from './CandidateAffiliateCvsPage';
+import { CandidateAffiliateCvDetailPage, CandidateAffiliateCvsPage } from './CandidateAffiliateCvsPage';
 import { candidateAffiliateCvApi } from '@/services/api/mf02Api';
 import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
@@ -13,7 +14,10 @@ vi.mock('@/services/api/mf02Api', () => ({
   },
   candidateAffiliateCvApi: {
     list: vi.fn(),
+    detail: vi.fn(),
+    downloadUrl: vi.fn().mockResolvedValue({ downloadUrl: 'https://example.com/cv.pdf', expiresAt: '2026-10-09T00:00:00Z' }),
     usages: vi.fn().mockResolvedValue({ items: [], page: 1, pageSize: 1, total: 0, totalPages: 0 }),
+    updateReuse: vi.fn(),
   },
 }));
 
@@ -108,5 +112,60 @@ describe('CandidateAffiliateCvsPage', () => {
 
     const jobLink = await screen.findByRole('link', { name: /Mobile Engineering Lead – Lotus Commerce/ });
     expect(jobLink).toHaveAttribute('href', '/candidate/submission-consents/sub-456');
+  });
+
+  it('toggles affiliate CV reuse permission from detail page', async () => {
+    vi.mocked(candidateAffiliateCvApi.detail).mockResolvedValue({
+      cvId: 'cv-1',
+      title: 'CV Backend',
+      fileName: 'backend.pdf',
+      mimeType: 'application/pdf',
+      fileSizeBytes: 2048,
+      documentStatus: 'ACTIVE',
+      affiliateReuseStatus: 'ALLOWED',
+      reuseConcurrencyToken: 'token-1',
+      reuseChangedAt: null,
+      affiliateUserId: 'affiliate-user',
+      affiliateDisplayName: 'Affiliate Minh',
+      submissionCount: 2,
+      pendingConsentCount: 0,
+      acceptedSubmissionCount: 2,
+      declinedSubmissionCount: 0,
+      expiredSubmissionCount: 0,
+      lastSubmittedAt: '2026-10-08T00:00:00Z',
+      createdAt: '2026-10-01T00:00:00Z',
+      updatedAt: '2026-10-08T00:00:00Z',
+    });
+    vi.mocked(candidateAffiliateCvApi.updateReuse).mockResolvedValue({
+      success: true,
+      message: 'Đã tắt quyền dùng lại CV.',
+      data: {
+        cvId: 'cv-1',
+        affiliateReuseStatus: 'REVOKED',
+        reuseConcurrencyToken: 'token-2',
+        reuseChangedAt: '2026-10-09T00:00:00Z',
+      },
+    });
+
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <AntApp>
+        <QueryClientProvider client={client}>
+          <MemoryRouter initialEntries={['/candidate/affiliate-cvs/cv-1']}>
+            <Routes>
+              <Route path="/candidate/affiliate-cvs/:cvId" element={<CandidateAffiliateCvDetailPage />} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>
+      </AntApp>
+    );
+
+    const toggle = await screen.findByRole('switch', { name: 'Cho phép đối tác dùng lại CV này' });
+    expect(toggle).toBeChecked();
+    fireEvent.click(toggle);
+
+    await waitFor(() =>
+      expect(candidateAffiliateCvApi.updateReuse).toHaveBeenCalledWith('cv-1', false, 'token-1')
+    );
   });
 });
