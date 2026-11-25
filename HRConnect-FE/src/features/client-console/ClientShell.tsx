@@ -179,13 +179,6 @@ export const ClientShell: React.FC = () => {
           </ul>
         </nav>
 
-        {!collapsed && (
-          <div className="border-0 border-t border-solid border-slate-100 px-4 py-3">
-            <div className="text-xs font-semibold text-slate-800">HR Connect là nền tảng</div>
-            <div className="mt-1 text-xs leading-relaxed text-slate-600">Ứng viên tự nộp hoặc Affiliate giới thiệu; HR Connect sàng lọc theo dịch vụ bạn chọn.</div>
-          </div>
-        )}
-
         {!compact && (
           <button
             type="button"

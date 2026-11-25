@@ -25,7 +25,6 @@ import {
   UserAddOutlined,
   UserOutlined,
   KeyOutlined,
-  QuestionCircleOutlined,
 } from '@ant-design/icons';
 import { TrophyOutlined, SolutionOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/authStore';
@@ -195,15 +194,6 @@ export const AffiliateShell: React.FC = () => {
             ))}
           </ul>
         </nav>
-
-        {!collapsed && (
-          <div className="affiliate-sidebar-footer px-4 py-3">
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-800">
-              <QuestionCircleOutlined aria-hidden /> Cần hỗ trợ?
-            </div>
-            <div className="mt-1 text-xs leading-relaxed text-slate-600">Xem hướng dẫn tại từng màn hình hoặc liên hệ bộ phận vận hành HR Connect.</div>
-          </div>
-        )}
 
         {!compact && (
         <button
