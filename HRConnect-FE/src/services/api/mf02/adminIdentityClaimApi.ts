@@ -1,6 +1,11 @@
 import { apiClient } from '../../apiClient';
 import type { ApiEnvelope, Paged } from '@/types/api/admin';
 import type {
+  AdminCandidateDuplicateDetail,
+  AdminCandidateDuplicateListParams,
+  AdminCandidateDuplicateListResponse,
+  AdminCandidateDuplicateResolvePayload,
+  AdminCandidateDuplicateResolveResult,
   AdminIdentityClaimDecisionResult,
   AdminIdentityClaimCvDownloadUrl,
   AdminIdentityClaimDetail,
@@ -47,10 +52,40 @@ export const adminIdentityClaimApi = {
       )
     ).data;
   },
+  /** GET /admin/candidate-duplicate-cases — requires candidate_duplicate.view. */
+  async listDuplicateCases(
+    params: AdminCandidateDuplicateListParams
+  ): Promise<AdminCandidateDuplicateListResponse> {
+    return (
+      await apiClient.get<AdminCandidateDuplicateListResponse>('/admin/candidate-duplicate-cases', {
+        params: cleanParams(params),
+      })
+    ).data;
+  },
+  /** GET /admin/candidate-duplicate-cases/:caseId — requires candidate_duplicate.view. */
+  async getDuplicateCase(caseId: string): Promise<AdminCandidateDuplicateDetail> {
+    return (
+      await apiClient.get<AdminCandidateDuplicateDetail>(
+        `/admin/candidate-duplicate-cases/${caseId}`
+      )
+    ).data;
+  },
   async previewMerge(caseId: string): Promise<CandidateMergePreview> {
     return (
       await apiClient.post<CandidateMergePreview>(
         `/admin/candidate-duplicate-cases/${caseId}/preview-merge`
+      )
+    ).data;
+  },
+  /** POST /admin/candidate-duplicate-cases/:caseId/resolve — requires candidate_duplicate.resolve. */
+  async resolveDuplicateCase(
+    caseId: string,
+    payload: AdminCandidateDuplicateResolvePayload
+  ): Promise<AdminCandidateDuplicateResolveResult> {
+    return (
+      await apiClient.post<AdminCandidateDuplicateResolveResult>(
+        `/admin/candidate-duplicate-cases/${caseId}/resolve`,
+        payload
       )
     ).data;
   },
