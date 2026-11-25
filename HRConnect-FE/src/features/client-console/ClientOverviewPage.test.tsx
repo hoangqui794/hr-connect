@@ -201,4 +201,38 @@ describe('ClientOverviewPage', () => {
     expect(jobs.lastEnabled).toBe(false);
     expect(financeApi.clientDashboardSummary).not.toHaveBeenCalled();
   });
+
+  it('notifies about expired and overdue jobs on the overview page using the meeting card template', async () => {
+    const day = 24 * 3_600_000;
+    jobs.data = [
+      {
+        jobId: 'j-exp-display',
+        title: 'Nhân viên Hành chính',
+        status: 'CLOSED',
+        expiresAt: new Date(Date.now() - day).toISOString(),
+        updatedAt: new Date(Date.now() - day).toISOString(),
+        serviceTypeCode: 'CV_APPLICATION',
+        location: 'Đồng Nai',
+      },
+      {
+        jobId: 'j-exp-deadline',
+        title: 'Giám Sát Công Trình',
+        status: 'ACTIVE',
+        applicationDeadline: '2026-11-07T00:00:00Z',
+        updatedAt: new Date().toISOString(),
+        serviceTypeCode: 'CV_APPLICATION',
+        location: 'TP. Hồ Chí Minh',
+      },
+    ];
+
+    renderPage();
+
+    expect(await screen.findByText('Thông báo tin tuyển dụng hết hạn')).toBeInTheDocument();
+    expect(screen.getByText('2 tin cần chú ý')).toBeInTheDocument();
+    expect(screen.getByText('Hết hạn hiển thị')).toBeInTheDocument();
+    expect(screen.getByText('Quá hạn nộp')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Nhân viên Hành chính'));
+    expect(mockNavigate).toHaveBeenCalledWith('/client/jobs?highlight=j-exp-display&openDetail=true');
+  });
 });

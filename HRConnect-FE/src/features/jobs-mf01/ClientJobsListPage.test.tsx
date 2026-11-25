@@ -124,7 +124,7 @@ describe('ClientJobsListPage', () => {
     expect(uncapped.querySelector('[style*="width"]')).toBeNull();
   });
 
-  it('only warns about jobs that expired recently', async () => {
+  it('renders recently expired and older expired closed jobs in the list without top banner clutter', async () => {
     const day = 24 * 3_600_000;
     jobs.data = [
       job({ title: 'Hết hạn hôm qua', status: 'CLOSED', expiresAt: new Date(Date.now() - day).toISOString() }),
@@ -132,7 +132,8 @@ describe('ClientJobsListPage', () => {
     ];
     renderPage();
 
-    expect(await screen.findByText('Bạn có 1 tin tuyển dụng đã hết hạn hiển thị')).toBeInTheDocument();
+    expect(await screen.findByText('Hết hạn hôm qua')).toBeInTheDocument();
+    expect(screen.getByText('Hết hạn năm ngoái')).toBeInTheDocument();
   });
 
   it('shows when a job was sent for review, and the issued deposit with its due date', async () => {
@@ -261,8 +262,13 @@ it('opens close modal with tailored description and filtered reasons for PENDING
   });
 
   it('paginates jobs in grid view when total count exceeds 9 items', async () => {
+    const baseTime = Date.now();
     jobs.data = Array.from({ length: 11 }, (_, i) =>
-      job({ jobId: `job-${i + 1}`, title: `Vị trí tuyển dụng số ${i + 1}` })
+      job({
+        jobId: `job-${i + 1}`,
+        title: `Vị trí tuyển dụng số ${i + 1}`,
+        updatedAt: new Date(baseTime - i * 1000).toISOString(),
+      })
     );
 
     renderPage();
@@ -273,5 +279,27 @@ it('opens close modal with tailored description and filtered reasons for PENDING
     expect(screen.queryByText('Vị trí tuyển dụng số 10')).toBeNull();
 
     expect(screen.getByText('Hiển thị 1 - 9 trong tổng số 11 tin')).toBeInTheDocument();
+  });
+
+  it('shows overdue recruitment deadline alert, card callout and tag when applicationDeadline has passed', async () => {
+    jobs.data = [
+      job({
+        jobId: 'job-overdue-pay',
+        title: 'Chuyên viên Digital Marketing',
+        status: 'PENDING_PAYMENT',
+        applicationDeadline: '2026-11-07T00:00:00Z',
+      }),
+      job({
+        jobId: 'job-overdue-active',
+        title: 'Chuyên viên Tuyển dụng',
+        status: 'ACTIVE',
+        applicationDeadline: '2026-10-31T00:00:00Z',
+      }),
+    ];
+
+    renderPage();
+
+    expect((await screen.findAllByText('Đã hết hạn tuyển dụng')).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('(Đã hết hạn)').length).toBeGreaterThanOrEqual(2);
   });
 });

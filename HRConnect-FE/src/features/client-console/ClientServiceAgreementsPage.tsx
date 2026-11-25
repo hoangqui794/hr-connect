@@ -1585,6 +1585,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
           isDeposit={isAwaitingDeposit}
           depositAmount={depositAmount}
           serviceTypeCode={activeJob.serviceTypeCode}
+          applicationDeadline={activeJob.applicationDeadline}
           onClose={() => setPaymentModalOpen(false)}
           onPaymentSuccess={async () => {
             setPaymentModalOpen(false);

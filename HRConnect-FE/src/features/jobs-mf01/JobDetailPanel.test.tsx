@@ -154,4 +154,23 @@ describe('JobDetailPanel sourcing deliveries (MF-03 UC-45)', () => {
     renderPanel({ ...sourcingJob, status: 'PENDING_REVIEW', sourcingCounted: 0 } as Job, true);
     expect(screen.queryByRole('button', { name: /hồ sơ được tìm kiếm/i })).not.toBeInTheDocument();
   });
+
+  it('displays overdue recruitment deadline alert and red deadline status when applicationDeadline has passed', () => {
+    useAuthStore.setState({ role: UserRole.CLIENT });
+    renderPanel(
+      {
+        ...sourcingJob,
+        title: 'Chuyên viên Digital Marketing',
+        status: 'PENDING_PAYMENT',
+        applicationDeadline: '2026-11-07T00:00:00Z',
+      } as Job,
+      false
+    );
+
+    expect(screen.getByText('Đã hết hạn tuyển dụng')).toBeInTheDocument();
+    expect(
+      screen.getByText('Đã hết hạn tuyển dụng (Hạn nộp: 07/11/2026)')
+    ).toBeInTheDocument();
+    expect(screen.getByText('07/11/2026 (Đã hết hạn)')).toBeInTheDocument();
+  });
 });

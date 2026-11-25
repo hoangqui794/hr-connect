@@ -50,6 +50,7 @@ import {
   formatSalary,
   formatHeadcount,
   isAwaitingSourcingDeposit,
+  isDeadlineExpired,
   sourcingDepositAmount,
 } from './jobDisplay';
 
@@ -448,6 +449,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const isExpired =
     (job.expiresAt && new Date(job.expiresAt) <= new Date()) ||
     (job.status === 'CLOSED' && Boolean(job.statusReason?.toLowerCase().includes('hết hạn')));
+  const isApplicationDeadlineExpired = isDeadlineExpired(job.applicationDeadline);
 
   return (
     <div className={`space-y-6 ${isApplicant ? 'candidate-job-detail-panel' : ''}`}>
@@ -481,6 +483,11 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           {!isApplicant && job.postingFeeStatus === 'PAID' && (
             <Tag color="success" className="m-0 font-medium">
               Đã thanh toán phí
+            </Tag>
+          )}
+          {isApplicationDeadlineExpired && job.status !== 'CLOSED' && (
+            <Tag color="error" className="m-0 font-semibold">
+              Đã hết hạn tuyển dụng
             </Tag>
           )}
         </div>
@@ -685,6 +692,24 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           />
         )}
 
+        {/* Thông báo khi hết hạn nhận hồ sơ tuyển dụng */}
+        {isApplicationDeadlineExpired && !isExpired && (
+          <Alert
+            type={job.status === 'CLOSED' ? 'info' : 'error'}
+            showIcon
+            message={`Đã hết hạn tuyển dụng (Hạn nộp: ${formatDate(job.applicationDeadline)})`}
+            description={
+              isApplicant
+                ? 'Vị trí này đã ngừng tiếp nhận hồ sơ ứng tuyển mới.'
+                : job.status === 'PENDING_PAYMENT'
+                  ? 'Tin đã quá hạn nhận hồ sơ. Bạn nên đóng tin này thay vì thanh toán.'
+                  : job.status === 'DRAFT' || job.status === 'REJECTED'
+                    ? 'Vui lòng cập nhật lại hạn nhận hồ sơ mới trước khi gửi duyệt.'
+                    : 'Tin đã ngừng nhận hồ sơ mới. Bạn có thể đóng tin hoặc đăng tin mới.'
+            }
+          />
+        )}
+
         {/* Thông báo khi hết hạn hiển thị */}
         {isExpired && (
           <Alert
@@ -823,7 +848,15 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             : []),
           // Hạn nhận hồ sơ do doanh nghiệp đặt khi tạo tin (khác hạn hiển thị của gói đăng tin).
           ...(!isApplicant && job.applicationDeadline
-            ? [{ label: 'Hạn nhận hồ sơ', value: formatDate(job.applicationDeadline) }]
+            ? [{
+              label: 'Hạn nhận hồ sơ',
+              value: (
+                <span className={isApplicationDeadlineExpired ? 'font-semibold text-red-600' : ''}>
+                  {formatDate(job.applicationDeadline)}
+                  {isApplicationDeadlineExpired ? ' (Đã hết hạn)' : ''}
+                </span>
+              ),
+            }]
             : []),
           ...(job.maxApplications ? [{ label: 'Hạn mức tiếp nhận', value: `Tối đa ${job.maxApplications} hồ sơ` }] : []),
           ...(job.sourcingTarget && job.serviceTypeCode === 'CV_SOURCING'
@@ -1023,6 +1056,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         jobTitle={job.title}
         isDeposit={awaitingDeposit}
         depositAmount={depositAmount}
+        applicationDeadline={job.applicationDeadline}
         onClose={() => setShowPaymentModal(false)}
         onPaymentSuccess={() => {
           setShowPaymentModal(false);
