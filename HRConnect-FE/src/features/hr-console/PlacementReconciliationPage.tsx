@@ -275,7 +275,7 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
           {!admin && selected.status === 'PENDING' && <div className="mt-5 flex flex-wrap gap-2">
             <Button type="primary" icon={<CheckCircleOutlined />} onClick={() => openAction('CONFIRM')}>Xác nhận đúng</Button>
             <Button danger icon={<ExclamationCircleOutlined />} onClick={() => openAction('FLAG')}>Báo không khớp</Button>
-            {selected.placementId && <Button icon={<FormOutlined />} onClick={() => navigate(`/hr/placement-review?highlight=${selected.placementId}`)}>Sửa ngày đi làm</Button>}
+            {selected.placementId && <Button icon={<FormOutlined />} onClick={() => navigate(`/hr/placement-review?highlight=${selected.placementId}`)}>Xem liên hệ &amp; sửa ngày</Button>}
           </div>}
           {admin && selected.status === 'FLAGGED' && <div className="mt-5"><Button type="primary" onClick={() => openAction()}>Ghi nhận đã xử lý</Button></div>}
         </>}

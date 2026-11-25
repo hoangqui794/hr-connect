@@ -12,13 +12,14 @@ import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { a11yItemRender } from '@/components/common/paginationA11y';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Button, Table, Tag, Tooltip } from 'antd';
+import { Alert, Button, Input, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { LockOutlined, ReloadOutlined } from '@ant-design/icons';
+import { LockOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { financeApi } from '@/services/api/financeApi';
 import { jobsApi } from '@/services/api/jobsApi';
 import { getApiErrorMessage } from '@/services/apiClient';
+import { matchesSearch } from '@/utils/searchMatch';
 import type { ServiceFee, ServiceFeeKind, ServiceFeeStatus } from '@/types/api/finance';
 import type { ServiceTypeCode } from '@/types/api/jobs';
 import { FilterPills, StatusDot, Surface, type Tone } from '@/features/admin-console/ui';
@@ -348,11 +349,12 @@ export const ClientBillingPage: React.FC = () => {
   const { rows, serviceFeeSummary, loadedServiceFees, totalServiceFees, loading, fetching, error, refetch } = useBillingRows();
   const [service, setService] = useState<ServiceFilter>('all');
   const [status, setStatus] = useState<StatusFilter>('all');
+  const [searchText, setSearchText] = useState('');
   const [page, setPage] = useState(1);
   const [paying, setPaying] = useState<BillingRow | null>(null);
 
   const byService = service === 'all' ? rows : rows.filter((r) => r.service === service);
-  const visible = (() => {
+  const byStatus = (() => {
     if (status === 'all') return byService;
     if (status === 'REFUND') {
       return byService
@@ -377,6 +379,23 @@ export const ClientBillingPage: React.FC = () => {
     }
     return byService.filter((r) => r.bucket === status || (status === 'UNPAID' && r.bucket === 'OVERDUE'));
   })();
+  const visible = useMemo(
+    () =>
+      byStatus.filter((r) =>
+        matchesSearch(
+          searchText,
+          r.jobTitle,
+          r.candidateName,
+          r.item,
+          r.paymentReference,
+          r.transferNote,
+          r.placementId,
+          r.statusLabel,
+          serviceLabel(r.service)
+        )
+      ),
+    [byStatus, searchText]
+  );
   const unpaid = rows.filter((r) => r.bucket === 'UNPAID' || r.bucket === 'OVERDUE');
   const overdue = rows.filter((r) => r.bucket === 'OVERDUE');
   const paid = rows.filter((r) => r.bucket === 'PAID');
@@ -688,21 +707,35 @@ export const ClientBillingPage: React.FC = () => {
       )}
 
       <Surface>
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 pb-3 pt-5">
-          <FilterPills<ServiceFilter>
-            label="Lọc theo dịch vụ"
-            value={service}
-            onChange={(v) => {
-              setService(v);
-              setPage(1);
-            }}
-            options={[
-              { value: 'all', label: 'Tất cả', count: rows.length },
-              { value: 'HEADHUNT_COD', label: serviceLabel('HEADHUNT_COD'), count: count('HEADHUNT_COD') },
-              { value: 'CV_SOURCING', label: serviceLabel('CV_SOURCING'), count: count('CV_SOURCING') },
-              { value: 'CV_APPLICATION', label: serviceLabel('CV_APPLICATION'), count: count('CV_APPLICATION') },
-            ]}
-          />
+        <div className="flex flex-col gap-3 px-5 pb-3 pt-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <FilterPills<ServiceFilter>
+              label="Lọc theo dịch vụ"
+              value={service}
+              onChange={(v) => {
+                setService(v);
+                setPage(1);
+              }}
+              options={[
+                { value: 'all', label: 'Tất cả', count: rows.length },
+                { value: 'HEADHUNT_COD', label: serviceLabel('HEADHUNT_COD'), count: count('HEADHUNT_COD') },
+                { value: 'CV_SOURCING', label: serviceLabel('CV_SOURCING'), count: count('CV_SOURCING') },
+                { value: 'CV_APPLICATION', label: serviceLabel('CV_APPLICATION'), count: count('CV_APPLICATION') },
+              ]}
+            />
+            <Input
+              allowClear
+              prefix={<SearchOutlined className="text-slate-400" />}
+              placeholder="Tìm tin tuyển dụng, ứng viên, khoản phí, mã GD..."
+              aria-label="Tìm kiếm công nợ và phí dịch vụ"
+              value={searchText}
+              onChange={(e) => {
+                setSearchText(e.target.value);
+                setPage(1);
+              }}
+              className="w-full sm:w-[320px] !rounded-xl"
+            />
+          </div>
           <FilterPills<StatusFilter>
             label="Lọc theo trạng thái"
             value={status}
@@ -735,7 +768,11 @@ export const ClientBillingPage: React.FC = () => {
             locale={{
               emptyText: (
                 <div className="py-10 text-slate-600">
-                  {rows.length ? 'Không có khoản phí nào khớp bộ lọc.' : 'Chưa phát sinh khoản phí nào với HR Connect.'}
+                  {searchText.trim()
+                    ? `Không tìm thấy khoản phí nào khớp với "${searchText.trim()}".`
+                    : rows.length
+                    ? 'Không có khoản phí nào khớp bộ lọc.'
+                    : 'Chưa phát sinh khoản phí nào với HR Connect.'}
                 </div>
               ),
             }}
