@@ -29,7 +29,7 @@ vi.mock('@/services/api/jobsApi', () => ({
   jobsApi: { notifyDeposit: vi.fn() },
 }));
 
-const renderModal = () =>
+const renderModal = (applicationDeadline?: string | null) =>
   render(
     <MemoryRouter>
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -38,13 +38,14 @@ const renderModal = () =>
           jobId="job-1"
           jobTitle="Kế toán Tổng hợp"
           serviceTypeCode="CV_APPLICATION"
+          applicationDeadline={applicationDeadline}
           onClose={vi.fn()}
         />
       </QueryClientProvider>
     </MemoryRouter>
   );
 
-const renderDepositModal = () =>
+const renderDepositModal = (applicationDeadline?: string | null) =>
   render(
     <MemoryRouter>
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -54,6 +55,7 @@ const renderDepositModal = () =>
           jobTitle="Lập trình viên Backend .NET"
           serviceTypeCode="CV_SOURCING"
           depositAmount={60_000_000}
+          applicationDeadline={applicationDeadline}
           onClose={vi.fn()}
         />
       </QueryClientProvider>
@@ -119,5 +121,34 @@ describe('PaymentDemoModal', () => {
       expect(vnPayApi.createPayment).toHaveBeenCalledWith('SERVICE_FEE', 'deposit-fee-1');
       expect(assign).toHaveBeenCalledWith('https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?deposit=1');
     });
+  });
+
+  it('blocks deposit payment when an unpublished CV_SOURCING job has passed its applicationDeadline', async () => {
+    const pastDeadline = new Date(Date.now() - 3 * 24 * 3_600_000).toISOString();
+    renderDepositModal(pastDeadline);
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Đã khóa đặt cọc dịch vụ')).toBeInTheDocument();
+    expect(within(dialog).getByText('Không thu phí')).toBeInTheDocument();
+    expect(within(dialog).queryByText('Đặt cọc trực tuyến qua VNPay')).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: /Đặt cọc qua VNPay/i })).not.toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: /Đăng tin mới/i })).toBeInTheDocument();
+
+    expect(vnPayApi.createPayment).not.toHaveBeenCalled();
+    expect(financeApi.serviceFees).not.toHaveBeenCalled();
+  });
+
+  it('blocks posting-fee payment when an unpublished CV_APPLICATION job has passed its applicationDeadline', async () => {
+    const pastDeadline = new Date(Date.now() - 3 * 24 * 3_600_000).toISOString();
+    renderModal(pastDeadline);
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Đã khóa thanh toán phí gói')).toBeInTheDocument();
+    expect(within(dialog).getByText('Không thu phí')).toBeInTheDocument();
+    expect(within(dialog).queryByText('Thanh toán trực tuyến qua VNPay')).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: /Thanh toán qua VNPay/i })).not.toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: /Đăng tin mới/i })).toBeInTheDocument();
+
+    expect(vnPayApi.createPayment).not.toHaveBeenCalled();
   });
 });

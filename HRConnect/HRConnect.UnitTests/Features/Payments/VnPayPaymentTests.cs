@@ -8,6 +8,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Finance.Commands.Settlement;
+using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Application.Features.Payments;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
@@ -542,5 +543,85 @@ public sealed class VnPayPaymentTests
         persisted.Status.Should().Be(OnlinePaymentStates.NeedsReview);
         persisted.ResponseCode.Should().Be("00");
         persisted.LastError.Should().Contain("PENDING");
+    }
+
+    [Fact]
+    public async Task Deposit_and_posting_fee_are_refused_when_unpublished_job_passed_application_deadline()
+    {
+        var h = new Harness();
+        var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var depositFeeId = Guid.NewGuid();
+        var sourcingJobId = Guid.NewGuid();
+        var postingJobId = Guid.NewGuid();
+        var settlementFeeId = Guid.NewGuid();
+        var pastDeadline = DateTime.UtcNow.AddDays(-3);
+
+        h.CompanyUsers.Setup(c => c.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
+
+        h.Finance.Setup(f => f.GetServiceFeeForUpdateAsync(depositFeeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ServiceFee
+            {
+                ServiceFeeId = depositFeeId,
+                Kind = ServiceFeeKinds.Deposit,
+                JobId = sourcingJobId,
+                CompanyId = companyId,
+                Amount = 500_000,
+                CurrencyCode = "VND",
+                Status = ServiceFeeStates.Pending,
+            });
+        h.Jobs.Setup(j => j.GetByIdAsync(sourcingJobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Job
+            {
+                JobId = sourcingJobId,
+                CompanyId = companyId,
+                Status = JobStatuses.PendingPayment,
+                ApplicationDeadline = pastDeadline,
+            });
+
+        h.Jobs.Setup(j => j.GetByIdAsync(postingJobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Job
+            {
+                JobId = postingJobId,
+                CompanyId = companyId,
+                Status = JobStatuses.PendingPayment,
+                ApplicationDeadline = pastDeadline,
+            });
+        h.Jobs.Setup(j => j.GetPostingFeeByJobIdAsync(postingJobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new JobPostingFee
+            {
+                PostingFeeId = Guid.NewGuid(),
+                JobId = postingJobId,
+                CompanyId = companyId,
+                Amount = 1_500_000,
+                CurrencyCode = "VND",
+                Status = JobPostingFeeStatuses.Pending,
+            });
+
+        h.Finance.Setup(f => f.GetServiceFeeForUpdateAsync(settlementFeeId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ServiceFee
+            {
+                ServiceFeeId = settlementFeeId,
+                Kind = ServiceFeeKinds.Settlement,
+                JobId = sourcingJobId,
+                CompanyId = companyId,
+                Amount = 500_000,
+                CurrencyCode = "VND",
+                Status = ServiceFeeStates.Overdue,
+            });
+
+        var payDeposit = () => h.Handlers().Handle(
+            new CreateVnPayPaymentCommand(OnlinePaymentTargets.ServiceFee, depositFeeId, userId, "127.0.0.1"), default);
+        (await payDeposit.Should().ThrowAsync<ConflictException>()).Which.ErrorCode.Should().Be("JOB_DEADLINE_EXPIRED");
+
+        var payPosting = () => h.Handlers().Handle(
+            new CreateVnPayPaymentCommand(OnlinePaymentTargets.PostingFee, postingJobId, userId, "127.0.0.1"), default);
+        (await payPosting.Should().ThrowAsync<ConflictException>()).Which.ErrorCode.Should().Be("JOB_DEADLINE_EXPIRED");
+
+        // Post-service settlement remains payable even when overdue
+        var settlementLink = await h.Handlers().Handle(
+            new CreateVnPayPaymentCommand(OnlinePaymentTargets.ServiceFee, settlementFeeId, userId, "127.0.0.1"), default);
+        settlementLink.PaymentUrl.Should().Contain("vnp_Amount=50000000");
     }
 }

@@ -235,4 +235,53 @@ describe('ClientOverviewPage', () => {
     fireEvent.click(screen.getByText('Nhân viên Hành chính'));
     expect(mockNavigate).toHaveBeenCalledWith('/client/jobs?highlight=j-exp-display&openDetail=true');
   });
+
+  it('shows meeting-style 1-day warning cards for unpublished CV_SOURCING and CV_APPLICATION jobs expiring soon', async () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const threeDaysLater = new Date();
+    threeDaysLater.setDate(threeDaysLater.getDate() + 3);
+
+    jobs.data = [
+      {
+        jobId: 'j-ss-soon',
+        title: 'AI Engineer Chờ Cọc',
+        status: 'PENDING_PAYMENT',
+        applicationDeadline: tomorrow.toISOString(),
+        updatedAt: new Date().toISOString(),
+        serviceTypeCode: 'CV_SOURCING',
+        location: 'Hà Nội',
+      },
+      {
+        jobId: 'j-ap-soon',
+        title: 'Content Marketing Chờ Phí Gói',
+        status: 'PENDING_PAYMENT',
+        applicationDeadline: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        serviceTypeCode: 'CV_APPLICATION',
+        location: 'TP. Hồ Chí Minh',
+      },
+      {
+        jobId: 'j-ss-far',
+        title: 'QA Còn Xa Hạn',
+        status: 'PENDING_PAYMENT',
+        applicationDeadline: threeDaysLater.toISOString(),
+        updatedAt: new Date().toISOString(),
+        serviceTypeCode: 'CV_SOURCING',
+      },
+    ];
+
+    renderPage();
+
+    const section = await screen.findByLabelText('Thông báo tin chưa phát hành sắp hết hạn');
+    expect(within(section).getByText('2 tin sắp hết hạn')).toBeInTheDocument();
+    expect(within(section).getByText('AI Engineer Chờ Cọc')).toBeInTheDocument();
+    expect(within(section).getByText('Chờ đặt cọc')).toBeInTheDocument();
+    expect(within(section).getByText('Content Marketing Chờ Phí Gói')).toBeInTheDocument();
+    expect(within(section).getByText('Chờ phí gói')).toBeInTheDocument();
+    expect(within(section).queryByText('QA Còn Xa Hạn')).not.toBeInTheDocument();
+
+    fireEvent.click(within(section).getByText('AI Engineer Chờ Cọc'));
+    expect(mockNavigate).toHaveBeenCalledWith('/client/jobs?highlight=j-ss-soon&openPayment=true');
+  });
 });

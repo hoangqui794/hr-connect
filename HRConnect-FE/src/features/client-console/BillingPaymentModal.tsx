@@ -5,9 +5,10 @@
  * "I have paid" button.
  */
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { App, Button, Modal } from 'antd';
-import { CheckOutlined, CopyOutlined, CreditCardOutlined } from '@ant-design/icons';
+import { CheckOutlined, CopyOutlined, CreditCardOutlined, InfoCircleOutlined, LockOutlined, PlusOutlined } from '@ant-design/icons';
 import { vnPayApi } from '@/services/api/financeApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { PLATFORM_BANK_ACCOUNT as BANK } from '@/features/finance-mf05/platformBankAccount';
@@ -62,7 +63,14 @@ const BankFieldRow: React.FC<{
 
 export const BillingPaymentModal: React.FC<{ row: BillingRow | null; onClose: () => void }> = ({ row, onClose }) => {
   const { message } = App.useApp();
-  const vnPay = useQuery({ queryKey: ['vnpay-enabled'], queryFn: () => vnPayApi.enabled(), enabled: Boolean(row), staleTime: 5 * 60_000 });
+  const navigate = useNavigate();
+  const isBlockedByExpiredJob = Boolean(row?.blockedByExpiredJob);
+  const vnPay = useQuery({
+    queryKey: ['vnpay-enabled'],
+    queryFn: () => vnPayApi.enabled(),
+    enabled: Boolean(row) && !isBlockedByExpiredJob,
+    staleTime: 5 * 60_000,
+  });
   const [redirecting, setRedirecting] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const copyTimerRef = useRef<number | null>(null);
@@ -88,7 +96,7 @@ export const BillingPaymentModal: React.FC<{ row: BillingRow | null; onClose: ()
   };
 
   const payWithVnPay = async () => {
-    if (!row) return;
+    if (!row || isBlockedByExpiredJob) return;
     setRedirecting(true);
     try {
       const { paymentUrl } = await vnPayApi.createPayment(row.payTarget.type, row.payTarget.id);
@@ -106,145 +114,212 @@ export const BillingPaymentModal: React.FC<{ row: BillingRow | null; onClose: ()
       open={Boolean(row)}
       title={
         row ? (
-          <div className="flex flex-wrap items-center gap-2.5 pr-6">
-            <span className="text-[17px] font-bold tracking-tight text-slate-900">Thanh toán khoản phí</span>
-            <span
-              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                isOverdue ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
-              }`}
-            >
-              {isOverdue ? 'Quá hạn' : 'Chờ thanh toán'}
-            </span>
-          </div>
+          isBlockedByExpiredJob ? (
+            <div className="flex items-center gap-2.5 pr-5 text-slate-900">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-rose-200/80 bg-rose-50 text-base font-bold text-rose-600">
+                <LockOutlined />
+              </div>
+              <div className="min-w-0">
+                <div className="text-base font-bold leading-tight">Đã khóa thanh toán khoản phí</div>
+                <div className="mt-0.5 text-xs font-medium text-rose-600">
+                  {row.applicationDeadline
+                    ? `Quá hạn nhận hồ sơ từ ${date(row.applicationDeadline)}`
+                    : 'Tin tuyển dụng đã quá hạn nhận hồ sơ'}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2.5 pr-6">
+              <span className="text-[17px] font-bold tracking-tight text-slate-900">Thanh toán khoản phí</span>
+              <span
+                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                  isOverdue ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
+                }`}
+              >
+                {isOverdue ? 'Quá hạn' : 'Chờ thanh toán'}
+              </span>
+            </div>
+          )
         ) : (
           'Thanh toán'
         )
       }
       onCancel={onClose}
       footer={
-        <div className="flex items-center justify-end">
-          <Button
-            onClick={onClose}
-            className="!h-9 rounded-lg border-slate-200 px-4 font-medium text-slate-700 hover:!border-slate-300 hover:!text-slate-900"
-          >
-            Đóng
-          </Button>
-        </div>
+        isBlockedByExpiredJob ? null : (
+          <div className="flex items-center justify-end">
+            <Button
+              onClick={onClose}
+              className="!h-9 rounded-lg border-slate-200 px-4 font-medium text-slate-700 hover:!border-slate-300 hover:!text-slate-900"
+            >
+              Đóng
+            </Button>
+          </div>
+        )
       }
-      width={760}
+      width={isBlockedByExpiredJob ? 440 : 760}
       centered
       destroyOnHidden
       className={FONT}
     >
-      {row && (
-        <div className="grid grid-cols-1 gap-5 pt-1 md:grid-cols-12">
-          {/* Cột trái: Bảng tóm tắt hóa đơn tông sáng thanh lịch */}
-          <aside
-            aria-label="Tóm tắt khoản phí"
-            className="flex flex-col justify-between rounded-2xl border border-solid border-[#DCE9F5] bg-gradient-to-b from-[#F2F8FD] to-[#F8FAFC] p-5 text-slate-900 md:col-span-5"
-          >
-            <div>
+      {row &&
+        (isBlockedByExpiredJob ? (
+          <div className="pt-2 space-y-3">
+            <div className="rounded-xl border border-solid border-slate-200/90 bg-slate-50/80 p-3.5">
               <div className="text-xs font-semibold text-[#0369A1]">{row.item}</div>
-              <h3 className="m-0 mt-1 text-base font-bold leading-snug text-slate-900">{row.jobTitle}</h3>
+              <div className="mt-0.5 text-sm font-semibold leading-snug text-slate-900 line-clamp-2">{row.jobTitle}</div>
 
-              {row.breakdown.length > 0 && (
-                <dl className="m-0 mt-4 space-y-2 border-0 border-t border-solid border-slate-200/80 pt-4">
-                  {row.breakdown.map((line) => (
-                    <div key={line.label} className="flex items-baseline justify-between gap-3 text-[13px]">
-                      <dt className="text-slate-500">{line.label}</dt>
-                      <dd className="m-0 text-right font-semibold tabular-nums text-slate-800">{line.value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              )}
-            </div>
-
-            <div className="mt-6 rounded-xl border border-solid border-slate-200/80 bg-white/90 p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-              <div className="text-xs font-medium text-slate-500">Số tiền cần thanh toán</div>
-              <div className="mt-1 text-3xl font-bold tracking-tight tabular-nums text-[#0369A1]">
-                {money(row.amount, row.currencyCode)}
-              </div>
-              {row.dueDate && (
-                <div className={`mt-1 text-xs ${isOverdue ? 'font-medium text-red-600' : 'text-slate-500'}`}>
-                  {isOverdue ? 'Đã quá hạn từ ' : 'Hạn thanh toán '}
-                  {date(row.dueDate)}
-                </div>
-              )}
-            </div>
-          </aside>
-
-          {/* Cột phải: Phương thức thanh toán */}
-          <div className="flex flex-col justify-between space-y-5 md:col-span-7">
-            {vnPay.data && (
-              <div className="rounded-2xl border border-solid border-sky-200/80 bg-sky-50/40 p-4">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <span className="text-[13px] font-semibold text-slate-900">Thanh toán trực tuyến</span>
-                  <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
-                    Xác nhận tức thì
+              <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-dashed border-slate-200 pt-2.5 text-xs">
+                <span className="text-slate-500">Khoản phí dự kiến:</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-slate-400 line-through tabular-nums">
+                    {money(row.amount, row.currencyCode)}
+                  </span>
+                  <span className="inline-flex items-center rounded-full border border-emerald-200/70 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                    Không thu phí
                   </span>
                 </div>
-                <Button
-                  type="primary"
-                  size="large"
-                  block
-                  icon={<CreditCardOutlined />}
-                  loading={redirecting}
-                  onClick={payWithVnPay}
-                  className="!h-11 rounded-xl !border-0 !bg-[#0369A1] font-semibold text-white shadow-sm transition-colors hover:!bg-[#075985] focus-visible:!outline-none focus-visible:!ring-2 focus-visible:!ring-[#0369A1] focus-visible:!ring-offset-2 active:scale-[0.99] [touch-action:manipulation]"
-                >
-                  Thanh toán qua VNPay
-                </Button>
-                <p className="m-0 mt-2 text-xs leading-relaxed text-slate-500">
-                  Hỗ trợ thẻ ATM nội địa, thẻ quốc tế hoặc quét mã QR ngân hàng.
-                </p>
               </div>
-            )}
+            </div>
 
-            <div>
-              {vnPay.data ? (
-                <div className="mb-2.5 flex items-center gap-3">
-                  <span className="h-px flex-1 bg-slate-200" />
-                  <span className="text-xs font-medium text-slate-400">Hoặc chuyển khoản ngân hàng</span>
-                  <span className="h-px flex-1 bg-slate-200" />
-                </div>
-              ) : (
-                <div className="mb-2 text-[13px] font-semibold text-slate-800">Thông tin chuyển khoản ngân hàng</div>
-              )}
+            <div className="flex items-start gap-2.5 rounded-xl border border-rose-200/70 bg-rose-50/50 px-3.5 py-2.5 text-xs leading-relaxed text-slate-700">
+              <InfoCircleOutlined className="mt-0.5 shrink-0 text-sm text-rose-500" />
+              <span>
+                Tin chưa công bố nhưng đã qua hạn nộp hồ sơ nên hệ thống tự động ngưng thu phí kích hoạt. Hãy tạo tin mới với hạn nộp mới để tiếp tục tuyển dụng.
+              </span>
+            </div>
 
-              <div className="divide-y divide-slate-100 rounded-xl border border-solid border-slate-200/90 bg-white px-3.5 py-0.5">
-                <BankFieldRow label="Ngân hàng" value={BANK.bankName} />
-                <BankFieldRow
-                  label="Số tài khoản"
-                  value={BANK.accountNumber}
-                  copyLabel="số tài khoản"
-                  copied={copiedKey === 'account'}
-                  mono
-                  onCopy={() => copy('account', BANK.accountNumber, 'số tài khoản')}
-                />
-                <BankFieldRow label="Chủ tài khoản" value={BANK.accountHolder} />
-                {row.transferNote && (() => {
-                  const transferNote = row.transferNote;
-                  return (
-                    <BankFieldRow
-                      label="Nội dung chuyển khoản"
-                      value={transferNote}
-                      copyLabel="nội dung chuyển khoản"
-                      copied={copiedKey === 'note'}
-                      mono
-                      highlight
-                      onCopy={() => copy('note', transferNote, 'nội dung chuyển khoản')}
-                    />
-                  );
-                })()}
-              </div>
-
-              <p className="m-0 mt-2 text-xs leading-relaxed text-slate-500">
-                Ghi đúng nội dung chuyển khoản để HR Connect đối chiếu; trạng thái cập nhật khi nhận được tiền.
-              </p>
+            <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-2">
+              <Button
+                size="middle"
+                onClick={onClose}
+                className="!h-9 rounded-xl border-slate-200 px-4 font-medium text-slate-700"
+              >
+                Đóng
+              </Button>
+              <Button
+                type="primary"
+                size="middle"
+                icon={<PlusOutlined />}
+                className="!h-9 rounded-xl !border-0 !bg-[#0369A1] px-4 font-semibold text-white shadow-sm hover:!bg-[#075985]"
+                onClick={() => {
+                  onClose();
+                  navigate('/client/jobs/create');
+                }}
+              >
+                Đăng tin mới
+              </Button>
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="grid grid-cols-1 gap-5 pt-1 md:grid-cols-12">
+            {/* Cột trái: Bảng tóm tắt hóa đơn tông sáng thanh lịch */}
+            <aside
+              aria-label="Tóm tắt khoản phí"
+              className="flex flex-col justify-between rounded-2xl border border-solid border-[#DCE9F5] bg-gradient-to-b from-[#F2F8FD] to-[#F8FAFC] p-5 text-slate-900 md:col-span-5"
+            >
+              <div>
+                <div className="text-xs font-semibold text-[#0369A1]">{row.item}</div>
+                <h3 className="m-0 mt-1 text-base font-bold leading-snug text-slate-900">{row.jobTitle}</h3>
+
+                {row.breakdown.length > 0 && (
+                  <dl className="m-0 mt-4 space-y-2 border-0 border-t border-solid border-slate-200/80 pt-4">
+                    {row.breakdown.map((line) => (
+                      <div key={line.label} className="flex items-baseline justify-between gap-3 text-[13px]">
+                        <dt className="text-slate-500">{line.label}</dt>
+                        <dd className="m-0 text-right font-semibold tabular-nums text-slate-800">{line.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+              </div>
+
+              <div className="mt-6 rounded-xl border border-solid border-slate-200/80 bg-white/90 p-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+                <div className="text-xs font-medium text-slate-500">Số tiền cần thanh toán</div>
+                <div className="mt-1 text-3xl font-bold tracking-tight tabular-nums text-[#0369A1]">
+                  {money(row.amount, row.currencyCode)}
+                </div>
+                {row.dueDate && (
+                  <div className={`mt-1 text-xs ${isOverdue ? 'font-medium text-red-600' : 'text-slate-500'}`}>
+                    {isOverdue ? 'Đã quá hạn từ ' : 'Hạn thanh toán '}
+                    {date(row.dueDate)}
+                  </div>
+                )}
+              </div>
+            </aside>
+
+            {/* Cột phải: Phương thức thanh toán */}
+            <div className="flex flex-col justify-between space-y-5 md:col-span-7">
+              {vnPay.data && (
+                <div className="rounded-2xl border border-solid border-sky-200/80 bg-sky-50/40 p-4">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <span className="text-[13px] font-semibold text-slate-900">Thanh toán trực tuyến</span>
+                    <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
+                      Xác nhận tức thì
+                    </span>
+                  </div>
+                  <Button
+                    type="primary"
+                    size="large"
+                    block
+                    icon={<CreditCardOutlined />}
+                    loading={redirecting}
+                    onClick={payWithVnPay}
+                    className="!h-11 rounded-xl !border-0 !bg-[#0369A1] font-semibold text-white shadow-sm transition-colors hover:!bg-[#075985] focus-visible:!outline-none focus-visible:!ring-2 focus-visible:!ring-[#0369A1] focus-visible:!ring-offset-2 active:scale-[0.99] [touch-action:manipulation]"
+                  >
+                    Thanh toán qua VNPay
+                  </Button>
+                  <p className="m-0 mt-2 text-xs leading-relaxed text-slate-500">
+                    Hỗ trợ thẻ ATM nội địa, thẻ quốc tế hoặc quét mã QR ngân hàng.
+                  </p>
+                </div>
+              )}
+
+              <div>
+                {vnPay.data ? (
+                  <div className="mb-2.5 flex items-center gap-3">
+                    <span className="h-px flex-1 bg-slate-200" />
+                    <span className="text-xs font-medium text-slate-400">Hoặc chuyển khoản ngân hàng</span>
+                    <span className="h-px flex-1 bg-slate-200" />
+                  </div>
+                ) : (
+                  <div className="mb-2 text-[13px] font-semibold text-slate-800">Thông tin chuyển khoản ngân hàng</div>
+                )}
+
+                <div className="divide-y divide-slate-100 rounded-xl border border-solid border-slate-200/90 bg-white px-3.5 py-0.5">
+                  <BankFieldRow label="Ngân hàng" value={BANK.bankName} />
+                  <BankFieldRow
+                    label="Số tài khoản"
+                    value={BANK.accountNumber}
+                    copyLabel="số tài khoản"
+                    copied={copiedKey === 'account'}
+                    mono
+                    onCopy={() => copy('account', BANK.accountNumber, 'số tài khoản')}
+                  />
+                  <BankFieldRow label="Chủ tài khoản" value={BANK.accountHolder} />
+                  {row.transferNote && (() => {
+                    const transferNote = row.transferNote;
+                    return (
+                      <BankFieldRow
+                        label="Nội dung chuyển khoản"
+                        value={transferNote}
+                        copyLabel="nội dung chuyển khoản"
+                        copied={copiedKey === 'note'}
+                        mono
+                        highlight
+                        onCopy={() => copy('note', transferNote, 'nội dung chuyển khoản')}
+                      />
+                    );
+                  })()}
+                </div>
+
+                <p className="m-0 mt-2 text-xs leading-relaxed text-slate-500">
+                  Ghi đúng nội dung chuyển khoản để HR Connect đối chiếu; trạng thái cập nhật khi nhận được tiền.
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
     </Modal>
   );
 };

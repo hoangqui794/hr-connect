@@ -274,3 +274,35 @@ export const isDeadlineExpired = (applicationDeadline?: string | null): boolean 
   const endOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
   return Math.max(d.getTime(), endOfDay.getTime()) < Date.now();
 };
+
+
+/**
+ * Tin tuyển dụng chưa phát hành đang chờ thanh toán kích hoạt:
+ * - CV_SOURCING: chờ đặt cọc dịch vụ tìm hồ sơ
+ * - CV_APPLICATION: chờ thanh toán phí gói đăng tin
+ */
+export const isUnpublishedAwaitingPayment = (
+  job: Pick<Job, 'status' | 'serviceTypeCode'>
+): boolean =>
+  job.status === 'PENDING_PAYMENT' &&
+  (job.serviceTypeCode === 'CV_SOURCING' || job.serviceTypeCode === 'CV_APPLICATION' || !job.serviceTypeCode);
+
+/**
+ * Kiểm tra hạn nhận hồ sơ (applicationDeadline) sắp hết hạn trong vòng `withinDays` ngày (mặc định 1 ngày: hôm nay hoặc ngày mai)
+ * và chưa bị quá hạn.
+ */
+export const isDeadlineExpiringSoon = (
+  applicationDeadline?: string | null,
+  withinDays = 1
+): boolean => {
+  if (!applicationDeadline || isDeadlineExpired(applicationDeadline)) return false;
+  const d = new Date(applicationDeadline);
+  if (Number.isNaN(d.getTime())) return false;
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const deadlineDayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diffDays = Math.round((deadlineDayStart - todayStart) / 86_400_000);
+  const endOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).getTime();
+  const remainingMs = Math.max(d.getTime(), endOfDay) - now.getTime();
+  return (diffDays >= 0 && diffDays <= withinDays) || remainingMs <= withinDays * 86_400_000;
+};

@@ -54,4 +54,8 @@ export interface BillingRow {
   paymentSubmittedAt?: string | null;
   /** True while a VNPay payment session is pending/processing for this fee. */
   pendingOnlinePayment?: boolean;
+  /** True when an unpublished PENDING_PAYMENT job's applicationDeadline has already passed. */
+  blockedByExpiredJob?: boolean;
+  /** Application deadline of the related unpublished job when blocked. */
+  applicationDeadline?: string | null;
 }
