@@ -15,6 +15,8 @@ public static class BusinessSettingEndpoints
 
     public sealed record UpdateBusinessSettingRequest(decimal Value);
 
+    public sealed record UpdateBusinessSettingsBatchRequest(IReadOnlyList<BusinessSettingBatchItem> Items);
+
     public static IEndpointRouteBuilder MapBusinessSettingEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/admin/settings").WithTags("Admin Business Settings").RequireAuthorization();
@@ -57,6 +59,37 @@ public static class BusinessSettingEndpoints
             .WithName("UpdateBusinessSetting")
             .WithSummary("Admin đổi một con số nghiệp vụ")
             .WithDescription("Giá trị mới áp dụng cho các bản ghi tạo sau đó (khoản phí, bảo hành đã tạo giữ nguyên số cũ). Quyền system_config.manage; có ghi audit.");
+
+        group.MapPut("/batch", async (
+                [FromBody] UpdateBusinessSettingsBatchRequest body, ClaimsPrincipal user, [FromServices] ISender sender, CancellationToken ct) =>
+        {
+            var idClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value;
+            if (!Guid.TryParse(idClaim, out var userId))
+            {
+                return Results.Unauthorized();
+            }
+
+            if (!Allowed(user, Manage))
+            {
+                return PermissionAuthorization.Forbidden(Manage);
+            }
+
+            try
+            {
+                return Results.Ok(new { success = true, data = await sender.Send(new UpdateBusinessSettingsBatchCommand(body.Items, userId), ct) });
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.NotFound(new { success = false, message = ex.Message });
+            }
+            catch (BadRequestException ex)
+            {
+                return Results.BadRequest(new { success = false, message = ex.Message });
+            }
+        })
+            .WithName("UpdateBusinessSettingsBatch")
+            .WithSummary("Admin cập nhật đồng thời nhiều con số nghiệp vụ")
+            .WithDescription("Dùng cho các nhóm tham số ràng buộc chéo (như 4 trọng số chấm điểm AI phải có tổng bằng 100%). Quyền system_config.manage; có ghi audit.");
 
         return app;
     }

@@ -76,9 +76,16 @@ public sealed record GetBusinessSettingsQuery : IRequest<IReadOnlyList<BusinessS
 
 public sealed record UpdateBusinessSettingCommand(string Key, decimal Value, Guid CurrentUserId) : IRequest<BusinessSettingDto>;
 
+public sealed record BusinessSettingBatchItem(string Key, decimal Value);
+
+public sealed record UpdateBusinessSettingsBatchCommand(
+    IReadOnlyList<BusinessSettingBatchItem> Items,
+    Guid CurrentUserId) : IRequest<IReadOnlyList<BusinessSettingDto>>;
+
 public sealed class BusinessSettingHandlers :
     IRequestHandler<GetBusinessSettingsQuery, IReadOnlyList<BusinessSettingDto>>,
-    IRequestHandler<UpdateBusinessSettingCommand, BusinessSettingDto>
+    IRequestHandler<UpdateBusinessSettingCommand, BusinessSettingDto>,
+    IRequestHandler<UpdateBusinessSettingsBatchCommand, IReadOnlyList<BusinessSettingDto>>
 {
     private readonly ISystemSettingRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
@@ -114,76 +121,120 @@ public sealed class BusinessSettingHandlers :
 
     public async Task<BusinessSettingDto> Handle(UpdateBusinessSettingCommand request, CancellationToken cancellationToken)
     {
-        var definition = BusinessSettingKeys.All.FirstOrDefault(d => d.Key == request.Key)
-            ?? throw new NotFoundException("Không tìm thấy cấu hình này.");
-        if (!BusinessSettingKeys.TryParse(definition, BusinessSettingKeys.Format(request.Value), out var value))
+        var updated = await ApplyUpdatesAsync([new BusinessSettingBatchItem(request.Key, request.Value)], request.CurrentUserId, cancellationToken);
+        return updated[0];
+    }
+
+    public Task<IReadOnlyList<BusinessSettingDto>> Handle(UpdateBusinessSettingsBatchCommand request, CancellationToken cancellationToken)
+    {
+        if (request.Items == null || request.Items.Count == 0)
         {
-            var integer = definition.Type == BusinessSettingType.Integer ? " (số nguyên)" : string.Empty;
-            throw new BadRequestException(
-                $"Giá trị phải từ {BusinessSettingKeys.Format(definition.Min)} đến {BusinessSettingKeys.Format(definition.Max)}{integer}.");
+            throw new BadRequestException("Danh sách cấu hình cần cập nhật không được để trống.");
         }
 
-        // Validate cross-setting business rules for affiliate rating
-        if (definition.Key is BusinessSettingKeys.AffiliateRatingWeightHire or BusinessSettingKeys.AffiliateRatingWeightShortlist)
+        return ApplyUpdatesAsync(request.Items, request.CurrentUserId, cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<BusinessSettingDto>> ApplyUpdatesAsync(
+        IReadOnlyList<BusinessSettingBatchItem> items, Guid currentUserId, CancellationToken cancellationToken)
+    {
+        var parsedOverrides = new Dictionary<string, (BusinessSettingDefinition Def, decimal Value)>(StringComparer.Ordinal);
+        foreach (var item in items)
         {
-            var otherKey = definition.Key == BusinessSettingKeys.AffiliateRatingWeightHire
-                ? BusinessSettingKeys.AffiliateRatingWeightShortlist
-                : BusinessSettingKeys.AffiliateRatingWeightHire;
-            var otherDef = BusinessSettingKeys.Get(otherKey);
-            var otherRow = await _repository.GetAsync(otherKey, cancellationToken);
-            var otherVal = otherRow != null && BusinessSettingKeys.TryParse(otherDef, otherRow.Value, out var ov) ? ov : otherDef.DefaultValue;
-            if (Math.Abs(value + otherVal - 1.0m) > 0.001m)
+            var definition = BusinessSettingKeys.All.FirstOrDefault(d => d.Key == item.Key)
+                ?? throw new NotFoundException("Không tìm thấy cấu hình này.");
+            if (!BusinessSettingKeys.TryParse(definition, BusinessSettingKeys.Format(item.Value), out var value))
+            {
+                var integer = definition.Type == BusinessSettingType.Integer ? " (số nguyên)" : string.Empty;
+                throw new BadRequestException(
+                    $"Giá trị {definition.Label} phải từ {BusinessSettingKeys.Format(definition.Min)} đến {BusinessSettingKeys.Format(definition.Max)}{integer}.");
+            }
+            parsedOverrides[definition.Key] = (definition, value);
+        }
+
+        await ValidateCrossSettingRulesAsync(parsedOverrides, cancellationToken);
+
+        var now = DateTime.UtcNow;
+        var results = new List<BusinessSettingDto>(parsedOverrides.Count);
+        foreach (var (definition, value) in parsedOverrides.Values)
+        {
+            var row = await _repository.GetAsync(definition.Key, cancellationToken);
+            var oldValue = row?.Value ?? BusinessSettingKeys.Format(definition.DefaultValue);
+            if (row == null)
+            {
+                row = new SystemSetting { SettingKey = definition.Key };
+                await _repository.AddAsync(row, cancellationToken);
+            }
+
+            row.Value = BusinessSettingKeys.Format(value);
+            row.UpdatedBy = currentUserId;
+            row.UpdatedAt = now;
+
+            await _auditLogService.AddAsync(new AuditEntry
+            {
+                Action = AuditActions.BusinessSettingUpdated,
+                EntityType = "SYSTEM_SETTING",
+                ActorUserId = currentUserId,
+                OldValues = new { key = definition.Key, value = oldValue },
+                NewValues = new { key = definition.Key, value = row.Value },
+            }, cancellationToken);
+
+            results.Add(ToDto(definition, row));
+        }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        BusinessSettingsService.InvalidateSharedCache();
+        return results;
+    }
+
+    private async Task ValidateCrossSettingRulesAsync(
+        IReadOnlyDictionary<string, (BusinessSettingDefinition Def, decimal Value)> overrides,
+        CancellationToken cancellationToken)
+    {
+        async Task<decimal> ResolveAsync(string key)
+        {
+            if (overrides.TryGetValue(key, out var ov)) return ov.Value;
+            var def = BusinessSettingKeys.Get(key);
+            var row = await _repository.GetAsync(key, cancellationToken);
+            return row != null && BusinessSettingKeys.TryParse(def, row.Value, out var stored) ? stored : def.DefaultValue;
+        }
+
+        if (overrides.ContainsKey(BusinessSettingKeys.AffiliateRatingWeightHire)
+            || overrides.ContainsKey(BusinessSettingKeys.AffiliateRatingWeightShortlist))
+        {
+            var hire = await ResolveAsync(BusinessSettingKeys.AffiliateRatingWeightHire);
+            var shortlist = await ResolveAsync(BusinessSettingKeys.AffiliateRatingWeightShortlist);
+            if (Math.Abs(hire + shortlist - 1.0m) > 0.001m)
             {
                 throw new BadRequestException("Tổng trọng số tuyển được (weight_hire) và qua sàng lọc (weight_shortlist) phải bằng 1.");
             }
         }
-        else if (definition.Key is BusinessSettingKeys.AffiliateRatingExcellentMin or BusinessSettingKeys.AffiliateRatingGoodMin or BusinessSettingKeys.AffiliateRatingAverageMin)
+
+        if (overrides.ContainsKey(BusinessSettingKeys.AffiliateRatingExcellentMin)
+            || overrides.ContainsKey(BusinessSettingKeys.AffiliateRatingGoodMin)
+            || overrides.ContainsKey(BusinessSettingKeys.AffiliateRatingAverageMin))
         {
-            var excDef = BusinessSettingKeys.Get(BusinessSettingKeys.AffiliateRatingExcellentMin);
-            var excRow = await _repository.GetAsync(BusinessSettingKeys.AffiliateRatingExcellentMin, cancellationToken);
-            var excVal = definition.Key == BusinessSettingKeys.AffiliateRatingExcellentMin ? value
-                : (excRow != null && BusinessSettingKeys.TryParse(excDef, excRow.Value, out var ev) ? ev : excDef.DefaultValue);
-
-            var goodDef = BusinessSettingKeys.Get(BusinessSettingKeys.AffiliateRatingGoodMin);
-            var goodRow = await _repository.GetAsync(BusinessSettingKeys.AffiliateRatingGoodMin, cancellationToken);
-            var goodVal = definition.Key == BusinessSettingKeys.AffiliateRatingGoodMin ? value
-                : (goodRow != null && BusinessSettingKeys.TryParse(goodDef, goodRow.Value, out var gv) ? gv : goodDef.DefaultValue);
-
-            var avgDef = BusinessSettingKeys.Get(BusinessSettingKeys.AffiliateRatingAverageMin);
-            var avgRow = await _repository.GetAsync(BusinessSettingKeys.AffiliateRatingAverageMin, cancellationToken);
-            var avgVal = definition.Key == BusinessSettingKeys.AffiliateRatingAverageMin ? value
-                : (avgRow != null && BusinessSettingKeys.TryParse(avgDef, avgRow.Value, out var av) ? av : avgDef.DefaultValue);
-
+            var excVal = await ResolveAsync(BusinessSettingKeys.AffiliateRatingExcellentMin);
+            var goodVal = await ResolveAsync(BusinessSettingKeys.AffiliateRatingGoodMin);
+            var avgVal = await ResolveAsync(BusinessSettingKeys.AffiliateRatingAverageMin);
             if (!(excVal > goodVal && goodVal > avgVal))
             {
                 throw new BadRequestException("Ngưỡng đánh giá phải thỏa mãn: Xuất sắc (excellent_min) > Tốt (good_min) > Trung bình (average_min).");
             }
         }
 
-        var now = DateTime.UtcNow;
-        var row = await _repository.GetAsync(definition.Key, cancellationToken);
-        var oldValue = row?.Value ?? BusinessSettingKeys.Format(definition.DefaultValue);
-        if (row == null)
+        if (BusinessSettingKeys.AiScoringWeightKeys.Any(overrides.ContainsKey))
         {
-            row = new SystemSetting { SettingKey = definition.Key };
-            await _repository.AddAsync(row, cancellationToken);
+            decimal totalWeight = 0m;
+            foreach (var key in BusinessSettingKeys.AiScoringWeightKeys)
+            {
+                totalWeight += await ResolveAsync(key);
+            }
+            if (Math.Abs(totalWeight - 100m) > 0.001m)
+            {
+                throw new BadRequestException("Tổng 4 trọng số chấm điểm AI (MUST_HAVE, SHOULD_HAVE, Semantic, LLM Fit) phải bằng 100%.");
+            }
         }
-
-        row.Value = BusinessSettingKeys.Format(value);
-        row.UpdatedBy = request.CurrentUserId;
-        row.UpdatedAt = now;
-
-        await _auditLogService.AddAsync(new AuditEntry
-        {
-            Action = AuditActions.BusinessSettingUpdated,
-            EntityType = "SYSTEM_SETTING",
-            ActorUserId = request.CurrentUserId,
-            OldValues = new { key = definition.Key, value = oldValue },
-            NewValues = new { key = definition.Key, value = row.Value },
-        }, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-        BusinessSettingsService.InvalidateSharedCache();
-        return ToDto(definition, row);
     }
 
     private static BusinessSettingDto ToDto(BusinessSettingDefinition d, SystemSetting? row, IReadOnlyDictionary<Guid, string>? names = null)

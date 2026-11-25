@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any, Callable, Literal
 
 from fastapi import APIRouter, Header, HTTPException, status
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 
 from app.config import Settings, get_settings
@@ -31,6 +31,16 @@ from app.schemas import Job, MatchingMetadata, MatchingResult, MatchStatus, Requ
 logger = logging.getLogger(__name__)
 
 
+class ScoringConfigPayload(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="ignore")
+
+    must_have_weight: float = Field(default=50.0, ge=0.0, le=100.0, validation_alias=AliasChoices("must_have_weight", "mustHaveWeight"))
+    should_have_weight: float = Field(default=20.0, ge=0.0, le=100.0, validation_alias=AliasChoices("should_have_weight", "shouldHaveWeight"))
+    semantic_weight: float = Field(default=15.0, ge=0.0, le=100.0, validation_alias=AliasChoices("semantic_weight", "semanticWeight"))
+    llm_fit_weight: float = Field(default=15.0, ge=0.0, le=100.0, validation_alias=AliasChoices("llm_fit_weight", "llmFitWeight"))
+    knockout_cap_score: float = Field(default=59.0, ge=0.0, le=100.0, validation_alias=AliasChoices("knockout_cap_score", "knockoutCapScore"))
+
+
 class ScoringJobRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
@@ -39,6 +49,10 @@ class ScoringJobRequest(BaseModel):
     cv_id: str = Field(alias="cvId", min_length=1, max_length=200)
     job_id: str = Field(alias="jobId", min_length=1, max_length=200)
     attempt_no: int = Field(alias="attemptNo", ge=1)
+    scoring_config: ScoringConfigPayload | None = Field(
+        default=None,
+        validation_alias=AliasChoices("scoring_config", "scoringConfig"),
+    )
 
 
 class ScoringJobAccepted(BaseModel):
@@ -227,7 +241,13 @@ class ScoringOrchestrator:
         metadata = MatchingMetadata(requestId=job.request_id, applicationId=job.application_id,
                                     attemptNo=job.attempt_no, job=job_data)
         try:
-            result = await run_in_threadpool(self._pipeline_factory().run, metadata, document)
+            result = await run_in_threadpool(
+                self._pipeline_factory().run,
+                metadata,
+                document,
+                None,
+                job.scoring_config.model_dump() if job.scoring_config else None,
+            )
         except LlmError as exc:
             # AI unavailable: the backend routes the application to manual review, never to rejection.
             logger.warning("v2 scoring AI unavailable request=%s: %s", job.request_id, exc)

@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Common.Settings;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -75,6 +76,9 @@ public sealed class Mf03ScoringDispatcher : BackgroundService
             .Take(Math.Clamp(_settings.BatchSize, 1, 100))
             .ToListAsync(cancellationToken);
 
+        var businessSettings = scope.ServiceProvider.GetService<IAdminBusinessSettings>();
+        var scoringConfig = await LoadScoringConfigAsync(businessSettings, cancellationToken);
+
         var client = _httpClientFactory.CreateClient("Mf03AiService");
         foreach (var job in jobs)
         {
@@ -125,7 +129,8 @@ public sealed class Mf03ScoringDispatcher : BackgroundService
                 applicationId = application.ApplicationId,
                 cvId = submission.CvId,
                 jobId = application.JobId,
-                attemptNo = job.AttemptNo
+                attemptNo = job.AttemptNo,
+                scoring_config = scoringConfig
             };
 
             var claimedDispatchCount = 0;
@@ -254,6 +259,23 @@ public sealed class Mf03ScoringDispatcher : BackgroundService
             }),
             CorrelationId = correlationId,
             CreatedAt = DateTime.UtcNow
+        };
+    }
+
+    private static async Task<object> LoadScoringConfigAsync(IAdminBusinessSettings? settings, CancellationToken cancellationToken)
+    {
+        async Task<decimal> ReadAsync(string key) =>
+            settings != null
+                ? await settings.GetDecimalAsync(key, cancellationToken)
+                : BusinessSettingKeys.Get(key).DefaultValue;
+
+        return new
+        {
+            must_have_weight = await ReadAsync(BusinessSettingKeys.AiScoringMustHaveWeight),
+            should_have_weight = await ReadAsync(BusinessSettingKeys.AiScoringShouldHaveWeight),
+            semantic_weight = await ReadAsync(BusinessSettingKeys.AiScoringSemanticWeight),
+            llm_fit_weight = await ReadAsync(BusinessSettingKeys.AiScoringLlmFitWeight),
+            knockout_cap_score = await ReadAsync(BusinessSettingKeys.AiScoringKnockoutCapScore),
         };
     }
 }

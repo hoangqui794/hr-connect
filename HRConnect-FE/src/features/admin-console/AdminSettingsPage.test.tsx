@@ -7,12 +7,13 @@ import { businessSettingsApi } from '@/services/api/financeApi';
 import type { BusinessSetting } from '@/types/api/finance';
 
 vi.mock('@/services/api/financeApi', () => ({
-  businessSettingsApi: { list: vi.fn(), update: vi.fn() },
+  businessSettingsApi: { list: vi.fn(), update: vi.fn(), updateBatch: vi.fn() },
   postingPackagesAdminApi: { list: vi.fn().mockResolvedValue([]), update: vi.fn() },
 }));
 
 const listMock = vi.mocked(businessSettingsApi.list);
 const updateMock = vi.mocked(businessSettingsApi.update);
+const updateBatchMock = vi.mocked(businessSettingsApi.updateBatch);
 
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
@@ -56,6 +57,7 @@ describe('AdminSettingsPage', () => {
   beforeEach(() => {
     listMock.mockReset();
     updateMock.mockReset();
+    updateBatchMock.mockReset();
   });
 
   it('names groups by service and marks values still at their default', async () => {
@@ -112,5 +114,42 @@ describe('AdminSettingsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Lưu' }));
 
     await waitFor(() => expect(updateMock).toHaveBeenCalledWith('mf05.headhunt.payment_due_days', 30));
+  });
+
+  it('validates AI scoring weights sum to 100% and saves batch when valid', async () => {
+    const aiSettings: BusinessSetting[] = [
+      { ...dueDays, key: 'mf03.ai_scoring.must_have_weight', group: 'AI_SCORING', label: 'Trọng số tiêu chí bắt buộc MUST_HAVE (%)', type: 'DECIMAL', value: 50, defaultValue: 50, min: 0, max: 100, unit: '%' },
+      { ...dueDays, key: 'mf03.ai_scoring.should_have_weight', group: 'AI_SCORING', label: 'Trọng số tiêu chí ưu tiên SHOULD_HAVE (%)', type: 'DECIMAL', value: 20, defaultValue: 20, min: 0, max: 100, unit: '%' },
+      { ...dueDays, key: 'mf03.ai_scoring.semantic_weight', group: 'AI_SCORING', label: 'Trọng số tương đồng ngữ nghĩa Semantic (%)', type: 'DECIMAL', value: 15, defaultValue: 15, min: 0, max: 100, unit: '%' },
+      { ...dueDays, key: 'mf03.ai_scoring.llm_fit_weight', group: 'AI_SCORING', label: 'Trọng số mức phù hợp tổng thể LLM Fit (%)', type: 'DECIMAL', value: 15, defaultValue: 15, min: 0, max: 100, unit: '%' },
+      { ...dueDays, key: 'mf03.ai_scoring.knockout_cap_score', group: 'AI_SCORING', label: 'Trần điểm Knockout khi thiếu tiêu chí bắt buộc (điểm)', type: 'DECIMAL', value: 59, defaultValue: 59, min: 0, max: 100, unit: 'điểm' },
+    ];
+    listMock.mockResolvedValue(aiSettings);
+    updateBatchMock.mockResolvedValue(aiSettings);
+
+    renderPage();
+    const mustInput = await screen.findByRole('spinbutton', { name: 'Trọng số tiêu chí bắt buộc MUST_HAVE (%)' });
+    const shouldInput = screen.getByRole('spinbutton', { name: 'Trọng số tiêu chí ưu tiên SHOULD_HAVE (%)' });
+    const saveBtn = screen.getByRole('button', { name: /Lưu cấu hình AI/i });
+
+    expect(saveBtn).toBeDisabled();
+
+    fireEvent.change(mustInput, { target: { value: '40' } });
+    expect(await screen.findByText(/Tổng 4 trọng số hiện tại là 90%/)).toBeTruthy();
+    expect(saveBtn).toBeDisabled();
+
+    fireEvent.change(shouldInput, { target: { value: '30' } });
+    await waitFor(() => expect(saveBtn).not.toBeDisabled());
+    fireEvent.click(saveBtn);
+
+    await waitFor(() =>
+      expect(updateBatchMock).toHaveBeenCalledWith([
+        { key: 'mf03.ai_scoring.must_have_weight', value: 40 },
+        { key: 'mf03.ai_scoring.should_have_weight', value: 30 },
+        { key: 'mf03.ai_scoring.semantic_weight', value: 15 },
+        { key: 'mf03.ai_scoring.llm_fit_weight', value: 15 },
+        { key: 'mf03.ai_scoring.knockout_cap_score', value: 59 },
+      ])
+    );
   });
 });

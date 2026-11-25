@@ -59,6 +59,19 @@ public static class BusinessSettingKeys
     public const string JobMatchMinScore = "job_match.min_score";
     public const string JobMatchMaxNotificationsPerDay = "job_match.max_notifications_per_day";
     public const string JobMatchExpiryDays = "job_match.expiry_days";
+    public const string AiScoringMustHaveWeight = "mf03.ai_scoring.must_have_weight";
+    public const string AiScoringShouldHaveWeight = "mf03.ai_scoring.should_have_weight";
+    public const string AiScoringSemanticWeight = "mf03.ai_scoring.semantic_weight";
+    public const string AiScoringLlmFitWeight = "mf03.ai_scoring.llm_fit_weight";
+    public const string AiScoringKnockoutCapScore = "mf03.ai_scoring.knockout_cap_score";
+
+    public static readonly string[] AiScoringWeightKeys =
+    [
+        AiScoringMustHaveWeight,
+        AiScoringShouldHaveWeight,
+        AiScoringSemanticWeight,
+        AiScoringLlmFitWeight,
+    ];
 
     public static readonly IReadOnlyList<BusinessSettingDefinition> All =
     [
@@ -158,6 +171,21 @@ public static class BusinessSettingKeys
         new(AffiliateRatingAverageMin, "AFFILIATE_RATING", "Ngưỡng đánh giá Trung bình (AVERAGE)",
             "Điểm QualityRating tối thiểu để đạt xếp loại AVERAGE (mặc định 2.0). Dưới ngưỡng này là LOW.",
             BusinessSettingType.Decimal, 2.0m, 0m, 5m, "điểm", "main-flows.md, MF-05 đánh giá Affiliate"),
+        new(AiScoringMustHaveWeight, "AI_SCORING", "Trọng số tiêu chí bắt buộc MUST_HAVE (%)",
+            "Tỷ trọng của mức độ đáp ứng các tiêu chí bắt buộc (MUST_HAVE) trong công thức chấm điểm CV–JD. Tổng 4 trọng số phải bằng 100%.",
+            BusinessSettingType.Decimal, 50m, 0m, 100m, "%", "ai-service-v2/app/scoring.py"),
+        new(AiScoringShouldHaveWeight, "AI_SCORING", "Trọng số tiêu chí ưu tiên SHOULD_HAVE (%)",
+            "Tỷ trọng của mức độ đáp ứng các tiêu chí ưu tiên (SHOULD_HAVE) trong công thức chấm điểm CV–JD. Tổng 4 trọng số phải bằng 100%.",
+            BusinessSettingType.Decimal, 20m, 0m, 100m, "%", "ai-service-v2/app/scoring.py"),
+        new(AiScoringSemanticWeight, "AI_SCORING", "Trọng số tương đồng ngữ nghĩa Semantic (%)",
+            "Tỷ trọng của độ tương đồng ngữ nghĩa Sentence-BERT giữa CV và JD. Tổng 4 trọng số phải bằng 100%.",
+            BusinessSettingType.Decimal, 15m, 0m, 100m, "%", "ai-service-v2/app/scoring.py"),
+        new(AiScoringLlmFitWeight, "AI_SCORING", "Trọng số mức phù hợp tổng thể LLM Fit (%)",
+            "Tỷ trọng của đánh giá mức phù hợp tổng thể từ LLM. Tổng 4 trọng số phải bằng 100%.",
+            BusinessSettingType.Decimal, 15m, 0m, 100m, "%", "ai-service-v2/app/scoring.py"),
+        new(AiScoringKnockoutCapScore, "AI_SCORING", "Trần điểm Knockout khi thiếu tiêu chí bắt buộc (điểm)",
+            "Điểm tối đa của hồ sơ nếu thiếu ít nhất một tiêu chí bắt buộc (MUST_HAVE = NOT_FOUND).",
+            BusinessSettingType.Decimal, 59m, 0m, 100m, "điểm", "ai-service-v2/app/scoring.py"),
     ];
 
     public static BusinessSettingDefinition Get(string key) =>
