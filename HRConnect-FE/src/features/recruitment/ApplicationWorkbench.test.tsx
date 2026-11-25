@@ -768,4 +768,72 @@ describe('ApplicationWorkbench AI evidence (FE-M04)', () => {
     expect(screen.getByText('Có kiến thức Docker/K8s')).toBeInTheDocument();
     expect(screen.getByText('Tiếng Anh giao tiếp tốt')).toBeInTheDocument();
   }, 60000);
+
+  it('[MF03] sends trimmed optional HR note when shortlisting and displays it for Client', async () => {
+    vi.mocked(screeningApi.updateStatus).mockResolvedValue({} as any);
+    vi.mocked(interviewHistoryApi.get).mockResolvedValue([]);
+    vi.mocked(sourcingApi.getDeliveries).mockResolvedValue({ summary: {}, items: [] } as any);
+
+    renderWorkbench(
+      {
+        ...baseApplication,
+        status: 'SCREENING',
+        currentStage: 'SCREENING',
+        serviceTypeCode: 'HEADHUNT_COD',
+        allowedActions: ['SHORTLIST'],
+        offers: [],
+      },
+      'hr'
+    );
+
+    const shortlistBtn = await screen.findByRole('button', { name: /Chọn gửi Client/i }, { timeout: 10000 });
+    fireEvent.click(shortlistBtn);
+
+    const noteInput = await screen.findByLabelText('Nhận xét của HR (tùy chọn)', {}, { timeout: 10000 });
+    expect(noteInput).toHaveAttribute('maxlength', '500');
+    fireEvent.change(noteInput, { target: { value: '  Ứng viên có kinh nghiệm thực tế phù hợp.  ' } });
+
+    const confirmBtns = await screen.findAllByRole('button', { name: 'Chọn gửi Client' }, { timeout: 10000 });
+    fireEvent.click(confirmBtns[confirmBtns.length - 1]);
+
+    await waitFor(
+      () =>
+        expect(screeningApi.updateStatus).toHaveBeenCalledWith('job-1', 'app-1', {
+          targetStatus: 'SHORTLISTED',
+          concurrencyToken: 'application-token',
+          reason: 'Ứng viên có kinh nghiệm thực tế phù hợp.',
+        }),
+      { timeout: 10000 }
+    );
+  }, 60000);
+
+  it('[MF03] displays SHORTLISTED HR note in summary and timeline for Client', async () => {
+    vi.mocked(interviewHistoryApi.get).mockResolvedValue([]);
+    vi.mocked(sourcingApi.getDeliveries).mockResolvedValue({ summary: {}, items: [] } as any);
+
+    renderWorkbench(
+      {
+        ...baseApplication,
+        status: 'SHORTLISTED',
+        currentStage: 'SHORTLISTED',
+        statusReason: 'Kinh nghiệm dự án thực tế rất sát JD',
+        serviceTypeCode: 'HEADHUNT_COD',
+        allowedActions: ['SCHEDULE_INTERVIEW'],
+        offers: [],
+      },
+      'client',
+      [
+        {
+          eventType: 'APPLICATION_STATUS_CHANGED',
+          title: 'Chuyển trạng thái: Đạt sàng lọc',
+          description: 'Kinh nghiệm dự án thực tế rất sát JD',
+          timestamp: '2026-10-15T10:00:00Z',
+          actorName: 'Internal HR',
+        },
+      ]
+    );
+
+    const matches = await screen.findAllByText(/Kinh nghiệm dự án thực tế rất sát JD/, {}, { timeout: 10000 });
+    expect(matches.length).toBeGreaterThanOrEqual(2);
+  }, 60000);
 });

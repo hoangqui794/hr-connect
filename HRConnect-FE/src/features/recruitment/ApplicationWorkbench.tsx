@@ -362,8 +362,12 @@ export const ApplicationWorkbench: React.FC<{
    * (new concurrency token), so a failed hand-over (e.g. 409 consent / target reached) is a warning, not a failure.
    */
   const shortlistAndDeliver = useMutation({
-    mutationFn: async ({ jobId, appId }: { jobId: string; appId: string }) => {
-      await screeningApi.updateStatus(jobId, appId, { targetStatus: 'SHORTLISTED', concurrencyToken: token });
+    mutationFn: async ({ jobId, appId, reason }: { jobId: string; appId: string; reason?: string }) => {
+      await screeningApi.updateStatus(jobId, appId, {
+        targetStatus: 'SHORTLISTED',
+        concurrencyToken: token,
+        ...(reason ? { reason } : {}),
+      });
       await refreshApplication();
       try {
         await sourcingApi.deliverCvs(jobId, [appId]);
@@ -504,7 +508,8 @@ export const ApplicationWorkbench: React.FC<{
   const screen = (target: 'SHORTLISTED' | 'BACKUP', extra?: { reason?: string }) =>
     run.mutate(() => screeningApi.updateStatus(d!.jobId, d!.applicationId, { targetStatus: target, concurrencyToken: token, ...extra }));
 
-  const confirmShortlist = () =>
+  const confirmShortlist = () => {
+    let hrNote = '';
     modal.confirm({
       title:
         audience !== 'hr'
@@ -512,22 +517,51 @@ export const ApplicationWorkbench: React.FC<{
           : isCvSourcing
             ? 'Chọn và giao CV này cho Client?'
             : 'Chọn hồ sơ này gửi Client?',
-      content:
-        audience !== 'hr'
-          ? `${d?.candidateFullName} sẽ chuyển sang bước phỏng vấn.`
-          : isCvSourcing
-            ? `Hồ sơ của ${d?.candidateFullName} sẽ được chọn và bàn giao ngay cho Doanh nghiệp. Doanh nghiệp sẽ chấp nhận hoặc từ chối CV${reviewWindow}.`
-            : `Client sẽ thấy hồ sơ của ${d?.candidateFullName} (đã che liên hệ) và có thể lên lịch phỏng vấn.`,
+      content: (
+        <div className="space-y-3">
+          <p className="m-0">
+            {audience !== 'hr'
+              ? `${d?.candidateFullName} sẽ chuyển sang bước phỏng vấn.`
+              : isCvSourcing
+                ? `Hồ sơ của ${d?.candidateFullName} sẽ được chọn và bàn giao ngay cho Doanh nghiệp. Doanh nghiệp sẽ chấp nhận hoặc từ chối CV${reviewWindow}.`
+                : `Client sẽ thấy hồ sơ của ${d?.candidateFullName} (đã che liên hệ) và có thể lên lịch phỏng vấn.`}
+          </p>
+          {audience === 'hr' && (
+            <div>
+              <label htmlFor="hr-shortlist-reason" className="mb-1 block text-xs font-medium text-slate-700">
+                Nhận xét của HR (tùy chọn)
+              </label>
+              <Input.TextArea
+                id="hr-shortlist-reason"
+                rows={3}
+                maxLength={500}
+                showCount
+                placeholder="Ví dụ: Ứng viên có kinh nghiệm thực tế phù hợp với vị trí dù điểm AI thấp..."
+                onChange={(e) => {
+                  hrNote = e.target.value;
+                }}
+              />
+            </div>
+          )}
+        </div>
+      ),
       okText: audience !== 'hr' ? 'Chọn ứng viên' : isCvSourcing ? 'Chọn & giao Client' : 'Chọn gửi Client',
       cancelText: 'Hủy',
       okButtonProps: { loading: run.isPending || shortlistAndDeliver.isPending || pendingAction === 'short' },
       onOk: async () => {
+        const trimmedReason = hrNote.trim() || undefined;
         setPendingAction('short');
         try {
           if (audience === 'hr' && isCvSourcing) {
-            await shortlistAndDeliver.mutateAsync({ jobId: d!.jobId, appId: d!.applicationId });
+            await shortlistAndDeliver.mutateAsync({ jobId: d!.jobId, appId: d!.applicationId, reason: trimmedReason });
           } else {
-            await run.mutateAsync(() => screeningApi.updateStatus(d!.jobId, d!.applicationId, { targetStatus: 'SHORTLISTED', concurrencyToken: token }));
+            await run.mutateAsync(() =>
+              screeningApi.updateStatus(d!.jobId, d!.applicationId, {
+                targetStatus: 'SHORTLISTED',
+                concurrencyToken: token,
+                ...(trimmedReason ? { reason: trimmedReason } : {}),
+              })
+            );
           }
         } catch {
           // Error toast and cache refresh are already handled by shortlistAndDeliver.onError / run.onError.
@@ -536,6 +570,7 @@ export const ApplicationWorkbench: React.FC<{
         }
       },
     });
+  };
 
   const confirmSendOffer = () =>
     modal.confirm({
@@ -965,6 +1000,11 @@ export const ApplicationWorkbench: React.FC<{
                 Thông tin liên hệ được ẩn: HR Connect liên hệ ứng viên thay bạn cho dịch vụ này, và sẽ hiển thị sau khi ứng viên đi làm.
               </div>
             ) : null}
+            {d.status === 'SHORTLISTED' && d.statusReason && (
+              <div className="mt-3 rounded-xl bg-emerald-50 px-4 py-3 text-[13px] text-emerald-950">
+                <b>Nhận xét của HR:</b> {d.statusReason}
+              </div>
+            )}
             {d.status === 'REJECTED' && (
               <div className="mt-3 rounded-xl bg-red-50 px-4 py-3 text-[13px] text-red-900">
                 <b>Lý do loại:</b> {reasonLabel(d.statusReasonCode) ?? '—'}
