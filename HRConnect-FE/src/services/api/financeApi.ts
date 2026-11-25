@@ -50,6 +50,9 @@ export const businessSettingsApi = {
   async update(key: string, value: number): Promise<BusinessSetting> {
     return (await apiClient.put<ApiEnvelope<BusinessSetting>>(`/admin/settings/${encodeURIComponent(key)}`, { value })).data.data;
   },
+  async updateBatch(items: { key: string; value: number }[]): Promise<BusinessSetting[]> {
+    return (await apiClient.put<ApiEnvelope<BusinessSetting[]>>('/admin/settings/batch', { items })).data.data;
+  },
 };
 
 /** MF-05 (HEADHUNT_COD): service fees, commissions, payouts, warranty claims. The API scopes lists by role. */

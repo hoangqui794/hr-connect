@@ -386,3 +386,81 @@ def test_docs_flag_serves_docs_but_match_file_still_needs_token(monkeypatch):
         monkeypatch.delenv("API_DOCS_ENABLED")
         get_settings.cache_clear()
         importlib.reload(main_module)
+
+
+def test_scoring_job_request_applies_dynamic_scoring_config():
+    from app.documents import PreparedDocument
+    from app.llm import LlmCvAssessment, LlmOverallFit, LlmRequirementJudgement
+    from app.pipeline import MatchingPipeline
+    from app.schemas import Job, MatchingMetadata, Requirement, RequirementType
+    from app.scoring_jobs import ScoringJobRequest
+
+    req = ScoringJobRequest(
+        requestId="req-cfg-1",
+        applicationId="app-1",
+        cvId="cv-1",
+        jobId="job-1",
+        attemptNo=1,
+        scoring_config={
+            "must_have_weight": 60,
+            "should_have_weight": 10,
+            "semantic_weight": 20,
+            "llm_fit_weight": 10,
+            "knockout_cap_score": 45,
+        },
+    )
+    assert req.scoring_config is not None
+    assert req.scoring_config.must_have_weight == 60.0
+    assert req.scoring_config.knockout_cap_score == 45.0
+
+    class StubAssessor:
+        last_model = "stub-model"
+        last_provider = "gemini"
+
+        def assess(self, job, document, today):
+            return LlmCvAssessment(
+                candidate_summary="Tóm tắt",
+                overall_fit=LlmOverallFit(level=5, reason="Phù hợp", evidence_quotes=["Python 5 nam"]),
+                requirements=[
+                    LlmRequirementJudgement(
+                        requirement_id="r0",
+                        status="MATCHED",
+                        evidence_quotes=["Python 5 nam"],
+                        reason="Đạt",
+                    ),
+                    LlmRequirementJudgement(
+                        requirement_id="r1",
+                        status="NOT_FOUND",
+                        evidence_quotes=[],
+                        reason="Thiếu",
+                    ),
+                    LlmRequirementJudgement(
+                        requirement_id="r2",
+                        status="MATCHED",
+                        evidence_quotes=["Python 5 nam"],
+                        reason="Đạt",
+                    ),
+                ],
+                cv_text="Python 5 nam",
+            )
+
+    class StubSemantic:
+        def similarity(self, text, job):
+            return 1.0
+
+    pipeline = MatchingPipeline(Settings(), StubAssessor(), StubSemantic())
+    job = Job(
+        jobId="job-1",
+        title="Backend",
+        requirements=[
+            Requirement(id="r0", content="Python", type=RequirementType.MUST_HAVE),
+            Requirement(id="r1", content="Docker", type=RequirementType.MUST_HAVE),
+            Requirement(id="r2", content="FastAPI", type=RequirementType.SHOULD_HAVE),
+        ],
+    )
+    doc = PreparedDocument(kind="pdf", media_type="application/pdf", data=b"%PDF-1.4", source_text="Python 5 nam", extraction_method="pymupdf", has_text_layer=True, page_count=1)
+    metadata = MatchingMetadata(requestId="req-cfg-1", applicationId="app-1", attemptNo=1, job=job)
+
+    result = pipeline.run(metadata, doc, scoring_config=req.scoring_config.model_dump())
+    # MUST_HAVE r1 is NOT_FOUND -> capped at dynamic knockout_cap_score=45 (instead of default 59)
+    assert result.match_score == 45.0

@@ -37,6 +37,7 @@ import { getApiErrorMessage } from '@/services/apiClient';
 import type { BusinessSetting } from '@/types/api/finance';
 import { PageHero, Surface } from './ui';
 import { PostingPackagesSection } from './PostingPackagesSection';
+import { AiScoringSettingsCard } from './AiScoringSettingsCard';
 
 const formatNumber = (value: number) => value.toLocaleString('vi-VN', { maximumFractionDigits: 3 });
 
@@ -100,6 +101,13 @@ const GROUPS: GroupMeta[] = [
     title: 'Gợi ý việc làm (AI)',
     tag: 'AI',
     description: 'Ngưỡng điểm khớp CV và tần suất phân tích tự động',
+  },
+  {
+    code: 'AI_SCORING',
+    title: 'Chấm điểm AI (MF-03)',
+    tag: 'MF-03',
+    color: 'cyan',
+    description: 'Trọng số các thành phần chấm điểm CV–JD và trần điểm Knockout khi thiếu tiêu chí bắt buộc',
   },
   {
     code: 'JOB_TEMPLATE',
@@ -572,16 +580,20 @@ export const AdminSettingsPage: React.FC = () => {
 
                         {!isCollapsed && (
                           <div className="p-4 bg-slate-50/40">
-                            <ul className="m-0 list-none space-y-3 p-0">
-                              {g.items.map((s) => (
-                                <SettingRow
-                                  key={s.key}
-                                  setting={s}
-                                  onEdit={() => open(s)}
-                                  onRestore={() => restore(s)}
-                                />
-                              ))}
-                            </ul>
+                            {g.code === 'AI_SCORING' ? (
+                              <AiScoringSettingsCard items={g.items} />
+                            ) : (
+                              <ul className="m-0 list-none space-y-3 p-0">
+                                {g.items.map((s) => (
+                                  <SettingRow
+                                    key={s.key}
+                                    setting={s}
+                                    onEdit={() => open(s)}
+                                    onRestore={() => restore(s)}
+                                  />
+                                ))}
+                              </ul>
+                            )}
                           </div>
                         )}
                       </section>

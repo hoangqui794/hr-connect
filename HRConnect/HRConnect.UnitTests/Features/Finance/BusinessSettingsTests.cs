@@ -1,6 +1,7 @@
 using FluentAssertions;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
+using HRConnect.Application.Common.Models;
 using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Settings;
 using HRConnect.Infrastructure.Persistence;
@@ -65,5 +66,40 @@ public class BusinessSettingsTests
         await Handlers()
             .Invoking(h => h.Handle(new UpdateBusinessSettingCommand("mf05.unknown", 1m, _admin), default))
             .Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task AiScoring_defaults_and_batch_update_validate_sum_100_and_write_audit()
+    {
+        (await Settings().GetDecimalAsync(BusinessSettingKeys.AiScoringMustHaveWeight)).Should().Be(50m);
+        (await Settings().GetDecimalAsync(BusinessSettingKeys.AiScoringShouldHaveWeight)).Should().Be(20m);
+        (await Settings().GetDecimalAsync(BusinessSettingKeys.AiScoringSemanticWeight)).Should().Be(15m);
+        (await Settings().GetDecimalAsync(BusinessSettingKeys.AiScoringLlmFitWeight)).Should().Be(15m);
+        (await Settings().GetDecimalAsync(BusinessSettingKeys.AiScoringKnockoutCapScore)).Should().Be(59m);
+
+        var audit = new Mock<IAuditLogService>();
+        var handlers = new BusinessSettingHandlers(new SystemSettingRepository(_context), new UnitOfWork(_context), audit.Object);
+
+        await handlers
+            .Invoking(h => h.Handle(new UpdateBusinessSettingsBatchCommand([
+                new(BusinessSettingKeys.AiScoringMustHaveWeight, 40m),
+                new(BusinessSettingKeys.AiScoringShouldHaveWeight, 20m),
+                new(BusinessSettingKeys.AiScoringSemanticWeight, 15m),
+                new(BusinessSettingKeys.AiScoringLlmFitWeight, 15m),
+            ], _admin), default))
+            .Should().ThrowAsync<BadRequestException>();
+
+        var updated = await handlers.Handle(new UpdateBusinessSettingsBatchCommand([
+            new(BusinessSettingKeys.AiScoringMustHaveWeight, 40m),
+            new(BusinessSettingKeys.AiScoringShouldHaveWeight, 30m),
+            new(BusinessSettingKeys.AiScoringSemanticWeight, 15m),
+            new(BusinessSettingKeys.AiScoringLlmFitWeight, 15m),
+            new(BusinessSettingKeys.AiScoringKnockoutCapScore, 55m),
+        ], _admin), default);
+
+        updated.Should().HaveCount(5);
+        (await Settings().GetDecimalAsync(BusinessSettingKeys.AiScoringMustHaveWeight)).Should().Be(40m);
+        (await Settings().GetDecimalAsync(BusinessSettingKeys.AiScoringKnockoutCapScore)).Should().Be(55m);
+        audit.Verify(a => a.AddAsync(It.Is<AuditEntry>(e => e.Action == AuditActions.BusinessSettingUpdated), default), Times.Exactly(5));
     }
 }

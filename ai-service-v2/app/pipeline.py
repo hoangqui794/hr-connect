@@ -26,7 +26,13 @@ class MatchingPipeline:
         self._assessor = assessor
         self._semantic = semantic
 
-    def run(self, metadata: MatchingMetadata, document: PreparedDocument, today: date | None = None) -> MatchingResult:
+    def run(
+        self,
+        metadata: MatchingMetadata,
+        document: PreparedDocument,
+        today: date | None = None,
+        scoring_config: dict[str, float] | None = None,
+    ) -> MatchingResult:
         job = metadata.job
         assessment = self._assessor.assess(job, document, (today or date.today()).isoformat())
 
@@ -56,7 +62,8 @@ class MatchingPipeline:
         overall_fit = self._verify_fit(assessment, verification_text)
         if overall_fit.adjusted:
             review_reasons.append("Mức phù hợp tổng thể của AI không có câu trích hợp lệ nên bị hạ xuống mức 2.")
-        score = compute_score(must, should, semantic, self._settings, overall_fit.score)
+        effective_settings = self._apply_scoring_config(scoring_config)
+        score = compute_score(must, should, semantic, effective_settings, overall_fit.score)
         manual_review = bool(review_reasons) or any(result.requires_manual_review for result in results)
 
         return MatchingResult(
@@ -73,6 +80,22 @@ class MatchingPipeline:
             reviewReasons=review_reasons,
             modelName=f"{self._model_used()} + {self._settings.embedding_model}",
         )
+
+    def _apply_scoring_config(self, scoring_config: dict[str, float] | None) -> Settings:
+        if not scoring_config:
+            return self._settings
+        must_pct = float(scoring_config.get("must_have_weight", self._settings.must_have_weight * 100))
+        should_pct = float(scoring_config.get("should_have_weight", self._settings.should_have_weight * 100))
+        semantic_pct = float(scoring_config.get("semantic_weight", self._settings.semantic_weight * 100))
+        fit_pct = float(scoring_config.get("llm_fit_weight", self._settings.llm_fit_weight * 100))
+        knockout_cap = float(scoring_config.get("knockout_cap_score", self._settings.knockout_score_cap))
+        return self._settings.model_copy(update={
+            "must_have_weight": must_pct / 100.0,
+            "should_have_weight": should_pct / 100.0,
+            "semantic_weight": semantic_pct / 100.0,
+            "llm_fit_weight": fit_pct / 100.0,
+            "knockout_score_cap": knockout_cap,
+        })
 
     def _model_used(self) -> str:
         """With fallback providers, record the one that actually answered."""
