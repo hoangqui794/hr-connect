@@ -150,3 +150,129 @@ export interface AdminIdentityClaimCvDownloadUrl {
   expiresAt: string;
 }
 
+/** Admin review contracts for cross-profile Candidate duplicate cases. */
+export type AdminCandidateDuplicateStatus =
+  | 'OPEN'
+  | 'AWAITING_CANDIDATE'
+  | 'UNDER_REVIEW'
+  | 'MERGED'
+  | 'DISMISSED'
+  | 'BLOCKED_FINANCE'
+  | string;
+
+export type AdminCandidateDuplicateRiskLevel = 'REVIEW' | 'HIGH' | string;
+
+export type AdminCandidateDuplicateDecision = 'MERGE' | 'DISMISS' | 'NEED_MORE_EVIDENCE';
+
+export interface AdminCandidateDuplicateParty {
+  candidateId: string;
+  fullName: string;
+  maskedEmail: string | null;
+  maskedPhone: string | null;
+  hasAccount: boolean;
+  status: string;
+  createdAt: string;
+}
+
+export interface AdminCandidateDuplicateListItem {
+  duplicateCaseId: string;
+  status: AdminCandidateDuplicateStatus;
+  riskLevel: AdminCandidateDuplicateRiskLevel;
+  candidateA: AdminCandidateDuplicateParty;
+  candidateB: AdminCandidateDuplicateParty;
+  jobId: string | null;
+  jobTitle: string | null;
+  companyId: string | null;
+  companyName: string | null;
+  createdAt: string;
+  updatedAt: string;
+  concurrencyToken: string;
+}
+
+export interface AdminCandidateDuplicateListParams {
+  status?: AdminCandidateDuplicateStatus;
+  riskLevel?: AdminCandidateDuplicateRiskLevel;
+  search?: string;
+  page: number;
+  pageSize: number;
+}
+
+export interface AdminCandidateDuplicateListResponse {
+  items: AdminCandidateDuplicateListItem[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+}
+
+export interface AdminCandidateDuplicateSignal {
+  reasonCode: string;
+  detectorVersion: string;
+  score: number;
+  evidence: string;
+  createdAt: string;
+}
+
+export interface AdminCandidateDuplicateSubmission {
+  submissionId: string;
+  candidateId: string;
+  status: string;
+  source: string;
+  submittedAt: string;
+  consentStatus: string | null;
+  consentRespondedAt: string | null;
+  applicationId: string | null;
+  attributionId: string | null;
+  affiliateId: string | null;
+  attributionStatus: string | null;
+  commissionStatuses: string[];
+}
+
+export interface AdminCandidateDuplicateDetail {
+  duplicateCaseId: string;
+  status: AdminCandidateDuplicateStatus;
+  riskLevel: AdminCandidateDuplicateRiskLevel;
+  resolution: string | null;
+  resolutionReason: string | null;
+  candidateA: AdminCandidateDuplicateParty;
+  candidateB: AdminCandidateDuplicateParty;
+  canonicalCandidateId: string | null;
+  job: {
+    jobId: string;
+    title: string;
+    companyId: string;
+    companyName: string;
+  } | null;
+  signals: AdminCandidateDuplicateSignal[];
+  submissions: AdminCandidateDuplicateSubmission[];
+  createdAt: string;
+  updatedAt: string;
+  concurrencyToken: string;
+}
+
+export interface AdminCandidateDuplicateResolvePayload {
+  decision: AdminCandidateDuplicateDecision;
+  reason: string;
+  concurrencyToken: string;
+  idempotencyKey: string;
+}
+
+export interface AdminCandidateDuplicateResolveResult {
+  duplicateCaseId: string;
+  status: AdminCandidateDuplicateStatus;
+  resolution: string | null;
+  canonicalCandidateId: string | null;
+  sourceCandidateId: string | null;
+  pendingFinalizationSubmissionIds: string[];
+  finalizationResults: Array<{
+    submissionId: string;
+    outcome: string;
+    applicationId: string | null;
+    attributionId: string | null;
+    message?: string | null;
+  }>;
+  concurrencyToken: string;
+  idempotentReplay: boolean;
+}
+
+

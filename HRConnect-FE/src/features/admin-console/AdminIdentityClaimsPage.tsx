@@ -1,13 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Alert, Button, Input, Select, Table } from 'antd';
+import { Alert, Button, Input, Select, Table, Tabs } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { adminIdentityClaimApi } from '@/services/api/mf02/adminIdentityClaimApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
-import type { AdminIdentityClaimListItem, AdminIdentityClaimStatus } from '@/types/api/mf02';
+import type {
+  AdminCandidateDuplicateRiskLevel,
+  AdminCandidateDuplicateStatus,
+  AdminIdentityClaimListItem,
+  AdminIdentityClaimStatus,
+} from '@/types/api/mf02';
+import { AdminDuplicateCasesPanel } from './AdminDuplicateCasesPanel';
 import { formatDateTime } from './adminTheme';
 import { PageHero, PersonCell, StatusDot, Surface, type Tone } from './ui';
 
@@ -26,8 +32,19 @@ const statusOptions = Object.entries(STATUS_META).map(([value, meta]) => ({ valu
 
 export const AdminIdentityClaimsPage: React.FC = () => {
   const canReview = useAuthStore((state) => state.hasPermission('candidate.identity.review'));
+  const canViewDuplicates = useAuthStore((state) => state.hasPermission('candidate_duplicate.view'));
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [duplicateRefreshSignal, setDuplicateRefreshSignal] = useState(0);
+
+  const requestedTab = searchParams.get('tab');
+  const activeTab: 'claims' | 'duplicates' =
+    requestedTab === 'duplicates' && canViewDuplicates
+      ? 'duplicates'
+      : canReview
+        ? 'claims'
+        : 'duplicates';
+
   const status = (searchParams.get('status') ?? DEFAULT_STATUS) as AdminIdentityClaimStatus;
   const search = searchParams.get('q') ?? undefined;
   const page = Number(searchParams.get('page')) || 1;
@@ -35,10 +52,15 @@ export const AdminIdentityClaimsPage: React.FC = () => {
   const sortDirection = (searchParams.get('sortDirection') as 'asc' | 'desc' | null) ?? 'desc';
   const params = { status, search, page, pageSize: PAGE_SIZE, sortBy, sortDirection };
 
+  const dupStatus = (searchParams.get('dupStatus') ?? undefined) as AdminCandidateDuplicateStatus | undefined;
+  const dupRisk = (searchParams.get('risk') ?? undefined) as AdminCandidateDuplicateRiskLevel | undefined;
+  const dupSearch = searchParams.get('dupQ') ?? undefined;
+  const dupPage = Number(searchParams.get('dupPage')) || 1;
+
   const list = useQuery({
     queryKey: ['admin-candidate-identity-claims', params],
     queryFn: () => adminIdentityClaimApi.list(params),
-    enabled: canReview,
+    enabled: canReview && activeTab === 'claims',
     placeholderData: (previous) => previous,
   });
 
@@ -46,7 +68,10 @@ export const AdminIdentityClaimsPage: React.FC = () => {
     const next = new URLSearchParams(searchParams);
     if (value) next.set(key, value);
     else next.delete(key);
-    if (key !== 'page') next.delete('page');
+    if (key !== 'page' && key !== 'dupPage') {
+      next.delete('page');
+      next.delete('dupPage');
+    }
     setSearchParams(next);
   };
 
@@ -89,109 +114,153 @@ export const AdminIdentityClaimsPage: React.FC = () => {
     },
   ];
 
-  if (!canReview) {
+  if (!canReview && !canViewDuplicates) {
     return <Alert type="error" showIcon message="Bạn không có quyền đối chiếu yêu cầu khôi phục danh tính Candidate." />;
   }
 
   const data = list.data;
+  const tabItems = [
+    ...(canReview ? [{ key: 'claims', label: 'Yêu cầu khôi phục email' }] : []),
+    ...(canViewDuplicates ? [{ key: 'duplicates', label: 'Hồ sơ nghi trùng' }] : []),
+  ];
+
   return (
     <div className="admin-stagger space-y-5">
       <PageHero
         eyebrow="Vận hành"
         title="Đối chiếu danh tính Candidate"
-        description="Kiểm tra yêu cầu khôi phục hồ sơ cũ trước khi liên kết dữ liệu CV và lịch sử ứng tuyển."
+        description="Kiểm tra yêu cầu khôi phục hồ sơ cũ và xử lý các cặp hồ sơ nghi trùng trước khi hợp nhất dữ liệu CV, lịch sử ứng tuyển."
         actions={
-          <Button icon={<ReloadOutlined />} loading={list.isFetching && !list.isLoading} onClick={() => list.refetch()}>
+          <Button
+            icon={<ReloadOutlined />}
+            loading={activeTab === 'claims' && list.isFetching && !list.isLoading}
+            onClick={() => {
+              if (activeTab === 'duplicates') {
+                setDuplicateRefreshSignal((count) => count + 1);
+              } else {
+                list.refetch();
+              }
+            }}
+          >
             Tải lại
           </Button>
         }
       />
 
       <Surface>
-        <div key={searchParams.toString()} className="flex flex-wrap items-center gap-3 px-5 pb-3 pt-5">
-          <Select
-            size="large"
-            value={status}
-            options={statusOptions}
-            className="w-52"
-            onChange={(value) => setParam('status', value)}
-            aria-label="Lọc theo trạng thái"
-          />
-          <Input
-            allowClear
-            size="large"
-            defaultValue={search}
-            prefix={<SearchOutlined className="text-slate-500" aria-hidden />}
-            placeholder="Tên hoặc email... nhấn Enter"
-            className="max-w-xs"
-            maxLength={100}
-            onPressEnter={(event) => setParam('q', event.currentTarget.value.trim() || undefined)}
-            onChange={(event) => !event.target.value && search && setParam('q', undefined)}
-            aria-label="Tìm yêu cầu danh tính"
-          />
-          <Select
-            size="large"
-            value={`${sortBy}:${sortDirection}`}
-            className="w-52"
-            onChange={(value: string) => {
-              const [nextSortBy, nextDirection] = value.split(':');
-              const next = new URLSearchParams(searchParams);
-              next.set('sortBy', nextSortBy);
-              next.set('sortDirection', nextDirection);
-              next.delete('page');
-              setSearchParams(next);
-            }}
-            options={[
-              { value: 'createdAt:desc', label: 'Mới tạo gần nhất' },
-              { value: 'createdAt:asc', label: 'Cũ nhất trước' },
-              { value: 'verifiedAt:desc', label: 'Mới xác minh gần nhất' },
-              { value: 'reviewedAt:desc', label: 'Mới xử lý gần nhất' },
-            ]}
-            aria-label="Sắp xếp yêu cầu"
-          />
-          {data && <span className="ml-auto text-sm text-slate-600 tabular-nums">{data.total} yêu cầu</span>}
-        </div>
-
-        {list.isError ? (
-          <div className="p-5">
-            <Alert
-              type="error"
-              showIcon
-              message="Không tải được yêu cầu khôi phục danh tính"
-              description={getApiErrorMessage(list.error)}
+        {tabItems.length > 1 && (
+          <div className="border-b border-slate-200 px-5 pt-2">
+            <Tabs
+              activeKey={activeTab}
+              items={tabItems}
+              className="mb-0"
+              onChange={(key) => {
+                const next = new URLSearchParams(searchParams);
+                if (key === 'duplicates') next.set('tab', 'duplicates');
+                else next.delete('tab');
+                setSearchParams(next);
+              }}
             />
           </div>
-        ) : (
-          <Table<AdminIdentityClaimListItem>
-            className="admin-soft-table w-full table-auto"
-            rowKey="claimId"
-            loading={list.isLoading}
-            columns={columns}
-            dataSource={data?.items ?? []}
-            locale={{
-              emptyText:
-                status === DEFAULT_STATUS
-                  ? 'Không có yêu cầu nào đang chờ đối chiếu.'
-                  : 'Không có yêu cầu phù hợp bộ lọc.',
-            }}
-            onRow={(item) => ({
-              onClick: () => navigate(`/admin/candidate-identity-claims/${item.claimId}`),
-              onKeyDown: (event) => {
-                if (event.key === 'Enter') navigate(`/admin/candidate-identity-claims/${item.claimId}`);
-              },
-              tabIndex: 0,
-              className: 'cursor-pointer',
-              'aria-label': `Mở yêu cầu của ${item.requesterCandidateName}`,
-            })}
-            pagination={{
-              current: data?.page ?? page,
-              pageSize: PAGE_SIZE,
-              total: data?.total ?? 0,
-              showSizeChanger: false,
-              hideOnSinglePage: true,
-              onChange: (nextPage) => setParam('page', String(nextPage)),
-            }}
+        )}
+
+        {activeTab === 'duplicates' ? (
+          <AdminDuplicateCasesPanel
+            status={dupStatus}
+            riskLevel={dupRisk}
+            search={dupSearch}
+            page={dupPage}
+            onParamChange={setParam}
+            refreshSignal={duplicateRefreshSignal}
           />
+        ) : (
+          <>
+            <div key={searchParams.toString()} className="flex flex-wrap items-center gap-3 px-5 pb-3 pt-5">
+              <Select
+                size="large"
+                value={status}
+                options={statusOptions}
+                className="w-52"
+                onChange={(value) => setParam('status', value)}
+                aria-label="Lọc theo trạng thái"
+              />
+              <Input
+                allowClear
+                size="large"
+                defaultValue={search}
+                prefix={<SearchOutlined className="text-slate-500" aria-hidden />}
+                placeholder="Tên hoặc email... nhấn Enter"
+                className="max-w-xs"
+                maxLength={100}
+                onPressEnter={(event) => setParam('q', event.currentTarget.value.trim() || undefined)}
+                onChange={(event) => !event.target.value && search && setParam('q', undefined)}
+                aria-label="Tìm yêu cầu danh tính"
+              />
+              <Select
+                size="large"
+                value={`${sortBy}:${sortDirection}`}
+                className="w-52"
+                onChange={(value: string) => {
+                  const [nextSortBy, nextDirection] = value.split(':');
+                  const next = new URLSearchParams(searchParams);
+                  next.set('sortBy', nextSortBy);
+                  next.set('sortDirection', nextDirection);
+                  next.delete('page');
+                  setSearchParams(next);
+                }}
+                options={[
+                  { value: 'createdAt:desc', label: 'Mới tạo gần nhất' },
+                  { value: 'createdAt:asc', label: 'Cũ nhất trước' },
+                  { value: 'verifiedAt:desc', label: 'Mới xác minh gần nhất' },
+                  { value: 'reviewedAt:desc', label: 'Mới xử lý gần nhất' },
+                ]}
+                aria-label="Sắp xếp yêu cầu"
+              />
+              {data && <span className="ml-auto text-sm text-slate-600 tabular-nums">{data.total} yêu cầu</span>}
+            </div>
+
+            {list.isError ? (
+              <div className="p-5">
+                <Alert
+                  type="error"
+                  showIcon
+                  message="Không tải được yêu cầu khôi phục danh tính"
+                  description={getApiErrorMessage(list.error)}
+                />
+              </div>
+            ) : (
+              <Table<AdminIdentityClaimListItem>
+                className="admin-soft-table w-full table-auto"
+                rowKey="claimId"
+                loading={list.isLoading}
+                columns={columns}
+                dataSource={data?.items ?? []}
+                locale={{
+                  emptyText:
+                    status === DEFAULT_STATUS
+                      ? 'Không có yêu cầu nào đang chờ đối chiếu.'
+                      : 'Không có yêu cầu phù hợp bộ lọc.',
+                }}
+                onRow={(item) => ({
+                  onClick: () => navigate(`/admin/candidate-identity-claims/${item.claimId}`),
+                  onKeyDown: (event) => {
+                    if (event.key === 'Enter') navigate(`/admin/candidate-identity-claims/${item.claimId}`);
+                  },
+                  tabIndex: 0,
+                  className: 'cursor-pointer',
+                  'aria-label': `Mở yêu cầu của ${item.requesterCandidateName}`,
+                })}
+                pagination={{
+                  current: data?.page ?? page,
+                  pageSize: PAGE_SIZE,
+                  total: data?.total ?? 0,
+                  showSizeChanger: false,
+                  hideOnSinglePage: true,
+                  onChange: (nextPage) => setParam('page', String(nextPage)),
+                }}
+              />
+            )}
+          </>
         )}
       </Surface>
     </div>
