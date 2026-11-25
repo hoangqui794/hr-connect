@@ -330,6 +330,43 @@ public class SourcingDeliveryTests
     }
 
     [Fact]
+    public async Task Decide_StandardRejection_NotifiesAffiliateImmediately_WhileOtherWaitsForHrReview()
+    {
+        var job = SeedJob();
+        var standardApp = SeedApplication(job);
+        var otherApp = SeedApplication(job);
+        var dStandard = await DeliverOneAsync(job, standardApp);
+        var dOther = await DeliverOneAsync(job, otherApp);
+        var notifier = new Mock<IAppNotifier>();
+
+        var decideWithNotify = new DecideSourcingDeliveryCommandHandler(
+            Repository, _companyUsers.Object, UnitOfWork, _audit.Object, notifier: notifier.Object);
+
+        await decideWithNotify.Handle(
+            new DecideSourcingDeliveryCommand(job.JobId, dStandard.DeliveryId, "REJECTED", SourcingRejectReasons.WrongJob, "Sai job", _clientUserId), default);
+        notifier.Verify(n => n.NotifyUsersAsync(
+            It.Is<IEnumerable<Guid>>(ids => ids.Contains(standardApp.Submission!.SubmittedBy)),
+            It.Is<AppNotice>(x => x.RelatedEntityType == "SOURCING_DELIVERY" && x.RelatedEntityId == dStandard.DeliveryId),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        await decideWithNotify.Handle(
+            new DecideSourcingDeliveryCommand(job.JobId, dOther.DeliveryId, "REJECTED", SourcingRejectReasons.Other, "Chưa phù hợp", _clientUserId), default);
+        notifier.Verify(n => n.NotifyUsersAsync(
+            It.Is<IEnumerable<Guid>>(ids => ids.Contains(otherApp.Submission!.SubmittedBy)),
+            It.IsAny<AppNotice>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+
+        var reviewWithNotify = new ReviewSourcingRejectionCommandHandler(
+            Repository, UnitOfWork, _audit.Object, notifier: notifier.Object);
+        await reviewWithNotify.Handle(
+            new ReviewSourcingRejectionCommand(job.JobId, dOther.DeliveryId, true, "Đồng ý từ chối", _hrUserId), default);
+        notifier.Verify(n => n.NotifyUsersAsync(
+            It.Is<IEnumerable<Guid>>(ids => ids.Contains(otherApp.Submission!.SubmittedBy)),
+            It.Is<AppNotice>(x => x.RelatedEntityType == "SOURCING_DELIVERY" && x.RelatedEntityId == dOther.DeliveryId),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task Replace_ShouldSwapARejectedCvForAnotherQualifiedOne()
     {
         var job = SeedJob(sourcingTarget: 1);

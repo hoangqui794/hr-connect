@@ -91,4 +91,45 @@ public class GetAffiliateReferralProgressQueryHandlerTests
         _submissions.Verify(repository => repository.GetAffiliateSubmissionsAsync(
             userId, null, jobId, null, null, null, 1, 100, It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Theory]
+    [InlineData("REJECTED", "SOURCING_REJECTED")]
+    [InlineData("REPLACED", "SOURCING_REJECTED")]
+    [InlineData("DELIVERED", "SHORTLISTED")]
+    [InlineData("ACCEPTED", "SHORTLISTED")]
+    public async Task Handle_MapsShortlistedSourcingDeliveryOutcome(string deliveryStatus, string expectedProgress)
+    {
+        var userId = Guid.NewGuid();
+        var application = new JobApplication
+        {
+            ApplicationId = Guid.NewGuid(),
+            Status = "SHORTLISTED",
+            UpdatedAt = DateTime.UtcNow,
+            SourcingDeliveries = new List<SourcingDelivery>
+            {
+                new() { DeliveryId = Guid.NewGuid(), Status = deliveryStatus, DeliveredAt = DateTime.UtcNow }
+            }
+        };
+        var submission = new Submission
+        {
+            SubmissionId = Guid.NewGuid(),
+            Status = "ACCEPTED",
+            SubmittedBy = userId,
+            UpdatedAt = DateTime.UtcNow,
+            Candidate = new Candidate { FullName = "Nguyen Van Sang" },
+            Job = new Job { Title = "Ky thuat", Company = new Company { CompanyName = "NexaMind" } },
+            Applications = new List<JobApplication> { application }
+        };
+
+        _affiliates.Setup(repository => repository.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AffiliateProfile { AffiliateId = Guid.NewGuid(), UserId = userId });
+        _submissions.Setup(repository => repository.GetAffiliateSubmissionsAsync(
+                userId, null, null, null, null, null, 1, 20, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new List<Submission> { submission }, 1));
+
+        var handler = new GetAffiliateReferralProgressQueryHandler(_affiliates.Object, _submissions.Object);
+        var result = await handler.Handle(new GetAffiliateReferralProgressQuery(userId), CancellationToken.None);
+
+        result.Items.Should().ContainSingle().Which.ProgressStatus.Should().Be(expectedProgress);
+    }
 }

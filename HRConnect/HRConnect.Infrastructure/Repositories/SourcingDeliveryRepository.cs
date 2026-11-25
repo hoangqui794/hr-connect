@@ -54,6 +54,8 @@ public class SourcingDeliveryRepository : ISourcingDeliveryRepository
             .Include(d => d.Job).ThenInclude(j => j.ServiceType)
             .Include(d => d.Application).ThenInclude(a => a.Candidate)
             .Include(d => d.Application).ThenInclude(a => a.AiMatchResults)
+            .Include(d => d.Application).ThenInclude(a => a.Submission)
+            .Include(d => d.Application).ThenInclude(a => a.Attribution).ThenInclude(attr => attr!.Affiliate)
             .AsSplitQuery()
             .FirstOrDefaultAsync(d => d.DeliveryId == deliveryId, cancellationToken);
 
