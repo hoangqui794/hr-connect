@@ -136,9 +136,10 @@ export const ClientOverviewPage: React.FC = () => {
   const activeJobs = list.filter((j) => j.status === 'ACTIVE');
 
   const expiredNoticeJobs = React.useMemo(() => {
+    const rows = jobs.data ?? [];
     const now = Date.now();
     const since = now - 30 * 24 * 60 * 60 * 1000;
-    return list
+    return rows
       .filter((j) => {
         const displayExp = j.expiresAt
           ? new Date(j.expiresAt).getTime() <= now && new Date(j.expiresAt).getTime() >= since
@@ -156,7 +157,7 @@ export const ClientOverviewPage: React.FC = () => {
         const db = new Date(b.expiresAt ?? b.applicationDeadline ?? b.updatedAt).getTime();
         return db - da;
       });
-  }, [list]);
+  }, [jobs.data]);
   const draftCount = list.filter((j) => j.status === 'DRAFT').length;
   const rejectedCount = list.filter((j) => j.status === 'REJECTED').length;
   const needFix = draftCount + rejectedCount;
