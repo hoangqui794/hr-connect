@@ -106,7 +106,7 @@ describe('Client › Hồ sơ ứng viên', () => {
     renderPage();
     await screen.findByText('Ứng Viên e2e5');
 
-    fireEvent.click(screen.getByRole('radio', { name: /Kết thúc/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /Dừng tuyển/ }));
 
     await waitFor(() => {
       expect(listMock).toHaveBeenCalledWith(
@@ -138,7 +138,7 @@ describe('Client › Hồ sơ ứng viên', () => {
 
     const all = await screen.findByRole('radio', { name: /Tất cả/ });
     await waitFor(() => expect(within(all).getByText('8')).toBeInTheDocument());
-    expect(within(screen.getByRole('radio', { name: /Kết thúc/ })).getByText('4')).toBeInTheDocument();
+    expect(within(screen.getByRole('radio', { name: /Dừng tuyển/ })).getByText('4')).toBeInTheDocument();
     expect(countsMock).toHaveBeenCalledTimes(1);
     expect(countsMock).toHaveBeenCalledWith('status', expect.objectContaining({ serviceTypeCode: 'CV_SOURCING' }), expect.any(Array));
     expect(listMock).not.toHaveBeenCalledWith(expect.objectContaining({ pageSize: 1 }));
@@ -248,6 +248,22 @@ describe('Client › Hồ sơ ứng viên', () => {
     const nullRow = screen.getByText('Ứng Viên Null').closest('tr')!;
     expect(within(nullRow).queryByText(/Lý do:/)).toBeNull();
     expect(within(nullRow).queryByText(/Invalid Date|undefined/)).toBeNull();
+  });
+
+  it('groups candidates by hiring stage on All tab, renders 5-step badges, and filters urgent actions', async () => {
+    renderPage();
+
+    const shortlistedSection = await screen.findByRole('region', { name: 'Bước 2/5 · Đã chọn chờ phỏng vấn' });
+    expect(within(shortlistedSection).getByText('Ứng Viên e2e5')).toBeInTheDocument();
+    expect(within(shortlistedSection).getByText('Bước 2 · Đã chọn CV')).toBeInTheDocument();
+    expect(within(shortlistedSection).getByLabelText('Tiến độ bước 2 trên 5')).toBeInTheDocument();
+
+    const closedSection = screen.getByRole('region', { name: 'Dừng tuyển (Không đạt · Rút đơn · Nghỉ việc)' });
+    expect(within(closedSection).getByText('Demo Candidate 2')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Cần xử lý ngay \(1\)/ }));
+    expect(screen.getByText('Ứng Viên e2e5')).toBeInTheDocument();
+    expect(screen.queryByText('Demo Candidate 2')).not.toBeInTheDocument();
   });
 });
 
