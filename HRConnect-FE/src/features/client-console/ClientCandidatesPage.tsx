@@ -59,7 +59,7 @@ const GROUPS = [
   { key: 'placed', label: 'Đã đi làm', statuses: ['PLACED'] },
   {
     key: 'closed',
-    label: 'Kết thúc',
+    label: 'Dừng tuyển',
     statuses: [
       'REJECTED',
       'BACKUP_NOT_SELECTED',
@@ -550,7 +550,7 @@ export const ClientCandidatesPage: React.FC = () => {
               {(
                 [
                   ['list', <UnorderedListOutlined key="l" />, 'Danh sách'],
-                  ['board', <AppstoreOutlined key="b" />, 'Bảng'],
+                  ['board', <AppstoreOutlined key="b" />, 'Kanban giai đoạn'],
                 ] as const
               ).map(([v, icon, label]) => (
                 <button
@@ -600,7 +600,9 @@ export const ClientCandidatesPage: React.FC = () => {
                 const n = counts[i].data;
                 const selected = group === g.key;
                 const needsAction = ACTION_GROUPS.includes(g.key) && (n ?? 0) > 0;
-                return (
+                const isPlaced = g.key === 'placed';
+                const isClosed = g.key === 'closed';
+                const cell = (
                   <button
                     key={g.key}
                     type="button"
@@ -609,16 +611,30 @@ export const ClientCandidatesPage: React.FC = () => {
                     onClick={() => setParams({ stage: g.key === 'all' ? undefined : g.key, status: undefined })}
                     className={`group relative cursor-pointer rounded-xl border p-3 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0284C7] ${
                       selected
-                        ? 'border-[#0284C7] bg-white shadow-sm ring-2 ring-[#0284C7]/20'
+                        ? isPlaced
+                          ? 'border-emerald-600 bg-emerald-50/40 shadow-sm ring-2 ring-emerald-600/20'
+                          : isClosed
+                            ? 'border-slate-400 bg-white shadow-sm ring-2 ring-slate-300/40'
+                            : 'border-[#0284C7] bg-white shadow-sm ring-2 ring-[#0284C7]/20'
                         : needsAction
-                        ? 'border-amber-300/80 bg-gradient-to-b from-amber-50/60 to-amber-50/20 hover:bg-white hover:border-slate-300'
-                        : 'border-transparent bg-transparent hover:bg-white hover:border-slate-200 hover:shadow-2xs'
+                          ? 'border-amber-300/80 bg-gradient-to-b from-amber-50/60 to-amber-50/20 hover:bg-white hover:border-slate-300'
+                          : isClosed
+                            ? 'border-dashed border-slate-200/90 bg-slate-100/50 hover:bg-white hover:border-slate-300'
+                            : 'border-transparent bg-transparent hover:bg-white hover:border-slate-200 hover:shadow-2xs'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-1">
                       <span
                         className={`text-xs ${
-                          selected ? 'font-bold text-[#0284C7]' : 'font-medium text-slate-600'
+                          selected
+                            ? isPlaced
+                              ? 'font-bold text-emerald-700'
+                              : isClosed
+                                ? 'font-bold text-slate-700'
+                                : 'font-bold text-[#0284C7]'
+                            : isClosed
+                              ? 'font-medium text-slate-500'
+                              : 'font-medium text-slate-600'
                         }`}
                       >
                         {g.label}
@@ -631,12 +647,27 @@ export const ClientCandidatesPage: React.FC = () => {
                     </div>
                     <div
                       className={`mt-1.5 text-2xl font-black tabular-nums tracking-tight ${
-                        selected ? 'text-[#0284C7]' : 'text-slate-900'
+                        selected
+                          ? isPlaced
+                            ? 'text-emerald-700'
+                            : isClosed
+                              ? 'text-slate-700'
+                              : 'text-[#0284C7]'
+                          : isClosed
+                            ? 'text-slate-500'
+                            : 'text-slate-900'
                       }`}
                     >
                       {counts[i].isLoading ? '–' : n ?? 0}
                     </div>
                   </button>
+                );
+                return isClosed ? (
+                  <Tooltip key={g.key} title="Hồ sơ bị loại, không đạt phỏng vấn, từ chối offer, rút đơn hoặc đã nghỉ việc">
+                    {cell}
+                  </Tooltip>
+                ) : (
+                  cell
                 );
               })}
             </div>
