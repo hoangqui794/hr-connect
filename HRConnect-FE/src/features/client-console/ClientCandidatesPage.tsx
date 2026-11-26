@@ -36,7 +36,8 @@ import { screeningApi } from '@/services/api/hrApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { RecruitmentApplicationItem } from '@/types/api/hr';
 import { useMyJobs } from '@/features/jobs-mf01/useJobQueries';
-import { Initials, StatusDot, Surface } from '@/features/admin-console/ui';
+import { Initials, Surface } from '@/features/admin-console/ui';
+import { stageMetaOf } from './candidateStageMeta';
 import { ApplicationWorkbench } from '@/features/recruitment/ApplicationWorkbench';
 import { applicationStatusOf, INTERVIEW_RESULT, INTERVIEW_STATUS, OFFER_STATUS, reasonLabel, SERVICE_TYPE } from '@/features/hr-console/hrLabels';
 import { money } from '@/features/finance-mf05/financeLabels';
@@ -368,11 +369,12 @@ export const ClientCandidatesPage: React.FC = () => {
     {
       title: 'Giai đoạn',
       dataIndex: 'status',
-      width: 220,
+      width: 255,
       render: (v: string, r) => {
         const st = applicationStatusOf(v, r.serviceTypeCode, r.sourcingDeliveryStatus);
         const progress = progressOf(r);
         const reason = closedReasonOf(r);
+        const meta = stageMetaOf(v);
         const offerExpiry =
           r.latestOfferStatus?.toUpperCase() === 'SENT'
             ? deadlineMetaOf(r.latestOfferExpiryDate, 'Hạn offer', 'Offer đã quá hạn phản hồi')
@@ -383,11 +385,44 @@ export const ClientCandidatesPage: React.FC = () => {
             : null;
         const activeDeadline = offerExpiry ?? sourcingDue;
         return (
-          <div className="py-1 space-y-1">
-            <div className="inline-flex items-center">
-              <StatusDot tone={st.tone}>{st.label}</StatusDot>
+          <div className="py-1 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-md border border-solid px-2 py-0.5 text-[11.5px] font-bold shadow-2xs ${meta.badgeClass}`}
+              >
+                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: meta.barColor }} />
+                {meta.stageLabel}
+              </span>
             </div>
-            {progress && <div className="text-[12px] text-slate-600">{progress}</div>}
+
+            {meta.step > 0 && (
+              <div
+                className="flex items-center gap-1"
+                aria-label={`Tiến độ bước ${meta.step} trên ${meta.total}`}
+                title={`Tiến độ: Bước ${meta.step}/${meta.total}`}
+              >
+                {Array.from({ length: meta.total }).map((_, idx) => (
+                  <span
+                    key={idx}
+                    className="h-1.5 w-3.5 rounded-[2px] transition-colors"
+                    style={{
+                      backgroundColor: idx < meta.step ? meta.barColor : '#e2e8f0',
+                    }}
+                  />
+                ))}
+                <span className="ml-1 text-[10.5px] font-semibold tabular-nums text-slate-400">
+                  {meta.step}/{meta.total}
+                </span>
+              </div>
+            )}
+
+            {progress ? (
+              <div className="text-[12px] font-medium text-slate-600">{progress}</div>
+            ) : (
+              st.label !== meta.shortLabel && (
+                <div className="text-[11.5px] text-slate-500">{st.label}</div>
+              )
+            )}
             {activeDeadline && (
               <div
                 className={`text-[11px] font-semibold ${
