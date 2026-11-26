@@ -219,4 +219,29 @@ describe('CandidateApplicationsPage', () => {
       expect(screen.queryByText('Frontend Developer React')).not.toBeInTheDocument();
     });
   });
+
+  it('[UX-12] renders inline 5-stage labels under each progress bar and marks the active step', async () => {
+    listApplications([
+      application('iv-1', 'INTERVIEW', 'Phỏng vấn', 'Product Designer'),
+      application('hi-1', 'HIRED', 'Đang làm việc', 'QA Automation', 'PLACED'),
+      application('ns-1', 'NOT_SELECTED', 'Chưa phù hợp', 'Data Analyst'),
+    ]);
+    renderPage();
+
+    const ivCard = (await screen.findByText('Product Designer')).closest('article')!;
+    const ivSteps = within(ivCard).getByRole('list', { name: 'Các giai đoạn ứng tuyển' });
+    expect(within(ivSteps).getByText('✓ Đã nộp')).toBeInTheDocument();
+    expect(within(ivSteps).getByText('✓ Sàng lọc')).toBeInTheDocument();
+    expect(within(ivSteps).getByText('● Phỏng vấn')).toHaveAttribute('aria-current', 'step');
+    expect(within(ivSteps).getByText('Offer')).toBeInTheDocument();
+    expect(within(ivSteps).getByText('Nhận việc')).toBeInTheDocument();
+
+    const hiredCard = screen.getByText('QA Automation').closest('article')!;
+    const hiredSteps = within(hiredCard).getByRole('list', { name: 'Các giai đoạn ứng tuyển' });
+    expect(within(hiredSteps).getByText('● Nhận việc')).toHaveAttribute('aria-current', 'step');
+
+    const nsCard = screen.getByText('Data Analyst').closest('article')!;
+    const nsSteps = within(nsCard).getByRole('list', { name: 'Các giai đoạn ứng tuyển' });
+    expect(within(nsSteps).queryByText(/^● /)).toBeNull();
+  });
 });

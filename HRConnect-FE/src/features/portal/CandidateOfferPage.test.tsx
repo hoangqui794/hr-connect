@@ -74,7 +74,7 @@ describe('CandidateOfferPage', () => {
     expect(screen.getByText('32.000.000 VND')).toBeInTheDocument();
     expect(screen.getByText('Gross, theo tháng')).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('Chờ bạn trả lời');
-    expect(await screen.findByText(/thay thế phiên bản 1 \(lương 30\.000\.000 VND\)/)).toBeInTheDocument();
+    expect(await screen.findByText(/thay thế đề nghị trước đó với mức lương 30\.000\.000 VND/)).toBeInTheDocument();
   });
 
   it('sends an acceptance with the offer token', async () => {

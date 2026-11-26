@@ -141,7 +141,7 @@ describe('CandidateApplicationDetailPage', () => {
     expect(screen.getByRole('button', { name: 'Rút hồ sơ' })).toBeInTheDocument();
 
     // An offer waiting for an answer is the next thing to do; the interview moves to the other list.
-    expect(screen.getByText('Trả lời offer phiên bản 1')).toBeInTheDocument();
+    expect(screen.getByText('Trả lời thư mời nhận việc')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Xem và trả lời offer' })).toHaveAttribute('href', '/candidate/applications/application-1/offers/off-1');
     expect(screen.getByText(/Phỏng vấn vòng 1 · Đã lên lịch/)).toBeInTheDocument();
 
@@ -245,7 +245,7 @@ describe('CandidateApplicationDetailPage', () => {
 
     await screen.findByRole('heading', { name: 'Senior .NET Developer' });
     expect(screen.queryByRole('link', { name: 'Xem và trả lời offer' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Chi tiết offer phiên bản 2' })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Chi tiết thư mời nhận việc' }).length).toBeGreaterThanOrEqual(1);
   });
 
   it('says nothing is waiting when there is no interview or offer', async () => {
