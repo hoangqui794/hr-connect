@@ -194,7 +194,7 @@ export const pipelineApi = {
  * operations to the HR screen.
  */
 export const placementCorrectionApi = {
-  list: (params: { status?: string; page: number; pageSize: number }) => pipelineApi.placements(params),
+  list: (params: { status?: string; keyword?: string; page: number; pageSize: number }) => pipelineApi.placements(params),
 
   async get(placementId: string): Promise<PlacementCorrectionDetail> {
     const response = await apiClient.get<PlacementCorrectionDetail>(`/placements/${placementId}`);

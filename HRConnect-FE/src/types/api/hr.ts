@@ -353,6 +353,30 @@ export interface PlacementCorrectionDetail {
   replacesPlacementId: string | null;
   candidate: { candidateId: string; fullName: string; email: string; phone: string | null; summary: string | null };
   job: { jobId: string; title: string; companyId: string; companyName: string };
+  offer?: {
+    offerId: string;
+    salary: number | null;
+    currencyCode: string | null;
+    startDate: string | null;
+    status: string;
+    offerDocumentUrl: string | null;
+  } | null;
+  warranty?: {
+    warrantyId: string;
+    startDate: string;
+    endDate: string | null;
+    status: string;
+    resultNote: string | null;
+  } | null;
+  financial?: {
+    serviceFeeAmount: number | null;
+    serviceFeeStatus: string | null;
+    commissionAmount: number | null;
+    commissionStatus: string | null;
+    serviceFeeId?: string | null;
+    serviceFeeDueDate?: string | null;
+    serviceFeePaidAt?: string | null;
+  } | null;
   allowedActions: string[];
   createdAt: string;
   updatedAt: string;

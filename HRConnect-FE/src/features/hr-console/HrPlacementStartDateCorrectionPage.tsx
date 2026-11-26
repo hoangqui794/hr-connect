@@ -94,6 +94,12 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['mf04-placement-correction'] }),
         queryClient.invalidateQueries({ queryKey: ['hr-pipeline'] }),
+        queryClient.invalidateQueries({ queryKey: ['placement-reconciliations'] }),
+        queryClient.invalidateQueries({ queryKey: ['hr-nav-counts'] }),
+        queryClient.invalidateQueries({ queryKey: ['mf05-warranties'] }),
+        queryClient.invalidateQueries({ queryKey: ['mf05-fees'] }),
+        queryClient.invalidateQueries({ queryKey: ['mf05-client-fees'] }),
+        queryClient.invalidateQueries({ queryKey: ['placements'] }),
       ]);
     },
   });
