@@ -296,6 +296,53 @@ public sealed class ResolveCandidateDuplicateCaseCommandHandlerTests
         return submission;
     }
 
+    [Fact]
+    public async Task Merge_WhenAcceptedWinnerExists_BlocksPendingConsentDuplicateAndCancelsConsent()
+    {
+        var fixture = CreateFixture();
+        var accepted = CreateHeldSubmission(fixture.CandidateA, fixture.Job, DateTime.UtcNow.AddMinutes(-5));
+        accepted.Status = "ACCEPTED";
+        var acceptedApplication = CreateApplication(accepted);
+        accepted.Applications.Add(acceptedApplication);
+
+        var pendingConsent = CreateHeldSubmission(fixture.CandidateB, fixture.Job, DateTime.UtcNow.AddMinutes(-1));
+        pendingConsent.Status = "PENDING_CONSENT";
+        pendingConsent.Consent!.Status = "PENDING";
+        pendingConsent.Consent.RespondedAt = null;
+
+        SetupLocks(fixture, [accepted, pendingConsent], [acceptedApplication]);
+
+        var response = await CreateHandler().Handle(CreateCommand(fixture), CancellationToken.None);
+
+        response.Status.Should().Be("MERGED");
+        pendingConsent.Status.Should().Be("BLOCKED_DUPLICATE");
+        pendingConsent.DuplicateOfSubmissionId.Should().Be(accepted.SubmissionId);
+        pendingConsent.Consent!.Status.Should().Be("CANCELLED");
+        pendingConsent.Consent.RespondedAt.Should().NotBeNull();
+        _unitOfWork.Verify(x => x.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Merge_WhenNoConfirmedSubmissionExists_MovesPendingConsentFromSourceToCanonical()
+    {
+        var fixture = CreateFixture();
+        fixture.CandidateA.UserId = Guid.NewGuid();
+        var pendingFromSource = CreateHeldSubmission(fixture.CandidateB, fixture.Job, DateTime.UtcNow.AddMinutes(-1));
+        pendingFromSource.Status = "PENDING_CONSENT";
+        pendingFromSource.Consent!.Status = "PENDING";
+        pendingFromSource.Consent.RespondedAt = null;
+
+        SetupLocks(fixture, [pendingFromSource], Array.Empty<HRConnect.Domain.Entities.Application>());
+
+        var response = await CreateHandler().Handle(CreateCommand(fixture), CancellationToken.None);
+
+        response.Status.Should().Be("MERGED");
+        response.CanonicalCandidateId.Should().Be(fixture.CandidateA.CandidateId);
+        pendingFromSource.Status.Should().Be("PENDING_CONSENT");
+        pendingFromSource.CandidateId.Should().Be(fixture.CandidateA.CandidateId);
+        pendingFromSource.Consent!.Status.Should().Be("PENDING");
+    }
+
     private static HRConnect.Domain.Entities.Application CreateApplication(Submission submission) => new()
     {
         ApplicationId = Guid.NewGuid(),
