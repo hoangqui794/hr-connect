@@ -116,7 +116,7 @@ export const AffiliateShell: React.FC = () => {
   const width = collapsed ? 76 : 248;
 
   return (
-    <div className="affiliate-console min-h-screen max-w-full overflow-x-hidden bg-slate-50 text-slate-900">
+    <div className="affiliate-console min-h-screen max-w-full overflow-x-clip bg-slate-50 text-slate-900">
       {/* ── Sidebar (light) ─────────────────────────────────────────────── */}
       {compact && menuOpen && (
         <div className="fixed inset-0 z-[25] bg-slate-900/40" onClick={() => setMenuOpen(false)} aria-hidden />
@@ -209,8 +209,8 @@ export const AffiliateShell: React.FC = () => {
       </aside>
 
       {/* ── Main ────────────────────────────────────────────────────────── */}
-      <div className="min-w-0 max-w-full overflow-x-hidden transition-[padding] duration-200" style={{ paddingLeft: compact ? 0 : width }}>
-        <header className="affiliate-topbar sticky top-0 z-20 flex h-16 items-center justify-between border-0 border-b border-solid px-4 lg:px-6">
+      <div className="min-w-0 max-w-full overflow-x-clip transition-[padding] duration-200" style={{ paddingLeft: compact ? 0 : width }}>
+        <header className="affiliate-topbar sticky top-0 z-20 flex h-16 items-center justify-between border-0 border-b border-solid px-4 backdrop-blur lg:px-6">
           <div className="flex min-w-0 items-center gap-2">
             {compact && (
               <button
@@ -261,7 +261,7 @@ export const AffiliateShell: React.FC = () => {
         </header>
 
         <AdminTopProgress offsetLeft={compact ? 0 : width} />
-        <main className="affiliate-main min-w-0 max-w-full overflow-x-hidden mx-auto px-4 py-5 pb-24 md:pb-5 lg:px-6 lg:py-6">
+        <main className="affiliate-main w-full min-w-0 max-w-full overflow-x-clip px-4 py-5 pb-24 md:pb-6 lg:px-6 lg:py-6">
           <MotionConfig reducedMotion="user">
             <MotionPageOutlet />
           </MotionConfig>

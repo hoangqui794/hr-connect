@@ -34,6 +34,12 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
   const [searchText, setSearchText] = useState('');
   const [target, setTarget] = useState<Warranty | null>(null);
   const [detailPlacementId, setDetailPlacementId] = useState<string | null>(null);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [pendingHighlight, setPendingHighlight] = useState<{
+    id: string;
+    status: WarrantyStatus | 'all' | null;
+    refetched: boolean;
+  } | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [form] = Form.useForm();
 
@@ -78,27 +84,80 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
     );
   }, [list.data?.items, hasSearch, searchText, slotByPlacementId]);
 
-  const highlightParam = searchParams.get('highlight');
   useEffect(() => {
-    if (!highlightParam || list.isLoading || !list.data) return;
-    const q = highlightParam.toLowerCase();
+    const highlightParam = searchParams.get('highlight');
+    const statusParam = searchParams.get('status')?.toUpperCase() ?? null;
+    if (!highlightParam && !statusParam) return;
+
+    const validStatus: WarrantyStatus | 'all' | null =
+      statusParam === 'ACTIVE' || statusParam === 'CLAIMED' || statusParam === 'PASSED' || statusParam === 'VOIDED'
+        ? statusParam
+        : statusParam === 'ALL'
+        ? 'all'
+        : null;
+
+    if (validStatus) {
+      setStatus(validStatus);
+      setPage(1);
+    }
+
+    if (highlightParam) {
+      setSearchText('');
+      setPendingHighlight({ id: highlightParam, status: validStatus, refetched: false });
+      void queryClient.invalidateQueries({ queryKey: ['mf05-warranties', mode] });
+    }
+
+    const next = new URLSearchParams(searchParams);
+    next.delete('highlight');
+    next.delete('status');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams, queryClient, mode]);
+
+  useEffect(() => {
+    if (!pendingHighlight) return;
+    if (pendingHighlight.status && status !== pendingHighlight.status) return;
+    if (list.isLoading || list.isFetching || !list.data) return;
+
+    const q = pendingHighlight.id.toLowerCase();
     const match = list.data.items.find(
       (w) => w.warrantyId.toLowerCase() === q || w.placementId.toLowerCase() === q
     );
+
     if (match) {
+      setHighlightedId(match.warrantyId);
+      setSearchText('');
       if (mode === 'hr' && match.status === 'CLAIMED') {
-        form.setFieldsValue({ decision: 'confirm', note: '' });
         setTarget(match);
       } else {
         setDetailPlacementId(match.placementId);
       }
-      const next = new URLSearchParams(searchParams);
-      next.delete('highlight');
-      setSearchParams(next, { replace: true });
-    } else if (status !== 'all') {
-      setStatus('all');
+      const frame = window.requestAnimationFrame(() => {
+        const el = document.querySelector<HTMLElement>(`tr[data-row-id="${match.warrantyId}"]`);
+        if (el && typeof el.scrollIntoView === 'function') {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+      setPendingHighlight(null);
+      return () => window.cancelAnimationFrame(frame);
     }
-  }, [highlightParam, list.isLoading, list.data, mode, status, form, searchParams, setSearchParams]);
+
+    if (status !== 'all') {
+      setStatus('all');
+      setPage(1);
+      setPendingHighlight((prev) => (prev ? { ...prev, status: 'all', refetched: true } : null));
+    } else {
+      setPendingHighlight(null);
+    }
+  }, [pendingHighlight, list.isLoading, list.isFetching, list.data, mode, status]);
+
+  useEffect(() => {
+    if (!target) return;
+    if (mode === 'client') {
+      form.setFieldsValue({ lastWorkingDate: dayjs() });
+    } else {
+      form.setFieldsValue({ decision: 'confirm' });
+    }
+  }, [target, mode, form]);
 
   const submit = useMutation({
     mutationFn: async () => {
@@ -351,6 +410,12 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
           dataSource={visibleWarranties}
           loading={list.isFetching}
           scroll={{ x: 760 }}
+          rowClassName={(w) =>
+            highlightedId && w.warrantyId.toLowerCase() === highlightedId.toLowerCase()
+              ? 'admin-row-highlight font-semibold'
+              : ''
+          }
+          onRow={(w) => ({ 'data-row-id': w.warrantyId } as React.HTMLAttributes<HTMLElement>)}
           pagination={{ itemRender: a11yItemRender, current: page, pageSize: PAGE_SIZE, total: hasSearch ? visibleWarranties.length : (list.data?.totalCount ?? 0), onChange: setPage, showSizeChanger: false }}
           locale={{
             emptyText: hasSearch ? (

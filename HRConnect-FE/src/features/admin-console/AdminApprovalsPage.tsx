@@ -4,7 +4,7 @@
  * (GET /admin/approvals). Detail, approve and reject use services/adminService.ts.
  * Filters live in the URL; reject needs a reason (backend: required, max 500).
  */
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -149,6 +149,7 @@ export const AdminApprovalsPage: React.FC<{ presetType?: 'AFFILIATE' | 'CLIENT' 
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selected, setSelected] = useState<ApprovalListItemDto | null>(null);
+  const [highlightedApprovalId, setHighlightedApprovalId] = useState<string | null>(null);
   const [decision, setDecision] = useState<'approve' | 'reject' | null>(null);
   const [form] = Form.useForm<{ text?: string }>();
 
@@ -166,6 +167,28 @@ export const AdminApprovalsPage: React.FC<{ presetType?: 'AFFILIATE' | 'CLIENT' 
     queryFn: () => adminService.getApprovals(params),
     placeholderData: (prev) => prev,
   });
+
+  const highlightParam = searchParams.get('highlight');
+  useEffect(() => {
+    if (!highlightParam || list.isLoading || !list.data?.data?.items) return;
+    const target = highlightParam.toLowerCase();
+    const matched = list.data.data.items.find((r) => r.approvalId.toLowerCase() === target);
+    if (matched) {
+      setHighlightedApprovalId(null);
+      window.requestAnimationFrame(() => {
+        setHighlightedApprovalId(matched.approvalId);
+        window.requestAnimationFrame(() => {
+          const el = document.querySelector<HTMLElement>(`tr[data-approval-id="${matched.approvalId}"]`);
+          if (el && typeof el.scrollIntoView === 'function') {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      });
+    }
+    const next = new URLSearchParams(searchParams);
+    next.delete('highlight');
+    setSearchParams(next, { replace: true });
+  }, [highlightParam, list.isLoading, list.data, searchParams, setSearchParams]);
 
   const setParam = (key: string, value?: string) => {
     const next = new URLSearchParams(searchParams);
@@ -344,9 +367,10 @@ export const AdminApprovalsPage: React.FC<{ presetType?: 'AFFILIATE' | 'CLIENT' 
                 if (e.key === 'Enter') setSelected(r);
               },
               tabIndex: 0,
-              className: 'cursor-pointer',
+              'data-approval-id': r.approvalId,
+              className: `cursor-pointer${highlightedApprovalId === r.approvalId ? ' admin-row-highlight font-semibold' : ''}`,
               'aria-label': `Mở hồ sơ ${r.companyName || r.displayName}`,
-            })}
+            } as React.HTMLAttributes<HTMLElement>)}
             pagination={{
               current: data?.page ?? page,
               pageSize: PAGE_SIZE,

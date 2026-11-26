@@ -37,10 +37,11 @@ const TYPE_LABEL: Record<string, string> = {
 export const AffiliateDisputesPage: React.FC = () => {
   const { message } = AntApp.useApp();
   const queryClient = useQueryClient();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [form] = Form.useForm<CreateDisputeRequest>();
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [highlightedDisputeId, setHighlightedDisputeId] = useState<string | null>(null);
 
   const { data: disputes = [], isLoading, isError, error } = useQuery({
     queryKey: ['affiliate-my-disputes'],
@@ -56,6 +57,29 @@ export const AffiliateDisputesPage: React.FC = () => {
     const preset = searchParams.get('submissionId');
     if (preset) form.setFieldsValue({ submissionId: preset, disputeType: 'DUPLICATE_SUBMISSION' });
   }, [searchParams, form]);
+
+  const highlightParam = searchParams.get('highlight');
+  useEffect(() => {
+    if (!highlightParam || isLoading) return;
+    const matched = disputes.find((d) => d.disputeId.toLowerCase() === highlightParam.toLowerCase());
+    if (matched) {
+      setStatusFilter('ALL');
+      setSearchText('');
+      setHighlightedDisputeId(null);
+      window.requestAnimationFrame(() => {
+        setHighlightedDisputeId(matched.disputeId);
+        window.requestAnimationFrame(() => {
+          const el = document.querySelector<HTMLElement>(`li[data-dispute-id="${matched.disputeId}"]`);
+          if (el && typeof el.scrollIntoView === 'function') {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      });
+    }
+    const next = new URLSearchParams(searchParams);
+    next.delete('highlight');
+    setSearchParams(next, { replace: true });
+  }, [highlightParam, isLoading, disputes, searchParams, setSearchParams]);
 
   const createMutation = useMutation({
     mutationFn: (values: CreateDisputeRequest) => disputeApi.createDispute(values),
@@ -142,7 +166,13 @@ export const AffiliateDisputesPage: React.FC = () => {
               {filteredDisputes.map((d) => {
                 const st = STATUS_CONFIG[d.status] ?? { label: d.status, className: 'bg-gray-100 text-gray-700' };
                 return (
-                  <li key={d.disputeId} className="flex flex-wrap gap-3 border-0 border-b border-solid border-slate-100 px-4 py-3.5 last:border-b-0">
+                  <li
+                    key={d.disputeId}
+                    data-dispute-id={d.disputeId}
+                    className={`flex flex-wrap gap-3 border-0 border-b border-solid border-slate-100 px-4 py-3.5 last:border-b-0 transition-colors ${
+                      highlightedDisputeId === d.disputeId ? 'affiliate-row-highlight font-semibold' : ''
+                    }`}
+                  >
                     <div className="min-w-0 flex-[1_1_300px]">
                       <div className="flex flex-wrap items-center gap-2">
                         <b className="text-gray-900">{TYPE_LABEL[d.disputeType] ?? d.disputeType}</b>

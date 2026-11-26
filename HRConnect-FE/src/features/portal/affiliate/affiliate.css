@@ -59,9 +59,9 @@
 }
 
 .affiliate-console .affiliate-main {
-  width: min(100%, 1280px);
+  width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
   box-sizing: border-box;
 }
 
@@ -697,6 +697,23 @@
 .affiliate-commissions-page .affiliate-page-header { margin-bottom: 14px; }
 .affiliate-commissions-page .rounded-2xl { border-radius: 8px; }
 .affiliate-commissions-page .admin-surface { box-shadow: none; }
+
+@keyframes affiliate-row-flash {
+  0%, 100% {
+    background-color: rgba(254, 243, 199, 0.92);
+    box-shadow: inset 4px 0 0 #d97706;
+  }
+  50% {
+    background-color: rgba(253, 230, 138, 0.95);
+    box-shadow: inset 6px 0 0 #b45309;
+  }
+}
+
+.affiliate-row-highlight {
+  background-color: rgba(254, 243, 199, 0.78);
+  box-shadow: inset 4px 0 0 #d97706;
+  animation: affiliate-row-flash 0.75s ease-in-out 3;
+}
 
 .affiliate-finance-tabs {
   display: flex;

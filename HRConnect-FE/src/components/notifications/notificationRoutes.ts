@@ -191,7 +191,8 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       titleLower.includes('xác minh công ty') ||
       titleLower.includes('duyệt hồ sơ')
     ) {
-      return '/admin/approvals';
+      const approvalId = meta?.approvalId || meta?.entityId || item.relatedEntityId;
+      return approvalId ? `/admin/approvals?highlight=${encodeURIComponent(String(approvalId))}` : '/admin/approvals';
     }
 
     // 1D. Nghi trùng danh tính Candidate / Claim
@@ -202,12 +203,16 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       titleLower.includes('danh tính') ||
       titleLower.includes('nghi trùng')
     ) {
-      return '/admin/candidate-identity-claims';
+      const claimId = meta?.claimId || meta?.duplicateCaseId || meta?.entityId || item.relatedEntityId;
+      return claimId
+        ? `/admin/candidate-identity-claims?highlight=${encodeURIComponent(String(claimId))}`
+        : '/admin/candidate-identity-claims';
     }
 
     // 1E. Tranh chấp khiếu nại
     if (entityType === 'DISPUTE' || titleLower.includes('khiếu nại') || titleLower.includes('tranh chấp')) {
-      return '/admin/disputes';
+      const disputeId = meta?.disputeId || meta?.entityId || item.relatedEntityId;
+      return disputeId ? `/admin/disputes?highlight=${encodeURIComponent(String(disputeId))}` : '/admin/disputes';
     }
 
     // 1F. Yêu cầu tư vấn
@@ -275,9 +280,15 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       titleLower.includes('nghỉ việc')
     ) {
       const warrantyId = meta?.warrantyId || meta?.entityId || item.relatedEntityId;
-      return warrantyId
-        ? `/hr/warranty-tracking?highlight=${encodeURIComponent(warrantyId)}`
-        : '/hr/warranty-tracking';
+      const params = new URLSearchParams();
+      if (titleLower.includes('nghỉ việc')) {
+        params.set('status', 'CLAIMED');
+      }
+      if (warrantyId) {
+        params.set('highlight', String(warrantyId));
+      }
+      const qs = params.toString();
+      return qs ? `/hr/warranty-tracking?${qs}` : '/hr/warranty-tracking';
     }
 
     // 4. Sửa ngày đi làm / Placement (MF-04)
@@ -434,6 +445,8 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
           params.set('tab', 'PAYABLE');
         } else if (titleLower.includes('hủy') || titleLower.includes('tạm giữ')) {
           params.set('tab', 'CANCELLED');
+        } else if (titleLower.includes('tiếp tục bảo hành') || titleLower.includes('đang bảo hành')) {
+          params.set('tab', 'WARRANTY');
         } else if (
           titleLower.includes('đủ điều kiện') ||
           titleLower.includes('qua bảo hành') ||
@@ -444,23 +457,60 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
         if (item.relatedEntityId && entityType === 'COMMISSION') {
           params.set('highlight', String(item.relatedEntityId));
         }
+        const quoteMatchComm = item.message?.match(/['"“”]([^'"“”]+)['"“”]/);
+        if (quoteMatchComm?.[1]) {
+          params.set('q', quoteMatchComm[1]);
+        }
       }
       const qs = params.toString();
       return qs ? `/affiliate/commissions?${qs}` : '/affiliate/commissions';
     }
 
-    if (route && (route.startsWith('/affiliate') || PUBLIC_JOB_ROUTE.test(route))) {
-      return portalRoute(route, role as UserRole);
-    }
     if (
       entityType === 'REPLACEMENT_SLOT' ||
       titleLower.includes('suất tuyển người thay thế') ||
       titleLower.includes('suất thay thế')
     ) {
-      if (meta?.jobId && typeof meta.jobId === 'string') {
-        return `/affiliate/submit-candidate?job=${encodeURIComponent(meta.jobId)}`;
+      const params = new URLSearchParams({ tab: 'CANCELLED' });
+      const slotId = meta?.replacementSlotId || (entityType === 'REPLACEMENT_SLOT' ? item.relatedEntityId : undefined);
+      if (slotId) params.set('slot', String(slotId));
+      const jobFromRoute = route?.match(/[?&]job=([^&]+)/i)?.[1];
+      const targetJobId = meta?.jobId || (jobFromRoute ? decodeURIComponent(jobFromRoute) : undefined);
+      if (targetJobId) params.set('job', String(targetJobId));
+      const quoteMatchAff = item.message?.match(/['"“”]([^'"“”]+)['"“”]/);
+      if (quoteMatchAff?.[1]) params.set('q', quoteMatchAff[1]);
+      return `/affiliate/commissions?${params.toString()}`;
+    }
+
+    if (
+      entityType === 'DISPUTE' ||
+      route === '/affiliate/disputes' ||
+      titleLower.includes('khiếu nại') ||
+      titleLower.includes('tranh chấp')
+    ) {
+      const disputeId = meta?.disputeId || (entityType === 'DISPUTE' ? item.relatedEntityId : undefined);
+      return disputeId ? `/affiliate/disputes?highlight=${encodeURIComponent(String(disputeId))}` : '/affiliate/disputes';
+    }
+
+    if (
+      entityType === 'SUBMISSION' ||
+      entityType === 'SUBMISSION_CONSENT_RESULT' ||
+      route === '/affiliate/submissions'
+    ) {
+      if (route && route.startsWith('/affiliate/submissions/') && route.length > '/affiliate/submissions/'.length) {
+        return route;
       }
-      return '/affiliate/commissions';
+      const submissionId = meta?.submissionId || item.relatedEntityId;
+      const params = new URLSearchParams();
+      if (submissionId) params.set('highlight', String(submissionId));
+      const quoteMatchSub = item.message?.match(/['"“”]([^'"“”]+)['"“”]/);
+      if (quoteMatchSub?.[1]) params.set('q', quoteMatchSub[1]);
+      const qs = params.toString();
+      return qs ? `/affiliate/submissions?${qs}` : '/affiliate/submissions';
+    }
+
+    if (route && (route.startsWith('/affiliate') || PUBLIC_JOB_ROUTE.test(route))) {
+      return portalRoute(route, role as UserRole);
     }
   }
 
@@ -507,8 +557,56 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
     if (feeId) {
       params.set('highlight', String(feeId));
     }
+    const clientRefMatch = item.message?.match(/mã tham chiếu[:\s]+([A-Za-z0-9_-]+)/i);
+    if (!feeId && clientRefMatch?.[1]) {
+      params.set('q', clientRefMatch[1]);
+    }
     const qs = params.toString();
     return qs ? `/client/billing?${qs}` : '/client/billing';
+  }
+
+  // Client + MF-05 warranty / replacement slot notices (also enrich bare /client/warranty routeHint)
+  if (
+    normRole === 'CLIENT' &&
+    (entityType === 'WARRANTY' ||
+      entityType === 'REPLACEMENT_SLOT' ||
+      route === '/client/warranty' ||
+      titleLower.includes('bảo hành') ||
+      titleLower.includes('nghỉ việc') ||
+      titleLower.includes('suất tuyển người thay thế') ||
+      titleLower.includes('suất thay thế'))
+  ) {
+    if (
+      (entityType === 'REPLACEMENT_SLOT' ||
+        titleLower.includes('suất tuyển người thay thế') ||
+        titleLower.includes('suất thay thế')) &&
+      (titleLower.includes('hết hạn') || messageLower.includes('hoàn'))
+    ) {
+      const feeId = meta?.serviceFeeId || meta?.entityId;
+      return feeId
+        ? `/client/billing?status=REFUND&highlight=${encodeURIComponent(String(feeId))}`
+        : '/client/billing?status=REFUND';
+    }
+    const warrantyId =
+      meta?.warrantyId ||
+      meta?.placementId ||
+      (entityType === 'WARRANTY' ? item.relatedEntityId : undefined);
+    return warrantyId ? `/client/warranty?highlight=${encodeURIComponent(String(warrantyId))}` : '/client/warranty';
+  }
+
+  // Candidate: enrich bare /candidate/applications routeHint with highlight / q so the target card flashes & scrolls into view
+  if (normRole === 'CANDIDATE' && route === '/candidate/applications') {
+    const appId =
+      meta?.applicationId ||
+      meta?.ApplicationId ||
+      (entityType === 'APPLICATION' || entityType === 'APPLICATION_STATUS' || entityType === 'CANDIDATE_APPLICATION'
+        ? item.relatedEntityId
+        : undefined);
+    const params = new URLSearchParams();
+    if (appId) params.set('highlight', String(appId));
+    if (quoteMatch?.[1]) params.set('q', quoteMatch[1]);
+    const qs = params.toString();
+    return qs ? `/candidate/applications?${qs}` : '/candidate/applications';
   }
 
   // If explicit route was resolved

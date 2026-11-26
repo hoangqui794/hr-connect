@@ -211,25 +211,29 @@ export const AdminFinancePage: React.FC = () => {
     }
 
     if (matchedId) {
-      setHighlightedId(matchedId);
       setSearchText('');
+      setHighlightedId(null);
+      window.requestAnimationFrame(() => {
+        setHighlightedId(matchedId);
+        window.requestAnimationFrame(() => {
+          const el = document.querySelector<HTMLElement>(`tr[data-row-id="${matchedId}"]`);
+          if (el && typeof el.scrollIntoView === 'function') {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      });
     } else if (pendingDeepLink.q) {
       setHighlightedId(null);
       setSearchText(pendingDeepLink.q);
+      window.requestAnimationFrame(() => {
+        const el = document.querySelector<HTMLElement>('.admin-surface');
+        if (el && typeof el.scrollIntoView === 'function') {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
     }
 
-    const frame = window.requestAnimationFrame(() => {
-      const el = matchedId
-        ? document.querySelector<HTMLElement>(`tr[data-row-id="${matchedId}"]`)
-        : document.querySelector<HTMLElement>('.admin-surface');
-      if (el && typeof el.scrollIntoView === 'function') {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    });
-
     setPendingDeepLink(null);
-
-    return () => window.cancelAnimationFrame(frame);
   }, [
     pendingDeepLink,
     tab,
@@ -380,7 +384,7 @@ export const AdminFinancePage: React.FC = () => {
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
                     className={`group transition-colors duration-150 [&:last-child>td]:border-b-0 ${
                       isHighlighted
-                        ? 'bg-sky-50/90 shadow-[inset_3px_0_0_#0284C7]'
+                        ? 'admin-row-highlight font-semibold'
                         : 'hover:bg-slate-50/90'
                     } ${onRowClick ? 'cursor-pointer' : ''}`}
                   >

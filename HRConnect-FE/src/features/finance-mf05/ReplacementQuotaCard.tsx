@@ -484,7 +484,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
             </Button>
           )}
 
-          {mode === 'client' && (slot.status === 'OPEN' || slot.status === 'FILLED') && (
+          {mode === 'client' && (slot.status === 'FILLED' || Boolean(slot.replacementCandidateName)) && (
             <Button
               size="small"
               icon={<UserOutlined />}

@@ -103,7 +103,7 @@ export const ClientProfilePage: React.FC = () => {
   const isLoading = currentUserQuery.isLoading || companyQuery.isLoading;
 
   return (
-    <div className={`${FONT} space-y-6 max-w-6xl mx-auto pb-12 animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
+    <div className={`${FONT} w-full space-y-6 pb-12 animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
       {/* ── 1. Compact header: the top bar already shows the page title ── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-1">
         <div>

@@ -3,7 +3,8 @@
  * @description Platform Admin management for SF-04 Duplicate & Attribution Disputes.
  */
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Table,
   Tag,
@@ -128,10 +129,12 @@ const TYPE_CONFIG: Record<string, { label: string; color: string }> = {
 export const AdminDisputesPage: React.FC = () => {
   const { message, modal } = AntApp.useApp();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [searchText, setSearchText] = useState('');
   const [selectedDisputeId, setSelectedDisputeId] = useState<string | null>(null);
+  const [highlightedDisputeId, setHighlightedDisputeId] = useState<string | null>(null);
   const [resolveForm] = Form.useForm();
   const idempotencyKeyRef = useRef<string>('');
 
@@ -155,6 +158,33 @@ export const AdminDisputesPage: React.FC = () => {
         pageSize: 50,
       }),
   });
+
+  const highlightParam = searchParams.get('highlight');
+  useEffect(() => {
+    if (!highlightParam || listQuery.isLoading || !listQuery.data?.items) return;
+    const target = highlightParam.toLowerCase();
+    const matched = listQuery.data.items.find((item) => item.disputeId.toLowerCase() === target);
+    if (matched) {
+      setSearchText('');
+      setHighlightedDisputeId(null);
+      window.requestAnimationFrame(() => {
+        setHighlightedDisputeId(matched.disputeId);
+        window.requestAnimationFrame(() => {
+          const el = document.querySelector<HTMLElement>(`tr[data-dispute-id="${matched.disputeId}"]`);
+          if (el && typeof el.scrollIntoView === 'function') {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      });
+    } else if (statusFilter !== 'ALL' || typeFilter !== 'ALL') {
+      setStatusFilter('ALL');
+      setTypeFilter('ALL');
+      return;
+    }
+    const next = new URLSearchParams(searchParams);
+    next.delete('highlight');
+    setSearchParams(next, { replace: true });
+  }, [highlightParam, listQuery.isLoading, listQuery.data, statusFilter, typeFilter, searchParams, setSearchParams]);
 
   // Fetch dispute detail
   const detailQuery = useQuery({
@@ -304,6 +334,8 @@ export const AdminDisputesPage: React.FC = () => {
           columns={columns}
           dataSource={visibleDisputes}
           loading={listQuery.isFetching}
+          rowClassName={(r) => (highlightedDisputeId === r.disputeId ? 'admin-row-highlight font-semibold' : '')}
+          onRow={(r) => ({ 'data-dispute-id': r.disputeId } as React.HTMLAttributes<HTMLElement>)}
           pagination={{
             total: hasSearch ? visibleDisputes.length : (listQuery.data?.totalCount ?? 0),
             pageSize: 20,
