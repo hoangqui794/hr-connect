@@ -22,6 +22,7 @@ const PAGE_SIZE = 10;
 /** The API's largest page. */
 const MAX_APPLICATIONS = 100;
 const STEP_COUNT = 5;
+const STEP_NAMES = ['Đã nộp', 'Sàng lọc', 'Phỏng vấn', 'Offer', 'Nhận việc'] as const;
 
 const FONT = "font-['Be_Vietnam_Pro',system-ui,sans-serif]";
 const LINK = 'text-sky-600 no-underline hover:text-sky-700 hover:underline font-semibold';
@@ -214,6 +215,38 @@ const ApplicationRow: React.FC<{ application: CandidateApplication }> = ({ appli
             />
           ))}
         </div>
+        <ol
+          aria-label="Các giai đoạn ứng tuyển"
+          className="m-0 mt-1.5 grid list-none grid-cols-5 gap-1 p-0 text-center"
+        >
+          {STEP_NAMES.map((name, index) => {
+            const reachedSteps = isHired ? 5 : view.steps;
+            const stepNum = index + 1;
+            const isStopped = Boolean(view.ended || isResigned);
+            const isCurrent = !isStopped && reachedSteps === stepNum;
+            const isPassed = !isStopped && (isHired ? stepNum < 5 : stepNum < reachedSteps);
+            const isStoppedAt = isStopped && reachedSteps === stepNum;
+            return (
+              <li
+                key={name}
+                aria-current={isCurrent ? 'step' : undefined}
+                className={`truncate text-[11px] leading-tight ${
+                  isCurrent
+                    ? isHired
+                      ? 'font-bold text-emerald-700'
+                      : 'font-bold text-[#0284C7]'
+                    : isPassed
+                      ? 'font-semibold text-emerald-600'
+                      : isStoppedAt
+                        ? 'font-semibold text-slate-600'
+                        : 'font-normal text-slate-400'
+                }`}
+              >
+                {isPassed ? `✓ ${name}` : isCurrent ? `● ${name}` : name}
+              </li>
+            );
+          })}
+        </ol>
         <div className="mt-2 flex flex-wrap justify-between gap-3 text-[13px]">
           <span className="text-[#4B5563]">
             {isHired
@@ -586,7 +619,6 @@ export const CandidateApplicationsPage: React.FC = () => {
               <Pagination current={page} pageSize={PAGE_SIZE} total={shown.length} showSizeChanger={false} onChange={setPage} />
             </div>
           )}
-          <p className="m-0 mt-[14px] text-[13px] text-[#6B7280]">Thanh tiến trình: Đã nộp → Sàng lọc → Phỏng vấn → Offer → Nhận việc.</p>
         </>
       )}
     </CandidateAccountFrame>
