@@ -161,14 +161,14 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
       <PageHero
         eyebrow="Internal HR"
         title="Sửa ngày đi làm thực tế"
-        description="Dùng khi Client nhập nhầm ngày bắt đầu làm việc. Hệ thống tự kiểm tra thời hạn sửa, ngày hợp lệ và tình trạng thu phí trước khi cập nhật."
+        description="Dùng khi doanh nghiệp nhập nhầm ngày bắt đầu làm việc. Hệ thống tự kiểm tra thời hạn sửa, ngày hợp lệ và tình trạng thu phí trước khi cập nhật."
       />
       <Alert
         className="mb-5"
         type="info"
         showIcon
-        message="Chỉ sửa ngày đi làm"
-        description="Trang này không đối soát hoa hồng, chi trả, bảo hành hoặc phí dịch vụ; backend tự từ chối nếu placement đã bị khóa do đã thu phí."
+        message="Chỉ điều chỉnh ngày đi làm"
+        description="Màn hình này không thực hiện đối soát hoa hồng, chi trả, bảo hành hay phí dịch vụ. Hệ thống sẽ không cho phép chỉnh sửa nếu hồ sơ nhận việc đã hoàn tất thu phí."
       />
       <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
         <Input
@@ -249,7 +249,7 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
                 type="warning"
                 showIcon
                 message="Đã hết thời hạn chỉnh sửa"
-                description="Ngày đi làm chỉ được sửa trong 7 ngày kể từ lúc Client xác nhận."
+                description="Ngày đi làm chỉ được sửa trong vòng 7 ngày kể từ lúc doanh nghiệp xác nhận."
               />
             )}
             <div className="mb-5 flex items-center gap-2">
@@ -282,8 +282,8 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
           className="mb-5"
           type="warning"
           showIcon
-          message="Chỉ dùng khi dữ liệu đã nhập bị sai"
-          description="Ngày không được ở tương lai. Backend sẽ kiểm tra thêm giới hạn 7 ngày, thời điểm nhận offer và trạng thái phí dịch vụ."
+          message="Lưu ý khi điều chỉnh ngày đi làm"
+          description="Chỉ dùng khi doanh nghiệp nhập nhầm ngày bắt đầu làm việc. Ngày đi làm mới không được ở tương lai, phải sau thời điểm nhận offer, nằm trong giới hạn 7 ngày kể từ khi xác nhận và chỉ sửa được khi hồ sơ chưa chốt thu phí."
         />
         {correction.isError && <Alert className="mb-5" type="error" showIcon message={getApiErrorMessage(correction.error)} />}
         <Form form={form} layout="vertical" requiredMark="optional">
@@ -302,7 +302,7 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
               { max: 1000, message: 'Tối đa 1000 ký tự.' },
             ]}
           >
-            <Input.TextArea rows={5} maxLength={1000} showCount placeholder="Ví dụ: Client nhập nhầm ngày ứng viên bắt đầu làm việc." />
+            <Input.TextArea rows={5} maxLength={1000} showCount placeholder="Ví dụ: Doanh nghiệp nhập nhầm ngày ứng viên bắt đầu làm việc." />
           </Form.Item>
         </Form>
       </Drawer>
