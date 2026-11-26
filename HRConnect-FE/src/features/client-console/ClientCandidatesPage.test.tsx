@@ -73,12 +73,18 @@ describe('Client › Hồ sơ ứng viên', () => {
     expect(within(good).getByText('Rất phù hợp')).toBeInTheDocument();
     expect(within(good).getByRole('button', { name: 'Lên lịch phỏng vấn' })).toBeInTheDocument();
 
-    const failed = screen.getByText('Demo Candidate 2').closest('tr')!;
+    // Closed stage ("Dừng tuyển") starts collapsed on the All tab; clicking expands it to show failed/rejected candidates.
+    const closedToggle = screen.getByRole('button', { name: /Dừng tuyển \(Không đạt/ });
+    expect(closedToggle).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(closedToggle);
+
+    const failed = (await screen.findByText('Demo Candidate 2')).closest('tr')!;
     expect(within(failed).getByText('Chấm lỗi')).toBeInTheDocument();
     expect(within(failed).queryByText('Lỗi AI')).not.toBeInTheDocument();
   });
 
   it('shows the latest offer, else the latest interview, under the stage', async () => {
+    countsMock.mockResolvedValue({ SHORTLISTED: 1, INTERVIEW: 1, OFFER_PENDING: 1 });
     listMock.mockImplementation(async (p) => {
       if (p.pageSize === 1) return { items: [], total: 1, page: 1, pageSize: 1 } as never;
       return {
@@ -106,7 +112,7 @@ describe('Client › Hồ sơ ứng viên', () => {
     renderPage();
     await screen.findByText('Ứng Viên e2e5');
 
-    fireEvent.click(screen.getByRole('radio', { name: /Kết thúc/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /Dừng tuyển/ }));
 
     await waitFor(() => {
       expect(listMock).toHaveBeenCalledWith(
@@ -138,7 +144,7 @@ describe('Client › Hồ sơ ứng viên', () => {
 
     const all = await screen.findByRole('radio', { name: /Tất cả/ });
     await waitFor(() => expect(within(all).getByText('8')).toBeInTheDocument());
-    expect(within(screen.getByRole('radio', { name: /Kết thúc/ })).getByText('4')).toBeInTheDocument();
+    expect(within(screen.getByRole('radio', { name: /Dừng tuyển/ })).getByText('4')).toBeInTheDocument();
     expect(countsMock).toHaveBeenCalledTimes(1);
     expect(countsMock).toHaveBeenCalledWith('status', expect.objectContaining({ serviceTypeCode: 'CV_SOURCING' }), expect.any(Array));
     expect(listMock).not.toHaveBeenCalledWith(expect.objectContaining({ pageSize: 1 }));
@@ -153,6 +159,7 @@ describe('Client › Hồ sơ ứng viên', () => {
   });
 
   it('shows confidentiality notice instead of missing email when contact is masked, and shows planned start date on accepted offer', async () => {
+    countsMock.mockResolvedValue({ SHORTLISTED: 1, OFFER_ACCEPTED: 1 });
     listMock.mockImplementation(async (p) => {
       if (p.pageSize === 1) return { items: [], total: 1, page: 1, pageSize: 1 } as never;
       return {
@@ -177,6 +184,7 @@ describe('Client › Hồ sơ ứng viên', () => {
   it('shows closed status reason, sent offer expiry, sourcing review due date, replacement and source badges without Invalid Date', async () => {
     const tomorrow = dayjs().add(1, 'day').format('YYYY-MM-DD');
     const pastIso = dayjs().subtract(2, 'day').toISOString();
+    countsMock.mockResolvedValue({ SHORTLISTED: 1, OFFER_PENDING: 1, REJECTED: 2, NOT_STARTED: 1 });
     listMock.mockImplementation(async (p) => {
       if (p.pageSize === 1) return { items: [], total: 4, page: 1, pageSize: 1 } as never;
       return {
@@ -230,6 +238,15 @@ describe('Client › Hồ sơ ứng viên', () => {
     });
     renderPage();
 
+    const offerRow = (await screen.findByText('Ứng Viên Chờ Offer')).closest('tr')!;
+    expect(within(offerRow).getByText(/Hạn offer:.*còn 1 ngày/)).toBeInTheDocument();
+    expect(within(offerRow).getByText('Ứng tuyển trực tiếp')).toBeInTheDocument();
+
+    const srcRow = screen.getByText('Ứng Viên Sourcing').closest('tr')!;
+    expect(within(srcRow).getByText('Đã quá hạn phản hồi CV')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Dừng tuyển \(Không đạt/ }));
+
     const rejRow = (await screen.findByText('Ứng Viên Bị Loại')).closest('tr')!;
     expect(within(rejRow).getByText(/Lý do: Chưa đủ kinh nghiệm: Thiếu kinh nghiệm cloud/)).toBeInTheDocument();
     expect(within(rejRow).getByText('Suất thay thế')).toBeInTheDocument();
@@ -238,16 +255,36 @@ describe('Client › Hồ sơ ứng viên', () => {
     const notStartedRow = screen.getByText('Ứng Viên Không Nhận Việc').closest('tr')!;
     expect(within(notStartedRow).getByText('Lý do: Ứng viên không đến vào ngày hẹn')).toBeInTheDocument();
 
-    const offerRow = screen.getByText('Ứng Viên Chờ Offer').closest('tr')!;
-    expect(within(offerRow).getByText(/Hạn offer:.*còn 1 ngày/)).toBeInTheDocument();
-    expect(within(offerRow).getByText('Ứng tuyển trực tiếp')).toBeInTheDocument();
-
-    const srcRow = screen.getByText('Ứng Viên Sourcing').closest('tr')!;
-    expect(within(srcRow).getByText('Đã quá hạn phản hồi CV')).toBeInTheDocument();
-
     const nullRow = screen.getByText('Ứng Viên Null').closest('tr')!;
     expect(within(nullRow).queryByText(/Lý do:/)).toBeNull();
     expect(within(nullRow).queryByText(/Invalid Date|undefined/)).toBeNull();
+  });
+
+  it('renders server-driven stage accordion on All tab and filters server-side when clicking Cần xử lý', async () => {
+    renderPage();
+
+    const shortlistedSection = await screen.findByRole('region', { name: 'Bước 2/5 · Đã chọn chờ phỏng vấn' });
+    expect(await within(shortlistedSection).findByText('Ứng Viên e2e5')).toBeInTheDocument();
+    expect(within(shortlistedSection).getByText('Bước 2 · Đã chọn CV')).toBeInTheDocument();
+    expect(within(shortlistedSection).getByLabelText('Tiến độ bước 2 trên 5')).toBeInTheDocument();
+
+    expect(screen.getByRole('region', { name: 'Dừng tuyển (Không đạt · Rút đơn · Nghỉ việc)' })).toBeInTheDocument();
+
+    // Clicking "Cần xử lý (4)" hides terminal/non-action stages immediately and updates the header badge.
+    fireEvent.click(screen.getByRole('button', { name: /Cần xử lý \(4\)/ }));
+    expect(screen.getByText('4 hồ sơ cần xử lý')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Dừng tuyển (Không đạt · Rút đơn · Nghỉ việc)' })).not.toBeInTheDocument();
+
+    // Turning off "Gom theo giai đoạn" while "Cần xử lý" is active queries the server with action statuses.
+    fireEvent.click(screen.getByRole('button', { name: 'Gom theo giai đoạn' }));
+    await waitFor(() => {
+      expect(listMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'SUBMITTED,SCREENING,SHORTLISTED,OFFER_PENDING,OFFER_ACCEPTED',
+          pageSize: 10,
+        })
+      );
+    });
   });
 });
 

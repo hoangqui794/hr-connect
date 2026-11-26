@@ -184,6 +184,7 @@ export const ApplicationWorkbench: React.FC<{
   const [open, setOpen] = useState<ModalKind | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [historyInterviewId, setHistoryInterviewId] = useState<string | null>(null);
+  const [offerHistoryOpen, setOfferHistoryOpen] = useState(false);
   const [form] = Form.useForm();
   const selectedInterviewType = Form.useWatch('interviewType', form);
   const watchedActualStartDate = Form.useWatch('actualStartDate', form);
@@ -214,7 +215,9 @@ export const ApplicationWorkbench: React.FC<{
   const interviewStarted = hasInterviewStarted(interview);
   const interviewOverdue = isInterviewOverdue(interview);
   const effectiveInterviewType = open === 'reschedule' ? interview?.interviewType : selectedInterviewType;
-  const offer = d ? [...(d.offers ?? [])].sort((a, b) => b.offerVersion - a.offerVersion)[0] : undefined;
+  const sortedOffers = d ? [...(d.offers ?? [])].sort((a, b) => b.offerVersion - a.offerVersion) : [];
+  const offer = sortedOffers[0];
+  const previousOffers = sortedOffers.slice(1);
   const acceptedOffer = d?.offers?.find((o) => o.status === 'ACCEPTED') ?? offer;
   const actualStartDiffersFromPlan = Boolean(
     d?.plannedStartDate &&
@@ -1178,29 +1181,48 @@ export const ApplicationWorkbench: React.FC<{
                     </div>
                   );
                 })}
-                {d.offers.map((o) => {
-                  const s = pick(OFFER_STATUS, o.status);
+                {offer && (() => {
+                  const s = pick(OFFER_STATUS, offer.status);
+                  const showConvertedGross =
+                    offer.monthlyGrossSalary != null &&
+                    (offer.salaryBasis !== 'GROSS' || offer.salaryPeriod !== 'MONTHLY');
                   return (
-                    <div key={o.offerId} className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 transition-all hover:border-slate-300">
+                    <div key={offer.offerId} className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 transition-all hover:border-slate-300">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-bold text-slate-900">Offer v{o.offerVersion} · {money(o.salary, o.currencyCode)}</span>
+                        <span className="font-bold text-slate-900">
+                          Thư mời nhận việc · {money(offer.salary, offer.currencyCode)}
+                        </span>
                         <StatusDot tone={s.tone}>{s.label}</StatusDot>
                       </div>
                       <div className="mt-1 text-[13px] text-slate-600">
-                        Bắt đầu {fmt(o.startDate, 'DD/MM/YYYY')} · hạn phản hồi {fmt(o.expiryDate, 'DD/MM/YYYY')}
+                        Bắt đầu {fmt(offer.startDate, 'DD/MM/YYYY')} · hạn phản hồi {fmt(offer.expiryDate, 'DD/MM/YYYY')}
                       </div>
-                      {(o.salaryBasis || o.salaryPeriod) && (
+                      {(offer.salaryBasis || offer.salaryPeriod) && (
                         <div className="mt-1 text-[13px] text-slate-600">
-                          {o.salaryBasis === 'GROSS' ? 'Gross' : o.salaryBasis === 'NET' ? 'Net' : '—'}
+                          {offer.salaryBasis === 'GROSS' ? 'Lương Gross' : offer.salaryBasis === 'NET' ? 'Lương Net' : '—'}
                           {' · '}
-                          {o.salaryPeriod === 'ANNUAL' ? 'Theo năm' : o.salaryPeriod === 'MONTHLY' ? 'Theo tháng' : '—'}
-                          {o.monthlyGrossSalary != null ? ` · Gross tháng quy đổi ${money(o.monthlyGrossSalary, o.currencyCode)}` : ''}
+                          {offer.salaryPeriod === 'ANNUAL' ? 'Theo năm' : offer.salaryPeriod === 'MONTHLY' ? 'Theo tháng' : '—'}
+                          {showConvertedGross ? ` · Gross tháng quy đổi ${money(offer.monthlyGrossSalary, offer.currencyCode)}` : ''}
                         </div>
                       )}
-                      {o.declineReason && <div className="mt-1.5 text-[13px] text-red-800 font-medium">Lý do từ chối: {o.declineReason}</div>}
+                      {offer.declineReason && (
+                        <div className="mt-1.5 text-[13px] text-red-800 font-medium">Lý do từ chối: {offer.declineReason}</div>
+                      )}
+                      {previousOffers.length > 0 && (
+                        <div className="mt-2.5 flex justify-end">
+                          <Button
+                            size="small"
+                            icon={<HistoryOutlined />}
+                            onClick={() => setOfferHistoryOpen(true)}
+                            className="!rounded-lg text-slate-600 font-medium border-slate-200"
+                          >
+                            Lịch sử điều chỉnh ({previousOffers.length})
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   );
-                })}
+                })()}
                 {d.plannedStartDate && <Row label="Ngày dự kiến nhận việc">{fmt(d.plannedStartDate, 'DD/MM/YYYY')}</Row>}
                 {d.status === 'OFFER_ACCEPTED' && d.plannedStartDate && dayjs(d.plannedStartDate).isBefore(dayjs(), 'day') && (
                   <Alert
@@ -1939,6 +1961,31 @@ export const ApplicationWorkbench: React.FC<{
             ))}
           </ol>
         )}
+      </Drawer>
+      <Drawer
+        open={offerHistoryOpen}
+        title="Lịch sử điều chỉnh thư mời nhận việc"
+        width="min(520px, 100vw)"
+        onClose={() => setOfferHistoryOpen(false)}
+        destroyOnHidden
+      >
+        <div className="space-y-3">
+          {previousOffers.map((o) => {
+            const s = pick(OFFER_STATUS, o.status);
+            return (
+              <div key={o.offerId} className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-3.5 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-bold text-slate-800">Đề nghị trước đó · {money(o.salary, o.currencyCode)}</span>
+                  <StatusDot tone={s.tone}>{s.label}</StatusDot>
+                </div>
+                <div className="mt-1 text-xs text-slate-600">
+                  Bắt đầu {fmt(o.startDate, 'DD/MM/YYYY')} · hạn phản hồi {fmt(o.expiryDate, 'DD/MM/YYYY')}
+                </div>
+                {o.declineReason && <div className="mt-1 text-xs font-medium text-red-800">Lý do từ chối: {o.declineReason}</div>}
+              </div>
+            );
+          })}
+        </div>
       </Drawer>
     </Drawer>
   );

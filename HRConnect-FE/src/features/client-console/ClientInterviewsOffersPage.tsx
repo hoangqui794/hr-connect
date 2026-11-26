@@ -495,8 +495,8 @@ export const ClientInterviewsOffersPage: React.FC = () => {
             <span className="line-clamp-2 font-semibold text-slate-800 text-[13px] leading-snug">
               {r.jobTitle}
             </span>
-            {r.offerVersion != null && (
-              <div className="text-[11px] font-medium text-slate-500">Phiên bản v{r.offerVersion}</div>
+            {r.offerVersion != null && r.offerVersion > 1 && (
+              <div className="text-[11px] font-medium text-sky-700">Đã điều chỉnh điều khoản</div>
             )}
           </div>
         ),

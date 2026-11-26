@@ -242,7 +242,7 @@ describe('Client › Phỏng vấn & Offer', () => {
     expect(within(draftRow).getByRole('button', { name: 'Xem & gửi Offer' })).toBeInTheDocument();
     expect(within(draftRow).getByText('Trước thuế (Gross) (Tháng)')).toBeInTheDocument();
     expect(within(draftRow).getByText('Nhận việc 01/12/2026')).toBeInTheDocument();
-    expect(within(draftRow).getByText('Phiên bản v2')).toBeInTheDocument();
+    expect(within(draftRow).getByText('Đã điều chỉnh điều khoản')).toBeInTheDocument();
 
     const sentRow = screen.getByText('Offer Đã Gửi').closest('tr')!;
     expect(within(sentRow).getByRole('button', { name: 'Xem Offer' })).toBeInTheDocument();

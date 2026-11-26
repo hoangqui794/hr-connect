@@ -402,11 +402,11 @@ export const CandidateApplicationDetailPage: React.FC = () => {
                 {otherOffers.map((offer) => (
                   <div key={offer.offerId} className="flex flex-wrap items-center justify-between gap-3 border-0 border-t border-solid border-[#F1F5F9] py-2.5">
                     <div className="min-w-0">
-                      <div className="font-semibold">Offer phiên bản {offer.offerVersion} · {candidateOfferStatus(offer.status)}</div>
+                      <div className="font-semibold">Thư mời nhận việc trước đó · {candidateOfferStatus(offer.status)}</div>
                       <div className="text-[13px] text-[#4B5563]">{money(offer.salary, offer.currencyCode)}{offer.startDate ? ` · Bắt đầu ${dayjs(offer.startDate).format('DD/MM/YYYY')}` : ''}</div>
                       {offer.declineReason && <div className="text-[13px] text-[#B91C1C]">Lý do từ chối: {offer.declineReason}</div>}
                     </div>
-                    <Link to={`/candidate/applications/${applicationId}/offers/${offer.offerId}`} aria-label={`Chi tiết offer phiên bản ${offer.offerVersion}`} className={`text-[13px] font-semibold ${LINK}`}>Chi tiết</Link>
+                    <Link to={`/candidate/applications/${applicationId}/offers/${offer.offerId}`} aria-label="Chi tiết thư mời nhận việc" className={`text-[13px] font-semibold ${LINK}`}>Chi tiết</Link>
                   </div>
                 ))}
               </section>
@@ -418,7 +418,7 @@ export const CandidateApplicationDetailPage: React.FC = () => {
               <h2 id="next" className="m-0 mb-2 text-[15px] font-bold text-[#1F2937]">Việc cần làm</h2>
               {offerToAnswer ? (
                 <>
-                  <div className="font-semibold">Trả lời offer phiên bản {offerToAnswer.offerVersion}</div>
+                  <div className="font-semibold">Trả lời thư mời nhận việc</div>
                   <div className="mt-0.5 text-[13px] text-[#4B5563]">
                     {money(offerToAnswer.salary, offerToAnswer.currencyCode)}{offerToAnswer.startDate ? ` · Bắt đầu ${dayjs(offerToAnswer.startDate).format('DD/MM/YYYY')}` : ''}
                   </div>
