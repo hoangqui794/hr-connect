@@ -4,7 +4,7 @@
  * actual start date. This is intentionally a narrow operational page: it does
  * not review commissions, service fees, warranty cases or payouts (MF-05).
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App as AntApp, Button, DatePicker, Drawer, Form, Input, Skeleton, Table, Tag } from 'antd';
@@ -14,8 +14,7 @@ import dayjs, { type Dayjs } from 'dayjs';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { placementCorrectionApi } from '@/services/api/hrApi';
 import type { PlacementCorrectionDetail, PlacementItem } from '@/types/api/hr';
-import { PageHero, PersonCell, StatusDot, Surface } from '@/features/admin-console/ui';
-import { matchesSearch } from '@/utils/searchMatch';
+import { FilterPills, PageHero, PersonCell, StatusDot, Surface } from '@/features/admin-console/ui';
 import { PLACEMENT_STATUS, pick } from './hrLabels';
 
 const PAGE_SIZE = 10;
@@ -60,6 +59,7 @@ const DetailRows: React.FC<{ detail: PlacementCorrectionDetail; correctionWindow
 /** Internal HR / Platform Admin only. Backend repeats every permission and correction rule. */
 export const HrPlacementStartDateCorrectionPage: React.FC = () => {
   const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'STARTED' | 'LEFT_DURING_WARRANTY'>('ALL');
   const [searchText, setSearchText] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [correctionOpen, setCorrectionOpen] = useState(false);
@@ -68,6 +68,11 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
   const [form] = Form.useForm<{ actualStartDate: Dayjs; reason: string }>();
   const queryClient = useQueryClient();
   const { message } = AntApp.useApp();
+
+  const trimmedKeyword = searchText.trim();
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, trimmedKeyword]);
 
   const highlightParam = searchParams.get('highlight');
   useEffect(() => {
@@ -79,8 +84,14 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
   }, [highlightParam, searchParams, setSearchParams]);
 
   const placements = useQuery({
-    queryKey: ['mf04-placement-correction', page],
-    queryFn: () => placementCorrectionApi.list({ page, pageSize: PAGE_SIZE }),
+    queryKey: ['mf04-placement-correction', statusFilter, trimmedKeyword, page],
+    queryFn: () =>
+      placementCorrectionApi.list({
+        status: statusFilter === 'ALL' ? undefined : statusFilter,
+        keyword: trimmedKeyword || undefined,
+        page,
+        pageSize: PAGE_SIZE,
+      }),
     placeholderData: (previous) => previous,
   });
   const detail = useQuery({
@@ -167,21 +178,8 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
     });
   };
 
-  const hasSearch = searchText.trim().length > 0;
-  const visiblePlacements = useMemo(() => {
-    const rows = placements.data?.items ?? [];
-    if (!hasSearch) return rows;
-    return rows.filter((row) =>
-      matchesSearch(
-        searchText,
-        row.candidate?.fullName,
-        row.candidate?.email,
-        row.job?.title,
-        row.job?.companyName,
-        row.position
-      )
-    );
-  }, [placements.data?.items, hasSearch, searchText]);
+  const hasFilters = trimmedKeyword.length > 0 || statusFilter !== 'ALL';
+  const visiblePlacements = placements.data?.items ?? [];
 
   return (
     <div>
@@ -197,11 +195,21 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
         message="Chỉ sửa ngày đi làm"
         description="Trang này không đối soát hoa hồng, chi trả, bảo hành hoặc phí dịch vụ; backend tự từ chối nếu placement đã bị khóa do đã thu phí."
       />
-      <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <FilterPills
+          label="Lọc trạng thái nhận việc"
+          value={statusFilter}
+          onChange={(value) => setStatusFilter(value as 'ALL' | 'STARTED' | 'LEFT_DURING_WARRANTY')}
+          options={[
+            { value: 'ALL', label: 'Tất cả' },
+            { value: 'STARTED', label: 'Đã đi làm' },
+            { value: 'LEFT_DURING_WARRANTY', label: 'Nghỉ trong bảo hành' },
+          ]}
+        />
         <Input
           allowClear
           prefix={<SearchOutlined className="text-slate-400" />}
-          placeholder="Tìm theo ứng viên, email, tin tuyển dụng, công ty, vị trí..."
+          placeholder="Tìm theo tên ứng viên hoặc vị trí tuyển dụng..."
           aria-label="Tìm kiếm danh sách nhận việc"
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
@@ -224,15 +232,23 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
             pagination={{
               current: page,
               pageSize: PAGE_SIZE,
-              total: hasSearch ? visiblePlacements.length : (placements.data?.total ?? 0),
+              total: placements.data?.total ?? 0,
               showSizeChanger: false,
               onChange: setPage,
             }}
             locale={{
-              emptyText: hasSearch ? (
+              emptyText: hasFilters ? (
                 <div className="py-10 text-slate-600">
-                  <div>Không tìm thấy ứng viên phù hợp trên trang này.</div>
-                  <Button className="mt-3" onClick={() => setSearchText('')}>Xóa từ khóa tìm kiếm</Button>
+                  <div>Không tìm thấy hồ sơ nhận việc phù hợp với bộ lọc hiện tại.</div>
+                  <Button
+                    className="mt-3"
+                    onClick={() => {
+                      setSearchText('');
+                      setStatusFilter('ALL');
+                    }}
+                  >
+                    Xóa bộ lọc
+                  </Button>
                 </div>
               ) : (
                 <div className="py-10 text-slate-600">Chưa có ứng viên nào đã được xác nhận đi làm.</div>
