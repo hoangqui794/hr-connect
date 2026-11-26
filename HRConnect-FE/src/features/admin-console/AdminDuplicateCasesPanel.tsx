@@ -53,7 +53,7 @@ const SUBMISSION_STATUS_LABELS: Record<string, { label: string; color: string }>
   REPORTED_UNAUTHORIZED: { label: 'Báo cáo trái phép', color: 'red' },
   EXPIRED: { label: 'Hết hạn', color: 'default' },
   CANCELLED: { label: 'Đã hủy', color: 'default' },
-  BLOCKED_DUPLICATE: { label: 'Chặn trùng', color: 'red' },
+  BLOCKED_DUPLICATE: { label: 'Bị chặn do trùng', color: 'red' },
   BLOCKED_CLIENT_OWNED: { label: 'Thuộc kho DN', color: 'volcano' },
   CLOSED_DUPLICATE: { label: 'Đóng do trùng', color: 'default' },
 };
@@ -89,11 +89,19 @@ const COMMISSION_LABELS: Record<string, string> = {
 
 const SIGNAL_LABELS: Record<string, string> = {
   VERIFIED_EMAIL_OWNERSHIP: 'Đã xác minh quyền sở hữu email qua OTP',
+  EXACT_CV_AND_NORMALIZED_NAME: 'Trùng khớp 100% file CV và Họ tên',
   CV_CONTENT_SHA256_AND_NAME_MATCH: 'Trùng nội dung file CV (SHA-256) và Họ tên',
   CV_CONTENT_SHA256_MATCH: 'Trùng nội dung file CV (SHA-256)',
   NORMALIZED_PHONE_MATCH: 'Trùng số điện thoại chuẩn hóa',
   NORMALIZED_EMAIL_MATCH: 'Trùng email chuẩn hóa',
   CANDIDATE_IDENTITY_CLAIM: 'Yêu cầu gộp hồ sơ từ ứng viên',
+};
+
+const RECOMMENDATION_REASON_LABELS: Record<string, string> = {
+  VERIFIED_ACCOUNT_OWNER: 'Ưu tiên giữ hồ sơ đã có tài khoản đăng nhập xác thực.',
+  MORE_VALID_BUSINESS_HISTORY: 'Ưu tiên giữ hồ sơ đã có đơn ứng tuyển hoặc xác nhận hợp lệ nhiều hơn.',
+  EARLIEST_CANDIDATE_RECORD: 'Ưu tiên giữ hồ sơ được tạo sớm nhất trên hệ thống.',
+  DETERMINISTIC_CANDIDATE_ID_TIE_BREAK: 'Chọn hồ sơ gốc theo thứ tự định danh chuẩn hóa.',
 };
 
 const formatSignalEvidence = (reasonCode: string, rawEvidence: string): string | null => {
@@ -102,6 +110,13 @@ const formatSignalEvidence = (reasonCode: string, rawEvidence: string): string |
 
   if (reasonCode === 'VERIFIED_EMAIL_OWNERSHIP') {
     return 'Ứng viên đã xác thực thành công mã OTP gửi tới email cần khôi phục.';
+  }
+
+  if (
+    trimmed.toLowerCase().includes('exact-binary-sha256') ||
+    trimmed.toLowerCase().includes('normalized-hmac-sha256')
+  ) {
+    return 'Hai file CV giống hệt nhau từng byte (SHA-256) và trùng họ tên đã chuẩn hóa.';
   }
 
   if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
@@ -625,7 +640,8 @@ const DuplicateCaseDrawerContent: React.FC<DuplicateCaseDrawerContentProps> = ({
           ) : preview ? (
             <div className="space-y-2 text-sm">
               <div className="text-slate-700">
-                <strong>Đề xuất:</strong> {preview.recommendationReason}
+                <strong>Đề xuất:</strong>{' '}
+                {RECOMMENDATION_REASON_LABELS[preview.recommendationReason] ?? preview.recommendationReason}
               </div>
               {preview.collisions.length > 0 && (
                 <Alert

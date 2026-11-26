@@ -224,15 +224,33 @@ public sealed class ResolveCandidateDuplicateCaseCommandHandler
                             break;
                         }
                     }
-                    if (winner == null) continue;
+                    if (winner == null)
+                    {
+                        foreach (var pendingSubmission in jobGroup.Where(item =>
+                                     item.CandidateId == source.CandidateId &&
+                                     item.Status == "PENDING_CONSENT"))
+                        {
+                            pendingSubmission.CandidateId = canonical.CandidateId;
+                            pendingSubmission.UpdatedAt = now;
+                            _submissions.Update(pendingSubmission);
+                        }
+                        continue;
+                    }
 
                     foreach (var loser in jobGroup.Where(item =>
                                  item.SubmissionId != winner.SubmissionId &&
-                                 item.Status is "ACCEPTED" or "PENDING_IDENTITY_REVIEW"))
+                                 item.Status is "ACCEPTED" or "PENDING_IDENTITY_REVIEW" or "PENDING_CONSENT"))
                     {
                         loser.Status = "BLOCKED_DUPLICATE";
                         loser.DuplicateOfSubmissionId = winner.SubmissionId;
                         loser.UpdatedAt = now;
+                        if (loser.Consent is { Status: "PENDING" } pendingConsent)
+                        {
+                            pendingConsent.Status = "CANCELLED";
+                            pendingConsent.RespondedAt = now;
+                            pendingConsent.UpdatedAt = now;
+                            pendingConsent.ConcurrencyToken = Guid.NewGuid();
+                        }
                         _submissions.Update(loser);
                         foreach (var application in loser.Applications.Where(item => item.Status != "CLOSED"))
                         {

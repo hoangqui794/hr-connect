@@ -73,6 +73,9 @@ const BY_ENTITY: Record<string, string[][]> = {
     ['admin-candidate-duplicate-case-detail'],
     ['candidate-email-identities'],
     ['candidate-duplicate-cases'],
+    ['candidate-submission-consents'],
+    ['aff-submissions'],
+    ['aff-attributions'],
     ...APPLICATION,
   ],
 };
