@@ -42,10 +42,11 @@ const placementDetail = {
   updatedAt: '2026-10-15T08:00:00Z',
 };
 
-const renderPage = () => {
-  const queryClient = new QueryClient({
+const renderPage = (
+  queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
+  })
+) => {
   return render(
     <MemoryRouter>
       <QueryClientProvider client={queryClient}>
@@ -108,5 +109,69 @@ describe('HrPlacementStartDateCorrectionPage', () => {
 
     expect(await screen.findByText('Đã hết thời hạn chỉnh sửa')).toBeInTheDocument();
     expect(findButtonWithText('Sửa ngày đi làm')).toBeDisabled();
+  });
+
+  it('locks correction when service fee is already PAID and shows warranty end date', async () => {
+    vi.mocked(placementCorrectionApi.get).mockResolvedValue({
+      ...placementDetail,
+      financial: { serviceFeeAmount: 30_000_000, serviceFeeStatus: 'PAID', commissionAmount: null, commissionStatus: null },
+      warranty: { warrantyId: 'war-1', startDate: '2026-10-15', endDate: '2026-11-14', status: 'ACTIVE', resultNote: null },
+    } as any);
+    renderPage();
+
+    await screen.findByText('Xem');
+    await userEvent.click(findButtonWithText('Xem'));
+
+    expect(await screen.findByText('Không thể sửa ngày đi làm (đã thu phí)')).toBeInTheDocument();
+    expect(screen.getByText('Hạn bảo hành hiện tại')).toBeInTheDocument();
+    expect(screen.getByText('14/11/2026')).toBeInTheDocument();
+    expect(findButtonWithText('Sửa ngày đi làm')).toBeDisabled();
+  });
+
+  it('invalidates reconciliation, warranty, fee and nav-count caches after correction', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+    renderPage(queryClient);
+
+    await screen.findByText('Xem');
+    await userEvent.click(findButtonWithText('Xem'));
+    await screen.findByText('Sửa ngày đi làm');
+    await userEvent.click(findButtonWithText('Sửa ngày đi làm'));
+
+    fireEvent.change(screen.getByLabelText('Lý do chỉnh sửa'), { target: { value: 'Sửa lại ngày nhận việc thực tế.' } });
+    fireEvent.click(findButtonWithText('Lưu ngày mới'));
+
+    await waitFor(() => {
+      for (const queryKey of [
+        ['placement-reconciliations'],
+        ['hr-nav-counts'],
+        ['mf05-warranties'],
+        ['mf05-fees'],
+        ['placements'],
+      ]) {
+        expect(invalidateSpy).toHaveBeenCalledWith({ queryKey });
+      }
+    });
+  });
+
+  it('passes keyword search and status filter to placementCorrectionApi.list', async () => {
+    renderPage();
+    await screen.findByText('Xem');
+
+    fireEvent.change(screen.getByLabelText('Tìm kiếm danh sách nhận việc'), { target: { value: 'Nguyễn' } });
+    await waitFor(() =>
+      expect(placementCorrectionApi.list).toHaveBeenCalledWith(
+        expect.objectContaining({ keyword: 'Nguyễn', page: 1, pageSize: 10 })
+      )
+    );
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Nghỉ trong bảo hành' }));
+    await waitFor(() =>
+      expect(placementCorrectionApi.list).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'LEFT_DURING_WARRANTY', keyword: 'Nguyễn', page: 1, pageSize: 10 })
+      )
+    );
   });
 });
