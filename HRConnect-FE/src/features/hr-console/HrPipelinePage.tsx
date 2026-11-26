@@ -5,7 +5,7 @@
  * action button and hide redundant company branding. In Internal HR mode, rows remain read-only.
  */
 import React, { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Input, Select, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -85,6 +85,7 @@ export const HrPipelinePage: React.FC<{
   emptyHints?: Partial<Record<Tab, string>>;
 }> = ({ eyebrow = 'Theo dõi', description, tip, onOpenApplication, onOpenInterview, emptyHints }) => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const tab = (TABS as string[]).includes(searchParams.get('tab') ?? '') ? (searchParams.get('tab') as Tab) : 'interviews';
@@ -354,9 +355,42 @@ export const HrPipelinePage: React.FC<{
               ),
             },
           ]
-        : []),
+        : [
+            {
+              title: 'Thao tác',
+              key: 'hr-actions',
+              width: 195,
+              align: 'right' as const,
+              render: (_: unknown, r: PlacementItem) => (
+                <div className="flex items-center justify-end gap-1.5">
+                  <Button
+                    size="small"
+                    className="text-xs font-medium rounded-lg"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/hr/placement-review?highlight=${r.placementId}`);
+                    }}
+                  >
+                    Sửa ngày
+                  </Button>
+                  <Button
+                    type="primary"
+                    ghost
+                    size="small"
+                    className="text-xs font-medium rounded-lg"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/hr/placement-reconciliations?highlight=${r.placementId}`);
+                    }}
+                  >
+                    Đối soát
+                  </Button>
+                </div>
+              ),
+            },
+          ]),
     ],
-    [isClient, onOpenApplication]
+    [isClient, navigate, onOpenApplication]
   );
 
   const trimmedKeyword = searchText.trim();
