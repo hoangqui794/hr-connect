@@ -198,7 +198,7 @@ export const CandidateOfferPage: React.FC = () => {
             <div className="min-w-0">
               <h1 id="offer" className="m-0 text-[20px] font-bold text-[#1F2937]">Thư mời nhận việc – {offer.job?.title}</h1>
               <div className="mt-0.5 text-[#4B5563]">
-                {[offer.job?.companyName, `Phiên bản ${offer.offerVersion}`, offer.sentAt && `Gửi ngày ${dayjs(offer.sentAt).format('DD/MM/YYYY')}`].filter(Boolean).join(' · ')}
+                {[offer.job?.companyName, offer.sentAt && `Gửi ngày ${dayjs(offer.sentAt).format('DD/MM/YYYY')}`].filter(Boolean).join(' · ')}
               </div>
             </div>
           </div>
@@ -244,7 +244,7 @@ export const CandidateOfferPage: React.FC = () => {
         {previous && (
           <div className="mt-[14px] rounded-md border border-solid border-[#E0F2FE] bg-[#F0F9FF] px-3.5 py-2.5 text-[13px] text-[#4B5563]">
             <p className="m-0">
-              Phiên bản {offer.offerVersion} thay thế phiên bản {previous.offerVersion} (lương {money(previous.salary, previous.currencyCode)}). Chỉ phiên bản mới nhất có hiệu lực.
+              Thư mời nhận việc đã được cập nhật điều khoản mới (thay thế đề nghị trước đó với mức lương {money(previous.salary, previous.currencyCode)}). Chỉ thư mời hiện tại có hiệu lực.
             </p>
             <div data-testid="offer-version-diff" className="mt-1.5 flex flex-wrap gap-2 text-[12px] font-semibold text-[#075985]">
               {offer.salary != null && previous.salary != null && offer.salary !== previous.salary && (
