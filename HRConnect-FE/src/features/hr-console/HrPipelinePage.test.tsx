@@ -1,7 +1,7 @@
 import { App as AntApp } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HrPipelinePage } from './HrPipelinePage';
 import { pipelineApi } from '@/services/api/hrApi';
@@ -38,12 +38,20 @@ const offer = {
   status: 'ACCEPTED',
 };
 
+const LocationProbe = () => {
+  const location = useLocation();
+  return <div data-testid="location-probe">{location.pathname + location.search}</div>;
+};
+
 const renderAt = (url: string) =>
   render(
     <MemoryRouter initialEntries={[url]}>
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
         <AntApp>
-          <HrPipelinePage />
+          <Routes>
+            <Route path="/hr/pipeline" element={<HrPipelinePage />} />
+            <Route path="*" element={<LocationProbe />} />
+          </Routes>
         </AntApp>
       </QueryClientProvider>
     </MemoryRouter>
@@ -68,5 +76,79 @@ describe('HrPipelinePage', () => {
     await new Promise((r) => setTimeout(r, 50));
 
     expect(screen.queryByText('Ứng Viên e2e5')).toBeNull();
+  });
+
+  it('shows real-time interview phases and candidate attendance confirmation', async () => {
+    const now = Date.now();
+    vi.mocked(pipelineApi.interviews).mockResolvedValue({
+      items: [
+        {
+          interviewId: 'iv-in-progress',
+          applicationId: 'app-1',
+          jobTitle: 'Backend Engineer',
+          companyName: 'ABC Corp',
+          candidateName: 'Trần Văn Minh',
+          candidateEmail: 'minh@mail.com',
+          interviewRound: 1,
+          interviewType: 'ONLINE',
+          scheduledAt: new Date(now - 10 * 60 * 1000).toISOString(),
+          durationMinutes: 60,
+          location: null,
+          meetingLink: 'https://meet.example.com',
+          status: 'SCHEDULED',
+          result: null,
+          candidateAttendanceStatus: 'CONFIRMED',
+        },
+        {
+          interviewId: 'iv-overdue',
+          applicationId: 'app-2',
+          jobTitle: 'Frontend Engineer',
+          companyName: 'ABC Corp',
+          candidateName: 'Lê Thị Hoa',
+          candidateEmail: 'hoa@mail.com',
+          interviewRound: 2,
+          interviewType: 'OFFLINE',
+          scheduledAt: new Date(now - 180 * 60 * 1000).toISOString(),
+          durationMinutes: 60,
+          location: 'HN',
+          meetingLink: null,
+          status: 'SCHEDULED',
+          result: null,
+          candidateAttendanceStatus: null,
+        },
+      ],
+      total: 2,
+    } as never);
+
+    renderAt('/hr/pipeline?tab=interviews');
+
+    expect(await screen.findByText('Đang trong giờ hẹn')).toBeInTheDocument();
+    expect(screen.getByText('Ứng viên đã xác nhận tham gia')).toBeInTheDocument();
+    expect(screen.getByText('Quá giờ · Chờ cập nhật')).toBeInTheDocument();
+  });
+
+  it('passes server-side keyword search to pipelineApi.interviews', async () => {
+    renderAt('/hr/pipeline?tab=interviews');
+    const searchInput = await screen.findByLabelText('Tìm kiếm tiến độ tuyển dụng');
+    fireEvent.change(searchInput, { target: { value: 'Minh' } });
+
+    await waitFor(() =>
+      expect(pipelineApi.interviews).toHaveBeenCalledWith(
+        expect.objectContaining({ keyword: 'Minh', page: 1, pageSize: 10 })
+      )
+    );
+  });
+
+  it('navigates from placements tab to start-date review and reconciliation with highlight param', async () => {
+    const first = renderAt('/hr/pipeline?tab=placements');
+    expect(await screen.findByText('Ứng Viên e2e5')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sửa ngày' }));
+    expect(await screen.findByTestId('location-probe')).toHaveTextContent('/hr/placement-review?highlight=plc-1');
+    first.unmount();
+
+    renderAt('/hr/pipeline?tab=placements');
+    fireEvent.click(await screen.findByRole('button', { name: 'Đối soát' }));
+    expect(await screen.findByTestId('location-probe')).toHaveTextContent('/hr/placement-reconciliations?highlight=plc-1');
   });
 });
