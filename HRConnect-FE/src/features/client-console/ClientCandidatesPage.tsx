@@ -13,7 +13,7 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 import { MATCH_TIER_STYLE, matchTierOf } from '@/features/screening/matchTierStyle';
 import { AiScore } from '@/features/screening/AiScore';
 export { AiScore } from '@/features/screening/AiScore';
-import { Alert, Button, Input, Select, Skeleton, Table, Tag, Tooltip } from 'antd';
+import { Alert, Button, Input, Pagination, Select, Skeleton, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   AppstoreOutlined,
@@ -37,7 +37,7 @@ import { getApiErrorMessage } from '@/services/apiClient';
 import type { RecruitmentApplicationItem } from '@/types/api/hr';
 import { useMyJobs } from '@/features/jobs-mf01/useJobQueries';
 import { Initials, Surface } from '@/features/admin-console/ui';
-import { stageMetaOf } from './candidateStageMeta';
+import { groupApplicationsByStage, stageMetaOf } from './candidateStageMeta';
 import { ApplicationWorkbench } from '@/features/recruitment/ApplicationWorkbench';
 import { applicationStatusOf, INTERVIEW_RESULT, INTERVIEW_STATUS, OFFER_STATUS, reasonLabel, SERVICE_TYPE } from '@/features/hr-console/hrLabels';
 import { money } from '@/features/finance-mf05/financeLabels';
@@ -166,6 +166,9 @@ export const ClientCandidatesPage: React.FC = () => {
 
   // Local state for modal workbench so opening drawer doesn't reload page or displace behind screen
   const [activeAppId, setActiveAppId] = useState<string | undefined>(urlOpenId);
+  // On the "Tất cả" tab, group rows by hiring stage by default so Clients can immediately spot who is at which step.
+  const [groupByStage, setGroupByStage] = useState(true);
+  const [onlyUrgent, setOnlyUrgent] = useState(false);
 
   // Sync urlOpenId if it arrives from outside navigation
   React.useEffect(() => {
@@ -482,11 +485,18 @@ export const ClientCandidatesPage: React.FC = () => {
     },
   ];
 
-  const filtered = Boolean(jobId || service || q || exactStatus || group !== 'all');
+  const filtered = Boolean(jobId || service || q || exactStatus || group !== 'all' || onlyUrgent);
 
   const handleResetFilters = () => {
+    setOnlyUrgent(false);
     setSearchParams(new URLSearchParams(), { replace: true });
   };
+
+  const rawListItems = list.data?.items ?? [];
+  const urgentCountOnPage = rawListItems.filter((r) => nextStepOf(r)?.urgent).length;
+  const visibleListItems = onlyUrgent ? rawListItems.filter((r) => nextStepOf(r)?.urgent) : rawListItems;
+  const isGroupedAllView = view === 'list' && group === 'all' && !exactStatus && groupByStage;
+  const stagedGroups = isGroupedAllView ? groupApplicationsByStage(visibleListItems) : [];
 
   return (
     <div className={`${FONT} space-y-6 max-w-full animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
@@ -707,6 +717,44 @@ export const ClientCandidatesPage: React.FC = () => {
               })}
             </div>
           )}
+
+          {/* ── 3b. Sub-toolbar on "Tất cả" tab: stage grouping & urgent action filter ── */}
+          {view === 'list' && group === 'all' && !exactStatus && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-solid border-slate-200/80 bg-slate-50/70 px-3.5 py-2">
+              <span className="text-xs font-medium text-slate-600">
+                {groupByStage
+                  ? 'Đang phân nhóm hồ sơ theo từng giai đoạn (Bước 1 → Bước 5) để dễ theo dõi'
+                  : 'Đang hiển thị danh sách phẳng theo thời gian cập nhật mới nhất'}
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="small"
+                  aria-pressed={groupByStage}
+                  onClick={() => setGroupByStage((prev) => !prev)}
+                  className={`!h-8 !rounded-lg text-xs font-semibold ${
+                    groupByStage
+                      ? '!border-[#0284C7] !bg-sky-50 !text-[#0284C7]'
+                      : '!border-slate-200 !bg-white !text-slate-600'
+                  }`}
+                >
+                  Gom theo giai đoạn
+                </Button>
+                <Button
+                  size="small"
+                  icon={<ThunderboltOutlined />}
+                  aria-pressed={onlyUrgent}
+                  onClick={() => setOnlyUrgent((prev) => !prev)}
+                  className={`!h-8 !rounded-lg text-xs font-semibold ${
+                    onlyUrgent
+                      ? '!border-amber-500 !bg-amber-50 !text-amber-800'
+                      : '!border-slate-200 !bg-white !text-slate-600'
+                  }`}
+                >
+                  Cần xử lý ngay ({urgentCountOnPage})
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── 4. Main Content: Board or Table ── */}
@@ -801,13 +849,70 @@ export const ClientCandidatesPage: React.FC = () => {
           <div className="p-5">
             <Alert type="error" showIcon message="Không tải được hồ sơ" description={getApiErrorMessage(list.error)} />
           </div>
+        ) : isGroupedAllView && visibleListItems.length > 0 ? (
+          <div className="space-y-4 px-5 pb-5">
+            {stagedGroups.map((grp) => (
+              <section
+                key={grp.key}
+                aria-label={grp.meta.groupHeading}
+                className="overflow-hidden rounded-xl border border-solid border-slate-200/90 bg-white shadow-2xs"
+              >
+                <div
+                  className={`flex flex-wrap items-center justify-between gap-2 border-0 border-b border-solid px-4 py-2.5 ${grp.meta.groupHeaderClass}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: grp.meta.barColor }} />
+                    <span className="text-[13px] font-bold">{grp.meta.groupHeading}</span>
+                    <span className="rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-bold tabular-nums text-slate-700 border border-slate-200/70">
+                      {grp.items.length} hồ sơ
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setParams({ stage: grp.key, status: undefined })}
+                    className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-xs font-semibold text-[#0284C7] hover:underline"
+                  >
+                    <span>Lọc riêng giai đoạn này</span>
+                    <ArrowRightOutlined className="text-[10px]" />
+                  </button>
+                </div>
+                <Table<RecruitmentApplicationItem>
+                  className="admin-soft-table"
+                  scroll={{ x: 'max-content' }}
+                  rowKey="applicationId"
+                  columns={columns}
+                  dataSource={grp.items}
+                  loading={list.isFetching}
+                  pagination={false}
+                  onRow={(r) => ({
+                    onClick: () => handleOpenCandidate(r.applicationId),
+                    onKeyDown: (e) => e.key === 'Enter' && handleOpenCandidate(r.applicationId),
+                    tabIndex: 0,
+                    className: 'cursor-pointer hover:bg-sky-50/40 transition-colors',
+                  })}
+                />
+              </section>
+            ))}
+            {!onlyUrgent && (list.data?.total ?? 0) > PAGE_SIZE && (
+              <div className="flex justify-end pt-1">
+                <Pagination
+                  itemRender={a11yItemRender}
+                  current={page}
+                  pageSize={PAGE_SIZE}
+                  total={list.data?.total ?? 0}
+                  showSizeChanger={false}
+                  onChange={(p) => setParam('page', String(p))}
+                />
+              </div>
+            )}
+          </div>
         ) : (
           <Table<RecruitmentApplicationItem>
             className="admin-soft-table"
             scroll={{ x: 'max-content' }}
             rowKey="applicationId"
             columns={columns}
-            dataSource={list.data?.items ?? []}
+            dataSource={visibleListItems}
             loading={list.isFetching}
             onRow={(r) => ({
               onClick: () => handleOpenCandidate(r.applicationId),
@@ -815,10 +920,11 @@ export const ClientCandidatesPage: React.FC = () => {
               tabIndex: 0,
               className: 'cursor-pointer hover:bg-sky-50/40 transition-colors',
             })}
-            pagination={{ itemRender: a11yItemRender,
+            pagination={{
+              itemRender: a11yItemRender,
               current: page,
               pageSize: PAGE_SIZE,
-              total: list.data?.total ?? 0,
+              total: onlyUrgent ? visibleListItems.length : (list.data?.total ?? 0),
               showSizeChanger: false,
               hideOnSinglePage: true,
               onChange: (p) => setParam('page', String(p)),
@@ -826,7 +932,11 @@ export const ClientCandidatesPage: React.FC = () => {
             locale={{
               emptyText: (
                 <div className="py-12 text-center text-slate-500 text-[13.5px]">
-                  {!filtered ? 'Chưa có hồ sơ nào. Hồ sơ sẽ xuất hiện khi ứng viên nộp vào tin của bạn.' : 'Không có hồ sơ phù hợp bộ lọc.'}
+                  {onlyUrgent
+                    ? 'Không có hồ sơ nào đang cần bạn xử lý gấp trên trang này.'
+                    : !filtered
+                      ? 'Chưa có hồ sơ nào. Hồ sơ sẽ xuất hiện khi ứng viên nộp vào tin của bạn.'
+                      : 'Không có hồ sơ phù hợp bộ lọc.'}
                 </div>
               ),
             }}
