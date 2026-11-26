@@ -15,6 +15,7 @@ import { pipelineApi } from '@/services/api/hrApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { InterviewItem, OfferItem, PagedItems, PlacementItem } from '@/types/api/hr';
 import { PageHero, PersonCell, StatusDot, Surface } from '@/features/admin-console/ui';
+import { isInterviewInProgress, isInterviewOverdue } from '@/features/recruitment/interviewTiming';
 import { matchesSearch } from '@/utils/searchMatch';
 import { INTERVIEW_RESULT, INTERVIEW_STATUS, OFFER_STATUS, PLACEMENT_STATUS, pick } from './hrLabels';
 
@@ -112,13 +113,31 @@ export const HrPipelinePage: React.FC<{
       {
         title: 'Trạng thái',
         key: 's',
-        width: 190,
+        width: 220,
         align: 'left',
         render: (_, r) => {
           const st = pick(INTERVIEW_STATUS, r.status);
+          const inProgress = isInterviewInProgress(r);
+          const overdue = isInterviewOverdue(r);
+          const phaseLabel = inProgress ? 'Đang trong giờ hẹn' : overdue ? 'Quá giờ · Chờ cập nhật' : st.label;
+          const phaseTone = inProgress ? 'success' : overdue ? 'warning' : st.tone;
+          const attendance = r.candidateAttendanceStatus?.toUpperCase();
           return (
             <div className="py-1 space-y-1 text-left">
-              <StatusDot tone={st.tone}>{st.label}</StatusDot>
+              <StatusDot tone={phaseTone}>{phaseLabel}</StatusDot>
+              {r.status === 'SCHEDULED' && (
+                <div className="pl-3.5 text-[11px]">
+                  {attendance === 'CONFIRMED' ? (
+                    <span className="font-medium text-emerald-700">Ứng viên đã xác nhận tham gia</span>
+                  ) : attendance === 'RESCHEDULE_REQUESTED' ? (
+                    <span className="font-medium text-amber-700">Ứng viên đề nghị dời lịch</span>
+                  ) : attendance === 'DECLINED' ? (
+                    <span className="font-medium text-rose-700">Ứng viên từ chối tham gia</span>
+                  ) : !overdue ? (
+                    <span className="text-slate-500">Chờ ứng viên xác nhận</span>
+                  ) : null}
+                </div>
+              )}
               {r.result && (
                 <div className="text-[11.5px] text-slate-500 pl-3.5 flex items-center gap-1.5">
                   <span className="text-slate-400 font-medium">Kết quả:</span>
