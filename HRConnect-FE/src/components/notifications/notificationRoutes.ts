@@ -395,6 +395,42 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
     return appId ? `/client/candidates?open=${encodeURIComponent(appId)}` : '/client/candidates';
   }
 
+  // Client + MF-05 service fee / payment / refund notices: older records carried routeHint="/client/dashboard",
+  // so remap directly to /client/billing with the matching status tab and exact fee highlight.
+  if (
+    normRole === 'CLIENT' &&
+    (entityType === 'SERVICE_FEE' ||
+      titleLower.includes('đã ghi nhận thanh toán') ||
+      titleLower.includes('thanh toán thành công') ||
+      titleLower.includes('đã hoàn tiền') ||
+      titleLower.includes('phí dịch vụ') ||
+      titleLower.includes('công nợ') ||
+      titleLower.includes('hoàn tiền'))
+  ) {
+    if (route && route.startsWith('/client/billing?')) {
+      return route;
+    }
+    const feeId =
+      meta?.serviceFeeId ||
+      meta?.ServiceFeeId ||
+      meta?.entityId ||
+      (entityType === 'SERVICE_FEE' ? item.relatedEntityId : undefined);
+    const params = new URLSearchParams();
+    if (titleLower.includes('hoàn tiền') || titleLower.includes('đã hoàn')) {
+      params.set('status', 'REFUND');
+    } else if (
+      titleLower.includes('đã ghi nhận thanh toán') ||
+      titleLower.includes('thanh toán thành công')
+    ) {
+      params.set('status', 'PAID');
+    }
+    if (feeId) {
+      params.set('highlight', String(feeId));
+    }
+    const qs = params.toString();
+    return qs ? `/client/billing?${qs}` : '/client/billing';
+  }
+
   // If explicit route was resolved
   if (route) {
     return portalRoute(route, role as UserRole);

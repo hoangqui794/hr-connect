@@ -139,10 +139,14 @@ public sealed class SettlementCommandHandlers :
             // The Client sees its receivable change to paid without reloading.
             if (_notifier != null)
             {
+                var isOwedToClient = ServiceFeeKinds.OwedToClient.Contains(fee.Kind);
+                var clientRouteHint = isOwedToClient
+                    ? $"/client/billing?status=REFUND&highlight={fee.ServiceFeeId}"
+                    : $"/client/billing?status=PAID&highlight={fee.ServiceFeeId}";
                 await _notifier.NotifyCompanyAsync(fee.CompanyId, new AppNotice(
-                    "SERVICE_FEE", ServiceFeeKinds.OwedToClient.Contains(fee.Kind) ? "Đã hoàn tiền" : "Đã ghi nhận thanh toán",
-                    $"HR Connect đã {(ServiceFeeKinds.OwedToClient.Contains(fee.Kind) ? "hoàn" : "ghi nhận khoản thanh toán")} {fee.Amount:N0} {fee.CurrencyCode} (mã tham chiếu {fee.PaymentReference}).",
-                    "SERVICE_FEE", fee.ServiceFeeId, "/client/dashboard"), cancellationToken);
+                    "SERVICE_FEE", isOwedToClient ? "Đã hoàn tiền" : "Đã ghi nhận thanh toán",
+                    $"HR Connect đã {(isOwedToClient ? "hoàn" : "ghi nhận khoản thanh toán")} {fee.Amount:N0} {fee.CurrencyCode} (mã tham chiếu {fee.PaymentReference}).",
+                    "SERVICE_FEE", fee.ServiceFeeId, clientRouteHint), cancellationToken);
 
                 if (!ServiceFeeKinds.OwedToClient.Contains(fee.Kind))
                 {

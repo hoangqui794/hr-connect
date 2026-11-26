@@ -32,6 +32,27 @@ describe('routes meant for another role (server default per notification type)',
     expect(getNotificationRoute(warranty, UserRole.CLIENT)).toBe('/client/warranty');
   });
 
+  it('routes Client payment/refund recorded notices (even with legacy /client/dashboard hint) to /client/billing with status & highlight', () => {
+    const paidNotice = {
+      ...agreementNotice,
+      notificationType: 'SERVICE_FEE',
+      title: 'Đã ghi nhận thanh toán',
+      message: 'HR Connect đã ghi nhận khoản thanh toán 90,000,000 VND (mã tham chiếu VNPAY-15750471).',
+      relatedEntityType: 'SERVICE_FEE',
+      relatedEntityId: 'fee-123',
+      routeHint: '/client/dashboard',
+      metadata: null,
+    } as NotificationDto;
+    expect(getNotificationRoute(paidNotice, UserRole.CLIENT)).toBe('/client/billing?status=PAID&highlight=fee-123');
+
+    const refundNotice = {
+      ...paidNotice,
+      title: 'Đã hoàn tiền',
+      relatedEntityId: 'fee-456',
+    } as NotificationDto;
+    expect(getNotificationRoute(refundNotice, UserRole.CLIENT)).toBe('/client/billing?status=REFUND&highlight=fee-456');
+  });
+
   it('still maps an old /admin/jobs hint to the HR job review for Internal HR', () => {
     const legacy = { ...agreementNotice, title: 'Tin tuyển dụng', relatedEntityType: 'JOB', routeHint: `/admin/jobs?status=ACTIVE&highlight=${JOB}` } as NotificationDto;
     expect(getNotificationRoute(legacy, UserRole.INTERNAL_HR)).toBe(`/hr/jobs?status=ACTIVE&highlight=${JOB}`);
