@@ -951,9 +951,15 @@ export const ClientCandidatesPage: React.FC = () => {
                 const meta = STAGE_GROUPS[stageKey];
                 const isExpanded = expandedStages.includes(stageKey);
                 const rawStageItems = qy.data?.items ?? [];
-                const stageItems = rawStageItems.filter((a) => stageMetaOf(a.status).key === stageKey);
-                const stageTotal = q ? (qy.data?.total ?? stageItems.length) : (countByGroupKey[stageKey] ?? qy.data?.total ?? 0);
-                if (q && isExpanded && !qy.isLoading && stageItems.length === 0) return null;
+                const stageItems = rawStageItems.filter(
+                  (a) => stageMetaOf(a.status).key === stageKey && (!onlyUrgent || nextStepOf(a)?.urgent === true)
+                );
+                const stageTotal = onlyUrgent
+                  ? stageItems.length
+                  : q
+                    ? (qy.data?.total ?? stageItems.length)
+                    : (countByGroupKey[stageKey] ?? qy.data?.total ?? 0);
+                if ((q || onlyUrgent) && isExpanded && !qy.isLoading && stageItems.length === 0) return null;
 
                 return (
                   <section
@@ -1065,7 +1071,7 @@ export const ClientCandidatesPage: React.FC = () => {
             scroll={{ x: 'max-content' }}
             rowKey="applicationId"
             columns={columns}
-            dataSource={list.data?.items ?? []}
+            dataSource={(list.data?.items ?? []).filter((a) => !onlyUrgent || nextStepOf(a)?.urgent === true)}
             loading={list.isFetching}
             onRow={(r) => ({
               onClick: () => handleOpenCandidate(r.applicationId),
