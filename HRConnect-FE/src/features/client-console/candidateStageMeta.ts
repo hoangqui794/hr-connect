@@ -27,7 +27,7 @@ export interface HiringStageMeta {
   groupHeaderClass: string;
 }
 
-const STAGE_GROUPS: Record<HiringStageKey, Omit<HiringStageMeta, 'stageLabel'>> = {
+export const STAGE_GROUPS: Record<HiringStageKey, Omit<HiringStageMeta, 'stageLabel'>> = {
   review: {
     key: 'review',
     step: 1,
