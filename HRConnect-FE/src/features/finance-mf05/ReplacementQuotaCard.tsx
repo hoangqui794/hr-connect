@@ -445,7 +445,12 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
               type="primary"
               icon={<CreditCardOutlined />}
               className="!h-9 px-3 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold shadow-xs"
-              onClick={() => navigate('/client/billing')}
+              onClick={() => {
+                const params = new URLSearchParams();
+                if (slot.serviceFeeId) params.set('highlight', slot.serviceFeeId);
+                if (slot.originalCandidateName) params.set('q', slot.originalCandidateName);
+                navigate(`/client/billing${params.toString() ? `?${params.toString()}` : ''}`);
+              }}
             >
               Thanh toán phí
             </Button>
@@ -468,7 +473,12 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
               size="small"
               type="primary"
               className="!h-9 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-xs"
-              onClick={() => navigate('/client/billing')}
+              onClick={() => {
+                const params = new URLSearchParams({ status: 'REFUND' });
+                if (slot.refundServiceFeeId) params.set('highlight', slot.refundServiceFeeId);
+                if (slot.originalCandidateName) params.set('q', slot.originalCandidateName);
+                navigate(`/client/billing?${params.toString()}`);
+              }}
             >
               Xem hoàn phí
             </Button>
