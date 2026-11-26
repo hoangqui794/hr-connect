@@ -121,13 +121,13 @@ describe('portalRoute', () => {
 });
 
 describe('getNotificationRoute for ADMIN', () => {
-  it('routes VNPay payments and finance notifications to /admin/payouts', () => {
+  it('routes VNPay payments and finance notifications to exact /admin/payouts tab, status & filter', () => {
     const route = getNotificationRoute(
       {
         notificationId: 'n-vnpay',
         notificationType: 'FINANCE',
         title: 'Client đã thanh toán qua VNPay',
-        message: 'Doanh nghiệp đã thanh toán 1,500,000 VND cho tin tuyển dụng.',
+        message: 'NovaTech Solutions Vietnam đã thanh toán 90,000,000 VND cho tin "[SEED] Principal Frontend".',
         relatedEntityType: 'ONLINE_PAYMENT',
         relatedEntityId: 'pay-1',
         routeHint: '/admin/payouts',
@@ -136,7 +136,41 @@ describe('getNotificationRoute for ADMIN', () => {
       },
       UserRole.ADMIN
     );
-    expect(route).toBe('/admin/payouts');
+    expect(route).toBe('/admin/payouts?tab=fees&status=PAID&q=%5BSEED%5D+Principal+Frontend');
+
+    const feePaidRoute = getNotificationRoute(
+      {
+        notificationId: 'n-fee-paid',
+        notificationType: 'SERVICE_FEE',
+        title: 'Đã ghi nhận thanh toán phí dịch vụ',
+        message: 'Đã ghi nhận khoản thanh toán 67,500,000 VND (mã tham chiếu DEMO-B-CK-0001) cho công ty ABC.',
+        relatedEntityType: 'SERVICE_FEE',
+        relatedEntityId: 'fee-777',
+        routeHint: '/admin/payouts',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      },
+      UserRole.ADMIN
+    );
+    expect(feePaidRoute).toBe('/admin/payouts?tab=fees&status=PAID&highlight=fee-777&q=DEMO-B-CK-0001');
+
+    const commApproveRoute = getNotificationRoute(
+      {
+        notificationId: 'n-comm-approve',
+        notificationType: 'COMMISSION',
+        title: 'Hoa hồng Affiliate chờ duyệt chi',
+        message: 'Ứng viên của vị trí "[Headhunt] Staff Frontend Architect" đã qua bảo hành.',
+        relatedEntityType: 'COMMISSION',
+        relatedEntityId: 'com-555',
+        routeHint: '/admin/payouts',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      },
+      UserRole.ADMIN
+    );
+    expect(commApproveRoute).toBe(
+      '/admin/payouts?tab=commissions&status=EARNED&highlight=com-555&q=%5BHeadhunt%5D+Staff+Frontend+Architect'
+    );
   });
 
   it('routes account approvals, identity claims, disputes, and contact requests within Admin console', () => {
@@ -235,7 +269,7 @@ describe('getNotificationRoute for ADMIN', () => {
       },
       UserRole.ADMIN
     );
-    expect(jobPaidRoute).toBe('/admin/payouts');
+    expect(jobPaidRoute).toBe('/admin/payouts?tab=postingFees');
     expect(jobPaidRoute).not.toContain('/hr/');
   });
 });

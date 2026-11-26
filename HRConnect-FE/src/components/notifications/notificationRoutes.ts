@@ -114,13 +114,9 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
 
   // 1. Phân quyền Platform Admin: Giữ trọn vẹn trong Admin Console (/admin/*)
   if (normRole === 'ADMIN') {
-    // 1A. Nếu backend đã cung cấp routeHint chính xác tới Admin Console
-    if (route && route.startsWith('/admin')) {
-      return route;
-    }
-
-    // 1B. Giao dịch thanh toán / VNPay / Payouts / Tài chính / Hoa hồng / Hoàn tiền
-    if (
+    const isAdminFinanceNotice =
+      route === '/admin/payouts' ||
+      route === '/admin/finance' ||
       entityType === 'ONLINE_PAYMENT' ||
       entityType === 'PAYMENT' ||
       entityType === 'FINANCE' ||
@@ -131,9 +127,57 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       titleLower.includes('thanh toán') ||
       titleLower.includes('hoàn') ||
       titleLower.includes('hoa hồng') ||
-      titleLower.includes('quá hạn')
-    ) {
-      return '/admin/payouts';
+      titleLower.includes('quá hạn');
+
+    // 1A. Nếu backend đã cung cấp routeHint có query cụ thể tới Admin Console (không phải /admin/payouts trơn)
+    if (route && route.startsWith('/admin') && !(isAdminFinanceNotice && !route.includes('?'))) {
+      return route;
+    }
+
+    // 1B. Giao dịch thanh toán / VNPay / Payouts / Tài chính / Hoa hồng / Hoàn tiền
+    if (isAdminFinanceNotice) {
+      const params = new URLSearchParams();
+      const refMatch = item.message?.match(/mã tham chiếu[:\s]+([A-Za-z0-9_-]+)/i) ?? item.message?.match(/mã giao dịch[:\s]+([A-Za-z0-9_-]+)/i);
+      const quoteMatchAdmin = item.message?.match(/['"“”]([^'"“”]+)['"“”]/);
+
+      if (titleLower.includes('phí đăng tin')) {
+        params.set('tab', 'postingFees');
+        if (quoteMatchAdmin?.[1]) params.set('q', quoteMatchAdmin[1]);
+      } else if (entityType === 'PAYOUT' || titleLower.includes('chi trả') || titleLower.includes('chuyển khoản')) {
+        params.set('tab', 'payouts');
+        if (item.relatedEntityId && entityType === 'PAYOUT') params.set('highlight', String(item.relatedEntityId));
+        if (refMatch?.[1]) params.set('q', refMatch[1]);
+      } else if (entityType === 'COMMISSION' || titleLower.includes('hoa hồng')) {
+        params.set('tab', 'commissions');
+        if (titleLower.includes('chờ duyệt') || titleLower.includes('đủ điều kiện')) {
+          params.set('status', 'EARNED');
+        } else if (titleLower.includes('chờ chi')) {
+          params.set('status', 'PAYABLE');
+        } else if (titleLower.includes('tạm giữ')) {
+          params.set('status', 'ON_HOLD');
+        } else if (titleLower.includes('hủy')) {
+          params.set('status', 'CANCELLED');
+        }
+        if (item.relatedEntityId && entityType === 'COMMISSION') params.set('highlight', String(item.relatedEntityId));
+        if (quoteMatchAdmin?.[1]) params.set('q', quoteMatchAdmin[1]);
+      } else {
+        params.set('tab', 'fees');
+        if (
+          titleLower.includes('đã ghi nhận thanh toán') ||
+          titleLower.includes('đã thanh toán') ||
+          titleLower.includes('vnpay')
+        ) {
+          params.set('status', 'PAID');
+        } else if (titleLower.includes('quá hạn')) {
+          params.set('status', 'OVERDUE');
+        }
+        if (item.relatedEntityId && entityType === 'SERVICE_FEE') params.set('highlight', String(item.relatedEntityId));
+        const fallbackQuery = refMatch?.[1] || quoteMatchAdmin?.[1];
+        if (fallbackQuery) params.set('q', fallbackQuery);
+      }
+
+      const qs = params.toString();
+      return qs ? `/admin/payouts?${qs}` : '/admin/payouts';
     }
 
     // 1C. Phê duyệt tài khoản Doanh nghiệp / Affiliate

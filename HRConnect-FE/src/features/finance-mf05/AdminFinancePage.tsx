@@ -5,13 +5,13 @@
  * Service fees: newest activity first, with the payment date, how it was paid (VNPay or transfer) and its reference;
  * record a transfer by hand. Posting fees: record CV_APPLICATION posting fees (N4). Payouts: who was paid, newest first.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'motion/react';
 import { Alert, App, Button, DatePicker, Drawer, Dropdown, Form, Input, InputNumber, Modal, Pagination, Radio, Select, Spin, Tag, Tooltip } from 'antd';
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, ReloadOutlined, SearchOutlined, SwapOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { financeApi } from '@/services/api/financeApi';
 import { placementReconciliationApi } from '@/services/api/hrApi';
 import { getApiErrorMessage } from '@/services/apiClient';
@@ -75,11 +75,19 @@ const PAGE_SIZE = 20;
 export const AdminFinancePage: React.FC = () => {
   const { message, modal } = App.useApp();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>('commissions');
   const [commissionStatus, setCommissionStatus] = useState<CommissionStatus | 'all'>('all');
   const [feeStatus, setFeeStatus] = useState<ServiceFeeStatus | 'all'>('all');
   const [searchText, setSearchText] = useState('');
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [pendingDeepLink, setPendingDeepLink] = useState<{
+    tab: Tab | null;
+    status: string | null;
+    highlight: string | null;
+    q: string | null;
+  } | null>(null);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' } | null>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -124,6 +132,116 @@ export const AdminFinancePage: React.FC = () => {
 
   const openFees = (status: ServiceFeeStatus) => { setTab('fees'); setFeeStatus(status); setPage(1); };
   const openCommissions = (status: CommissionStatus) => { setTab('commissions'); setCommissionStatus(status); setPage(1); };
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    const statusParam = searchParams.get('status')?.toUpperCase() ?? null;
+    const highlightParam = searchParams.get('highlight');
+    const queryParam = searchParams.get('q');
+
+    if (!tabParam && !statusParam && !highlightParam && !queryParam) return;
+
+    const validTab: Tab | null =
+      tabParam === 'commissions' || tabParam === 'fees' || tabParam === 'postingFees' || tabParam === 'payouts'
+        ? tabParam
+        : null;
+
+    if (validTab) {
+      setTab(validTab);
+      setPage(1);
+    }
+
+    let resolvedStatus: string | null = null;
+    if (validTab === 'commissions') {
+      const nextStatus: CommissionStatus | 'all' =
+        statusParam && COMMISSION_FILTERS.includes(statusParam as CommissionStatus)
+          ? (statusParam as CommissionStatus)
+          : 'all';
+      setCommissionStatus(nextStatus);
+      resolvedStatus = nextStatus;
+    } else if (validTab === 'fees') {
+      const nextStatus: ServiceFeeStatus | 'all' =
+        statusParam && FEE_FILTERS.includes(statusParam as ServiceFeeStatus)
+          ? (statusParam as ServiceFeeStatus)
+          : 'all';
+      setFeeStatus(nextStatus);
+      resolvedStatus = nextStatus;
+    }
+
+    if (highlightParam || queryParam) {
+      setPendingDeepLink({
+        tab: validTab,
+        status: resolvedStatus,
+        highlight: highlightParam,
+        q: queryParam,
+      });
+    } else {
+      setHighlightedId(null);
+      setSearchText('');
+      setPendingDeepLink(null);
+    }
+
+    const next = new URLSearchParams(searchParams);
+    next.delete('tab');
+    next.delete('status');
+    next.delete('highlight');
+    next.delete('q');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (!pendingDeepLink) return;
+    if (pendingDeepLink.tab && tab !== pendingDeepLink.tab) return;
+    if (tab === 'commissions' && pendingDeepLink.status && commissionStatus !== pendingDeepLink.status) return;
+    if (tab === 'fees' && pendingDeepLink.status && feeStatus !== pendingDeepLink.status) return;
+    if (tab === 'commissions' && commissions.isLoading) return;
+    if (tab === 'fees' && fees.isLoading) return;
+    if (tab === 'payouts' && payouts.isLoading) return;
+
+    let matchedId: string | null = null;
+    if (pendingDeepLink.highlight) {
+      const target = pendingDeepLink.highlight.toLowerCase();
+      if (tab === 'commissions') {
+        matchedId = (commissions.data?.items ?? []).find((c) => c.commissionId.toLowerCase() === target)?.commissionId ?? null;
+      } else if (tab === 'fees') {
+        matchedId = (fees.data?.items ?? []).find((f) => f.serviceFeeId.toLowerCase() === target)?.serviceFeeId ?? null;
+      } else if (tab === 'payouts') {
+        matchedId = (payouts.data?.items ?? []).find((p) => p.payoutId.toLowerCase() === target)?.payoutId ?? null;
+      }
+    }
+
+    if (matchedId) {
+      setHighlightedId(matchedId);
+      setSearchText('');
+    } else if (pendingDeepLink.q) {
+      setHighlightedId(null);
+      setSearchText(pendingDeepLink.q);
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      const el = matchedId
+        ? document.querySelector<HTMLElement>(`tr[data-row-id="${matchedId}"]`)
+        : document.querySelector<HTMLElement>('.admin-surface');
+      if (el && typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+
+    setPendingDeepLink(null);
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [
+    pendingDeepLink,
+    tab,
+    commissionStatus,
+    feeStatus,
+    commissions.isLoading,
+    commissions.data?.items,
+    fees.isLoading,
+    fees.data?.items,
+    payouts.isLoading,
+    payouts.data?.items,
+  ]);
 
   const refresh = () => queryClient.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).startsWith('mf05-') });
   const action = useMutation({
@@ -249,14 +367,22 @@ export const AdminFinancePage: React.FC = () => {
                 </tr>
               </thead>
               <tbody key={`${tab}-${commissionStatus}-${feeStatus}-${page}`} className="bg-white">
-                {sorted.map((row, idx) => (
+                {sorted.map((row, idx) => {
+                  const rowKey = String(getKey(row));
+                  const isHighlighted = highlightedId !== null && highlightedId.toLowerCase() === rowKey.toLowerCase();
+                  return (
                   <motion.tr
-                    key={getKey(row)}
+                    key={rowKey}
+                    data-row-id={rowKey}
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.24, delay: Math.min(idx, 10) * 0.025, ease: [0.22, 1, 0.36, 1] }}
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
-                    className={`group transition-colors duration-150 hover:bg-slate-50/90 [&:last-child>td]:border-b-0 ${onRowClick ? 'cursor-pointer' : ''}`}
+                    className={`group transition-colors duration-150 [&:last-child>td]:border-b-0 ${
+                      isHighlighted
+                        ? 'bg-sky-50/90 shadow-[inset_3px_0_0_#0284C7]'
+                        : 'hover:bg-slate-50/90'
+                    } ${onRowClick ? 'cursor-pointer' : ''}`}
                   >
                     {cols.map((col) => {
                       const alignCls = cellAlign(col.align);
@@ -267,7 +393,8 @@ export const AdminFinancePage: React.FC = () => {
                       );
                     })}
                   </motion.tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
