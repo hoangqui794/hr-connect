@@ -548,21 +548,21 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="m-0 text-lg font-bold text-slate-900">
-                  Suất tuyển thay thế
+                  Bảo hành tuyển thay thế
                 </h3>
                 {counts.open > 0 && (
-                  <Badge count={`${counts.open} khả dụng`} style={{ backgroundColor: '#10B981' }} />
+                  <Badge count={`${counts.open} đang mở`} style={{ backgroundColor: '#10B981' }} />
                 )}
               </div>
               {mode === 'client' ? (
                 <p className="m-0 mt-0.5 text-[13px] text-slate-600">
-                  Ứng viên nghỉ trong bảo hành được HR Connect xác nhận thì bạn có một suất thay thế miễn phí, có hạn sử dụng.
+                  Theo dõi các vị trí được HR Connect hỗ trợ tuyển người thay thế miễn phí sau khi xác nhận ứng viên nghỉ trong thời gian bảo hành.
                 </p>
               ) : (
                 <p className="mt-1 text-sm text-slate-600 max-w-3xl leading-relaxed">
                   Áp dụng cho dịch vụ <strong>Tuyển dụng theo kết quả</strong>. Khi ứng viên nghỉ việc trong thời gian bảo hành và
-                  HR Connect xác nhận, bạn được một suất tuyển thay thế <strong>miễn phí</strong>. Suất dùng được ngay nếu phí dịch vụ đã
-                  thanh toán, hoặc ở trạng thái chờ cho đến khi bạn thanh toán. Mỗi suất có hạn sử dụng, xem ở cột Thời hạn sử dụng.
+                  HR Connect xác nhận, doanh nghiệp được hỗ trợ tuyển người thay thế <strong>miễn phí</strong>. Yêu cầu mở ngay nếu phí dịch vụ đã
+                  thanh toán, hoặc ở trạng thái chờ cho đến khi thanh toán. Xem hạn áp dụng ở cột Thời hạn sử dụng.
                 </p>
               )}
             </div>
