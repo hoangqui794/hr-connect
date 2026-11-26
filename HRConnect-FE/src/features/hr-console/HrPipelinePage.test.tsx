@@ -17,6 +17,7 @@ const placement = {
   position: 'Backend .NET',
   department: null,
   status: 'STARTED',
+  serviceTypeCode: 'HEADHUNT_COD',
   confirmedAt: '2026-10-20T01:00:00Z',
   confirmedByName: null,
   candidate: { candidateId: 'cand-1', fullName: 'Ứng Viên e2e5', email: 'e2e5@mail.com', phoneNumber: null },
@@ -137,6 +138,18 @@ describe('HrPipelinePage', () => {
         expect.objectContaining({ keyword: 'Minh', page: 1, pageSize: 10 })
       )
     );
+  });
+
+  it('hides the reconciliation shortcut for placements that have no reconciliation (not HEADHUNT_COD)', async () => {
+    vi.mocked(pipelineApi.placements).mockResolvedValue({
+      items: [{ ...placement, serviceTypeCode: 'CV_APPLICATION' }],
+      total: 1,
+    } as never);
+    renderAt('/hr/pipeline?tab=placements');
+
+    expect(await screen.findByText('Ứng Viên e2e5')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sửa ngày' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Đối soát' })).toBeNull();
   });
 
   it('navigates from placements tab to start-date review and reconciliation with highlight param', async () => {

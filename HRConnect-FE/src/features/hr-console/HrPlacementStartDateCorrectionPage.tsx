@@ -15,6 +15,7 @@ import { getApiErrorMessage } from '@/services/apiClient';
 import { placementCorrectionApi } from '@/services/api/hrApi';
 import type { PlacementCorrectionDetail, PlacementItem } from '@/types/api/hr';
 import { FilterPills, PageHero, PersonCell, StatusDot, Surface } from '@/features/admin-console/ui';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { PLACEMENT_STATUS, pick } from './hrLabels';
 
 const PAGE_SIZE = 10;
@@ -69,7 +70,7 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { message } = AntApp.useApp();
 
-  const trimmedKeyword = searchText.trim();
+  const trimmedKeyword = useDebouncedValue(searchText.trim(), 300);
   useEffect(() => {
     setPage(1);
   }, [statusFilter, trimmedKeyword]);

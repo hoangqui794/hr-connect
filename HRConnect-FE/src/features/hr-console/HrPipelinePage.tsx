@@ -16,6 +16,7 @@ import { getApiErrorMessage } from '@/services/apiClient';
 import type { InterviewItem, OfferItem, PagedItems, PlacementItem } from '@/types/api/hr';
 import { PageHero, PersonCell, StatusDot, Surface } from '@/features/admin-console/ui';
 import { isInterviewInProgress, isInterviewOverdue } from '@/features/recruitment/interviewTiming';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { INTERVIEW_RESULT, INTERVIEW_STATUS, OFFER_STATUS, PLACEMENT_STATUS, pick } from './hrLabels';
 
 type Tab = 'interviews' | 'offers' | 'placements';
@@ -154,10 +155,6 @@ export const HrPipelinePage: React.FC<{
                 <div className="pl-3.5 text-[11px]">
                   {attendance === 'CONFIRMED' ? (
                     <span className="font-medium text-emerald-700">Ứng viên đã xác nhận tham gia</span>
-                  ) : attendance === 'RESCHEDULE_REQUESTED' ? (
-                    <span className="font-medium text-amber-700">Ứng viên đề nghị dời lịch</span>
-                  ) : attendance === 'DECLINED' ? (
-                    <span className="font-medium text-rose-700">Ứng viên từ chối tham gia</span>
                   ) : !overdue ? (
                     <span className="text-slate-500">Chờ ứng viên xác nhận</span>
                   ) : null}
@@ -373,18 +370,21 @@ export const HrPipelinePage: React.FC<{
                   >
                     Sửa ngày
                   </Button>
-                  <Button
-                    type="primary"
-                    ghost
-                    size="small"
-                    className="text-xs font-medium rounded-lg"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/hr/placement-reconciliations?highlight=${r.placementId}`);
-                    }}
-                  >
-                    Đối soát
-                  </Button>
+                  {/* Reconciliation records only exist for HEADHUNT_COD (UC-41). */}
+                  {r.serviceTypeCode === 'HEADHUNT_COD' && (
+                    <Button
+                      type="primary"
+                      ghost
+                      size="small"
+                      className="text-xs font-medium rounded-lg"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/hr/placement-reconciliations?highlight=${r.placementId}`);
+                      }}
+                    >
+                      Đối soát
+                    </Button>
+                  )}
                 </div>
               ),
             },
@@ -393,7 +393,7 @@ export const HrPipelinePage: React.FC<{
     [isClient, navigate, onOpenApplication]
   );
 
-  const trimmedKeyword = searchText.trim();
+  const trimmedKeyword = useDebouncedValue(searchText.trim(), 300);
   const list = useQuery({
     queryKey: ['hr-pipeline', tab, statusFilter, trimmedKeyword, page],
     queryFn: (): Promise<PagedItems<unknown>> =>

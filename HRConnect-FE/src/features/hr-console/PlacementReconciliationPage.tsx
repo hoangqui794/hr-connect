@@ -63,7 +63,7 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
 
   const highlightParam = searchParams.get('highlight');
   useEffect(() => {
-    if (!highlightParam || list.isLoading || !list.data) return;
+    if (!highlightParam || list.isLoading || list.isPlaceholderData || !list.data) return;
     const q = highlightParam.toLowerCase();
     const match = list.data.items.find(
       (item) =>
@@ -71,15 +71,23 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
         item.reconciliationId.toLowerCase() === q ||
         (item.placementId != null && item.placementId.toLowerCase() === q)
     );
-    if (match) {
-      setSelected(match);
+    const clearHighlight = () => {
       const next = new URLSearchParams(searchParams);
       next.delete('highlight');
       setSearchParams(next, { replace: true });
+    };
+    if (match) {
+      setSelected(match);
+      clearHighlight();
     } else if (status !== 'ALL') {
       setStatus('ALL');
+    } else if (page * PAGE_SIZE < list.data.totalCount) {
+      // Older records sit on later pages: keep looking instead of silently giving up.
+      setPage(page + 1);
+    } else {
+      clearHighlight();
     }
-  }, [highlightParam, list.isLoading, list.data, status, searchParams, setSearchParams]);
+  }, [highlightParam, list.isLoading, list.isPlaceholderData, list.data, status, page, searchParams, setSearchParams]);
 
   const finish = async (text: string) => {
     message.success(text);

@@ -61,10 +61,15 @@ export const HrOverviewPage: React.FC = () => {
     queryFn: async () => (await screeningApi.list({ serviceTypeCode: HR_SCREENED_SERVICE_TYPES, page: 1, pageSize: 6 })).items,
     enabled: canViewScreening,
   });
+  // Same gate as the sidebar badge: the HR endpoint needs INTERNAL_HR + placement.reconcile (Admin gets 403).
+  const canReconcile = useAuthStore(
+    (s) => s.hasAnyRole([UserRole.INTERNAL_HR]) && s.hasPermission('placement.reconcile')
+  );
   const pendingReconciliations = useQuery({
     queryKey: ['hr-overview', 'placement-reconciliations', 'PENDING'],
     queryFn: async () => (await placementReconciliationApi.list({ status: 'PENDING', page: 1, pageSize: 1 })).totalCount,
-    enabled: canViewScreening,
+    enabled: canReconcile,
+    retry: false,
   });
   const upcoming = useQuery({
     queryKey: ['hr-overview', 'interviews'],
