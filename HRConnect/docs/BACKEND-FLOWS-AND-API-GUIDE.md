@@ -420,12 +420,14 @@ Các route dưới `/api/v1`:
 | `POST /placements/{placementId}/resignation` | Báo Candidate nghỉ việc. |
 | `POST /placements/{placementId}/resignation/resolve` | Internal HR/Admin xác minh và xử lý. |
 | `GET /jobs/{jobId}/replacement-slots` | Các lượt thay thế của Job. |
-| `POST /internal/replacement-slots/{id}/cancel` | Hủy lượt thay thế hợp lệ. |
+| `POST /client/replacement-slots/{id}/cancel-request` | Client gửi yêu cầu hủy lượt tuyển thay thế để Internal HR xác nhận. |
+| `POST /internal/replacement-slots/{id}/cancel` | Internal HR xác nhận hủy lượt thay thế hợp lệ (`CANCELLED`, không hoàn phí). |
 | `GET /placements/{placementId}` | Chi tiết nhận việc, kèm khối `financial`: Client chỉ thấy phí dịch vụ (`serviceFeeAmount`, `serviceFeeStatus`), hoa hồng Affiliate chỉ trả cho Internal HR/Admin, Candidate không nhận khối này; `null` khi chưa có phí lẫn hoa hồng. |
 | `GET /replacement-slots` | Danh sách lượt thay thế có phân trang (`jobId`, `status`, `page`, `pageSize` ≤ 100), mỗi lượt có `jobTitle` và `companyName`. Client (thành viên ACTIVE) chỉ thấy lượt của doanh nghiệp mình; Internal HR/Admin thấy tất cả. |
 | `GET /client/dashboard/summary` | Client (placement.confirm, thành viên ACTIVE), chỉ doanh nghiệp mình: tổng phí chưa trả (PLACEMENT, DEPOSIT, SETTLEMENT) và phần quá hạn, hạn phí gần nhất, khoản hoàn/credit đang nợ doanh nghiệp, số CV Sourcing chờ phản hồi và hạn gần nhất, số bảo hành ACTIVE kết thúc trong `warrantyWithinDays` ngày (mặc định 7, tối đa 90), số suất thay thế OPEN/WAITING_PAYMENT. |
 | `GET /warranties` | Theo dõi bảo hành. |
 | `GET /service-fees` | Theo dõi công nợ/phí. |
+| `GET /service-fees/summary` | Tổng hợp KPI công nợ chưa trả, quá hạn, đã trả và khoản hoàn tiền trên toàn dữ liệu. |
 | `POST /jobs/{jobId}/sourcing-settlement` | Chốt phí dịch vụ Sourcing. |
 | `POST /admin/service-fees/{id}/record-payment` | Ghi nhận thanh toán theo quyền Admin. |
 | `GET /commissions` | Danh sách hoa hồng theo actor/quyền. |
@@ -439,7 +441,7 @@ Các cấu hình liên quan:
 
 - `/api/v1/admin/commission-rules`: quy tắc tính hoa hồng.
 - `/api/v1/admin/commission-milestones`: mốc đủ điều kiện chi.
-- `/api/v1/admin/settings`: cấu hình nghiệp vụ dùng chung.
+- `/api/v1/admin/settings`: cấu hình nghiệp vụ dùng chung (bao gồm cả cập nhật hàng loạt 5 tham số trọng số & trần điểm AI `mf03.ai_scoring.*`).
 - `/api/v1/admin/posting-packages`: gói đăng tin.
 
 **Điểm vào code:** [`FinanceEndpoints.cs`](../HRConnect.Presentation/Endpoints/V1/Finance/FinanceEndpoints.cs), [`CommissionRuleEndpoints.cs`](../HRConnect.Presentation/Endpoints/V1/CommissionRules/CommissionRuleEndpoints.cs), [`CommissionMilestoneEndpoints.cs`](../HRConnect.Presentation/Endpoints/V1/CommissionMilestones/CommissionMilestoneEndpoints.cs), [`PostingPackageAdminEndpoints.cs`](../HRConnect.Presentation/Endpoints/V1/Finance/PostingPackageAdminEndpoints.cs).  

@@ -77,5 +77,6 @@ Từ thời điểm hồ sơ đạt **`SHORTLISTED`** (hoặc đã được giao
 - **Che dữ liệu nội bộ với Candidate & Affiliate:**
   - Khi Candidate xem chi tiết Application / Interview / Offer / Placement: hệ thống tự động ẩn `Interview.ConcurrencyToken`, `CreatedBy`, danh sách `Approvals` nội bộ, lý do thu hồi Offer (`WITHDRAWN`), ghi chú nội bộ của Company/HR trên `StatusReason` (chỉ hiển thị khi chính Candidate rút đơn `WITHDRAWN`), và ghi chú đối soát/bảo hành nội bộ.
   - Khi Affiliate theo dõi tiến độ giới thiệu (`GetAffiliateReferralProgressQueryHandler`): chỉ trả trạng thái tổng quát đã sanitize, không lộ lịch phỏng vấn, lương hay nội dung Offer.
-- **Tìm kiếm & Lọc trên Server trước phân trang:**
+- **Tìm kiếm Server-side & Giao diện Tiến trình 5 bước thống nhất:**
   - Cả 3 API danh sách `GET /api/v1/recruitment/interviews`, `GET /api/v1/offers`, `GET /api/v1/placements` đều hỗ trợ lọc theo `jobId` và tìm kiếm `search` (tên ứng viên / tiêu đề công việc) trực tiếp dưới Database trước khi phân trang.
+  - Cổng Client (`/client/candidates`) và Candidate (`/candidate/applications`) đồng bộ thanh tiến trình 5 bước chuẩn hóa (`candidateStageMeta.ts`), hỗ trợ chế độ gom nhóm theo giai đoạn từ server, lọc ứng viên cần hành động và hiển thị thẻ Offer hiện hành hợp nhất kèm modal lịch sử điều chỉnh điều khoản.
