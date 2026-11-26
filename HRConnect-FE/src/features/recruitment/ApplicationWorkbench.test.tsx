@@ -836,4 +836,57 @@ describe('ApplicationWorkbench AI evidence (FE-M04)', () => {
     const matches = await screen.findAllByText(/Kinh nghiệm dự án thực tế rất sát JD/, {}, { timeout: 10000 });
     expect(matches.length).toBeGreaterThanOrEqual(2);
   }, 60000);
+
+  it('[UX-08] renders a single unified active offer card without v1/v2 label and opens adjustment history', async () => {
+    renderWorkbench({
+      ...baseApplication,
+      allowedActions: [],
+      offers: [
+        {
+          offerId: 'offer-1',
+          offerVersion: 1,
+          salary: 22000000,
+          currencyCode: 'VND',
+          salaryBasis: 'GROSS',
+          salaryPeriod: 'MONTHLY',
+          monthlyGrossSalary: 22000000,
+          startDate: '2026-12-01',
+          expiryDate: '2026-11-20',
+          status: 'WITHDRAWN',
+          offerDocumentUrl: null,
+          sentAt: '2026-11-10T08:00:00Z',
+          respondedAt: null,
+          declineReason: null,
+          concurrencyToken: 'tok-1',
+        },
+        {
+          offerId: 'offer-2',
+          offerVersion: 2,
+          salary: 25000000,
+          currencyCode: 'VND',
+          salaryBasis: 'GROSS',
+          salaryPeriod: 'MONTHLY',
+          monthlyGrossSalary: 25000000,
+          startDate: '2026-12-05',
+          expiryDate: '2026-11-25',
+          status: 'ACCEPTED',
+          offerDocumentUrl: null,
+          sentAt: '2026-11-12T08:00:00Z',
+          respondedAt: '2026-11-13T08:00:00Z',
+          declineReason: null,
+          concurrencyToken: 'tok-2',
+        },
+      ],
+    });
+
+    expect(await screen.findByText(/Thư mời nhận việc · 25\.000\.000/)).toBeInTheDocument();
+    expect(screen.queryByText(/Offer v1|Offer v2/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Gross tháng quy đổi/)).not.toBeInTheDocument();
+
+    const historyBtn = screen.getByRole('button', { name: /Lịch sử điều chỉnh \(1\)/ });
+    fireEvent.click(historyBtn);
+
+    expect(await screen.findByText('Lịch sử điều chỉnh thư mời nhận việc')).toBeInTheDocument();
+    expect(screen.getByText(/Đề nghị trước đó · 22\.000\.000/)).toBeInTheDocument();
+  });
 });
