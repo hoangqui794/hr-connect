@@ -33,6 +33,7 @@ const channelLabels: Record<ReconciliationContactChannel, string> = {
 const money = (amount: number | null, currency?: string | null) =>
   amount == null ? '—' : `${new Intl.NumberFormat('vi-VN').format(amount)} ${currency === 'VND' ? '₫' : (currency ?? '')}`;
 const date = (value?: string | null) => value ? dayjs(value).format('DD/MM/YYYY') : '—';
+const dateTime = (value?: string | null) => value ? dayjs(value).format('HH:mm DD/MM/YYYY') : '—';
 
 interface ActionValues {
   decision: 'CONFIRM' | 'FLAG';
@@ -67,7 +68,8 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
     const match = list.data.items.find(
       (item) =>
         item.applicationId.toLowerCase() === q ||
-        item.reconciliationId.toLowerCase() === q
+        item.reconciliationId.toLowerCase() === q ||
+        (item.placementId != null && item.placementId.toLowerCase() === q)
     );
     if (match) {
       setSelected(match);
@@ -267,6 +269,8 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
             <Descriptions.Item label="Client khai">{selected.claimedOutcome === 'STARTED' ? `Đã đi làm từ ${date(selected.actualStartDate)}` : 'Không đi làm'}</Descriptions.Item>
             <Descriptions.Item label="Phí dự kiến">{money(selected.serviceFeeAmount, selected.serviceFeeCurrency)}</Descriptions.Item>
             <Descriptions.Item label="Trạng thái"><StatusDot tone={statusMeta[selected.status].tone}>{statusMeta[selected.status].label}</StatusDot></Descriptions.Item>
+            <Descriptions.Item label="Thời điểm Client gửi">{dateTime(selected.createdAt)}</Descriptions.Item>
+            {selected.reviewedAt && <Descriptions.Item label="Thời điểm đối soát">{dateTime(selected.reviewedAt)}</Descriptions.Item>}
             {selected.contactChannel && <Descriptions.Item label="Đã liên hệ">{channelLabels[selected.contactChannel]}</Descriptions.Item>}
             {selected.note && <Descriptions.Item label="Ghi chú không khớp">{selected.note}</Descriptions.Item>}
             {selected.resolutionNote && <Descriptions.Item label="Kết quả xử lý">{selected.resolutionNote}</Descriptions.Item>}
