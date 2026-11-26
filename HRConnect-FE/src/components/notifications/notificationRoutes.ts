@@ -366,6 +366,45 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
 
   // Affiliate: keep inside Affiliate portal and never route to /hr or /admin fallback hints.
   if (normRole === 'AFFILIATE') {
+    const isCommissionOrPayout =
+      entityType === 'COMMISSION' ||
+      entityType === 'WARRANTY' ||
+      entityType === 'PAYOUT' ||
+      route === '/affiliate/commissions' ||
+      titleLower.includes('hoa hồng') ||
+      titleLower.includes('chuyển khoản');
+
+    if (isCommissionOrPayout) {
+      if (route && route.startsWith('/affiliate/commissions?')) {
+        return route;
+      }
+      const params = new URLSearchParams();
+      if (entityType === 'PAYOUT' || titleLower.includes('chuyển khoản')) {
+        params.set('section', 'payouts');
+        params.set('tab', 'PAID');
+        if (item.relatedEntityId) params.set('payout', String(item.relatedEntityId));
+        const refMatch = item.message?.match(/mã giao dịch[:\s]+([A-Za-z0-9_-]+)/i);
+        if (refMatch?.[1]) params.set('ref', refMatch[1]);
+      } else {
+        if (titleLower.includes('duyệt chi')) {
+          params.set('tab', 'PAYABLE');
+        } else if (titleLower.includes('hủy') || titleLower.includes('tạm giữ')) {
+          params.set('tab', 'CANCELLED');
+        } else if (
+          titleLower.includes('đủ điều kiện') ||
+          titleLower.includes('qua bảo hành') ||
+          titleLower.includes('chờ trả phí')
+        ) {
+          params.set('tab', 'EARNED');
+        }
+        if (item.relatedEntityId && entityType === 'COMMISSION') {
+          params.set('highlight', String(item.relatedEntityId));
+        }
+      }
+      const qs = params.toString();
+      return qs ? `/affiliate/commissions?${qs}` : '/affiliate/commissions';
+    }
+
     if (route && (route.startsWith('/affiliate') || PUBLIC_JOB_ROUTE.test(route))) {
       return portalRoute(route, role as UserRole);
     }
@@ -377,9 +416,6 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       if (meta?.jobId && typeof meta.jobId === 'string') {
         return `/affiliate/submit-candidate?job=${encodeURIComponent(meta.jobId)}`;
       }
-      return '/affiliate/commissions';
-    }
-    if (entityType === 'COMMISSION' || entityType === 'WARRANTY' || entityType === 'PAYOUT') {
       return '/affiliate/commissions';
     }
   }

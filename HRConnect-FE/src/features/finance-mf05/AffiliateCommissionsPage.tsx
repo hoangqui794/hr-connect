@@ -109,7 +109,7 @@ const FILTER_TABS: { key: FilterTab; label: string; matches: (s: CommissionStatu
 const lastDigits = (account: string) => `••• ${account.slice(-4)}`;
 
 export const AffiliateCommissionsPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get('tab')?.toUpperCase();
   const defaultFilter: FilterTab = FILTER_TABS.some((t) => t.key === initialTab) ? (initialTab as FilterTab) : 'ALL';
   const [commissionPage, setCommissionPage] = useState(1);
@@ -117,6 +117,8 @@ export const AffiliateCommissionsPage: React.FC = () => {
   const [filter, setFilter] = useState<FilterTab>(defaultFilter);
   const [commissionSearch, setCommissionSearch] = useState('');
   const [payoutSearch, setPayoutSearch] = useState('');
+  const [highlightedCommissionId, setHighlightedCommissionId] = useState<string | null>(null);
+  const [highlightedPayoutId, setHighlightedPayoutId] = useState<string | null>(null);
   useEffect(() => {
     const tabParam = searchParams.get('tab')?.toUpperCase();
     if (tabParam && FILTER_TABS.some((t) => t.key === tabParam)) {
@@ -209,6 +211,79 @@ export const AffiliateCommissionsPage: React.FC = () => {
     });
   }, [payoutItems, hasPayoutSearch, payoutSearch]);
   const hasAccount = Boolean(account.data?.bankAccountNumber);
+
+  const sectionParam = searchParams.get('section');
+  const payoutParam = searchParams.get('payout');
+  const refParam = searchParams.get('ref');
+  const highlightParam = searchParams.get('highlight');
+
+  useEffect(() => {
+    if (payouts.isLoading) return;
+    if (sectionParam !== 'payouts' && !payoutParam && !refParam) return;
+
+    const matched = payoutItems.find(
+      (p) =>
+        (payoutParam && p.payoutId.toLowerCase() === payoutParam.toLowerCase()) ||
+        (refParam && p.transactionReference?.toLowerCase() === refParam.toLowerCase())
+    );
+
+    if (matched) {
+      setHighlightedPayoutId(matched.payoutId);
+      setPayoutSearch('');
+    } else if (refParam) {
+      setPayoutSearch(refParam);
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      const targetEl =
+        (matched && document.querySelector<HTMLElement>(`tr[data-payout-id="${matched.payoutId}"]`)) ||
+        document.getElementById('aff-payouts');
+      if (targetEl && typeof targetEl.scrollIntoView === 'function') {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+
+    const next = new URLSearchParams(searchParams);
+    next.delete('section');
+    next.delete('payout');
+    next.delete('ref');
+    setSearchParams(next, { replace: true });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [payouts.isLoading, sectionParam, payoutParam, refParam, payoutItems, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (!highlightParam || commissionSummary.isLoading) return;
+    const matched = summaryItems.find((c) => c.commissionId.toLowerCase() === highlightParam.toLowerCase());
+    if (!matched) return;
+
+    const tab = FILTER_TABS.find((t) => t.key === filter);
+    const inCurrentTab = tab ? tab.matches(matched.status) : true;
+    const targetList = inCurrentTab ? summaryItems.filter((c) => (tab ? tab.matches(c.status) : true)) : summaryItems;
+    if (!inCurrentTab) {
+      setFilter('ALL');
+    }
+    const idx = targetList.findIndex((c) => c.commissionId === matched.commissionId);
+    if (idx >= 0) {
+      setCommissionPage(Math.floor(idx / PAGE_SIZE) + 1);
+    }
+    setHighlightedCommissionId(matched.commissionId);
+
+    const frame = window.requestAnimationFrame(() => {
+      const targetEl =
+        document.querySelector<HTMLElement>(`tr[data-commission-id="${matched.commissionId}"]`) ||
+        document.getElementById('aff-commission-list');
+      if (targetEl && typeof targetEl.scrollIntoView === 'function') {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+
+    const next = new URLSearchParams(searchParams);
+    next.delete('highlight');
+    setSearchParams(next, { replace: true });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [highlightParam, commissionSummary.isLoading, summaryItems, filter, searchParams, setSearchParams]);
 
   return (
     <div className="affiliate-commissions-page flex flex-col gap-5">
@@ -344,7 +419,15 @@ export const AffiliateCommissionsPage: React.FC = () => {
                     c.replacementSlotStatus === 'OPEN' &&
                     Boolean(c.jobId);
                   return (
-                    <tr key={c.commissionId} className="border-0 border-t border-solid border-slate-100 align-middle hover:bg-slate-50/50">
+                    <tr
+                      key={c.commissionId}
+                      data-commission-id={c.commissionId}
+                      className={`border-0 border-t border-solid border-slate-100 align-middle transition-colors ${
+                        highlightedCommissionId === c.commissionId
+                          ? 'bg-sky-50/90 shadow-[inset_3px_0_0_#0284C7]'
+                          : 'hover:bg-slate-50/50'
+                      }`}
+                    >
                       <td className="px-4 py-3.5">
                         <div className="font-semibold text-slate-900">{c.candidateName ?? '—'}</div>
                         <div className="mt-0.5 text-xs text-slate-500">{c.jobTitle ?? '—'}</div>
@@ -452,7 +535,15 @@ export const AffiliateCommissionsPage: React.FC = () => {
                 {visiblePayoutItems.map((p) => {
                   const st = labelOf(PAYOUT_STATUS, p.status);
                   return (
-                    <tr key={p.payoutId} className="border-0 border-t border-solid border-slate-100 hover:bg-slate-50/50">
+                    <tr
+                      key={p.payoutId}
+                      data-payout-id={p.payoutId}
+                      className={`border-0 border-t border-solid border-slate-100 transition-colors ${
+                        highlightedPayoutId === p.payoutId
+                          ? 'bg-sky-50/90 shadow-[inset_3px_0_0_#0284C7]'
+                          : 'hover:bg-slate-50/50'
+                      }`}
+                    >
                       <td className="px-4 py-3 tabular-nums text-slate-700">{date(p.payoutDate ?? p.createdAt)}</td>
                       <td className="px-4 py-3 font-mono text-[13px] text-slate-700">{p.transactionReference ?? '—'}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums text-slate-900">{money(p.amount)}</td>
