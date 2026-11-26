@@ -657,8 +657,21 @@ export const ClientBillingPage: React.FC = () => {
     },
   ];
 
+  const statusParam = searchParams.get('status')?.toUpperCase();
   const highlightParam = searchParams.get('highlight');
   const queryParam = searchParams.get('q');
+
+  useEffect(() => {
+    if (
+      statusParam === 'UNPAID' ||
+      statusParam === 'OVERDUE' ||
+      statusParam === 'PAID' ||
+      statusParam === 'REFUND'
+    ) {
+      setStatus(statusParam);
+      setPage(1);
+    }
+  }, [statusParam]);
 
   useEffect(() => {
     if (loading || (!highlightParam && !queryParam)) return;
@@ -677,7 +690,7 @@ export const ClientBillingPage: React.FC = () => {
         const idxInVisible = visible.findIndex((r) => r.key === matched.key);
         if (idxInVisible === -1) {
           setService('all');
-          setStatus(matched.owedToClient ? 'REFUND' : 'all');
+          setStatus(matched.owedToClient ? 'REFUND' : matched.bucket === 'PAID' ? 'PAID' : 'all');
           setSearchText('');
           return;
         }

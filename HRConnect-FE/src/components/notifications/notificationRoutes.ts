@@ -366,6 +366,45 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
 
   // Affiliate: keep inside Affiliate portal and never route to /hr or /admin fallback hints.
   if (normRole === 'AFFILIATE') {
+    const isCommissionOrPayout =
+      entityType === 'COMMISSION' ||
+      entityType === 'WARRANTY' ||
+      entityType === 'PAYOUT' ||
+      route === '/affiliate/commissions' ||
+      titleLower.includes('hoa hồng') ||
+      titleLower.includes('chuyển khoản');
+
+    if (isCommissionOrPayout) {
+      if (route && route.startsWith('/affiliate/commissions?')) {
+        return route;
+      }
+      const params = new URLSearchParams();
+      if (entityType === 'PAYOUT' || titleLower.includes('chuyển khoản')) {
+        params.set('section', 'payouts');
+        params.set('tab', 'PAID');
+        if (item.relatedEntityId) params.set('payout', String(item.relatedEntityId));
+        const refMatch = item.message?.match(/mã giao dịch[:\s]+([A-Za-z0-9_-]+)/i);
+        if (refMatch?.[1]) params.set('ref', refMatch[1]);
+      } else {
+        if (titleLower.includes('duyệt chi')) {
+          params.set('tab', 'PAYABLE');
+        } else if (titleLower.includes('hủy') || titleLower.includes('tạm giữ')) {
+          params.set('tab', 'CANCELLED');
+        } else if (
+          titleLower.includes('đủ điều kiện') ||
+          titleLower.includes('qua bảo hành') ||
+          titleLower.includes('chờ trả phí')
+        ) {
+          params.set('tab', 'EARNED');
+        }
+        if (item.relatedEntityId && entityType === 'COMMISSION') {
+          params.set('highlight', String(item.relatedEntityId));
+        }
+      }
+      const qs = params.toString();
+      return qs ? `/affiliate/commissions?${qs}` : '/affiliate/commissions';
+    }
+
     if (route && (route.startsWith('/affiliate') || PUBLIC_JOB_ROUTE.test(route))) {
       return portalRoute(route, role as UserRole);
     }
@@ -379,9 +418,6 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       }
       return '/affiliate/commissions';
     }
-    if (entityType === 'COMMISSION' || entityType === 'WARRANTY' || entityType === 'PAYOUT') {
-      return '/affiliate/commissions';
-    }
   }
 
   // Client + MF-03 application notice: decided before the generic hint below, because older rows carry the
@@ -393,6 +429,42 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
     }
     const appId = meta?.applicationId || meta?.ApplicationId || meta?.entityId || item.relatedEntityId;
     return appId ? `/client/candidates?open=${encodeURIComponent(appId)}` : '/client/candidates';
+  }
+
+  // Client + MF-05 service fee / payment / refund notices: older records carried routeHint="/client/dashboard",
+  // so remap directly to /client/billing with the matching status tab and exact fee highlight.
+  if (
+    normRole === 'CLIENT' &&
+    (entityType === 'SERVICE_FEE' ||
+      titleLower.includes('đã ghi nhận thanh toán') ||
+      titleLower.includes('thanh toán thành công') ||
+      titleLower.includes('đã hoàn tiền') ||
+      titleLower.includes('phí dịch vụ') ||
+      titleLower.includes('công nợ') ||
+      titleLower.includes('hoàn tiền'))
+  ) {
+    if (route && route.startsWith('/client/billing?')) {
+      return route;
+    }
+    const feeId =
+      meta?.serviceFeeId ||
+      meta?.ServiceFeeId ||
+      meta?.entityId ||
+      (entityType === 'SERVICE_FEE' ? item.relatedEntityId : undefined);
+    const params = new URLSearchParams();
+    if (titleLower.includes('hoàn tiền') || titleLower.includes('đã hoàn')) {
+      params.set('status', 'REFUND');
+    } else if (
+      titleLower.includes('đã ghi nhận thanh toán') ||
+      titleLower.includes('thanh toán thành công')
+    ) {
+      params.set('status', 'PAID');
+    }
+    if (feeId) {
+      params.set('highlight', String(feeId));
+    }
+    const qs = params.toString();
+    return qs ? `/client/billing?${qs}` : '/client/billing';
   }
 
   // If explicit route was resolved
