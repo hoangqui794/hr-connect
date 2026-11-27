@@ -354,6 +354,15 @@ public sealed class VnPayPaymentCommandHandlers(
             {
                 throw new NotFoundException("Không tìm thấy tin tuyển dụng của doanh nghiệp.");
             }
+            // Same guard as RecordJobPostingFeePayment: block before the Client pays, not after.
+            if (job.Status is JobStatuses.Draft or JobStatuses.Rejected or JobStatuses.Closed)
+            {
+                throw new ConflictException(
+                    job.Status == JobStatuses.Draft
+                        ? "Tin tuyển dụng đang là bản nháp. Hãy gửi tin để duyệt trước khi thanh toán phí đăng tin."
+                        : $"Không thể thanh toán phí đăng tin khi tin tuyển dụng đang ở trạng thái {job.Status}.",
+                    "JOB_NOT_PAYABLE");
+            }
             var postingFee = await jobs.GetPostingFeeByJobIdAsync(targetId, cancellationToken);
             if (postingFee is null || postingFee.Status != JobPostingFeeStatuses.Pending || postingFee.Amount <= 0)
             {

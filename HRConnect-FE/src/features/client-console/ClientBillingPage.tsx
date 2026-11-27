@@ -239,6 +239,8 @@ const useBillingRows = () => {
         fee!.status === 'PENDING' &&
         job.status === 'PENDING_PAYMENT' &&
         isDeadlineExpired(job.applicationDeadline);
+      // The backend refuses to record a posting fee for a DRAFT/REJECTED/CLOSED job, so do not let the Client pay it.
+      const jobNotPayable = job.status === 'DRAFT' || job.status === 'REJECTED' || job.status === 'CLOSED';
       return {
         key: `posting-${fee!.postingFeeId}`,
         service: 'CV_APPLICATION',
@@ -254,7 +256,7 @@ const useBillingRows = () => {
         paidAt: fee!.paidAt,
         paymentReference: fee!.paymentReference,
         transferNote: transferNote(job.jobId),
-        payable: bucket === 'UNPAID' && !blockedByExpiredJob,
+        payable: bucket === 'UNPAID' && !blockedByExpiredJob && !jobNotPayable,
         payTarget: { type: 'POSTING_FEE', id: job.jobId },
         breakdown: [{ label: 'Gói đăng tin', value: fee!.packageName ?? '—' }],
         createdAt: fee!.createdAt ?? null,
