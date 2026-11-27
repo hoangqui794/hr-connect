@@ -4,18 +4,18 @@
  * actual start date. This is intentionally a narrow operational page: it does
  * not review commissions, service fees, warranty cases or payouts (MF-05).
  */
-import React, { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App as AntApp, Button, DatePicker, Drawer, Form, Input, Skeleton, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { CalendarOutlined, EditOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons';
+import { ArrowRightOutlined, CalendarOutlined, EditOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { getApiErrorMessage } from '@/services/apiClient';
 import { placementCorrectionApi } from '@/services/api/hrApi';
 import type { PlacementCorrectionDetail, PlacementItem } from '@/types/api/hr';
-import { PageHero, PersonCell, StatusDot, Surface } from '@/features/admin-console/ui';
-import { matchesSearch } from '@/utils/searchMatch';
+import { FilterPills, PageHero, PersonCell, StatusDot, Surface } from '@/features/admin-console/ui';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { PLACEMENT_STATUS, pick } from './hrLabels';
 
 const PAGE_SIZE = 10;
@@ -29,7 +29,10 @@ const JobCell: React.FC<{ placement: PlacementItem }> = ({ placement }) => (
   </div>
 );
 
-const DetailRows: React.FC<{ detail: PlacementCorrectionDetail }> = ({ detail }) => (
+const DetailRows: React.FC<{ detail: PlacementCorrectionDetail; correctionWindowText: string }> = ({
+  detail,
+  correctionWindowText,
+}) => (
   <dl className="m-0 divide-y divide-slate-100 text-sm">
     {[
       ['Ứng viên', detail.candidate.fullName],
@@ -40,10 +43,13 @@ const DetailRows: React.FC<{ detail: PlacementCorrectionDetail }> = ({ detail })
       ['Vị trí', detail.position ?? '—'],
       ['Phòng ban', detail.department ?? '—'],
       ['Ngày đi làm thực tế', date(detail.actualStartDate)],
+      ...(detail.offer?.startDate ? [['Ngày dự kiến (Offer)', date(detail.offer.startDate)]] : []),
+      ...(detail.warranty?.endDate ? [['Hạn bảo hành hiện tại', date(detail.warranty.endDate)]] : []),
       ['Xác nhận lúc', date(detail.confirmedAt)],
+      ['Thời hạn sửa ngày', correctionWindowText],
       ['Người xác nhận', detail.confirmedByName ?? '—'],
     ].map(([label, value]) => (
-      <div key={label} className="grid grid-cols-[140px_1fr] gap-4 py-2.5 first:pt-0">
+      <div key={label} className="grid grid-cols-[150px_1fr] gap-4 py-2.5 first:pt-0">
         <dt className="text-slate-600">{label}</dt>
         <dd className="m-0 break-words text-right font-medium text-slate-900">{value}</dd>
       </div>
@@ -54,14 +60,21 @@ const DetailRows: React.FC<{ detail: PlacementCorrectionDetail }> = ({ detail })
 /** Internal HR / Platform Admin only. Backend repeats every permission and correction rule. */
 export const HrPlacementStartDateCorrectionPage: React.FC = () => {
   const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'STARTED' | 'LEFT_DURING_WARRANTY'>('ALL');
   const [searchText, setSearchText] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [highlightedPlacementId, setHighlightedPlacementId] = useState<string | null>(null);
   const [correctionOpen, setCorrectionOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [form] = Form.useForm<{ actualStartDate: Dayjs; reason: string }>();
   const queryClient = useQueryClient();
   const { message } = AntApp.useApp();
+
+  const trimmedKeyword = useDebouncedValue(searchText.trim(), 300);
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, trimmedKeyword]);
 
   const highlightParam = searchParams.get('highlight');
   useEffect(() => {
@@ -83,8 +96,14 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
   }, [highlightParam, searchParams, setSearchParams]);
 
   const placements = useQuery({
-    queryKey: ['mf04-placement-correction', page],
-    queryFn: () => placementCorrectionApi.list({ page, pageSize: PAGE_SIZE }),
+    queryKey: ['mf04-placement-correction', statusFilter, trimmedKeyword, page],
+    queryFn: () =>
+      placementCorrectionApi.list({
+        status: statusFilter === 'ALL' ? undefined : statusFilter,
+        keyword: trimmedKeyword || undefined,
+        page,
+        pageSize: PAGE_SIZE,
+      }),
     placeholderData: (previous) => previous,
   });
   const detail = useQuery({
@@ -92,9 +111,23 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
     queryFn: () => placementCorrectionApi.get(selectedId!),
     enabled: selectedId !== null,
   });
-  const correctionWindowExpired = detail.data?.confirmedAt
-    ? dayjs().isAfter(dayjs(detail.data.confirmedAt).add(7, 'day'))
-    : false;
+  const correctionDeadline = detail.data?.confirmedAt ? dayjs(detail.data.confirmedAt).add(7, 'day') : null;
+  const correctionWindowExpired = correctionDeadline ? dayjs().isAfter(correctionDeadline) : false;
+  const remainingWindowDays = correctionDeadline ? Math.max(0, correctionDeadline.diff(dayjs(), 'day')) : null;
+  const correctionWindowText = !correctionDeadline
+    ? '—'
+    : correctionWindowExpired
+      ? `Đã hết hạn (${correctionDeadline.format('DD/MM/YYYY')})`
+      : remainingWindowDays === 0
+        ? `Còn dưới 1 ngày (hạn ${correctionDeadline.format('DD/MM/YYYY')})`
+        : `Còn ${remainingWindowDays} ngày (hạn ${correctionDeadline.format('DD/MM/YYYY')})`;
+  const serviceFeePaid = detail.data?.financial?.serviceFeeStatus?.toUpperCase() === 'PAID';
+  const correctionDisabled = correctionWindowExpired || serviceFeePaid;
+  const disabledReason = serviceFeePaid
+    ? 'Phí dịch vụ của placement này đã được thanh toán nên không thể chỉnh sửa ngày đi làm.'
+    : correctionWindowExpired
+      ? 'Đã quá 7 ngày kể từ lúc xác nhận đi làm.'
+      : undefined;
 
   const correction = useMutation({
     mutationFn: ({ placementId, actualStartDate, reason }: { placementId: string; actualStartDate: string; reason: string }) =>
@@ -105,6 +138,12 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['mf04-placement-correction'] }),
         queryClient.invalidateQueries({ queryKey: ['hr-pipeline'] }),
+        queryClient.invalidateQueries({ queryKey: ['placement-reconciliations'] }),
+        queryClient.invalidateQueries({ queryKey: ['hr-nav-counts'] }),
+        queryClient.invalidateQueries({ queryKey: ['mf05-warranties'] }),
+        queryClient.invalidateQueries({ queryKey: ['mf05-fees'] }),
+        queryClient.invalidateQueries({ queryKey: ['mf05-client-fees'] }),
+        queryClient.invalidateQueries({ queryKey: ['placements'] }),
       ]);
     },
   });
@@ -151,21 +190,8 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
     });
   };
 
-  const hasSearch = searchText.trim().length > 0;
-  const visiblePlacements = useMemo(() => {
-    const rows = placements.data?.items ?? [];
-    if (!hasSearch) return rows;
-    return rows.filter((row) =>
-      matchesSearch(
-        searchText,
-        row.candidate?.fullName,
-        row.candidate?.email,
-        row.job?.title,
-        row.job?.companyName,
-        row.position
-      )
-    );
-  }, [placements.data?.items, hasSearch, searchText]);
+  const hasFilters = trimmedKeyword.length > 0 || statusFilter !== 'ALL';
+  const visiblePlacements = placements.data?.items ?? [];
 
   return (
     <div>
@@ -181,11 +207,21 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
         message="Chỉ điều chỉnh ngày đi làm"
         description="Màn hình này không thực hiện đối soát hoa hồng, chi trả, bảo hành hay phí dịch vụ. Hệ thống sẽ không cho phép chỉnh sửa nếu hồ sơ nhận việc đã hoàn tất thu phí."
       />
-      <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <FilterPills
+          label="Lọc trạng thái nhận việc"
+          value={statusFilter}
+          onChange={(value) => setStatusFilter(value as 'ALL' | 'STARTED' | 'LEFT_DURING_WARRANTY')}
+          options={[
+            { value: 'ALL', label: 'Tất cả' },
+            { value: 'STARTED', label: 'Đã đi làm' },
+            { value: 'LEFT_DURING_WARRANTY', label: 'Nghỉ trong bảo hành' },
+          ]}
+        />
         <Input
           allowClear
           prefix={<SearchOutlined className="text-slate-400" />}
-          placeholder="Tìm theo ứng viên, email, tin tuyển dụng, công ty, vị trí..."
+          placeholder="Tìm theo tên ứng viên hoặc vị trí tuyển dụng..."
           aria-label="Tìm kiếm danh sách nhận việc"
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
@@ -214,15 +250,23 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
             pagination={{
               current: page,
               pageSize: PAGE_SIZE,
-              total: hasSearch ? visiblePlacements.length : (placements.data?.total ?? 0),
+              total: placements.data?.total ?? 0,
               showSizeChanger: false,
               onChange: setPage,
             }}
             locale={{
-              emptyText: hasSearch ? (
+              emptyText: hasFilters ? (
                 <div className="py-10 text-slate-600">
-                  <div>Không tìm thấy ứng viên phù hợp trên trang này.</div>
-                  <Button className="mt-3" onClick={() => setSearchText('')}>Xóa từ khóa tìm kiếm</Button>
+                  <div>Không tìm thấy hồ sơ nhận việc phù hợp với bộ lọc hiện tại.</div>
+                  <Button
+                    className="mt-3"
+                    onClick={() => {
+                      setSearchText('');
+                      setStatusFilter('ALL');
+                    }}
+                  >
+                    Xóa bộ lọc
+                  </Button>
                 </div>
               ) : (
                 <div className="py-10 text-slate-600">Chưa có ứng viên nào đã được xác nhận đi làm.</div>
@@ -246,8 +290,8 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
               type="primary"
               icon={<EditOutlined />}
               onClick={openCorrection}
-              disabled={correctionWindowExpired}
-              title={correctionWindowExpired ? 'Đã quá 7 ngày kể từ lúc xác nhận đi làm.' : undefined}
+              disabled={correctionDisabled}
+              title={disabledReason}
             >
               Sửa ngày đi làm
             </Button>
@@ -260,7 +304,16 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
           <Alert type="error" showIcon message="Không tải được chi tiết nhận việc" description={getApiErrorMessage(detail.error)} />
         ) : detail.data ? (
           <>
-            {correctionWindowExpired && (
+            {serviceFeePaid && (
+              <Alert
+                className="mb-4"
+                type="warning"
+                showIcon
+                message="Không thể sửa ngày đi làm (đã thu phí)"
+                description="Phí dịch vụ của placement này đã được thanh toán (PAID), hệ thống đã khóa chỉnh sửa ngày đi làm."
+              />
+            )}
+            {!serviceFeePaid && correctionWindowExpired && (
               <Alert
                 className="mb-4"
                 type="warning"
@@ -269,11 +322,20 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
                 description="Ngày đi làm chỉ được sửa trong vòng 7 ngày kể từ lúc doanh nghiệp xác nhận."
               />
             )}
-            <div className="mb-5 flex items-center gap-2">
-              <StatusDot tone={pick(PLACEMENT_STATUS, detail.data.status).tone}>{pick(PLACEMENT_STATUS, detail.data.status).label}</StatusDot>
-              {detail.data.isReplacement && <Tag color="gold">Ứng viên thay thế</Tag>}
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <StatusDot tone={pick(PLACEMENT_STATUS, detail.data.status).tone}>{pick(PLACEMENT_STATUS, detail.data.status).label}</StatusDot>
+                {detail.data.isReplacement && <Tag color="gold">Ứng viên thay thế</Tag>}
+              </div>
+              <Button
+                size="small"
+                icon={<ArrowRightOutlined />}
+                onClick={() => navigate(`/hr/placement-reconciliations?highlight=${detail.data!.placementId}`)}
+              >
+                Mở đối soát nhận việc
+              </Button>
             </div>
-            <DetailRows detail={detail.data} />
+            <DetailRows detail={detail.data} correctionWindowText={correctionWindowText} />
             {detail.data.confirmationNote && (
               <div className="mt-5 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
                 <div className="mb-1 font-medium text-slate-900">Ghi chú khi xác nhận</div>

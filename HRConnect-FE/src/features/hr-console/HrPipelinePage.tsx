@@ -5,9 +5,9 @@
  * action button and hide redundant company branding. In Internal HR mode, rows remain read-only.
  */
 import React, { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Button, Input, Table, Tag } from 'antd';
+import { Alert, Button, Input, Select, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -15,12 +15,37 @@ import { pipelineApi } from '@/services/api/hrApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { InterviewItem, OfferItem, PagedItems, PlacementItem } from '@/types/api/hr';
 import { PageHero, PersonCell, StatusDot, Surface } from '@/features/admin-console/ui';
-import { matchesSearch } from '@/utils/searchMatch';
+import { isInterviewInProgress, isInterviewOverdue } from '@/features/recruitment/interviewTiming';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { INTERVIEW_RESULT, INTERVIEW_STATUS, OFFER_STATUS, PLACEMENT_STATUS, pick } from './hrLabels';
 
 type Tab = 'interviews' | 'offers' | 'placements';
 const TABS: Tab[] = ['interviews', 'offers', 'placements'];
 const PAGE_SIZE = 10;
+
+const TAB_STATUS_OPTIONS: Record<Tab, { value: string; label: string }[]> = {
+  interviews: [
+    { value: 'ALL', label: 'Tất cả trạng thái' },
+    { value: 'SCHEDULED', label: 'Đã lên lịch' },
+    { value: 'COMPLETED', label: 'Đã phỏng vấn' },
+    { value: 'NO_SHOW', label: 'Vắng mặt' },
+    { value: 'CANCELLED', label: 'Đã hủy' },
+  ],
+  offers: [
+    { value: 'ALL', label: 'Tất cả trạng thái' },
+    { value: 'DRAFT', label: 'Bản nháp' },
+    { value: 'SENT', label: 'Đã gửi' },
+    { value: 'ACCEPTED', label: 'Đã nhận' },
+    { value: 'DECLINED', label: 'Từ chối' },
+    { value: 'WITHDRAWN', label: 'Đã thu hồi' },
+    { value: 'EXPIRED', label: 'Hết hạn' },
+  ],
+  placements: [
+    { value: 'ALL', label: 'Tất cả trạng thái' },
+    { value: 'STARTED', label: 'Đã đi làm' },
+    { value: 'LEFT_DURING_WARRANTY', label: 'Nghỉ trong bảo hành' },
+  ],
+};
 
 const fmt = (v?: string | null, f = 'HH:mm DD/MM/YYYY') => (v ? dayjs(v).format(f) : '—');
 const money = (v: number | null, currency: string) =>
@@ -61,7 +86,9 @@ export const HrPipelinePage: React.FC<{
   emptyHints?: Partial<Record<Tab, string>>;
 }> = ({ eyebrow = 'Theo dõi', description, tip, onOpenApplication, onOpenInterview, emptyHints }) => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [searchText, setSearchText] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const tab = (TABS as string[]).includes(searchParams.get('tab') ?? '') ? (searchParams.get('tab') as Tab) : 'interviews';
   const page = Number(searchParams.get('page')) || 1;
   const counts = { interviews: useTabCount('interviews'), offers: useTabCount('offers'), placements: useTabCount('placements') };
@@ -112,13 +139,27 @@ export const HrPipelinePage: React.FC<{
       {
         title: 'Trạng thái',
         key: 's',
-        width: 190,
+        width: 220,
         align: 'left',
         render: (_, r) => {
           const st = pick(INTERVIEW_STATUS, r.status);
+          const inProgress = isInterviewInProgress(r);
+          const overdue = isInterviewOverdue(r);
+          const phaseLabel = inProgress ? 'Đang trong giờ hẹn' : overdue ? 'Quá giờ · Chờ cập nhật' : st.label;
+          const phaseTone = inProgress ? 'success' : overdue ? 'warning' : st.tone;
+          const attendance = r.candidateAttendanceStatus?.toUpperCase();
           return (
             <div className="py-1 space-y-1 text-left">
-              <StatusDot tone={st.tone}>{st.label}</StatusDot>
+              <StatusDot tone={phaseTone}>{phaseLabel}</StatusDot>
+              {r.status === 'SCHEDULED' && (
+                <div className="pl-3.5 text-[11px]">
+                  {attendance === 'CONFIRMED' ? (
+                    <span className="font-medium text-emerald-700">Ứng viên đã xác nhận tham gia</span>
+                  ) : !overdue ? (
+                    <span className="text-slate-500">Chờ ứng viên xác nhận</span>
+                  ) : null}
+                </div>
+              )}
               {r.result && (
                 <div className="text-[11.5px] text-slate-500 pl-3.5 flex items-center gap-1.5">
                   <span className="text-slate-400 font-medium">Kết quả:</span>
@@ -311,14 +352,57 @@ export const HrPipelinePage: React.FC<{
               ),
             },
           ]
-        : []),
+        : [
+            {
+              title: 'Thao tác',
+              key: 'hr-actions',
+              width: 195,
+              align: 'right' as const,
+              render: (_: unknown, r: PlacementItem) => (
+                <div className="flex items-center justify-end gap-1.5">
+                  <Button
+                    size="small"
+                    className="text-xs font-medium rounded-lg"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/hr/placement-review?highlight=${r.placementId}`);
+                    }}
+                  >
+                    Sửa ngày
+                  </Button>
+                  {/* Reconciliation records only exist for HEADHUNT_COD (UC-41). */}
+                  {r.serviceTypeCode === 'HEADHUNT_COD' && (
+                    <Button
+                      type="primary"
+                      ghost
+                      size="small"
+                      className="text-xs font-medium rounded-lg"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/hr/placement-reconciliations?highlight=${r.placementId}`);
+                      }}
+                    >
+                      Đối soát
+                    </Button>
+                  )}
+                </div>
+              ),
+            },
+          ]),
     ],
-    [isClient, onOpenApplication]
+    [isClient, navigate, onOpenApplication]
   );
 
+  const trimmedKeyword = useDebouncedValue(searchText.trim(), 300);
   const list = useQuery({
-    queryKey: ['hr-pipeline', tab, page],
-    queryFn: (): Promise<PagedItems<unknown>> => pipelineApi[tab]({ page, pageSize: PAGE_SIZE }),
+    queryKey: ['hr-pipeline', tab, statusFilter, trimmedKeyword, page],
+    queryFn: (): Promise<PagedItems<unknown>> =>
+      pipelineApi[tab]({
+        status: statusFilter === 'ALL' ? undefined : statusFilter,
+        keyword: trimmedKeyword || undefined,
+        page,
+        pageSize: PAGE_SIZE,
+      }),
     placeholderData: (prev, prevQuery) => (prevQuery?.queryKey[1] === tab ? prev : undefined),
   });
 
@@ -327,50 +411,37 @@ export const HrPipelinePage: React.FC<{
     if (next.tab) {
       p.set('tab', next.tab);
       p.delete('page');
+      setStatusFilter('ALL');
+      setSearchText('');
     }
     if (next.page) p.set('page', String(next.page));
     setSearchParams(p);
   };
 
-  const hasSearch = searchText.trim().length > 0;
-  const rawItems = useMemo(() => (list.data?.items ?? []) as unknown[], [list.data?.items]);
-  const items = useMemo(() => {
-    if (!hasSearch) return rawItems as never[];
-    return rawItems.filter((item) => {
-      if (tab === 'placements') {
-        const p = item as PlacementItem;
-        return matchesSearch(
-          searchText,
-          p.candidate?.fullName,
-          p.candidate?.email,
-          p.job?.title,
-          p.job?.companyName,
-          p.position
-        );
-      }
-      const r = item as InterviewItem | OfferItem;
-      return matchesSearch(
-        searchText,
-        r.candidateName,
-        r.candidateEmail,
-        r.jobTitle,
-        r.companyName
-      );
-    }) as never[];
-  }, [rawItems, hasSearch, searchText, tab]);
+  const hasFilters = trimmedKeyword.length > 0 || statusFilter !== 'ALL';
+  const items = (list.data?.items ?? []) as never[];
 
   const pagination = {
     current: page,
     pageSize: PAGE_SIZE,
-    total: hasSearch ? items.length : (list.data?.total ?? 0),
+    total: list.data?.total ?? 0,
     showSizeChanger: false,
     onChange: (p: number) => go({ page: p }),
   };
   const empty = {
-    emptyText: hasSearch ? (
+    emptyText: hasFilters ? (
       <div className="py-10 text-slate-600">
-        <div>Không tìm thấy kết quả phù hợp trên trang này.</div>
-        <Button className="mt-3" onClick={() => setSearchText('')}>Xóa từ khóa tìm kiếm</Button>
+        <div>Không tìm thấy kết quả phù hợp với bộ lọc hiện tại.</div>
+        <Button
+          className="mt-3"
+          onClick={() => {
+            setSearchText('');
+            setStatusFilter('ALL');
+            if (page !== 1) go({ page: 1 });
+          }}
+        >
+          Xóa bộ lọc
+        </Button>
       </div>
     ) : (
       <div className="py-10 text-slate-600">{emptyHints?.[tab] ?? EMPTY[tab]}</div>
@@ -463,19 +534,34 @@ export const HrPipelinePage: React.FC<{
               );
             })}
           </div>
-          <Input
-            allowClear
-            prefix={<SearchOutlined className="text-slate-400" />}
-            placeholder={
-              tab === 'placements'
-                ? 'Tìm theo ứng viên, email, tin tuyển dụng, công ty, vị trí...'
-                : 'Tìm theo ứng viên, email, tin tuyển dụng, công ty...'
-            }
-            aria-label="Tìm kiếm tiến độ tuyển dụng"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            className="w-full sm:w-[320px]"
-          />
+          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
+            <Select
+              aria-label="Lọc theo trạng thái"
+              value={statusFilter}
+              onChange={(value) => {
+                setStatusFilter(value);
+                if (page !== 1) go({ page: 1 });
+              }}
+              options={TAB_STATUS_OPTIONS[tab]}
+              className="w-full sm:w-[190px]"
+            />
+            <Input
+              allowClear
+              prefix={<SearchOutlined className="text-slate-400" />}
+              placeholder={
+                tab === 'placements'
+                  ? 'Tìm theo tên ứng viên hoặc vị trí...'
+                  : 'Tìm theo tên ứng viên hoặc tin tuyển dụng...'
+              }
+              aria-label="Tìm kiếm tiến độ tuyển dụng"
+              value={searchText}
+              onChange={(e) => {
+                setSearchText(e.target.value);
+                if (page !== 1) go({ page: 1 });
+              }}
+              className="w-full sm:w-[280px]"
+            />
+          </div>
         </div>
         {list.isError ? (
           <div className="p-5">

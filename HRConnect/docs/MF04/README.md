@@ -27,7 +27,7 @@ Từ thời điểm hồ sơ đạt **`SHORTLISTED`** (hoặc đã được giao
    - Ràng buộc Unique Index `ux_interview_one_scheduled_per_application`: mỗi hồ sơ chỉ có tối đa **1 lịch phỏng vấn đang ở trạng thái `SCHEDULED`** tại một thời điểm.
    - Thời gian phỏng vấn phải ở tương lai; mọi thay đổi đều kiểm tra `Mf04ConcurrencyGuard` và gửi thông báo In-App + Email Outbox cho Candidate.
 2. **Xác nhận tham dự của Ứng viên (`ConfirmInterviewAttendance`):**
-   - Ứng viên xác nhận tham dự (`CONFIRMED`) hoặc gửi yêu cầu dời lịch (`RESCHEDULE_REQUESTED`) kèm ghi chú. Khi Client dời lịch sang khung giờ mới, trạng thái xác nhận được đặt lại để ứng viên xác nhận lại.
+   - Ứng viên xác nhận tham dự (`CONFIRMED`) trên các lịch phỏng vấn sắp diễn ra (`SCHEDULED`). Khi Client dời lịch sang khung giờ mới, trạng thái xác nhận được đặt lại về `null` để ứng viên xác nhận lại.
 3. **Ba giai đoạn thời gian & Ghi nhận kết quả (`RecordInterviewResult`, `ResolveNoShow`):**
    - Phân biệt rõ 3 trạng thái thời gian: **Sắp diễn ra (`UPCOMING`)**, **Đang diễn ra (`IN_PROGRESS`)**, và **Đã qua giờ (`OVERDUE` — sau `ScheduledAt + DurationMinutes`)**.
    - Kết quả phỏng vấn chuyển trạng thái `Application`:

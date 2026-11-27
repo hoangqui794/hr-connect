@@ -38,9 +38,13 @@ const pending = {
   reviewedAt: null,
 };
 
-const renderPage = (admin = false, queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })) => {
+const renderPage = (
+  admin = false,
+  queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }),
+  initialEntries = ['/hr/placement-reconciliations']
+) => {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={initialEntries}>
       <QueryClientProvider client={queryClient}>
         <AntApp>{admin ? <AdminPlacementReconciliationPage /> : <HrPlacementReconciliationPage />}</AntApp>
       </QueryClientProvider>
@@ -169,5 +173,20 @@ describe('PlacementReconciliationPage', () => {
         expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: key });
       }
     });
+  });
+
+  it('auto-opens the detail drawer when deep-linked by placementId and renders timestamps', async () => {
+    vi.mocked(placementReconciliationApi.list).mockResolvedValue({
+      items: [{ ...pending, status: 'CONFIRMED', reviewedAt: '2026-10-24T09:30:00Z' }],
+      totalCount: 1,
+      page: 1,
+      pageSize: 10,
+    });
+
+    renderPage(false, undefined, ['/hr/placement-reconciliations?highlight=placement-1']);
+
+    expect(await screen.findByText('Chi tiết đối soát')).toBeInTheDocument();
+    expect(screen.getByText('Thời điểm Client gửi')).toBeInTheDocument();
+    expect(screen.getByText('Thời điểm đối soát')).toBeInTheDocument();
   });
 });
