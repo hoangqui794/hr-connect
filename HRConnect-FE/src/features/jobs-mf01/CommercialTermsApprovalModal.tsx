@@ -299,7 +299,6 @@ export const CommercialTermsApprovalModal: React.FC<Props> = ({
                             min={range?.min}
                             max={range?.max}
                             step={f.step}
-                            suffix={f.unit}
                             formatter={f.unit === 'đ' ? (v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.') : undefined}
                             parser={f.unit === 'đ' ? (v) => Number((v ?? '').replace(/\./g, '')) : undefined}
                           />
