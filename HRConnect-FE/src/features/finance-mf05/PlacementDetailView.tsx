@@ -737,7 +737,7 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
 
       {/* Modal: Internal HR Resolve Resignation */}
       <Modal
-        title="Xác minh báo nghỉ việc của Doanh nghiệp"
+        title="Xác minh báo nghỉ việc"
         open={resolveModalOpen}
         onCancel={() => {
           setResolveModalOpen(false);
@@ -745,19 +745,32 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
         }}
         onOk={handleResolveResignationSubmit}
         confirmLoading={isResolvingResignation}
-        okText="Lưu kết quả xác minh"
+        okText="Xác nhận"
         cancelText="Đóng"
         destroyOnHidden
       >
+        {(placement.resignation?.reason || placement.warranty?.resultNote) && (
+          <Alert
+            className="mb-4"
+            type="info"
+            showIcon
+            message={
+              placement.resignation?.lastWorkingDate && placement.resignation?.reason
+                ? `Client báo nghỉ, ngày làm việc cuối ${dayjs(placement.resignation.lastWorkingDate).format('YYYY-MM-DD')}: ${placement.resignation.reason}`
+                : placement.warranty?.resultNote || placement.resignation?.reason
+            }
+          />
+        )}
         <Form form={resolveForm} layout="vertical" preserve={false}>
           <Form.Item
             name="decision"
             label="Kết quả xác minh"
-            rules={[{ required: true, message: 'Chọn kết quả' }]}
+            rules={[{ required: true, message: 'Chọn kết quả xác minh.' }]}
+            extra="Đúng: bảo hành chấm dứt, hoa hồng của Affiliate bị hủy, xử lý thay thế theo hợp đồng. Không đúng: bảo hành tiếp tục, hoa hồng trở lại trạng thái đang trong thời gian bảo hành."
           >
             <Radio.Group>
-              <Radio value="confirm">Xác nhận ứng viên nghỉ đúng hạn (Hợp lệ)</Radio>
-              <Radio value="reject">Bác bỏ báo nghỉ (Không hợp lệ)</Radio>
+              <Radio value="confirm">Đúng, ứng viên đã nghỉ</Radio>
+              <Radio value="reject">Không đúng, ứng viên vẫn đi làm</Radio>
             </Radio.Group>
           </Form.Item>
 
@@ -765,7 +778,7 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
             {({ getFieldValue }) => (
               <Form.Item
                 name="note"
-                label="Ghi chú xác minh"
+                label="Ghi chú & Phương án xử lý"
                 rules={[
                   {
                     required: getFieldValue('decision') === 'reject',
@@ -774,7 +787,10 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
                   },
                 ]}
               >
-                <Input.TextArea rows={3} placeholder="Ghi chú đối soát hoặc căn cứ xác minh..." />
+                <Input.TextArea
+                  rows={3}
+                  placeholder="Ghi chú xác minh và phương án: Tìm ứng viên thay thế / gia hạn bảo hành / điều chỉnh phí..."
+                />
               </Form.Item>
             )}
           </Form.Item>
