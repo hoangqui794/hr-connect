@@ -200,7 +200,7 @@ public static class PlacementEndpoints
         })
         .WithName("CorrectPlacementStartDate")
         .WithSummary("Sửa ngày đi làm thực tế trong trường hợp nhập nhầm")
-        .WithDescription("Chỉ Internal HR hoặc Platform Admin được sửa trong 7 ngày kể từ lúc xác nhận và trước khi phí dịch vụ được ghi nhận PAID. Hệ thống đồng thời dời hạn bảo hành và hạn thanh toán theo cùng số ngày.")
+        .WithDescription("Chỉ Internal HR hoặc Platform Admin được sửa trong số ngày cấu hình mf05.placement.start_date_correction_days (mặc định 7) kể từ lúc xác nhận và trước khi phí dịch vụ được ghi nhận PAID. Hệ thống đồng thời dời hạn bảo hành và hạn thanh toán theo cùng số ngày.")
         .Produces<CorrectPlacementStartDateResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)

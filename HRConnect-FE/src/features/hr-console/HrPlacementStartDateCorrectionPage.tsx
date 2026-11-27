@@ -127,7 +127,7 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
   const disabledReason = serviceFeePaid
     ? 'Phí dịch vụ của placement này đã được thanh toán nên không thể chỉnh sửa ngày đi làm.'
     : correctionWindowExpired
-      ? 'Đã quá 7 ngày kể từ lúc xác nhận đi làm.'
+      ? `Đã quá hạn sửa ngày đi làm${correctionDeadline ? ` (hạn ${correctionDeadline.format('DD/MM/YYYY')})` : ''}.`
       : undefined;
 
   const correction = useMutation({
@@ -320,7 +320,7 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
                 type="warning"
                 showIcon
                 message="Đã hết thời hạn chỉnh sửa"
-                description="Ngày đi làm chỉ được sửa trong vòng 7 ngày kể từ lúc doanh nghiệp xác nhận."
+                description={`Ngày đi làm chỉ được sửa trong thời hạn cho phép kể từ lúc doanh nghiệp xác nhận${correctionDeadline ? ` (hạn ${correctionDeadline.format('DD/MM/YYYY')})` : ''}.`}
               />
             )}
             <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
@@ -363,7 +363,7 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
           type="warning"
           showIcon
           message="Lưu ý khi điều chỉnh ngày đi làm"
-          description="Chỉ dùng khi doanh nghiệp nhập nhầm ngày bắt đầu làm việc. Ngày đi làm mới không được ở tương lai, phải sau thời điểm nhận offer, nằm trong giới hạn 7 ngày kể từ khi xác nhận và chỉ sửa được khi hồ sơ chưa chốt thu phí."
+          description="Chỉ dùng khi doanh nghiệp nhập nhầm ngày bắt đầu làm việc. Ngày đi làm mới không được ở tương lai, phải sau thời điểm nhận offer, chỉ sửa được trong thời hạn cho phép kể từ khi xác nhận và khi hồ sơ chưa chốt thu phí."
         />
         {correction.isError && <Alert className="mb-5" type="error" showIcon message={getApiErrorMessage(correction.error)} />}
         <Form form={form} layout="vertical" requiredMark="optional">

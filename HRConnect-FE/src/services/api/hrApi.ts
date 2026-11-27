@@ -189,7 +189,7 @@ export const pipelineApi = {
 /**
  * MF-04 correction after the Client has confirmed a start date.
  * Internal HR/Admin may correct a mistaken actual start date; the backend owns
- * the seven-day, non-future and unpaid-service-fee rules and moves dependent
+ * the correction-window (business setting), non-future and unpaid-service-fee rules and moves dependent
  * warranty/payment deadlines. This API intentionally exposes no MF-05 money
  * operations to the HR screen.
  */
