@@ -47,6 +47,7 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
   const [status, setStatus] = useState<PlacementReconciliationStatus | 'ALL'>(admin ? 'FLAGGED' : 'PENDING');
   const [searchText, setSearchText] = useState('');
   const [selected, setSelected] = useState<PlacementReconciliationItem | null>(null);
+  const [highlightedRecId, setHighlightedRecId] = useState<string | null>(null);
   const [actionOpen, setActionOpen] = useState(false);
   const [form] = Form.useForm<ActionValues>();
   const queryClient = useQueryClient();
@@ -78,6 +79,16 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
     };
     if (match) {
       setSelected(match);
+      setHighlightedRecId(null);
+      window.requestAnimationFrame(() => {
+        setHighlightedRecId(match.reconciliationId);
+        window.requestAnimationFrame(() => {
+          const el = document.querySelector<HTMLElement>(`tr[data-reconciliation-id="${match.reconciliationId}"]`);
+          if (el && typeof el.scrollIntoView === 'function') {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      });
       clearHighlight();
     } else if (status !== 'ALL') {
       setStatus('ALL');
@@ -253,6 +264,8 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
             rowKey="reconciliationId"
             columns={columns}
             dataSource={visibleItems}
+            rowClassName={(r) => (highlightedRecId === r.reconciliationId ? 'admin-row-highlight font-semibold' : '')}
+            onRow={(r) => ({ 'data-reconciliation-id': r.reconciliationId } as React.HTMLAttributes<HTMLElement>)}
             loading={list.isFetching}
             pagination={{ current: page, pageSize: PAGE_SIZE, total: hasSearch ? visibleItems.length : (list.data?.totalCount ?? 0), showSizeChanger: false, onChange: setPage }}
             locale={{

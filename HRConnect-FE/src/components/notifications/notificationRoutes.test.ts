@@ -29,7 +29,56 @@ describe('routes meant for another role (server default per notification type)',
 
   it('sends a Client to the warranty page instead of the HR warranty tracking', () => {
     const warranty = { ...agreementNotice, title: 'Cập nhật bảo hành', relatedEntityType: 'WARRANTY', routeHint: '/hr/warranty-tracking?highlight=w-1', metadata: null } as NotificationDto;
-    expect(getNotificationRoute(warranty, UserRole.CLIENT)).toBe('/client/warranty');
+    expect(getNotificationRoute(warranty, UserRole.CLIENT)).toBe('/client/warranty?highlight=agreement-1');
+  });
+
+  it('routes Client payment/refund recorded notices (even with legacy /client/dashboard hint) to /client/billing with status & highlight', () => {
+    const paidNotice = {
+      ...agreementNotice,
+      notificationType: 'SERVICE_FEE',
+      title: 'Đã ghi nhận thanh toán',
+      message: 'HR Connect đã ghi nhận khoản thanh toán 90,000,000 VND (mã tham chiếu VNPAY-15750471).',
+      relatedEntityType: 'SERVICE_FEE',
+      relatedEntityId: 'fee-123',
+      routeHint: '/client/dashboard',
+      metadata: null,
+    } as NotificationDto;
+    expect(getNotificationRoute(paidNotice, UserRole.CLIENT)).toBe('/client/billing?status=PAID&highlight=fee-123');
+
+    const refundNotice = {
+      ...paidNotice,
+      title: 'Đã hoàn tiền',
+      relatedEntityId: 'fee-456',
+    } as NotificationDto;
+    expect(getNotificationRoute(refundNotice, UserRole.CLIENT)).toBe('/client/billing?status=REFUND&highlight=fee-456');
+  });
+
+  it('routes Affiliate payout and commission notices directly to the matching section/tab & row highlight', () => {
+    const payoutNotice = {
+      ...agreementNotice,
+      notificationType: 'PAYOUT',
+      title: 'Đã chuyển khoản hoa hồng',
+      message: 'Khoản hoa hồng 20,250,000 đ đã được chuyển khoản (mã giao dịch: FTE3233333).',
+      relatedEntityType: 'PAYOUT',
+      relatedEntityId: 'pay-999',
+      routeHint: '/affiliate/commissions',
+      metadata: null,
+    } as NotificationDto;
+    expect(getNotificationRoute(payoutNotice, UserRole.AFFILIATE)).toBe(
+      '/affiliate/commissions?section=payouts&tab=PAID&payout=pay-999&ref=FTE3233333'
+    );
+
+    const approvedNotice = {
+      ...payoutNotice,
+      notificationType: 'COMMISSION',
+      title: 'Hoa hồng đã được duyệt chi',
+      message: 'Khoản hoa hồng 15,000,000 đ đã được duyệt và đang chờ chi trả.',
+      relatedEntityType: 'COMMISSION',
+      relatedEntityId: 'com-888',
+    } as NotificationDto;
+    expect(getNotificationRoute(approvedNotice, UserRole.AFFILIATE)).toBe(
+      '/affiliate/commissions?tab=PAYABLE&highlight=com-888'
+    );
   });
 
   it('still maps an old /admin/jobs hint to the HR job review for Internal HR', () => {
@@ -72,13 +121,13 @@ describe('portalRoute', () => {
 });
 
 describe('getNotificationRoute for ADMIN', () => {
-  it('routes VNPay payments and finance notifications to /admin/payouts', () => {
+  it('routes VNPay payments and finance notifications to exact /admin/payouts tab, status & filter', () => {
     const route = getNotificationRoute(
       {
         notificationId: 'n-vnpay',
         notificationType: 'FINANCE',
         title: 'Client đã thanh toán qua VNPay',
-        message: 'Doanh nghiệp đã thanh toán 1,500,000 VND cho tin tuyển dụng.',
+        message: 'NovaTech Solutions Vietnam đã thanh toán 90,000,000 VND cho tin "[SEED] Principal Frontend".',
         relatedEntityType: 'ONLINE_PAYMENT',
         relatedEntityId: 'pay-1',
         routeHint: '/admin/payouts',
@@ -87,7 +136,41 @@ describe('getNotificationRoute for ADMIN', () => {
       },
       UserRole.ADMIN
     );
-    expect(route).toBe('/admin/payouts');
+    expect(route).toBe('/admin/payouts?tab=fees&status=PAID&q=%5BSEED%5D+Principal+Frontend');
+
+    const feePaidRoute = getNotificationRoute(
+      {
+        notificationId: 'n-fee-paid',
+        notificationType: 'SERVICE_FEE',
+        title: 'Đã ghi nhận thanh toán phí dịch vụ',
+        message: 'Đã ghi nhận khoản thanh toán 67,500,000 VND (mã tham chiếu DEMO-B-CK-0001) cho công ty ABC.',
+        relatedEntityType: 'SERVICE_FEE',
+        relatedEntityId: 'fee-777',
+        routeHint: '/admin/payouts',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      },
+      UserRole.ADMIN
+    );
+    expect(feePaidRoute).toBe('/admin/payouts?tab=fees&status=PAID&highlight=fee-777&q=DEMO-B-CK-0001');
+
+    const commApproveRoute = getNotificationRoute(
+      {
+        notificationId: 'n-comm-approve',
+        notificationType: 'COMMISSION',
+        title: 'Hoa hồng Affiliate chờ duyệt chi',
+        message: 'Ứng viên của vị trí "[Headhunt] Staff Frontend Architect" đã qua bảo hành.',
+        relatedEntityType: 'COMMISSION',
+        relatedEntityId: 'com-555',
+        routeHint: '/admin/payouts',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      },
+      UserRole.ADMIN
+    );
+    expect(commApproveRoute).toBe(
+      '/admin/payouts?tab=commissions&status=EARNED&highlight=com-555&q=%5BHeadhunt%5D+Staff+Frontend+Architect'
+    );
   });
 
   it('routes account approvals, identity claims, disputes, and contact requests within Admin console', () => {
@@ -105,7 +188,7 @@ describe('getNotificationRoute for ADMIN', () => {
         },
         UserRole.ADMIN
       )
-    ).toBe('/admin/approvals');
+    ).toBe('/admin/approvals?highlight=acc-1');
 
     expect(
       getNotificationRoute(
@@ -121,7 +204,7 @@ describe('getNotificationRoute for ADMIN', () => {
         },
         UserRole.ADMIN
       )
-    ).toBe('/admin/candidate-identity-claims');
+    ).toBe('/admin/candidate-identity-claims?highlight=dup-1');
 
     expect(
       getNotificationRoute(
@@ -137,7 +220,7 @@ describe('getNotificationRoute for ADMIN', () => {
         },
         UserRole.ADMIN
       )
-    ).toBe('/admin/disputes');
+    ).toBe('/admin/disputes?highlight=disp-1');
 
     expect(
       getNotificationRoute(
@@ -186,19 +269,19 @@ describe('getNotificationRoute for ADMIN', () => {
       },
       UserRole.ADMIN
     );
-    expect(jobPaidRoute).toBe('/admin/payouts');
+    expect(jobPaidRoute).toBe('/admin/payouts?tab=postingFees');
     expect(jobPaidRoute).not.toContain('/hr/');
   });
 });
 
 describe('getNotificationRoute for AFFILIATE', () => {
-  it('routes replacement slot notifications to submit-candidate inside affiliate portal', () => {
+  it('routes replacement slot notifications to commissions CANCELLED tab with highlight params', () => {
     const withRouteHint = getNotificationRoute(
       {
         notificationId: 'n-aff-1',
         notificationType: 'WARRANTY',
         title: 'Đã mở suất tuyển người thay thế',
-        message: 'Vị trí Backend đã mở lại suất tuyển người thay thế.',
+        message: 'Vị trí "[SEED] Principal Frontend Engineer - Headhunt" đã mở lại suất tuyển người thay thế.',
         relatedEntityType: 'REPLACEMENT_SLOT',
         relatedEntityId: 'slot-1',
         routeHint: `/affiliate/submit-candidate?job=${JOB}`,
@@ -207,7 +290,9 @@ describe('getNotificationRoute for AFFILIATE', () => {
       },
       UserRole.AFFILIATE
     );
-    expect(withRouteHint).toBe(`/affiliate/submit-candidate?job=${JOB}`);
+    expect(withRouteHint).toBe(
+      `/affiliate/commissions?tab=CANCELLED&slot=slot-1&job=${JOB}&q=%5BSEED%5D+Principal+Frontend+Engineer+-+Headhunt`
+    );
 
     const fromMeta = getNotificationRoute(
       {
@@ -223,7 +308,7 @@ describe('getNotificationRoute for AFFILIATE', () => {
       },
       UserRole.AFFILIATE
     );
-    expect(fromMeta).toBe(`/affiliate/submit-candidate?job=${JOB}`);
+    expect(fromMeta).toBe(`/affiliate/commissions?tab=CANCELLED&slot=slot-2&job=${JOB}`);
 
     const fallback = getNotificationRoute(
       {
@@ -239,7 +324,7 @@ describe('getNotificationRoute for AFFILIATE', () => {
       },
       UserRole.AFFILIATE
     );
-    expect(fallback).toBe('/affiliate/commissions');
+    expect(fallback).toBe('/affiliate/commissions?tab=CANCELLED');
   });
 });
 
@@ -282,5 +367,25 @@ describe('getNotificationRoute for CLIENT application notices (MF-03 BE-M02)', (
     expect(getNotificationRoute(notice({ metadata: JSON.stringify({ applicationId: APP, status: 'SHORTLISTED' }) }), UserRole.INTERNAL_HR)).toBe(
       `/hr/screening?status=SHORTLISTED&open=${APP}`
     );
+  });
+
+  it('routes Internal HR resignation report notices to warranty-tracking with CLAIMED status and highlight', () => {
+    const warrantyId = '33333333-0000-4000-8000-000000000003';
+    expect(
+      getNotificationRoute(
+        {
+          notificationId: 'n-resign',
+          notificationType: 'WARRANTY',
+          title: 'Doanh nghiệp báo ứng viên nghỉ việc',
+          message: 'Vị trí "[SEED] Principal Frontend Engineer - Headhunt": ứng viên nghỉ ngày 26/11/2026. Vui lòng xác minh trong mục Bảo hành.',
+          relatedEntityType: 'WARRANTY',
+          relatedEntityId: warrantyId,
+          routeHint: '/hr/warranty-tracking',
+          isRead: false,
+          createdAt: new Date().toISOString(),
+        },
+        UserRole.INTERNAL_HR
+      )
+    ).toBe(`/hr/warranty-tracking?status=CLAIMED&highlight=${warrantyId}`);
   });
 });

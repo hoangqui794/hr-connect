@@ -114,13 +114,9 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
 
   // 1. Phân quyền Platform Admin: Giữ trọn vẹn trong Admin Console (/admin/*)
   if (normRole === 'ADMIN') {
-    // 1A. Nếu backend đã cung cấp routeHint chính xác tới Admin Console
-    if (route && route.startsWith('/admin')) {
-      return route;
-    }
-
-    // 1B. Giao dịch thanh toán / VNPay / Payouts / Tài chính / Hoa hồng / Hoàn tiền
-    if (
+    const isAdminFinanceNotice =
+      route === '/admin/payouts' ||
+      route === '/admin/finance' ||
       entityType === 'ONLINE_PAYMENT' ||
       entityType === 'PAYMENT' ||
       entityType === 'FINANCE' ||
@@ -131,9 +127,57 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       titleLower.includes('thanh toán') ||
       titleLower.includes('hoàn') ||
       titleLower.includes('hoa hồng') ||
-      titleLower.includes('quá hạn')
-    ) {
-      return '/admin/payouts';
+      titleLower.includes('quá hạn');
+
+    // 1A. Nếu backend đã cung cấp routeHint có query cụ thể tới Admin Console (không phải /admin/payouts trơn)
+    if (route && route.startsWith('/admin') && !(isAdminFinanceNotice && !route.includes('?'))) {
+      return route;
+    }
+
+    // 1B. Giao dịch thanh toán / VNPay / Payouts / Tài chính / Hoa hồng / Hoàn tiền
+    if (isAdminFinanceNotice) {
+      const params = new URLSearchParams();
+      const refMatch = item.message?.match(/mã tham chiếu[:\s]+([A-Za-z0-9_-]+)/i) ?? item.message?.match(/mã giao dịch[:\s]+([A-Za-z0-9_-]+)/i);
+      const quoteMatchAdmin = item.message?.match(/['"“”]([^'"“”]+)['"“”]/);
+
+      if (titleLower.includes('phí đăng tin')) {
+        params.set('tab', 'postingFees');
+        if (quoteMatchAdmin?.[1]) params.set('q', quoteMatchAdmin[1]);
+      } else if (entityType === 'PAYOUT' || titleLower.includes('chi trả') || titleLower.includes('chuyển khoản')) {
+        params.set('tab', 'payouts');
+        if (item.relatedEntityId && entityType === 'PAYOUT') params.set('highlight', String(item.relatedEntityId));
+        if (refMatch?.[1]) params.set('q', refMatch[1]);
+      } else if (entityType === 'COMMISSION' || titleLower.includes('hoa hồng')) {
+        params.set('tab', 'commissions');
+        if (titleLower.includes('chờ duyệt') || titleLower.includes('đủ điều kiện')) {
+          params.set('status', 'EARNED');
+        } else if (titleLower.includes('chờ chi')) {
+          params.set('status', 'PAYABLE');
+        } else if (titleLower.includes('tạm giữ')) {
+          params.set('status', 'ON_HOLD');
+        } else if (titleLower.includes('hủy')) {
+          params.set('status', 'CANCELLED');
+        }
+        if (item.relatedEntityId && entityType === 'COMMISSION') params.set('highlight', String(item.relatedEntityId));
+        if (quoteMatchAdmin?.[1]) params.set('q', quoteMatchAdmin[1]);
+      } else {
+        params.set('tab', 'fees');
+        if (
+          titleLower.includes('đã ghi nhận thanh toán') ||
+          titleLower.includes('đã thanh toán') ||
+          titleLower.includes('vnpay')
+        ) {
+          params.set('status', 'PAID');
+        } else if (titleLower.includes('quá hạn')) {
+          params.set('status', 'OVERDUE');
+        }
+        if (item.relatedEntityId && entityType === 'SERVICE_FEE') params.set('highlight', String(item.relatedEntityId));
+        const fallbackQuery = refMatch?.[1] || quoteMatchAdmin?.[1];
+        if (fallbackQuery) params.set('q', fallbackQuery);
+      }
+
+      const qs = params.toString();
+      return qs ? `/admin/payouts?${qs}` : '/admin/payouts';
     }
 
     // 1C. Phê duyệt tài khoản Doanh nghiệp / Affiliate
@@ -147,7 +191,8 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       titleLower.includes('xác minh công ty') ||
       titleLower.includes('duyệt hồ sơ')
     ) {
-      return '/admin/approvals';
+      const approvalId = meta?.approvalId || meta?.entityId || item.relatedEntityId;
+      return approvalId ? `/admin/approvals?highlight=${encodeURIComponent(String(approvalId))}` : '/admin/approvals';
     }
 
     // 1D. Nghi trùng danh tính Candidate / Claim
@@ -158,12 +203,16 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       titleLower.includes('danh tính') ||
       titleLower.includes('nghi trùng')
     ) {
-      return '/admin/candidate-identity-claims';
+      const claimId = meta?.claimId || meta?.duplicateCaseId || meta?.entityId || item.relatedEntityId;
+      return claimId
+        ? `/admin/candidate-identity-claims?highlight=${encodeURIComponent(String(claimId))}`
+        : '/admin/candidate-identity-claims';
     }
 
     // 1E. Tranh chấp khiếu nại
     if (entityType === 'DISPUTE' || titleLower.includes('khiếu nại') || titleLower.includes('tranh chấp')) {
-      return '/admin/disputes';
+      const disputeId = meta?.disputeId || meta?.entityId || item.relatedEntityId;
+      return disputeId ? `/admin/disputes?highlight=${encodeURIComponent(String(disputeId))}` : '/admin/disputes';
     }
 
     // 1F. Yêu cầu tư vấn
@@ -231,9 +280,15 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
       titleLower.includes('nghỉ việc')
     ) {
       const warrantyId = meta?.warrantyId || meta?.entityId || item.relatedEntityId;
-      return warrantyId
-        ? `/hr/warranty-tracking?highlight=${encodeURIComponent(warrantyId)}`
-        : '/hr/warranty-tracking';
+      const params = new URLSearchParams();
+      if (titleLower.includes('nghỉ việc')) {
+        params.set('status', 'CLAIMED');
+      }
+      if (warrantyId) {
+        params.set('highlight', String(warrantyId));
+      }
+      const qs = params.toString();
+      return qs ? `/hr/warranty-tracking?${qs}` : '/hr/warranty-tracking';
     }
 
     // 4. Sửa ngày đi làm / Placement (MF-04)
@@ -366,21 +421,96 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
 
   // Affiliate: keep inside Affiliate portal and never route to /hr or /admin fallback hints.
   if (normRole === 'AFFILIATE') {
-    if (route && (route.startsWith('/affiliate') || PUBLIC_JOB_ROUTE.test(route))) {
-      return portalRoute(route, role as UserRole);
+    const isCommissionOrPayout =
+      entityType === 'COMMISSION' ||
+      entityType === 'WARRANTY' ||
+      entityType === 'PAYOUT' ||
+      route === '/affiliate/commissions' ||
+      titleLower.includes('hoa hồng') ||
+      titleLower.includes('chuyển khoản');
+
+    if (isCommissionOrPayout) {
+      if (route && route.startsWith('/affiliate/commissions?')) {
+        return route;
+      }
+      const params = new URLSearchParams();
+      if (entityType === 'PAYOUT' || titleLower.includes('chuyển khoản')) {
+        params.set('section', 'payouts');
+        params.set('tab', 'PAID');
+        if (item.relatedEntityId) params.set('payout', String(item.relatedEntityId));
+        const refMatch = item.message?.match(/mã giao dịch[:\s]+([A-Za-z0-9_-]+)/i);
+        if (refMatch?.[1]) params.set('ref', refMatch[1]);
+      } else {
+        if (titleLower.includes('duyệt chi')) {
+          params.set('tab', 'PAYABLE');
+        } else if (titleLower.includes('hủy') || titleLower.includes('tạm giữ')) {
+          params.set('tab', 'CANCELLED');
+        } else if (titleLower.includes('tiếp tục bảo hành') || titleLower.includes('đang bảo hành')) {
+          params.set('tab', 'WARRANTY');
+        } else if (
+          titleLower.includes('đủ điều kiện') ||
+          titleLower.includes('qua bảo hành') ||
+          titleLower.includes('chờ trả phí')
+        ) {
+          params.set('tab', 'EARNED');
+        }
+        if (item.relatedEntityId && entityType === 'COMMISSION') {
+          params.set('highlight', String(item.relatedEntityId));
+        }
+        const quoteMatchComm = item.message?.match(/['"“”]([^'"“”]+)['"“”]/);
+        if (quoteMatchComm?.[1]) {
+          params.set('q', quoteMatchComm[1]);
+        }
+      }
+      const qs = params.toString();
+      return qs ? `/affiliate/commissions?${qs}` : '/affiliate/commissions';
     }
+
     if (
       entityType === 'REPLACEMENT_SLOT' ||
       titleLower.includes('suất tuyển người thay thế') ||
       titleLower.includes('suất thay thế')
     ) {
-      if (meta?.jobId && typeof meta.jobId === 'string') {
-        return `/affiliate/submit-candidate?job=${encodeURIComponent(meta.jobId)}`;
-      }
-      return '/affiliate/commissions';
+      const params = new URLSearchParams({ tab: 'CANCELLED' });
+      const slotId = meta?.replacementSlotId || (entityType === 'REPLACEMENT_SLOT' ? item.relatedEntityId : undefined);
+      if (slotId) params.set('slot', String(slotId));
+      const jobFromRoute = route?.match(/[?&]job=([^&]+)/i)?.[1];
+      const targetJobId = meta?.jobId || (jobFromRoute ? decodeURIComponent(jobFromRoute) : undefined);
+      if (targetJobId) params.set('job', String(targetJobId));
+      const quoteMatchAff = item.message?.match(/['"“”]([^'"“”]+)['"“”]/);
+      if (quoteMatchAff?.[1]) params.set('q', quoteMatchAff[1]);
+      return `/affiliate/commissions?${params.toString()}`;
     }
-    if (entityType === 'COMMISSION' || entityType === 'WARRANTY' || entityType === 'PAYOUT') {
-      return '/affiliate/commissions';
+
+    if (
+      entityType === 'DISPUTE' ||
+      route === '/affiliate/disputes' ||
+      titleLower.includes('khiếu nại') ||
+      titleLower.includes('tranh chấp')
+    ) {
+      const disputeId = meta?.disputeId || (entityType === 'DISPUTE' ? item.relatedEntityId : undefined);
+      return disputeId ? `/affiliate/disputes?highlight=${encodeURIComponent(String(disputeId))}` : '/affiliate/disputes';
+    }
+
+    if (
+      entityType === 'SUBMISSION' ||
+      entityType === 'SUBMISSION_CONSENT_RESULT' ||
+      route === '/affiliate/submissions'
+    ) {
+      if (route && route.startsWith('/affiliate/submissions/') && route.length > '/affiliate/submissions/'.length) {
+        return route;
+      }
+      const submissionId = meta?.submissionId || item.relatedEntityId;
+      const params = new URLSearchParams();
+      if (submissionId) params.set('highlight', String(submissionId));
+      const quoteMatchSub = item.message?.match(/['"“”]([^'"“”]+)['"“”]/);
+      if (quoteMatchSub?.[1]) params.set('q', quoteMatchSub[1]);
+      const qs = params.toString();
+      return qs ? `/affiliate/submissions?${qs}` : '/affiliate/submissions';
+    }
+
+    if (route && (route.startsWith('/affiliate') || PUBLIC_JOB_ROUTE.test(route))) {
+      return portalRoute(route, role as UserRole);
     }
   }
 
@@ -393,6 +523,90 @@ export function getNotificationRoute(item: NotificationDto, role: UserRole | str
     }
     const appId = meta?.applicationId || meta?.ApplicationId || meta?.entityId || item.relatedEntityId;
     return appId ? `/client/candidates?open=${encodeURIComponent(appId)}` : '/client/candidates';
+  }
+
+  // Client + MF-05 service fee / payment / refund notices: older records carried routeHint="/client/dashboard",
+  // so remap directly to /client/billing with the matching status tab and exact fee highlight.
+  if (
+    normRole === 'CLIENT' &&
+    (entityType === 'SERVICE_FEE' ||
+      titleLower.includes('đã ghi nhận thanh toán') ||
+      titleLower.includes('thanh toán thành công') ||
+      titleLower.includes('đã hoàn tiền') ||
+      titleLower.includes('phí dịch vụ') ||
+      titleLower.includes('công nợ') ||
+      titleLower.includes('hoàn tiền'))
+  ) {
+    if (route && route.startsWith('/client/billing?')) {
+      return route;
+    }
+    const feeId =
+      meta?.serviceFeeId ||
+      meta?.ServiceFeeId ||
+      meta?.entityId ||
+      (entityType === 'SERVICE_FEE' ? item.relatedEntityId : undefined);
+    const params = new URLSearchParams();
+    if (titleLower.includes('hoàn tiền') || titleLower.includes('đã hoàn')) {
+      params.set('status', 'REFUND');
+    } else if (
+      titleLower.includes('đã ghi nhận thanh toán') ||
+      titleLower.includes('thanh toán thành công')
+    ) {
+      params.set('status', 'PAID');
+    }
+    if (feeId) {
+      params.set('highlight', String(feeId));
+    }
+    const clientRefMatch = item.message?.match(/mã tham chiếu[:\s]+([A-Za-z0-9_-]+)/i);
+    if (!feeId && clientRefMatch?.[1]) {
+      params.set('q', clientRefMatch[1]);
+    }
+    const qs = params.toString();
+    return qs ? `/client/billing?${qs}` : '/client/billing';
+  }
+
+  // Client + MF-05 warranty / replacement slot notices (also enrich bare /client/warranty routeHint)
+  if (
+    normRole === 'CLIENT' &&
+    (entityType === 'WARRANTY' ||
+      entityType === 'REPLACEMENT_SLOT' ||
+      route === '/client/warranty' ||
+      titleLower.includes('bảo hành') ||
+      titleLower.includes('nghỉ việc') ||
+      titleLower.includes('suất tuyển người thay thế') ||
+      titleLower.includes('suất thay thế'))
+  ) {
+    if (
+      (entityType === 'REPLACEMENT_SLOT' ||
+        titleLower.includes('suất tuyển người thay thế') ||
+        titleLower.includes('suất thay thế')) &&
+      (titleLower.includes('hết hạn') || messageLower.includes('hoàn'))
+    ) {
+      const feeId = meta?.serviceFeeId || meta?.entityId;
+      return feeId
+        ? `/client/billing?status=REFUND&highlight=${encodeURIComponent(String(feeId))}`
+        : '/client/billing?status=REFUND';
+    }
+    const warrantyId =
+      meta?.warrantyId ||
+      meta?.placementId ||
+      (entityType === 'WARRANTY' ? item.relatedEntityId : undefined);
+    return warrantyId ? `/client/warranty?highlight=${encodeURIComponent(String(warrantyId))}` : '/client/warranty';
+  }
+
+  // Candidate: enrich bare /candidate/applications routeHint with highlight / q so the target card flashes & scrolls into view
+  if (normRole === 'CANDIDATE' && route === '/candidate/applications') {
+    const appId =
+      meta?.applicationId ||
+      meta?.ApplicationId ||
+      (entityType === 'APPLICATION' || entityType === 'APPLICATION_STATUS' || entityType === 'CANDIDATE_APPLICATION'
+        ? item.relatedEntityId
+        : undefined);
+    const params = new URLSearchParams();
+    if (appId) params.set('highlight', String(appId));
+    if (quoteMatch?.[1]) params.set('q', quoteMatch[1]);
+    const qs = params.toString();
+    return qs ? `/candidate/applications?${qs}` : '/candidate/applications';
   }
 
   // If explicit route was resolved

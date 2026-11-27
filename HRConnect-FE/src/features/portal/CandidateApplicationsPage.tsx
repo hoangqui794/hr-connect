@@ -14,6 +14,7 @@ import { CompanyMark } from '@/features/landing/components/SiteParts';
 import { candidateApplicationsApi, candidateConsentApi } from '@/services/api/mf02Api';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
 import type { CandidateApplication, CandidateApplicationDisplayGroup, CandidateSubmissionConsent } from '@/types/api/mf02';
+import { matchesSearch } from '@/utils/searchMatch';
 import { CandidateAccountFrame } from './candidate/CandidateAccountFrame';
 import { candidateDisplayStage } from './mf02Labels';
 import { candidateKeys } from './candidate/candidateKeys';
@@ -163,7 +164,7 @@ const PendingReferral: React.FC<{ consent: CandidateSubmissionConsent }> = ({ co
   );
 };
 
-const ApplicationRow: React.FC<{ application: CandidateApplication }> = ({ application: a }) => {
+const ApplicationRow: React.FC<{ application: CandidateApplication; highlighted?: boolean }> = ({ application: a, highlighted }) => {
   const view = GROUP_VIEW[a.displayGroup] ?? GROUP_VIEW.IN_REVIEW;
   const stage = candidateDisplayStage(a.displayGroup, a.displayLabel);
   const detailHref = `/candidate/applications/${a.applicationId}`;
@@ -172,7 +173,12 @@ const ApplicationRow: React.FC<{ application: CandidateApplication }> = ({ appli
   const isResigned = isApplicationResigned(a);
 
   return (
-    <article className="flex flex-wrap gap-[14px] rounded-lg border border-solid border-[#E5E7EB] bg-white p-4">
+    <article
+      data-application-id={a.applicationId}
+      className={`flex flex-wrap gap-[14px] rounded-lg border border-solid border-[#E5E7EB] bg-white p-4 transition-colors ${
+        highlighted ? 'admin-row-highlight border-amber-300' : ''
+      }`}
+    >
       <CompanyMark name={a.companyName} size={54} />
       <div className="min-w-0 flex-[1_1_380px]">
         <div className="flex flex-wrap justify-between gap-3">
@@ -265,6 +271,7 @@ const ApplicationRow: React.FC<{ application: CandidateApplication }> = ({ appli
 export const CandidateApplicationsPage: React.FC = () => {
   const [params, setParams] = useSearchParams();
   const [page, setPage] = useState(1);
+  const [highlightedAppId, setHighlightedAppId] = useState<string | null>(null);
   const statusParam = params.get('status') || undefined;
   const tab = tabFromParam(statusParam || null);
   const source = (params.get('submissionSource') || undefined) as 'CANDIDATE' | 'AFFILIATE' | undefined;
@@ -328,6 +335,48 @@ export const CandidateApplicationsPage: React.FC = () => {
 
   const all = applications.data?.items ?? [];
   const activeHiredApps = all.filter(isApplicationHired);
+
+  const highlightParam = params.get('highlight');
+  const queryParam = params.get('q');
+  React.useEffect(() => {
+    if ((!highlightParam && !queryParam) || applications.isLoading || !applications.data) return;
+    const items = applications.data.items ?? [];
+    let matched = highlightParam
+      ? items.find(
+          (a) =>
+            a.applicationId.toLowerCase() === highlightParam.toLowerCase() ||
+            a.jobId.toLowerCase() === highlightParam.toLowerCase()
+        )
+      : undefined;
+    if (!matched && queryParam) {
+      matched = items.find((a) => matchesSearch(queryParam, a.jobTitle, a.companyName));
+    }
+
+    const next = new URLSearchParams(params);
+    next.delete('highlight');
+    next.delete('q');
+
+    if (matched) {
+      if (tab !== 'ALL') {
+        next.delete('status');
+      }
+      const idx = items.findIndex((a) => a.applicationId === matched.applicationId);
+      if (idx >= 0) {
+        setPage(Math.floor(idx / PAGE_SIZE) + 1);
+      }
+      setHighlightedAppId(null);
+      window.requestAnimationFrame(() => {
+        setHighlightedAppId(matched.applicationId);
+        window.requestAnimationFrame(() => {
+          const el = document.querySelector<HTMLElement>(`article[data-application-id="${matched.applicationId}"]`);
+          if (el && typeof el.scrollIntoView === 'function') {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      });
+    }
+    setParams(next, { replace: true });
+  }, [highlightParam, queryParam, applications.isLoading, applications.data, tab, params, setParams]);
 
   const inTab = (key: Tab) => {
     let base = all;
@@ -612,7 +661,13 @@ export const CandidateApplicationsPage: React.FC = () => {
       ) : (
         <>
           <div className="flex flex-col gap-2.5">
-            {visible.map((application) => <ApplicationRow key={application.applicationId} application={application} />)}
+            {visible.map((application) => (
+              <ApplicationRow
+                key={application.applicationId}
+                application={application}
+                highlighted={highlightedAppId === application.applicationId}
+              />
+            ))}
           </div>
           {shown.length > PAGE_SIZE && (
             <div className="mt-4 flex justify-center">

@@ -110,8 +110,8 @@ export const CandidateShell: React.FC = () => {
   const mainClassName = isCvBuilder
     ? 'flex min-h-0 flex-1 flex-col w-full'
     : usesAccountFrame
-      ? 'mx-auto w-full max-w-[1248px] flex-1 px-4 pb-24 pt-4 sm:px-6 lg:pb-14 lg:pt-6'
-      : 'candidate-main mx-auto w-full max-w-[1440px] flex-1 px-4 py-6 pb-24 sm:px-6 lg:px-8 lg:py-8';
+      ? 'w-full flex-1 px-4 pb-24 pt-4 sm:px-6 lg:px-6 lg:pb-14 lg:pt-6'
+      : 'candidate-main w-full flex-1 px-4 py-6 pb-24 sm:px-6 lg:px-6 lg:py-6';
 
   return (
     <div className={`candidate-console flex ${isEditorRoute ? 'h-screen overflow-hidden' : 'min-h-screen'} flex-col bg-[#F7F8FA] text-slate-900`}>

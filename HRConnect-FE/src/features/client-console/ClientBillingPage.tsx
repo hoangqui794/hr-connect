@@ -8,8 +8,8 @@
  * "Thanh toán" pays one fee through VNPay (the fee turns paid by itself on VNPay's confirmation) or shows the bank
  * transfer details, which Platform Admin still records by hand.
  */
-import React, { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { a11yItemRender } from '@/components/common/paginationA11y';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Input, Table, Tag, Tooltip } from 'antd';
@@ -347,11 +347,21 @@ const Kpi: React.FC<{
 
 export const ClientBillingPage: React.FC = () => {
   const { rows, serviceFeeSummary, loadedServiceFees, totalServiceFees, loading, fetching, error, refetch } = useBillingRows();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialStatusParam = searchParams.get('status')?.toUpperCase();
+  const initialStatus: StatusFilter =
+    initialStatusParam === 'UNPAID' ||
+    initialStatusParam === 'OVERDUE' ||
+    initialStatusParam === 'PAID' ||
+    initialStatusParam === 'REFUND'
+      ? initialStatusParam
+      : 'all';
   const [service, setService] = useState<ServiceFilter>('all');
-  const [status, setStatus] = useState<StatusFilter>('all');
+  const [status, setStatus] = useState<StatusFilter>(initialStatus);
   const [searchText, setSearchText] = useState('');
   const [page, setPage] = useState(1);
   const [paying, setPaying] = useState<BillingRow | null>(null);
+  const [highlightedKey, setHighlightedKey] = useState<string | null>(null);
 
   const byService = service === 'all' ? rows : rows.filter((r) => r.service === service);
   const byStatus = (() => {
@@ -647,6 +657,75 @@ export const ClientBillingPage: React.FC = () => {
     },
   ];
 
+  const statusParam = searchParams.get('status')?.toUpperCase();
+  const highlightParam = searchParams.get('highlight');
+  const queryParam = searchParams.get('q');
+
+  useEffect(() => {
+    if (
+      statusParam === 'UNPAID' ||
+      statusParam === 'OVERDUE' ||
+      statusParam === 'PAID' ||
+      statusParam === 'REFUND'
+    ) {
+      setStatus(statusParam);
+      setPage(1);
+    }
+  }, [statusParam]);
+
+  useEffect(() => {
+    if (loading || (!highlightParam && !queryParam)) return;
+
+    if (highlightParam) {
+      const targetId = highlightParam.trim().toLowerCase();
+      const matched = rows.find(
+        (r) =>
+          r.key.toLowerCase() === targetId ||
+          r.key.toLowerCase() === `fee-${targetId}` ||
+          r.payTarget.id.toLowerCase() === targetId ||
+          (r.placementId && r.placementId.toLowerCase() === targetId)
+      );
+
+      if (matched) {
+        const idxInVisible = visible.findIndex((r) => r.key === matched.key);
+        if (idxInVisible === -1) {
+          setService('all');
+          setStatus(matched.owedToClient ? 'REFUND' : matched.bucket === 'PAID' ? 'PAID' : 'all');
+          setSearchText('');
+          return;
+        }
+        setHighlightedKey(null);
+        window.requestAnimationFrame(() => setHighlightedKey(matched.key));
+        setPage(Math.floor(idxInVisible / PAGE_SIZE) + 1);
+        const next = new URLSearchParams(searchParams);
+        next.delete('highlight');
+        next.delete('q');
+        setSearchParams(next, { replace: true });
+        return;
+      }
+    }
+
+    if (queryParam) {
+      setSearchText(queryParam);
+      setPage(1);
+      const next = new URLSearchParams(searchParams);
+      next.delete('highlight');
+      next.delete('q');
+      setSearchParams(next, { replace: true });
+    }
+  }, [loading, highlightParam, queryParam, rows, visible, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (!highlightedKey) return;
+    const frame = window.requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLElement>(`tr[data-row-key="${highlightedKey}"]`);
+      if (el && typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [highlightedKey, page]);
+
   const count = (code: ServiceTypeCode) => rows.filter((r) => r.service === code).length;
 
   return (
@@ -760,6 +839,11 @@ export const ClientBillingPage: React.FC = () => {
           <Table<BillingRow>
             className="admin-soft-table"
             rowKey="key"
+            rowClassName={(r) =>
+              r.key === highlightedKey
+                ? 'admin-row-highlight font-semibold'
+                : ''
+            }
             columns={columns}
             dataSource={visible}
             loading={loading}
