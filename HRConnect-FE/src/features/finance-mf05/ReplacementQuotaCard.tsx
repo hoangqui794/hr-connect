@@ -13,6 +13,8 @@ import {
   Badge,
   Button,
   Checkbox,
+  Descriptions,
+  Drawer,
   Empty,
   Form,
   Input,
@@ -36,6 +38,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { financeApi } from '@/services/api/financeApi';
+import { jobsApi } from '@/services/api/jobsApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { ReplacementSlotDto, ReplacementSlotStatus } from '@/types/api/finance';
 import { FilterPills, Initials, Surface } from '@/features/admin-console/ui';
@@ -78,8 +81,16 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
   const [requestCancelTarget, setRequestCancelTarget] = useState<ReplacementSlotWithMeta | null>(null);
   // Placement opened from a slot: the replacement once the slot is filled, otherwise the original hire.
   const [detailPlacementId, setDetailPlacementId] = useState<string | null>(null);
+  const [previewJobSlot, setPreviewJobSlot] = useState<ReplacementSlotWithMeta | null>(null);
   const [cancelForm] = Form.useForm<{ reason: string }>();
   const [requestCancelForm] = Form.useForm<{ reason: string; acknowledged: boolean }>();
+
+  const previewJobQuery = useQuery({
+    queryKey: ['mf05-slot-job-preview', previewJobSlot?.jobId],
+    queryFn: () => jobsApi.getById(previewJobSlot!.jobId),
+    enabled: Boolean(previewJobSlot?.jobId),
+    staleTime: 60_000,
+  });
 
   const slotsQuery = useQuery({
     queryKey: ['mf05-replacement-slots', mode, selectedJobId],
@@ -246,7 +257,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
   // The Client never "uses" a slot by hand: once OPEN, the backend reopens the job and links every Affiliate
   // submission to it, and the slot is filled when the Client confirms the new hire started (MF-05).
   // So the Client only gets links to follow the job and its replacement candidates.
-  const openJob = (slot: ReplacementSlotWithMeta) => navigate(`/client/jobs?highlight=${slot.jobId}&openDetail=true`);
+  const openJob = (slot: ReplacementSlotWithMeta) => setPreviewJobSlot(slot);
   const openCandidates = (slot: ReplacementSlotWithMeta) => navigate(`/client/candidates?job=${slot.jobId}`);
 
   // Table columns
@@ -475,7 +486,8 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
               className="!h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-xs"
               onClick={() => {
                 const params = new URLSearchParams({ status: 'REFUND' });
-                if (slot.refundServiceFeeId) params.set('highlight', slot.refundServiceFeeId);
+                const targetId = slot.refundServiceFeeId || slot.originalPlacementId;
+                if (targetId) params.set('highlight', targetId);
                 if (slot.originalCandidateName) params.set('q', slot.originalCandidateName);
                 navigate(`/client/billing?${params.toString()}`);
               }}
@@ -490,7 +502,13 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
               icon={<UserOutlined />}
               aria-label={`Hồ sơ người thay cho ${slot.jobTitle ?? 'tin này'}`}
               className="!h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:border-slate-300 font-medium"
-              onClick={() => openCandidates(slot)}
+              onClick={() => {
+                if (slot.filledByPlacementId) {
+                  setDetailPlacementId(slot.filledByPlacementId);
+                } else {
+                  openCandidates(slot);
+                }
+              }}
             >
               Hồ sơ người thay
             </Button>
@@ -821,6 +839,91 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
         mode={mode}
         onClose={() => setDetailPlacementId(null)}
       />
+
+      <Drawer
+        title="Chi tiết tin tuyển dụng"
+        width={560}
+        open={Boolean(previewJobSlot)}
+        onClose={() => setPreviewJobSlot(null)}
+        extra={
+          previewJobSlot && (
+            <Button
+              size="small"
+              onClick={() => {
+                const jid = previewJobSlot.jobId;
+                setPreviewJobSlot(null);
+                navigate(`/client/jobs?highlight=${jid}&openDetail=true`);
+              }}
+            >
+              Mở trang Tin tuyển dụng
+            </Button>
+          )
+        }
+      >
+        {previewJobQuery.isLoading ? (
+          <Skeleton active paragraph={{ rows: 6 }} />
+        ) : previewJobQuery.isError ? (
+          <Alert
+            type="error"
+            showIcon
+            message="Không tải được chi tiết tin tuyển dụng"
+            description={getApiErrorMessage(previewJobQuery.error)}
+          />
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <div className="text-base font-bold text-slate-900">
+                {previewJobQuery.data?.title || previewJobSlot?.jobTitle || 'Tin tuyển dụng'}
+              </div>
+              <div className="mt-1 text-xs text-slate-500">
+                {previewJobQuery.data?.companyName || previewJobSlot?.companyName || '—'}
+              </div>
+            </div>
+
+            <Descriptions column={1} size="small" bordered>
+              <Descriptions.Item label="Trạng thái">
+                <Tag color="blue">{previewJobQuery.data?.status ?? '—'}</Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Địa điểm">
+                {previewJobQuery.data?.location || '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Mức lương">
+                {previewJobQuery.data?.salaryMin != null || previewJobQuery.data?.salaryMax != null
+                  ? `${previewJobQuery.data?.salaryMin != null ? money(previewJobQuery.data.salaryMin) : 'Thỏa thuận'} – ${previewJobQuery.data?.salaryMax != null ? money(previewJobQuery.data.salaryMax) : 'Thỏa thuận'}`
+                  : 'Thỏa thuận'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Số lượng tuyển">
+                {previewJobQuery.data?.quantity ?? '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Thời hạn bảo hành">
+                {previewJobQuery.data?.warrantyDays != null ? `${previewJobQuery.data.warrantyDays} ngày` : '—'}
+              </Descriptions.Item>
+            </Descriptions>
+
+            {previewJobQuery.data?.description && (
+              <div>
+                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Mô tả công việc
+                </div>
+                <div className="whitespace-pre-line rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-sm text-slate-700">
+                  {previewJobQuery.data.description}
+                </div>
+              </div>
+            )}
+
+            {previewJobQuery.data?.benefits && (
+              <div>
+                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Phúc lợi
+                </div>
+                <div className="whitespace-pre-line rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-sm text-slate-700">
+                  {previewJobQuery.data.benefits}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Drawer>
     </div>
   );
 };

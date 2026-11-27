@@ -695,13 +695,16 @@ export const ClientBillingPage: React.FC = () => {
 
     if (highlightParam) {
       const targetId = highlightParam.trim().toLowerCase();
-      const matched = rows.find(
-        (r) =>
-          r.key.toLowerCase() === targetId ||
-          r.key.toLowerCase() === `fee-${targetId}` ||
-          r.payTarget.id.toLowerCase() === targetId ||
-          (r.placementId && r.placementId.toLowerCase() === targetId)
-      );
+      const matchesTarget = (r: BillingRow) =>
+        r.key.toLowerCase() === targetId ||
+        r.key.toLowerCase() === `fee-${targetId}` ||
+        r.payTarget.id.toLowerCase() === targetId ||
+        (Boolean(r.placementId) && r.placementId!.toLowerCase() === targetId);
+
+      // Prefer refund rows when status=REFUND (placementId is shared between original fee and refund fee).
+      const matched =
+        (statusParam === 'REFUND' ? rows.find((r) => r.owedToClient && matchesTarget(r)) : undefined) ??
+        rows.find(matchesTarget);
 
       if (matched) {
         const idxInVisible = visible.findIndex((r) => r.key === matched.key);
@@ -725,12 +728,19 @@ export const ClientBillingPage: React.FC = () => {
     if (queryParam) {
       setSearchText(queryParam);
       setPage(1);
+      const qMatched = byStatus.find((r) =>
+        matchesSearch(queryParam, r.jobTitle, r.candidateName, r.item, r.placementId)
+      );
+      if (qMatched) {
+        setHighlightedKey(null);
+        window.requestAnimationFrame(() => setHighlightedKey(qMatched.key));
+      }
       const next = new URLSearchParams(searchParams);
       next.delete('highlight');
       next.delete('q');
       setSearchParams(next, { replace: true });
     }
-  }, [loading, highlightParam, queryParam, rows, visible, searchParams, setSearchParams]);
+  }, [loading, highlightParam, queryParam, statusParam, rows, byStatus, visible, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!highlightedKey) return;
@@ -888,7 +898,7 @@ export const ClientBillingPage: React.FC = () => {
             rowKey="key"
             rowClassName={(r) =>
               r.key === highlightedKey
-                ? 'admin-row-highlight font-semibold'
+                ? 'admin-row-highlight font-bold [&>td]:!bg-amber-50/90 [&>td]:!font-bold'
                 : ''
             }
             columns={columns}

@@ -132,11 +132,6 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
     if (match) {
       setHighlightedId(match.warrantyId);
       setSearchText('');
-      if (mode === 'hr' && match.status === 'CLAIMED') {
-        setTarget(match);
-      } else {
-        setDetailPlacementId(match.placementId);
-      }
       const frame = window.requestAnimationFrame(() => {
         const el = document.querySelector<HTMLElement>(`tr[data-row-id="${match.warrantyId}"]`);
         if (el && typeof el.scrollIntoView === 'function') {
@@ -428,7 +423,7 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
           scroll={{ x: 760 }}
           rowClassName={(w) =>
             highlightedId && w.warrantyId.toLowerCase() === highlightedId.toLowerCase()
-              ? 'admin-row-highlight font-semibold'
+              ? 'admin-row-highlight font-bold [&>td]:!bg-amber-50/90 [&>td]:!font-bold'
               : ''
           }
           onRow={(w) => ({ 'data-row-id': w.warrantyId } as React.HTMLAttributes<HTMLElement>)}
