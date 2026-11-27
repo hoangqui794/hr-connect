@@ -1,305 +1,342 @@
 ---
-title: HR Connect – Core Logical ERD (35 Entities)
+title: HR Connect – Core Logical ERD (40 Entities)
 config:
   layout: elk
 ---
 erDiagram
   AppUser {
-    PK UserId
-    Attribute Email
-    Attribute DisplayName
-    Attribute Phone
-    Attribute Status
+    key UserId PK
+    attr Email
+    attr DisplayName
+    attr Phone
+    attr Status
   }
   Role {
-    PK RoleId
-    Attribute Code
-    Attribute Name
-    Attribute IsSystem
+    key RoleId PK
+    attr Code
+    attr Name
+    attr IsSystem
   }
   UserRole {
-    PK_FK UserId
-    PK_FK RoleId
-    Attribute AssignmentSource
-    Attribute Status
+    key UserId PK,FK
+    key RoleId PK,FK
+    attr AssignmentSource
+    attr Status
   }
   Company {
-    PK CompanyId
-    Attribute CompanyName
-    Attribute TaxCode
-    Attribute VerificationStatus
+    key CompanyId PK
+    attr CompanyName
+    attr TaxCode
+    attr VerificationStatus
   }
   CompanyUser {
-    PK CompanyUserId
-    FK CompanyId
-    FK UserId
-    Attribute RoleInCompany
-    Attribute IsPrimaryContact
+    key CompanyUserId PK
+    key CompanyId FK
+    key UserId FK
+    attr RoleInCompany
+    attr IsPrimaryContact
   }
   AffiliateProfile {
-    PK AffiliateId
-    FK UserId
-    Attribute BankName
-    Attribute BankAccountNumber
-    Attribute Status
+    key AffiliateId PK
+    key UserId FK
+    attr BankName
+    attr BankAccountNumber
+    attr Status
   }
   Candidate {
-    PK CandidateId
-    FK UserId
-    FK MergedIntoCandidateId
-    Attribute FullName
-    Attribute NormalizedEmail
-    Attribute NormalizedPhone
-    Attribute Status
+    key CandidateId PK
+    key UserId FK
+    key MergedIntoCandidateId FK
+    attr FullName
+    attr NormalizedEmail
+    attr NormalizedPhone
+    attr Status
   }
   CandidateCv {
-    PK CvId
-    FK CandidateId
-    FK UploadedByUserId
-    Attribute FileName
-    Attribute SourceType
-    Attribute AllowAffiliateReuse
-    Attribute Status
+    key CvId PK
+    key CandidateId FK
+    key UploadedByUserId FK
+    attr FileName
+    attr SourceType
+    attr AllowAffiliateReuse
+    attr Status
   }
   CandidateIdentityClaim {
-    PK ClaimId
-    FK RequesterUserId
-    FK TargetCandidateId
-    FK ReviewedBy
-    Attribute EvidenceUrl
-    Attribute Status
+    key ClaimId PK
+    key RequesterUserId FK
+    key TargetCandidateId FK
+    key ReviewedBy FK
+    attr EvidenceUrl
+    attr Status
   }
   CandidateDuplicateCase {
-    PK DuplicateCaseId
-    FK CandidateAId
-    FK CandidateBId
-    FK CanonicalCandidateId
-    FK SubmissionId
-    Attribute ConfidenceScore
-    Attribute Status
+    key DuplicateCaseId PK
+    key CandidateAId FK
+    key CandidateBId FK
+    key CanonicalCandidateId FK
+    key SubmissionId FK
+    attr ConfidenceScore
+    attr Status
+  }
+  UserEmailIdentity {
+    key EmailIdentityId PK
+    key UserId FK
+    attr NormalizedEmail
+    attr Kind
+    attr Status
+  }
+  CandidateJobMatch {
+    key CandidateJobMatchId PK
+    key CandidateId FK
+    key JobId FK
+    key CvId FK
+    attr MatchScore
+    attr MatchTier
+    attr Status
+  }
+  JobTemplate {
+    key TemplateId PK
+    attr Code
+    attr Name
+    attr Industry
+    attr IsActive
+  }
+  JobTemplateRequirement {
+    key TemplateRequirementId PK
+    key TemplateId FK
+    attr RequirementType
+    attr Content
+  }
+  ContactRequest {
+    key ContactRequestId PK
+    key HandledBy FK
+    attr FullName
+    attr Email
+    attr ServiceInterest
+    attr Status
   }
   ServiceType {
-    PK ServiceTypeId
-    Attribute Code
-    Attribute Name
+    key ServiceTypeId PK
+    attr Code
+    attr Name
   }
   Job {
-    PK JobId
-    FK CompanyId
-    FK ServiceTypeId
-    FK CreatedBy
-    FK CurrentServiceAgreementId
-    Attribute Title
-    Attribute Quantity
-    Attribute FeeMultiplier
-    Attribute WarrantyDays
-    Attribute SourcingTarget
-    Attribute Status
+    key JobId PK
+    key CompanyId FK
+    key ServiceTypeId FK
+    key CreatedBy FK
+    key CurrentServiceAgreementId FK
+    attr Title
+    attr Quantity
+    attr FeeMultiplier
+    attr WarrantyDays
+    attr SourcingTarget
+    attr Status
   }
   JobRequirement {
-    PK RequirementId
-    FK JobId
-    Attribute RequirementType
-    Attribute CriteriaText
-    Attribute Weight
+    key RequirementId PK
+    key JobId FK
+    attr RequirementType
+    attr CriteriaText
+    attr Weight
   }
   ServiceAgreement {
-    PK ServiceAgreementId
-    FK JobId
-    FK CompanyId
-    FK CreatedByUserId
-    FK SignerUserId
-    Attribute Version
-    Attribute VerificationCode
-    Attribute SignedPdfObjectKey
-    Attribute Status
+    key ServiceAgreementId PK
+    key JobId FK
+    key CompanyId FK
+    key CreatedByUserId FK
+    key SignerUserId FK
+    attr Version
+    attr VerificationCode
+    attr SignedPdfObjectKey
+    attr Status
   }
   JobPostingPackage {
-    PK PackageId
-    Attribute Code
-    Attribute Name
-    Attribute Price
-    Attribute MaxApplications
+    key PackageId PK
+    attr Code
+    attr Name
+    attr Price
+    attr MaxApplications
   }
   JobPostingFee {
-    PK PostingFeeId
-    FK JobId
-    FK PackageId
-    FK CompanyId
-    Attribute Amount
-    Attribute PaymentReference
-    Attribute Status
+    key PostingFeeId PK
+    key JobId FK
+    key PackageId FK
+    key CompanyId FK
+    attr Amount
+    attr PaymentReference
+    attr Status
   }
   Submission {
-    PK SubmissionId
-    FK CandidateId
-    FK CvId
-    FK JobId
-    FK SubmittedBy
-    FK ReplacementSlotId
-    Attribute Source
-    Attribute Status
+    key SubmissionId PK
+    key CandidateId FK
+    key CvId FK
+    key JobId FK
+    key SubmittedBy FK
+    key ReplacementSlotId FK
+    attr Source
+    attr Status
   }
   SubmissionConsent {
-    PK ConsentId
-    FK SubmissionId
-    Attribute ConsentTokenHash
-    Attribute RespondedAt
-    Attribute ExpiresAt
-    Attribute Status
+    key ConsentId PK
+    key SubmissionId FK
+    attr ConsentTokenHash
+    attr RespondedAt
+    attr ExpiresAt
+    attr Status
   }
   Application {
-    PK ApplicationId
-    FK JobId
-    FK CandidateId
-    FK AcceptedSubmissionId
-    FK ReplacementSlotId
-    Attribute CurrentStage
-    Attribute Status
+    key ApplicationId PK
+    key JobId FK
+    key CandidateId FK
+    key AcceptedSubmissionId FK
+    key ReplacementSlotId FK
+    attr CurrentStage
+    attr Status
   }
   ApplicationStatusHistory {
-    PK ApplicationStatusHistoryId
-    FK ApplicationId
-    FK ChangedBy
-    Attribute OldStatus
-    Attribute NewStatus
-    Attribute ReasonCode
+    key ApplicationStatusHistoryId PK
+    key ApplicationId FK
+    key ChangedBy FK
+    attr OldStatus
+    attr NewStatus
+    attr ReasonCode
   }
   Attribution {
-    PK AttributionId
-    FK ApplicationId
-    FK AffiliateId
-    FK WinningSubmissionId
-    Attribute RuleApplied
-    Attribute Status
+    key AttributionId PK
+    key ApplicationId FK
+    key AffiliateId FK
+    key WinningSubmissionId FK
+    attr RuleApplied
+    attr Status
   }
   AiMatchResult {
-    PK MatchResultId
-    FK ApplicationId
-    Attribute MatchScore
-    Attribute MatchTier
-    Attribute KnockedOut
-    Attribute Status
+    key MatchResultId PK
+    key ApplicationId FK
+    attr MatchScore
+    attr MatchTier
+    attr KnockedOut
+    attr Status
   }
   SourcingDelivery {
-    PK DeliveryId
-    FK JobId
-    FK ApplicationId
-    Attribute ReviewDueAt
-    Attribute Status
+    key DeliveryId PK
+    key JobId FK
+    key ApplicationId FK
+    attr ReviewDueAt
+    attr Status
   }
   Interview {
-    PK InterviewId
-    FK ApplicationId
-    FK CreatedBy
-    Attribute RoundNumber
-    Attribute ScheduledAt
-    Attribute CandidateConfirmed
-    Attribute Result
-    Attribute Status
+    key InterviewId PK
+    key ApplicationId FK
+    key CreatedBy FK
+    attr RoundNumber
+    attr ScheduledAt
+    attr CandidateConfirmed
+    attr Result
+    attr Status
   }
   Offer {
-    PK OfferId
-    FK ApplicationId
-    FK CreatedBy
-    Attribute BaseSalary
-    Attribute ProposedStartDate
-    Attribute Status
+    key OfferId PK
+    key ApplicationId FK
+    key CreatedBy FK
+    attr BaseSalary
+    attr ProposedStartDate
+    attr Status
   }
   Placement {
-    PK PlacementId
-    FK ApplicationId
-    FK OfferId
-    FK ReplacementSlotId
-    FK ConfirmedBy
-    Attribute ActualStartDate
-    Attribute Status
+    key PlacementId PK
+    key ApplicationId FK
+    key OfferId FK
+    key ReplacementSlotId FK
+    key ConfirmedBy FK
+    attr ActualStartDate
+    attr Status
   }
   PlacementReconciliation {
-    PK ReconciliationId
-    FK ApplicationId
-    FK PlacementId
-    FK ReviewedBy
-    Attribute ClaimedOutcome
-    Attribute ResolutionAction
-    Attribute Status
+    key ReconciliationId PK
+    key ApplicationId FK
+    key PlacementId FK
+    key ReviewedBy FK
+    attr ClaimedOutcome
+    attr ResolutionAction
+    attr Status
   }
   Warranty {
-    PK WarrantyId
-    FK PlacementId
-    Attribute StartDate
-    Attribute EndDate
-    Attribute ResignationReason
-    Attribute Status
+    key WarrantyId PK
+    key PlacementId FK
+    attr StartDate
+    attr EndDate
+    attr ResignationReason
+    attr Status
   }
   ServiceFee {
-    PK ServiceFeeId
-    FK PlacementId
-    FK JobId
-    FK CompanyId
-    Attribute Kind
-    Attribute Amount
-    Attribute DueDate
-    Attribute PaymentReference
-    Attribute Status
+    key ServiceFeeId PK
+    key PlacementId FK
+    key JobId FK
+    key CompanyId FK
+    attr Kind
+    attr Amount
+    attr DueDate
+    attr PaymentReference
+    attr Status
   }
   OnlinePayment {
-    PK OnlinePaymentId
-    FK CompanyId
-    FK CreatedBy
-    Attribute Provider
-    Attribute TargetType
-    Attribute TargetId
-    Attribute TxnRef
-    Attribute Amount
-    Attribute ProviderTransactionNo
-    Attribute Status
+    key OnlinePaymentId PK
+    key CompanyId FK
+    key CreatedBy FK
+    attr Provider
+    attr TargetType
+    attr TargetId
+    attr TxnRef
+    attr Amount
+    attr ProviderTransactionNo
+    attr Status
   }
   ReplacementSlot {
-    PK ReplacementSlotId
-    FK JobId
-    FK OriginalPlacementId
-    FK ServiceFeeId
-    FK FilledByPlacementId
-    Attribute ExpiresAt
-    Attribute Status
+    key ReplacementSlotId PK
+    key JobId FK
+    key OriginalPlacementId FK
+    key ServiceFeeId FK
+    key FilledByPlacementId FK
+    attr ExpiresAt
+    attr Status
   }
   CommissionRule {
-    PK CommissionRuleId
-    FK ServiceTypeId
-    Attribute MilestoneType
-    Attribute RateType
-    Attribute RateValue
-    Attribute WarrantyRequired
+    key CommissionRuleId PK
+    key ServiceTypeId FK
+    attr MilestoneType
+    attr RateType
+    attr RateValue
+    attr WarrantyRequired
   }
   Commission {
-    PK CommissionId
-    FK AttributionId
-    FK PlacementId
-    FK SourcingDeliveryId
-    FK CommissionRuleId
-    Attribute MilestoneType
-    Attribute Amount
-    Attribute Status
+    key CommissionId PK
+    key AttributionId FK
+    key PlacementId FK
+    key SourcingDeliveryId FK
+    key CommissionRuleId FK
+    attr MilestoneType
+    attr Amount
+    attr Status
   }
   Payout {
-    PK PayoutId
-    FK CommissionId
-    FK RecordedBy
-    Attribute Amount
-    Attribute TransactionReference
-    Attribute Status
+    key PayoutId PK
+    key CommissionId FK
+    key RecordedBy FK
+    attr Amount
+    attr TransactionReference
+    attr Status
   }
   Dispute {
-    PK DisputeId
-    FK SubmissionId
-    FK AttributionId
-    FK CommissionId
-    FK CandidateDuplicateCaseId
-    FK RaisedBy
-    Attribute DisputeType
-    Attribute Resolution
-    Attribute Status
+    key DisputeId PK
+    key SubmissionId FK
+    key AttributionId FK
+    key CommissionId FK
+    key CandidateDuplicateCaseId FK
+    key RaisedBy FK
+    attr DisputeType
+    attr Resolution
+    attr Status
   }
 
   AppUser ||--|{ UserRole : "has"
@@ -359,3 +396,9 @@ erDiagram
   Attribution |o--o{ Dispute : "contested in"
   Commission |o--o{ Dispute : "challenged in"
   CandidateDuplicateCase |o--o{ Dispute : "escalates to"
+  AppUser ||--|{ UserEmailIdentity : "verifies"
+  Candidate ||--o{ CandidateJobMatch : "receives"
+  Job ||--o{ CandidateJobMatch : "suggested for"
+  CandidateCv |o--o{ CandidateJobMatch : "evaluated via"
+  JobTemplate ||--|{ JobTemplateRequirement : "defines"
+  AppUser |o--o{ ContactRequest : "handles"

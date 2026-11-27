@@ -1,0 +1,180 @@
+@startuml HRConnect_Overall_UseCase_Diagram
+left to right direction
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam nodesep 14
+skinparam ranksep 48
+skinparam usecase {
+  BackgroundColor #EAF2FB
+  BorderColor #1B365D
+  FontColor #0F172A
+  FontSize 11
+}
+skinparam actor {
+  BackgroundColor #FFFFFF
+  BorderColor #1F2937
+  FontSize 11
+}
+
+actor "Registered User" as U
+actor "Guest" as G
+actor "Candidate" as C
+actor "Affiliate" as A
+actor "Client Company User" as CL
+actor "Internal HR" as HR
+actor "Platform Admin" as AD
+
+U <|-- C
+U <|-- A
+U <|-- CL
+U <|-- HR
+U <|-- AD
+
+rectangle "HR Connect System" {
+  usecase "Login" as UC_LOG
+  usecase "Recover Password" as UC_REC
+  usecase "Register Account" as UC_REG
+  usecase "Search & View Jobs" as UC_SRCH
+
+  usecase "Manage Candidate Profile" as UC_CPROF
+  usecase "Manage CV" as UC_MCV
+  usecase "Build CV and View AI Job Suggestions" as UC_BCV
+  usecase "Claim Candidate Profile & Manage Identity" as UC_CLAIM
+
+  usecase "Apply to Job" as UC_APPLY
+  usecase "Withdraw Application" as UC_WDR
+  usecase "Submit Candidate / CV" as UC_SUB
+  usecase "Respond to Submission Consent" as UC_CONS
+
+  usecase "Manage Affiliate Profile" as UC_APROF
+  usecase "Track Own Submission" as UC_ATRK
+  usecase "Raise Attribution Dispute" as UC_RDISP
+  usecase "View Affiliate Performance" as UC_APERF
+  usecase "View Commission & Payout" as UC_ACOM
+
+  usecase "Verify Email (OTP)" as UC_OTP
+  usecase "Check Duplicate & Attribution" as UC_DUP
+  usecase "Evaluate CV with AI" as UC_AIEV
+  usecase "View AI Matching Result" as UC_AI
+
+  usecase "Manage Company Profile" as UC_COM
+  usecase "Manage Job" as UC_MJOB
+  usecase "Agree and Sign Service Agreement" as UC_SA
+  usecase "Pay, Settle & Record Service Fee / Posting Fee / Deposit" as UC_PAY
+  usecase "Review Job" as UC_RJOB
+  usecase "Manage JD Templates" as UC_JDT
+
+  usecase "Screen Candidate" as UC_SCR
+  usecase "Review Candidate" as UC_RCAN
+  usecase "Deliver & Review CVs (CV Sourcing)" as UC_SRC
+
+  usecase "Manage Interview" as UC_MINT
+  usecase "Participate & Confirm Interview" as UC_PINT
+  usecase "Record Interview Result" as UC_RINT
+  usecase "Manage Offer" as UC_MOFF
+  usecase "Respond to Offer" as UC_ROFF
+  usecase "Confirm Start Work / Placement" as UC_STRT
+  usecase "Reconcile Placement" as UC_RECON
+  usecase "Manage Warranty & Replacement Slot" as UC_WAR
+
+  usecase "Review Company Verification" as UC_CREV
+  usecase "Review Affiliate Application" as UC_AREV
+  usecase "Resolve Duplicate Case & Attribution Dispute" as UC_DISP
+  usecase "Manage Commission & Payout" as UC_MCOM
+  usecase "Manage Users" as UC_USR
+  usecase "Manage Roles & Permissions" as UC_ROLE
+  usecase "Manage System Configuration" as UC_CFG
+  usecase "View Audit Log" as UC_AUD
+  usecase "Handle Contact Requests" as UC_CONT
+  usecase "View Reports & Dashboard" as UC_RPT
+}
+
+actor "Email Provider\n(OTP / Consent)" as E_MAIL <<External System>>
+actor "LLM Provider - Gemini\n(AI Parsing & Scoring)" as E_LLM <<External System>>
+actor "Payment Gateway - VNPay\n(Online Payment & IPN)" as E_PAY <<External System>>
+
+' <<include>>
+UC_REG ..> UC_OTP : <<include>>
+UC_CLAIM ..> UC_OTP : <<include>>
+UC_SA ..> UC_OTP : <<include>>
+UC_APPLY ..> UC_DUP : <<include>>
+UC_SUB ..> UC_DUP : <<include>>
+UC_APPLY ..> UC_AIEV : <<include>>
+UC_SUB ..> UC_AIEV : <<include>>
+UC_SCR ..> UC_AI : <<include>>
+UC_RCAN ..> UC_AI : <<include>>
+
+' <<extend>>
+UC_REC ..> UC_LOG : <<extend>>
+UC_WDR ..> UC_APPLY : <<extend>>
+UC_RDISP ..> UC_ATRK : <<extend>>
+UC_SA ..> UC_MJOB : <<extend>>
+UC_PAY ..> UC_MJOB : <<extend>>
+UC_WAR ..> UC_STRT : <<extend>>
+
+' Associations
+U -- UC_LOG
+G -- UC_REG
+G -- UC_SRCH
+
+C -- UC_SRCH
+C -- UC_CPROF
+C -- UC_MCV
+C -- UC_BCV
+C -- UC_CLAIM
+C -- UC_APPLY
+C -- UC_CONS
+C -- UC_PINT
+C -- UC_ROFF
+
+A -- UC_SRCH
+A -- UC_SUB
+A -- UC_APROF
+A -- UC_ATRK
+A -- UC_APERF
+A -- UC_ACOM
+
+CL -- UC_COM
+CL -- UC_MJOB
+CL -- UC_JDT
+CL -- UC_SCR
+CL -- UC_RCAN
+CL -- UC_SRC
+CL -- UC_MINT
+CL -- UC_PINT
+CL -- UC_RINT
+CL -- UC_MOFF
+CL -- UC_STRT
+CL -- UC_WAR
+CL -- UC_RPT
+
+HR -- UC_RJOB
+HR -- UC_SA
+HR -- UC_JDT
+HR -- UC_SCR
+HR -- UC_SRC
+HR -- UC_RECON
+HR -- UC_WAR
+HR -- UC_CONT
+HR -- UC_RPT
+
+AD -- UC_CREV
+AD -- UC_AREV
+AD -- UC_CLAIM
+AD -- UC_DISP
+AD -- UC_PAY
+AD -- UC_MCOM
+AD -- UC_USR
+AD -- UC_ROLE
+AD -- UC_CFG
+AD -- UC_AUD
+AD -- UC_CONT
+AD -- UC_RPT
+
+UC_OTP -- E_MAIL
+UC_CONS -- E_MAIL
+UC_AIEV -- E_LLM
+UC_BCV -- E_LLM
+UC_PAY -- E_PAY
+
+@enduml

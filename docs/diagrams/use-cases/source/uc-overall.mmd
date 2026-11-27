@@ -1,116 +1,123 @@
 ---
-title: HR Connect – Overall Use Case Diagram
+title: HR Connect – Overall Use Case Diagram (High-Level)
 ---
 flowchart LR
-  G(["👤 Guest"]):::actor
-  U(["👤 Registered User"]):::actor
-  C(["👤 Candidate"]):::actor
-  A(["👤 Affiliate"]):::actor
-  subgraph SYS["HR Connect"]
+  subgraph LEFT["Primary Actors"]
     direction TB
-    UC01(["UC-01: Register Account"]):::uc
-    UC02(["UC-02: Login"]):::uc
-    UC03(["UC-03: Search & View Jobs"]):::uc
-    UC37(["UC-37: Verify Email / Recover Password"]):::uc
-    UC08(["UC-08: Manage Candidate Profile"]):::uc
-    UC09(["UC-09: Manage CV"]):::uc
-    UC10(["UC-10: Apply to Job"]):::uc
-    UC11(["UC-11: Submit Candidate/CV"]):::uc
-    UC13(["UC-13: Raise Duplicate / Attribution Dispute"]):::uc
-    UC38(["UC-38: Respond to Submission Consent"]):::uc
-    UC40(["UC-40: Withdraw Application"]):::uc
-    UC46(["UC-46: Build CV & View Job Suggestions"]):::uc
-    UC21(["UC-21: View & Confirm Interview"]):::uc
-    UC24(["UC-24: Respond to Offer"]):::uc
-    UC31(["UC-31: View Commission & Payout"]):::uc
-    UC28(["UC-28: Manage Affiliate Profile & Bank"]):::uc
-    UC29(["UC-29: Track Own Submissions"]):::uc
-    UC30(["UC-30: View Affiliate Performance"]):::uc
-    UC20(["UC-20: Participate in Interview"]):::uc
-    UC04(["UC-04: Manage Company Profile"]):::uc
-    UC05(["UC-05: Review Company Verification"]):::uc
-    UC06(["UC-06: Manage Job"]):::uc
-    UC07(["UC-07: Review Job"]):::uc
-    UC44(["UC-44: Agree & Upload Signed Service Agreement"]):::uc
-    UC14(["UC-14: Resolve Dispute & Identity Claim"]):::uc
-    UC15(["UC-15: View AI Matching Result"]):::uc
-    UC16(["UC-16: Screen & Curate Candidate"]):::uc
-    UC17(["UC-17: Review Shortlisted Candidate"]):::uc
-    UC45(["UC-45: Review Delivered CVs (CV Sourcing)"]):::uc
-    UC19(["UC-19: Manage Interview"]):::uc
-    UC22(["UC-22: Record Interview Result"]):::uc
-    UC23(["UC-23: Manage Offer"]):::uc
-    UC25(["UC-25: Confirm Start Work / Placement"]):::uc
-    UC41(["UC-41: Reconcile Placement"]):::uc
-    UC27(["UC-27: Track Warranty & Resignation"]):::uc
-    UC32(["UC-32: Manage Commission & Payout"]):::uc
-    UC43(["UC-43: Pay / Record Service Fee Payment"]):::uc
-    UC39(["UC-39: Review Affiliate Application"]):::uc
-    UC33(["UC-33: Manage Users"]):::uc
-    UC34(["UC-34: Manage Roles & Permissions"]):::uc
-    UC35(["UC-35: Manage System Settings & Packages"]):::uc
-    UC36(["UC-36: View Reports & Dashboard"]):::uc
-    UC42(["UC-42: View Audit Log"]):::uc
+    G(["👤 Guest"]):::actor
+    U(["👤 Registered User"]):::actor
+    C(["👤 Candidate"]):::actor
+    A(["👤 Affiliate"]):::actor
+    CL(["👤 Client Company User"]):::actor
+    HR(["👤 Internal HR"]):::actor
+    AD(["👤 Platform Admin"]):::actor
+    C -.->|"generalizes"| U
+    A -.->|"generalizes"| U
+    CL -.->|"generalizes"| U
+    HR -.->|"generalizes"| U
+    AD -.->|"generalizes"| U
   end
-  CL(["👤 Client Company User"]):::actor
-  HR(["👤 Internal HR"]):::actor
-  AD(["👤 Platform Admin"]):::actor
-  G --- UC01
-  G --- UC37
-  G --- UC03
-  U --- UC02
-  U --- UC37
-  C --- UC03
-  C --- UC08
-  C --- UC09
-  C --- UC46
-  C --- UC10
-  C --- UC38
-  C --- UC40
-  C --- UC20
-  C --- UC21
-  C --- UC24
-  A --- UC03
-  A --- UC11
-  A --- UC13
-  A --- UC28
-  A --- UC29
-  A --- UC30
-  A --- UC31
-  UC04 --- CL
-  UC06 --- CL
-  UC44 --- CL
-  UC43 --- CL
-  UC15 --- CL
-  UC16 --- CL
-  UC17 --- CL
-  UC45 --- CL
-  UC19 --- CL
-  UC20 --- CL
-  UC22 --- CL
-  UC23 --- CL
-  UC25 --- CL
-  UC27 --- CL
-  UC36 --- CL
-  UC07 --- HR
-  UC44 --- HR
-  UC15 --- HR
-  UC16 --- HR
-  UC41 --- HR
-  UC27 --- HR
-  UC36 --- HR
-  UC05 --- AD
-  UC14 --- AD
-  UC39 --- AD
-  UC43 --- AD
-  UC32 --- AD
-  UC33 --- AD
-  UC34 --- AD
-  UC35 --- AD
-  UC42 --- AD
-  UC36 --- AD
-  classDef actor fill:#FFF4E5,stroke:#B7791F,color:#7B4B0A,font-weight:bold
-  classDef uc fill:#EAF2FB,stroke:#1B365D,color:#1F2A3C
-  classDef planned fill:#FFFFFF,stroke:#1B365D,stroke-dasharray:5 4,color:#555
-  style SYS fill:#FAFBFD,stroke:#1B365D
 
+  subgraph SYS["HR Connect System"]
+    direction TB
+
+    subgraph G1["Identity & Account"]
+      direction TB
+      HL_AUTH(["Authenticate & Verify Account"]):::uc
+      HL_PROF(["Manage Profile & Identity"]):::uc
+    end
+
+    subgraph G2["Sourcing & Referral"]
+      direction TB
+      HL_SRCH(["Search & View Jobs"]):::uc
+      HL_JOB(["Manage & Publish Jobs"]):::uc
+      HL_SUB(["Submit Candidate & CV"]):::uc
+      HL_CONS(["Provide Submission Consent"]):::uc
+    end
+
+    subgraph G3["Screening & Matching"]
+      direction TB
+      HL_SCR(["Screen & Match Candidates"]):::uc
+    end
+
+    subgraph G4["Interview & Placement"]
+      direction TB
+      HL_INT(["Coordinate Interview"]):::uc
+      HL_OFF(["Manage Offer & Onboarding"]):::uc
+    end
+
+    subgraph G5["Warranty & Dispute"]
+      direction TB
+      HL_WAR(["Process Warranty & Replacement"]):::uc
+      HL_DISP(["Resolve Duplicate & Attribution Dispute"]):::uc
+    end
+
+    subgraph G6["Finance & Commission"]
+      direction TB
+      HL_PAY(["Pay Recruitment Fees"]):::uc
+      HL_COM(["Manage Commission & Payout"]):::uc
+    end
+
+    subgraph G7["System Administration"]
+      direction TB
+      HL_ADM(["Manage System & View Audit Logs"]):::uc
+      HL_RPT(["View Reports & Dashboard"]):::uc
+    end
+  end
+
+  subgraph RIGHT["External System Actors"]
+    direction TB
+    E_MAIL(["⚙ Email Provider<br/>(Notification / OTP / Consent)"]):::ext
+    E_LLM(["⚙ LLM Provider - Gemini<br/>(AI CV Parsing & Scoring)"]):::ext
+    E_PAY(["⚙ Payment Gateway - VNPay<br/>(Online Payment & IPN)"]):::ext
+  end
+
+  G --- HL_AUTH
+  G --- HL_SRCH
+  U --- HL_AUTH
+  U --- HL_PROF
+
+  C --- HL_SRCH
+  C --- HL_SUB
+  C --- HL_CONS
+  C --- HL_INT
+  C --- HL_OFF
+
+  A --- HL_SRCH
+  A --- HL_SUB
+  A --- HL_DISP
+  A --- HL_COM
+
+  CL --- HL_JOB
+  CL --- HL_SCR
+  CL --- HL_INT
+  CL --- HL_OFF
+  CL --- HL_WAR
+  CL --- HL_PAY
+  CL --- HL_RPT
+
+  HR --- HL_JOB
+  HR --- HL_SCR
+  HR --- HL_OFF
+  HR --- HL_WAR
+  HR --- HL_ADM
+  HR --- HL_RPT
+
+  AD --- HL_DISP
+  AD --- HL_PAY
+  AD --- HL_COM
+  AD --- HL_ADM
+  AD --- HL_RPT
+
+  HL_AUTH --- E_MAIL
+  HL_CONS --- E_MAIL
+  HL_SCR --- E_LLM
+  HL_PROF --- E_LLM
+  HL_PAY --- E_PAY
+
+  classDef actor fill:#FFF4E5,stroke:#B7791F,color:#7B4B0A,font-weight:bold
+  classDef ext fill:#F1F5F9,stroke:#475569,color:#0F172A,font-weight:bold
+  classDef uc fill:#EAF2FB,stroke:#1B365D,color:#1F2A3C
+  style LEFT fill:transparent,stroke:none
+  style RIGHT fill:transparent,stroke:none
+  style SYS fill:#FFFFFF,stroke:#1B365D,stroke-width:2px
