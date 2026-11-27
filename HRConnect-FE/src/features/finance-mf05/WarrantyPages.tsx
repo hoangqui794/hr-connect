@@ -5,11 +5,11 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { a11yItemRender } from '@/components/common/paginationA11y';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App, Button, DatePicker, Form, Input, Modal, Radio, Space, Table, Tag, Tooltip } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { EyeOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { CreditCardOutlined, EyeOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { financeApi } from '@/services/api/financeApi';
 import { getApiErrorMessage } from '@/services/apiClient';
@@ -153,7 +153,16 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
   useEffect(() => {
     if (!target) return;
     if (mode === 'client') {
-      form.setFieldsValue({ lastWorkingDate: dayjs() });
+      const start = target.startDate ? dayjs(target.startDate) : null;
+      const end = target.endDate ? dayjs(target.endDate) : null;
+      let initialDate = dayjs();
+      if (end && !initialDate.isBefore(end, 'day')) {
+        initialDate = end.subtract(1, 'day');
+      }
+      if (start && initialDate.isBefore(start, 'day')) {
+        initialDate = start;
+      }
+      form.setFieldsValue({ lastWorkingDate: initialDate });
     } else {
       form.setFieldsValue({ decision: 'confirm' });
     }
@@ -175,7 +184,7 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
     },
     onSuccess: (claimRes) => {
       if (mode === 'client') {
-        message.success('Đã báo nghỉ việc. Internal HR sẽ xác minh.');
+        message.success('Đã báo nghỉ việc. HR Connect sẽ tiếp nhận và xác minh.');
       } else {
         if (claimRes?.replacement) {
           if (claimRes.replacement.status === 'OPEN') {
@@ -316,7 +325,7 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
             title: 'Hoa hồng',
             key: 'commission',
             render: (_: unknown, w: Warranty) => {
-              if (!w.commissionStatus) return <span className="text-slate-400">Không có Affiliate</span>;
+              if (!w.commissionStatus) return <span className="text-slate-500">Không có Affiliate</span>;
               const s = labelOf(COMMISSION_STATUS, w.commissionStatus);
               return (
                 <div>
@@ -336,6 +345,7 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
         <Space size="small">
           <Button
             size="small"
+            className="!h-8"
             icon={<EyeOutlined />}
             onClick={() => setDetailPlacementId(w.placementId)}
           >
@@ -343,7 +353,7 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
           </Button>
           {mode === 'client' ? (
             w.status === 'ACTIVE' ? (
-              <Button size="small" danger onClick={() => { form.setFieldsValue({ lastWorkingDate: dayjs() }); setTarget(w); }}>
+              <Button size="small" danger className="!h-8" onClick={() => setTarget(w)}>
                 Báo nghỉ việc
               </Button>
             ) : (
@@ -356,14 +366,14 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
                     : 'Đã quá thời hạn bảo hành.'
                 }
               >
-                <Tag className="m-0 cursor-help border-slate-200 bg-slate-50 text-xs text-slate-500">
-                  {w.status === 'CLAIMED' ? 'Chờ xác minh' : w.status === 'VOIDED' ? 'Đã đóng BH' : 'Hết hạn BH'}
+                <Tag tabIndex={0} className="m-0 cursor-help border-slate-200 bg-slate-50 text-xs text-slate-600">
+                  {w.status === 'CLAIMED' ? 'Chờ xác minh' : w.status === 'VOIDED' ? 'Đã đóng bảo hành' : 'Hết bảo hành'}
                 </Tag>
               </Tooltip>
             )
           ) : (
             w.status === 'CLAIMED' && (
-              <Button size="small" type="primary" onClick={() => { form.setFieldsValue({ decision: 'confirm' }); setTarget(w); }}>
+              <Button size="small" type="primary" className="!h-8" onClick={() => setTarget(w)}>
                 Xác minh
               </Button>
             )
@@ -392,7 +402,7 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
         <div className="flex flex-wrap items-center gap-2">
           <Input
             allowClear
-            prefix={<SearchOutlined className="text-slate-400" />}
+            prefix={<SearchOutlined className="text-slate-500" />}
             placeholder="Tìm theo ứng viên, vị trí, doanh nghiệp, mã suất..."
             aria-label="Tìm kiếm danh sách bảo hành"
             value={searchText}
@@ -447,7 +457,7 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
                   className="mb-4"
                   type="warning"
                   showIcon
-                  message={`${target.candidateName ?? 'Ứng viên'} — bảo hành đến ${date(target.endDate)}. Sau khi báo nghỉ, Internal HR sẽ tiếp nhận để xác minh và mở suất tìm ứng viên thay thế miễn phí theo thỏa thuận.`}
+                  message={`${target.candidateName ?? 'Ứng viên'} — bảo hành đến ${date(target.endDate)}. Sau khi báo nghỉ, HR Connect sẽ tiếp nhận để xác minh và mở suất tìm ứng viên thay thế miễn phí theo thỏa thuận.`}
                 />
                 <Form.Item name="lastWorkingDate" label="Ngày làm việc cuối cùng" rules={[{ required: true, message: 'Chọn ngày.' }]}>
                   <DatePicker
@@ -502,6 +512,7 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
 };
 
 const ClientFees: React.FC = () => {
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const fees = useQuery({
     queryKey: ['mf05-client-fees', page],
@@ -548,6 +559,34 @@ const ClientFees: React.FC = () => {
         return <StatusDot tone={status.tone}>{status.label}</StatusDot>;
       },
     },
+    {
+      title: 'Thao tác',
+      key: 'actions',
+      align: 'right',
+      render: (_, fee) => {
+        const waitingReconcile = Boolean(fee.reconciliationStatus && fee.reconciliationStatus !== 'CONFIRMED');
+        const payable = (fee.status === 'PENDING' || fee.status === 'DUE' || fee.status === 'OVERDUE') && !waitingReconcile;
+        return payable ? (
+          <Button
+            size="small"
+            type="primary"
+            icon={<CreditCardOutlined />}
+            className="!h-8 rounded-lg !border-0 !bg-[#0369A1] hover:!bg-[#075985] font-semibold"
+            onClick={() => navigate(`/client/billing?highlight=${encodeURIComponent(fee.serviceFeeId)}`)}
+          >
+            Thanh toán
+          </Button>
+        ) : (
+          <Button
+            size="small"
+            className="!h-8 rounded-lg border-slate-200 text-slate-700 hover:!border-slate-300"
+            onClick={() => navigate(`/client/billing?highlight=${encodeURIComponent(fee.serviceFeeId)}`)}
+          >
+            Xem công nợ
+          </Button>
+        );
+      },
+    },
   ];
   return (
     <Surface>
@@ -556,7 +595,7 @@ const ClientFees: React.FC = () => {
         columns={columns}
         dataSource={fees.data?.items}
         loading={fees.isFetching}
-        scroll={{ x: 600 }}
+        scroll={{ x: 700 }}
         pagination={{ itemRender: a11yItemRender, current: page, pageSize: PAGE_SIZE, total: fees.data?.totalCount ?? 0, onChange: setPage, showSizeChanger: false }}
         locale={{ emptyText: 'Chưa có khoản phí nào.' }}
       />
@@ -564,32 +603,50 @@ const ClientFees: React.FC = () => {
   );
 };
 
-export const ClientWarrantyPage: React.FC = () => (
-  <div className={`${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
-    {/* ── Compact header: the top bar already shows the page title ── */}
-    <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-1">
-      <div>
-        <div className="flex flex-wrap items-center gap-2.5">
-          <h1 className="sr-only">
-            Chính sách & quản lý bảo hành
-          </h1>
-          <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0C4A6E] border border-sky-100">
-            Tuyển dụng theo kết quả
-          </span>
-          <span className="text-xs text-slate-500">
-            Chỉ áp dụng cho Headhunt COD · Các gói Đăng tuyển (AP) &amp; Nguồn ứng viên (SS) không có bảo hành
-          </span>
+export const ClientWarrantyPage: React.FC = () => {
+  const navigate = useNavigate();
+  return (
+    <div className={`${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
+      {/* ── Compact header: the top bar already shows the page title ── */}
+      <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-1">
+        <div>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="sr-only">
+              Chính sách & quản lý bảo hành
+            </h1>
+            <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-[#0C4A6E] border border-sky-100">
+              Tuyển dụng theo kết quả
+            </span>
+            <span className="text-xs text-slate-500">
+              Chỉ áp dụng cho Tuyển dụng theo kết quả · Các gói Nhận hồ sơ ứng tuyển &amp; Tìm hồ sơ phù hợp không áp dụng bảo hành
+            </span>
+          </div>
         </div>
       </div>
+      <ReplacementQuotaCard mode="client" />
+      <h2 id="client-warranty-list" className="mb-3 mt-8 text-base font-semibold text-slate-900 tracking-tight">
+        Danh sách bảo hành ứng viên
+      </h2>
+      <WarrantyList mode="client" />
+      <div className="mb-3 mt-8 flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h2 className="m-0 text-base font-semibold text-slate-900 tracking-tight">Công nợ phí dịch vụ</h2>
+          <p className="m-0 mt-1 text-xs text-slate-500">
+            Phí = mức lương tháng trong thư mời nhận việc × hệ số phí. Hỗ trợ thanh toán trực tuyến qua VNPay hoặc chuyển khoản ngân hàng.
+          </p>
+        </div>
+        <Button
+          size="small"
+          className="!h-8 rounded-lg border-slate-200 font-medium text-[#0C4A6E] hover:!border-slate-300"
+          onClick={() => navigate('/client/billing')}
+        >
+          Đi tới trang Công nợ
+        </Button>
+      </div>
+      <ClientFees />
     </div>
-    <ReplacementQuotaCard mode="client" />
-    <h2 className="mb-3 mt-8 text-base font-semibold text-slate-900 tracking-tight">Danh sách bảo hành ứng viên</h2>
-    <WarrantyList mode="client" />
-    <h2 className="mb-3 mt-8 text-base font-semibold text-slate-900 tracking-tight">Công nợ phí dịch vụ</h2>
-    <p className="-mt-2 mb-3 text-xs text-slate-500">Phí = lương gross tháng trong offer × hệ số phí. Thanh toán bằng chuyển khoản; HR Connect ghi nhận khi nhận được tiền.</p>
-    <ClientFees />
-  </div>
-);
+  );
+};
 
 export const HrWarrantyPage: React.FC = () => (
   <div>

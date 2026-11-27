@@ -335,7 +335,7 @@ describe('ReplacementQuotaCard', () => {
     renderComponent({ mode: 'client' });
 
     expect(await screen.findByText(/Đã hoàn 40% \(8\.000\.000 đ\)/i, {}, { timeout: 10000 })).toBeInTheDocument();
-    expect(screen.getByText(/Mở 10\/10\/2026 · Cửa sổ 30 ngày/)).toBeInTheDocument();
+    expect(screen.getByText(/Mở 10\/10\/2026 · Hạn tìm thay 30 ngày/)).toBeInTheDocument();
     expect(screen.getByText('Lý do hủy: Client đóng vị trí tuyển dụng')).toBeInTheDocument();
     expect(financeApi.serviceFees).not.toHaveBeenCalled();
   });

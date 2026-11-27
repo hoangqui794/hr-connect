@@ -7,7 +7,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { App, Button, Modal } from 'antd';
+import { App, Button, Modal, Skeleton } from 'antd';
 import { CheckOutlined, CopyOutlined, CreditCardOutlined, InfoCircleOutlined, LockOutlined, PlusOutlined } from '@ant-design/icons';
 import { vnPayApi } from '@/services/api/financeApi';
 import { getApiErrorMessage } from '@/services/apiClient';
@@ -26,7 +26,7 @@ const CopyButton: React.FC<{
     type="button"
     aria-label={`Sao chép ${copyLabel}`}
     onClick={onClick}
-    className={`inline-flex min-h-[30px] shrink-0 items-center gap-1 rounded-md border px-2 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0369A1] focus-visible:ring-offset-1 [touch-action:manipulation] ${
+    className={`inline-flex min-h-[34px] shrink-0 items-center gap-1 rounded-md border px-2.5 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0369A1] focus-visible:ring-offset-1 [touch-action:manipulation] ${
       copied
         ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
         : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900'
@@ -250,7 +250,11 @@ export const BillingPaymentModal: React.FC<{ row: BillingRow | null; onClose: ()
 
             {/* Cột phải: Phương thức thanh toán */}
             <div className="flex flex-col justify-between space-y-5 md:col-span-7">
-              {vnPay.data && (
+              {vnPay.isLoading ? (
+                <div className="rounded-2xl border border-solid border-slate-200/80 bg-slate-50/50 p-4">
+                  <Skeleton active title={{ width: '42%' }} paragraph={{ rows: 2 }} />
+                </div>
+              ) : vnPay.data ? (
                 <div className="rounded-2xl border border-solid border-sky-200/80 bg-sky-50/40 p-4">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <span className="text-[13px] font-semibold text-slate-900">Thanh toán trực tuyến</span>
@@ -273,13 +277,13 @@ export const BillingPaymentModal: React.FC<{ row: BillingRow | null; onClose: ()
                     Hỗ trợ thẻ ATM nội địa, thẻ quốc tế hoặc quét mã QR ngân hàng.
                   </p>
                 </div>
-              )}
+              ) : null}
 
               <div>
                 {vnPay.data ? (
                   <div className="mb-2.5 flex items-center gap-3">
                     <span className="h-px flex-1 bg-slate-200" />
-                    <span className="text-xs font-medium text-slate-400">Hoặc chuyển khoản ngân hàng</span>
+                    <span className="text-xs font-medium text-slate-500">Hoặc chuyển khoản ngân hàng</span>
                     <span className="h-px flex-1 bg-slate-200" />
                   </div>
                 ) : (

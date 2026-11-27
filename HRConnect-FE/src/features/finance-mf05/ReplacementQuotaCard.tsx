@@ -377,7 +377,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
               <div className="mt-0.5 text-xs text-slate-500 tabular-nums">
                 {slot.openedAt ? `Mở ${date(slot.openedAt)}` : ''}
                 {slot.openedAt && slot.fillWindowDays > 0 ? ' · ' : ''}
-                {slot.fillWindowDays > 0 ? `Cửa sổ ${slot.fillWindowDays} ngày` : ''}
+                {slot.fillWindowDays > 0 ? `Hạn tìm thay ${slot.fillWindowDays} ngày` : ''}
               </div>
             )}
             {slot.status === 'OPEN' && (
@@ -430,7 +430,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
             </div>
           );
         }
-        return <span className="text-slate-400">—</span>;
+        return <span className="text-slate-500">—</span>;
       },
     },
     {
@@ -438,13 +438,13 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
       key: 'actions',
       align: 'right',
       render: (_, slot) => (
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
           {mode === 'client' && slot.status === 'WAITING_PAYMENT' && (
             <Button
               size="small"
               type="primary"
               icon={<CreditCardOutlined />}
-              className="!h-9 px-3 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold shadow-xs"
+              className="!h-8 px-3 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold shadow-xs"
               onClick={() => {
                 const params = new URLSearchParams();
                 if (slot.serviceFeeId) params.set('highlight', slot.serviceFeeId);
@@ -461,7 +461,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
               size="small"
               icon={<EyeOutlined />}
               aria-label={`Xem tin ${slot.jobTitle ?? ''}`}
-              className="!h-9 px-3 rounded-lg border-slate-200 text-[#0C4A6E] hover:border-slate-300 font-semibold"
+              className="!h-8 px-3 rounded-lg border-slate-200 text-[#0C4A6E] hover:border-slate-300 font-semibold"
               onClick={() => openJob(slot)}
             >
               Xem tin
@@ -472,7 +472,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
             <Button
               size="small"
               type="primary"
-              className="!h-9 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-xs"
+              className="!h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-xs"
               onClick={() => {
                 const params = new URLSearchParams({ status: 'REFUND' });
                 if (slot.refundServiceFeeId) params.set('highlight', slot.refundServiceFeeId);
@@ -489,7 +489,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
               size="small"
               icon={<UserOutlined />}
               aria-label={`Hồ sơ người thay cho ${slot.jobTitle ?? 'tin này'}`}
-              className="!h-9 px-3 rounded-lg border-slate-200 text-slate-700 hover:border-slate-300 font-medium"
+              className="!h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:border-slate-300 font-medium"
               onClick={() => openCandidates(slot)}
             >
               Hồ sơ người thay
@@ -499,7 +499,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
           {mode === 'client' && (slot.status === 'OPEN' || slot.status === 'WAITING_PAYMENT') && (
             slot.cancelRequestedAt ? (
               <Tooltip title={slot.cancelRequestReason || 'Yêu cầu hủy đang chờ HR Connect xác nhận'}>
-                <Tag color="orange" className="m-0 py-1 px-2.5 rounded-lg font-medium">
+                <Tag color="orange" tabIndex={0} className="m-0 py-1 px-2.5 rounded-lg font-medium">
                   Đã gửi yêu cầu hủy
                 </Tag>
               </Tooltip>
@@ -508,7 +508,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
                 size="small"
                 danger
                 icon={<CloseCircleOutlined />}
-                className="!h-9 px-3 rounded-lg font-medium"
+                className="!h-8 px-3 rounded-lg font-medium"
                 onClick={() => setRequestCancelTarget(slot)}
               >
                 Yêu cầu hủy
@@ -520,6 +520,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
             <Button
               size="small"
               danger
+              className="!h-8"
               icon={<CloseCircleOutlined />}
               onClick={() => setCancelTarget(slot)}
             >
@@ -530,6 +531,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
           {mode === 'hr' && (
             <Button
               size="small"
+              className="!h-8"
               icon={<EyeOutlined />}
               aria-label={`Chi tiết suất ${slot.replacementSlotId.slice(0, 8).toUpperCase()}`}
               onClick={() => setDetailPlacementId(slot.filledByPlacementId ?? slot.originalPlacementId)}
@@ -603,7 +605,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
 
           <div className="w-full sm:w-72">
             <Input
-              prefix={<SearchOutlined className="text-slate-400" />}
+              prefix={<SearchOutlined className="text-slate-500" />}
               placeholder="Tìm theo ứng viên, vị trí, mã..."
               aria-label="Tìm theo ứng viên, vị trí hoặc mã"
               value={searchQuery}
@@ -661,7 +663,15 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
                 Xóa bộ lọc
               </Button>
             ) : mode === 'client' ? (
-              <Button type="primary" onClick={() => navigate('/client/warranty')}>
+              <Button
+                type="primary"
+                onClick={() => {
+                  const el = document.getElementById('client-warranty-list');
+                  if (el && typeof el.scrollIntoView === 'function') {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                }}
+              >
                 Xem danh sách bảo hành
               </Button>
             ) : null}
@@ -674,7 +684,7 @@ export const ReplacementQuotaCard: React.FC<ReplacementQuotaCardProps> = ({
             columns={columns}
             dataSource={filteredSlots}
             pagination={{ itemRender: a11yItemRender, pageSize: 10, showSizeChanger: false }}
-            scroll={{ x: 800 }}
+            scroll={{ x: 980 }}
           />
         </Surface>
       )}

@@ -9,7 +9,7 @@ import React, { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'motion/react';
 import { Alert, App, Button, DatePicker, Drawer, Dropdown, Form, Input, InputNumber, Modal, Pagination, Radio, Select, Spin, Tag, Tooltip } from 'antd';
-import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, ReloadOutlined, SearchOutlined, SwapOutlined } from '@ant-design/icons';
+import { CaretDownOutlined, CaretUpOutlined, DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { financeApi } from '@/services/api/financeApi';
@@ -17,6 +17,7 @@ import { placementReconciliationApi } from '@/services/api/hrApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { Commission, CommissionStatus, Payout, ServiceFee, ServiceFeeStatus } from '@/types/api/finance';
 import { PageHero, StatTile, StatusDot } from '@/features/admin-console/ui';
+import { a11yItemRender } from '@/components/common/paginationA11y';
 import { matchesSearch } from '@/utils/searchMatch';
 import { PostingFeePaymentsPanel } from './PostingFeePaymentsPanel';
 import { COMMISSION_STATUS, PAYOUT_STATUS, SERVICE_FEE_KIND, SERVICE_FEE_STATUS, date, labelOf, money, OWED_FEE_STATUS, isOwedToClient } from './financeLabels';
@@ -45,12 +46,18 @@ const SECTIONS: { value: Tab; label: string }[] = [
 const COMMISSION_FILTERS: CommissionStatus[] = ['EARNED', 'PAYABLE', 'PENDING', 'IN_WARRANTY', 'ON_HOLD', 'PAID', 'CANCELLED'];
 const FEE_FILTERS: ServiceFeeStatus[] = ['PENDING', 'DUE', 'OVERDUE', 'PAID'];
 
-const KIND_SERVICE: Record<string, { short: string; color: string }> = {
-  PLACEMENT: { short: 'HH', color: 'gold' },
-  DEPOSIT: { short: 'SS', color: 'purple' },
-  SETTLEMENT: { short: 'SS', color: 'purple' },
-  CREDIT: { short: 'SS', color: 'purple' },
-  REPLACEMENT_REFUND: { short: 'HH', color: 'gold' },
+const KIND_SERVICE: Record<string, { short: string; label: string; color: string }> = {
+  PLACEMENT: { short: 'HH', label: 'Headhunt — Tuyển dụng theo kết quả', color: 'gold' },
+  DEPOSIT: { short: 'SS', label: 'CV Sourcing — Cung cấp hồ sơ', color: 'purple' },
+  SETTLEMENT: { short: 'SS', label: 'CV Sourcing — Cung cấp hồ sơ', color: 'purple' },
+  CREDIT: { short: 'SS', label: 'CV Sourcing — Hoàn cọc', color: 'purple' },
+  REPLACEMENT_REFUND: { short: 'HH', label: 'Headhunt — Hoàn phí thay thế', color: 'gold' },
+};
+
+const RECONCILIATION_STATUS: Record<string, { label: string; tone: 'warning' | 'success' | 'danger' | 'neutral' }> = {
+  PENDING: { label: 'Đang chờ đối soát', tone: 'warning' },
+  CONFIRMED: { label: 'Đã xác nhận đối soát', tone: 'success' },
+  FLAGGED: { label: 'Có sai lệch — cần xử lý', tone: 'danger' },
 };
 
 /** Number of rows for one status, from a one-row page (the API returns the total). */
@@ -80,6 +87,7 @@ export const AdminFinancePage: React.FC = () => {
   const [tab, setTab] = useState<Tab>('commissions');
   const [commissionStatus, setCommissionStatus] = useState<CommissionStatus | 'all'>('all');
   const [feeStatus, setFeeStatus] = useState<ServiceFeeStatus | 'all'>('all');
+  const [feeDirection, setFeeDirection] = useState<'all' | 'collect' | 'refund'>('all');
   const [searchText, setSearchText] = useState('');
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [pendingDeepLink, setPendingDeepLink] = useState<{
@@ -130,7 +138,7 @@ export const AdminFinancePage: React.FC = () => {
   const toApprove = useCount('commissions-EARNED', () => financeApi.commissions({ status: 'EARNED', page: 1, pageSize: 1 }));
   const toPay = useCount('commissions-PAYABLE', () => financeApi.commissions({ status: 'PAYABLE', page: 1, pageSize: 1 }));
 
-  const openFees = (status: ServiceFeeStatus) => { setTab('fees'); setFeeStatus(status); setPage(1); };
+  const openFees = (status: ServiceFeeStatus) => { setTab('fees'); setFeeStatus(status); setFeeDirection('all'); setPage(1); };
   const openCommissions = (status: CommissionStatus) => { setTab('commissions'); setCommissionStatus(status); setPage(1); };
 
   useEffect(() => {
@@ -268,25 +276,51 @@ export const AdminFinancePage: React.FC = () => {
       onOk: () => action.mutateAsync(() => financeApi.approveCommission(c.commissionId)),
     });
 
+  useEffect(() => {
+    if (!dialog) return;
+    if (dialog.kind === 'payout') {
+      form.setFieldsValue({
+        result: 'success',
+        payoutDate: dayjs(),
+        method: 'Chuyển khoản ngân hàng',
+        transactionReference: undefined,
+      });
+    } else if (dialog.kind === 'adjust') {
+      form.setFieldsValue({ newAmount: dialog.commission.amount, reason: undefined });
+    } else if (dialog.kind === 'cancel') {
+      form.resetFields();
+    } else {
+      form.setFieldsValue({ paidAt: dayjs(), paymentReference: undefined });
+    }
+  }, [dialog, form]);
+
   const submitDialog = async () => {
-    const v = await form.validateFields();
+    let v: Record<string, unknown>;
+    try {
+      v = await form.validateFields();
+    } catch {
+      return;
+    }
     if (!dialog) return;
     if (dialog.kind === 'payout') {
       action.mutate(() =>
         financeApi.recordPayout(dialog.commission.commissionId, {
           succeeded: v.result === 'success',
           payoutDate: (v.payoutDate as Dayjs).toISOString(),
-          method: v.method,
-          transactionReference: v.transactionReference,
+          method: v.method as string | undefined,
+          transactionReference: v.transactionReference as string | undefined,
         })
       );
     } else if (dialog.kind === 'adjust') {
-      action.mutate(() => financeApi.adjustCommission(dialog.commission.commissionId, v.newAmount, v.reason));
+      action.mutate(() => financeApi.adjustCommission(dialog.commission.commissionId, v.newAmount as number, v.reason as string));
     } else if (dialog.kind === 'cancel') {
-      action.mutate(() => financeApi.cancelCommission(dialog.commission.commissionId, v.reason));
+      action.mutate(() => financeApi.cancelCommission(dialog.commission.commissionId, v.reason as string));
     } else {
       action.mutate(() =>
-        financeApi.recordFeePayment(dialog.fee.serviceFeeId, { paidAt: (v.paidAt as Dayjs).toISOString(), paymentReference: v.paymentReference })
+        financeApi.recordFeePayment(dialog.fee.serviceFeeId, {
+          paidAt: (v.paidAt as Dayjs).toISOString(),
+          paymentReference: v.paymentReference as string,
+        })
       );
     }
   };
@@ -313,7 +347,8 @@ export const AdminFinancePage: React.FC = () => {
     const sorted = activeSortCol?.sortBy
       ? [...raw].sort((a, b) => (sort?.dir === 'asc' ? activeSortCol.sortBy!(a, b) : activeSortCol.sortBy!(b, a)))
       : raw;
-    const total = searchText.trim() ? sorted.length : (active?.data?.totalCount ?? 0);
+    const isClientFiltered = Boolean(searchText.trim()) || (tab === 'fees' && feeDirection !== 'all');
+    const total = isClientFiltered ? sorted.length : (active?.data?.totalCount ?? 0);
     // Fixed layout: every column keeps its width, the column without one takes the rest (at least 200px).
     // Below that width the table scrolls horizontally instead of squeezing columns together.
     const minWidth = cols.reduce((sum, c) => sum + (c.width ? parseInt(c.width, 10) : 200), 0);
@@ -323,7 +358,7 @@ export const AdminFinancePage: React.FC = () => {
     return (
       <Spin spinning={loading}>
         {!loading && sorted.length === 0 ? (
-          <div className="px-6 py-14 text-center text-sm text-slate-400">
+          <div className="px-6 py-14 text-center text-sm text-slate-500">
             <div>{searchText.trim() ? 'Không tìm thấy kết quả phù hợp trên trang này.' : emptyText}</div>
             {searchText.trim() && (
               <Button className="mt-3" onClick={() => setSearchText('')}>Xóa từ khóa tìm kiếm</Button>
@@ -339,9 +374,17 @@ export const AdminFinancePage: React.FC = () => {
                   {cols.map((col) => {
                     const alignCls = cellAlign(col.align);
                     const isSorted = sort?.key === col.key;
+                    const ariaSort = col.sortBy
+                      ? isSorted
+                        ? sort?.dir === 'asc'
+                          ? 'ascending'
+                          : 'descending'
+                        : 'none'
+                      : undefined;
                     return (
                       <th
                         key={col.key}
+                        aria-sort={ariaSort}
                         style={col.width ? { width: col.width } : undefined}
                         className={`border-0 border-b border-solid border-black/[0.08] bg-[#F9FAFC] px-3.5 py-3 text-[12px] font-medium tracking-[0.01em] text-[#4B5565] whitespace-nowrap ${alignCls}`}
                       >
@@ -358,9 +401,10 @@ export const AdminFinancePage: React.FC = () => {
                             }`}
                           >
                             <span>{col.title}</span>
-                            <SwapOutlined
-                              className={`rotate-90 text-[10px] ${isSorted ? 'text-blue-600' : 'text-slate-300'}`}
-                            />
+                            <span className="inline-flex flex-col leading-none" aria-hidden>
+                              <CaretUpOutlined className={`text-[9px] -mb-0.5 ${isSorted && sort?.dir === 'asc' ? 'text-blue-600' : 'text-slate-300'}`} />
+                              <CaretDownOutlined className={`text-[9px] ${isSorted && sort?.dir === 'desc' ? 'text-blue-600' : 'text-slate-300'}`} />
+                            </span>
                           </button>
                         ) : (
                           col.title
@@ -370,7 +414,7 @@ export const AdminFinancePage: React.FC = () => {
                   })}
                 </tr>
               </thead>
-              <tbody key={`${tab}-${commissionStatus}-${feeStatus}-${page}`} className="bg-white">
+              <tbody key={`${tab}-${commissionStatus}-${feeStatus}-${feeDirection}-${page}`} className="bg-white">
                 {sorted.map((row, idx) => {
                   const rowKey = String(getKey(row));
                   const isHighlighted = highlightedId !== null && highlightedId.toLowerCase() === rowKey.toLowerCase();
@@ -381,12 +425,23 @@ export const AdminFinancePage: React.FC = () => {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.24, delay: Math.min(idx, 10) * 0.025, ease: [0.22, 1, 0.36, 1] }}
+                    tabIndex={onRowClick ? 0 : undefined}
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
+                    onKeyDown={
+                      onRowClick
+                        ? (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              onRowClick(row);
+                            }
+                          }
+                        : undefined
+                    }
                     className={`group transition-colors duration-150 [&:last-child>td]:border-b-0 ${
                       isHighlighted
                         ? 'admin-row-highlight font-semibold'
                         : 'hover:bg-slate-50/90'
-                    } ${onRowClick ? 'cursor-pointer' : ''}`}
+                    } ${onRowClick ? 'cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-500' : ''}`}
                   >
                     {cols.map((col) => {
                       const alignCls = cellAlign(col.align);
@@ -411,6 +466,7 @@ export const AdminFinancePage: React.FC = () => {
               total={total}
               onChange={setPage}
               showSizeChanger={false}
+              itemRender={a11yItemRender}
               size="small"
             />
           </div>
@@ -422,7 +478,7 @@ export const AdminFinancePage: React.FC = () => {
   const commissionColumns: SimpleCol<Commission>[] = [
     {
       key: 'who',
-      title: 'Ứng viên / Job / Affiliate',
+      title: 'Ứng viên / Vị trí / Affiliate',
       render: (c) => {
         const isSourcing = Boolean(c.sourcingDeliveryId && !c.placementId);
         return (
@@ -436,7 +492,7 @@ export const AdminFinancePage: React.FC = () => {
             <Tooltip title={[c.jobTitle, c.affiliateName].filter(Boolean).join(' · ') || undefined}>
               <div className="text-xs text-slate-500 line-clamp-1 mt-0.5">
                 {c.jobTitle ?? '—'}
-                {c.affiliateName ? <span className="text-slate-400"> · {c.affiliateName}</span> : null}
+                {c.affiliateName ? <span className="text-slate-500"> · {c.affiliateName}</span> : null}
               </div>
             </Tooltip>
           </div>
@@ -447,15 +503,15 @@ export const AdminFinancePage: React.FC = () => {
       key: 'amount',
       title: 'Hoa hồng',
       align: 'right',
-      width: '135px',
+      width: '145px',
       sortBy: (a, b) => a.amount - b.amount,
       render: (c) => {
         const isSourcing = Boolean(c.sourcingDeliveryId && !c.placementId);
         return (
           <div className="text-right whitespace-nowrap">
             <div className="font-mono font-semibold text-slate-900 tabular-nums">{money(c.amount)}</div>
-            <div className="text-[11px] text-slate-400 tabular-nums mt-0.5">
-              {isSourcing && !c.warrantyEndDate ? 'Không áp dụng' : `BH: ${date(c.warrantyEndDate)}`}
+            <div className="text-[11px] text-slate-500 tabular-nums mt-0.5">
+              {isSourcing && !c.warrantyEndDate ? 'Không áp dụng' : `Bảo hành: ${date(c.warrantyEndDate)}`}
             </div>
           </div>
         );
@@ -515,14 +571,14 @@ export const AdminFinancePage: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             {c.status === 'EARNED' && (
-              <Tooltip title={c.serviceFeeStatus !== 'PAID' ? 'Cần ghi nhận Client thanh toán phí dịch vụ trước khi duyệt chi' : 'Duyệt cho phép chi trả hoa hồng này'}>
+              <Tooltip title={c.serviceFeeStatus !== 'PAID' ? 'Cần ghi nhận doanh nghiệp thanh toán phí dịch vụ trước khi duyệt chi' : 'Duyệt cho phép chi trả hoa hồng này'}>
                 <span className="inline-block">
                   <Button
                     size="small"
                     type="primary"
-                    className={`!h-7 !px-3 !text-xs !font-medium !rounded-md !shadow-none active:scale-[0.985] ${
+                    className={`!h-8 !px-3 !text-xs !font-medium !rounded-md !shadow-none active:scale-[0.985] ${
                       c.serviceFeeStatus !== 'PAID'
-                        ? '!border-transparent !bg-slate-100 !text-slate-400 hover:!bg-slate-100'
+                        ? '!border-transparent !bg-slate-100 !text-slate-500 hover:!bg-slate-100'
                         : ''
                     }`}
                     disabled={c.serviceFeeStatus !== 'PAID'}
@@ -537,8 +593,8 @@ export const AdminFinancePage: React.FC = () => {
               <Button
                 size="small"
                 type="primary"
-                className="!h-7 !px-3 !text-xs !font-medium !rounded-md !shadow-none active:scale-[0.985]"
-                onClick={() => { form.setFieldsValue({ result: 'success', payoutDate: dayjs(), method: 'Chuyển khoản ngân hàng' }); setDialog({ kind: 'payout', commission: c }); }}
+                className="!h-8 !px-3 !text-xs !font-medium !rounded-md !shadow-none active:scale-[0.985]"
+                onClick={() => setDialog({ kind: 'payout', commission: c })}
               >
                 Ghi nhận chi
               </Button>
@@ -564,7 +620,9 @@ export const AdminFinancePage: React.FC = () => {
                             onClick: () => {
                               setTab('fees');
                               setFeeStatus('all');
+                              setFeeDirection('all');
                               setPage(1);
+                              setSearchText(c.candidateName ?? c.jobTitle ?? '');
                             },
                           },
                         ]
@@ -573,7 +631,7 @@ export const AdminFinancePage: React.FC = () => {
                       key: 'adjust',
                       icon: <EditOutlined />,
                       label: 'Điều chỉnh số tiền',
-                      onClick: () => { form.setFieldsValue({ newAmount: c.amount }); setDialog({ kind: 'adjust', commission: c }); },
+                      onClick: () => setDialog({ kind: 'adjust', commission: c }),
                     },
                     {
                       key: 'cancel',
@@ -590,7 +648,7 @@ export const AdminFinancePage: React.FC = () => {
                   size="small"
                   icon={<MoreOutlined />}
                   aria-label={`Thao tác khác: ${c.candidateName ?? c.commissionId}`}
-                  className="!h-7 !w-7 !rounded-md text-slate-400 hover:!text-slate-900 hover:!bg-slate-100"
+                  className="!h-8 !w-8 !rounded-md text-slate-500 hover:!text-slate-900 hover:!bg-slate-100"
                 />
               </Dropdown>
             )}
@@ -609,7 +667,9 @@ export const AdminFinancePage: React.FC = () => {
         const svc = KIND_SERVICE[kind];
         return (
           <div className="flex items-start gap-2.5 min-w-0">
-            <Tag color={svc.color} className="m-0 mt-0.5 font-semibold shrink-0">{svc.short}</Tag>
+            <Tooltip title={svc.label}>
+              <Tag color={svc.color} tabIndex={0} className="m-0 mt-0.5 font-semibold shrink-0">{svc.short}</Tag>
+            </Tooltip>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="font-semibold text-slate-900">{f.companyName ?? '—'}</span>
@@ -637,19 +697,19 @@ export const AdminFinancePage: React.FC = () => {
       key: 'amount',
       title: 'Số tiền',
       align: 'right',
-      width: '135px',
+      width: '140px',
       sortBy: (a, b) => a.amount - b.amount,
       render: (f) => (
         <div className="text-right whitespace-nowrap">
           <div className="font-mono font-semibold text-slate-900 tabular-nums">{money(f.amount, f.currencyCode)}</div>
-          {isOwedToClient(f.kind) && <div className="text-[11px] text-amber-700 mt-0.5">Hoàn cho Client</div>}
+          {isOwedToClient(f.kind) && <div className="text-[11px] text-amber-700 mt-0.5">Hoàn cho doanh nghiệp</div>}
         </div>
       ),
     },
     {
       key: 'status',
       title: 'Trạng thái / Thanh toán',
-      width: '230px',
+      width: '240px',
       sortBy: (a, b) => byDateDesc(b.paidAt ?? b.dueDate, a.paidAt ?? a.dueDate),
       render: (f) => {
         const s = (isOwedToClient(f.kind) && OWED_FEE_STATUS[f.status]) || labelOf(SERVICE_FEE_STATUS, f.status);
@@ -669,7 +729,7 @@ export const AdminFinancePage: React.FC = () => {
                 <span>Hạn: {date(f.dueDate)}</span>
                 {open && days !== null && (
                   <span className={`font-medium ${days < 0 ? 'text-red-600' : days <= 3 ? 'text-amber-700' : 'text-slate-500'}`}>
-                    ({days < 0 ? `Quá hạn ${-days}n` : days === 0 ? 'Hôm nay' : `Còn ${days}n`})
+                    ({days < 0 ? `Quá hạn ${-days} ngày` : days === 0 ? 'Hôm nay' : `Còn ${days} ngày`})
                   </span>
                 )}
               </div>
@@ -682,39 +742,51 @@ export const AdminFinancePage: React.FC = () => {
       key: 'actions',
       title: 'Thao tác',
       align: 'right',
-      width: '170px',
+      width: '195px',
       render: (f) => {
         const canRecord = f.status === 'PENDING' || f.status === 'DUE' || f.status === 'OVERDUE';
         const waitingForReconciliation = Boolean(f.reconciliationStatus && f.reconciliationStatus !== 'CONFIRMED');
         return (
           <div
-            className="flex items-center justify-end whitespace-nowrap"
+            className="flex items-center justify-end gap-1.5 whitespace-nowrap"
             onClick={(e) => e.stopPropagation()}
           >
             {canRecord ? (
-              <Tooltip title={waitingForReconciliation ? 'Chờ Internal HR hoàn tất đối soát nhận việc' : undefined}>
-                <span>
+              <>
+                <Tooltip title={waitingForReconciliation ? 'Chờ nhân sự nội bộ hoàn tất đối soát nhận việc' : undefined}>
+                  <span>
+                    <Button
+                      size="small"
+                      type="primary"
+                      className={`!h-8 !px-3 !text-xs !font-medium !rounded-md !shadow-none whitespace-nowrap active:scale-[0.985] ${
+                        waitingForReconciliation
+                          ? '!border-transparent !bg-slate-100 !text-slate-500 hover:!bg-slate-100'
+                          : ''
+                      }`}
+                      disabled={waitingForReconciliation}
+                      onClick={() => setDialog({ kind: 'fee', fee: f })}
+                    >
+                      {waitingForReconciliation ? 'Chờ đối soát' : isOwedToClient(f.kind) ? 'Ghi nhận đã hoàn' : 'Ghi nhận đã thu'}
+                    </Button>
+                  </span>
+                </Tooltip>
+                <Tooltip title="Xem chi tiết">
                   <Button
+                    type="text"
                     size="small"
-                    type="primary"
-                    className={`!h-7 !px-3 !text-xs !font-medium !rounded-md !shadow-none whitespace-nowrap active:scale-[0.985] ${
-                      waitingForReconciliation
-                        ? '!border-transparent !bg-slate-100 !text-slate-400 hover:!bg-slate-100'
-                        : ''
-                    }`}
-                    disabled={waitingForReconciliation}
-                    onClick={() => { form.setFieldsValue({ paidAt: dayjs() }); setDialog({ kind: 'fee', fee: f }); }}
-                  >
-                    {waitingForReconciliation ? 'Chờ đối soát' : isOwedToClient(f.kind) ? 'Ghi nhận đã hoàn' : 'Ghi nhận đã thu'}
-                  </Button>
-                </span>
-              </Tooltip>
+                    icon={<EyeOutlined />}
+                    aria-label={`Xem chi tiết khoản phí ${f.companyName ?? f.serviceFeeId}`}
+                    onClick={() => setDetail({ kind: 'fee', item: f })}
+                    className="!h-8 !w-8 !rounded-md text-slate-500 hover:!text-slate-900 hover:!bg-slate-100"
+                  />
+                </Tooltip>
+              </>
             ) : (
               <button
                 type="button"
                 aria-label={`Xem chi tiết khoản phí ${f.companyName ?? f.serviceFeeId}`}
                 onClick={() => setDetail({ kind: 'fee', item: f })}
-                className="inline-flex items-center rounded-md border-0 bg-transparent px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
+                className="inline-flex h-8 items-center rounded-md border-0 bg-transparent px-2.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
               >
                 Chi tiết
               </button>
@@ -769,11 +841,29 @@ export const AdminFinancePage: React.FC = () => {
     {
       key: 'status',
       title: 'Kết quả',
-      width: '175px',
+      width: '165px',
       render: (p) => {
         const s = labelOf(PAYOUT_STATUS, p.status);
         return <StatusDot tone={s.tone}>{s.label}</StatusDot>;
       },
+    },
+    {
+      key: 'actions',
+      title: 'Thao tác',
+      align: 'right',
+      width: '100px',
+      render: (p) => (
+        <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            aria-label={`Xem chi tiết lần chi ${p.affiliateName ?? p.payoutId}`}
+            onClick={() => setDetail({ kind: 'payout', item: p })}
+            className="inline-flex h-8 items-center rounded-md border-0 bg-transparent px-2.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
+          >
+            Chi tiết
+          </button>
+        </div>
+      ),
     },
   ];
 
@@ -843,15 +933,29 @@ export const AdminFinancePage: React.FC = () => {
             role="tablist"
             aria-label="Mục tài chính"
             className="inline-flex flex-wrap items-center gap-1 rounded-xl bg-slate-200/70 p-1"
+            onKeyDown={(e) => {
+              if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+              e.preventDefault();
+              const idx = SECTIONS.findIndex((item) => item.value === tab);
+              const nextIdx = e.key === 'ArrowRight'
+                ? (idx + 1) % SECTIONS.length
+                : (idx - 1 + SECTIONS.length) % SECTIONS.length;
+              setTab(SECTIONS[nextIdx].value);
+              setPage(1);
+              setSearchText('');
+            }}
           >
             {SECTIONS.map((s) => {
               const selected = tab === s.value;
               return (
                 <button
                   key={s.value}
+                  id={`finance-tab-${s.value}`}
                   type="button"
                   role="tab"
                   aria-selected={selected}
+                  aria-controls={`finance-panel-${s.value}`}
+                  tabIndex={selected ? 0 : -1}
                   onClick={() => { setTab(s.value); setPage(1); setSearchText(''); }}
                   className={`relative cursor-pointer rounded-lg border-0 bg-transparent px-3.5 py-1.5 text-[13.5px] transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--console-accent)] ${
                     selected
@@ -875,15 +979,15 @@ export const AdminFinancePage: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2.5">
             <Input
               allowClear
-              prefix={<SearchOutlined className="text-slate-400" />}
+              prefix={<SearchOutlined className="text-slate-500" />}
               placeholder={
                 tab === 'commissions'
-                  ? 'Tìm ứng viên, job, Affiliate...'
+                  ? 'Tìm ứng viên, vị trí, Affiliate...'
                   : tab === 'fees'
-                    ? 'Tìm doanh nghiệp, job, ứng viên, mã tham chiếu...'
+                    ? 'Tìm doanh nghiệp, vị trí, ứng viên, mã tham chiếu...'
                     : tab === 'postingFees'
                       ? 'Tìm tin tuyển dụng, doanh nghiệp, gói...'
-                      : 'Tìm Affiliate, ứng viên, job, mã giao dịch...'
+                      : 'Tìm Affiliate, ứng viên, vị trí, mã giao dịch...'
               }
               aria-label="Tìm kiếm tài chính"
               value={searchText}
@@ -891,32 +995,53 @@ export const AdminFinancePage: React.FC = () => {
               className="w-full sm:w-[290px]"
             />
             {(tab === 'commissions' || tab === 'fees') && (
-              <label className="flex items-center gap-2 text-[13px] font-medium text-slate-600">
-                <span>Trạng thái</span>
-                {tab === 'commissions' ? (
-                  <Select<CommissionStatus | 'all'>
-                    aria-label="Trạng thái hoa hồng"
-                    className="w-56"
-                    value={commissionStatus}
-                    onChange={(v) => { setCommissionStatus(v); setPage(1); }}
-                    options={[{ value: 'all', label: 'Tất cả' }, ...COMMISSION_FILTERS.map((s) => ({ value: s, label: COMMISSION_STATUS[s].label }))]}
-                  />
-                ) : (
-                  <Select<ServiceFeeStatus | 'all'>
-                    aria-label="Trạng thái phí"
-                    className="w-48"
-                    value={feeStatus}
-                    onChange={(v) => { setFeeStatus(v); setPage(1); }}
-                    options={[{ value: 'all', label: 'Tất cả' }, ...FEE_FILTERS.map((s) => ({ value: s, label: SERVICE_FEE_STATUS[s].label }))]}
-                  />
+              <>
+                {tab === 'fees' && (
+                  <label className="flex items-center gap-2 text-[13px] font-medium text-slate-600">
+                    <span>Loại khoản</span>
+                    <Select<'all' | 'collect' | 'refund'>
+                      aria-label="Loại khoản phí"
+                      className="w-40"
+                      value={feeDirection}
+                      onChange={(v) => setFeeDirection(v)}
+                      options={[
+                        { value: 'all', label: 'Tất cả' },
+                        { value: 'collect', label: 'Thu phí' },
+                        { value: 'refund', label: owedPending > 0 ? `Hoàn tiền (${owedPending})` : 'Hoàn tiền' },
+                      ]}
+                    />
+                  </label>
                 )}
-              </label>
+                <label className="flex items-center gap-2 text-[13px] font-medium text-slate-600">
+                  <span>Trạng thái</span>
+                  {tab === 'commissions' ? (
+                    <Select<CommissionStatus | 'all'>
+                      aria-label="Trạng thái hoa hồng"
+                      className="w-56"
+                      value={commissionStatus}
+                      onChange={(v) => { setCommissionStatus(v); setPage(1); }}
+                      options={[{ value: 'all', label: 'Tất cả' }, ...COMMISSION_FILTERS.map((s) => ({ value: s, label: COMMISSION_STATUS[s].label }))]}
+                    />
+                  ) : (
+                    <Select<ServiceFeeStatus | 'all'>
+                      aria-label="Trạng thái phí"
+                      className="w-48"
+                      value={feeStatus}
+                      onChange={(v) => { setFeeStatus(v); setPage(1); }}
+                      options={[{ value: 'all', label: 'Tất cả' }, ...FEE_FILTERS.map((s) => ({ value: s, label: SERVICE_FEE_STATUS[s].label }))]}
+                    />
+                  )}
+                </label>
+              </>
             )}
           </div>
         </div>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={tab}
+            id={`finance-panel-${tab}`}
+            role="tabpanel"
+            aria-labelledby={`finance-tab-${tab}`}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
@@ -934,9 +1059,11 @@ export const AdminFinancePage: React.FC = () => {
             )}
             {tab === 'fees' && renderDataTable(
               feeColumns,
-              (fees.data?.items ?? []).filter((f) =>
-                matchesSearch(searchText, f.companyName, f.jobTitle, f.candidateName, f.paymentReference)
-              ),
+              (fees.data?.items ?? []).filter((f) => {
+                if (feeDirection === 'collect' && isOwedToClient(f.kind)) return false;
+                if (feeDirection === 'refund' && !isOwedToClient(f.kind)) return false;
+                return matchesSearch(searchText, f.companyName, f.jobTitle, f.candidateName, f.paymentReference);
+              }),
               (f) => f.serviceFeeId,
               fees.isFetching,
               'Chưa có công nợ phí nào.',
@@ -966,7 +1093,7 @@ export const AdminFinancePage: React.FC = () => {
       <Drawer
         open={Boolean(detail)}
         onClose={() => setDetail(null)}
-        width={520}
+        width="min(520px, 100vw)"
         title={
           detail?.kind === 'commission' ? 'Chi tiết hoa hồng'
             : detail?.kind === 'fee' ? 'Chi tiết công nợ phí'
@@ -1047,7 +1174,6 @@ export const AdminFinancePage: React.FC = () => {
                     type="primary"
                     onClick={() => {
                       setDetail(null);
-                      form.setFieldsValue({ result: 'success', payoutDate: dayjs(), method: 'Chuyển khoản ngân hàng' });
                       setDialog({ kind: 'payout', commission: c });
                     }}
                   >
@@ -1056,7 +1182,7 @@ export const AdminFinancePage: React.FC = () => {
                 )}
                 {!['PAID', 'CANCELLED'].includes(c.status) && (
                   <>
-                    <Button onClick={() => { setDetail(null); form.setFieldsValue({ newAmount: c.amount }); setDialog({ kind: 'adjust', commission: c }); }}>
+                    <Button onClick={() => { setDetail(null); setDialog({ kind: 'adjust', commission: c }); }}>
                       Điều chỉnh số tiền
                     </Button>
                     <Button danger onClick={() => { setDetail(null); setDialog({ kind: 'cancel', commission: c }); }}>
@@ -1116,15 +1242,23 @@ export const AdminFinancePage: React.FC = () => {
                         {f.paymentReference && <span className="font-mono text-xs text-slate-600">{f.paymentReference}</span>}
                       </div>
                     ) : (
-                      <span className="text-slate-400">{isOwedToClient(f.kind) ? 'Chưa hoàn tiền' : 'Chưa thanh toán'}</span>
+                      <span className="text-slate-500">{isOwedToClient(f.kind) ? 'Chưa hoàn tiền' : 'Chưa thanh toán'}</span>
                     )}
                   </dd>
-                  {f.reconciliationStatus && (
-                    <>
-                      <dt className="text-slate-500">Đối soát</dt>
-                      <dd className="m-0 font-medium text-slate-800">{f.reconciliationStatus}</dd>
-                    </>
-                  )}
+                  {f.reconciliationStatus && (() => {
+                    const rec = RECONCILIATION_STATUS[f.reconciliationStatus] ?? {
+                      label: f.reconciliationStatus,
+                      tone: 'neutral' as const,
+                    };
+                    return (
+                      <>
+                        <dt className="text-slate-500">Đối soát</dt>
+                        <dd className="m-0">
+                          <StatusDot tone={rec.tone}>{rec.label}</StatusDot>
+                        </dd>
+                      </>
+                    );
+                  })()}
                   <dt className="text-slate-500">Mã khoản phí</dt>
                   <dd className="m-0 font-mono text-xs text-slate-600 break-all">{f.serviceFeeId}</dd>
                 </dl>
@@ -1135,7 +1269,7 @@ export const AdminFinancePage: React.FC = () => {
                   <Button
                     type="primary"
                     disabled={waitingForReconciliation}
-                    onClick={() => { setDetail(null); form.setFieldsValue({ paidAt: dayjs() }); setDialog({ kind: 'fee', fee: f }); }}
+                    onClick={() => { setDetail(null); setDialog({ kind: 'fee', fee: f }); }}
                   >
                     {waitingForReconciliation ? 'Chờ đối soát' : isOwedToClient(f.kind) ? 'Ghi nhận đã hoàn' : 'Ghi nhận đã thu'}
                   </Button>
@@ -1191,7 +1325,7 @@ export const AdminFinancePage: React.FC = () => {
           dialog?.kind === 'payout' ? 'Ghi nhận chi hoa hồng'
             : dialog?.kind === 'adjust' ? 'Điều chỉnh số tiền hoa hồng'
               : dialog?.kind === 'cancel' ? 'Hủy hoa hồng'
-                : dialog?.kind === 'fee' && isOwedToClient(dialog.fee.kind) ? 'Ghi nhận đã hoàn tiền cho Client' : 'Ghi nhận Client đã thanh toán phí'
+                : dialog?.kind === 'fee' && isOwedToClient(dialog.fee.kind) ? 'Ghi nhận đã hoàn tiền cho doanh nghiệp' : 'Ghi nhận doanh nghiệp đã thanh toán phí'
         }
         okText="Xác nhận"
         cancelText="Đóng"
@@ -1245,7 +1379,20 @@ export const AdminFinancePage: React.FC = () => {
           {dialog?.kind === 'adjust' && (
             <>
               <Form.Item name="newAmount" label="Số tiền mới (VND)" rules={[{ required: true, message: 'Nhập số tiền.' }]}>
-                <InputNumber<number> className="w-full" min={0} step={100000} formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')} parser={(v) => Number((v ?? '').replace(/\./g, ''))} />
+                <InputNumber<number>
+                  className="w-full"
+                  min={0}
+                  step={100000}
+                  formatter={(v) =>
+                    v === undefined || v === null || `${v}` === ''
+                      ? ''
+                      : `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+                  }
+                  parser={(v) => {
+                    const digits = (v ?? '').replace(/[^\d]/g, '');
+                    return digits ? Number(digits) : 0;
+                  }}
+                />
               </Form.Item>
               <Form.Item name="reason" label="Lý do" rules={[{ required: true, whitespace: true, message: 'Nhập lý do.' }, { max: 1000 }]}>
                 <Input.TextArea rows={3} placeholder="Số cũ và số mới được lưu kèm lý do và người điều chỉnh." />
@@ -1259,8 +1406,8 @@ export const AdminFinancePage: React.FC = () => {
           )}
           {dialog?.kind === 'fee' && (
             <>
-              <Alert className="mb-4" type="info" showIcon message={`${dialog.fee.companyName ?? 'Client'} — ${money(dialog.fee.amount, dialog.fee.currencyCode)}. Đối chiếu sao kê trước khi ghi nhận.`} />
-              <Form.Item name="paidAt" label={isOwedToClient(dialog.fee.kind) ? 'Ngày chuyển tiền cho Client' : 'Ngày Client thanh toán'} rules={[{ required: true, message: 'Chọn ngày.' }]}>
+              <Alert className="mb-4" type="info" showIcon message={`${dialog.fee.companyName ?? 'Doanh nghiệp'} — ${money(dialog.fee.amount, dialog.fee.currencyCode)}. Đối chiếu sao kê trước khi ghi nhận.`} />
+              <Form.Item name="paidAt" label={isOwedToClient(dialog.fee.kind) ? 'Ngày chuyển tiền cho doanh nghiệp' : 'Ngày doanh nghiệp thanh toán'} rules={[{ required: true, message: 'Chọn ngày.' }]}>
                 <DatePicker className="w-full" format="DD/MM/YYYY" disabledDate={(d) => d.isAfter(dayjs(), 'day')} />
               </Form.Item>
               <Form.Item name="paymentReference" label="Mã tham chiếu chuyển khoản" rules={[{ required: true, whitespace: true, message: 'Nhập mã tham chiếu.' }, { max: 200 }]}>

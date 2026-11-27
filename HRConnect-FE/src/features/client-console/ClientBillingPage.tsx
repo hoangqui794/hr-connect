@@ -308,12 +308,15 @@ const Kpi: React.FC<{
   value: string;
   hint: string;
   tone?: 'danger' | 'success' | 'info';
+  active?: boolean;
   onClick?: () => void;
-}> = ({ label, value, hint, tone, onClick }) => {
+}> = ({ label, value, hint, tone, active, onClick }) => {
   const content = (
     <Surface
       padded
-      className={`!px-4 !py-3 shadow-xs transition-shadow hover:shadow-sm ${onClick ? 'cursor-pointer hover:border-sky-300' : ''}`}
+      className={`!px-4 !py-3 shadow-xs transition-all hover:shadow-sm ${
+        onClick ? 'cursor-pointer hover:border-sky-300' : ''
+      } ${active ? '!border-sky-500 ring-2 ring-sky-100' : ''}`}
     >
       <div className="text-[13px] font-medium text-slate-600">{label}</div>
       <div
@@ -331,6 +334,7 @@ const Kpi: React.FC<{
     <div
       role="button"
       tabIndex={0}
+      aria-pressed={active}
       onClick={onClick}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -638,18 +642,18 @@ export const ClientBillingPage: React.FC = () => {
               </Tooltip>
             ) : blockedByVnpay ? (
               <Tooltip title="Đang có giao dịch VNPay chờ kết quả xác nhận">
-                <span className="inline-block w-[110px] text-center text-amber-700 text-[11.5px] font-medium">VNPay chờ XL</span>
+                <span className="inline-block w-[115px] text-center text-amber-700 text-[11.5px] font-medium">VNPay chờ xử lý</span>
               </Tooltip>
             ) : blockedBySubmittedTransfer ? (
               <Tooltip title="Đã gửi xác nhận chuyển khoản, đang chờ HR Connect đối soát">
-                <span className="inline-block w-[110px] text-center text-sky-700 text-[11.5px] font-medium">Chờ xác nhận</span>
+                <span className="inline-block w-[115px] text-center text-sky-700 text-[11.5px] font-medium">Chờ xác nhận</span>
               </Tooltip>
             ) : reconcileHint ? (
               <Tooltip title={`Chưa mở thanh toán: ${reconcileHint}`}>
                 <span className="inline-block w-[100px] text-center text-sky-700 text-[11.5px] font-medium">Chờ đối soát</span>
               </Tooltip>
             ) : (
-              <span className="inline-block w-[100px] text-center text-slate-400 text-xs">—</span>
+              <span className="inline-block w-[100px] text-center text-slate-500 text-xs">—</span>
             )}
           </div>
         );
@@ -755,17 +759,47 @@ export const ClientBillingPage: React.FC = () => {
       </div>
 
       <div className={`mb-4 grid gap-3 ${pendingRefundCount > 0 ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-3'}`}>
-        <Kpi label="Cần thanh toán" value={money(unpaidTotal.amount, unpaidTotal.currency)} hint={`${unpaidCount} khoản chưa thanh toán`} />
-        <Kpi label="Quá hạn" value={money(overdueTotal.amount, overdueTotal.currency)} hint={`${overdueCount} khoản quá hạn`} tone={overdueCount ? 'danger' : undefined} />
-        <Kpi label="Đã thanh toán" value={money(paidTotal.amount, paidTotal.currency)} hint={`${paidCount} khoản`} tone="success" />
+        <Kpi
+          label="Cần thanh toán"
+          value={money(unpaidTotal.amount, unpaidTotal.currency)}
+          hint={`${unpaidCount} khoản chưa thanh toán`}
+          active={status === 'UNPAID'}
+          onClick={() => {
+            setStatus((prev) => (prev === 'UNPAID' ? 'all' : 'UNPAID'));
+            setPage(1);
+          }}
+        />
+        <Kpi
+          label="Quá hạn"
+          value={money(overdueTotal.amount, overdueTotal.currency)}
+          hint={`${overdueCount} khoản quá hạn`}
+          tone={overdueCount ? 'danger' : undefined}
+          active={status === 'OVERDUE'}
+          onClick={() => {
+            setStatus((prev) => (prev === 'OVERDUE' ? 'all' : 'OVERDUE'));
+            setPage(1);
+          }}
+        />
+        <Kpi
+          label="Đã thanh toán"
+          value={money(paidTotal.amount, paidTotal.currency)}
+          hint={`${paidCount} khoản`}
+          tone="success"
+          active={status === 'PAID'}
+          onClick={() => {
+            setStatus((prev) => (prev === 'PAID' ? 'all' : 'PAID'));
+            setPage(1);
+          }}
+        />
         {pendingRefundCount > 0 && (
           <Kpi
             label="HR Connect cần hoàn"
             value={money(Math.abs(refundTotal.amount), refundTotal.currency)}
             hint={`${pendingRefundCount} khoản chờ hoàn tiền`}
             tone="info"
+            active={status === 'REFUND'}
             onClick={() => {
-              setStatus('REFUND');
+              setStatus((prev) => (prev === 'REFUND' ? 'all' : 'REFUND'));
               setPage(1);
             }}
           />
@@ -804,15 +838,15 @@ export const ClientBillingPage: React.FC = () => {
             />
             <Input
               allowClear
-              prefix={<SearchOutlined className="text-slate-400" />}
-              placeholder="Tìm tin tuyển dụng, ứng viên, khoản phí, mã GD..."
+              prefix={<SearchOutlined className="text-slate-500" />}
+              placeholder="Tìm tin tuyển dụng, ứng viên, khoản phí, mã giao dịch..."
               aria-label="Tìm kiếm công nợ và phí dịch vụ"
               value={searchText}
               onChange={(e) => {
                 setSearchText(e.target.value);
                 setPage(1);
               }}
-              className="w-full sm:w-[320px] !rounded-xl"
+              className="w-full sm:w-[340px] !rounded-xl"
             />
           </div>
           <FilterPills<StatusFilter>
@@ -847,7 +881,7 @@ export const ClientBillingPage: React.FC = () => {
             columns={columns}
             dataSource={visible}
             loading={loading}
-            scroll={{ x: 1200 }}
+            scroll={{ x: 1260 }}
             pagination={{ itemRender: a11yItemRender, current: page, pageSize: PAGE_SIZE, total: visible.length, onChange: setPage, showSizeChanger: false, hideOnSinglePage: true }}
             locale={{
               emptyText: (

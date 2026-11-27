@@ -271,7 +271,7 @@ describe('PlacementDetailPage & PlacementDetailView', () => {
     expect(dateInput.value).toBe(initialValue);
 
     fireEvent.click(cellFor(inRangeDay)!);
-    await waitFor(() => expect(dateInput.value).toBe(inRangeDay));
+    await waitFor(() => expect(dateInput.value).toBe(dayjs(inRangeDay).format('DD/MM/YYYY')));
   });
 
   it('allows internal HR to resolve resignation when warranty is claimed', async () => {

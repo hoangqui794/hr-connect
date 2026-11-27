@@ -8,6 +8,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Input, Pagination, Skeleton, Tag } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
+import { a11yItemRender } from '@/components/common/paginationA11y';
 import { affiliateBankApi, financeApi } from '@/services/api/financeApi';
 import { getApiErrorMessage } from '@/services/apiClient';
 import type { Commission, CommissionStatus } from '@/types/api/finance';
@@ -29,7 +30,7 @@ const STATUS_CHIP: Record<CommissionStatus, { label: string; tone: string }> = {
 
 const statusChipFor = (c: Commission): { label: string; tone: string } => {
   if (c.status === 'EARNED' && c.serviceFeeStatus === 'PAID') {
-    return { label: 'Chờ Admin duyệt', tone: 'info' };
+    return { label: 'Chờ HR Connect duyệt', tone: 'info' };
   }
   return STATUS_CHIP[c.status] ?? { label: c.status, tone: 'neutral' };
 };
@@ -50,10 +51,10 @@ const statusNote = (c: Commission): string | null => {
     }
     case 'EARNED':
       return c.serviceFeeStatus === 'PAID'
-        ? 'Doanh nghiệp đã trả phí, chờ Admin duyệt chi'
+        ? 'Doanh nghiệp đã trả phí, chờ HR Connect duyệt chi'
         : 'Đã hết bảo hành, chờ doanh nghiệp trả phí';
     case 'PAYABLE':
-      return 'Admin đã duyệt, chuẩn bị chuyển khoản';
+      return 'HR Connect đã duyệt, chuẩn bị chuyển khoản';
     case 'PAID':
       return c.approvedAt ? `Đã duyệt chi ${date(c.approvedAt)}` : 'Đã chuyển khoản vào tài khoản';
     case 'PENDING':
@@ -91,7 +92,7 @@ const statusNote = (c: Commission): string | null => {
 const FLOW = [
   ['1. Đang bảo hành', 'Ứng viên đã đi làm, chờ hết thời hạn bảo hành'],
   ['2. Chờ trả phí', 'Hết bảo hành, chờ doanh nghiệp thanh toán'],
-  ['3. Chờ chuyển khoản', 'Doanh nghiệp đã trả, Admin đã duyệt chi'],
+  ['3. Chờ chuyển khoản', 'Doanh nghiệp đã trả, HR Connect đã duyệt chi'],
   ['4. Đã nhận tiền', 'Tiền đã chuyển vào tài khoản ngân hàng của bạn'],
 ] as const;
 
@@ -197,7 +198,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
   const kpis = [
     { label: 'Đang bảo hành', statuses: ['PENDING', 'IN_WARRANTY'] as CommissionStatus[], note: 'Ứng viên đang đi làm', accent: 'border-l-sky-500', color: 'text-slate-900' },
     { label: 'Chờ trả phí', statuses: ['EARNED'] as CommissionStatus[], note: 'Chờ doanh nghiệp thanh toán', accent: 'border-l-[#0284C7]', color: 'text-[#0284C7]' },
-    { label: 'Chờ chuyển khoản', statuses: ['PAYABLE'] as CommissionStatus[], note: 'Admin đã duyệt chi', accent: 'border-l-amber-500', color: 'text-amber-600' },
+    { label: 'Chờ chuyển khoản', statuses: ['PAYABLE'] as CommissionStatus[], note: 'HR Connect đã duyệt chi', accent: 'border-l-amber-500', color: 'text-amber-600' },
     { label: 'Đã nhận tiền', statuses: ['PAID'] as CommissionStatus[], note: 'Đã chuyển khoản', accent: 'border-l-emerald-500', color: 'text-emerald-600' },
   ];
 
@@ -401,28 +402,45 @@ export const AffiliateCommissionsPage: React.FC = () => {
         <div className="flex flex-wrap items-center justify-between gap-3 border-0 border-b border-solid border-slate-100 px-4 py-3.5">
           <div className="flex flex-wrap items-center gap-3">
             <h2 id="aff-commission-list" className="m-0 text-[15px] font-bold text-slate-900">Danh sách hoa hồng</h2>
-            <div role="tablist" aria-label="Lọc theo trạng thái hoa hồng" className="flex flex-wrap items-center gap-1.5">
+            <div
+              role="tablist"
+              aria-label="Lọc theo trạng thái hoa hồng"
+              className="flex flex-wrap items-center gap-1.5"
+              onKeyDown={(e) => {
+                if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+                e.preventDefault();
+                const idx = FILTER_TABS.findIndex((item) => item.key === filter);
+                const nextIdx = e.key === 'ArrowRight'
+                  ? (idx + 1) % FILTER_TABS.length
+                  : (idx - 1 + FILTER_TABS.length) % FILTER_TABS.length;
+                setFilter(FILTER_TABS[nextIdx].key);
+                setCommissionPage(1);
+              }}
+            >
               {FILTER_TABS.map((t) => {
                 const cnt = summaryItems.filter((c) => t.matches(c.status)).length;
                 const active = filter === t.key;
                 return (
                   <button
                     key={t.key}
+                    id={`aff-comm-tab-${t.key}`}
                     type="button"
                     role="tab"
                     aria-selected={active}
+                    aria-controls="aff-comm-tabpanel"
+                    tabIndex={active ? 0 : -1}
                     onClick={() => {
                       setFilter(t.key);
                       setCommissionPage(1);
                     }}
-                    className={`inline-flex min-h-[30px] cursor-pointer items-center gap-1.5 rounded-full border border-solid px-3 text-xs font-medium transition-colors ${
+                    className={`inline-flex min-h-[32px] cursor-pointer items-center gap-1.5 rounded-full border border-solid px-3 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0284C7] ${
                       active
                         ? 'border-[#0284C7] bg-sky-50 text-[#0369A1]'
                         : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                     }`}
                   >
                     <span>{t.label}</span>
-                    <span className={`tabular-nums ${active ? 'text-[#0284C7]' : 'text-slate-400'}`}>{cnt}</span>
+                    <span className={`tabular-nums ${active ? 'text-[#0284C7]' : 'text-slate-500'}`}>{cnt}</span>
                   </button>
                 );
               })}
@@ -430,7 +448,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
           </div>
           <Input
             allowClear
-            prefix={<SearchOutlined className="text-slate-400" />}
+            prefix={<SearchOutlined className="text-slate-500" />}
             placeholder="Tìm theo ứng viên, vị trí, dịch vụ..."
             aria-label="Tìm kiếm danh sách hoa hồng"
             value={commissionSearch}
@@ -442,6 +460,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
           />
         </div>
 
+        <div id="aff-comm-tabpanel" role="tabpanel" aria-labelledby={`aff-comm-tab-${filter}`}>
         {listLoading ? (
           <div className="p-4"><Skeleton active paragraph={{ rows: 4 }} /></div>
         ) : !listHasData ? (
@@ -495,8 +514,8 @@ export const AffiliateCommissionsPage: React.FC = () => {
                         <div className="mt-0.5 text-xs text-slate-500">{c.jobTitle ?? '—'}</div>
                       </td>
                       <td className="px-4 py-3.5 whitespace-nowrap">
-                        <Tag color={c.placementId ? 'orange' : 'cyan'} className="m-0 rounded-md border-0 font-semibold">
-                          {c.placementId ? 'Tuyển qua Affiliate' : 'Mua CV theo số lượng'}
+                        <Tag color={c.placementId ? 'orange' : 'cyan'} className="m-0 rounded-md border-0 font-semibold whitespace-nowrap">
+                          {c.placementId ? 'Tuyển dụng theo kết quả' : 'Tìm hồ sơ phù hợp'}
                         </Tag>
                       </td>
                       <td className="px-4 py-3.5 text-[13px] text-slate-600 whitespace-nowrap">
@@ -509,7 +528,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
                       <td
                         className={`whitespace-nowrap px-4 py-3.5 text-right text-[14px] font-bold tabular-nums ${
                           c.status === 'CANCELLED'
-                            ? 'text-slate-400 line-through'
+                            ? 'text-slate-500 line-through'
                             : c.status === 'PAID'
                               ? 'text-emerald-600 font-extrabold'
                               : 'text-[#0284C7]'
@@ -534,7 +553,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
                             Giới thiệu thay thế
                           </Link>
                         ) : (
-                          <span className="text-xs text-slate-400">—</span>
+                          <span className="text-xs text-slate-500">—</span>
                         )}
                       </td>
                     </tr>
@@ -546,9 +565,10 @@ export const AffiliateCommissionsPage: React.FC = () => {
         )}
         {listTotal > PAGE_SIZE && (
           <div className="flex justify-end border-0 border-t border-solid border-slate-100 p-3">
-            <Pagination current={commissionPage} pageSize={PAGE_SIZE} total={listTotal} showSizeChanger={false} onChange={setCommissionPage} />
+            <Pagination itemRender={a11yItemRender} current={commissionPage} pageSize={PAGE_SIZE} total={listTotal} showSizeChanger={false} onChange={setCommissionPage} />
           </div>
         )}
+        </div>
       </section>
 
       <section aria-labelledby="aff-payouts" className="overflow-hidden rounded-xl border border-solid border-slate-200/80 bg-white shadow-sm">
@@ -567,7 +587,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
           </div>
           <Input
             allowClear
-            prefix={<SearchOutlined className="text-slate-400" />}
+            prefix={<SearchOutlined className="text-slate-500" />}
             placeholder="Tìm theo mã giao dịch, kết quả..."
             aria-label="Tìm kiếm lịch sử chuyển khoản"
             value={payoutSearch}
@@ -623,7 +643,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
         )}
         {(payouts.data?.totalCount ?? 0) > PAGE_SIZE && (
           <div className="flex justify-end border-0 border-t border-solid border-slate-100 p-3">
-            <Pagination current={payoutPage} pageSize={PAGE_SIZE} total={payouts.data?.totalCount ?? 0} showSizeChanger={false} onChange={setPayoutPage} />
+            <Pagination itemRender={a11yItemRender} current={payoutPage} pageSize={PAGE_SIZE} total={payouts.data?.totalCount ?? 0} showSizeChanger={false} onChange={setPayoutPage} />
           </div>
         )}
       </section>

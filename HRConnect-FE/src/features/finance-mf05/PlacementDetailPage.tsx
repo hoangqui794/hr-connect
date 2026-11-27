@@ -83,7 +83,7 @@ export const PlacementDetailPage: React.FC = () => {
           placementId={placementId || ''}
           mode={mode}
           onBack={handleBack}
-          showBackAction={true}
+          showBackAction={false}
         />
       </div>
     </div>

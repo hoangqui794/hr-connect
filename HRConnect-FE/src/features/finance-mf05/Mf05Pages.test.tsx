@@ -404,7 +404,7 @@ describe('MF-05 Client warranty page', () => {
 
     expect(await screen.findByText('Còn 6 ngày', {}, { timeout: 10000 })).toBeTruthy();
     expect(screen.getByText('Hạn TT: 25/11/2026')).toBeTruthy();
-    expect(screen.getByText(/Chỉ áp dụng cho Headhunt COD/)).toBeTruthy();
+    expect(screen.getByText(/Chỉ áp dụng cho Tuyển dụng theo kết quả/)).toBeTruthy();
     expect(screen.getByText(/Nghỉ 8\/11\/2026 · Báo 10\/11\/2026/)).toBeTruthy();
     expect(screen.getByText('Lý do: Chuyển công tác ra nước ngoài')).toBeTruthy();
     expect(screen.getByText('Suất #AA11BB22')).toBeTruthy();
