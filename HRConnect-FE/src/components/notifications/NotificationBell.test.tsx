@@ -289,7 +289,7 @@ describe('NotificationBell component', () => {
           },
           UserRole.INTERNAL_HR
         )
-      ).toBe('/hr/warranty-tracking?highlight=war-123');
+      ).toBe('/hr/warranty-tracking?status=CLAIMED&highlight=war-123');
 
       expect(
         getNotificationRoute(
