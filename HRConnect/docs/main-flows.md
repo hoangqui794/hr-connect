@@ -1,604 +1,395 @@
-# 6. MAIN FLOWS
+# HR Connect — End-to-End Main Flows & Execution Specifications
 
-**Project:** HR Connect – AI-Powered Recruitment & Affiliate Headhunting Platform
-**Phiên bản:** 2.2 (05/10/2026) — viết theo code của repo `hr-connect` tại commit `73cec91` (nhánh main).
-
-**Quy ước đánh dấu:**
-- **[CHƯA CÓ CODE]**: nghiệp vụ thuộc phạm vi nhưng backend chưa cài.
-- **[CẦN XÁC NHẬN]**: đề xuất của nhóm, cần chốt với giảng viên hướng dẫn.
-
-HR Connect có 5 Main Flow:
-
-**MF-01** Tạo, duyệt, công bố Job → **MF-02** Tiếp nhận hồ sơ, kiểm tra trùng, ghi nhận nguồn → **MF-03** AI Matching và sàng lọc → **MF-04** Phỏng vấn, Offer, Nhận việc → **MF-05** Thử việc, Bảo hành, Hoa hồng, Payout
-
-**Nguyên tắc attribution:** Affiliate được ghi nhận là nguồn của ứng viên cho một job khi lượt giới thiệu của họ là lượt đầu tiên được ứng viên đồng ý. Thời điểm do máy chủ ghi và dùng để giải quyết tranh chấp.
-
-**Tên gọi:** tài liệu và mã nguồn thống nhất dùng vai trò **Affiliate** (`AFFILIATE`).
-
-**Phân vai chung:** Client Company là bên sở hữu quyết định tuyển dụng (phỏng vấn, offer, nhận việc). Internal HR thuộc đơn vị vận hành nền tảng: duyệt job, sàng lọc với dịch vụ do nền tảng tìm người, và kiểm soát các mốc phát sinh phí. Platform Admin quản trị hệ thống và phần tài chính.
-
-**Sơ đồ:** mỗi Main Flow có activity diagram trong thư mục `diagrams/`. Ô tô hồng, viền nét đứt trong sơ đồ là bước chưa có trong code.
+> **Phiên bản:** 3.0 (Production Synchronized — 11/2026)  
+> **Đối chiếu trực tiếp từ mã nguồn:** `HRConnect.Presentation`, `HRConnect.Application`, `HRConnect.Infrastructure`, `ai-service-v2`, `HRConnect-FE`.
 
 ---
 
-# 6.0. KHÁC BIỆT THEO SERVICE TYPE
+## 0. Ma Trận Phân Biệt 3 Mô Hình Dịch Vụ Xuyên Suốt Pipeline
 
-Năm Main Flow dùng chung một pipeline, nhưng mỗi loại dịch vụ đi qua pipeline theo cách khác nhau. Bảng này tổng hợp từ ba tài liệu mô hình kinh doanh.
+Năm Main Flow cốt lõi (**MF-01 → MF-05**) cùng hệ thống **Auth & Onboarding (MF-00)** chia sẻ một trục thực thể thống nhất (`Company → Job → Submission → Application → Interview → Offer → Placement → ServiceFee / Warranty / Commission → Payout`), nhưng rẽ nhánh chặt chẽ theo `ServiceType.Code`:
 
-| | `HEADHUNT_COD` | `CV_SOURCING` | `CV_APPLICATION` |
-|---|---|---|---|
-| Client mua gì | Kết quả tuyển thành công | Một số lượng CV đạt chuẩn | Quyền đăng tin trong một khoảng thời gian |
-| Nguồn ứng viên | Affiliate giới thiệu | Affiliate giới thiệu | Ứng viên tự nộp |
-| Ai thấy job (mặc định, Admin cấu hình được) | Affiliate | Affiliate | Khách, Candidate |
-| Thông tin thêm khi tạo job (MF-01) | Số lượng cần tuyển, hệ số phí, thời hạn bảo hành | Số lượng cần tuyển và Sourcing Target (hai số độc lập) | Gói đăng tin; job chỉ công bố sau khi gói được kích hoạt |
-| Sàng lọc (MF-03) | Internal HR sàng lọc và liên hệ ứng viên | Internal HR xác định CV đạt chuẩn, chọn đủ Sourcing Target để giao Client, phần dư vào nhóm dự phòng | Client xem và chọn; HR của Client liên hệ ứng viên |
-| Điểm hoàn thành dịch vụ | Ứng viên đi làm thực tế (MF-04) | Giao đủ số CV đạt chuẩn (MF-03); phỏng vấn và tuyển là tùy chọn | Hết thời hạn gói; tuyển được hay không không ảnh hưởng phí |
-| Thời điểm phát sinh phí | Khi xác nhận đi làm | Khi CV được giao và tính vào quota | Khi kích hoạt gói |
-| Hoa hồng Affiliate | Theo từng placement, nhận 100% khi ứng viên đi làm đủ 30 ngày | Theo số CV được tính quota | Không có |
-| Cam kết sau bán | Bảo hành, tuyển thay thế | Thay CV bằng CV dự phòng | Không có |
-
-**Quy tắc riêng của `CV_SOURCING`:**
-
-- Số lượng cần tuyển và Sourcing Target độc lập: Client cần tuyển 2 người nhưng có thể mua 10 CV.
-- Một CV chỉ được tính phí và hoa hồng khi đi đủ ba bước: đạt chuẩn → giao cho Client → tính vào quota.
-- CV dự phòng vẫn là CV đạt chuẩn nhưng chưa phát sinh hoa hồng; chỉ phát sinh khi được dùng để thay thế hoặc bổ sung.
-- Client không chọn một ứng viên không có nghĩa CV đó không đạt chuẩn; hoa hồng của CV đã tính quota không bị thu hồi.
-
-**Quy tắc riêng của `HEADHUNT_COD`:**
-
-- Phí và hoa hồng tính theo từng placement, không theo job. Job cần 2 người mà mới tuyển được 1 thì chỉ phát sinh 1 khoản phí; job tiếp tục `ACTIVE` cho vị trí còn lại.
-- Nhận offer nhưng không đi làm thì không phát sinh phí.
-
-**Quy tắc riêng của `CV_APPLICATION`:**
-
-- Số lượng hồ sơ nhận được không làm thay đổi phí; không có hồ sơ nào cũng không tự động hoàn phí.
-- Ứng viên tự nộp được tuyển thành công không phát sinh phí tuyển dụng thành công và không có hoa hồng.
-
-**Mức hỗ trợ trong code hiện tại (2026-10-17):** điều khoản thương mại theo job (hệ số phí, bảo hành, hạn thanh toán, Sourcing Target, giá mỗi CV, tỷ lệ cọc, thời hạn xem xét), gói đăng tin, giao CV / chấp nhận / tự chấp nhận / thay CV cho `CV_SOURCING`, phí và hoa hồng của cả 3 dịch vụ đều đã có code. Còn thiếu: chặn tuyển quá số lượng cần tuyển (MF-04).
+| Tiêu chí | `HEADHUNT_COD` | `CV_SOURCING` | `CV_APPLICATION` |
+| :--- | :--- | :--- | :--- |
+| **Điều kiện mở Job (MF-01)** | Ký `ServiceAgreement` → `ACTIVE` ngay | Ký `ServiceAgreement` → Thu cọc `DEPOSIT` (`PENDING_PAYMENT`) → `ACTIVE` | Gói `FREE` (giới hạn quota) → `ACTIVE` ngay; gói trả phí → thu `JobPostingFee` → `ACTIVE` |
+| **Nguồn nộp hợp lệ (MF-02)** | `AFFILIATE` (bắt buộc Candidate `CONFIRMED` Consent 48h) | `AFFILIATE` (bắt buộc Candidate `CONFIRMED` Consent 48h) | `CANDIDATE` tự nộp trực tiếp (không cần bước Consent) |
+| **Chấm điểm AI (MF-03)** | Tự động bất đồng bộ qua `ai-service-v2` | Tự động bất đồng bộ qua `ai-service-v2` | Tự động bất đồng bộ qua `ai-service-v2` |
+| **Chủ thể sàng lọc (MF-03)** | `INTERNAL_HR` tiền sàng lọc; che Email/SĐT/CV gốc với Client cho tới khi `PLACED` | `INTERNAL_HR` tiền sàng lọc & bàn giao CV (`SourcingDelivery`) tối đa `SourcingTarget` | `CLIENT_COMPANY_USER` trực tiếp xem CV gốc và sàng lọc |
+| **Tuyển dụng & Đối soát (MF-04)** | Client phỏng vấn, gửi Offer, xác nhận `PLACED`; `INTERNAL_HR` đối soát độc lập (`PlacementReconciliation`) | Client nghiệm thu CV trong `ReviewDays` (phỏng vấn/tuyển dụng là tùy chọn sau bàn giao) | Client phỏng vấn, gửi Offer và xác nhận `PLACED` (không cần HR đối soát phí) |
+| **Phí, Bảo hành & Hoa hồng (MF-05)** | Phí `BaseSalary × FeeMultiplier` từng Placement; bảo hành 30 ngày + tối đa 1 `ReplacementSlot` miễn phí; Affiliate nhận 100% hoa hồng sau bảo hành khi phí đã `PAID` | Quyết toán `BillableCvs × PricePerCv - PaidDeposit` (`SETTLEMENT` hoặc hoàn `CREDIT`); mỗi CV `ACCEPTED` / `AUTO_ACCEPTED` sinh ngay hoa hồng `EARNED` | Không có phí tuyển thành công, không bảo hành, không hoa hồng |
 
 ---
 
-# MF-01. Tạo, duyệt và công bố Job
+## MF-00. Xác Thực, Onboarding Doanh Nghiệp/Affiliate & Phân Quyền RBAC Động
 
-> Sơ đồ MF-01 chưa được lưu trong repository; phần mô tả bên dưới là nguồn tham chiếu hiện hành.
+### 1. Luồng thực thi chi tiết (Step-by-Step)
+1. **Endpoint (`AuthEndpoints.cs`):**
+   - Nhận `POST /api/v1/auth/register/candidate`, `/register/affiliate`, hoặc `/register/client` (áp dụng rate-limit policy `auth-registration`).
+2. **Validation & Handler (`RegisterCandidateCommandHandler` / `RegisterAffiliateCommandHandler` / `RegisterClientCommandHandler`):**
+   - Kiểm tra trùng email qua bảng `user_email_identities` (email chuẩn hóa lowercase).
+   - Băm mật khẩu bằng `BCrypt.Net-Next`, tạo `AppUser (Status = PENDING_VERIFICATION)`, tạo hồ sơ vai trò tương ứng (`Candidate` / `AffiliateProfile` + `AffiliateApplication` / `Company` + `CompanyUser` + `CompanyVerificationRequest`).
+   - Đặc biệt với Candidate: nếu email trùng với một hồ sơ `Candidate` tạm (`UserId == null`) do Affiliate giới thiệu trước đó, `CandidateRegistrationIdentity` chuẩn bị liên kết hồ sơ cũ về tài khoản chính chủ sau khi xác thực OTP.
+   - Ghi mã OTP (lưu hash) và đẩy bản ghi vào bảng `email_outbox` trong cùng transaction (`IUnitOfWork`).
+3. **Background Outbox & OTP Verification:**
+   - `AccountLifecycleEmailOutboxWorker` đọc `email_outbox` và gửi email qua Resend API.
+   - Người dùng gọi `POST /api/v1/auth/verify-email-otp` → kích hoạt email. Candidate dùng được ngay; Client Company và Affiliate chờ `PLATFORM_ADMIN` phê duyệt tại `/api/v1/admin/approvals/*` (`AdminApprovalService`).
+4. **Phiên đăng nhập & RBAC (`LoginCommandHandler` & `RefreshTokenCommandHandler`):**
+   - `POST /api/v1/auth/login` kiểm tra trạng thái tài khoản, tổng hợp tập quyền hạn hiệu lực từ `user_roles → role_permissions` (74+ permissions), phát hành JWT Access Token ngắn hạn kèm `RefreshToken` lưu trong HttpOnly Secure Cookie.
+   - Khi phát hiện tái sử dụng Refresh Token đã thu hồi (token reuse), hệ thống thu hồi toàn bộ chuỗi phiên và ghi `AuditLog` (`RefreshTokenReuseDetected`).
 
-**Mục tiêu:** Client tạo job, chọn Service Type, và job được người có thẩm quyền duyệt trước khi nhận hồ sơ.
+### 2. Mermaid Sequence Diagram (MF-00)
 
-**Actor:** Client Company User, Internal HR (Platform Admin làm thay được).
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Candidate / Client / Affiliate
+    participant EP as AuthEndpoints (/api/v1/auth)
+    participant H as Register & Verify Handlers
+    participant DB as PostgreSQL (UnitOfWork)
+    participant W as EmailOutboxWorker (Resend)
+    actor Admin as Platform Admin (/api/v1/admin/approvals)
 
-**Điều kiện:** công ty đã được Platform Admin duyệt.
+    User->>EP: POST /register/{role} (Email, Password, ProfileData)
+    EP->>H: Send RegisterCommand via MediatR
+    H->>DB: Insert AppUser + RoleProfile + UserToken(OTP) + EmailOutbox
+    DB-->>H: Commit Transaction
+    H-->>EP: 201 Created (Requires OTP Verification)
+    W->>DB: Poll pending EmailOutbox
+    W->>User: Send OTP Verification Email
 
-**Luồng chính:**
-
-1. Client tạo job ở trạng thái `DRAFT`: mô tả công việc, yêu cầu bắt buộc (`MUST_HAVE`) và yêu cầu ưu tiên (`SHOULD_HAVE`), Service Type.
-2. Client gửi duyệt → `PENDING_REVIEW`.
-3. Internal HR duyệt → `ACTIVE`, hoặc từ chối kèm mã lý do → `REJECTED`.
-4. Job bị từ chối: Client sửa và gửi lại → `PENDING_REVIEW`.
-5. Job đang chạy: Client có thể tạm dừng (`PAUSED`), mở lại (`ACTIVE`) hoặc đóng (`CLOSED`).
-
-**Sơ đồ trạng thái Job:**
-
-```
-DRAFT → PENDING_REVIEW → ACTIVE ⇄ PAUSED
-              ↓  ↑          ↓        ↓
-            REJECTED      CLOSED ← ──┘
+    User->>EP: POST /verify-email-otp (Email, OtpCode)
+    EP->>H: VerifyEmailOtpCommand
+    H->>DB: Activate AppUser (Link existing guest Candidate if matched)
+    alt Role is CLIENT_COMPANY_USER or AFFILIATE
+        Admin->>EP: POST /api/v1/admin/approvals/{type}/{id}/approve
+        EP->>DB: Set Company/Affiliate VERIFIED + Enqueue Approval Email + SignalR
+    end
+    User->>EP: POST /login
+    EP-->>User: 200 OK (JWT AccessToken + HttpOnly RefreshToken Cookie)
 ```
 
-**Quy tắc:**
+---
 
-- Service Type được chọn tại job; người nộp hồ sơ ở MF-02 không chọn lại.
-- **Ai được xem và nộp hồ sơ vào job do quyền của vai trò quyết định** (theo góp ý của GVHD, sửa ngày 2026-10-16): bảng `service_type_allowed_role` ghi `can_view` / `can_submit` cho từng vai trò × Service Type, Platform Admin chỉnh trên trang quản trị Service Type. Job **không** có trường "chế độ hiển thị" riêng; Client không chọn ai thấy job. Khách chưa đăng nhập được xem như vai trò Candidate. Chủ job và người nội bộ (Internal HR, Platform Admin) xem được job của mọi trạng thái.
+## MF-01. Tạo Tin Tuyển Dụng, Thương Lượng Hợp Đồng Dịch Vụ, Thanh Toán & Mở Tuyển
 
-| Service Type | Mặc định được xem và nộp |
-|---|---|
-| `CV_APPLICATION` | Candidate (và khách xem) |
-| `CV_SOURCING`, `HEADHUNT_COD` | Affiliate |
+### 1. Luồng thực thi chi tiết (Step-by-Step)
+1. **Tạo & Gửi duyệt Job (`JobEndpoints.cs` → `CreateJobCommand` / `SubmitJobCommand`):**
+   - Client gọi `POST /api/v1/jobs` (tùy chọn truyền `templateId` từ `GET /api/v1/job-templates` để sao chép bộ tiêu chí `MUST_HAVE` / `SHOULD_HAVE` độc lập và tăng `usage_count`).
+   - `JobHandlerGuards.GetOwnedJobAsync` xác minh tài khoản thuộc công ty `VERIFIED` và thành viên `ACTIVE`.
+   - Khi gọi `POST /api/v1/jobs/{jobId}/submit`: nếu là gói `CV_APPLICATION` `FREE`, kiểm tra giới hạn tin đang mở (`mf01.cv_application.free_active_limit`) và chu kỳ chờ (`mf01.cv_application.free_cooldown_months`), đồng bộ bản ghi `JobPostingFee`, chuyển `DRAFT → PENDING_REVIEW` và ghi `JobStatusHistory`.
+2. **Duyệt nội dung & Thương lượng Hợp đồng dịch vụ (`ServiceAgreementEndpoints.cs`):**
+   - Với `CV_APPLICATION`: Internal HR gọi `POST /api/v1/internal/jobs/{jobId}/approve` → gói `FREE` lên thẳng `ACTIVE`; gói trả phí chuyển `PENDING_PAYMENT`.
+   - Với `HEADHUNT_COD` và `CV_SOURCING`: Internal HR gọi `POST /api/v1/internal/jobs/{jobId}/service-agreements` (`CreateServiceAgreementProposalCommand`) để chốt điều khoản thương mại (`FeeMultiplier`, `WarrantyDays`, `PaymentDueDays` hoặc `SourcingTarget`, `PricePerQualifiedCv`, `DepositPercent`, `ReviewDays`), render file PDF qua `AgreementPdfRenderer` (`SkiaSharp`), lưu lên Cloudflare R2 kèm `DocumentSha256Hash` và chuyển Job sang `PENDING_AGREEMENT`.
+3. **Ký Hợp đồng dịch vụ (2 phương thức):**
+   - **Ký điện tử OTP:** Người liên hệ chính của Client gọi `POST .../signature-challenges` → nhận OTP → gọi `POST .../sign` (`SignServiceAgreementCommand`). Hợp đồng chuyển `SIGNED`, chốt điều khoản lên `Job`. Nếu `HEADHUNT_COD` (hoặc `CV_SOURCING` không cọc) → Job `ACTIVE`; nếu `CV_SOURCING` có `DepositPercent > 0` → sinh `ServiceFee (Kind = DEPOSIT, Status = PENDING)` và chuyển Job sang `PENDING_PAYMENT`.
+   - **Tải PDF ký ướt:** Client tải bản PDF đã đóng dấu qua `UploadSignedServiceAgreementCommand` (kiểm tra PDF hợp lệ + SHA-256) → Internal HR xác nhận qua `ApproveJobCommand` → chốt `SIGNED` và chuyển `ACTIVE` hoặc `PENDING_PAYMENT`.
+4. **Thanh toán VNPay / Đối soát thủ công & Kích hoạt Job (`VnPayPaymentEndpoints.cs`):**
+   - Client gọi `POST /api/v1/payments/vnpay` (target `POSTING_FEE` hoặc `SOURCING_DEPOSIT`; chặn thanh toán nếu hạn nhận hồ sơ của tin chưa mở đã hết hạn).
+   - Khi VNPay gọi `GET /api/v1/payments/vnpay/ipn` hoặc trình duyệt quay về `/return`: `VnPayGateway` xác thực chữ ký `HMAC-SHA512` bằng `FixedTimeEquals`, dùng `TryClaimAsync` (`ExecuteUpdateAsync` atomic) để đánh dấu `PAID`, chuyển `Job` từ `PENDING_PAYMENT → ACTIVE`, ghi `AuditLog` và bắn thông báo SignalR.
+5. **Đóng Job & Tự động hết hạn (`CloseJobCommand` & `JobExpirationWorker`):**
+   - Khi Client gọi `POST /api/v1/jobs/{jobId}/close` từ trạng thái `PENDING_PAYMENT`, hệ thống tự động hủy (`CANCELLED`) các phiếu `JobPostingFee` / `ServiceFee(DEPOSIT)` chưa thanh toán.
+   - `JobExpirationWorker` quét định kỳ các tin quá `ApplicationDeadline` hoặc hết hạn gói đăng tin để chuyển sang `EXPIRED` và gửi cảnh báo trước 1 ngày cho tin sắp hết hạn.
 
-- Mỗi lần đổi trạng thái đều ghi lịch sử kèm người thực hiện, mã lý do và thời điểm.
-- Hai người cùng sửa một job: người lưu sau bị từ chối và phải tải lại dữ liệu.
-- Giới hạn gói miễn phí: số job mở cùng lúc và chu kỳ mở lại đọc từ cài đặt Admin (`mf01.cv_application.free_active_limit`, `mf01.cv_application.free_cooldown_months`), kiểm tra khi gửi duyệt và khi mở lại job.
-- `CV_SOURCING` có tỷ lệ cọc > 0: duyệt xong job ở `PENDING_PAYMENT` và hệ thống tạo phiếu cọc; Platform Admin ghi nhận cọc thì job `ACTIVE` (chốt 2026-10-17, xem MF-05).
+### 2. Mermaid Sequence Diagram (MF-01)
 
-**Thư viện mẫu JD** (đã có code):
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Client Company
+    participant JobEP as Job & Agreement Endpoints
+    actor HR as Internal HR
+    participant PDF as AgreementPdfRenderer & R2
+    participant PayEP as VnPayPaymentEndpoints
+    participant DB as PostgreSQL (UnitOfWork)
+    actor VNPay as VNPay Gateway
 
-- Internal HR và Admin quản lý mẫu dùng chung (quyền `job_template.manage`): tạo, sửa (`concurrencyToken`), ẩn / hiện, có audit. Mỗi mẫu có ít nhất 1 yêu cầu `MUST_HAVE`. Seed sẵn 13 mẫu theo `code`, chạy lại không tạo trùng.
-- Client tìm mẫu ở bước 2 của form tạo job (`GET /api/v1/job-templates?keyword=`): tìm không dấu, mọi từ phải khớp, ưu tiên khớp tên rồi mẫu dùng nhiều. Kích thước trang đọc từ cài đặt Admin (`mf01.job_template.page_size_default`, `mf01.job_template.page_size_max`). Mẫu đã ẩn không hiện với Client.
-- Mẫu chỉ là bản nháp: không chứa lương, địa điểm, số lượng, hạn nộp hay phí; job tạo từ mẫu là bản sao độc lập, sửa / ẩn mẫu không đổi job đã tạo. Job lưu `templateId` và mẫu tăng `usage_count`; `templateId` sai không làm hỏng việc tạo job.
-- Giai đoạn 2 (chưa làm): AI viết nháp JD khi không có mẫu khớp.
+    Client->>JobEP: POST /api/v1/jobs & POST /jobs/{id}/submit
+    JobEP->>DB: Validate quota, save Job(PENDING_REVIEW) + JobStatusHistory
+    DB-->>Client: SignalR Notification (HR Review Queue)
 
-**Kết quả:** job `ACTIVE` sẵn sàng nhận hồ sơ, hoặc job `REJECTED` trả về Client để sửa.
+    alt HEADHUNT_COD or CV_SOURCING
+        HR->>JobEP: POST /api/v1/internal/jobs/{id}/service-agreements
+        JobEP->>PDF: Render PDF (SkiaSharp) + Upload R2 + Compute SHA-256
+        JobEP->>DB: Save ServiceAgreement(PENDING_SIGNATURE), Job(PENDING_AGREEMENT)
+        Client->>JobEP: POST .../signature-challenges & POST .../sign (OTP)
+        JobEP->>DB: Mark Agreement(SIGNED), lock commercial terms on Job
+        alt CV_SOURCING with DepositPercent > 0
+            JobEP->>DB: Create ServiceFee(DEPOSIT, PENDING), Set Job(PENDING_PAYMENT)
+        else HEADHUNT_COD (No upfront fee)
+            JobEP->>DB: Set Job(ACTIVE)
+        end
+    else CV_APPLICATION (Paid Package)
+        HR->>JobEP: POST /api/v1/internal/jobs/{id}/approve
+        JobEP->>DB: Set Job(PENDING_PAYMENT) with JobPostingFee(PENDING)
+    end
+
+    opt Job is in PENDING_PAYMENT
+        Client->>PayEP: POST /api/v1/payments/vnpay (Target: POSTING_FEE / SOURCING_DEPOSIT)
+        PayEP-->>Client: Redirect to Signed VNPay URL
+        VNPay->>PayEP: GET /api/v1/payments/vnpay/ipn (HMAC-SHA512)
+        PayEP->>DB: Atomic TryClaimAsync -> Mark Fee PAID -> Activate Job(ACTIVE)
+        DB-->>Client: SignalR Push (ONLINE_PAYMENT + JOB ACTIVE)
+    end
+```
 
 ---
 
-# MF-02. Tiếp nhận hồ sơ, kiểm tra trùng, ghi nhận nguồn
+## MF-02. Quản Lý CV, Ứng Tuyển, Affiliate Giới Thiệu (48h Consent), Chống Trùng 2 Lớp & Attribution
 
-> Sơ đồ MF-02A chưa được lưu trong repository; phần mô tả bên dưới là nguồn tham chiếu hiện hành.
+### 1. Luồng thực thi chi tiết (Step-by-Step)
+1. **Chuẩn bị CV (`CandidateEndpoints.cs` & `CvBuilderEndpoints.cs`):**
+   - Candidate tải PDF trực tiếp (`CvStorageService`) hoặc lưu CV có cấu trúc từ **CV Builder** (`StructuredCvService` → `CvPdfRenderer` bằng `SkiaSharp`). Cả hai đều được kiểm tra bằng `PdfCvValidator` (`PdfPig`), lưu lên Cloudflare R2 và tính dấu vân tay nhị phân `ContentSha256` (`binary-sha256-v1`).
+   - Với các CV do Affiliate gửi kèm trước đó, Candidate đã đăng nhập có thể xem chi tiết (`/candidate/affiliate-cvs/:cvId`), lưu bản sao về kho cá nhân (`POST .../adopt`) hoặc **bật/tắt quyền cho phép Affiliate tái sử dụng CV** (`PATCH /api/v1/candidates/me/affiliate-cvs/{cvId}/reuse` — `UpdateCandidateAffiliateCvReuseCommandHandler`).
+2. **Nhánh A — Candidate tự ứng tuyển (`POST /api/v1/jobs/{jobId}/apply` → `ApplyJobCommandHandler`):**
+   - Kiểm tra quyền nộp theo `service_type_allowed_role` (mặc định `CV_APPLICATION`), trạng thái Job `ACTIVE`, hạn nộp, `MaxApplications` và trạng thái `Candidate` (`ACTIVE`, chưa bị hợp nhất).
+   - Khóa giao dịch bằng `ICandidateCompanyTransactionLock` (`pg_advisory_xact_lock`), kiểm tra chưa có đơn đang mở cho `(CandidateId, JobId)`.
+   - Tạo ngay `Submission (Source = CANDIDATE, Status = ACCEPTED)` + `Application (Status = SUBMITTED)`, gọi `IMf03ScoringTrigger.TriggerScoringAsync` ghi bản ghi `AiMatchResult (PENDING)` trong cùng transaction và bắn SignalR.
+3. **Nhánh B — Affiliate giới thiệu ứng viên (`POST /api/v1/jobs/{jobId}/candidate-submissions` → `SubmitCandidateCommandHandler`):**
+   - Kiểm tra Affiliate `ACTIVE`/`VERIFIED`, Job `ACTIVE`, quyền sở hữu ứng viên 30 ngày của doanh nghiệp (`mf02.client_ownership_days`), và tự động gắn `ReplacementSlot` đang `OPEN` nếu có.
+   - **Chống trùng Lớp 1 (Email & SĐT chuẩn hóa — Đồng bộ):**
+     - Đối chiếu Email và SĐT sau chuẩn hóa. Nếu trùng ứng viên đã có đơn hợp lệ/đang chờ trong cùng Job → chặn ngay `409 Conflict` (`BLOCKED_DUPLICATE`). Nếu vi phạm Strict Identity Match trên hồ sơ đã xác thực (cùng Email nhưng lệch SĐT hoặc Email/SĐT trỏ về 2 hồ sơ khác nhau) → chặn `409 Conflict`.
+     - Nếu ứng viên chưa từng có tài khoản, chỉ tạo hồ sơ `Candidate (UserId = null)` + lưu snapshot liên hệ lên `Submission` (chưa tạo tài khoản đăng nhập `AppUser`).
+   - **Chống trùng Lớp 2 (Liên hồ sơ — `CandidateIdentityEvidence`):**
+     - Khi bật `CANDIDATE_IDENTITY_DEDUP_ENABLED=true`, hệ thống băm họ tên chuẩn hóa bằng `HMAC-SHA256` (`NormalizedNameHash`) và đối chiếu cặp `(NormalizedNameHash, CvContentSha256)` trên cùng Job. Nếu phát hiện trùng với một hồ sơ `Candidate` khác (dù khác cả Email lẫn SĐT) → tự động tạo/cập nhật `CandidateDuplicateCase (RiskLevel = HIGH, ReasonCode = EXACT_CV_AND_NORMALIZED_NAME)` và bắn thông báo SignalR về Platform Admin (`/admin/candidate-identity-claims?tab=duplicates`).
+   - Sinh token Consent ngẫu nhiên 32 bytes (chỉ lưu `SHA-256` hash vào `SubmissionConsent`, hạn mặc định 48 giờ từ `consent.expiration_hours`), lưu `Submission (PENDING_CONSENT)` và đẩy link `#token=...` vào `email_outbox` (kèm thông báo In-App nếu ứng viên đã có tài khoản).
+4. **Ứng viên phản hồi Consent (`SubmissionConsentEndpoints.cs` → `RespondSubmissionConsentCommandHandler`):**
+   - Ứng viên phản hồi qua trang Public (`/submission-consent#token=...`, không cần đăng nhập) hoặc trang In-App (`/candidate/submission-consents/:id`):
+     - **`DECLINE`:** Chuyển `Consent → DECLINED`, `Submission → CONSENT_REJECTED`.
+     - **`REPORT_UNAUTHORIZED`:** Hủy đơn, đồng thời thu hồi vĩnh viễn quyền tái sử dụng CV của Affiliate (`AffiliateReuseStatus = REVOKED`), lưu IP/User-Agent và ghi `AuditLog`.
+     - **`CONFIRM`:** Khóa `_candidateCompanyLock`. Nếu đang có `CandidateDuplicateCase` mở trên cùng Job → tạm giữ đơn ở **`PENDING_IDENTITY_REVIEW`** (không tạo `Application`, không đẩy sang HR hay tốn lượt chấm AI). Nếu không vướng nghi trùng → chuyển `Submission → ACCEPTED`, tạo `Application (SUBMITTED)` + `Attribution (ACTIVE, Rule = CANDIDATE_CONSENT_THEN_FIRST_ACCEPTED)`, kích hoạt chấm điểm AI (MF-03) và bắn thông báo SignalR cho Affiliate + HR.
+5. **Đối soát & Hợp nhất Hồ sơ Nghi trùng (`AdminCandidateDuplicateEndpoints.cs` → `ResolveCandidateDuplicateCaseCommandHandler`):**
+   - Platform Admin mở Drawer chi tiết (Email/SĐT được che bảo vệ PII), xem trước tác động qua `POST .../preview-merge` (`CandidateMergePolicy` đề xuất hồ sơ gốc theo thứ tự: `VERIFIED_ACCOUNT_OWNER` → `MORE_VALID_BUSINESS_HISTORY` → `EARLIEST_CANDIDATE_RECORD`, kiểm tra không có Payout `COMPLETED`).
+   - Khi Admin chọn **`MERGE`** (kèm lý do >= 10 ký tự + `ConcurrencyToken` + `IdempotencyKey`):
+     - Khóa `FOR UPDATE` cả hai `Candidate` và các `Submission`/`Application` liên quan.
+     - Đánh dấu hồ sơ nguồn `ARCHIVED` (`MergedIntoCandidateId = canonical.CandidateId`).
+     - Xét theo thời điểm ứng viên xác nhận sớm nhất (`Consent.RespondedAt`): đơn hợp lệ sớm nhất giữ/hoàn tất `ACCEPTED` (`FinalizeIdentityReviewedSubmissionService` tạo `Application` + `Attribution` + kích hoạt AI nếu đang tạm giữ); toàn bộ các đơn nộp trùng còn lại (kể cả đang `PENDING_IDENTITY_REVIEW`, `PENDING_CONSENT` hay `ACCEPTED`) đều tự động chuyển sang **`BLOCKED_DUPLICATE`** (đóng `Consent` đang `PENDING` sang `CANCELLED`). Nếu cả hai bên đều chưa có đơn xác nhận (`winner == null`), các đơn `PENDING_CONSENT` của hồ sơ nguồn được chuyển `CandidateId` về hồ sơ gốc để ứng viên vẫn xác nhận được bình thường.
 
-> Sơ đồ MF-02B chưa được lưu trong repository; phần mô tả bên dưới là nguồn tham chiếu hiện hành.
+### 2. Mermaid Sequence Diagram (MF-02 — Affiliate Referral, Consent & 2-Layer Dedup)
 
-**Mục tiêu:** tiếp nhận ứng viên và CV vào đúng job, chặn trùng trước khi vào pipeline, ghi nhận nguồn và attribution.
+```mermaid
+sequenceDiagram
+    autonumber
+    actor AffA as Affiliate A
+    actor AffB as Affiliate B
+    participant EP as Affiliate & Consent Endpoints
+    participant Lock as AdvisoryLock & Dedup Repo
+    participant DB as PostgreSQL
+    actor Cand as Candidate (Guest / Logged-in)
+    actor Admin as Platform Admin
 
-**Actor:** Candidate, Affiliate.
+    AffA->>EP: POST /jobs/{jobId}/candidate-submissions (Email1, Phone1, CV.pdf)
+    EP->>Lock: Check Layer 1 (Email/Phone) & Layer 2 (CV SHA-256 + Name HMAC)
+    EP->>DB: Save CandidateA + SubmissionA(PENDING_CONSENT) + ConsentTokenHash + EmailOutbox
+    Cand->>EP: POST /submission-consents/respond (TokenA, CONFIRM)
+    EP->>DB: SubmissionA(ACCEPTED) + Application(SUBMITTED) + Attribution(AffA) + Queue AI
 
-**Điều kiện:** job `ACTIVE`; vai trò của người nộp được phép nộp với Service Type của job.
-
-## Nhánh A — Ứng viên tự nộp
-
-Áp dụng cho job thuộc Service Type mà vai trò Candidate có `can_submit` (mặc định `CV_APPLICATION`).
-
-1. Ứng viên chọn job và cung cấp đúng một nguồn CV: chọn CV có sẵn trong kho của mình hoặc tải tệp PDF mới.
-2. Hệ thống kiểm tra điều kiện: tài khoản và vai trò ứng viên còn hoạt động; hồ sơ ứng viên không bị khóa, lưu trữ hay hợp nhất.
-3. Hệ thống kiểm tra trùng.
-4. Không trùng: tạo lượt nộp `ACCEPTED` với nguồn `CANDIDATE`, tạo hồ sơ ứng tuyển `SUBMITTED`, xếp hàng chấm điểm AI, chuyển MF-03.
-
-## Nhánh B — Affiliate giới thiệu
-
-Áp dụng cho job thuộc Service Type mà vai trò Affiliate có `can_submit` (mặc định `HEADHUNT_COD`, `CV_SOURCING`). Affiliate phải đã được duyệt.
-
-1. Affiliate chọn job, nhập ứng viên mới hoặc chọn từ kho ứng viên của mình, kèm CV. Ứng viên bắt buộc có email.
-2. Hệ thống chuẩn hóa email và số điện thoại, tìm ứng viên đã có, kiểm tra trùng.
-3. Không trùng: tạo lượt nộp chờ xác nhận và gửi email cho ứng viên. Yêu cầu có hiệu lực 48 giờ (cấu hình được).
-4. Affiliate có thể gửi lại email xác nhận, cách nhau tối thiểu 2 phút và có giới hạn số lần gửi.
-5. Ứng viên đồng ý: hệ thống kiểm tra lại job còn `ACTIVE` và Affiliate còn hoạt động, rồi chuyển lượt nộp sang `ACCEPTED`, tạo hồ sơ ứng tuyển `SUBMITTED`, ghi attribution cho Affiliate, xếp hàng chấm điểm AI, chuyển MF-03.
-6. Ứng viên từ chối: lượt nộp `CONSENT_REJECTED`, dừng xử lý.
-7. Quá hạn không trả lời: hệ thống tự chuyển lượt nộp sang `CONSENT_EXPIRED` và lưu trữ CV đang chờ; Affiliate phải tạo lượt nộp mới.
-8. Affiliate nhận thông báo kết quả xác nhận (đồng ý, từ chối hoặc hết hạn).
-
-## Quy tắc kiểm tra trùng
-
-- **Trùng = cùng ứng viên + cùng job.**
-- Ứng viên được nhận diện bằng email hoặc số điện thoại khớp chính xác sau khi chuẩn hóa.
-- Ứng viên đã có trong hệ thống nhưng nộp vào job mới thì không phải là trùng: dùng lại hồ sơ ứng viên cũ, tạo hồ sơ ứng tuyển mới.
-- Khi trùng: ghi lượt nộp `BLOCKED_DUPLICATE`, không tạo hồ sơ ứng tuyển mới, giữ nguyên attribution hiện có, báo cho người nộp.
-- Email và số điện thoại thuộc hai ứng viên khác nhau: từ chối lượt nộp.
-- Việc trùng không phụ thuộc CV mới đẹp hơn hay đầy đủ hơn CV cũ.
-- Kiểm tra trùng chạy đồng bộ, trước khi hồ sơ được nhận vào pipeline.
-
-## Quy tắc attribution
-
-- Attribution chỉ được ghi khi ứng viên đã đồng ý, không phải lúc Affiliate bấm nộp.
-- Thời điểm do máy chủ ghi, người dùng không nhập hay sửa được.
-- Trong lúc một lượt giới thiệu đang chờ xác nhận, Affiliate khác không nộp được ứng viên đó vào cùng job.
-- Ứng viên tự nộp không có attribution và không phát sinh hoa hồng.
-
-**Ví dụ:** Affiliate A giới thiệu ứng viên X vào job E, X đồng ý → attribution thuộc A. Sau đó Affiliate B giới thiệu X vào job E → bị chặn trùng, attribution của A không đổi.
-
-## Quan hệ dữ liệu
-
-| Khái niệm | Ý nghĩa |
-|---|---|
-| Candidate | Một người, nhận diện bằng email/số điện thoại |
-| CV | Tệp hồ sơ của ứng viên; một ứng viên có nhiều CV |
-| Submission (lượt nộp) | Một lần ai đó gửi ứng viên + CV vào một job |
-| Application (hồ sơ ứng tuyển) | Hồ sơ tuyển dụng chính của ứng viên trong một job; mỗi cặp ứng viên + job chỉ có một |
-
-## Không làm
-
-- **Internal HR không nộp hồ sơ thay ứng viên** (nhóm chốt 2026-10-16). Nguồn ứng viên chỉ gồm ứng viên tự nộp (`CV_APPLICATION`) và Affiliate giới thiệu (`HEADHUNT_COD`, `CV_SOURCING`). Quyền nộp của `INTERNAL_HR` trong `service_type_allowed_role` đặt `can_submit = false`.
-
-## Chưa có
-
-- Khiếu nại tranh chấp trùng và Platform Admin xử lý (SF-04): **đã có code bản tối thiểu** (2026-10-19), xem mục 6.1.
-
-**Kết quả:** hồ sơ ứng tuyển `SUBMITTED` kèm nguồn và attribution (nếu có), hoặc lượt nộp bị chặn/dừng.
+    alt Layer 1 Duplicate (Same Email or Same Phone)
+        AffB->>EP: POST /jobs/{jobId}/candidate-submissions (Email2, Phone1, CV.pdf)
+        EP-->>AffB: 409 Conflict (BLOCKED_DUPLICATE — Attribution of AffA preserved)
+    else Layer 2 Cross-Profile Duplicate (New Email2 + New Phone2, Same Name + Same CV.pdf)
+        AffB->>EP: POST /jobs/{jobId}/candidate-submissions (Email2, Phone2, CV.pdf)
+        EP->>DB: Create CandidateB + SubmissionB(PENDING_CONSENT) + CandidateDuplicateCase(HIGH)
+        DB-->>Admin: SignalR Push (CANDIDATE_DUPLICATE_CASE)
+        opt Candidate confirms TokenB before Admin merges
+            Cand->>EP: POST /submission-consents/respond (TokenB, CONFIRM)
+            EP->>DB: Hold SubmissionB at PENDING_IDENTITY_REVIEW (No Application, No AI)
+        end
+        Admin->>EP: POST /admin/candidate-duplicate-cases/{id}/resolve (Decision: MERGE)
+        EP->>DB: Archive CandidateB -> Canonical CandidateA; Set SubmissionB = BLOCKED_DUPLICATE
+        DB-->>AffB: SignalR Refresh (Status: Bị chặn do trùng)
+    end
+```
 
 ---
 
-# MF-03. AI Matching và sàng lọc
+## MF-03. Chấm Điểm AI Trọng Số Động (`ai-service-v2`), Sàng Lọc Hồ Sơ & Bàn Giao CV Sourcing
 
-> Sơ đồ MF-03 chưa được lưu trong repository; phần mô tả bên dưới là nguồn tham chiếu hiện hành.
+### 1. Luồng thực thi chi tiết (Step-by-Step)
+1. **Dispatch bất đồng bộ kèm Trọng số Động (`Mf03ScoringDispatcher.cs`):**
+   - Worker quét bảng `ai_match_results` lấy các bản ghi `PENDING` (hoặc `PROCESSING` bị treo quá timeout, tối đa `MaxDispatchAttempts = 5` với Exponential Backoff `30s → 900s`).
+   - Đọc 5 tham số cấu hình động từ `IAdminBusinessSettings` (`mf03.ai_scoring.must_have_weight`, `should_have_weight`, `semantic_weight`, `llm_fit_weight`, `knockout_cap_score` — Admin chỉnh trực tiếp tại `/admin/settings` qua `PUT /api/v1/admin/settings`) và gửi `POST /api/v1/scoring-jobs` kèm `X-Service-Token` và `scoringOverrides` sang `ai-service-v2`.
+2. **Xử lý chấm điểm & Hậu kiểm bằng chứng tại `ai-service-v2`:**
+   - Lưu job vào hàng đợi bền vững trên đĩa (`pending-scoring-jobs.json`), kiểm tra khóa màu `active-color` (Blue/Green), trả ngay `202 Accepted`.
+   - Worker Python gọi `GET /api/v1/internal/jobs/{jobId}/jd` và lấy Presigned URL tải CV từ Cloudflare R2.
+   - Gọi LLM (`gemini` → fallback models → fallback providers) để đánh giá từng yêu cầu và trích xuất câu bằng chứng nguyên văn.
+   - `verification.py` đối chiếu từng câu trích dẫn với văn bản đọc từ `PyMuPDF` (`quote_min_token_ratio = 0.85`) và kiểm tra số năm kinh nghiệm (`years_tolerance = 0.25`); nếu trích dẫn không tồn tại trong CV gốc, hạ trạng thái và gắn cờ `requiresManualReview = true`.
+   - `semantic.py` tính điểm tương đồng ngữ nghĩa bằng Sentence-BERT; `scoring.py` tính tổng điểm tất định theo `scoringOverrides` (chặn trần `knockout_cap_score = 59` nếu thiếu bất kỳ tiêu chí `MUST_HAVE` nào).
+   - Gửi kết quả về `POST /api/v1/internal/ai-results` (`AiResultCallbackProcessor` lưu `AiMatchResult`, ghi `AuditLog` và bắn SignalR cập nhật giao diện HR/Client). Nếu mọi LLM đều lỗi/quá tải, trả `FAILED` (`AI_PROVIDER_UNAVAILABLE`) — **không chặn luồng sàng lọc thủ công** và cho phép HR bấm **Yêu cầu chấm lại** (`POST /api/v1/internal/applications/{id}/ai-scoring/retry`).
+3. **Tiền sàng lọc theo loại dịch vụ (`RecruitmentEndpoints.cs` → `UpdateApplicationScreeningStatusCommandHandler`):**
+   - `ScreeningPolicy` phân quyền: `CV_APPLICATION` do Client sàng lọc; `HEADHUNT_COD` và `CV_SOURCING` do Internal HR tiền sàng lọc (`/hr/screening`).
+   - Mở hồ sơ tự gọi `POST .../start-screening` (`SUBMITTED → SCREENING`).
+   - Bấm **Chọn gửi Client (`SHORTLISTED`)**: truyền kèm `ConcurrencyToken` và **ghi chú nhận xét tùy chọn của HR (`reason`)** — được lưu vào `Application.StatusReason` và `ApplicationStatusHistory` hiển thị trên Timeline cho cả HR và Client. Với `HEADHUNT_COD`, Client xem hồ sơ `SHORTLISTED` qua `MaskedCvService` (`GET /api/v1/recruitment/applications/{id}/cv/masked` — tự động che Email, SĐT và URL trên PDF).
+   - Bấm **Loại hồ sơ (`REJECTED`)**: bắt buộc truyền `ReasonCode` chuẩn.
+4. **Bàn giao & Nghiệm thu CV Sourcing (`SourcingDeliveryEndpoints.cs` → `SourcingDeliveryFeatures.cs`):**
+   - Internal HR gọi `POST /api/v1/jobs/{jobId}/sourcing/deliveries` để giao các CV `SHORTLISTED` (không vượt `SourcingTarget`).
+   - Trong hạn `ReviewDays`, Client gọi `POST .../review` để `ACCEPT` (sinh ngay `Commission (EARNED)` cho Affiliate) hoặc `REJECT` kèm mã lý do hợp lệ (thông báo real-time cho cả HR và Affiliate). Quá hạn không phản hồi → `SourcingAutoAcceptWorker` tự động chuyển `AUTO_ACCEPTED`. Nếu từ chối với mã `OTHER`, Internal HR thẩm định giữ nguyên hoặc bác bỏ; CV từ chối hợp lệ được thay bằng CV dự phòng (`POST .../replace`).
 
-**Mục tiêu:** AI hỗ trợ đánh giá mức độ phù hợp giữa CV và job; con người quyết định cuối.
+### 2. Mermaid Sequence Diagram (MF-03)
 
-**Actor:** người sàng lọc (Internal HR hoặc Client Company User, tùy loại dịch vụ). **Thành phần hệ thống:** AI Matching Service.
+```mermaid
+sequenceDiagram
+    autonumber
+    participant DB as PostgreSQL
+    participant Disp as Mf03ScoringDispatcher (.NET)
+    participant AI as ai-service-v2 (FastAPI)
+    participant LLM as Gemini / Fallback LLM + SBERT
+    participant CB as AiIntegrationEndpoints (/internal/ai-results)
+    actor HR as Internal HR
+    actor Client as Client Company
 
-**Ai sàng lọc** (đã có code; vẫn nằm trong danh sách hỏi giảng viên, mục 6.2):
+    Disp->>DB: Load PENDING AiMatchResults + Dynamic Weights (mf03.ai_scoring.*)
+    Disp->>AI: POST /api/v1/scoring-jobs (X-Service-Token, scoringOverrides)
+    AI-->>Disp: 202 Accepted (Persisted to disk queue)
+    AI->>CB: GET /internal/jobs/{jobId}/jd & Download CV PDF from R2
+    AI->>LLM: Evaluate requirements + Compute SBERT semantic similarity
+    AI->>AI: Verify quotes via PyMuPDF (verification.py) & Compute deterministic score
+    AI->>CB: POST /api/v1/internal/ai-results (COMPLETED / FAILED)
+    CB->>DB: Save AiMatchResult + Push SignalR Notification
 
-| Service Type | Người sàng lọc | Lý do |
-|---|---|---|
-| `CV_APPLICATION` | Client | Client mua quyền nhận và tự chọn hồ sơ |
-| `HEADHUNT_COD`, `CV_SOURCING` | Internal HR lọc trước; Client chỉ thấy hồ sơ đã đạt | Giá trị dịch vụ là hồ sơ đã được nền tảng chọn lọc |
-
-Code: quy tắc nằm ở `ScreeningPolicy`; sai người theo loại dịch vụ thì API trả 403.
-
-**Điều kiện:** có hồ sơ ứng tuyển `SUBMITTED` từ MF-02.
-
-**Luồng chính:**
-
-1. Hệ thống tự gọi AI chấm điểm CV so với mô tả job. Nếu AI service lỗi hoặc quá thời gian xử lý (15 phút), hệ thống tự thử lại với khoảng chờ tăng dần (từ 30 giây đến tối đa 15 phút) và có giới hạn số lần thử; hết lượt thì hồ sơ chuyển người sàng lọc xem tay.
-   - AI service v2 (2026-10-17): mỗi lần gọi Gemini dừng sau 120 giây, cả lượt chấm dừng sau 300 giây và báo `FAILED` / `AI_TIMEOUT` (cấu hình được); ghi log từng bước; `match-file` và `/docs` cần token trừ khi bật chế độ test trên máy. Hàng đợi nằm trong RAM: dịch vụ khởi động lại thì backend tự gửi lại như trên.
-2. AI trả về điểm phù hợp, tier, kết quả từng yêu cầu bắt buộc/ưu tiên kèm bằng chứng trích từ CV.
-3. Người sàng lọc xem kết quả; Internal HR có thể yêu cầu chấm lại.
-4. Người sàng lọc quyết định (`PATCH /api/v1/jobs/{jobId}/applications/{applicationId}/status`, bắt buộc `concurrencyToken`):
-   - Đạt → `SHORTLISTED`, chuyển MF-04.
-   - Không đạt → `REJECTED` kèm **mã lý do bắt buộc**, ghi chú tự do không bắt buộc (bắt buộc khi chọn `OTHER`), kết thúc.
-
-| Mã lý do loại | Ý nghĩa |
-|---|---|
-| `SKILL_MISMATCH` | Thiếu kỹ năng |
-| `INSUFFICIENT_EXPERIENCE` | Thiếu kinh nghiệm |
-| `SALARY_MISMATCH` | Lương không phù hợp |
-| `LOCATION_MISMATCH` | Địa điểm không phù hợp |
-| `LANGUAGE_REQUIREMENT` | Không đạt yêu cầu ngoại ngữ |
-| `CANDIDATE_UNREACHABLE` | Không liên hệ được ứng viên |
-| `POSITION_FILLED` | Vị trí đã tuyển đủ |
-| `OTHER` | Lý do khác, phải ghi chú |
-
-**Quy tắc:**
-
-- AI chỉ hỗ trợ ra quyết định. AI không tự loại, không tự chọn, không quyết định kết quả phỏng vấn hay offer.
-- CV thiếu bằng chứng cho một yêu cầu (ví dụ IELTS) là nội dung sàng lọc, không làm lượt nộp thành trùng hay không hợp lệ.
-- Tier theo điểm: ≥80, 70–79, 60–69, <60. Ngưỡng và màu lưu trong bảng cấu hình, không viết cứng.
-- Hồ sơ đang được xem xét dùng trạng thái `SCREENING`. Không dùng `NEED_MORE_INFORMATION` hay `UNDER_REVIEW` như bản cũ **[CẦN XÁC NHẬN]**. Khi người sàng lọc mở hồ sơ, giao diện gọi `POST /api/v1/jobs/{jobId}/applications/{applicationId}/start-screening`: hồ sơ `SUBMITTED` chuyển sang `SCREENING`; gọi lặp lại hoặc người không phụ trách sàng lọc gọi thì không đổi gì.
-- Ai liên hệ ứng viên sau sàng lọc (API trả trường `contactOwner`):
-
-| Service Type | Người liên hệ ứng viên |
-|---|---|
-| `HEADHUNT_COD` | Internal HR |
-| `CV_SOURCING`, `CV_APPLICATION` | HR của Client |
-
-- Với `HEADHUNT_COD`, Client chỉ thấy hồ sơ đã từng được `SHORTLISTED`; hồ sơ chưa qua sàng lọc không có trong danh sách và trả 404 khi mở. Với `CV_SOURCING`, Client chỉ thấy hồ sơ **đã được Internal HR giao** (có bản ghi giao CV), kể cả sau khi chấp nhận, từ chối hay bị thay; hồ sơ đã chọn mà chưa giao, hoặc CV dự phòng (`BACKUP`), không hiện và trả 404 (2026-10-19).
-- Với `HEADHUNT_COD`, Client không thấy email, số điện thoại, địa chỉ và file CV của ứng viên cho tới khi hồ sơ `PLACED` (`isContactMasked = true`). `CV_SOURCING` và `CV_APPLICATION` không che vì HR của Client là người liên hệ.
-
-**Giao CV `CV_SOURCING`** (đã có code):
-
-1. Internal HR giao các hồ sơ `SHORTLISTED` đã có consent `CONFIRMED`: `POST /api/v1/jobs/{jobId}/sourcing/deliveries`. Không vượt Sourcing Target (`409 SOURCING_TARGET_REACHED`); phần dư để `BACKUP`.
-2. Client có `reviewDays` của job (mặc định 7) để chấp nhận hoặc từ chối kèm mã lý do hợp lệ (`DUPLICATE_ALREADY_OWNED`, `FALSE_INFORMATION`, `UNREACHABLE`, `WRONG_JOB`, `OTHER` có ghi chú). "Không chọn phỏng vấn" không phải lý do từ chối. Quá hạn → `409 REVIEW_WINDOW_CLOSED`.
-3. Hết hạn không phản hồi → worker chuyển `AUTO_ACCEPTED`. Lý do `OTHER` do Internal HR xác minh; bác bỏ thì tính như chấp nhận.
-4. CV bị từ chối hợp lệ có thể được thay bằng CV dự phòng (`replace`): CV cũ `REPLACED`, CV mới có hạn xem xét mới.
-5. CV `ACCEPTED` / `AUTO_ACCEPTED` được tính tiền và hoa hồng ở MF-05.
-
-**Kết quả:** `SHORTLISTED` → MF-04, hoặc `REJECTED` → kết thúc.
+    alt ServiceType is HEADHUNT_COD or CV_SOURCING
+        HR->>DB: PATCH /jobs/{jobId}/applications/{appId}/status (SHORTLISTED + optional HR note)
+        opt ServiceType is CV_SOURCING
+            HR->>DB: POST /jobs/{jobId}/sourcing/deliveries (Deliver within SourcingTarget)
+            Client->>DB: POST .../review (ACCEPT -> Commission EARNED / REJECT -> Replace or HR Audit)
+        end
+    else ServiceType is CV_APPLICATION
+        Client->>DB: Screen directly on /client/candidates (Full CV + AI Breakdown)
+    end
+```
 
 ---
 
-# MF-04. Phỏng vấn, Offer, Nhận việc
+## MF-04. Phỏng Vấn Đa Vòng, Offer Hợp Nhất, Nhận Việc (`Placement`) & Đối Soát Độc Lập
 
-> Sơ đồ MF-04 chưa được lưu trong repository; phần mô tả bên dưới là nguồn tham chiếu hiện hành.
+### 1. Luồng thực thi chi tiết (Step-by-Step)
+1. **Quản lý Phỏng vấn (`InterviewEndpoints.cs`):**
+   - Client gọi `POST /api/v1/recruitment/applications/{applicationId}/interviews` (`ScheduleInterviewCommand`) → kiểm tra unique index `ux_interview_one_scheduled_per_application`, chuyển `Application → INTERVIEW`, tạo `Interview (SCHEDULED)`, ghi `EmailOutbox` và đẩy SignalR (`interview.updated`).
+   - Candidate xác nhận tham dự hoặc xin dời lịch qua `POST /api/v1/interviews/{id}/candidate-confirm`.
+   - Sau buổi phỏng vấn, Client ghi kết quả (`POST /api/v1/interviews/{id}/result`):
+     - `PASS` → `Application` chuyển `OFFER_PENDING` (hoặc tạo vòng phỏng vấn tiếp theo).
+     - `BACKUP` → `Application` chuyển `BACKUP` (xử lý sau qua `DecideBackupApplicationCommand`).
+     - `FAIL` → `Application` chuyển `INTERVIEW_FAILED`.
+2. **Thư mời nhận việc phiên bản hóa (`OfferEndpoints.cs`):**
+   - Client tạo và gửi Offer (`POST /api/v1/offers`, `POST /api/v1/offers/{id}/send`), lưu lịch sử các lần điều chỉnh điều khoản lương/ngày đi làm. Trên giao diện Client & Candidate, hệ thống hiển thị thẻ Offer hiện hành thống nhất kèm modal lịch sử điều chỉnh và thanh tiến trình 5 bước rõ ràng.
+   - Candidate phản hồi qua `POST /api/v1/offers/{id}/respond` dưới khóa `ICandidateTransactionLock`: `ACCEPT` → `Application (OFFER_ACCEPTED)`; `DECLINE` → `OFFER_DECLINED`. Nếu quá `ExpiresAt`, `OfferExpiryWorker` tự chuyển sang `EXPIRED`.
+3. **Xác nhận đi làm thực tế (`PlacementEndpoints.cs` → `ConfirmStartWorkCommandHandler`):**
+   - Client có thể lùi ngày dự kiến đi làm tối đa 3 lần (không quá 60 ngày). Khi ứng viên nhận việc thực tế, Client gọi `ConfirmStartWorkCommand`:
+     - Chuyển `Application → PLACED`, tạo `Placement (STARTED)` và tự động đóng các đơn đang mở khác của ứng viên trong cùng công ty.
+     - Nếu thuộc `HEADHUNT_COD`:
+       - Trường hợp lấp vào `ReplacementSlot` đang `OPEN`: đánh dấu suất `FILLED`, không tạo phí mới, mở `Warranty (ACTIVE)` và `Commission (IN_WARRANTY)` gắn với phí gốc.
+       - Trường hợp tuyển mới: tạo `ServiceFee (Kind = PLACEMENT, Status = PENDING)`, `Warranty (ACTIVE, 30 ngày)`, `Commission (IN_WARRANTY)` và tạo bản ghi đối soát **`PlacementReconciliation (Status = PENDING)`**.
+4. **Đối soát độc lập & Sửa ngày đi làm (`PlacementReconciliationEndpoints.cs` — UC-41):**
+   - Internal HR liên hệ xác minh độc lập và gọi `POST /api/v1/internal-hr/placement-reconciliations/{applicationId}`:
+     - `CONFIRMED`: mở khóa chu kỳ thu phí `ServiceFee` và cho phép hoàn tất bảo hành khi đủ hạn (ghi nhận đúng `ActorUserId` vào `AuditLog`).
+     - `FLAGGED`: tạm khóa thu phí/bảo hành và chuyển lên Platform Admin phân xử (`/api/v1/admin/placement-reconciliations/*`).
+   - Trong vòng **7 ngày** từ `ConfirmedAt`, Internal HR có thể sửa lại ngày bắt đầu thực tế (`CorrectPlacementStartDateCommand`), tự động tính lại hạn thanh toán phí và ngày kết thúc bảo hành.
 
-**Mục tiêu:** theo dõi ứng viên từ lúc được chọn đến khi thực sự đi làm.
+### 2. Mermaid Sequence Diagram (MF-04)
 
-**Actor:** Client Company User, Candidate, Internal HR.
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Client Company
+    actor Cand as Candidate
+    participant EP as Interview / Offer / Placement Endpoints
+    participant Lock as CandidateLock & UnitOfWork
+    participant DB as PostgreSQL
+    actor HR as Internal HR
 
-**Phân vai:**
+    Client->>EP: POST /recruitment/applications/{appId}/interviews
+    EP->>DB: Create Interview(SCHEDULED), Set Application(INTERVIEW) + Notify Candidate
+    Cand->>EP: POST /interviews/{id}/candidate-confirm (CONFIRMED)
+    Client->>EP: POST /interviews/{id}/result (Result: PASS)
+    EP->>DB: Complete Interview, Set Application(OFFER_PENDING)
 
-| Bước | Người thực hiện | Ghi chú |
-|---|---|---|
-| Lên lịch, phỏng vấn, ghi kết quả, quyết định hồ sơ dự bị | Client | Bộ phận tuyển dụng của Client trực tiếp làm việc với ứng viên |
-| Tạo và gửi offer | Client | Lương và điều kiện làm việc do Client đưa ra |
-| Xác nhận ngày bắt đầu, xác nhận đi làm, đánh dấu không nhận việc | Client | |
-| Đối soát placement trước khi tính phí (`HEADHUNT_COD`) | Internal HR | **Đã có code UC-41**: xác nhận hoặc đánh dấu sai lệch; phí bị giữ đến khi đối soát hoàn tất |
-| Kiểm tra lý do khi hồ sơ bị đánh dấu không nhận việc | Internal HR | **[CHƯA CÓ CODE] [CẦN XÁC NHẬN]** |
+    Client->>EP: POST /offers & POST /offers/{id}/send (BaseSalary, StartDate, ExpiresAt)
+    EP->>DB: Save Offer(SENT) + OfferHistory + EmailOutbox
+    Cand->>EP: POST /offers/{id}/respond (Decision: ACCEPT)
+    EP->>Lock: Acquire CandidateTransactionLock
+    Lock->>DB: Set Offer(ACCEPTED), Application(OFFER_ACCEPTED)
 
-Internal HR thuộc đơn vị vận hành nền tảng, không thuộc công ty Client, nên không lên lịch phỏng vấn, không ghi kết quả và không tạo offer. Migration `20261005090000_RestrictInternalHrRecruitmentMutations` đã thu hồi các quyền thao tác MF-04 này; Internal HR chỉ giữ `application.screen` cho bước tiền sàng lọc `HEADHUNT_COD` và `CV_SOURCING`. Vai trò kiểm soát mốc phát sinh phí vẫn là bước đề xuất: với `HEADHUNT_COD` cần một bước đối soát độc lập (với ứng viên hoặc Affiliate) trước khi chuyển sang tính phí ở MF-05.
-
-**Điều kiện:** hồ sơ ứng tuyển `SHORTLISTED`.
-
-## Phỏng vấn
-
-1. Client lên lịch → hồ sơ chuyển `INTERVIEW`, lịch ở trạng thái `SCHEDULED`; hệ thống gửi thông báo cho ứng viên.
-2. Lịch có thể được sửa, dời, hủy (`CANCELLED`) hoặc ghi vắng mặt (`NO_SHOW`).
-3. Sau buổi phỏng vấn, ghi kết quả (lịch chuyển `COMPLETED`):
-
-| Kết quả | Hồ sơ chuyển sang |
-|---|---|
-| `PASS` | `OFFER_PENDING` |
-| `FAIL` | `INTERVIEW_FAILED` (kết thúc) |
-| `BACKUP` | `BACKUP`, chờ quyết định |
-
-4. Hồ sơ dự bị: được chọn → `OFFER_PENDING`; không được chọn → `BACKUP_NOT_SELECTED` (kết thúc).
-
-**Quy tắc:** mỗi hồ sơ chỉ có một lịch đang chờ tại một thời điểm; hỗ trợ nhiều vòng phỏng vấn; Client chỉ thao tác trên ứng viên của công ty mình.
-
-## Offer
-
-1. Tạo offer nháp (`DRAFT`), có thể sửa.
-2. Gửi offer cho ứng viên (`SENT`).
-3. Ứng viên chấp nhận → offer `ACCEPTED`, hồ sơ `OFFER_ACCEPTED`.
-4. Ứng viên từ chối → offer `DECLINED`, hồ sơ `OFFER_DECLINED` (kết thúc).
-5. Bên tuyển rút offer kèm lý do bắt buộc → offer `WITHDRAWN`, hồ sơ quay về `OFFER_PENDING` để có thể tạo offer mới. Không rút được offer ứng viên đã chấp nhận.
-6. Quá hạn trả lời → `EXPIRED`.
-
-## Nhận việc
-
-1. Xác nhận ngày bắt đầu dự kiến.
-2. Ứng viên đi làm thực tế: Client xác nhận → hồ sơ `PLACED`, tạo Placement `STARTED`, chuyển MF-05.
-3. Đã nhận offer nhưng không đi làm: đánh dấu `NOT_STARTED` kèm lý do (kết thúc).
-
-## Rút hồ sơ
-
-Ứng viên có thể rút hồ sơ (`WITHDRAWN`) khi hồ sơ chưa `PLACED` hoặc `CLOSED`.
-
-## Bảng trạng thái hồ sơ ứng tuyển
-
-| Trạng thái | Ý nghĩa | Kết thúc? |
-|---|---|---|
-| `SUBMITTED` | Đã được nhận vào pipeline | |
-| `SCREENING` | Đang sàng lọc | |
-| `SHORTLISTED` | Đạt sàng lọc | |
-| `REJECTED` | Không đạt sàng lọc | Có |
-| `INTERVIEW` | Đang phỏng vấn | |
-| `INTERVIEW_FAILED` | Trượt phỏng vấn | Có |
-| `BACKUP` | Dự bị, chờ quyết định | |
-| `BACKUP_NOT_SELECTED` | Dự bị không được chọn | Có |
-| `OFFER_PENDING` | Đạt phỏng vấn, chờ offer | |
-| `OFFER_ACCEPTED` | Ứng viên nhận offer | |
-| `OFFER_DECLINED` | Ứng viên từ chối offer | Có |
-| `NOT_STARTED` | Nhận offer nhưng không đi làm | Có |
-| `PLACED` | Đã đi làm | |
-| `WITHDRAWN` | Ứng viên rút hồ sơ | Có |
-| `CLOSED` | Hồ sơ đã đóng | Có |
-
-**Kết quả:** `PLACED` → MF-05; các nhánh còn lại kết thúc tại MF-04. Thử việc và bảo hành không xử lý ở MF-04.
+    Client->>EP: POST /placements (Confirm Candidate Started Work)
+    EP->>DB: Create Placement(STARTED), Set Application(PLACED)
+    opt ServiceType is HEADHUNT_COD (New Hire)
+        EP->>DB: Create ServiceFee(PENDING) + Warranty(ACTIVE) + Commission(IN_WARRANTY) + Reconciliation(PENDING)
+        HR->>EP: POST /internal-hr/placement-reconciliations/{appId} (Decision: CONFIRMED)
+        EP->>DB: Mark Reconciliation(CONFIRMED), Release Fee & Warranty Hold + Audit ActorUserId
+    end
+```
 
 ---
 
-# MF-05. Thử việc, Bảo hành, Hoa hồng, Payout
+## MF-05. Công Nợ Phí Dịch Vụ, VNPay, Bảo Hành 30 Ngày, Suất Thay Thế, Quyết Toán Sourcing, Khiếu Nại & Payout
 
-> Sơ đồ MF-05 chưa được lưu trong repository; phần mô tả bên dưới là nguồn tham chiếu hiện hành.
+### 1. Luồng thực thi chi tiết (Step-by-Step)
+1. **Thu phí dịch vụ & Quyết toán Sourcing (`FinanceEndpoints.cs` & `VnPayPaymentEndpoints.cs`):**
+   - Với `HEADHUNT_COD`: sau khi `PlacementReconciliation == CONFIRMED`, `WarrantyProgressWorker` theo dõi hạn thanh toán (`PENDING → DUE → OVERDUE`). Client thanh toán trực tuyến qua **VNPay** (`POST /api/v1/payments/vnpay`, target `SERVICE_FEE`) hoặc Platform Admin đối chiếu sao kê ghi nhận qua `POST /api/v1/admin/service-fees/{id}/record-payment` (khóa `FOR UPDATE`).
+   - Với `CV_SOURCING`: khi Job đủ chỉ tiêu `SourcingTarget` hoặc đã `CLOSED` và không còn CV chờ phản hồi, `SourcingFinanceWorker` (hoặc `POST /api/v1/jobs/{jobId}/sourcing-settlement`) tính `Balance = BillableCvs × PricePerCv - PaidDeposit` (chỉ tính cọc đã `PAID`, tự hủy phiếu cọc chưa trả): nếu `Balance > 0` sinh phiếu `SETTLEMENT (PENDING)`; nếu `Balance < 0` sinh phiếu hoàn tiền `CREDIT (REFUND_PENDING)`.
+2. **Bảo hành 30 ngày & Vòng đời Suất tuyển thay thế (`Warranty` & `ReplacementSlot`):**
+   - **Đủ 30 ngày không nghỉ:** `WarrantyProgressWorker` tự động chuyển `Warranty (ACTIVE → PASSED)` và nâng `Commission (IN_WARRANTY → EARNED)` (nếu Affiliate đang `SUSPENDED` thì giữ ở `ON_HOLD`).
+   - **Ứng viên nghỉ việc trong hạn bảo hành:**
+     - Client gọi `POST /api/v1/placements/{placementId}/resignation` → `Warranty` sang `CLAIMED`, `Commission` sang `ON_HOLD`.
+     - Internal HR xác minh qua `POST .../resignation/resolve`: nếu bác bỏ → khôi phục `ACTIVE` / `IN_WARRANTY`; nếu xác nhận nghỉ → `Warranty` sang `VOIDED`, `Commission` sang `CANCELLED`, và mở **1 Suất tuyển thay thế miễn phí (`ReplacementSlot`)** (`OPEN` nếu phí gốc đã `PAID`, hoặc `WAITING_PAYMENT` chờ Client thanh toán phí gốc kèm nút điều hướng deep-link sang đúng dòng công nợ trên trang Billing).
+   - **Gia hạn, Yêu cầu hủy & Hoàn phí một phần của `ReplacementSlot`:**
+     - Chạm `ExpiresAt` lần đầu → tự động gia hạn 1 lần (`mf05.replacement.extension_days`, mặc định 30 ngày).
+     - Hết hạn sau gia hạn → chuyển `EXPIRED`; nếu chưa có bất kỳ hồ sơ thay thế nào được chuyển tới Client, tự động tạo phiếu hoàn phí `REPLACEMENT_REFUND` (`mf05.replacement.refund_percent`, mặc định 30%).
+     - Nếu doanh nghiệp không còn nhu cầu tuyển thay thế: Client gọi `POST /api/v1/client/replacement-slots/{id}/cancel-request` (`RequestCancelReplacementSlotCommand`) gửi yêu cầu hủy kèm lý do → Internal HR xác nhận qua `POST /api/v1/internal/replacement-slots/{id}/cancel` (`CancelReplacementSlotCommand` → chuyển `CANCELLED`, không sinh hoàn phí).
+3. **Khiếu nại Attribution (`DisputeEndpoints.cs`), Duyệt Hoa hồng & Chi trả (`Payout`):**
+   - Affiliate có đơn bị `BLOCKED_DUPLICATE` có thể gửi khiếu nại trong `dispute.window_days` (`POST /api/v1/disputes`). Khi có `Dispute` hoặc `CandidateDuplicateCase` đang mở, hệ thống chặn duyệt chi hoa hồng liên quan (`409 COMMISSION_UNDER_DISPUTE`). Platform Admin phân xử tại `POST /api/v1/admin/disputes/{id}/resolve` (`UPHELD` chuyển quyền `Attribution` và hoa hồng chưa chi sang Affiliate thắng; hoặc `REJECTED`).
+   - Khi `Commission == EARNED` và khoản phí dịch vụ hiệu lực đã `PAID`, Platform Admin gọi `POST /api/v1/admin/commissions/{id}/approve` (`EARNED → PAYABLE`), sau đó tạo và xác nhận đợt chuyển khoản thực tế qua `POST /api/v1/admin/commissions/{id}/payouts` (`Payout: COMPLETED`, `Commission: PAID`).
 
-**Mục tiêu:** theo dõi ứng viên sau khi đi làm, tính phí dịch vụ, tính và chi hoa hồng cho Affiliate.
+### 2. Mermaid Sequence Diagram (MF-05 — Headhunt Fee, Warranty, Replacement Slot & Payout)
 
-**Actor:** Client Company User, Internal HR, Platform Admin, Affiliate.
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Client Company
+    participant FinEP as Finance & VNPay Endpoints
+    participant W as WarrantyProgressWorker
+    participant DB as PostgreSQL (FOR UPDATE Locks)
+    actor HR as Internal HR
+    actor Admin as Platform Admin
+    actor Aff as Affiliate
 
-**Giả định đơn giản hóa:** Platform Admin đảm nhiệm cả việc ghi nhận thu phí, duyệt hoa hồng và ghi nhận chi; hệ thống chưa có vai trò kế toán riêng.
+    Client->>FinEP: Pay ServiceFee(PLACEMENT) via VNPay (or Admin record-payment)
+    FinEP->>DB: Mark ServiceFee(PAID) (Auto-open WAITING_PAYMENT ReplacementSlot if any)
 
-**Điều kiện:** có Placement từ MF-04.
-
-> **Quy tắc phí và hoa hồng:** xem [QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md](QUY-TAC-PHI-VA-HOA-HONG-3-DICH-VU.md). Phần dưới chỉ tóm tắt; nếu khác nhau thì làm theo file đó.
-
-> **Hiện trạng code (2026-10-17):**
-> - `HEADHUNT_COD`: bảo hành, công nợ phí, hoa hồng `IN_WARRANTY` → `EARNED` khi hết bảo hành, báo nghỉ và Internal HR xác minh, suất tuyển thay thế, nhắc Client trước hạn (`DUE`), ghi nhận thu phí, duyệt / hủy / điều chỉnh hoa hồng, payout.
-> - `CV_SOURCING` (nhánh `feature/mf05-sourcing-finance`): phiếu cọc khi duyệt job, job chỉ mở sau khi cọc được ghi nhận, hoa hồng mỗi CV được chấp nhận, quyết toán / hoàn cọc, điều kiện chi hoa hồng, báo cáo doanh thu.
-> - `CV_APPLICATION`: phí đăng tin theo gói (MF-01).
-> - Affiliate bị khóa: hoa hồng chưa đạt được tạm giữ, mở khóa thì trả lại.
-> - Đánh giá Affiliate có worker tính điểm; giao diện Admin / Client / Affiliate cho tài chính đã có.
-
-## Phí dịch vụ (Client trả cho HR Connect)
-
-| Service Type | Cách tính | Thời điểm phát sinh |
-|---|---|---|
-| `HEADHUNT_COD` | Lương gross tháng × hệ số phí, tính riêng cho từng placement. Hệ số do **Internal HR tinh chỉnh khi duyệt job** theo thỏa thuận với Client; Admin chỉ cấu hình giá trị điền sẵn | Khi xác nhận đi làm thực tế |
-| `CV_SOURCING` | Số CV được tính tiền × giá mỗi CV (Internal HR chốt khi duyệt JD); đặt cọc 50%, thời hạn xem xét 7 ngày (đã chốt 2026-10-14). **Job chỉ mở sau khi Platform Admin ghi nhận cọc** (`PENDING_PAYMENT` → `ACTIVE`, chốt 2026-10-17). Quyết toán = số CV được tính × giá − cọc; giao thiếu thì **hoàn** phần cọc dư (phiếu `CREDIT`), không trừ vào lần sau (chốt 2026-10-17) | Cọc: khi duyệt job. Phần còn lại: khi đủ số CV hoặc job đóng |
-| `CV_APPLICATION` | Giá công khai theo gói đăng tin (thời hạn, số hồ sơ tối đa) | Sau khi job được duyệt (đã chốt 2026-10-14) (`PENDING_PAYMENT` → `PAID` → job `ACTIVE`) |
-
-Phí dịch vụ và hoa hồng là hai khoản độc lập: phí dịch vụ đi từ Client đến HR Connect, hoa hồng đi từ HR Connect đến Affiliate. Ứng viên không trả phí nào.
-
-## Thu phí dịch vụ
-
-1. Khi có placement, hệ thống tạo công nợ phí dịch vụ kèm hạn thanh toán và thông báo cho Client.
-2. Client thanh toán ngoài hệ thống (chuyển khoản).
-3. Platform Admin đối chiếu sao kê và ghi nhận đã thu; công nợ chuyển trạng thái `PENDING` → `DUE` (còn ≤ 5 ngày tới hạn, cấu hình `mf05.fee.due_reminder_days`; hệ thống nhắc Client) → `PAID`, quá hạn thì `OVERDUE` (mặc định hạn 20 ngày kể từ ngày đi làm, Internal HR chỉnh được khi duyệt job).
-
-## Bảo hành
-
-Áp dụng cho `HEADHUNT_COD`. Chạy song song với việc thu phí.
-
-1. Từ ngày đi làm, hệ thống đếm ngày bảo hành (**30 ngày**, cấu hình được) và tạo hoa hồng `IN_WARRANTY` cho Affiliate có attribution.
-2. Hết 30 ngày mà không có báo cáo nghỉ việc, hệ thống tự chuyển bảo hành sang `PASSED` và ghi nhận **toàn bộ** hoa hồng là `EARNED` (không chia mốc; quyết định 2026-10-09). Internal HR không phải xác nhận, chỉ xử lý ngoại lệ.
-3. Ứng viên nghỉ việc trong thời hạn bảo hành: Client báo nghỉ (bảo hành `CLAIMED`, hoa hồng `ON_HOLD`) → Internal HR xác minh ngày nghỉ: xác nhận thì bảo hành `VOIDED`, hoa hồng `CANCELLED`, Client **không được hoàn phí ngay** mà được HR Connect **tìm người thay thế miễn phí** (chỉ hoàn một phần nếu suất hết hạn mà chưa có hồ sơ nào được chuyển cho Client); bác bỏ thì quay lại `ACTIVE` / `IN_WARRANTY`.
-   - Mỗi khoản phí chỉ được **thay thế miễn phí 1 lần**; người thay thế cũng nghỉ sớm thì bảo hành coi như hoàn thành, không thay tiếp, không hoàn tiền.
-   - Suất thay thế chỉ mở khi Client **đã thanh toán** phí dịch vụ.
-   - Suất có **hạn chót** (số ngày cấu hình được); quá hạn chưa có người đi làm thì suất hết hạn.
-   - Người thay thế đi làm: không phát sinh phí mới; bảo hành mới và hoa hồng mới (`IN_WARRANTY`) cho Affiliate của người thay thế, tính trên khoản phí cũ.
-   - **Suất thay thế (`replacement_slot`)**, mỗi placement và mỗi khoản phí tối đa 1 suất (ràng buộc UNIQUE):
-     - Internal HR xác nhận nghỉ: phí đã `PAID` → suất `OPEN` (`expires_at` = lúc mở + `mf05.replacement.fill_window_days`, mặc định 30, chụp lại vào suất); phí chưa trả → `WAITING_PAYMENT`, Admin ghi nhận thu phí thì tự `OPEN`. Job đã `CLOSED` được tự mở lại `ACTIVE` với lý do `REOPENED_FOR_REPLACEMENT`. Người nghỉ là người thay thế hoặc không có phí: không mở suất, audit `REPLACEMENT_NOT_ALLOWED`.
-     - Affiliate nộp vào job có suất `OPEN`: lượt nộp tự gắn vào suất mở sớm nhất (`isReplacement = true`). Nhiều lượt nộp có thể cùng gắn một suất; lúc ứng viên đồng ý mà suất không còn `OPEN` thì đóng lượt nộp với `REPLACEMENT_SLOT_UNAVAILABLE`.
-     - Người thay thế đi làm (MF-04): khóa suất, chuyển `FILLED`; suất không còn `OPEN` thì `409 REPLACEMENT_SLOT_ALREADY_FILLED`, HR của Client có thể chọn "nhận như tuyển mới" (có phí).
-     - Quá `expires_at` lần đầu → **tự gia hạn một lần** (`extended_at`, `expires_at` = lúc gia hạn + `mf05.replacement.extension_days`, mặc định 30, đặt 0 để không gia hạn; có thông báo cho Client, chốt 2026-11-05). Hoàn phí là bước cuối, chỉ xét sau khi đã gia hạn.
-     - Quá hạn sau khi đã gia hạn → `EXPIRED` (worker MF-05, có thông báo). **Hoàn phí một phần** (chốt 2026-11-04): nếu chưa có hồ sơ nào của suất được chuyển cho Client, hệ thống tạo khoản `REPLACEMENT_REFUND` = phí đã trả × `mf05.replacement.refund_percent` (mặc định 30%, đặt 0 để không hoàn), Platform Admin ghi nhận khi đã chuyển tiền. Đã có hồ sơ được chuyển mà Client không tuyển thì không hoàn. Internal HR hủy suất `WAITING_PAYMENT` / `OPEN` kèm lý do → `CANCELLED`, không hoàn phí (`REPLACEMENT_SLOT_NOT_CANCELLABLE` nếu suất đã kết thúc).
-     - API: `GET /api/v1/replacement-slots` (danh sách có phân trang, kèm tên job và doanh nghiệp; Client chỉ thấy suất của doanh nghiệp mình), `GET /api/v1/jobs/{jobId}/replacement-slots`, `POST /api/v1/internal/replacement-slots/{id}/cancel`.
-4. **Thử việc nằm ngoài phạm vi đồ án** (chốt 2026-10-17): không dùng làm mốc tính hoa hồng (thời gian thử việc khác nhau theo vị trí) và hệ thống không ghi kết quả thử việc. Bảng `probation` giữ trong cơ sở dữ liệu cho hướng phát triển sau.
-
-## Hoa hồng
-
-**Điều kiện xét duyệt:** hoa hồng chỉ được đưa sang bước duyệt khi đồng thời (a) ứng viên đã đi làm đủ 30 ngày và (b) Client đã thanh toán phí dịch vụ. Khi Client chưa thanh toán, hoa hồng đã `EARNED` vẫn chờ, chưa chi (đã xác nhận 2026-10-09).
-
-| Service Type | Cách tính hoa hồng |
-|---|---|
-| `HEADHUNT_COD` | Theo từng placement; nhận **100% một lần** khi ứng viên đi làm đủ 30 ngày. Commission Rule `PERCENT` tính trên phí dịch vụ, `FIXED` là số tiền cố định |
-| `CV_SOURCING` | Mỗi CV được Client chấp nhận (hoặc tự chấp nhận khi hết hạn xem xét) = giá mỗi CV × tỷ lệ Affiliate (mặc định 60%, Admin cấu hình), `EARNED` ngay. Chỉ duyệt chi khi job đã quyết toán, Client trả đủ cọc và quyết toán, và đã hết hạn xem xét của CV giao cuối (chốt 2026-10-17) |
-| `CV_APPLICATION` | Không có hoa hồng |
-
-**Trạng thái hoa hồng:** `PENDING` → `IN_WARRANTY` → `EARNED` → `PAYABLE` → `PAID`; nhánh phụ `ON_HOLD`, `CANCELLED`.
-
-- `PENDING`: đã giới thiệu, ứng viên chưa đi làm.
-- `IN_WARRANTY`: ứng viên đã đi làm, chưa đủ 30 ngày (đã chốt 2026-10-14). **Không** dùng `ON_HOLD` hay `EARNED` cho giai đoạn này.
-- `EARNED`: đã đủ 30 ngày, chờ Client thanh toán phí và Admin duyệt.
-- `PAYABLE`: Platform Admin đã duyệt (kiểm tra attribution, placement, mốc, tranh chấp), chờ chi.
-- `PAID`: đã ghi nhận chi.
-- `ON_HOLD`: tạm giữ vì Client báo ứng viên nghỉ, Internal HR đang xác minh. Xác nhận nghỉ → `CANCELLED`; bác bỏ → về `IN_WARRANTY`. `ON_HOLD` không tự lên `EARNED`.
-- `CANCELLED`: không đủ điều kiện hoặc ứng viên nghỉ trước mốc.
-- **Affiliate bị khóa tài khoản** (chốt 2026-10-17): hoa hồng đã `EARNED` / `PAYABLE` vẫn chi; `PENDING` / `IN_WARRANTY` chuyển `ON_HOLD` chờ Platform Admin quyết định (hủy, hoặc mở khóa tài khoản thì tự trả về trạng thái cũ; bảo hành đã qua trong lúc khóa thì thành `EARNED`).
-
-Mọi điều chỉnh số tiền phải lưu số cũ, số mới, lý do và người thực hiện.
-
-## Payout
-
-1. Việc chuyển tiền thực hiện ngoài hệ thống; HR Connect chỉ ghi số tiền, ngày chi, mã tham chiếu và chứng từ.
-2. **Trạng thái payout:** `PENDING` → `COMPLETED` / `FAILED` / `CANCELLED`.
-3. Affiliate xem được lịch sử payout của mình.
-
-## Đánh giá Affiliate
-
-Điểm chất lượng tính theo tỷ lệ lượt giới thiệu dẫn đến tuyển dụng thành công, không theo số lượng lượt nộp.
-
-**Kết quả:** bảo hành được theo dõi; phí dịch vụ của 3 dịch vụ được ghi nhận; hoa hồng được tính, duyệt và ghi nhận chi; mọi bước có audit.
+    alt Candidate completes 30-day Warranty
+        W->>DB: Set Warranty(PASSED) + Set Commission(EARNED) + SignalR Notify Affiliate
+        Admin->>FinEP: POST /api/v1/admin/commissions/{id}/approve
+        FinEP->>DB: Verify ServiceFee == PAID & No Open Dispute -> Set Commission(PAYABLE)
+        Admin->>FinEP: POST /api/v1/admin/commissions/{id}/payouts (Succeeded: true, RefCode)
+        FinEP->>DB: Create Payout(COMPLETED) + Set Commission(PAID)
+        DB-->>Aff: SignalR Push (PAYOUT + COMMISSION PAID)
+    else Candidate resigns within 30-day Warranty
+        Client->>FinEP: POST /api/v1/placements/{id}/resignation
+        FinEP->>DB: Set Warranty(CLAIMED), Commission(ON_HOLD)
+        HR->>FinEP: POST /api/v1/placements/{id}/resignation/resolve (Confirmed: true)
+        FinEP->>DB: Set Warranty(VOIDED), Commission(CANCELLED), Open ReplacementSlot(OPEN)
+        alt Client no longer needs replacement
+            Client->>FinEP: POST /api/v1/client/replacement-slots/{slotId}/cancel-request
+            HR->>FinEP: POST /api/v1/internal/replacement-slots/{slotId}/cancel
+            FinEP->>DB: Set ReplacementSlot(CANCELLED) (No refund)
+        else Slot expires after 1 auto-extension with 0 CVs delivered to Client
+            W->>DB: Set ReplacementSlot(EXPIRED) + Create ServiceFee(REPLACEMENT_REFUND, 30%)
+        end
+    end
+```
 
 ---
 
-# 6.1. SUPPORTING FLOWS
+## Phụ Lục: Trạng Thái Thực Tế Các Luồng Bổ Trợ (SF-01 → SF-09)
 
-| Mã | Luồng | Hỗ trợ cho | Trạng thái |
-|---|---|---|---|
-| SF-01 | Client đăng ký → tạo hồ sơ công ty → gửi xác minh → Platform Admin duyệt/từ chối | MF-01 | Đã có code |
-| SF-02 | Đăng ký Affiliate → Platform Admin duyệt → kích hoạt → xem job → giới thiệu ứng viên | MF-02, MF-05 | Đã có code |
-| SF-03 | Ứng viên nhận email → đồng ý hoặc từ chối lượt giới thiệu | MF-02 | Đã có code; là bước bắt buộc của nhánh B |
-| SF-04 | Affiliate khiếu nại (lượt nộp bị `BLOCKED_DUPLICATE`, hoặc ứng viên đang được ghi nhận cho Affiliate khác) trong `dispute.window_days` (mặc định 30) → Platform Admin xem danh tính ứng viên, mọi lượt nộp vào job, consent, attribution, hoa hồng, bằng chứng → `UPHELD` (chuyển attribution, hoa hồng chưa chi đi theo; hoa hồng đã chi thì `409`, xử lý ngoài hệ thống trước) hoặc `REJECTED` → audit, thông báo. Mỗi lượt nộp 1 khiếu nại đang mở; khi khiếu nại mở, hoa hồng liên quan không duyệt chi được (`409 COMMISSION_UNDER_DISPUTE`). Affiliate không thấy tên Affiliate bên kia | MF-02, MF-05 | **Đã có code bản tối thiểu** (2026-10-19). Chưa làm: tải file bằng chứng, rút khiếu nại, bước `UNDER_REVIEW`; FE chưa có màn |
-| SF-05 | Khách (chưa đăng nhập) gửi form liên hệ tư vấn `POST /api/v1/public/contact-requests` (họ tên, email, SĐT, công ty, dịch vụ quan tâm `HEADHUNT_COD`/`CV_SOURCING`/`CV_APPLICATION`/`OTHER`, nội dung, **bắt buộc đồng ý xử lý dữ liệu** theo Nghị định 13/2023, thiếu thì `400 CONSENT_REQUIRED`) → lưu `contact_request` trạng thái `NEW`, chỉ lưu hash SHA-256 của IP → email báo tới `CONTACT_NOTIFY_EMAIL` (lỗi email không chặn). Mỗi IP tối đa `contact.rate_limit_per_hour` (mặc định 5) lần/giờ, vượt thì `429 CONTACT_RATE_LIMITED`. Internal HR / Platform Admin (quyền `contact_request.manage`) xem `GET /api/v1/admin/contact-requests` và đổi `NEW → CONTACTED → CLOSED` kèm ghi chú `PATCH /api/v1/admin/contact-requests/{id}`, có audit | MF-01 | **Đã có code** (2026-10-19); FE chưa có màn |
-| SF-06 | Ứng viên tạo CV theo 3 cách: tải file lên (đã có), chọn mẫu (`TEMPLATE_FORM`, `GET /api/v1/cv-templates`, 3 mẫu seed `CLASSIC_TEAL`, `MODERN_BLUE`, `COMPACT_GRAPHITE`, Admin sửa trong DB không bị seed ghi đè) hoặc dựng trên nền tảng (`PLATFORM_BUILDER`, bố cục mặc định). `POST/PUT /api/v1/candidates/cv/structured`, `GET .../structured/{cvId}`: server render PDF A4 có chữ (font Roboto nhúng, đọc được tiếng Việt, tự sang trang), qua cùng kiểm tra như CV tải lên, lưu R2 → CV `ACTIVE` trong kho, nộp vào job và AI chấm như CV thường. Sửa CV thì render file mới; hồ sơ đã nộp giữ file cũ | MF-02, MF-03 | **Đã có code** (2026-10-19); FE chưa có màn |
-| SF-07 | Gợi ý việc phù hợp: worker chạy định kỳ (`JobMatch:IntervalMinutes`, mặc định 60) lấy job `ACTIVE` còn hạn nộp mà vai trò Candidate có `can_view`, chọn ứng viên hồ sơ `PUBLIC` có CV chính `ACTIVE`, chưa nộp job đó, chưa được chấm với job đó → AI service `POST /api/v1/semantic-match` (chỉ điểm ngữ nghĩa Sentence-BERT, không gọi LLM, `X-Service-Token`) → lưu `candidate_job_match` (`GENERATED`; CV không đọc được thì `FAILED` để không chấm lại) hết hạn sau `job_match.expiry_days` (mặc định 14). Điểm ≥ `job_match.min_score` (mặc định 70) → thông báo loại `JOB_FIT` kèm `routeHint` `/jobs/{jobId}`, tối đa `job_match.max_notifications_per_day` (mặc định 3) mỗi ứng viên mỗi ngày. Ứng viên xem `GET /api/v1/candidates/me/job-matches` (20 gợi ý còn hạn, điểm từ ngưỡng, chưa nộp, job còn `ACTIVE`) | MF-01, MF-03 | **Đã có code** (2026-10-19); FE chưa có màn |
-| SF-09 | Ngành và danh bạ công ty: bảng `industry` (3 cấp, seed 15 ngành cấp 1 + 141 ngành cấp 2 từ `Seed/Data/industry.csv`; thay CSV là nạp bộ mới, không sửa code) và `company_size` (9 mức). `GET /api/v1/industries` (`?tree=true` trả cây), `GET /api/v1/company-sizes`; Platform Admin thêm/sửa/tắt ngành (`/api/v1/admin/industries`, không xóa cứng, có audit). Hồ sơ công ty nhận `industryId`, `companySizeId` (sai → `400 INDUSTRY_NOT_FOUND` / `COMPANY_SIZE_NOT_FOUND`); chuỗi ngành cũ tự gắn theo mã/tên. Danh bạ công khai `GET /api/v1/public/companies` (chỉ `VERIFIED`, lọc tên, ngành gồm ngành con, quy mô, địa chỉ; không trả mã số thuế), `GET /api/v1/public/companies/featured` (Top Companies, Admin chọn bằng `PUT /api/v1/admin/companies/{id}/featured`), `GET /api/v1/public/companies/{id}` (job `ACTIVE` mà Candidate được xem). Lọc job theo `experienceYears` ở `GET /api/v1/public/jobs` và `GET /api/v1/jobs` (job không ghi kinh nghiệm luôn được lấy). Lọc job theo lĩnh vực / chuyên môn làm theo `docs/plans/2026-10-19-gitnexus-plan-job-location-category-filter.md` (không lọc job theo ngành của công ty) | MF-01 | **Đã có code** (2026-10-19), trừ lọc lĩnh vực/chuyên môn. Chưa làm: chọn ngành ở bước đăng ký Client; FE chưa có màn |
-| SF-08 | Realtime: SignalR hub `/hubs/notifications` (JWT, WebSocket đọc `access_token` từ query string), mỗi user một group. Mọi notification được lưu ở bất kỳ luồng nào đều được đẩy sau khi lưu thành công: `notification.created` `{notification, unreadCount}`; notification về phỏng vấn đẩy thêm `interview.updated` `{interviewId}`. Đẩy lỗi chỉ ghi log, không làm hỏng giao dịch. FE đã kết nối SignalR, tự thử kết nối lại và vẫn gọi API định kỳ làm dự phòng khi mất kết nối | Mọi luồng | **Đã có code** (2026-10-21) |
+Toàn bộ 9 luồng bổ trợ đều **đã hoàn thiện cả Backend lẫn Frontend** trên Production:
 
----
-
-# 6.2. DANH SÁCH CẦN XÁC NHẬN VỚI GIẢNG VIÊN
-
-**Phân vai**
-
-1. Người sàng lọc tách theo loại dịch vụ: Client với `CV_APPLICATION`; Internal HR với `HEADHUNT_COD` và `CV_SOURCING` (MF-03).
-2. Ở MF-04, Client thực hiện mọi quyết định tuyển dụng; Internal HR đối soát kết quả nhận việc trước khi tính phí với `HEADHUNT_COD` và kiểm tra hồ sơ bị đánh dấu không nhận việc. **Đã có code UC-41 ngày 23/10/2026.**
-3. Platform Admin là người ghi nhận thu phí, duyệt hoa hồng, ghi nhận payout và xử lý tranh chấp; không có vai trò kế toán riêng.
-4. ~~Internal HR có cần chức năng nộp hồ sơ thay ứng viên không (MF-02)~~ → **đã chốt 2026-10-16:** không làm.
-
-**Tiền**
-
-5. ~~Mốc hoa hồng 15/30/60 ngày~~ → **đã chốt 2026-10-09:** một mốc duy nhất, đủ 30 ngày đi làm (= hết bảo hành 30 ngày), thay cho "qua thử việc / ký hợp đồng" trong đề tài gốc; thử việc chỉ là thông tin theo dõi.
-6. Bộ trạng thái hoa hồng, payout và công nợ phí ở MF-05.
-7. Hoa hồng chỉ được xét duyệt khi Client đã thanh toán phí. Nếu Client quá hạn không trả thì Affiliate có được nhận hoa hồng không.
-8. Tuyển thay thế trong bảo hành: có thu thêm phí không, có bảo hành mới không, Affiliate giới thiệu người thay thế có hoa hồng không.
-9. Các con số 1,5; 30 ngày; 60%; giá gói là giá trị mặc định cấu hình được, không phải số cứng.
-
-**Chốt 19/10 sau buổi test 17/10**
-
-13. N16: Client `HEADHUNT_COD` xem được CV trước khi ứng viên đi làm dưới dạng bản che: `GET /api/v1/recruitment/applications/{id}/cv/masked` trả PDF dựng lại từ chữ của CV, email, số điện thoại và đường link thay bằng `[đã ẩn]`; CV dạng ảnh scan trả `409 CV_NO_TEXT_LAYER`. CV gốc vẫn chỉ mở sau khi đi làm.
-14. N12: Affiliate thấy hoa hồng ước tính trên chi tiết job: `GET /api/v1/affiliates/jobs/{jobId}/commission-estimate` (Headhunt: tỷ lệ quy tắc × hệ số phí × lương đăng tin, kèm số ngày bảo hành; Sourcing: số tiền mỗi CV được chấp nhận).
-15. N22: `CV_SOURCING` giữ 2 bước "Chọn gửi Client" và "Giao CV"; trang sàng lọc của Internal HR nhắc các hồ sơ đã chọn mà chưa giao (danh sách hồ sơ trả thêm `sourcingDeliveryStatus`).
-16. N14: lịch sử hồ sơ do Affiliate giới thiệu ghi "Affiliate X giới thiệu, ứng viên đồng ý lúc …" (Client không thấy tên Affiliate); mã trạng thái hiện bằng tiếng Việt.
-
-**Quy tắc khác**
-
-10. Attribution ghi theo lúc ứng viên đồng ý, không theo lúc Affiliate nộp (khác cách diễn đạt "người nộp trước" trong đề tài).
-11. Dùng `SCREENING` thay cho `NEED_MORE_INFORMATION / UNDER_REVIEW`.
-12. Job `CV_SOURCING` phải đóng cọc mới mở (đã có code 17/10). **Đã chốt 19/10 (N4):** chỉ Platform Admin ghi nhận mọi khoản tiền Client trả (cọc, phí dịch vụ, phí đăng tin `CV_APPLICATION`) ở trang Tài chính; Internal HR duyệt tin nhưng không ghi nhận tiền, Client chuyển khoản ngoài hệ thống (`POST /jobs/{id}/posting-fee/pay` chỉ Platform Admin, bắt buộc mã tham chiếu). Job `CV_SOURCING` duyệt trước bản này vẫn `ACTIVE`, worker MF-05 chỉ tạo phiếu cọc cho chúng, không đóng lại.
-
----
-
-# 6.3. PHẦN CODE CÒN THIẾU SO VỚI TÀI LIỆU
-
-| Hạng mục | Thuộc luồng |
-|---|---|
-| Sàng lọc: chuyển hồ sơ sang `SCREENING`, `SHORTLISTED`, `REJECTED`; phân quyền sàng lọc theo loại dịch vụ | MF-03 — đã có code |
-| Khiếu nại và xử lý tranh chấp trùng | SF-04 — đã có code bản tối thiểu (API `/api/v1/disputes`, `/api/v1/admin/disputes`); FE chưa có màn |
-| Định tuyến người liên hệ theo Service Type, che thông tin liên hệ | MF-03 — đã có code |
-| Giới hạn gói miễn phí | MF-01 — đã có code |
-| Sourcing Target, hệ số phí, thời hạn bảo hành, gói đăng tin trên job | MF-01 — đã có code |
-| Trạng thái CV đạt chuẩn / đã giao / tính quota / dự phòng cho `CV_SOURCING` | MF-03 — đã có code |
-| Theo dõi số vị trí đã tuyển so với số lượng cần tuyển | MF-04 — **chưa có code**: xác nhận đi làm không chặn khi đã đủ `Quantity` |
-| Công nợ phí dịch vụ và ghi nhận thu phí | MF-05 — đã có code cho cả 3 dịch vụ |
-| Đếm bảo hành, tự ghi nhận mốc, báo nghỉ việc, tuyển thay thế | MF-05 — đã có code |
-| Tính, duyệt hoa hồng; ghi nhận payout; đánh giá Affiliate | MF-05 — đã có code |
-| Thu hẹp quyền của Internal HR ở MF-04 (không lên lịch, không ghi kết quả, không tạo offer) | MF-04 — đã có code |
-| Bước Internal HR đối soát placement và kiểm tra lý do không nhận việc | MF-04 — **đã có code UC-41**: `PENDING → CONFIRMED/FLAGGED`; phí bị giữ đến khi xác nhận; Admin giải quyết ngoại lệ |
-| Ghi kết quả thử việc | MF-05 — **ngoài phạm vi** (chốt 2026-10-17) |
-| Chuẩn hóa mã vai trò Affiliate thành `AFFILIATE` | Toàn hệ thống — **đã có code và migration** |
-| Form liên hệ, tạo CV theo mẫu / dựng trên nền tảng, gợi ý việc phù hợp, thông báo realtime | SF-05 → SF-08 — đã có code backend; FE chưa có màn |
-| Bảng ngành, danh bạ công ty, Top Companies, lọc job theo kinh nghiệm | SF-09 — đã có code backend; FE chưa có màn. Lọc job theo lĩnh vực/chuyên môn: theo plan job taxonomy |
-
----
-
-# 6.4. ĐÁNH GIÁ NGHIỆP VỤ VÀ TÁC ĐỘNG THEO TỪNG MAIN FLOW
-
-Cột "Đề xuất" có ghi **(đã đưa vào thiết kế)** với những mục đã được phản ánh trong mô tả luồng và sơ đồ ở bản 2.2. **Cập nhật 2026-10-17:** phần lớn các mục đó nay đã có code; trạng thái code hiện hành xem mục 6.3, bảng dưới giữ nguyên làm phân tích ban đầu.
-
-Mục này đánh giá các Main Flow ở góc nhìn vận hành thực tế: chỗ nào có lỗ hổng, chỗ nào người dùng thật sẽ không làm theo thiết kế, và nếu không sửa thì ảnh hưởng gì.
-
-**Giới hạn của đánh giá:** dựa trên tài liệu và code, chưa có dữ liệu người dùng thật. Các nhận định về thói quen người dùng (offer qua Zalo/email, ứng viên ít mở email hệ thống) cần được người vận hành thực tế của SHIRE xác nhận.
-
-**Mức độ:** **Cao** = ảnh hưởng trực tiếp tới doanh thu hoặc làm luồng không dùng được; **Trung bình** = gây tranh chấp hoặc giảm tỷ lệ sử dụng; **Thấp** = bất tiện.
-
-## Tổng hợp tác động
-
-| Luồng | Vấn đề lớn nhất | Tác động nếu không sửa | Mức độ |
-|---|---|---|---|
-| MF-01 | Mọi job đều phải chờ duyệt thủ công | Client dùng gói đăng tin rời bỏ vì chậm; Internal HR quá tải | Trung bình |
-| MF-02 | Bước xác nhận 48 giờ qua email; có thể "xí chỗ" ứng viên | Mất phần lớn lượt giới thiệu; Affiliate bỏ nền tảng; tranh chấp hoa hồng | Cao |
-| MF-03 | Chưa có bước sàng lọc; chưa tách theo loại dịch vụ | Luồng đứt, không hồ sơ nào đi tiếp được tới phỏng vấn | Cao |
-| MF-04 | Client tự xác nhận đi làm, chưa có bước đối soát độc lập | Client né phí bằng cách tuyển ứng viên ngoài hệ thống | Cao |
-| MF-05 | Toàn bộ luồng mới ở mức thiết kế; chưa chốt cách xử lý khi Client không trả phí và khi tuyển thay thế | Hệ thống chưa thu được phí và chưa chi được hoa hồng | Cao |
-
-## MF-01. Tạo, duyệt và công bố Job
-
-| # | Vấn đề | Tác động | Đề xuất | Mức độ |
-|---|---|---|---|---|
-| 1.1 | Mọi job đều phải Internal HR duyệt thủ công, kể cả job đăng tin `CV_APPLICATION` | Client phải chờ duyệt; Internal HR có thể thành nút cổ chai khi số Client tăng | **Giữ duyệt trước** (đã kiểm chứng 15/10/2026: Indeed duyệt tin trước khi hiện trong kết quả tìm kiếm [^mf01-indeed-review]; TopCV gắn nhãn "Tin đăng đã được kiểm duyệt"). Chỉ cải thiện tốc độ duyệt, không bỏ bước duyệt | Thấp |
-| 1.2 | Job không có điều khoản thương mại (hệ số phí, Sourcing Target, bảo hành, gói) | Không có căn cứ tính phí về sau; mỗi job phải thỏa thuận ngoài hệ thống | Lưu điều khoản tại job và chốt (không cho sửa) khi job `ACTIVE` | Cao |
-| 1.3 | Client đóng job khi đang có ứng viên trong pipeline | Hồ sơ đang phỏng vấn bị treo; công sức của Affiliate mất mà không có lời giải thích | Khi đóng job: bắt buộc chọn cách xử lý hồ sơ đang mở và thông báo cho Affiliate liên quan | Trung bình |
-| 1.4 | Chưa có giới hạn gói miễn phí | Client dùng miễn phí không giới hạn, không có lý do nâng gói | Cài giới hạn 1 job mở và chu kỳ 2 tháng theo đề tài | Trung bình |
-| 1.5 | Client đóng job khi còn hồ sơ đang xử lý (`SUBMITTED`, `SCREENING`, `SHORTLISTED`, `BACKUP`, `INTERVIEW`): `CloseJob` không đụng tới hồ sơ | Hồ sơ treo vĩnh viễn; ứng viên và Affiliate không được báo (LinkedIn tự thông báo cho ứng viên không được chọn [^mf01-linkedin-reject]) | **[CHỜ XÁC NHẬN VỚI GVHD]** Bản tối giản: khi đóng job, chuyển hồ sơ đang mở sang `CLOSED` và gửi thông báo; có offer đang chờ thì chặn đóng. Gộp với mục 1.3 | Trung bình |
-
-**Tác động tới luồng khác:** thiếu điều khoản thương mại ở MF-01 (1.2) làm MF-05 không tính được phí.
-
-**Hướng phát triển (không làm trong đồ án, chỉ ghi vào báo cáo):** các tính năng dưới đây có ở các trang tuyển dụng lớn hoặc liên quan tới luật, nhưng đề tài không yêu cầu.
-
-- **Báo cáo tin tuyển dụng:** ứng viên báo tin lừa đảo hoặc sai sự thật, Internal HR gỡ tin. Indeed có nút "Report job" [^mf01-indeed-report]; TopCV có "Báo cáo tin tuyển dụng" trên trang tin.
-- **Sửa nhỏ tin đang tuyển:** Indeed cho sửa nhỏ (ví dụ lỗi chính tả) trên tin đang chạy, thay đổi lớn thì đăng tin mới [^mf01-indeed-edit]. Hiện dự án chỉ cho sửa tin nháp hoặc bị từ chối.
-- **Lý do từ chối "Nội dung phân biệt đối xử":** Bộ luật Lao động 2019 Điều 8 cấm phân biệt đối xử; Điều 3 khoản 8 định nghĩa phân biệt theo giới tính, độ tuổi…, trừ yêu cầu đặc thù của công việc. Luật Bình đẳng giới 2006 Điều 13 yêu cầu bình đẳng về tiêu chuẩn, độ tuổi khi tuyển dụng [^mf01-bllđ]. Bước duyệt hiện tại đã chặn được, chỉ thiếu mã lý do riêng.
-
-[^mf01-indeed-review]: Indeed Employer Help, <https://in.indeed.com/help/employers/articles/205846516>
-[^mf01-linkedin-reject]: LinkedIn Help, Automate sending rejection messages, <https://www.linkedin.com/help/learning/answer/a521538>
-[^mf01-indeed-report]: Indeed Help, How to report a job, <https://www.indeed.com/help/job-seekers/articles/360028156452-how-to-report-a-job>
-[^mf01-indeed-edit]: Indeed Employer Help, Edit a job post, <https://in.indeed.com/help/employers/articles/203366260>
-[^mf01-bllđ]: Trích qua Thư viện Pháp luật, <https://thuvienphapluat.vn/lao-dong-tien-luong/phan-biet-doi-xu-trong-lao-dong-co-bi-cam-trong-cong-ty-khong-20243.html>. Khi đưa vào báo cáo nên trích văn bản gốc.
-
-## MF-02. Tiếp nhận hồ sơ, kiểm tra trùng, ghi nhận nguồn
-
-| # | Vấn đề | Tác động | Đề xuất | Mức độ |
-|---|---|---|---|---|
-| 2.1 | Ứng viên phải mở email và bấm đồng ý trong 48 giờ | Ứng viên được liên hệ qua điện thoại/Zalo, ít mở email từ hệ thống lạ, email dễ vào spam. Tỷ lệ hết hạn cao; Affiliate mất công và bỏ nền tảng | Thêm kênh gửi link (SMS/Zalo); cho Affiliate tự gửi link cho ứng viên; cân nhắc kéo dài hạn | Cao |
-| 2.2 | Lượt giới thiệu đang chờ khóa ứng viên với job đó | Affiliate có thể nộp hàng loạt ứng viên chưa liên hệ để giữ chỗ, chặn Affiliate đang làm việc thật | Giới hạn số lượt đang chờ của mỗi Affiliate; theo dõi tỷ lệ hết hạn và hạ điểm chất lượng | Cao |
-| 2.3 | Attribution ghi theo lúc ứng viên đồng ý, không theo lúc nộp | Lệch với đề tài ("người nộp trước"). Khi tranh chấp, Affiliate nộp trước nhưng ứng viên đồng ý sau sẽ khiếu nại | Chốt một quy tắc và ghi rõ trong chính sách Affiliate; lưu cả hai mốc thời gian | Trung bình |
-| 2.4 | Nhận diện trùng chỉ bằng email hoặc số điện thoại khớp chính xác | Ứng viên có nhiều email/số điện thoại; Affiliate thứ hai nhập thông tin khác là qua được. Phát sinh hai hồ sơ cho một người và tranh chấp hoa hồng | Thêm cảnh báo trùng mềm (họ tên + ngày sinh, hoặc nội dung CV) để Internal HR xem xét | Cao |
-| 2.5 | Chưa có luồng khiếu nại tranh chấp | Mọi tranh chấp xử lý ngoài hệ thống, không có dấu vết | Làm SF-04 trước khi mở cho nhiều Affiliate | Trung bình |
-| 2.6 | Ứng viên do Affiliate tạo không có tài khoản | Các bước sau (xem lịch phỏng vấn, phản hồi offer) giả định ứng viên đăng nhập; với nhóm này luồng bị cụt | Mời ứng viên tạo tài khoản ngay ở bước đồng ý, hoặc cho thao tác qua link | Cao |
-| 2.7 | Internal HR không nộp được hồ sơ | Ứng viên do chính SHIRE tìm không vào được pipeline | ~~Thêm nhánh Internal HR nộp~~ **Đã chốt 2026-10-16: không làm.** Nguồn ứng viên giữ nguyên (ứng viên tự nộp, Affiliate giới thiệu) | — |
-
-**Tác động tới luồng khác:** 2.4 và 2.3 quyết định hoa hồng trả cho ai ở MF-05; 2.6 ảnh hưởng toàn bộ MF-04.
-
-## MF-03. AI Matching và sàng lọc
-
-| # | Vấn đề | Tác động | Đề xuất | Mức độ |
-|---|---|---|---|---|
-| 3.1 | Chưa có lệnh sàng lọc (đạt / không đạt) | Hồ sơ dừng ở `SUBMITTED`, không lên lịch phỏng vấn được. Toàn bộ MF-04 không dùng được trong thực tế | Làm ngay: chuyển `SCREENING` → `SHORTLISTED` / `REJECTED` kèm lý do | Cao |
-| 3.2 | Chưa tách người sàng lọc theo loại dịch vụ | `CV_APPLICATION` bán cho Client quyền tự chọn hồ sơ; nếu chỉ Internal HR sàng lọc thì sai bản chất dịch vụ và tốn nhân lực. Ngược lại, `HEADHUNT_COD` mà Client thấy hồ sơ chưa lọc thì mất giá trị dịch vụ | `CV_APPLICATION`: Client sàng lọc. `HEADHUNT_COD`, `CV_SOURCING`: Internal HR lọc trước, Client chỉ thấy hồ sơ đã đạt **(đã đưa vào thiết kế)** | Cao |
-| 3.3 | Client thấy thông tin liên hệ của ứng viên trước khi phát sinh phí | Client liên hệ thẳng ứng viên, bỏ qua nền tảng | Che email/số điện thoại với `HEADHUNT_COD` và `CV_SOURCING` cho tới bước phù hợp | Cao |
-| 3.4 | "CV đạt chuẩn" của `CV_SOURCING` do bên bán tự quyết | Client không có quyền trả lại CV không đúng yêu cầu; dễ tranh chấp về chất lượng | Cho Client từ chối CV kèm lý do trong vài ngày; CV bị từ chối hợp lệ không tính quota và được thay bằng CV dự phòng | Trung bình |
-| 3.5 | Điểm AI có thể được hiểu là quyết định | Người sàng lọc lọc theo điểm mà không đọc CV; ứng viên tốt nhưng CV viết khác mẫu bị loại | Hiển thị bằng chứng cạnh điểm; bắt buộc lý do khi loại hồ sơ điểm cao hoặc chọn hồ sơ điểm thấp | Thấp |
-
-**Tác động tới luồng khác:** 3.1 chặn MF-04; 3.3 liên quan trực tiếp tới việc né phí ở MF-04.
-
-## MF-04. Phỏng vấn, Offer, Nhận việc
-
-| # | Vấn đề | Tác động | Đề xuất | Mức độ |
-|---|---|---|---|---|
-| 4.1 | Client có quyền xác nhận đi làm và đánh dấu không nhận việc | Phí `HEADHUNT_COD` chỉ phát sinh khi có xác nhận đi làm. Client có động cơ không xác nhận, hoặc đánh dấu không nhận việc rồi tuyển ứng viên bên ngoài. Mất doanh thu và Affiliate mất hoa hồng | Client vẫn là người xác nhận đi làm; thêm bước Internal HR đối soát placement trước khi tính phí và kiểm tra các hồ sơ "không nhận việc"; thêm điều khoản ứng viên đã giới thiệu thuộc quyền nền tảng trong 6–12 tháng; Affiliate được khiếu nại **(bước đối soát đã đưa vào thiết kế)** | Cao |
-| 4.2 | Offer phải đi đủ các bước trên hệ thống | Doanh nghiệp thường gửi offer qua email/Zalo kèm bản ký. HR sẽ không soạn offer trên hệ thống, dữ liệu lương (căn cứ tính phí) bị thiếu hoặc nhập sai | Cho phép "ghi nhận kết quả offer" một bước, kèm tệp đính kèm; lương thỏa thuận là trường bắt buộc | Trung bình |
-| 4.3 | Không có thông báo và nhắc lịch | Ứng viên và người phỏng vấn không biết lịch; tỷ lệ vắng mặt cao | Gửi email khi tạo, dời, hủy lịch và nhắc trước buổi phỏng vấn | Trung bình |
-| 4.4 | Không theo dõi số vị trí đã tuyển so với số lượng cần tuyển | Job đã tuyển đủ vẫn `ACTIVE`, Affiliate tiếp tục nộp vô ích | Tự gợi ý đóng job khi tuyển đủ; hiển thị tiến độ ví dụ 1/2 | Thấp |
-| 4.5 | Ứng viên nhận offer ở hai job cùng lúc | Hai Client cùng chờ một người; một placement chắc chắn hỏng | Cảnh báo Internal HR khi một ứng viên có nhiều offer đang mở | Thấp |
-| 4.6 | Kết quả phỏng vấn do Client tự nhập | Client có thể ghi "trượt" rồi tuyển bên ngoài (cùng bản chất với 4.1) | Áp dụng cùng điều khoản bảo vệ ở 4.1 | Trung bình |
-
-**Tác động tới luồng khác:** 4.1 và 4.2 quyết định MF-05 có căn cứ tính phí hay không.
-
-## MF-05. Thử việc, Bảo hành, Hoa hồng, Payout
-
-| # | Vấn đề | Tác động | Đề xuất | Mức độ |
-|---|---|---|---|---|
-| 5.1 | Toàn bộ luồng chưa có nghiệp vụ | Hệ thống chưa tạo ra doanh thu và chưa trả được hoa hồng; đây là mục tiêu chính của đề tài | Làm theo thứ tự: phí `HEADHUNT_COD` → hoa hồng theo mốc → payout → `CV_SOURCING` → gói `CV_APPLICATION` | Cao |
-| 5.2 | Trộn "bảo hành" (nay là 30 ngày) với "thử việc" | Thử việc ở Việt Nam thay đổi theo vị trí (30, 60, 180 ngày). Dùng thử việc làm mốc thì hoa hồng mỗi job một kiểu và khó giải thích | Mốc hoa hồng tính theo số ngày làm việc thực tế trong thời hạn bảo hành; thử việc chỉ là thông tin theo dõi **(đã đưa vào thiết kế)** | Cao |
-| 5.3 | Không có vai trò và luồng ghi nhận Client đã thanh toán | Hoa hồng bị giữ cho tới khi Client trả tiền, nhưng không ai có chức năng xác nhận việc đó; hoa hồng treo vô thời hạn | Thêm bản ghi công nợ phí dịch vụ (chờ, đến hạn, đã trả, quá hạn) do Platform Admin cập nhật **(đã đưa vào thiết kế)** | Cao |
-| 5.4 | Ứng viên nghỉ việc trong bảo hành: không rõ ai báo, ai xác nhận | Client không có động cơ báo sớm nếu không được lợi; Affiliate vẫn nhận mốc hoa hồng không đáng có | Client báo nghỉ để kích hoạt tuyển thay thế; Internal HR xác nhận ngày nghỉ; phần hoa hồng chưa đạt mốc tự hủy **(đã đưa vào thiết kế)** | Trung bình |
-| 5.5 | Tuyển thay thế chưa có quy tắc attribution | Không rõ ứng viên thay thế có phát sinh hoa hồng mới hay không | Ứng viên thay thế tạo placement mới không thu thêm phí; hoa hồng theo thỏa thuận riêng, ghi rõ trong Commission Rule | Trung bình |
-| 5.6 | Tỷ lệ chia 60% ở `CV_SOURCING` | Sau khi trừ chi phí Internal HR sàng lọc từng CV, phần còn lại rất mỏng | Tính lại bằng số liệu vận hành thật trước khi công bố cho Affiliate | Trung bình |
-| 5.7 | Affiliate bị khóa khi còn hoa hồng đang chờ | Không rõ số tiền đó xử lý thế nào; rủi ro khiếu nại | Quy định: hoa hồng đã đạt mốc vẫn chi; phần chưa đạt mốc giữ tới khi có quyết định của Platform Admin | Thấp |
-
-## Thứ tự xử lý đề xuất
-
-Bước 1–4 của bản đầu (bảo vệ doanh thu, nối luồng sàng lọc, giữ Affiliate, MF-05) đã có code tới 2026-10-17. Việc còn lại trước buổi bảo vệ:
-
-1. **Kiểm chứng trên bản deploy** toàn luồng của 3 dịch vụ, nhất là `CV_SOURCING` (cọc → mở job → giao CV → hoa hồng → quyết toán) và `HEADHUNT_COD` tới bảo hành.
-2. **Hạ tầng AI:** nâng dịch vụ AI trên Render lên tối thiểu 1 CPU / 2 GB (gói Free bị Render tắt khi đang chấm), hoặc giữ AI chạy trên máy qua tunnel khi demo.
-3. **Bảo mật:** đổi các key / token đã lộ; thêm rule WAF cho tunnel AI.
-4. **Đã chốt:** đối soát placement của Internal HR được làm ở UC-41. Việc còn lại: chặn tuyển quá `Quantity` (MF-04) và hoàn thiện màn khiếu nại SF-04 cho Affiliate/Admin.
-5. **Giao diện:** lỗi FE còn mở trong `tasks/FE-tasks-be04-lien-he-cv-builder-goi-y-viec-realtime.md` (mục 5, 6); việc hạ tầng trong `deploy/render-be-ai-local.md` (mục 7). Lỗi của buổi test 3 dịch vụ 17/10 (N1–N27) đã sửa 19/10.
+| Mã | Tên luồng bổ trợ | Endpoint / Worker thực tế | Giao diện Frontend tương ứng |
+| :---: | :--- | :--- | :--- |
+| **SF-01** | Đăng ký & Phê duyệt Doanh nghiệp | `POST /api/v1/auth/register/client`, `/api/v1/admin/approvals/companies/*` | `/register`, `/admin/approvals` |
+| **SF-02** | Đăng ký & Phê duyệt Affiliate + Tính điểm Uy tín | `POST /api/v1/auth/register/affiliate`, `AffiliatePerformanceWorker` | `/register`, `/affiliate/performance`, `/admin/approvals` |
+| **SF-03** | Xác nhận Consent 48h (Public Token & In-App) | `/api/v1/submission-consents/*`, `SubmissionConsentExpiryWorker` | `/submission-consent#token=...`, `/candidate/applications` |
+| **SF-04** | Khiếu nại Tranh chấp Attribution (`Dispute`) | `/api/v1/disputes/*`, `/api/v1/admin/disputes/*` | `/affiliate/disputes`, `/admin/disputes` |
+| **SF-05** | Yêu cầu Tư vấn Doanh nghiệp (Nghị định 13/2023) | `POST /api/v1/public/contact-requests`, `/api/v1/admin/contact-requests/*` | Trang chủ / Dịch vụ, `/admin/contact-requests`, `/hr/contact-requests` |
+| **SF-06** | Công cụ Tạo CV Trực tuyến (`CV Builder` PDF) | `/api/v1/cv-templates`, `/api/v1/candidates/cv/structured/*` | `/candidate/cv-builder`, `/candidate/cvs` |
+| **SF-07** | Gợi ý Việc làm Tự động bằng Sentence-BERT | `JobMatchWorker` → `POST /api/v1/semantic-match`, `/api/v1/candidates/me/job-matches` | Cổng Candidate (Việc làm gợi ý) |
+| **SF-08** | Thông báo Realtime SignalR & Đồng bộ Query Cache | `/hubs/notifications`, `NotificationPushInterceptor` | `NotificationBell.tsx`, `notificationRefreshKeys.ts` |
+| **SF-09** | Phân cấp Ngành nghề 3 cấp & Danh bạ Công ty | `/api/v1/industries`, `/api/v1/public/companies/*` | `/companies`, `/jobs`, `/admin/users` |

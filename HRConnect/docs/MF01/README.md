@@ -77,5 +77,6 @@ DRAFT ──(SubmitJob)──► PENDING_REVIEW ──(CreateProposal: Headhunt/
 2. **Thanh toán phí đăng tin & tiền cọc:**
    - Hỗ trợ thanh toán trực tuyến qua **VNPay** (`POST /api/v1/payments/vnpay`) hoặc Platform Admin đối chiếu sao kê xác nhận thủ công (`RecordJobPostingFeePaymentCommand`, `ConfirmJobDepositCommand`).
    - Khi thu phí/cọc hoàn tất, Job tự động chuyển từ `PENDING_PAYMENT` sang `ACTIVE`, ghi `JobStatusHistory` và bắn thông báo SignalR (`SERVICE_FEE` / `ONLINE_PAYMENT` / `JOB`).
-3. **Tự động đóng tin hết hạn (`JobExpirationWorker`):**
-   - Quét định kỳ các Job quá `ApplicationDeadline` hoặc hết thời hạn gói đăng tin (`PostingPackage.DurationDays`), chuyển sang `EXPIRED` và gửi thông báo phù hợp theo loại gói cho doanh nghiệp.
+3. **Đóng tin từ `PENDING_PAYMENT` & Tự động đóng tin hết hạn (`CloseJobCommand` & `JobExpirationWorker`):**
+   - Khi Client đóng Job đang ở `PENDING_PAYMENT`, hệ thống tự động hủy (`CANCELLED`) các phiếu `JobPostingFee` / `ServiceFee (DEPOSIT)` chưa thanh toán; đồng thời khóa không cho thanh toán các tin chưa mở đã quá `ApplicationDeadline` và cảnh báo trước 1 ngày.
+   - `JobExpirationWorker` quét định kỳ các Job quá `ApplicationDeadline` hoặc hết thời hạn gói đăng tin (`PostingPackage.DurationDays`), chuyển sang `EXPIRED` và gửi thông báo phù hợp theo loại gói cho doanh nghiệp.

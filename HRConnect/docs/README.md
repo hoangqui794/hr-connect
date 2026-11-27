@@ -2,6 +2,7 @@
 
 ## 1. Kiến trúc và Nghiệp vụ Chung
 
+- [`../../docs/architecture.md`](../../docs/architecture.md): **Đặc tả Kiến trúc Hệ thống Toàn diện** — phạm vi hệ thống, Tech stack, sơ đồ Clean Architecture, 11 Background Workers & quy ước kỹ thuật.
 - [`BACKEND-FLOWS-AND-API-GUIDE.md`](BACKEND-FLOWS-AND-API-GUIDE.md): **Bản đồ tổng Backend** — giải thích toàn bộ MF-01 → MF-05, API, trạng thái, dữ liệu và đường đi code cho Developer / QA / AI Agent.
 - [`main-flows.md`](main-flows.md): Đặc tả luồng nghiệp vụ chính (MF-01 → MF-05) và các luồng bổ trợ (SF-01 → SF-09).
 - [`3. ACTOR — CÁC TÁC NHÂN CỦA HỆ THỐNG.md`](3.%20ACTOR%20%E2%80%94%20C%C3%81C%20T%C3%81C%20NH%C3%82N%20C%E1%BB%A6A%20H%E1%BB%86%20TH%E1%BB%90NG.md): Ma trận Actor và trách nhiệm của 5 vai trò.

@@ -28,7 +28,7 @@ Tài liệu này gom toàn bộ **luật nghiệp vụ, vòng đời trạng th�
 
 ### 3.1. 3 Nguồn tạo CV trong hệ thống (`SourceType`)
 1. **`CANDIDATE_UPLOAD`:** Ứng viên tự tải file PDF lên Kho CV cá nhân.
-2. **`CV_BUILDER`:** Ứng viên tạo CV trên trình duyệt bằng công cụ kéo/thả có cấu trúc (`CandidateCvBuilderPage`) $\rightarrow$ Backend dùng **QuestPDF (`CvPdfRenderer`)** xuất ra file PDF chuẩn.
+2. **`CV_BUILDER`:** Ứng viên tạo CV trên trình duyệt bằng công cụ kéo/thả có cấu trúc (`CandidateCvBuilderPage`) $\rightarrow$ Backend dùng **SkiaSharp (`CvPdfRenderer`)** xuất ra file PDF chuẩn.
 3. **`AFFILIATE_UPLOAD`:** Affiliate tải file PDF của ứng viên lên khi giới thiệu ứng viên vào một Job.
 
 > **Kiểm tra an toàn & chống trùng file PDF:** Mọi file PDF (dù upload hay xuất từ CV Builder) đều đi qua `PdfCvValidator` để kiểm tra chữ ký `%PDF-`, dung lượng $\le 10\text{MB}$, không khóa mật khẩu, lưu lên **Cloudflare R2**, và băm toàn bộ nội dung nhị phân ra mã **`ContentSha256`** (`FingerprintVersion = "binary-sha256-v1"`).
@@ -98,7 +98,7 @@ Hội đồng rất hay hỏi: **"Nếu Affiliate A và Affiliate B cùng giới
   * Khi ứng viên bấm `CONFIRM`, các lượt nộp bị giữ ở trạng thái **`PENDING_IDENTITY_REVIEW`**.
   * Khi Platform Admin xác nhận 2 hồ sơ là 1 người (`MERGE`), dịch vụ `FinalizeIdentityReviewedSubmissionService` áp dụng quy tắc **`EARLIEST_CANDIDATE_CONFIRMED_VALID_SUBMISSION`**:
     * **Affiliate nào được ứng viên bấm `CONFIRM` (Đồng ý) hợp lệ sớm nhất** sẽ thắng (`Submission = ACCEPTED`, nhận `Attribution = ACTIVE`).
-    * Lượt nộp của Affiliate còn lại chuyển sang `BLOCKED_DUPLICATE`.
+    * Lượt nộp của Affiliate còn lại (kể cả đang ở `PENDING_IDENTITY_REVIEW` hay `PENDING_CONSENT`) đều tự động chuyển sang `BLOCKED_DUPLICATE`.
 
 ---
 
