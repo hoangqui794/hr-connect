@@ -533,4 +533,106 @@ describe('ClientBillingPage', () => {
     expect(within(dialog).queryByText('Thông tin chuyển khoản ngân hàng')).not.toBeInTheDocument();
     expect(within(dialog).queryByRole('button', { name: /Thanh toán qua VNPay/i })).not.toBeInTheDocument();
   });
+
+  it('excludes unpaid PENDING posting fees on DRAFT/REJECTED/CLOSED jobs from billing & KPIs while keeping PAID closed jobs', async () => {
+    vi.mocked(financeApi.serviceFees).mockResolvedValue({
+      items: [],
+      totalCount: 0,
+      page: 1,
+      pageSize: 100,
+    } as never);
+    vi.mocked(jobsApi.getPostingFee).mockClear();
+    vi.mocked(jobsApi.getMine).mockResolvedValue([
+      {
+        jobId: 'j-draft',
+        title: '[NHÁP] Senior DevOps Engineer 1438',
+        status: 'DRAFT',
+        serviceTypeCode: 'CV_APPLICATION',
+        postingFeeStatus: 'PENDING',
+        postingPackageCode: 'STANDARD',
+        postingFee: {
+          postingFeeId: 'pf-draft',
+          amount: 1_500_000,
+          currencyCode: 'VND',
+          status: 'PENDING',
+          paidAt: null,
+          paymentReference: null,
+          packageName: 'Gói Tiêu Chuẩn 30 Ngày',
+        },
+      },
+      {
+        jobId: 'j-rejected',
+        title: 'Tin Bị Từ Chối',
+        status: 'REJECTED',
+        serviceTypeCode: 'CV_APPLICATION',
+        postingFeeStatus: 'PENDING',
+        postingPackageCode: 'STANDARD',
+        postingFee: {
+          postingFeeId: 'pf-rej',
+          amount: 1_500_000,
+          currencyCode: 'VND',
+          status: 'PENDING',
+          paidAt: null,
+          paymentReference: null,
+          packageName: 'Gói Tiêu Chuẩn 30 Ngày',
+        },
+      },
+      {
+        jobId: 'j-closed-unpaid',
+        title: 'Tin Đã Đóng Chưa Trả',
+        status: 'CLOSED',
+        serviceTypeCode: 'CV_APPLICATION',
+        postingFeeStatus: 'PENDING',
+        postingPackageCode: 'STANDARD',
+      },
+      {
+        jobId: 'j-closed-paid',
+        title: 'Tin Đã Đóng Đã Thanh Toán',
+        status: 'CLOSED',
+        serviceTypeCode: 'CV_APPLICATION',
+        postingFeeStatus: 'PAID',
+        postingPackageCode: 'STANDARD',
+        postingFee: {
+          postingFeeId: 'pf-closed-paid',
+          amount: 2_000_000,
+          currencyCode: 'VND',
+          status: 'PAID',
+          paidAt: '2026-11-10T09:00:00Z',
+          paymentReference: 'VNPAY-CLOSED-1',
+          packageName: 'Gói Tiêu Chuẩn 30 Ngày',
+        },
+      },
+      {
+        jobId: 'j-pending-pay',
+        title: 'Tin Chờ Thanh Toán Thật',
+        status: 'PENDING_PAYMENT',
+        serviceTypeCode: 'CV_APPLICATION',
+        postingFeeStatus: 'PENDING',
+        postingPackageCode: 'STANDARD',
+        postingFee: {
+          postingFeeId: 'pf-pay',
+          amount: 1_200_000,
+          currencyCode: 'VND',
+          status: 'PENDING',
+          paidAt: null,
+          paymentReference: null,
+          packageName: 'Gói Tiêu Chuẩn 30 Ngày',
+        },
+      },
+    ] as never);
+
+    renderPage();
+
+    expect(await screen.findByText('Tin Chờ Thanh Toán Thật')).toBeInTheDocument();
+    expect(screen.getByText('Tin Đã Đóng Đã Thanh Toán')).toBeInTheDocument();
+    expect(screen.queryByText('[NHÁP] Senior DevOps Engineer 1438')).toBeNull();
+    expect(screen.queryByText('Tin Bị Từ Chối')).toBeNull();
+    expect(screen.queryByText('Tin Đã Đóng Chưa Trả')).toBeNull();
+    expect(jobsApi.getPostingFee).not.toHaveBeenCalled();
+
+    // Only the real PENDING_PAYMENT job (1.200.000 đ) is counted as unpaid, and has a pay button.
+    expect(screen.getByText('1 khoản chưa thanh toán')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Thanh toán: Gói đăng tin.*Tin Chờ Thanh Toán Thật/ })).toBeInTheDocument();
+    expect(screen.getByText('2 khoản phí')).toBeInTheDocument();
+  });
 });

@@ -625,6 +625,38 @@ public sealed class VnPayPaymentTests
         settlementLink.PaymentUrl.Should().Contain("vnp_Amount=50000000");
     }
 
+    [Theory]
+    [InlineData(JobStatuses.Draft)]
+    [InlineData(JobStatuses.Rejected)]
+    [InlineData(JobStatuses.Closed)]
+    public async Task Posting_fee_checkout_is_refused_before_payment_when_job_cannot_record_it(string jobStatus)
+    {
+        var h = new Harness();
+        var userId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+        var jobId = Guid.NewGuid();
+
+        h.CompanyUsers.Setup(c => c.GetByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CompanyUser { UserId = userId, CompanyId = companyId, Status = "ACTIVE" });
+        h.Jobs.Setup(j => j.GetByIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Job { JobId = jobId, CompanyId = companyId, Status = jobStatus });
+        h.Jobs.Setup(j => j.GetPostingFeeByJobIdAsync(jobId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new JobPostingFee
+            {
+                PostingFeeId = Guid.NewGuid(),
+                JobId = jobId,
+                CompanyId = companyId,
+                Amount = 1_500_000,
+                CurrencyCode = "VND",
+                Status = JobPostingFeeStatuses.Pending,
+            });
+
+        var pay = () => h.Handlers().Handle(
+            new CreateVnPayPaymentCommand(OnlinePaymentTargets.PostingFee, jobId, userId, "127.0.0.1"), default);
+
+        (await pay.Should().ThrowAsync<ConflictException>()).Which.ErrorCode.Should().Be("JOB_NOT_PAYABLE");
+    }
+
     // ---- callbacks that do not win the claim ---------------------------------------------
 
     private static ServiceFee DueFee(OnlinePayment payment) => new()
