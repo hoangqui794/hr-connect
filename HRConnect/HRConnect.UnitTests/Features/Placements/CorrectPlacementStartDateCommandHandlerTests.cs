@@ -3,6 +3,7 @@ using HRConnect.Application.Common;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Placements.Commands.CorrectPlacementStartDate;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
@@ -91,6 +92,32 @@ public sealed class CorrectPlacementStartDateCommandHandlerTests
 
         var exception = await act.Should().ThrowAsync<ConflictException>();
         exception.Which.ErrorCode.Should().Be(PlacementStartDateErrorCodes.StartDateLocked);
+    }
+
+    [Fact]
+    public async Task Handle_UsesTheConfiguredCorrectionWindow()
+    {
+        // Admin shortened the window to 3 days: 4 days after confirmation the date is locked, and the message says 3.
+        var settings = new Mock<IAdminBusinessSettings>();
+        settings.Setup(s => s.GetIntAsync(BusinessSettingKeys.PlacementStartDateCorrectionDays, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(3);
+        var placement = CreatePlacement(confirmedAt: DateTime.UtcNow.AddDays(-4));
+        _financeRepository.Setup(r => r.GetPlacementForFinanceAsync(placement.PlacementId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(placement);
+        var handler = new CorrectPlacementStartDateCommandHandler(
+            _financeRepository.Object, _unitOfWork.Object, _auditLog.Object, _logger.Object, settings: settings.Object);
+
+        var act = () => handler.Handle(CommandFor(placement, VietnamTime.Today().AddDays(-2)), default);
+
+        var exception = await act.Should().ThrowAsync<ConflictException>();
+        exception.Which.ErrorCode.Should().Be(PlacementStartDateErrorCodes.StartDateLocked);
+        exception.Which.Message.Should().Contain("3 ngày");
+    }
+
+    [Fact]
+    public void Correction_window_default_is_a_business_setting_of_seven_days()
+    {
+        BusinessSettingKeys.Get(BusinessSettingKeys.PlacementStartDateCorrectionDays).DefaultValue.Should().Be(7m);
     }
 
     [Fact]

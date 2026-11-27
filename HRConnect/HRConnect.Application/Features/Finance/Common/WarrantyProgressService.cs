@@ -1,3 +1,4 @@
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
@@ -405,7 +406,7 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
         {
             await _notifier.NotifyRoleAsync("PLATFORM_ADMIN", new AppNotice(
                 "SERVICE_FEE",
-                "Cần hoàn 30% phí dịch vụ",
+                $"Cần hoàn {decimal.Round(refund.FeeMultiplier * 100m, 2):0.##}% phí dịch vụ",
                 $"Suất thay thế của công ty {slot.Job.Company?.CompanyName ?? "Doanh nghiệp"} (vị trí \"{slot.Job.Title}\") đã hết hạn. Cần xử lý lệnh hoàn {refund.Amount:N0} {refund.CurrencyCode} cho doanh nghiệp.",
                 "SERVICE_FEE",
                 refund.ServiceFeeId,
@@ -486,7 +487,7 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
             FeeMultiplier = percent / 100m,
             Amount = decimal.Round(slot.ServiceFee.Amount * percent / 100m, 0, MidpointRounding.AwayFromZero),
             CurrencyCode = slot.ServiceFee.CurrencyCode,
-            DueDate = DateOnly.FromDateTime(now).AddDays(paidDays),
+            DueDate = VietnamTime.Today(now).AddDays(paidDays),
             Status = ServiceFeeStates.Pending,
             CreatedAt = now,
             UpdatedAt = now,

@@ -61,7 +61,8 @@ public sealed class GetJobCommissionEstimateQueryHandler : IRequestHandler<GetJo
                 return None(job.JobId, code, currency, "Job chưa chốt giá mỗi CV nên chưa tính được hoa hồng.");
             var share = await _settings.GetDecimalAsync(BusinessSettingKeys.CvSourcingAffiliateSharePercent, cancellationToken);
             var perCv = decimal.Round(price * share / 100m, 0, MidpointRounding.AwayFromZero);
-            return new JobCommissionEstimateDto(job.JobId, code, perCv > 0, "PERCENT", share, null, null, null, null, perCv, currency,
+            // Only the amount per CV: the share (and so the Client's price per CV, perCv / share) stays hidden from Affiliates.
+            return new JobCommissionEstimateDto(job.JobId, code, perCv > 0, null, null, null, null, null, null, perCv, currency,
                 $"Mỗi CV được Client chấp nhận: {perCv.ToString("N0", Vi)} {currency}/CV. Hoa hồng ghi nhận khi CV được chấp nhận.");
         }
 

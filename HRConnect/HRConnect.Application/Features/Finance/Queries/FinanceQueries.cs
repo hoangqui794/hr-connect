@@ -1,3 +1,4 @@
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
@@ -173,7 +174,7 @@ public sealed class FinanceQueryHandlers :
                 openPayableFeeIds,
                 DateTime.UtcNow.Subtract(_vnPayGateway?.PaymentLifetime ?? TimeSpan.FromMinutes(15)),
                 cancellationToken);
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = VietnamTime.Today();
 
         return new PagedResult<ServiceFeeDto>(items.Select(fee =>
         {
@@ -383,7 +384,7 @@ public sealed class FinanceQueryHandlers :
                 .Where(log => log.EntityId.HasValue && log.Action == AuditActions.WarrantyClaimReported)
                 .GroupBy(log => log.EntityId!.Value)
                 .ToDictionary(g => g.Key, g => g.Max(log => log.CreatedAt));
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = VietnamTime.Today();
 
         return new PagedResult<WarrantyDto>(items.Select(w =>
         {

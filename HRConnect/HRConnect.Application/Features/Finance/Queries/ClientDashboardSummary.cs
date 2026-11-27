@@ -1,3 +1,4 @@
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Recruitment.Common;
@@ -48,7 +49,7 @@ public sealed class GetClientDashboardSummaryQueryHandler : IRequestHandler<GetC
 
         var withinDays = Math.Clamp(request.WarrantyWithinDays, 1, 90);
         var now = DateTime.UtcNow;
-        var today = DateOnly.FromDateTime(now);
+        var today = VietnamTime.Today(now);
         var s = await _financeRepository.GetClientDashboardSnapshotAsync(member.CompanyId, today, today.AddDays(withinDays), cancellationToken);
 
         // A fee is overdue when BE marked it OVERDUE or its due date has passed while still unpaid.

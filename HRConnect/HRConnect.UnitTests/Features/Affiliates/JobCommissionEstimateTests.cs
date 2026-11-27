@@ -76,6 +76,9 @@ public class JobCommissionEstimateTests
         result.AmountPerCv.Should().Be(340_000m);
         result.Explanation.Should().Contain("340.000").And.Contain("VND").And.Contain("CV được chấp nhận");
         result.Explanation.Should().NotContain("850.000").And.NotContain("850000").And.NotContain("40%").And.NotContain("×");
+        // The share would let an Affiliate work out the Client's price per CV (340,000 / 40%).
+        result.RateValue.Should().BeNull();
+        result.RateType.Should().BeNull();
     }
 
     [Fact]

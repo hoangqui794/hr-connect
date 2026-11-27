@@ -1,3 +1,4 @@
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Models;
@@ -37,7 +38,7 @@ public sealed class WarrantyProgressWorker : BackgroundService
         {
             try
             {
-                await RunOnceAsync(DateOnly.FromDateTime(DateTime.UtcNow), stoppingToken);
+                await RunOnceAsync(VietnamTime.Today(), stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
