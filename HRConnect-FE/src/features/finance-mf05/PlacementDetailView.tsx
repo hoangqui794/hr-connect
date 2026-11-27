@@ -5,7 +5,7 @@
  * financial links, and resignation action workflows.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Card,
   Tag,
@@ -87,6 +87,25 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
   const [resolveModalOpen, setResolveModalOpen] = useState(false);
   const [resignationForm] = Form.useForm();
   const [resolveForm] = Form.useForm();
+
+  useEffect(() => {
+    if (!resignationModalOpen || !placement) return;
+    const start = placement.warranty?.startDate ? dayjs(placement.warranty.startDate) : null;
+    const end = placement.warranty?.endDate ? dayjs(placement.warranty.endDate) : null;
+    let initialDate = dayjs();
+    if (end && !initialDate.isBefore(end, 'day')) {
+      initialDate = end.subtract(1, 'day');
+    }
+    if (start && initialDate.isBefore(start, 'day')) {
+      initialDate = start;
+    }
+    resignationForm.setFieldsValue({ lastWorkingDate: initialDate, reason: undefined });
+  }, [resignationModalOpen, placement, resignationForm]);
+
+  useEffect(() => {
+    if (!resolveModalOpen) return;
+    resolveForm.setFieldsValue({ decision: 'confirm', note: undefined });
+  }, [resolveModalOpen, resolveForm]);
 
   // Handle Client Report Resignation
   const handleReportResignationSubmit = async () => {
@@ -195,7 +214,7 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
       ONBOARDED: { color: 'processing', label: 'Đã đi làm', icon: <CheckCircleOutlined /> },
       PROBATION: { color: 'cyan', label: 'Đang thử việc', icon: <ClockCircleOutlined /> },
       ACTIVE: { color: 'success', label: 'Đang làm việc', icon: <CheckCircleOutlined /> },
-      PASSED: { color: 'green', label: 'Hoàn thành thử việc', icon: <CheckCircleOutlined /> },
+      PASSED: { color: 'green', label: 'Đã qua bảo hành', icon: <CheckCircleOutlined /> },
       COMPLETED: { color: 'green', label: 'Hoàn tất bảo hành', icon: <CheckCircleOutlined /> },
       RESIGNED: { color: 'magenta', label: 'Đã nghỉ việc', icon: <CloseCircleOutlined /> },
       CLAIMED: { color: 'warning', label: 'Chờ xác minh báo nghỉ', icon: <ClockCircleOutlined /> },
@@ -318,7 +337,7 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
           <div className="text-lg font-black text-slate-800">
             {placement.actualStartDate ? date(placement.actualStartDate) : '—'}
           </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Xác nhận bởi Doanh nghiệp</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Xác nhận bởi Doanh nghiệp</div>
         </Card>
 
 
@@ -332,11 +351,17 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
             {placement.warranty?.endDate ? date(placement.warranty.endDate) : 'Đang cập nhật'}
           </div>
           <div className="text-[11px] text-amber-600 font-semibold mt-0.5">
-            {placement.warranty?.status === 'VOIDED'
-              ? 'Bảo hành đã dừng'
-              : warrantyProgress.daysLeft > 0
-                ? `Còn ${warrantyProgress.daysLeft} ngày bảo hành`
-                : 'Đã hết bảo hành'}
+            {!placement.warranty?.endDate
+              ? 'Chưa có thời hạn'
+              : placement.warranty.status === 'VOIDED'
+                ? 'Bảo hành đã dừng'
+                : placement.warranty.status === 'CLAIMED'
+                  ? 'Đang xác minh báo nghỉ'
+                  : placement.warranty.status === 'PASSED'
+                    ? 'Đã hoàn tất bảo hành'
+                    : warrantyProgress.daysLeft > 0
+                      ? `Còn ${warrantyProgress.daysLeft} ngày bảo hành`
+                      : 'Đã hết bảo hành'}
           </div>
         </Card>
       </div>
@@ -499,17 +524,17 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
           }
         >
           <div className="space-y-2 py-1 text-xs">
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500">Họ và tên:</span>
-              <strong className="text-slate-900">{placement.candidate.fullName}</strong>
+            <div className="flex justify-between gap-3 py-1 border-b border-slate-100">
+              <span className="shrink-0 text-slate-500">Họ và tên:</span>
+              <strong className="text-right text-slate-900 break-words">{placement.candidate.fullName}</strong>
             </div>
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500">Email:</span>
-              <span className="text-slate-800 font-mono">{placement.candidate.email || '—'}</span>
+            <div className="flex justify-between gap-3 py-1 border-b border-slate-100">
+              <span className="shrink-0 text-slate-500">Email:</span>
+              <span className="text-right text-slate-800 font-mono break-all">{placement.candidate.email || '—'}</span>
             </div>
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500">Số điện thoại:</span>
-              <span className="text-slate-800">{placement.candidate.phone || '—'}</span>
+            <div className="flex justify-between gap-3 py-1 border-b border-slate-100">
+              <span className="shrink-0 text-slate-500">Số điện thoại:</span>
+              <span className="text-right text-slate-800 tabular-nums">{placement.candidate.phone || '—'}</span>
             </div>
             {placement.candidate.summary && (
               <div className="pt-1">
@@ -534,25 +559,25 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
           }
         >
           <div className="space-y-2 py-1 text-xs">
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500">Tin tuyển dụng:</span>
-              <strong className="text-slate-900">{placement.job.title}</strong>
+            <div className="flex justify-between gap-3 py-1 border-b border-slate-100">
+              <span className="shrink-0 text-slate-500">Tin tuyển dụng:</span>
+              <strong className="text-right text-slate-900 break-words">{placement.job.title}</strong>
             </div>
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500">Doanh nghiệp:</span>
-              <span className="text-slate-800">{placement.job.companyName}</span>
+            <div className="flex justify-between gap-3 py-1 border-b border-slate-100">
+              <span className="shrink-0 text-slate-500">Doanh nghiệp:</span>
+              <span className="text-right text-slate-800 break-words">{placement.job.companyName}</span>
             </div>
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500">Vị trí đảm nhiệm:</span>
-              <span className="text-slate-800">{placement.position || placement.job.title}</span>
+            <div className="flex justify-between gap-3 py-1 border-b border-slate-100">
+              <span className="shrink-0 text-slate-500">Vị trí đảm nhiệm:</span>
+              <span className="text-right text-slate-800 break-words">{placement.position || placement.job.title}</span>
             </div>
-            <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500">Phòng ban:</span>
-              <span className="text-slate-800">{placement.department || 'Đang cập nhật'}</span>
+            <div className="flex justify-between gap-3 py-1 border-b border-slate-100">
+              <span className="shrink-0 text-slate-500">Phòng ban:</span>
+              <span className="text-right text-slate-800 break-words">{placement.department || 'Đang cập nhật'}</span>
             </div>
-            <div className="flex justify-between py-1">
-              <span className="text-slate-500">Người xác nhận đi làm:</span>
-              <span className="text-slate-800">{placement.confirmedByName || 'Hệ thống'}</span>
+            <div className="flex justify-between gap-3 py-1">
+              <span className="shrink-0 text-slate-500">Người xác nhận đi làm:</span>
+              <span className="text-right text-slate-800 break-words">{placement.confirmedByName || 'Hệ thống'}</span>
             </div>
           </div>
         </Card>
@@ -643,10 +668,7 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
               <Button
                 danger
                 type="primary"
-                onClick={() => {
-                  resignationForm.setFieldsValue({ lastWorkingDate: dayjs() });
-                  setResignationModalOpen(true);
-                }}
+                onClick={() => setResignationModalOpen(true)}
               >
                 Báo nghỉ việc
               </Button>
@@ -656,10 +678,7 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
               <Button
                 type="primary"
                 className="bg-amber-600 hover:bg-amber-700 font-semibold"
-                onClick={() => {
-                  resolveForm.setFieldsValue({ decision: 'confirm' });
-                  setResolveModalOpen(true);
-                }}
+                onClick={() => setResolveModalOpen(true)}
               >
                 Xác minh báo nghỉ
               </Button>
@@ -672,19 +691,23 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
       <Modal
         title="Báo ứng viên nghỉ việc trong thời gian bảo hành"
         open={resignationModalOpen}
-        onCancel={() => setResignationModalOpen(false)}
+        onCancel={() => {
+          setResignationModalOpen(false);
+          resignationForm.resetFields();
+        }}
         onOk={handleReportResignationSubmit}
         confirmLoading={isReportingResignation}
         okText="Gửi báo nghỉ việc"
         cancelText="Đóng"
         okButtonProps={{ danger: true }}
+        destroyOnHidden
       >
         <div className="text-xs text-slate-600 mb-4 bg-amber-50 p-3 rounded-lg border border-amber-200">
           Ứng viên <strong>{placement.candidate.fullName}</strong> được bảo hành đến{' '}
-          <strong>{date(placement.warranty?.endDate)}</strong>. Sau khi báo nghỉ, Internal HR sẽ tiếp nhận để xác minh và mở suất tìm ứng viên thay thế miễn phí theo thỏa thuận.
+          <strong>{date(placement.warranty?.endDate)}</strong>. Sau khi báo nghỉ, HR Connect sẽ tiếp nhận để xác minh và mở suất tìm ứng viên thay thế miễn phí theo thỏa thuận.
         </div>
 
-        <Form form={resignationForm} layout="vertical">
+        <Form form={resignationForm} layout="vertical" preserve={false}>
           <Form.Item
             name="lastWorkingDate"
             label="Ngày làm việc cuối cùng"
@@ -692,7 +715,7 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
           >
             <DatePicker
               className="w-full"
-              format="YYYY-MM-DD"
+              format="DD/MM/YYYY"
               disabledDate={(d) =>
                 Boolean(
                   (placement.warranty?.startDate && d.isBefore(dayjs(placement.warranty.startDate), 'day')) ||
@@ -705,7 +728,7 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
           <Form.Item
             name="reason"
             label="Lý do nghỉ việc"
-            rules={[{ required: true, message: 'Vui lòng nhập lý do nghỉ việc' }]}
+            rules={[{ required: true, whitespace: true, message: 'Vui lòng nhập lý do nghỉ việc' }]}
           >
             <Input.TextArea rows={3} placeholder="Ví dụ: Ứng viên xin nghỉ vì lý do cá nhân..." />
           </Form.Item>
@@ -716,13 +739,17 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
       <Modal
         title="Xác minh báo nghỉ việc của Doanh nghiệp"
         open={resolveModalOpen}
-        onCancel={() => setResolveModalOpen(false)}
+        onCancel={() => {
+          setResolveModalOpen(false);
+          resolveForm.resetFields();
+        }}
         onOk={handleResolveResignationSubmit}
         confirmLoading={isResolvingResignation}
         okText="Lưu kết quả xác minh"
         cancelText="Đóng"
+        destroyOnHidden
       >
-        <Form form={resolveForm} layout="vertical">
+        <Form form={resolveForm} layout="vertical" preserve={false}>
           <Form.Item
             name="decision"
             label="Kết quả xác minh"
@@ -734,8 +761,22 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
             </Radio.Group>
           </Form.Item>
 
-          <Form.Item name="note" label="Ghi chú xác minh">
-            <Input.TextArea rows={3} placeholder="Ghi chú đối soát hoặc căn cứ xác minh..." />
+          <Form.Item noStyle shouldUpdate={(a, b) => a.decision !== b.decision}>
+            {({ getFieldValue }) => (
+              <Form.Item
+                name="note"
+                label="Ghi chú xác minh"
+                rules={[
+                  {
+                    required: getFieldValue('decision') === 'reject',
+                    whitespace: true,
+                    message: 'Bác bỏ báo nghỉ cần nhập ghi chú lý do.',
+                  },
+                ]}
+              >
+                <Input.TextArea rows={3} placeholder="Ghi chú đối soát hoặc căn cứ xác minh..." />
+              </Form.Item>
+            )}
           </Form.Item>
         </Form>
       </Modal>

@@ -324,7 +324,7 @@ describe('ClientBillingPage', () => {
     expect(screen.getByText(/Đã báo chuyển khoản – chờ xác nhận \(12\/11\/2026\)/)).toBeInTheDocument();
     expect(screen.getByText('VNPay đang xử lý')).toBeInTheDocument();
     expect(screen.getByText('Chờ xác nhận')).toBeInTheDocument();
-    expect(screen.getByText('VNPay chờ XL')).toBeInTheDocument();
+    expect(screen.getByText('VNPay chờ xử lý')).toBeInTheDocument();
     const link = screen.getByRole('link', { name: 'Xem chi tiết nhận việc #BCDEF123' });
     expect(link).toHaveAttribute('href', '/client/placements/bcdef123-0000-0000-0000-000000000001');
     expect(screen.queryByRole('button', { name: /^Thanh toán:/ })).toBeNull();
