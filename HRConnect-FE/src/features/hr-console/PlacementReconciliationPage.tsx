@@ -195,6 +195,7 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
 
   const openStartDateModal = () => {
     if (!selected?.placementId) return;
+    correctStartDate.reset();
     startDateForm.setFieldsValue({
       actualStartDate: selected.actualStartDate ? dayjs(selected.actualStartDate) : dayjs(),
       reason: '',
@@ -368,7 +369,11 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
         {correctStartDate.isError && <Alert className="mb-4" type="error" showIcon message={getApiErrorMessage(correctStartDate.error)} />}
         <Form form={startDateForm} layout="vertical" requiredMark="optional">
           <Form.Item name="actualStartDate" label="Ngày đi làm mới" rules={[{ required: true, message: 'Chọn ngày đi làm mới.' }]}>
-            <DatePicker format="DD/MM/YYYY" className="w-full" />
+            <DatePicker
+              format="DD/MM/YYYY"
+              className="w-full"
+              disabledDate={(current) => Boolean(current && current.isAfter(dayjs(), 'day'))}
+            />
           </Form.Item>
           <Form.Item name="reason" label="Lý do điều chỉnh" rules={[{ required: true, message: 'Nhập lý do điều chỉnh ngày đi làm.' }]}>
             <Input.TextArea rows={3} placeholder="Ví dụ: Client nhập nhầm ngày đi làm thực tế của ứng viên." />
