@@ -345,6 +345,8 @@ export interface PlacementCorrectionDetail {
   department: string | null;
   status: string;
   confirmedAt: string;
+  /** Until when Internal HR may still correct the start date (backend business setting). */
+  startDateCorrectionDeadline?: string | null;
   confirmedBy: string | null;
   confirmedByName: string | null;
   confirmationNote: string | null;

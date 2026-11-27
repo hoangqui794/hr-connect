@@ -111,7 +111,8 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
     queryFn: () => placementCorrectionApi.get(selectedId!),
     enabled: selectedId !== null,
   });
-  const correctionDeadline = detail.data?.confirmedAt ? dayjs(detail.data.confirmedAt).add(7, 'day') : null;
+  // The window length is a business setting; the backend sends the resulting deadline and enforces it again on save.
+  const correctionDeadline = detail.data?.startDateCorrectionDeadline ? dayjs(detail.data.startDateCorrectionDeadline) : null;
   const correctionWindowExpired = correctionDeadline ? dayjs().isAfter(correctionDeadline) : false;
   const remainingWindowDays = correctionDeadline ? Math.max(0, correctionDeadline.diff(dayjs(), 'day')) : null;
   const correctionWindowText = !correctionDeadline
