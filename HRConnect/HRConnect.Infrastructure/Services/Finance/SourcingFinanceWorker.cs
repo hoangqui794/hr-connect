@@ -101,6 +101,18 @@ public sealed class SourcingFinanceWorker : BackgroundService
             }
 
             var sourcing = scope.ServiceProvider.GetRequiredService<ISourcingFinanceService>();
+            if (settle)
+            {
+                // Same gate as manual settlement: a CV still waiting for the Client or Internal HR may yet be counted,
+                // and the job can be settled only once. Retry on a later run.
+                var undecided = await sourcing.CountUndecidedDeliveriesAsync(job.JobId, cancellationToken);
+                if (undecided > 0)
+                {
+                    _logger.LogDebug("MF-05: hoãn quyết toán job CV Sourcing {JobId}, còn {Count} CV chưa xử lý xong.", jobId, undecided);
+                    return false;
+                }
+            }
+
             var fee = settle
                 ? await sourcing.SettleAsync(job, null, cancellationToken)
                 : await sourcing.EnsureDepositAsync(job, null, cancellationToken);

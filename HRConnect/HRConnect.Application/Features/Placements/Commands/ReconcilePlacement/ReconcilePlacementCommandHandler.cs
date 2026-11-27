@@ -1,3 +1,4 @@
+using HRConnect.Application.Common;
 using System.Text.Json;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
@@ -103,7 +104,7 @@ public sealed class ReconcilePlacementCommandHandler : IRequestHandler<Reconcile
 
         if (item.Status == PlacementReconciliationStates.Confirmed && item.Placement?.ServiceFee is { } fee)
         {
-            var today = DateOnly.FromDateTime(now);
+            var today = VietnamTime.Today(now);
             if (fee.DueDate < today)
             {
                 await _warrantyProgress.MarkServiceFeeOverdueAsync(fee.ServiceFeeId, today, request.ActorUserId, cancellationToken);

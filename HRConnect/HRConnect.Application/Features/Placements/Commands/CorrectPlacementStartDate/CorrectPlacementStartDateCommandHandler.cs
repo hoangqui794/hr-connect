@@ -3,6 +3,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Common.Settings;
 using HRConnect.Domain.Constants;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -12,7 +13,6 @@ namespace HRConnect.Application.Features.Placements.Commands.CorrectPlacementSta
 public sealed class CorrectPlacementStartDateCommandHandler
     : IRequestHandler<CorrectPlacementStartDateCommand, CorrectPlacementStartDateResponse>
 {
-    private const int CorrectionWindowDays = 7;
     private const int ReasonMaxLength = 1_000;
 
     private readonly IFinanceRepository _financeRepository;
@@ -20,19 +20,22 @@ public sealed class CorrectPlacementStartDateCommandHandler
     private readonly IAuditLogService _auditLogService;
     private readonly ILogger<CorrectPlacementStartDateCommandHandler> _logger;
     private readonly TimeProvider _timeProvider;
+    private readonly IAdminBusinessSettings? _settings;
 
     public CorrectPlacementStartDateCommandHandler(
         IFinanceRepository financeRepository,
         IUnitOfWork unitOfWork,
         IAuditLogService auditLogService,
         ILogger<CorrectPlacementStartDateCommandHandler> logger,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        IAdminBusinessSettings? settings = null)
     {
         _financeRepository = financeRepository;
         _unitOfWork = unitOfWork;
         _auditLogService = auditLogService;
         _logger = logger;
         _timeProvider = timeProvider ?? TimeProvider.System;
+        _settings = settings;
     }
 
     public async Task<CorrectPlacementStartDateResponse> Handle(
@@ -69,11 +72,12 @@ public sealed class CorrectPlacementStartDateCommandHandler
         }
 
         var now = DateTime.UtcNow;
-        if (now > placement.ConfirmedAt.AddDays(CorrectionWindowDays) ||
+        var correctionWindowDays = await GetCorrectionWindowDaysAsync(_settings, cancellationToken);
+        if (now > placement.ConfirmedAt.AddDays(correctionWindowDays) ||
             string.Equals(placement.ServiceFee?.Status, ServiceFeeStates.Paid, StringComparison.OrdinalIgnoreCase))
         {
             throw new ConflictException(
-                "Ngày đi làm đã bị khóa: chỉ được sửa trong 7 ngày kể từ lúc xác nhận và trước khi phí dịch vụ được thanh toán.",
+                $"Ngày đi làm đã bị khóa: chỉ được sửa trong {correctionWindowDays} ngày kể từ lúc xác nhận và trước khi phí dịch vụ được thanh toán.",
                 PlacementStartDateErrorCodes.StartDateLocked);
         }
 
@@ -160,4 +164,10 @@ public sealed class CorrectPlacementStartDateCommandHandler
 
         return normalized;
     }
+
+    /// <summary>Days after the Client confirmed the start date during which Internal HR may still correct it (business setting).</summary>
+    internal static async Task<int> GetCorrectionWindowDaysAsync(IAdminBusinessSettings? settings, CancellationToken cancellationToken) =>
+        settings != null
+            ? await settings.GetIntAsync(BusinessSettingKeys.PlacementStartDateCorrectionDays, cancellationToken)
+            : (int)BusinessSettingKeys.Get(BusinessSettingKeys.PlacementStartDateCorrectionDays).DefaultValue;
 }

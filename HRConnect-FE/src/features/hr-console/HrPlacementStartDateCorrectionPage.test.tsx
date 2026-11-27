@@ -23,6 +23,7 @@ const placement = {
   department: 'Engineering',
   status: 'ACTIVE',
   confirmedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+  startDateCorrectionDeadline: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString(),
   confirmedByName: 'Client HR',
   candidate: { candidateId: 'candidate-1', fullName: 'Nguyễn Văn A', email: 'candidate@example.com', phoneNumber: '0900000000' },
   job: { jobId: 'job-1', title: 'Senior Backend Engineer', companyId: 'company-1', companyName: 'HR Connect' },
@@ -97,10 +98,11 @@ describe('HrPlacementStartDateCorrectionPage', () => {
     });
   });
 
-  it('disables correction after the seven-day window', async () => {
+  it('disables correction once the server-provided correction deadline has passed', async () => {
     vi.mocked(placementCorrectionApi.get).mockResolvedValue({
       ...placementDetail,
       confirmedAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+      startDateCorrectionDeadline: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
     } as any);
     renderPage();
 

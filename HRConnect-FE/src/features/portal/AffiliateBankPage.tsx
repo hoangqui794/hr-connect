@@ -217,7 +217,7 @@ export const AffiliateBankPage: React.FC = () => {
                 <div className="flex items-start gap-2">
                   <span className="text-[#0284C7] mt-0.5 font-bold">✓</span>
                   <span>
-                    <b>Tự động chi trả:</b> Hoa hồng được tự động quyết toán và chuyển khoản trực tiếp vào tài khoản này sau 30 ngày bảo hành ứng viên.
+                    <b>Chi trả khi đủ điều kiện:</b> HR Connect duyệt và chuyển khoản hoa hồng vào tài khoản này sau khi doanh nghiệp đã thanh toán phí dịch vụ và ứng viên đã qua thời gian bảo hành (Tuyển qua Affiliate) hoặc CV đã được chấp nhận và tin đã quyết toán (CV Sourcing).
                   </span>
                 </div>
                 <div className="flex items-start gap-2">

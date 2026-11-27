@@ -5,7 +5,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Finance.ReplacementSlots;
+using HRConnect.Application.Features.Placements.Commands.CorrectPlacementStartDate;
 using HRConnect.Application.Features.Placements.Common;
 using HRConnect.Domain.Constants;
 using MediatR;
@@ -19,17 +21,20 @@ public class GetPlacementDetailQueryHandler : IRequestHandler<GetPlacementDetail
     private readonly ICompanyUserRepository _companyUserRepository;
     private readonly ILogger<GetPlacementDetailQueryHandler> _logger;
     private readonly IFinanceRepository? _financeRepository;
+    private readonly IAdminBusinessSettings? _settings;
 
     public GetPlacementDetailQueryHandler(
         IPlacementRepository placementRepository,
         ICompanyUserRepository companyUserRepository,
         ILogger<GetPlacementDetailQueryHandler> logger,
-        IFinanceRepository? financeRepository = null)
+        IFinanceRepository? financeRepository = null,
+        IAdminBusinessSettings? settings = null)
     {
         _placementRepository = placementRepository;
         _companyUserRepository = companyUserRepository;
         _logger = logger;
         _financeRepository = financeRepository;
+        _settings = settings;
     }
 
     public async Task<GetPlacementDetailResponse> Handle(GetPlacementDetailQuery request, CancellationToken cancellationToken)
@@ -198,6 +203,11 @@ public class GetPlacementDetailQueryHandler : IRequestHandler<GetPlacementDetail
             }
         }
 
+        DateTime? correctionDeadline = request.IsInternalHrOrAdmin
+            ? placement.ConfirmedAt.AddDays(
+                await CorrectPlacementStartDateCommandHandler.GetCorrectionWindowDaysAsync(_settings, cancellationToken))
+            : null;
+
         return new GetPlacementDetailResponse(
             placement.PlacementId,
             placement.ApplicationId,
@@ -241,7 +251,8 @@ public class GetPlacementDetailQueryHandler : IRequestHandler<GetPlacementDetail
             placement.UpdatedAt,
             financialDto,
             resignationDto,
-            replacementDto
+            replacementDto,
+            correctionDeadline
         );
     }
 }

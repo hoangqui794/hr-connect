@@ -1,3 +1,4 @@
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Models;
@@ -37,7 +38,7 @@ public sealed class WarrantyProgressWorker : BackgroundService
         {
             try
             {
-                await RunOnceAsync(DateOnly.FromDateTime(DateTime.UtcNow), stoppingToken);
+                await RunOnceAsync(VietnamTime.Today(), stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -58,6 +59,7 @@ public sealed class WarrantyProgressWorker : BackgroundService
         IReadOnlyList<Guid> feeIds;
         IReadOnlyList<Guid> dueSoonIds;
         IReadOnlyList<Guid> expiredSlotIds;
+        IReadOnlyList<Guid> paidWaitingSlotIds;
         var now = DateTime.UtcNow;
         int reminderDays;
         await using (var discovery = _scopeFactory.CreateAsyncScope())
@@ -69,6 +71,7 @@ public sealed class WarrantyProgressWorker : BackgroundService
                 .GetIntAsync(BusinessSettingKeys.FeeDueReminderDays, cancellationToken);
             dueSoonIds = await repository.GetServiceFeeIdsDueSoonAsync(today, today.AddDays(reminderDays), BatchSize, cancellationToken);
             expiredSlotIds = await repository.GetExpiredReplacementSlotIdsAsync(now, BatchSize, cancellationToken);
+            paidWaitingSlotIds = await repository.GetPaidWaitingReplacementSlotIdsAsync(BatchSize, cancellationToken);
         }
 
         var passed = 0;
@@ -95,11 +98,18 @@ public sealed class WarrantyProgressWorker : BackgroundService
             expired += await RunItemAsync(service => service.ExpireReplacementSlotAsync(slotId, now, cancellationToken), slotId) ? 1 : 0;
         }
 
-        if (passed + due + overdue + expired > 0)
+        // A slot left WAITING_PAYMENT although its fee is already PAID opens here.
+        var reopened = 0;
+        foreach (var slotId in paidWaitingSlotIds)
+        {
+            reopened += await RunItemAsync(service => service.OpenPaidReplacementSlotAsync(slotId, now, cancellationToken), slotId) ? 1 : 0;
+        }
+
+        if (passed + due + overdue + expired + reopened > 0)
         {
             _logger.LogInformation(
-                "MF-05: {Passed} bảo hành đã qua (hoa hồng EARNED), {Due} công nợ sắp đến hạn, {Overdue} công nợ quá hạn, {Expired} suất thay thế hết hạn.",
-                passed, due, overdue, expired);
+                "MF-05: {Passed} bảo hành đã qua (hoa hồng EARNED), {Due} công nợ sắp đến hạn, {Overdue} công nợ quá hạn, {Expired} suất thay thế hết hạn, {Reopened} suất thay thế đã trả phí được mở.",
+                passed, due, overdue, expired, reopened);
         }
     }
 

@@ -27,7 +27,10 @@ public sealed record VnPayPaymentLinkResponse(Guid OnlinePaymentId, string Payme
 /// </summary>
 public sealed record ConfirmVnPayPaymentCommand(IReadOnlyDictionary<string, string> Query) : IRequest<VnPayConfirmResult>;
 
-/// <summary>RspCode/Message follow VNPay's IPN contract: 00 ok, 01 order not found, 02 already confirmed, 04 wrong amount, 97 bad signature.</summary>
+/// <summary>
+/// RspCode/Message follow VNPay's IPN contract: 00 ok, 01 order not found, 02 already confirmed, 04 wrong amount,
+/// 97 bad signature, 99 another callback is still applying it (VNPay retries the IPN later).
+/// </summary>
 public sealed record VnPayConfirmResult(string RspCode, string Message, OnlinePaymentResultDto? Payment);
 
 public sealed record OnlinePaymentResultDto(
@@ -161,10 +164,26 @@ public sealed class VnPayPaymentCommandHandlers(
         if (!await payments.TryClaimAsync(
                 payment.OnlinePaymentId, now, now.Subtract(ProcessingClaimTimeout), cancellationToken))
         {
-            var latest = callback.TxnRef is null
-                ? null
-                : await payments.GetByTxnRefAsync(callback.TxnRef, cancellationToken);
-            return new VnPayConfirmResult("02", "Order already confirmed", ToDto(latest ?? payment));
+            // The tracked copy was read before the claim; ask the database what the status is now.
+            var current = await payments.GetCurrentStatusAsync(payment.OnlinePaymentId, cancellationToken) ?? payment.Status;
+            if (current is OnlinePaymentStates.Pending or OnlinePaymentStates.Processing)
+            {
+                // Another callback is applying it and may still fail and release it: 99 keeps VNPay retrying the IPN.
+                return new VnPayConfirmResult("99", "Payment is being processed", ToDto(payment) with { Status = current });
+            }
+
+            if (current != OnlinePaymentStates.Failed || !callback.IsSuccess)
+            {
+                return new VnPayConfirmResult("02", "Order already confirmed", ToDto(payment) with { Status = current });
+            }
+
+            // VNPay took the money on a link we had given up on (expired, or replaced by a newer link): apply it anyway.
+            if (!await payments.TryReclaimFailedAsync(payment.OnlinePaymentId, now, cancellationToken))
+            {
+                return await KeepLateSuccessForReviewAsync(payment, callback, now, cancellationToken);
+            }
+
+            payment.LastError = null;
         }
 
         payment.Status = OnlinePaymentStates.Processing;
@@ -246,6 +265,53 @@ public sealed class VnPayPaymentCommandHandlers(
             await payments.ReleaseClaimAsync(payment.OnlinePaymentId, CancellationToken.None);
             throw;
         }
+    }
+
+    /// <summary>
+    /// A successful payment on a FAILED link that cannot be applied automatically because a newer link owns the fee.
+    /// The money is real, so it is kept as NEEDS_REVIEW and Platform Admin is told to reconcile it.
+    /// </summary>
+    private async Task<VnPayConfirmResult> KeepLateSuccessForReviewAsync(
+        OnlinePayment payment, VnPayCallback callback, DateTime now, CancellationToken cancellationToken)
+    {
+        var paidAt = callback.PaidAtUtc is { } at && at <= now ? at : now;
+        var details = new OnlinePaymentReviewDetails(
+            callback.ResponseCode,
+            callback.TransactionNo,
+            callback.BankCode,
+            paidAt,
+            "VNPay báo thanh toán thành công cho phiên đã hết hạn hoặc đã được thay bằng link mới; cần Admin đối chiếu và ghi nhận thủ công.");
+        if (!await payments.TryMarkFailedForReviewAsync(payment.OnlinePaymentId, details, now, cancellationToken))
+        {
+            // Another callback moved it in the meantime.
+            var current = await payments.GetCurrentStatusAsync(payment.OnlinePaymentId, cancellationToken) ?? payment.Status;
+            return current is OnlinePaymentStates.Pending or OnlinePaymentStates.Processing
+                ? new VnPayConfirmResult("99", "Payment is being processed", ToDto(payment) with { Status = current })
+                : new VnPayConfirmResult("02", "Order already confirmed", ToDto(payment) with { Status = current });
+        }
+
+        payment.Status = OnlinePaymentStates.NeedsReview;
+        payment.ResponseCode = details.ResponseCode;
+        payment.ProviderTransactionNo = details.ProviderTransactionNo;
+        payment.BankCode = details.BankCode;
+        payment.PaidAt = details.PaidAt;
+        payment.LastError = details.LastError;
+        payment.UpdatedAt = now;
+
+        try
+        {
+            var noticeContext = await ResolveNoticeContextAsync(payment, cancellationToken);
+            await NotifyPlatformAdminsAsync(payment, noticeContext, $"VNPAY-{callback.TransactionNo ?? payment.TxnRef}", cancellationToken);
+            payments.Update(payment);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // The payment is already saved as NEEDS_REVIEW; only the Admin notice was lost.
+            logger?.LogWarning(ex, "Không thể gửi thông báo thanh toán VNPay cần kiểm tra {OnlinePaymentId} tới Admin.", payment.OnlinePaymentId);
+        }
+
+        return new VnPayConfirmResult("00", "Confirm Success", ToDto(payment));
     }
 
     private async Task<(decimal Amount, string Currency, string OrderInfo)> ResolvePayableAsync(

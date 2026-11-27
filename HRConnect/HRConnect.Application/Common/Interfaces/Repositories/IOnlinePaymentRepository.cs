@@ -23,6 +23,23 @@ public interface IOnlinePaymentRepository
         Guid onlinePaymentId, DateTime now, DateTime processingStaleBefore,
         CancellationToken cancellationToken = default);
 
+    /// <summary>The status saved in the database right now (not the tracked copy); null when the payment does not exist.</summary>
+    Task<string?> GetCurrentStatusAsync(Guid onlinePaymentId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Moves a FAILED payment (expired or replaced by a newer link) to PROCESSING in one statement, so VNPay's
+    /// late success callback can still be applied. False when it is no longer FAILED or when a newer
+    /// PENDING/PROCESSING payment already owns the same target.
+    /// </summary>
+    Task<bool> TryReclaimFailedAsync(Guid onlinePaymentId, DateTime now, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Moves a FAILED payment to NEEDS_REVIEW together with VNPay's transaction details in one statement;
+    /// false when it is no longer FAILED.
+    /// </summary>
+    Task<bool> TryMarkFailedForReviewAsync(
+        Guid onlinePaymentId, OnlinePaymentReviewDetails details, DateTime now, CancellationToken cancellationToken = default);
+
     /// <summary>Puts a PROCESSING payment back to PENDING after an unexpected error, so VNPay's next IPN retry can apply it.</summary>
     Task ReleaseClaimAsync(Guid onlinePaymentId, CancellationToken cancellationToken = default);
 
@@ -37,3 +54,7 @@ public interface IOnlinePaymentRepository
         CancellationToken cancellationToken = default)
         => Task.FromResult<IReadOnlyDictionary<Guid, string>>(new Dictionary<Guid, string>());
 }
+
+/// <summary>What VNPay reported for a payment that is kept for Platform Admin review.</summary>
+public sealed record OnlinePaymentReviewDetails(
+    string? ResponseCode, string? ProviderTransactionNo, string? BankCode, DateTime? PaidAt, string LastError);

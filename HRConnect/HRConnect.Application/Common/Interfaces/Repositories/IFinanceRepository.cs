@@ -31,6 +31,15 @@ public interface IFinanceRepository
     Task<ServiceFee?> GetServiceFeeForUpdateAsync(Guid serviceFeeId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Row-locks an already loaded (tracked) service fee until the current transaction ends and reloads its values,
+    /// so the caller decides on the status a concurrent payment just committed. Call inside a transaction.
+    /// </summary>
+    Task LockAndRefreshServiceFeeAsync(ServiceFee fee, CancellationToken cancellationToken = default);
+
+    /// <summary>WAITING_PAYMENT replacement slots whose service fee is already PAID (missed by the payment command).</summary>
+    Task<IReadOnlyList<Guid>> GetPaidWaitingReplacementSlotIdsAsync(int take, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Commission with its placement's service fee (HEADHUNT_COD) or its sourcing delivery and job
     /// (CV_SOURCING), and its payouts, tracked for update.
     /// </summary>

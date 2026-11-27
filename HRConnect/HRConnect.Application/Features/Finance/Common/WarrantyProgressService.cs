@@ -1,3 +1,4 @@
+using HRConnect.Application.Common;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
@@ -31,6 +32,12 @@ public interface IWarrantyProgressService
 
     /// <summary>OPEN replacement slot past its deadline -> EXPIRED, and tells the Client. Returns false when there is nothing to do.</summary>
     Task<bool> ExpireReplacementSlotAsync(Guid replacementSlotId, DateTime now, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Safety net for S2: a WAITING_PAYMENT replacement slot whose fee is already PAID opens now, the same way
+    /// recording the payment would have opened it. Returns false when there is nothing to do.
+    /// </summary>
+    Task<bool> OpenPaidReplacementSlotAsync(Guid replacementSlotId, DateTime now, CancellationToken cancellationToken = default);
 }
 
 public sealed class WarrantyProgressService : IWarrantyProgressService
@@ -331,6 +338,33 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
         reconciliation == null ||
         string.Equals(reconciliation.Status, PlacementReconciliationStates.Confirmed, StringComparison.OrdinalIgnoreCase);
 
+    public async Task<bool> OpenPaidReplacementSlotAsync(Guid replacementSlotId, DateTime now, CancellationToken cancellationToken = default)
+    {
+        var slot = await _financeRepository.GetReplacementSlotForUpdateAsync(replacementSlotId, cancellationToken);
+        if (slot is not { Status: ReplacementSlotStates.WaitingPayment } || slot.ServiceFee?.Status != ServiceFeeStates.Paid)
+        {
+            return false;
+        }
+
+        await ReplacementSlotLifecycle.OpenAsync(
+            slot, slot.Job, now, null, _financeRepository, _notificationRepository, cancellationToken);
+        await ReplacementSlotLifecycle.NotifyAffiliateOpenAsync(
+            slot, slot.Job, extended: false, _financeRepository, _notifier, cancellationToken);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.ReplacementSlotOpened,
+            EntityType = "REPLACEMENT_SLOT",
+            EntityId = slot.ReplacementSlotId,
+            ActorType = AuditActorTypes.Service,
+            ServiceName = "WarrantyProgressWorker",
+            OldValues = new { status = ReplacementSlotStates.WaitingPayment },
+            NewValues = new { slot.Status, slot.OpenedAt, slot.ExpiresAt, reason = "FEE_ALREADY_PAID" },
+        }, cancellationToken);
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     public async Task<bool> ExpireReplacementSlotAsync(Guid replacementSlotId, DateTime now, CancellationToken cancellationToken = default)
     {
         var slot = await _financeRepository.GetReplacementSlotForUpdateAsync(replacementSlotId, cancellationToken);
@@ -372,7 +406,7 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
         {
             await _notifier.NotifyRoleAsync("PLATFORM_ADMIN", new AppNotice(
                 "SERVICE_FEE",
-                "Cần hoàn 30% phí dịch vụ",
+                $"Cần hoàn {decimal.Round(refund.FeeMultiplier * 100m, 2):0.##}% phí dịch vụ",
                 $"Suất thay thế của công ty {slot.Job.Company?.CompanyName ?? "Doanh nghiệp"} (vị trí \"{slot.Job.Title}\") đã hết hạn. Cần xử lý lệnh hoàn {refund.Amount:N0} {refund.CurrencyCode} cho doanh nghiệp.",
                 "SERVICE_FEE",
                 refund.ServiceFeeId,
@@ -453,7 +487,7 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
             FeeMultiplier = percent / 100m,
             Amount = decimal.Round(slot.ServiceFee.Amount * percent / 100m, 0, MidpointRounding.AwayFromZero),
             CurrencyCode = slot.ServiceFee.CurrencyCode,
-            DueDate = DateOnly.FromDateTime(now).AddDays(paidDays),
+            DueDate = VietnamTime.Today(now).AddDays(paidDays),
             Status = ServiceFeeStates.Pending,
             CreatedAt = now,
             UpdatedAt = now,

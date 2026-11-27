@@ -29,7 +29,9 @@ public record GetPlacementDetailResponse(
     DateTime UpdatedAt,
     PlacementDetailFinancialDto? Financial = null,
     PlacementDetailResignationDto? Resignation = null,
-    ReplacementSummaryDto? Replacement = null
+    ReplacementSummaryDto? Replacement = null,
+    // Internal HR / Platform Admin only: until when the actual start date may still be corrected (business setting).
+    DateTime? StartDateCorrectionDeadline = null
 );
 
 /// <summary>

@@ -67,6 +67,30 @@ const isStaleDisputeError = (err: unknown): boolean => {
 
 const fmt = (v?: string | null) => (v ? dayjs(v).format('HH:mm DD/MM/YYYY') : '—');
 
+type EvidenceItem = { type: 'NOTE' | 'LINK'; value: string; addedAt?: string | null };
+
+/** The backend stores evidence as a JSON array of { type, value, addedAt }; older rows may hold plain text. */
+export const parseDisputeEvidence = (raw?: string | null): EvidenceItem[] => {
+  const text = raw?.trim();
+  if (!text) return [];
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (!Array.isArray(parsed)) return [{ type: 'NOTE', value: text }];
+    return parsed.flatMap((item): EvidenceItem[] => {
+      if (!item || typeof item !== 'object') return [];
+      const { type, value, addedAt } = item as Record<string, unknown>;
+      if (typeof value !== 'string' || !value.trim()) return [];
+      return [{
+        type: type === 'LINK' && /^https?:\/\//i.test(value.trim()) ? 'LINK' : 'NOTE',
+        value: value.trim(),
+        addedAt: typeof addedAt === 'string' ? addedAt : null,
+      }];
+    });
+  } catch {
+    return [{ type: 'NOTE', value: text }];
+  }
+};
+
 const STATUS_CONFIG: Record<string, { label: string; tone: 'warning' | 'success' | 'danger' }> = {
   OPEN: { label: 'Chờ xử lý', tone: 'warning' },
   UPHELD: { label: 'Đã chấp thuận', tone: 'success' },
@@ -410,11 +434,29 @@ export const AdminDisputesPage: React.FC = () => {
               <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-800">
                 <b>Mô tả: </b>{d.description}
               </div>
-              {d.evidence && (
-                <div className="rounded-xl border border-solid border-amber-200 bg-amber-50/50 p-4 text-sm text-amber-950">
-                  <b>Bằng chứng / Ghi chú: </b>{d.evidence}
-                </div>
-              )}
+              {(() => {
+                const evidence = parseDisputeEvidence(d.evidence);
+                if (evidence.length === 0) return null;
+                return (
+                  <div className="rounded-xl border border-solid border-amber-200 bg-amber-50/50 p-4 text-sm text-amber-950">
+                    <b>Bằng chứng / Ghi chú:</b>
+                    <ul className="m-0 mt-1.5 list-disc space-y-1 pl-5">
+                      {evidence.map((item, index) => (
+                        <li key={`${item.type}-${index}`} className="break-words">
+                          {item.type === 'LINK' ? (
+                            <a href={item.value} target="_blank" rel="noopener noreferrer" className="font-medium text-sky-700 underline">
+                              {item.value}
+                            </a>
+                          ) : (
+                            item.value
+                          )}
+                          {item.addedAt && <span className="ml-1.5 text-xs text-amber-800/80">({fmt(item.addedAt)})</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Submissions comparison */}

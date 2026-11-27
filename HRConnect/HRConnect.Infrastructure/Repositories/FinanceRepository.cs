@@ -117,6 +117,26 @@ public class FinanceRepository : IFinanceRepository
     private bool IsNpgsql() =>
         string.Equals(_context.Database.ProviderName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal);
 
+    public async Task<IReadOnlyList<Guid>> GetPaidWaitingReplacementSlotIdsAsync(int take, CancellationToken cancellationToken = default) =>
+        await _context.ReplacementSlots.AsNoTracking()
+            .Where(s => s.Status == ReplacementSlotStates.WaitingPayment && s.ServiceFee.Status == ServiceFeeStates.Paid)
+            .OrderBy(s => s.CreatedAt)
+            .Take(take)
+            .Select(s => s.ReplacementSlotId)
+            .ToListAsync(cancellationToken);
+
+    public async Task LockAndRefreshServiceFeeAsync(ServiceFee fee, CancellationToken cancellationToken = default)
+    {
+        if (IsNpgsql())
+        {
+            await _context.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT 1 FROM public.service_fee WHERE service_fee_id = {fee.ServiceFeeId} FOR UPDATE", cancellationToken);
+        }
+
+        // EF keeps the values it loaded earlier; read what is committed now (after the lock).
+        await _context.Entry(fee).ReloadAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Guid>> GetExpiredReplacementSlotIdsAsync(DateTime now, int take, CancellationToken cancellationToken = default) =>
         await _context.ReplacementSlots.AsNoTracking()
             .Where(s => s.Status == ReplacementSlotStates.Open && s.ExpiresAt != null && s.ExpiresAt <= now)
@@ -344,6 +364,15 @@ public class FinanceRepository : IFinanceRepository
                         && (_context.ServiceFees.Any(fee => fee.JobId == j.JobId && fee.Kind == ServiceFeeKinds.Deposit)
                             || _context.SourcingDeliveries.Any(d => d.JobId == j.JobId
                                 && (d.Status == SourcingDeliveryStates.Accepted || d.Status == SourcingDeliveryStates.AutoAccepted)))
+                        // CVs still waiting for the Client or for Internal HR (OTHER rejection not yet reviewed) hold the
+                        // settlement back; skip those jobs here so they do not fill the batch. The worker re-checks the same gate.
+                        && !_context.SourcingDeliveries.Any(d => d.JobId == j.JobId
+                            && (d.Status == SourcingDeliveryStates.Delivered
+                                || (d.Status == SourcingDeliveryStates.Rejected
+                                    && d.RejectReasonCode == SourcingRejectReasons.Other
+                                    && !_context.AuditLogs.Any(log => log.EntityType == "SOURCING_DELIVERY"
+                                        && log.Action == "SOURCING_REJECTION_REVIEWED"
+                                        && log.EntityId == d.DeliveryId))))
                         && !_context.ServiceFees.Any(fee => fee.JobId == j.JobId
                             && (fee.Kind == ServiceFeeKinds.Settlement || fee.Kind == ServiceFeeKinds.Credit)))
             .OrderBy(j => j.UpdatedAt)
