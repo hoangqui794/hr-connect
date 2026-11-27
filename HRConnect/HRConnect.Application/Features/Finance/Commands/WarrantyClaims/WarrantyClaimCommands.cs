@@ -153,6 +153,23 @@ public sealed class ResolveResignationCommandHandler : IRequestHandler<ResolveRe
             throw new BadRequestException("Bác bỏ báo nghỉ cần ghi chú lý do.");
         }
 
+        // One transaction, so the service-fee row lock below is held until the replacement slot is saved.
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            var response = await ResolveAsync(request, cancellationToken);
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+            return response;
+        }
+        catch
+        {
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    private async Task<WarrantyClaimResponse> ResolveAsync(ResolveResignationCommand request, CancellationToken cancellationToken)
+    {
         var placement = await _financeRepository.GetPlacementForFinanceAsync(request.PlacementId, cancellationToken)
             ?? throw new NotFoundException("Không tìm thấy thông tin nhận việc (Placement).");
         var warranty = placement.Warranty
@@ -168,6 +185,13 @@ public sealed class ResolveResignationCommandHandler : IRequestHandler<ResolveRe
         ReplacementSlot? replacement = null;
         if (request.Confirmed)
         {
+            if (placement.ServiceFee != null)
+            {
+                // Waits for a payment being recorded right now, then sees whether the fee is PAID, so the slot is not
+                // left WAITING_PAYMENT after the payment command has already looked for it.
+                await _financeRepository.LockAndRefreshServiceFeeAsync(placement.ServiceFee, cancellationToken);
+            }
+
             warranty.Status = WarrantyStates.Voided;
             placement.Status = PlacementStates.LeftDuringWarranty;
             placement.UpdatedAt = now;

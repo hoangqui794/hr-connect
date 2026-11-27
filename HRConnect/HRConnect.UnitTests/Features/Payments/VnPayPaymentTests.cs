@@ -624,4 +624,144 @@ public sealed class VnPayPaymentTests
             new CreateVnPayPaymentCommand(OnlinePaymentTargets.ServiceFee, settlementFeeId, userId, "127.0.0.1"), default);
         settlementLink.PaymentUrl.Should().Contain("vnp_Amount=50000000");
     }
+
+    // ---- callbacks that do not win the claim ---------------------------------------------
+
+    private static ServiceFee DueFee(OnlinePayment payment) => new()
+    {
+        ServiceFeeId = payment.TargetId,
+        CompanyId = payment.CompanyId,
+        Amount = payment.Amount,
+        CurrencyCode = "VND",
+        Status = ServiceFeeStates.Due,
+    };
+
+    [Fact]
+    public async Task Ipn_while_another_callback_is_still_processing_asks_VNPay_to_retry()
+    {
+        var payment = Pending();
+        var h = new Harness(payment) { Claimed = true };
+        h.Payments.Setup(p => p.GetCurrentStatusAsync(payment.OnlinePaymentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OnlinePaymentStates.Processing);
+
+        var result = await h.Handlers().Handle(new ConfirmVnPayPaymentCommand(SignedCallback("txn001", 42_000_000)), default);
+
+        result.RspCode.Should().Be("99");
+        result.Payment!.Status.Should().Be(OnlinePaymentStates.Processing);
+        h.Sender.Invocations.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Ipn_after_the_claim_was_released_back_to_pending_asks_VNPay_to_retry()
+    {
+        var payment = Pending();
+        var h = new Harness(payment) { Claimed = true };
+        h.Payments.Setup(p => p.GetCurrentStatusAsync(payment.OnlinePaymentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OnlinePaymentStates.Pending);
+
+        var result = await h.Handlers().Handle(new ConfirmVnPayPaymentCommand(SignedCallback("txn001", 42_000_000)), default);
+
+        result.RspCode.Should().Be("99");
+    }
+
+    [Fact]
+    public async Task Successful_payment_on_an_expired_link_is_still_recorded()
+    {
+        var payment = Pending();
+        payment.Status = OnlinePaymentStates.Failed;
+        payment.LastError = "Phiên thanh toán đã hết hạn trước khi VNPay xác nhận.";
+        var h = new Harness(payment) { Claimed = true };
+        h.Payments.Setup(p => p.GetCurrentStatusAsync(payment.OnlinePaymentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OnlinePaymentStates.Failed);
+        h.Payments.Setup(p => p.TryReclaimFailedAsync(payment.OnlinePaymentId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        h.Finance.Setup(f => f.GetServiceFeeForUpdateAsync(payment.TargetId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(DueFee(payment));
+
+        var result = await h.Handlers().Handle(new ConfirmVnPayPaymentCommand(SignedCallback("txn001", 42_000_000)), default);
+
+        result.RspCode.Should().Be("00");
+        payment.Status.Should().Be(OnlinePaymentStates.Succeeded);
+        payment.LastError.Should().BeNull();
+        h.Sender.Verify(s => s.Send(
+            It.Is<RecordServiceFeePaymentCommand>(c => c.ServiceFeeId == payment.TargetId && c.PaymentReference == "VNPAY-14123456"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Successful_payment_on_a_replaced_link_is_kept_for_Admin_review()
+    {
+        var payment = Pending();
+        payment.Status = OnlinePaymentStates.Failed;
+        var h = new Harness(payment) { Claimed = true };
+        h.Payments.Setup(p => p.GetCurrentStatusAsync(payment.OnlinePaymentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OnlinePaymentStates.Failed);
+        // A newer link owns the fee, so the old one cannot be reclaimed.
+        h.Payments.Setup(p => p.TryReclaimFailedAsync(payment.OnlinePaymentId, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        h.Payments.Setup(p => p.TryMarkFailedForReviewAsync(
+                payment.OnlinePaymentId, It.IsAny<OnlinePaymentReviewDetails>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await h.Handlers().Handle(new ConfirmVnPayPaymentCommand(SignedCallback("txn001", 42_000_000)), default);
+
+        result.RspCode.Should().Be("00");
+        payment.Status.Should().Be(OnlinePaymentStates.NeedsReview);
+        payment.ProviderTransactionNo.Should().Be("14123456");
+        h.Payments.Verify(p => p.TryMarkFailedForReviewAsync(
+            payment.OnlinePaymentId,
+            It.Is<OnlinePaymentReviewDetails>(d => d.ProviderTransactionNo == "14123456" && d.ResponseCode == "00"),
+            It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+        h.Sender.Invocations.Should().BeEmpty();
+        h.Notifier.Verify(n => n.NotifyRoleAsync(
+            "PLATFORM_ADMIN",
+            It.Is<AppNotice>(notice => notice.Title == "Giao dịch VNPay cần kiểm tra" && notice.Message.Contains("VNPAY-14123456")),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Failed_callback_on_a_failed_link_is_already_confirmed()
+    {
+        var payment = Pending();
+        payment.Status = OnlinePaymentStates.Failed;
+        var h = new Harness(payment) { Claimed = true };
+        h.Payments.Setup(p => p.GetCurrentStatusAsync(payment.OnlinePaymentId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OnlinePaymentStates.Failed);
+
+        var result = await h.Handlers().Handle(new ConfirmVnPayPaymentCommand(SignedCallback("txn001", 42_000_000, "24")), default);
+
+        result.RspCode.Should().Be("02");
+        h.Payments.Verify(p => p.TryReclaimFailedAsync(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Repository_reclaims_a_failed_link_only_while_no_newer_link_owns_the_fee()
+    {
+        await using var context = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        var repository = new OnlinePaymentRepository(context);
+        var expired = Pending();
+        expired.Status = OnlinePaymentStates.Failed;
+        var newer = Pending();
+        newer.TargetId = expired.TargetId;
+        newer.TxnRef = "txn002";
+        context.OnlinePayments.AddRange(expired, newer);
+        await context.SaveChangesAsync();
+
+        (await repository.TryReclaimFailedAsync(expired.OnlinePaymentId, DateTime.UtcNow)).Should().BeFalse();
+        (await repository.GetCurrentStatusAsync(expired.OnlinePaymentId)).Should().Be(OnlinePaymentStates.Failed);
+
+        var details = new OnlinePaymentReviewDetails("00", "14123456", "NCB", DateTime.UtcNow, "cần kiểm tra");
+        (await repository.TryMarkFailedForReviewAsync(expired.OnlinePaymentId, details, DateTime.UtcNow)).Should().BeTrue();
+        (await repository.GetCurrentStatusAsync(expired.OnlinePaymentId)).Should().Be(OnlinePaymentStates.NeedsReview);
+        (await repository.TryMarkFailedForReviewAsync(expired.OnlinePaymentId, details, DateTime.UtcNow)).Should().BeFalse();
+
+        var alone = Pending();
+        alone.TxnRef = "txn003";
+        alone.Status = OnlinePaymentStates.Failed;
+        context.OnlinePayments.Add(alone);
+        await context.SaveChangesAsync();
+        (await repository.TryReclaimFailedAsync(alone.OnlinePaymentId, DateTime.UtcNow)).Should().BeTrue();
+        (await repository.GetCurrentStatusAsync(alone.OnlinePaymentId)).Should().Be(OnlinePaymentStates.Processing);
+    }
 }

@@ -78,6 +78,85 @@ public sealed class OnlinePaymentRepository(ApplicationDbContext context) : IOnl
         return claimed == 1;
     }
 
+    public Task<string?> GetCurrentStatusAsync(Guid onlinePaymentId, CancellationToken cancellationToken = default) =>
+        context.OnlinePayments.AsNoTracking()
+            .Where(p => p.OnlinePaymentId == onlinePaymentId)
+            .Select(p => p.Status)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<bool> TryReclaimFailedAsync(Guid onlinePaymentId, DateTime now, CancellationToken cancellationToken = default)
+    {
+        if (!context.Database.IsRelational())
+        {
+            // In-memory tests have no partial unique index, so check the active-target rule by hand.
+            var payment = await context.OnlinePayments.FirstOrDefaultAsync(p => p.OnlinePaymentId == onlinePaymentId, cancellationToken);
+            if (payment is not { Status: OnlinePaymentStates.Failed }
+                || await context.OnlinePayments.AnyAsync(p => p.OnlinePaymentId != onlinePaymentId
+                    && p.TargetType == payment.TargetType && p.TargetId == payment.TargetId
+                    && (p.Status == OnlinePaymentStates.Pending || p.Status == OnlinePaymentStates.Processing), cancellationToken))
+            {
+                return false;
+            }
+            payment.Status = OnlinePaymentStates.Processing;
+            payment.UpdatedAt = now;
+            await context.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+
+        try
+        {
+            var claimed = await context.OnlinePayments
+                .Where(p => p.OnlinePaymentId == onlinePaymentId && p.Status == OnlinePaymentStates.Failed)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(p => p.Status, OnlinePaymentStates.Processing)
+                    .SetProperty(p => p.UpdatedAt, now), cancellationToken);
+            return claimed == 1;
+        }
+        catch (Exception ex) when ((ex as PostgresException ?? ex.InnerException as PostgresException) is
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "uq_online_payment_active_target"
+        })
+        {
+            // A newer link is PENDING/PROCESSING for the same fee; the caller sends this one to review instead.
+            return false;
+        }
+    }
+
+    public async Task<bool> TryMarkFailedForReviewAsync(
+        Guid onlinePaymentId, OnlinePaymentReviewDetails details, DateTime now, CancellationToken cancellationToken = default)
+    {
+        if (!context.Database.IsRelational())
+        {
+            var payment = await context.OnlinePayments.FirstOrDefaultAsync(p => p.OnlinePaymentId == onlinePaymentId, cancellationToken);
+            if (payment is not { Status: OnlinePaymentStates.Failed })
+            {
+                return false;
+            }
+            payment.Status = OnlinePaymentStates.NeedsReview;
+            payment.ResponseCode = details.ResponseCode;
+            payment.ProviderTransactionNo = details.ProviderTransactionNo;
+            payment.BankCode = details.BankCode;
+            payment.PaidAt = details.PaidAt;
+            payment.LastError = details.LastError;
+            payment.UpdatedAt = now;
+            await context.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+
+        var marked = await context.OnlinePayments
+            .Where(p => p.OnlinePaymentId == onlinePaymentId && p.Status == OnlinePaymentStates.Failed)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(p => p.Status, OnlinePaymentStates.NeedsReview)
+                .SetProperty(p => p.ResponseCode, details.ResponseCode)
+                .SetProperty(p => p.ProviderTransactionNo, details.ProviderTransactionNo)
+                .SetProperty(p => p.BankCode, details.BankCode)
+                .SetProperty(p => p.PaidAt, details.PaidAt)
+                .SetProperty(p => p.LastError, details.LastError)
+                .SetProperty(p => p.UpdatedAt, now), cancellationToken);
+        return marked == 1;
+    }
+
     public async Task ReleaseClaimAsync(Guid onlinePaymentId, CancellationToken cancellationToken = default)
     {
         // Drop whatever the failed attempt left tracked, so nothing half-done is saved later in this request.

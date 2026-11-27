@@ -31,6 +31,12 @@ public interface IWarrantyProgressService
 
     /// <summary>OPEN replacement slot past its deadline -> EXPIRED, and tells the Client. Returns false when there is nothing to do.</summary>
     Task<bool> ExpireReplacementSlotAsync(Guid replacementSlotId, DateTime now, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Safety net for S2: a WAITING_PAYMENT replacement slot whose fee is already PAID opens now, the same way
+    /// recording the payment would have opened it. Returns false when there is nothing to do.
+    /// </summary>
+    Task<bool> OpenPaidReplacementSlotAsync(Guid replacementSlotId, DateTime now, CancellationToken cancellationToken = default);
 }
 
 public sealed class WarrantyProgressService : IWarrantyProgressService
@@ -330,6 +336,33 @@ public sealed class WarrantyProgressService : IWarrantyProgressService
     private static bool IsReconciliationConfirmedOrAbsent(PlacementReconciliation? reconciliation) =>
         reconciliation == null ||
         string.Equals(reconciliation.Status, PlacementReconciliationStates.Confirmed, StringComparison.OrdinalIgnoreCase);
+
+    public async Task<bool> OpenPaidReplacementSlotAsync(Guid replacementSlotId, DateTime now, CancellationToken cancellationToken = default)
+    {
+        var slot = await _financeRepository.GetReplacementSlotForUpdateAsync(replacementSlotId, cancellationToken);
+        if (slot is not { Status: ReplacementSlotStates.WaitingPayment } || slot.ServiceFee?.Status != ServiceFeeStates.Paid)
+        {
+            return false;
+        }
+
+        await ReplacementSlotLifecycle.OpenAsync(
+            slot, slot.Job, now, null, _financeRepository, _notificationRepository, cancellationToken);
+        await ReplacementSlotLifecycle.NotifyAffiliateOpenAsync(
+            slot, slot.Job, extended: false, _financeRepository, _notifier, cancellationToken);
+        await _auditLogService.AddAsync(new AuditEntry
+        {
+            Action = AuditActions.ReplacementSlotOpened,
+            EntityType = "REPLACEMENT_SLOT",
+            EntityId = slot.ReplacementSlotId,
+            ActorType = AuditActorTypes.Service,
+            ServiceName = "WarrantyProgressWorker",
+            OldValues = new { status = ReplacementSlotStates.WaitingPayment },
+            NewValues = new { slot.Status, slot.OpenedAt, slot.ExpiresAt, reason = "FEE_ALREADY_PAID" },
+        }, cancellationToken);
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
+    }
 
     public async Task<bool> ExpireReplacementSlotAsync(Guid replacementSlotId, DateTime now, CancellationToken cancellationToken = default)
     {

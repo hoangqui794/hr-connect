@@ -15,6 +15,7 @@ using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
 using HRConnect.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -1696,6 +1697,9 @@ public class Mf05FinanceTests
         var (placement, fee) = await ResignationReportedAsync(feePaid: true);
         await ConfirmResignationAsync(placement.PlacementId);
         var slot = await _context.ReplacementSlots.SingleAsync();
+        // A refund only exists for a slot that expired unfilled.
+        slot.Status = ReplacementSlotStates.Expired;
+        slot.ClosedAt = DateTime.UtcNow;
         var refundFee = new ServiceFee
         {
             ServiceFeeId = Guid.NewGuid(),
@@ -2536,5 +2540,95 @@ public class Mf05FinanceTests
                 x.Message.Contains("sau khi doanh nghiệp hoàn tất thanh toán phí dịch vụ") &&
                 x.RouteHint == "/client/warranty"),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // ---- resignation vs payment race, paid slot safety net, refund matching -----------------
+
+    /// <summary>A second context on the same in-memory database: a concurrent request that commits on its own.</summary>
+    private ApplicationDbContext OtherRequestContext() =>
+        new((DbContextOptions<ApplicationDbContext>)_context.GetService<IDbContextOptions>());
+
+    [Fact]
+    public async Task Confirmed_resignation_sees_a_payment_committed_after_the_fee_was_loaded()
+    {
+        var (placement, fee) = await ResignationReportedAsync(feePaid: false);
+        fee.Status.Should().NotBe(ServiceFeeStates.Paid, "this request still holds the fee it loaded before the payment");
+
+        // The payment is recorded by another request; it finds no slot yet, so it opens nothing.
+        await using (var other = OtherRequestContext())
+        {
+            var paid = await other.ServiceFees.SingleAsync(f => f.ServiceFeeId == fee.ServiceFeeId);
+            paid.Status = ServiceFeeStates.Paid;
+            paid.PaidAt = DateTime.UtcNow;
+            await other.SaveChangesAsync();
+        }
+
+        var resolved = await ConfirmResignationAsync(placement.PlacementId);
+
+        resolved.Replacement!.Status.Should().Be(ReplacementSlotStates.Open);
+        (await _context.ReplacementSlots.SingleAsync()).ExpiresAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Worker_opens_a_waiting_slot_whose_fee_is_already_paid()
+    {
+        var (placement, fee) = await ResignationReportedAsync(feePaid: false);
+        await ConfirmResignationAsync(placement.PlacementId);
+        var slot = await _context.ReplacementSlots.SingleAsync();
+        slot.Status.Should().Be(ReplacementSlotStates.WaitingPayment);
+
+        (await Repository.GetPaidWaitingReplacementSlotIdsAsync(100)).Should().BeEmpty("the fee is not paid yet");
+        (await Progress().OpenPaidReplacementSlotAsync(slot.ReplacementSlotId, DateTime.UtcNow)).Should().BeFalse();
+
+        // Paid without the payment command opening the slot (the race the lock now prevents, or older data).
+        fee.Status = ServiceFeeStates.Paid;
+        fee.PaidAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        (await Repository.GetPaidWaitingReplacementSlotIdsAsync(100)).Should().ContainSingle().Which.Should().Be(slot.ReplacementSlotId);
+        var now = DateTime.UtcNow;
+        (await Progress().OpenPaidReplacementSlotAsync(slot.ReplacementSlotId, now)).Should().BeTrue();
+
+        var opened = await _context.ReplacementSlots.SingleAsync();
+        opened.Status.Should().Be(ReplacementSlotStates.Open);
+        opened.OpenedAt.Should().Be(now);
+        opened.ExpiresAt.Should().Be(now.AddDays(opened.FillWindowDays));
+        (await Repository.GetPaidWaitingReplacementSlotIdsAsync(100)).Should().BeEmpty();
+        (await Progress().OpenPaidReplacementSlotAsync(slot.ReplacementSlotId, now)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Refund_is_shown_only_on_the_expired_slot_not_on_another_slot_of_the_same_job_and_amount()
+    {
+        var expired = await ExpiredSlotReadyAsync();
+        (await ProgressWithRefundPercent(30m).ExpireReplacementSlotAsync(expired.ReplacementSlotId, expired.ExpiresAt!.Value)).Should().BeTrue();
+        var refund = await _context.ServiceFees.SingleAsync(f => f.Kind == ServiceFeeKinds.ReplacementRefund);
+        var originalFee = await _context.ServiceFees.SingleAsync(f => f.ServiceFeeId == expired.ServiceFeeId);
+
+        // A second hire on the same job at the same salary, whose replacement slot was filled.
+        var now = DateTime.UtcNow;
+        var sameAmountFee = new ServiceFee
+        {
+            ServiceFeeId = Guid.NewGuid(), CompanyId = _companyId, JobId = expired.JobId, Kind = ServiceFeeKinds.Placement,
+            Status = ServiceFeeStates.Paid, Amount = originalFee.Amount, BaseSalary = originalFee.BaseSalary,
+            FeeMultiplier = originalFee.FeeMultiplier, CurrencyCode = "VND", DueDate = DateOnly.FromDateTime(now), CreatedAt = now, UpdatedAt = now,
+        };
+        var filled = new ReplacementSlot
+        {
+            ReplacementSlotId = Guid.NewGuid(), JobId = expired.JobId, OriginalPlacementId = expired.OriginalPlacementId,
+            ServiceFeeId = sameAmountFee.ServiceFeeId, Status = ReplacementSlotStates.Filled, FillWindowDays = 30,
+            OpenedAt = now, ClosedAt = now, CreatedAt = now, UpdatedAt = now,
+        };
+        _context.AddRange(sameAmountFee, filled);
+        await _context.SaveChangesAsync();
+
+        var slots = await new GetJobReplacementSlotsQueryHandler(Repository, Mock.Of<ICompanyUserRepository>())
+            .Handle(new GetJobReplacementSlotsQuery(expired.JobId, null), default);
+
+        slots.Should().HaveCount(2);
+        slots.Single(s => s.ReplacementSlotId == expired.ReplacementSlotId).RefundServiceFeeId.Should().Be(refund.ServiceFeeId);
+        var other = slots.Single(s => s.ReplacementSlotId == filled.ReplacementSlotId);
+        other.RefundServiceFeeId.Should().BeNull();
+        other.RefundAmount.Should().BeNull();
     }
 }

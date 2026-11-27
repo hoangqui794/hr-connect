@@ -364,6 +364,12 @@ internal static class ReplacementSlotMapping
 
     private static ServiceFee? FindRefundForSlot(ReplacementSlot slot, IReadOnlyList<ServiceFee> refundFees)
     {
+        // A refund is only created when a slot expires, so an OPEN/FILLED slot of the same job and amount never has one.
+        if (slot.Status != ReplacementSlotStates.Expired)
+        {
+            return null;
+        }
+
         var sameJob = refundFees.Where(fee => fee.JobId == slot.JobId).ToList();
         if (sameJob.Count == 0)
         {

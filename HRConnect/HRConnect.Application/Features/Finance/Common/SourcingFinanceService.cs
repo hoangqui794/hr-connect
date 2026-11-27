@@ -5,6 +5,7 @@ using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
 using HRConnect.Application.Common.Settings;
 using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Application.Features.Recruitment.Sourcing;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using Microsoft.Extensions.Logging;
@@ -37,6 +38,12 @@ public interface ISourcingFinanceService
     /// was already settled.
     /// </summary>
     Task<ServiceFee> SettleAsync(Job job, Guid? actorUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// CVs whose count can still change: DELIVERED and waiting for the Client, or REJECTED with reason OTHER
+    /// and waiting for Internal HR. A closed job is only settled once this is zero, the same gate as manual settlement.
+    /// </summary>
+    Task<int> CountUndecidedDeliveriesAsync(Guid jobId, CancellationToken cancellationToken = default);
 }
 
 public static class FinanceCurrency
@@ -178,6 +185,20 @@ public sealed class SourcingFinanceService : ISourcingFinanceService
         {
             await SettleAsync(job, actorUserId, cancellationToken);
         }
+    }
+
+    public async Task<int> CountUndecidedDeliveriesAsync(Guid jobId, CancellationToken cancellationToken = default)
+    {
+        var deliveries = await _deliveries.GetByJobAsync(jobId, cancellationToken);
+        var pendingClient = deliveries.Count(d => d.Status == SourcingDeliveryStates.Delivered);
+        var rejectedOther = deliveries.Where(SourcingDeliveryRules.RequiresHrRejectionReview).ToList();
+        if (rejectedOther.Count == 0)
+        {
+            return pendingClient;
+        }
+
+        var reviews = await SourcingDeliveryRules.LoadRejectionReviewsAsync(_deliveries, rejectedOther, cancellationToken);
+        return pendingClient + rejectedOther.Count(d => SourcingDeliveryRules.IsPendingHrRejectionReview(d, reviews));
     }
 
     public async Task<ServiceFee> SettleAsync(Job job, Guid? actorUserId, CancellationToken cancellationToken = default)

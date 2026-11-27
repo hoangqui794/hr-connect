@@ -15,8 +15,11 @@ using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
 using HRConnect.Infrastructure.Repositories;
+using HRConnect.Infrastructure.Services.Finance;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 using JobApplication = HRConnect.Domain.Entities.Application;
@@ -840,5 +843,99 @@ public class SourcingFinanceTests
                 });
             }
         }
+    }
+
+    // ---- background settlement gate -------------------------------------------------------
+
+    private SourcingFinanceWorker Worker()
+    {
+        var services = new ServiceCollection();
+        services.AddScoped<IFinanceRepository>(_ => Repository);
+        services.AddScoped<ISourcingFinanceService>(_ => Finance());
+        services.AddScoped<IUnitOfWork>(_ => UnitOfWork);
+        var provider = services.BuildServiceProvider();
+        return new SourcingFinanceWorker(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            Options.Create(new Mf05Settings()),
+            NullLogger<SourcingFinanceWorker>.Instance);
+    }
+
+    [Fact]
+    public async Task Worker_ClosedJobWithCvWaitingForClient_ShouldNotSettleUntilTheCvIsDecided()
+    {
+        var job = SeedJob(target: 5, status: JobStatuses.Closed);
+        await CreateDepositAsync(job, paid: true);
+        MarkCounted([SeedDelivery(job)]);
+        var waiting = SeedDelivery(job); // still DELIVERED
+
+        (await Repository.GetClosedSourcingJobIdsAwaitingSettlementAsync(100)).Should().NotContain(job.JobId);
+        (await Worker().RunOnceAsync(default)).Settlements.Should().Be(0);
+        _context.ServiceFees.Any(f => f.JobId == job.JobId && ServiceFeeKinds.Closing.Contains(f.Kind)).Should().BeFalse();
+
+        MarkCounted([waiting]);
+        (await Worker().RunOnceAsync(default)).Settlements.Should().Be(1);
+
+        // Both CVs are billed: 2 × 600,000 = 1,200,000 < deposit 1,500,000 => CREDIT 300,000.
+        var closing = _context.ServiceFees.Single(f => f.JobId == job.JobId && ServiceFeeKinds.Closing.Contains(f.Kind));
+        closing.Kind.Should().Be(ServiceFeeKinds.Credit);
+        closing.Amount.Should().Be(300_000m);
+    }
+
+    [Fact]
+    public async Task Worker_ClosedJobWithOtherRejectionWaitingForHr_ShouldNotSettle()
+    {
+        var job = SeedJob(target: 5, status: JobStatuses.Closed);
+        await CreateDepositAsync(job, paid: true);
+        MarkCounted([SeedDelivery(job)]);
+        var rejected = SeedDelivery(job);
+        rejected.Status = SourcingDeliveryStates.Rejected;
+        rejected.RejectReasonCode = SourcingRejectReasons.Other;
+        rejected.RejectNote = "Không phù hợp";
+        _context.SaveChanges();
+
+        (await Finance().CountUndecidedDeliveriesAsync(job.JobId)).Should().Be(1);
+        (await Repository.GetClosedSourcingJobIdsAwaitingSettlementAsync(100)).Should().NotContain(job.JobId);
+        (await Worker().RunOnceAsync(default)).Settlements.Should().Be(0);
+        _context.ServiceFees.Any(f => f.JobId == job.JobId && ServiceFeeKinds.Closing.Contains(f.Kind)).Should().BeFalse();
+
+        // Once Internal HR has reviewed the rejection, the job is settled on the next run.
+        _context.AuditLogs.Add(new AuditLog
+        {
+            AuditLogId = 1, EntityType = "SOURCING_DELIVERY", Action = "SOURCING_REJECTION_REVIEWED",
+            EntityId = rejected.DeliveryId, NewValues = "{\"upheld\":true}", CreatedAt = DateTime.UtcNow,
+        });
+        _context.SaveChanges();
+        (await Repository.GetClosedSourcingJobIdsAwaitingSettlementAsync(100)).Should().Contain(job.JobId);
+        (await Worker().RunOnceAsync(default)).Settlements.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Worker_GateStillHoldsWhenTheQueryLetsAJobThrough()
+    {
+        // The reason code is matched case-insensitively by the rule but exactly by the query, so the worker's own gate must stop it.
+        var job = SeedJob(target: 5, status: JobStatuses.Closed);
+        await CreateDepositAsync(job, paid: true);
+        MarkCounted([SeedDelivery(job)]);
+        var rejected = SeedDelivery(job);
+        rejected.Status = SourcingDeliveryStates.Rejected;
+        rejected.RejectReasonCode = "other";
+        rejected.RejectNote = "Không phù hợp";
+        _context.SaveChanges();
+
+        (await Repository.GetClosedSourcingJobIdsAwaitingSettlementAsync(100)).Should().Contain(job.JobId);
+        (await Worker().RunOnceAsync(default)).Settlements.Should().Be(0);
+        _context.ServiceFees.Any(f => f.JobId == job.JobId && ServiceFeeKinds.Closing.Contains(f.Kind)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Worker_ClosedJobWithEveryCvDecided_ShouldSettle()
+    {
+        var job = SeedJob(target: 5, status: JobStatuses.Closed);
+        await CreateDepositAsync(job, paid: true);
+        MarkCounted([SeedDelivery(job), SeedDelivery(job)]);
+
+        (await Finance().CountUndecidedDeliveriesAsync(job.JobId)).Should().Be(0);
+        (await Worker().RunOnceAsync(default)).Settlements.Should().Be(1);
+        _context.ServiceFees.Count(f => f.JobId == job.JobId && ServiceFeeKinds.Closing.Contains(f.Kind)).Should().Be(1);
     }
 }
