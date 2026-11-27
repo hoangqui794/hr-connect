@@ -10,7 +10,7 @@ import { MotionConfig, motion } from 'motion/react';
 import { App as AntApp, Popconfirm, Skeleton } from 'antd';
 import dayjs from 'dayjs';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { BrandMark } from '@/components/common/BrandMark';
+import { Navbar } from '@/features/landing/components/Navbar';
 import { CompanyMark } from '@/features/landing/components/SiteParts';
 import { candidateConsentApi } from '@/services/api/mf02Api';
 import { getApiError } from '@/services/apiClient';
@@ -31,14 +31,7 @@ const webLink = (url?: string | null) => (url && /^https?:\/\//i.test(url) ? url
 const Frame: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <MotionConfig reducedMotion="user">
     <div className={`${FONT} min-h-screen bg-[#F5F7FA] text-[14px] text-slate-900 [line-height:normal]`}>
-      <header className="border-0 border-b border-solid border-white/[0.08] bg-[#0B0D14] text-white">
-        <div className="mx-auto flex h-16 max-w-[1248px] items-center px-6">
-          <Link to="/" className="flex items-center gap-2 text-[18px] font-semibold text-white no-underline hover:text-white hover:no-underline">
-            <BrandMark size={32} tone="light" className="block" /> HR Connect
-          </Link>
-          <Link to="/login" className="ml-auto rounded-lg border border-solid border-white/15 bg-white/[0.08] px-4 py-2 text-sm font-medium text-white no-underline transition-colors hover:bg-white/15">Đăng nhập</Link>
-        </div>
-      </header>
+      <Navbar />
       <main className="mx-auto flex max-w-[768px] flex-col gap-4 px-4 pb-14 pt-8 sm:px-6">{children}</main>
     </div>
   </MotionConfig>
