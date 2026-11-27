@@ -13,7 +13,7 @@ import dayjs from 'dayjs';
 import relativeTimePlugin from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
 import { jobsApi } from '@/services/api/jobsApi';
-import { HR_SCREENED_SERVICE_TYPES, pipelineApi, screeningApi } from '@/services/api/hrApi';
+import { HR_SCREENED_SERVICE_TYPES, pipelineApi, placementReconciliationApi, screeningApi } from '@/services/api/hrApi';
 import { useAuthStore } from '@/stores/authStore';
 import { UserRole } from '@/types/roles';
 import { PersonCell, StatTile, StatusDot, Surface } from '@/features/admin-console/ui';
@@ -61,15 +61,44 @@ export const HrOverviewPage: React.FC = () => {
     queryFn: async () => (await screeningApi.list({ serviceTypeCode: HR_SCREENED_SERVICE_TYPES, page: 1, pageSize: 6 })).items,
     enabled: canViewScreening,
   });
+  // Same gate as the sidebar badge: the HR endpoint needs INTERNAL_HR + placement.reconcile (Admin gets 403).
+  const canReconcile = useAuthStore(
+    (s) => s.hasAnyRole([UserRole.INTERNAL_HR]) && s.hasPermission('placement.reconcile')
+  );
+  const pendingReconciliations = useQuery({
+    queryKey: ['hr-overview', 'placement-reconciliations', 'PENDING'],
+    queryFn: async () => (await placementReconciliationApi.list({ status: 'PENDING', page: 1, pageSize: 1 })).totalCount,
+    enabled: canReconcile,
+    retry: false,
+  });
   const upcoming = useQuery({
     queryKey: ['hr-overview', 'interviews'],
-    queryFn: async () => (await pipelineApi.interviews({ status: 'SCHEDULED', page: 1, pageSize: 4 })).items,
+    queryFn: async () =>
+      (
+        await pipelineApi.interviews({
+          status: 'SCHEDULED',
+          fromDate: new Date().toISOString(),
+          sortDirection: 'ASC',
+          page: 1,
+          pageSize: 4,
+        })
+      ).items,
     enabled: canViewScreening,
   });
 
   const firstName = (user?.name || 'bạn').trim().split(/\s+/).slice(-1)[0];
-  const loading = jobs.isLoading || submitted.isLoading;
-  const waiting = (jobs.data ?? 0) + (submitted.data ?? 0);
+  const loading = jobs.isLoading || submitted.isLoading || pendingReconciliations.isLoading;
+  const pendingRecCount = pendingReconciliations.data ?? 0;
+  const waiting = (jobs.data ?? 0) + (submitted.data ?? 0) + pendingRecCount;
+  const summaryParts = [
+    (jobs.data ?? 0) > 0 ? `${jobs.data} tin tuyển dụng chờ duyệt` : null,
+    (submitted.data ?? 0) > 0 ? `${submitted.data} hồ sơ mới chờ sàng lọc` : null,
+    pendingRecCount > 0 ? `${pendingRecCount} hồ sơ chờ đối soát nhận việc` : null,
+  ].filter((part): part is string => part !== null);
+  const waitingSummary =
+    summaryParts.length <= 1
+      ? `Có ${summaryParts[0]}.`
+      : `Có ${summaryParts.slice(0, -1).join(', ')} và ${summaryParts[summaryParts.length - 1]}.`;
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-4">
@@ -87,7 +116,7 @@ export const HrOverviewPage: React.FC = () => {
             ? 'Đang tổng hợp việc cần làm...'
             : waiting === 0
               ? 'Không có tin hay hồ sơ nào đang chờ bạn. Mọi thứ đã được xử lý.'
-              : `Có ${jobs.data ?? 0} tin tuyển dụng chờ duyệt và ${submitted.data ?? 0} hồ sơ mới chờ sàng lọc.`}
+              : waitingSummary}
         </p>
         <div className="mt-6 flex flex-wrap gap-2">
           <Button type="primary" size="large" onClick={() => navigate('/hr/screening?status=SUBMITTED')}>
@@ -96,6 +125,11 @@ export const HrOverviewPage: React.FC = () => {
           <Button size="large" onClick={() => navigate('/hr/jobs')}>
             Duyệt tin tuyển dụng
           </Button>
+          {pendingRecCount > 0 && (
+            <Button size="large" onClick={() => navigate('/hr/placement-reconciliations')}>
+              Đối soát nhận việc ({pendingRecCount})
+            </Button>
+          )}
         </div>
       </Surface>
 

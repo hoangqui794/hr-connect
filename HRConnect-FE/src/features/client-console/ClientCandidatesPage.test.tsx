@@ -286,6 +286,37 @@ describe('Client › Hồ sơ ứng viên', () => {
       );
     });
   });
+
+  it('hides OFFER_PENDING rows where the offer was already sent and is waiting on the candidate when Cần xử lý is active', async () => {
+    countsMock.mockResolvedValue({ OFFER_PENDING: 2 });
+    listMock.mockResolvedValue({
+      items: [
+        row({
+          applicationId: 'a-draft-offer',
+          candidateName: 'Ứng Viên Cần Gửi Offer',
+          status: 'OFFER_PENDING',
+          latestOfferStatus: 'DRAFT',
+        }),
+        row({
+          applicationId: 'a-sent-offer',
+          candidateName: 'Ứng Viên Đang Chờ Phản Hồi',
+          status: 'OFFER_PENDING',
+          latestOfferStatus: 'SENT',
+        }),
+      ],
+      total: 2,
+      page: 1,
+      pageSize: 10,
+    } as never);
+
+    renderPage();
+    expect(await screen.findByText('Ứng Viên Cần Gửi Offer')).toBeInTheDocument();
+    expect(screen.getByText('Ứng Viên Đang Chờ Phản Hồi')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Cần xử lý/ }));
+    expect(screen.getByText('Ứng Viên Cần Gửi Offer')).toBeInTheDocument();
+    expect(screen.queryByText('Ứng Viên Đang Chờ Phản Hồi')).toBeNull();
+  });
 });
 
 describe('nextStepOf', () => {

@@ -71,6 +71,12 @@ describe('refreshKeysFor', () => {
     expect(refreshKeysFor('AFFILIATE')).toContainEqual(['admin-approvals']);
   });
 
+  it('refreshes HR sidebar badge counts on placement, reconciliation and contact request notifications', () => {
+    for (const entityType of ['PLACEMENT', 'PLACEMENT_RECONCILIATION', 'CONTACT_REQUEST']) {
+      expect(refreshKeysFor(entityType)).toContainEqual(['hr-nav-counts']);
+    }
+  });
+
   it('returns nothing for unknown or missing types', () => {
     expect(refreshKeysFor('UNKNOWN')).toEqual([]);
     expect(refreshKeysFor(null)).toEqual([]);
