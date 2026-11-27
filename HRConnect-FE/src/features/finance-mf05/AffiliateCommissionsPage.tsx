@@ -216,6 +216,9 @@ export const AffiliateCommissionsPage: React.FC = () => {
   const payoutParam = searchParams.get('payout');
   const refParam = searchParams.get('ref');
   const highlightParam = searchParams.get('highlight');
+  const slotParam = searchParams.get('slot');
+  const jobParam = searchParams.get('job');
+  const queryParam = searchParams.get('q');
 
   useEffect(() => {
     if (payouts.isLoading) return;
@@ -228,62 +231,121 @@ export const AffiliateCommissionsPage: React.FC = () => {
     );
 
     if (matched) {
-      setHighlightedPayoutId(matched.payoutId);
       setPayoutSearch('');
+      setHighlightedPayoutId(null);
+      window.requestAnimationFrame(() => {
+        setHighlightedPayoutId(matched.payoutId);
+        window.requestAnimationFrame(() => {
+          const targetEl =
+            document.querySelector<HTMLElement>(`tr[data-payout-id="${matched.payoutId}"]`) ||
+            document.getElementById('aff-payouts');
+          if (targetEl && typeof targetEl.scrollIntoView === 'function') {
+            targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      });
     } else if (refParam) {
       setPayoutSearch(refParam);
+      window.requestAnimationFrame(() => {
+        const targetEl = document.getElementById('aff-payouts');
+        if (targetEl && typeof targetEl.scrollIntoView === 'function') {
+          targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+    } else {
+      window.requestAnimationFrame(() => {
+        const targetEl = document.getElementById('aff-payouts');
+        if (targetEl && typeof targetEl.scrollIntoView === 'function') {
+          targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
     }
 
-    const frame = window.requestAnimationFrame(() => {
-      const targetEl =
-        (matched && document.querySelector<HTMLElement>(`tr[data-payout-id="${matched.payoutId}"]`)) ||
-        document.getElementById('aff-payouts');
-      if (targetEl && typeof targetEl.scrollIntoView === 'function') {
-        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    });
-
     const next = new URLSearchParams(searchParams);
+    next.delete('tab');
     next.delete('section');
     next.delete('payout');
     next.delete('ref');
     setSearchParams(next, { replace: true });
-
-    return () => window.cancelAnimationFrame(frame);
   }, [payouts.isLoading, sectionParam, payoutParam, refParam, payoutItems, searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (!highlightParam || commissionSummary.isLoading) return;
-    const matched = summaryItems.find((c) => c.commissionId.toLowerCase() === highlightParam.toLowerCase());
-    if (!matched) return;
+    if ((!highlightParam && !slotParam && !jobParam && !queryParam) || commissionSummary.isLoading) return;
+    const tabParam = searchParams.get('tab')?.toUpperCase();
+    if (tabParam && FILTER_TABS.some((t) => t.key === tabParam) && filter !== tabParam) return;
 
-    const tab = FILTER_TABS.find((t) => t.key === filter);
-    const inCurrentTab = tab ? tab.matches(matched.status) : true;
-    const targetList = inCurrentTab ? summaryItems.filter((c) => (tab ? tab.matches(c.status) : true)) : summaryItems;
-    if (!inCurrentTab) {
-      setFilter('ALL');
-    }
-    const idx = targetList.findIndex((c) => c.commissionId === matched.commissionId);
-    if (idx >= 0) {
-      setCommissionPage(Math.floor(idx / PAGE_SIZE) + 1);
-    }
-    setHighlightedCommissionId(matched.commissionId);
+    let matched = highlightParam
+      ? summaryItems.find((c) => c.commissionId.toLowerCase() === highlightParam.toLowerCase())
+      : undefined;
 
-    const frame = window.requestAnimationFrame(() => {
-      const targetEl =
-        document.querySelector<HTMLElement>(`tr[data-commission-id="${matched.commissionId}"]`) ||
-        document.getElementById('aff-commission-list');
-      if (targetEl && typeof targetEl.scrollIntoView === 'function') {
-        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (!matched && slotParam) {
+      const targetSlot = slotParam.toLowerCase();
+      matched = summaryItems.find(
+        (c) => (c as { replacementSlotId?: string | null }).replacementSlotId?.toLowerCase() === targetSlot
+      );
+    }
+
+    if (!matched && jobParam) {
+      const targetJob = jobParam.toLowerCase();
+      matched =
+        summaryItems.find(
+          (c) => c.jobId?.toLowerCase() === targetJob && c.status === 'CANCELLED' && c.replacementSlotStatus === 'OPEN'
+        ) ??
+        summaryItems.find((c) => c.jobId?.toLowerCase() === targetJob && c.status === 'CANCELLED') ??
+        summaryItems.find((c) => c.jobId?.toLowerCase() === targetJob);
+    }
+
+    if (!matched && queryParam) {
+      matched =
+        summaryItems.find(
+          (c) => c.status === 'CANCELLED' && c.replacementSlotStatus === 'OPEN' && matchesSearch(queryParam, c.jobTitle, c.candidateName)
+        ) ??
+        summaryItems.find((c) => c.status === 'CANCELLED' && matchesSearch(queryParam, c.jobTitle, c.candidateName)) ??
+        summaryItems.find((c) => matchesSearch(queryParam, c.jobTitle, c.candidateName));
+    }
+
+    if (matched) {
+      const tab = FILTER_TABS.find((t) => t.key === filter);
+      const inCurrentTab = tab ? tab.matches(matched.status) : true;
+      const targetList = inCurrentTab ? summaryItems.filter((c) => (tab ? tab.matches(c.status) : true)) : summaryItems;
+      if (!inCurrentTab) {
+        setFilter('ALL');
       }
-    });
+      const idx = targetList.findIndex((c) => c.commissionId === matched.commissionId);
+      if (idx >= 0) {
+        setCommissionPage(Math.floor(idx / PAGE_SIZE) + 1);
+      }
+      setCommissionSearch('');
+      setHighlightedCommissionId(null);
+      window.requestAnimationFrame(() => {
+        setHighlightedCommissionId(matched.commissionId);
+        window.requestAnimationFrame(() => {
+          const targetEl =
+            document.querySelector<HTMLElement>(`tr[data-commission-id="${matched.commissionId}"]`) ||
+            document.getElementById('aff-commission-list');
+          if (targetEl && typeof targetEl.scrollIntoView === 'function') {
+            targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      });
+    } else if (queryParam) {
+      setCommissionSearch(queryParam);
+      window.requestAnimationFrame(() => {
+        const listEl = document.getElementById('aff-commission-list');
+        if (listEl && typeof listEl.scrollIntoView === 'function') {
+          listEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    }
 
     const next = new URLSearchParams(searchParams);
+    next.delete('tab');
     next.delete('highlight');
+    next.delete('slot');
+    next.delete('job');
+    next.delete('q');
     setSearchParams(next, { replace: true });
-
-    return () => window.cancelAnimationFrame(frame);
-  }, [highlightParam, commissionSummary.isLoading, summaryItems, filter, searchParams, setSearchParams]);
+  }, [highlightParam, slotParam, jobParam, queryParam, commissionSummary.isLoading, summaryItems, filter, searchParams, setSearchParams]);
 
   return (
     <div className="affiliate-commissions-page flex flex-col gap-5">
@@ -424,7 +486,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
                       data-commission-id={c.commissionId}
                       className={`border-0 border-t border-solid border-slate-100 align-middle transition-colors ${
                         highlightedCommissionId === c.commissionId
-                          ? 'bg-sky-50/90 shadow-[inset_3px_0_0_#0284C7]'
+                          ? 'affiliate-row-highlight font-semibold'
                           : 'hover:bg-slate-50/50'
                       }`}
                     >
@@ -463,7 +525,11 @@ export const AffiliateCommissionsPage: React.FC = () => {
                         {canReplace ? (
                           <Link
                             to={`/affiliate/submit-candidate?job=${c.jobId}`}
-                            className="inline-flex min-h-[32px] items-center rounded-lg bg-[#C2410C] px-3 text-xs font-semibold text-white no-underline transition-colors hover:bg-[#9A3412] hover:text-white"
+                            className={`inline-flex min-h-[32px] items-center rounded-lg bg-[#C2410C] px-3 text-xs font-semibold text-white no-underline transition-colors hover:bg-[#9A3412] hover:text-white ${
+                              highlightedCommissionId === c.commissionId
+                                ? 'ring-2 ring-amber-500 ring-offset-2 shadow-md'
+                                : ''
+                            }`}
                           >
                             Giới thiệu thay thế
                           </Link>
@@ -540,7 +606,7 @@ export const AffiliateCommissionsPage: React.FC = () => {
                       data-payout-id={p.payoutId}
                       className={`border-0 border-t border-solid border-slate-100 transition-colors ${
                         highlightedPayoutId === p.payoutId
-                          ? 'bg-sky-50/90 shadow-[inset_3px_0_0_#0284C7]'
+                          ? 'affiliate-row-highlight font-semibold'
                           : 'hover:bg-slate-50/50'
                       }`}
                     >

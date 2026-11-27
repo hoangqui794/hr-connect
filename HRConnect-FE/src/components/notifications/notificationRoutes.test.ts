@@ -29,7 +29,7 @@ describe('routes meant for another role (server default per notification type)',
 
   it('sends a Client to the warranty page instead of the HR warranty tracking', () => {
     const warranty = { ...agreementNotice, title: 'Cập nhật bảo hành', relatedEntityType: 'WARRANTY', routeHint: '/hr/warranty-tracking?highlight=w-1', metadata: null } as NotificationDto;
-    expect(getNotificationRoute(warranty, UserRole.CLIENT)).toBe('/client/warranty');
+    expect(getNotificationRoute(warranty, UserRole.CLIENT)).toBe('/client/warranty?highlight=agreement-1');
   });
 
   it('routes Client payment/refund recorded notices (even with legacy /client/dashboard hint) to /client/billing with status & highlight', () => {
@@ -188,7 +188,7 @@ describe('getNotificationRoute for ADMIN', () => {
         },
         UserRole.ADMIN
       )
-    ).toBe('/admin/approvals');
+    ).toBe('/admin/approvals?highlight=acc-1');
 
     expect(
       getNotificationRoute(
@@ -204,7 +204,7 @@ describe('getNotificationRoute for ADMIN', () => {
         },
         UserRole.ADMIN
       )
-    ).toBe('/admin/candidate-identity-claims');
+    ).toBe('/admin/candidate-identity-claims?highlight=dup-1');
 
     expect(
       getNotificationRoute(
@@ -220,7 +220,7 @@ describe('getNotificationRoute for ADMIN', () => {
         },
         UserRole.ADMIN
       )
-    ).toBe('/admin/disputes');
+    ).toBe('/admin/disputes?highlight=disp-1');
 
     expect(
       getNotificationRoute(
@@ -275,13 +275,13 @@ describe('getNotificationRoute for ADMIN', () => {
 });
 
 describe('getNotificationRoute for AFFILIATE', () => {
-  it('routes replacement slot notifications to submit-candidate inside affiliate portal', () => {
+  it('routes replacement slot notifications to commissions CANCELLED tab with highlight params', () => {
     const withRouteHint = getNotificationRoute(
       {
         notificationId: 'n-aff-1',
         notificationType: 'WARRANTY',
         title: 'Đã mở suất tuyển người thay thế',
-        message: 'Vị trí Backend đã mở lại suất tuyển người thay thế.',
+        message: 'Vị trí "[SEED] Principal Frontend Engineer - Headhunt" đã mở lại suất tuyển người thay thế.',
         relatedEntityType: 'REPLACEMENT_SLOT',
         relatedEntityId: 'slot-1',
         routeHint: `/affiliate/submit-candidate?job=${JOB}`,
@@ -290,7 +290,9 @@ describe('getNotificationRoute for AFFILIATE', () => {
       },
       UserRole.AFFILIATE
     );
-    expect(withRouteHint).toBe(`/affiliate/submit-candidate?job=${JOB}`);
+    expect(withRouteHint).toBe(
+      `/affiliate/commissions?tab=CANCELLED&slot=slot-1&job=${JOB}&q=%5BSEED%5D+Principal+Frontend+Engineer+-+Headhunt`
+    );
 
     const fromMeta = getNotificationRoute(
       {
@@ -306,7 +308,7 @@ describe('getNotificationRoute for AFFILIATE', () => {
       },
       UserRole.AFFILIATE
     );
-    expect(fromMeta).toBe(`/affiliate/submit-candidate?job=${JOB}`);
+    expect(fromMeta).toBe(`/affiliate/commissions?tab=CANCELLED&slot=slot-2&job=${JOB}`);
 
     const fallback = getNotificationRoute(
       {
@@ -365,5 +367,25 @@ describe('getNotificationRoute for CLIENT application notices (MF-03 BE-M02)', (
     expect(getNotificationRoute(notice({ metadata: JSON.stringify({ applicationId: APP, status: 'SHORTLISTED' }) }), UserRole.INTERNAL_HR)).toBe(
       `/hr/screening?status=SHORTLISTED&open=${APP}`
     );
+  });
+
+  it('routes Internal HR resignation report notices to warranty-tracking with CLAIMED status and highlight', () => {
+    const warrantyId = '33333333-0000-4000-8000-000000000003';
+    expect(
+      getNotificationRoute(
+        {
+          notificationId: 'n-resign',
+          notificationType: 'WARRANTY',
+          title: 'Doanh nghiệp báo ứng viên nghỉ việc',
+          message: 'Vị trí "[SEED] Principal Frontend Engineer - Headhunt": ứng viên nghỉ ngày 26/11/2026. Vui lòng xác minh trong mục Bảo hành.',
+          relatedEntityType: 'WARRANTY',
+          relatedEntityId: warrantyId,
+          routeHint: '/hr/warranty-tracking',
+          isRead: false,
+          createdAt: new Date().toISOString(),
+        },
+        UserRole.INTERNAL_HR
+      )
+    ).toBe(`/hr/warranty-tracking?status=CLAIMED&highlight=${warrantyId}`);
   });
 });

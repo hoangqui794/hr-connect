@@ -56,6 +56,7 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [searchText, setSearchText] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [highlightedPlacementId, setHighlightedPlacementId] = useState<string | null>(null);
   const [correctionOpen, setCorrectionOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [form] = Form.useForm<{ actualStartDate: Dayjs; reason: string }>();
@@ -66,6 +67,16 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
   useEffect(() => {
     if (!highlightParam) return;
     setSelectedId(highlightParam);
+    setHighlightedPlacementId(null);
+    window.requestAnimationFrame(() => {
+      setHighlightedPlacementId(highlightParam);
+      window.requestAnimationFrame(() => {
+        const el = document.querySelector<HTMLElement>(`tr[data-placement-id="${highlightParam}"]`);
+        if (el && typeof el.scrollIntoView === 'function') {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+    });
     const next = new URLSearchParams(searchParams);
     next.delete('highlight');
     setSearchParams(next, { replace: true });
@@ -193,6 +204,12 @@ export const HrPlacementStartDateCorrectionPage: React.FC = () => {
             columns={columns}
             dataSource={visiblePlacements}
             loading={placements.isFetching}
+            rowClassName={(r) =>
+              highlightedPlacementId && r.placementId.toLowerCase() === highlightedPlacementId.toLowerCase()
+                ? 'admin-row-highlight font-semibold'
+                : ''
+            }
+            onRow={(r) => ({ 'data-placement-id': r.placementId } as React.HTMLAttributes<HTMLElement>)}
             scroll={{ x: 'max-content' }}
             pagination={{
               current: page,

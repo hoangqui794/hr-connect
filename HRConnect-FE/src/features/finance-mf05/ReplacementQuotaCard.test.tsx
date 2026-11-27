@@ -182,19 +182,35 @@ describe('ReplacementQuotaCard', () => {
     expect(screen.getByText('Chờ thanh toán phí')).toBeInTheDocument();
   });
 
-  it('gives the Client no "use slot" step: the open slot fills itself, the Client follows the job and its candidates', async () => {
+  it('gives the Client no "use slot" step: the open slot fills itself, hides replacement profile until filled, and lets the Client follow the job', async () => {
     vi.mocked(financeApi.replacementSlots).mockResolvedValue(slotPage([mockSlots[0]])); // OPEN
 
     renderComponent({ mode: 'client' });
 
     expect(await screen.findByText('Affiliate đang tìm người thay', {}, { timeout: 10000 })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Sử dụng suất/i })).toBeNull();
-
-    fireEvent.click(screen.getByRole('button', { name: /Hồ sơ người thay/i }));
-    expect(mockNavigate).toHaveBeenCalledWith('/client/candidates?job=job-101');
+    expect(screen.queryByRole('button', { name: /Hồ sơ người thay/i })).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: /Xem tin/i }));
     expect(mockNavigate).toHaveBeenCalledWith('/client/jobs?highlight=job-101&openDetail=true');
+  });
+
+  it('shows the replacement candidate profile button once a replacement slot is FILLED', async () => {
+    vi.mocked(financeApi.replacementSlots).mockResolvedValue(
+      slotPage([
+        {
+          ...mockSlots[0],
+          status: 'FILLED',
+          replacementCandidateName: 'Nguyễn Minh Quân',
+        },
+      ])
+    );
+
+    renderComponent({ mode: 'client' });
+
+    expect(await screen.findByText('Nguyễn Minh Quân', {}, { timeout: 10000 })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Hồ sơ người thay/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/client/candidates?job=job-101');
   });
 
   it('allows Internal HR to cancel a slot with a reason', async () => {

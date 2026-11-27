@@ -694,7 +694,8 @@ export const ClientBillingPage: React.FC = () => {
           setSearchText('');
           return;
         }
-        setHighlightedKey(matched.key);
+        setHighlightedKey(null);
+        window.requestAnimationFrame(() => setHighlightedKey(matched.key));
         setPage(Math.floor(idxInVisible / PAGE_SIZE) + 1);
         const next = new URLSearchParams(searchParams);
         next.delete('highlight');
@@ -840,7 +841,7 @@ export const ClientBillingPage: React.FC = () => {
             rowKey="key"
             rowClassName={(r) =>
               r.key === highlightedKey
-                ? '!bg-sky-50/90 shadow-[inset_3px_0_0_#0284C7]'
+                ? 'admin-row-highlight font-semibold'
                 : ''
             }
             columns={columns}

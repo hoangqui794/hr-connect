@@ -320,6 +320,29 @@
   to { opacity: 1; transform: none; }
 }
 
+@keyframes admin-row-flash {
+  0%, 100% {
+    background-color: rgba(254, 243, 199, 0.92);
+  }
+  50% {
+    background-color: rgba(253, 230, 138, 0.96);
+  }
+}
+
+.admin-row-highlight,
+.ant-table-tbody > tr.admin-row-highlight > td {
+  background-color: rgba(254, 243, 199, 0.8) !important;
+  animation: admin-row-flash 0.75s ease-in-out 3;
+}
+
+.admin-row-highlight {
+  box-shadow: inset 4px 0 0 #d97706;
+}
+
+.ant-table-tbody > tr.admin-row-highlight > td:first-child {
+  box-shadow: inset 4px 0 0 #d97706;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .admin-page-enter,
   .admin-stagger > *,

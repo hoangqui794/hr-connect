@@ -12,11 +12,11 @@ import {
   Alert,
   App as AntApp,
   Button,
+  Drawer,
   Form,
   Input,
   Modal,
   Pagination,
-  Radio,
   Result,
   Segmented,
   Select,
@@ -91,6 +91,28 @@ const SERVICE_LABEL: Record<string, string> = {
 };
 const serviceLabel = (code?: string | null) => (code ? SERVICE_LABEL[code] ?? code : '—');
 
+const EMPLOYMENT_LABEL: Record<string, string> = {
+  FULL_TIME: 'Toàn thời gian',
+  PART_TIME: 'Bán thời gian',
+  CONTRACT: 'Hợp đồng',
+  INTERNSHIP: 'Thực tập',
+  FREELANCE: 'Freelance',
+};
+
+const WORK_MODE_LABEL: Record<string, string> = {
+  ONSITE: 'Tại văn phòng',
+  HYBRID: 'Linh hoạt (Hybrid)',
+  REMOTE: 'Làm việc từ xa',
+};
+
+const experienceLabel = (min?: number | null, max?: number | null): string | null => {
+  if (min != null && max != null && max > min) return `${min}–${max} năm KN`;
+  if (min != null && min > 0) return `Từ ${min} năm KN`;
+  if (max != null && max > 0) return `Đến ${max} năm KN`;
+  if (min === 0) return 'Không yêu cầu KN';
+  return null;
+};
+
 const fmt = (v?: string | null) => (v ? dayjs(v).format('HH:mm DD/MM/YYYY') : '—');
 
 // ─── Overview ───────────────────────────────────────────────────────────────
@@ -128,6 +150,7 @@ const ACCOUNT_STATES: Record<string, { label: string; mark: string; icon: string
 
 export const AffiliateHomePage: React.FC = () => {
   const navigate = useNavigate();
+  const [opportunitySearch, setOpportunitySearch] = useState('');
   const isAffiliate = useAuthStore((s) => s.hasAnyRole([UserRole.AFFILIATE]));
   const canViewOwnSubmissions = useAuthStore(
     (s) => s.hasAnyRole([UserRole.AFFILIATE]) && s.hasPermission('submission.view_own')
@@ -377,9 +400,20 @@ export const AffiliateHomePage: React.FC = () => {
       </div>
 
       <section aria-labelledby="aff-jobs" className="rounded-lg border border-solid border-gray-200 bg-white">
-        <div className="flex items-baseline justify-between border-0 border-b border-solid border-slate-100 px-4 py-3.5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-0 border-b border-solid border-slate-100 px-4 py-3.5">
           <h2 id="aff-jobs" className="m-0 text-[15px] font-bold text-gray-900">Việc làm mới mở cho Affiliate</h2>
-          <Button type="link" className="!h-auto !px-0 !text-[13px] !font-semibold" onClick={() => navigate('/affiliate/jobs')}>Xem tất cả</Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <Input
+              allowClear
+              prefix={<SearchOutlined className="text-slate-400" />}
+              placeholder="Tìm vị trí, doanh nghiệp, địa điểm..."
+              aria-label="Tìm kiếm việc làm mới mở"
+              value={opportunitySearch}
+              onChange={(e) => setOpportunitySearch(e.target.value)}
+              className="w-full sm:w-[260px]"
+            />
+            <Button type="link" className="!h-auto !px-0 !text-[13px] !font-semibold" onClick={() => navigate('/affiliate/jobs')}>Xem tất cả</Button>
+          </div>
         </div>
         <div className="relative overflow-x-auto">
           <table className="w-full min-w-[720px] border-collapse">
@@ -393,31 +427,53 @@ export const AffiliateHomePage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {(opportunities.data ?? []).map((job, i) => {
-                const est = estimates[i]?.data;
-                return (
-                  <tr key={job.jobId} className="border-0 border-t border-solid border-slate-100">
-                    <td className="px-4 py-3">
-                      <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-left font-semibold text-gray-900 hover:text-sky-800" onClick={() => navigate(`/affiliate/jobs/${job.jobId}`)}>{job.title}</button>
-                      <div className="text-[13px] text-gray-600">{job.companyName || 'Doanh nghiệp tuyển dụng'}{job.location ? ` · ${job.location}` : ''}</div>
-                    </td>
-                    <td className="px-4 py-3 text-[13px]">{serviceLabel(job.serviceTypeCode)}</td>
-                    <td className="px-4 py-3 font-extrabold tabular-nums text-[#059669]">
-                      {estimates[i]?.isLoading ? <Skeleton.Input active size="small" /> : (est && formatEstimate(est)) || '—'}
-                    </td>
-                    <td className="px-4 py-3 text-[13px] text-gray-600">{job.applicationDeadline ? dayjs(job.applicationDeadline).format('DD/MM/YYYY') : '—'}</td>
-                    <td className="px-4 py-3 text-right">
-                      <Button type="primary" disabled={!verified} className="!bg-[#0369A1] hover:bg-[#075985] !border-0 text-white font-semibold shadow-sm shadow-sky-500/20" onClick={() => navigate(`/affiliate/submit-candidate?job=${job.jobId}`)}>Giới thiệu</Button>
-                    </td>
-                  </tr>
-                );
-              })}
-              {opportunities.isLoading && (
-                <tr><td colSpan={5} className="px-4 py-4"><Skeleton active paragraph={{ rows: 2 }} /></td></tr>
-              )}
-              {!opportunities.isLoading && (opportunities.data ?? []).length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-600">Chưa có việc làm nào mở cho Affiliate.</td></tr>
-              )}
+              {(() => {
+                const allRows = (opportunities.data ?? []).map((job, i) => ({ job, estimateQuery: estimates[i] }));
+                const hasFilter = opportunitySearch.trim().length > 0;
+                const filteredRows = hasFilter
+                  ? allRows.filter(({ job }) =>
+                      matchesSearch(opportunitySearch, job.title, job.companyName, job.location, serviceLabel(job.serviceTypeCode))
+                    )
+                  : allRows;
+                if (opportunities.isLoading) {
+                  return <tr><td colSpan={5} className="px-4 py-4"><Skeleton active paragraph={{ rows: 2 }} /></td></tr>;
+                }
+                if (filteredRows.length === 0) {
+                  return (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-600">
+                        {hasFilter ? (
+                          <div>
+                            <div>Không tìm thấy việc làm phù hợp.</div>
+                            <Button className="mt-2.5" size="small" onClick={() => setOpportunitySearch('')}>Xóa từ khóa tìm kiếm</Button>
+                          </div>
+                        ) : (
+                          'Chưa có việc làm nào mở cho Affiliate.'
+                        )}
+                      </td>
+                    </tr>
+                  );
+                }
+                return filteredRows.map(({ job, estimateQuery }) => {
+                  const est = estimateQuery?.data;
+                  return (
+                    <tr key={job.jobId} className="border-0 border-t border-solid border-slate-100">
+                      <td className="px-4 py-3">
+                        <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-left font-semibold text-gray-900 hover:text-sky-800" onClick={() => navigate(`/affiliate/jobs/${job.jobId}`)}>{job.title}</button>
+                        <div className="text-[13px] text-gray-600">{job.companyName || 'Doanh nghiệp tuyển dụng'}{job.location ? ` · ${job.location}` : ''}</div>
+                      </td>
+                      <td className="px-4 py-3 text-[13px]">{serviceLabel(job.serviceTypeCode)}</td>
+                      <td className="px-4 py-3 font-extrabold tabular-nums text-[#059669]">
+                        {estimateQuery?.isLoading ? <Skeleton.Input active size="small" /> : (est && formatEstimate(est)) || '—'}
+                      </td>
+                      <td className="px-4 py-3 text-[13px] text-gray-600">{job.applicationDeadline ? dayjs(job.applicationDeadline).format('DD/MM/YYYY') : '—'}</td>
+                      <td className="px-4 py-3 text-right">
+                        <Button type="primary" disabled={!verified} className="!bg-[#0369A1] hover:bg-[#075985] !border-0 text-white font-semibold shadow-sm shadow-sky-500/20" onClick={() => navigate(`/affiliate/submit-candidate?job=${job.jobId}`)}>Giới thiệu</Button>
+                      </td>
+                    </tr>
+                  );
+                });
+              })()}
             </tbody>
           </table>
         </div>
@@ -440,11 +496,25 @@ export const AffiliateSubmitPage: React.FC = () => {
   const [presetCvRejected, setPresetCvRejected] = useState(false);
   const [librarySearch, setLibrarySearch] = useState('');
   const [jobSearch, setJobSearch] = useState('');
+  const [changingJob, setChangingJob] = useState(false);
+  const [previewJobId, setPreviewJobId] = useState<string | null>(null);
   const mode = Form.useWatch('mode', form) ?? 'new';
   const candidateId = Form.useWatch('candidateId', form);
   const jobId = Form.useWatch('jobId', form);
 
   const jobs = useQuery({ queryKey: ['aff-jobs'], queryFn: () => jobsApi.search({ page: 1, pageSize: 100 }) });
+  const selectedJobDetail = useQuery({
+    queryKey: ['aff-job-detail', jobId],
+    queryFn: () => jobsApi.getById(jobId!),
+    enabled: Boolean(jobId),
+    staleTime: 60_000,
+  });
+  const previewJobDetail = useQuery({
+    queryKey: ['aff-job-detail', previewJobId],
+    queryFn: () => jobsApi.getById(previewJobId!),
+    enabled: Boolean(previewJobId),
+    staleTime: 60_000,
+  });
   const library = useQuery({
     queryKey: [...keys.library, 'picker', librarySearch],
     queryFn: () => affiliateApi.library({ search: librarySearch || undefined, page: 1, pageSize: 20 }),
@@ -466,6 +536,9 @@ export const AffiliateSubmitPage: React.FC = () => {
       ...(presetCandidate ? { candidateId: presetCandidate } : {}),
       ...(presetCv ? { cvId: presetCv } : {}),
     });
+    if (presetJob) {
+      setChangingJob(false);
+    }
   }, [searchParams, form]);
 
   useEffect(() => {
@@ -480,12 +553,24 @@ export const AffiliateSubmitPage: React.FC = () => {
   }, [searchParams, libraryDetail.data, form]);
 
   const selectedJob = useMemo(() => jobs.data?.items.find((j) => j.jobId === jobId), [jobs.data, jobId]);
+  const fullJob = selectedJobDetail.data ?? selectedJob;
+  const drawerJob = useMemo(
+    () => previewJobDetail.data ?? jobs.data?.items.find((j) => j.jobId === previewJobId),
+    [previewJobDetail.data, jobs.data, previewJobId]
+  );
   const visibleJobs = useMemo(() => {
-    const query = jobSearch.trim().toLocaleLowerCase('vi');
-    return (jobs.data?.items ?? [])
-      .filter((job) => !query || `${job.title} ${job.companyName ?? ''} ${job.location ?? ''}`.toLocaleLowerCase('vi').includes(query))
-      .slice(0, 5);
+    const query = jobSearch.trim();
+    return (jobs.data?.items ?? []).filter(
+      (job) => !query || matchesSearch(query, job.title, job.companyName, job.location)
+    );
   }, [jobs.data, jobSearch]);
+  const showJobPicker = !selectedJob || changingJob;
+  const handleSelectJob = (nextJobId: string) => {
+    if (submit.isPending) return;
+    form.setFieldValue('jobId', nextJobId);
+    setChangingJob(false);
+    setJobSearch('');
+  };
 
   // A preset job the affiliate cannot refer into (service-type rules) is not in the list: say so.
   const [presetRejected, setPresetRejected] = useState(false);
@@ -783,38 +868,253 @@ export const AffiliateSubmitPage: React.FC = () => {
             )}
 
             <Surface className="p-6">
-              <h2 className="m-0 mb-1 text-base font-semibold text-slate-900">1. Việc làm</h2>
-              <p className="mb-4 mt-0 text-[13px] text-slate-600">Chọn việc phù hợp nhất với kinh nghiệm của ứng viên.</p>
-              <Input
-                size="large"
-                allowClear
-                prefix={<SearchOutlined />}
-                value={jobSearch}
-                onChange={(event) => setJobSearch(event.target.value)}
-                placeholder="Nhập tên vị trí, kỹ năng hoặc doanh nghiệp"
-                aria-label="Tìm vị trí tuyển dụng"
-                className="mb-3"
-              />
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="m-0 text-base font-semibold text-slate-900">1. Việc làm</h2>
+                  <p className="mb-0 mt-1 text-[13px] text-slate-600">
+                    {showJobPicker
+                      ? 'Chọn vị trí tuyển dụng phù hợp nhất với kinh nghiệm của ứng viên.'
+                      : 'Kiểm tra nhanh yêu cầu vị trí trước khi điền thông tin ứng viên bên dưới.'}
+                  </p>
+                </div>
+                {selectedJob && (
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      setChangingJob((prev) => !prev);
+                      setJobSearch('');
+                    }}
+                    className="!rounded-lg"
+                  >
+                    {changingJob ? 'Quay lại vị trí đã chọn' : 'Đổi vị trí'}
+                  </Button>
+                )}
+              </div>
+
               <Form.Item name="jobId" rules={[{ required: true, message: 'Chọn vị trí tuyển dụng.' }]} className="mb-0">
-                <Radio.Group className="affiliate-job-picker" aria-label="Danh sách vị trí tuyển dụng">
-                  {visibleJobs.map((job) => (
-                    <Radio key={job.jobId} value={job.jobId} className="affiliate-job-option">
-                      <span className="affiliate-job-option__copy">
-                        <strong className="flex items-center gap-2">
-                          <span>{job.title}</span>
-                          <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                            {salaryText(job)}
-                          </span>
-                        </strong>
-                        <small>{job.companyName || 'Doanh nghiệp tuyển dụng'} · {job.location || 'Toàn quốc'}</small>
-                      </span>
-                      <span className="affiliate-job-option__state">{serviceLabel(job.serviceTypeCode)}</span>
-                    </Radio>
-                  ))}
-                  {jobs.isLoading && <Skeleton active paragraph={{ rows: 3 }} />}
-                  {!jobs.isLoading && visibleJobs.length === 0 && <div className="affiliate-job-empty">Không tìm thấy vị trí phù hợp.</div>}
-                </Radio.Group>
+                <Input type="hidden" />
               </Form.Item>
+
+              {showJobPicker ? (
+                <div>
+                  <Input
+                    size="large"
+                    allowClear
+                    prefix={<SearchOutlined />}
+                    value={jobSearch}
+                    onChange={(event) => setJobSearch(event.target.value)}
+                    placeholder="Nhập tên vị trí, kỹ năng hoặc doanh nghiệp"
+                    aria-label="Tìm vị trí tuyển dụng"
+                    className="mb-3"
+                  />
+                  {!jobs.isLoading && (
+                    <div className="mb-2 flex items-center justify-between text-xs text-slate-500">
+                      <span>
+                        {jobSearch.trim()
+                          ? `Tìm thấy ${visibleJobs.length} vị trí phù hợp`
+                          : `${visibleJobs.length} vị trí đang mở cho Affiliate`}
+                      </span>
+                      <span>Bấm biểu tượng mắt để xem nhanh JD</span>
+                    </div>
+                  )}
+                  <div className="max-h-[340px] space-y-2 overflow-y-auto pr-1" role="radiogroup" aria-label="Danh sách vị trí tuyển dụng">
+                    {visibleJobs.map((job) => {
+                      const isSelected = job.jobId === jobId;
+                      return (
+                        <div
+                          key={job.jobId}
+                          role="radio"
+                          aria-checked={isSelected}
+                          tabIndex={0}
+                          onClick={() => handleSelectJob(job.jobId)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleSelectJob(job.jobId);
+                            }
+                          }}
+                          className={`group flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-solid px-4 py-3 transition-all duration-150 ${
+                            isSelected
+                              ? 'border-sky-500 bg-sky-50/70 ring-1 ring-sky-500/20'
+                              : 'border-slate-200 bg-white hover:border-sky-300 hover:bg-slate-50/70'
+                          }`}
+                        >
+                          <div className="flex min-w-0 flex-1 items-start gap-3">
+                            <span
+                              className={`mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors ${
+                                isSelected ? 'border-sky-600 bg-sky-600' : 'border-slate-300 bg-white group-hover:border-sky-400'
+                              }`}
+                              aria-hidden
+                            >
+                              {isSelected && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-sm font-semibold text-slate-900">{job.title}</span>
+                                <span className="rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                                  {salaryText(job)}
+                                </span>
+                              </div>
+                              <div className="mt-1 truncate text-xs text-slate-500">
+                                {job.companyName || 'Doanh nghiệp tuyển dụng'} · {job.location || 'Toàn quốc'}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <span className="hidden rounded-md bg-sky-50 px-2.5 py-1 text-[11px] font-semibold text-sky-700 sm:inline-flex">
+                              {serviceLabel(job.serviceTypeCode)}
+                            </span>
+                            <Tooltip title="Xem nhanh chi tiết JD">
+                              <Button
+                                size="small"
+                                type="text"
+                                icon={<EyeOutlined />}
+                                aria-label={`Xem chi tiết JD ${job.title}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPreviewJobId(job.jobId);
+                                }}
+                                className="!flex !h-8 !w-8 !items-center !justify-center !rounded-lg text-slate-500 hover:!bg-sky-100/70 hover:!text-sky-700"
+                              />
+                            </Tooltip>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {jobs.isLoading && <Skeleton active paragraph={{ rows: 3 }} />}
+                    {!jobs.isLoading && visibleJobs.length === 0 && (
+                      <div className="affiliate-job-empty">Không tìm thấy vị trí phù hợp.</div>
+                    )}
+                  </div>
+                </div>
+              ) : fullJob ? (
+                <div className="rounded-xl border border-solid border-sky-200 bg-gradient-to-br from-sky-50/50 to-white p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200/80">
+                          <CheckCircleOutlined /> Đã chọn
+                        </span>
+                        <span className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[11px] font-semibold text-sky-700">
+                          {serviceLabel(fullJob.serviceTypeCode)}
+                        </span>
+                        <span className="rounded-full border border-emerald-200 bg-white px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
+                          {salaryText(fullJob)}
+                        </span>
+                      </div>
+                      <h3 className="m-0 mt-2 text-[15px] font-bold leading-snug text-slate-900">{fullJob.title}</h3>
+                      <div className="mt-1 text-xs text-slate-600">
+                        {fullJob.companyName || 'Doanh nghiệp tuyển dụng'} · {fullJob.location || 'Toàn quốc'}
+                      </div>
+                    </div>
+                    <Button
+                      size="small"
+                      icon={<EyeOutlined />}
+                      onClick={() => setPreviewJobId(fullJob.jobId)}
+                      className="!rounded-lg border-sky-200 bg-white text-sky-700 hover:!border-sky-400 hover:!text-sky-800"
+                    >
+                      Xem đầy đủ JD
+                    </Button>
+                  </div>
+
+                  {selectedJobDetail.isLoading ? (
+                    <Skeleton active paragraph={{ rows: 2 }} title={false} className="mt-3" />
+                  ) : (
+                    <div className="mt-3.5 space-y-3 border-t border-sky-100 pt-3">
+                      <div className="flex flex-wrap gap-1.5 text-xs">
+                        {experienceLabel(fullJob.minExperienceYears, fullJob.maxExperienceYears) && (
+                          <span className="rounded-md border border-slate-200 bg-white px-2 py-0.5 font-medium text-slate-700">
+                            {experienceLabel(fullJob.minExperienceYears, fullJob.maxExperienceYears)}
+                          </span>
+                        )}
+                        {fullJob.employmentType && (
+                          <span className="rounded-md border border-slate-200 bg-white px-2 py-0.5 font-medium text-slate-700">
+                            {EMPLOYMENT_LABEL[fullJob.employmentType] ?? fullJob.employmentType}
+                          </span>
+                        )}
+                        {fullJob.workMode && (
+                          <span className="rounded-md border border-slate-200 bg-white px-2 py-0.5 font-medium text-slate-700">
+                            {WORK_MODE_LABEL[fullJob.workMode] ?? fullJob.workMode}
+                          </span>
+                        )}
+                        {fullJob.quantity > 0 && (
+                          <span className="rounded-md border border-slate-200 bg-white px-2 py-0.5 font-medium text-slate-700">
+                            Tuyển {fullJob.quantity} người
+                          </span>
+                        )}
+                        {(fullJob.applicationDeadline || fullJob.expiresAt) && (
+                          <span className="rounded-md border border-slate-200 bg-white px-2 py-0.5 font-medium text-slate-700">
+                            Hạn nộp: {dayjs(fullJob.applicationDeadline || fullJob.expiresAt).format('DD/MM/YYYY')}
+                          </span>
+                        )}
+                      </div>
+
+                      {fullJob.skills && fullJob.skills.length > 0 && (
+                        <div>
+                          <div className="mb-1.5 text-xs font-semibold text-slate-700">Kỹ năng yêu cầu</div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {fullJob.skills.slice(0, 10).map((skill) => (
+                              <span
+                                key={skill.skillId}
+                                className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                  skill.isMandatory
+                                    ? 'border border-sky-200 bg-sky-100/80 text-sky-900'
+                                    : 'border border-slate-200 bg-white text-slate-600'
+                                }`}
+                              >
+                                {skill.skillName || 'Kỹ năng'}
+                                {skill.isMandatory ? ' *' : ''}
+                              </span>
+                            ))}
+                            {fullJob.skills.length > 10 && (
+                              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-xs text-slate-500">
+                                +{fullJob.skills.length - 10} kỹ năng khác
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {fullJob.requirements && fullJob.requirements.length > 0 ? (
+                        <div>
+                          <div className="mb-1 text-xs font-semibold text-slate-700">Tiêu chí ứng viên</div>
+                          <ul className="m-0 space-y-1 pl-4 text-xs leading-relaxed text-slate-700">
+                            {[
+                              ...fullJob.requirements.filter((r) => r.requirementType === 'MUST_HAVE'),
+                              ...fullJob.requirements.filter((r) => r.requirementType !== 'MUST_HAVE'),
+                            ]
+                              .slice(0, 4)
+                              .map((req) => (
+                                <li key={req.requirementId}>
+                                  {req.requirementType === 'MUST_HAVE' && (
+                                    <span className="mr-1 font-semibold text-sky-800">[Bắt buộc]</span>
+                                  )}
+                                  {req.content}
+                                </li>
+                              ))}
+                          </ul>
+                          {fullJob.requirements.length > 4 && (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewJobId(fullJob.jobId)}
+                              className="mt-1.5 cursor-pointer border-0 bg-transparent p-0 text-xs font-semibold text-sky-700 hover:underline"
+                            >
+                              Xem thêm {fullJob.requirements.length - 4} yêu cầu &amp; mô tả công việc →
+                            </button>
+                          )}
+                        </div>
+                      ) : fullJob.description ? (
+                        <div>
+                          <div className="mb-1 text-xs font-semibold text-slate-700">Mô tả công việc</div>
+                          <p className="m-0 line-clamp-3 whitespace-pre-line text-xs leading-relaxed text-slate-600">
+                            {fullJob.description}
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </Surface>
 
             <Surface className="p-6">
@@ -980,15 +1280,23 @@ export const AffiliateSubmitPage: React.FC = () => {
                       <span className="font-semibold text-emerald-700">{salaryText(selectedJob)}</span>
                     </div>
                   </div>
-                  <div className="pt-2">
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
+                    <Button
+                      size="small"
+                      icon={<EyeOutlined />}
+                      onClick={() => setPreviewJobId(selectedJob.jobId)}
+                      className="!rounded-lg border-sky-200 text-sky-700 hover:!border-sky-400 hover:!text-sky-800"
+                    >
+                      Xem đầy đủ JD
+                    </Button>
                     <a
                       href={jobHref(selectedJob.jobId)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-600 hover:text-sky-700 hover:underline"
+                      className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-sky-700 hover:underline"
                     >
-                      <span>Xem tin tuyển dụng chi tiết</span>
-                      <ExternalLink className="h-3.5 w-3.5" />
+                      <span>Mở trang tin</span>
+                      <ExternalLink className="h-3 w-3" />
                     </a>
                   </div>
                 </div>
@@ -1025,6 +1333,160 @@ export const AffiliateSubmitPage: React.FC = () => {
           </aside>
         </div>
       </Form>
+
+      <Drawer
+        open={Boolean(previewJobId)}
+        onClose={() => setPreviewJobId(null)}
+        width={640}
+        title={
+          <div className="pr-4">
+            <div className="text-xs font-semibold uppercase tracking-wider text-sky-700">Chi tiết vị trí tuyển dụng</div>
+            <div className="mt-0.5 text-base font-bold text-slate-900">{drawerJob?.title}</div>
+          </div>
+        }
+        footer={
+          <div className="flex items-center justify-between gap-3">
+            {drawerJob && (
+              <a
+                href={jobHref(drawerJob.jobId)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-700 hover:underline"
+              >
+                <span>Mở trang tin tuyển dụng</span>
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            )}
+            <div className="flex items-center gap-2">
+              {drawerJob && drawerJob.jobId !== jobId && (
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    handleSelectJob(drawerJob.jobId);
+                    setPreviewJobId(null);
+                  }}
+                >
+                  Chọn vị trí này
+                </Button>
+              )}
+              <Button
+                type={drawerJob && drawerJob.jobId !== jobId ? 'default' : 'primary'}
+                onClick={() => setPreviewJobId(null)}
+              >
+                {drawerJob && drawerJob.jobId !== jobId ? 'Đóng' : 'Đóng & tiếp tục giới thiệu'}
+              </Button>
+            </div>
+          </div>
+        }
+      >
+        {previewJobDetail.isLoading ? (
+          <Skeleton active paragraph={{ rows: 8 }} />
+        ) : drawerJob ? (
+          <div className="space-y-5 text-sm text-slate-700">
+            <div className="grid grid-cols-1 gap-2.5 rounded-xl border border-slate-200 bg-slate-50/70 p-4 sm:grid-cols-2">
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4 shrink-0 text-slate-400" />
+                <span className="font-semibold text-slate-900">{drawerJob.companyName || 'Doanh nghiệp tuyển dụng'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4 shrink-0 text-emerald-600" />
+                <span className="font-semibold text-emerald-700">{salaryText(drawerJob)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
+                <span>{drawerJob.location || 'Toàn quốc'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Briefcase className="h-4 w-4 shrink-0 text-slate-400" />
+                <span>
+                  {[
+                    experienceLabel(drawerJob.minExperienceYears, drawerJob.maxExperienceYears),
+                    drawerJob.employmentType ? EMPLOYMENT_LABEL[drawerJob.employmentType] ?? drawerJob.employmentType : null,
+                    drawerJob.workMode ? WORK_MODE_LABEL[drawerJob.workMode] ?? drawerJob.workMode : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ') || serviceLabel(drawerJob.serviceTypeCode)}
+                </span>
+              </div>
+              {drawerJob.workingTime && (
+                <div className="text-xs text-slate-600 sm:col-span-2">
+                  <span className="font-semibold text-slate-800">Thời gian làm việc:</span> {drawerJob.workingTime}
+                </div>
+              )}
+              {(drawerJob.applicationDeadline || drawerJob.expiresAt) && (
+                <div className="text-xs text-slate-600 sm:col-span-2">
+                  <span className="font-semibold text-slate-800">Hạn nhận hồ sơ:</span>{' '}
+                  {dayjs(drawerJob.applicationDeadline || drawerJob.expiresAt).format('DD/MM/YYYY')}
+                </div>
+              )}
+            </div>
+
+            {drawerJob.skills && drawerJob.skills.length > 0 && (
+              <div>
+                <h4 className="m-0 mb-2 text-sm font-bold text-slate-900">Kỹ năng yêu cầu</h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {drawerJob.skills.map((skill) => (
+                    <span
+                      key={skill.skillId}
+                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                        skill.isMandatory
+                          ? 'border border-sky-200 bg-sky-50 text-sky-900'
+                          : 'border border-slate-200 bg-slate-50 text-slate-600'
+                      }`}
+                    >
+                      {skill.skillName || 'Kỹ năng'}
+                      {skill.isMandatory ? ' (Bắt buộc)' : ''}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {drawerJob.requirements && drawerJob.requirements.length > 0 && (
+              <div className="space-y-3">
+                {drawerJob.requirements.some((r) => r.requirementType === 'MUST_HAVE') && (
+                  <div>
+                    <h4 className="m-0 mb-2 text-sm font-bold text-slate-900">Yêu cầu bắt buộc</h4>
+                    <ul className="m-0 space-y-1.5 pl-5 leading-relaxed text-slate-700">
+                      {drawerJob.requirements
+                        .filter((r) => r.requirementType === 'MUST_HAVE')
+                        .map((req) => (
+                          <li key={req.requirementId}>{req.content}</li>
+                        ))}
+                    </ul>
+                  </div>
+                )}
+                {drawerJob.requirements.some((r) => r.requirementType !== 'MUST_HAVE') && (
+                  <div>
+                    <h4 className="m-0 mb-2 text-sm font-bold text-slate-900">Điểm cộng / Ưu tiên</h4>
+                    <ul className="m-0 space-y-1.5 pl-5 leading-relaxed text-slate-600">
+                      {drawerJob.requirements
+                        .filter((r) => r.requirementType !== 'MUST_HAVE')
+                        .map((req) => (
+                          <li key={req.requirementId}>{req.content}</li>
+                        ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {drawerJob.description && (
+              <div>
+                <h4 className="m-0 mb-2 text-sm font-bold text-slate-900">Mô tả công việc</h4>
+                <div className="whitespace-pre-line leading-relaxed text-slate-700">{drawerJob.description}</div>
+              </div>
+            )}
+
+            {drawerJob.benefits && (
+              <div>
+                <h4 className="m-0 mb-2 text-sm font-bold text-slate-900">Quyền lợi &amp; chế độ</h4>
+                <div className="whitespace-pre-line leading-relaxed text-slate-700">{drawerJob.benefits}</div>
+              </div>
+            )}
+          </div>
+        ) : null}
+      </Drawer>
     </div>
   );
 };
@@ -1125,6 +1587,7 @@ export const AffiliateSubmissionsPage: React.FC = () => {
   const canResend = useAuthStore((state) => state.hasPermission('submission.consent.resend_own'));
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedId, setSelectedId] = useState<string>();
+  const [highlightedSubmissionId, setHighlightedSubmissionId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
   const statusParam = searchParams.get('status') as ReferralGroup | null;
   const group: ReferralGroup = REFERRAL_GROUPS.some((g) => g.key === statusParam) ? statusParam! : 'all';
@@ -1193,6 +1656,50 @@ export const AffiliateSubmissionsPage: React.FC = () => {
     if (!('page' in updates)) next.delete('page');
     setSearchParams(next);
   };
+
+  const highlightParam = searchParams.get('highlight');
+  const queryParam = searchParams.get('q');
+  useEffect(() => {
+    if ((!highlightParam && !queryParam) || list.isLoading || !list.data) return;
+    let matched = highlightParam
+      ? list.data.find((r) => r.submissionId.toLowerCase() === highlightParam.toLowerCase())
+      : undefined;
+    if (!matched && queryParam) {
+      matched = list.data.find((r) => matchesSearch(queryParam, r.candidateName, r.jobTitle));
+    }
+
+    const next = new URLSearchParams(searchParams);
+    next.delete('highlight');
+    next.delete('q');
+
+    if (matched) {
+      setSearchText('');
+      setSelectedId(matched.submissionId);
+      const targetIdx = list.data.findIndex((r) => r.submissionId === matched.submissionId);
+      if (group !== 'all') {
+        next.delete('status');
+      }
+      if (targetIdx >= 0) {
+        const targetPage = Math.floor(targetIdx / REFERRALS_PER_PAGE) + 1;
+        if (targetPage > 1) next.set('page', String(targetPage));
+        else next.delete('page');
+      }
+      setHighlightedSubmissionId(null);
+      window.requestAnimationFrame(() => {
+        setHighlightedSubmissionId(matched.submissionId);
+        window.requestAnimationFrame(() => {
+          const el = document.querySelector<HTMLElement>(`tr[data-submission-id="${matched.submissionId}"]`);
+          if (el && typeof el.scrollIntoView === 'function') {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      });
+    } else if (queryParam) {
+      setSearchText(queryParam);
+    }
+
+    setSearchParams(next, { replace: true });
+  }, [highlightParam, queryParam, list.isLoading, list.data, group, searchParams, setSearchParams]);
 
   return (
     <div className="affiliate-submissions-page">
@@ -1290,11 +1797,18 @@ export const AffiliateSubmissionsPage: React.FC = () => {
                     {pageItems.map((r) => (
                       <tr
                         key={r.submissionId}
+                        data-submission-id={r.submissionId}
                         tabIndex={0}
                         aria-selected={r.submissionId === selected?.submissionId}
                         onClick={() => setSelectedId(r.submissionId)}
                         onKeyDown={(e) => e.key === 'Enter' && setSelectedId(r.submissionId)}
-                        className={`cursor-pointer border-0 border-t border-solid border-slate-100 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0284C7] ${r.submissionId === selected?.submissionId ? 'bg-sky-50/80 font-medium' : 'hover:bg-slate-50/70'}`}
+                        className={`cursor-pointer border-0 border-t border-solid border-slate-100 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0284C7] ${
+                          highlightedSubmissionId === r.submissionId
+                            ? 'affiliate-row-highlight font-semibold'
+                            : r.submissionId === selected?.submissionId
+                            ? 'bg-sky-50/80 font-medium'
+                            : 'hover:bg-slate-50/70'
+                        }`}
                       >
                         <td className="px-4 py-3.5 font-bold text-gray-900">{r.candidateName}</td>
                         <td className="px-4 py-3.5 text-[13px] text-gray-800">{r.jobTitle}</td>

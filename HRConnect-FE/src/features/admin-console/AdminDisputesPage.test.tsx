@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 import { App } from 'antd';
 import { AdminDisputesPage } from './AdminDisputesPage';
 import { disputeApi } from '@/services/api/disputeApi';
@@ -76,11 +77,13 @@ const renderComponent = () => {
     defaultOptions: { queries: { retry: false } },
   });
   return render(
-    <QueryClientProvider client={queryClient}>
-      <App>
-        <AdminDisputesPage />
-      </App>
-    </QueryClientProvider>
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <App>
+          <AdminDisputesPage />
+        </App>
+      </QueryClientProvider>
+    </MemoryRouter>
   );
 };
 

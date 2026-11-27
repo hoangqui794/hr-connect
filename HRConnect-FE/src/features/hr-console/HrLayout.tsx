@@ -366,7 +366,7 @@ export const HrLayout: React.FC = () => {
         </header>
 
         <AdminTopProgress offsetLeft={compact ? 0 : width} />
-        <main className="mx-auto max-w-[1360px] px-4 py-6 lg:px-8 lg:py-8">
+        <main className="w-full min-w-0 px-4 py-6 lg:px-6 lg:py-6">
           <MotionConfig reducedMotion="user">
             <MotionPageOutlet />
           </MotionConfig>

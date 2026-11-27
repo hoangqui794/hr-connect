@@ -116,6 +116,7 @@ export const AdminContactRequestsPage: React.FC = () => {
 
   // Selected item for drawer detail / quick update
   const [detailItem, setDetailItem] = useState<ContactRequestDto | null>(null);
+  const [highlightedContactId, setHighlightedContactId] = useState<string | null>(null);
   const [statusModalItem, setStatusModalItem] = useState<ContactRequestDto | null>(null);
   const [updateForm] = Form.useForm<{ status: ContactRequestStatus; note?: string }>();
 
@@ -138,6 +139,16 @@ export const AdminContactRequestsPage: React.FC = () => {
     const match = data.items.find((item) => item.contactRequestId.toLowerCase() === q);
     if (match) {
       setDetailItem(match);
+      setHighlightedContactId(null);
+      window.requestAnimationFrame(() => {
+        setHighlightedContactId(match.contactRequestId);
+        window.requestAnimationFrame(() => {
+          const el = document.querySelector<HTMLElement>(`tr[data-contact-id="${match.contactRequestId}"]`);
+          if (el && typeof el.scrollIntoView === 'function') {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      });
       const next = new URLSearchParams(searchParams);
       next.delete('highlight');
       setSearchParams(next, { replace: true });
@@ -474,6 +485,8 @@ export const AdminContactRequestsPage: React.FC = () => {
                 dataSource={filteredItems}
                 rowKey="contactRequestId"
                 loading={isLoading}
+                rowClassName={(r) => (highlightedContactId === r.contactRequestId ? 'admin-row-highlight font-semibold' : '')}
+                onRow={(r) => ({ 'data-contact-id': r.contactRequestId } as React.HTMLAttributes<HTMLElement>)}
                 pagination={{
                   current: pageParam,
                   pageSize: PAGE_SIZE,
