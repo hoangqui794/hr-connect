@@ -125,6 +125,9 @@ const POSTING_STATUS: Record<'PENDING' | 'PAID' | 'CANCELLED', { label: string; 
   CANCELLED: { label: 'Đã hủy', tone: 'neutral' },
 };
 
+const isNonPayableJobStatus = (status?: string | null) =>
+  status === 'DRAFT' || status === 'REJECTED' || status === 'CLOSED';
+
 const useBillingRows = () => {
   const fees = useQuery({
     queryKey: ['client-billing', 'service-fees'],
@@ -140,12 +143,17 @@ const useBillingRows = () => {
   const postingFees = useQuery({
     queryKey: ['client-billing', 'posting-fees'],
     // GET /jobs/mine already carries each job's posting fee (C-07). Paid fees feed the "Đã thanh toán"
-    // total, so every paid-package job is kept; only an older backend without the field is asked per job.
+    // total, so every paid-package job is kept; unpaid posting fees on DRAFT/REJECTED/CLOSED jobs are
+    // never payable (BE refuses them with 409 JOB_NOT_PAYABLE), so exclude them from billing & KPIs.
     staleTime: 60_000,
     queryFn: async () => {
       const jobs = await jobsApi.getMine();
       const paidPackageJobs = jobs.filter(
-        (j) => j.serviceTypeCode === 'CV_APPLICATION' && j.postingFeeStatus && j.postingPackageCode !== 'FREE'
+        (j) =>
+          j.serviceTypeCode === 'CV_APPLICATION' &&
+          j.postingFeeStatus &&
+          j.postingPackageCode !== 'FREE' &&
+          !(j.postingFeeStatus === 'PENDING' && isNonPayableJobStatus(j.status))
       );
       type Fee = {
         postingFeeId: string;
@@ -170,7 +178,10 @@ const useBillingRows = () => {
       }
       return {
         allJobs: jobs,
-        items: items.filter((f): f is { job: (typeof paidPackageJobs)[number]; fee: Fee } => !!f.fee && f.fee.amount > 0),
+        items: items.filter(
+          (f): f is { job: (typeof paidPackageJobs)[number]; fee: Fee } =>
+            !!f.fee && f.fee.amount > 0 && !(f.fee.status === 'PENDING' && isNonPayableJobStatus(f.job.status))
+        ),
       };
     },
   });
@@ -240,7 +251,7 @@ const useBillingRows = () => {
         job.status === 'PENDING_PAYMENT' &&
         isDeadlineExpired(job.applicationDeadline);
       // The backend refuses to record a posting fee for a DRAFT/REJECTED/CLOSED job, so do not let the Client pay it.
-      const jobNotPayable = job.status === 'DRAFT' || job.status === 'REJECTED' || job.status === 'CLOSED';
+      const jobNotPayable = isNonPayableJobStatus(job.status);
       return {
         key: `posting-${fee!.postingFeeId}`,
         service: 'CV_APPLICATION',
