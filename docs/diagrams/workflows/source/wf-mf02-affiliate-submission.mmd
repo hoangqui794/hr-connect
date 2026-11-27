@@ -4,27 +4,29 @@ title: WF-02 Refer a candidate, consent and attribution
 flowchart TB
   subgraph L0["Affiliate"]
     direction TB
-    F1([Start]) --> F2[Open partner job, submit candidate + CV]
+    F1([Start]) --> F2["Open partner job, submit candidate + CV (or Library CV)"]
   end
   subgraph L1["System"]
     direction TB
-    S1{Duplicate or pending consent for this job?}
-    S1 -- Yes --> S2[Block: BLOCKED_DUPLICATE]
-    S1 -- No --> S3[Create submission PENDING_CONSENT, send consent e-mail]
-    S4[Create application + attribution to first valid source]
-    S5[Queue AI scoring]
-    S6([Application SUBMITTED])
-    S7[Mark CONSENT_REJECTED / EXPIRED, notify affiliate]
+    S1{"Layer 1 duplicate, pending consent, or client ownership (30d)?"}
+    S1 -- Yes --> S2["Block: BLOCKED_DUPLICATE"]
+    S1 -- No --> S3["Create submission PENDING_CONSENT, send consent e-mail"]
+    S4{"Re-validate eligibility & Layer 2 duplicate (CV + Name hash)?"}
+    S4 -- "Layer 2 Match" --> S4B["Hold PENDING_IDENTITY_REVIEW & open HIGH DuplicateCase (Admin MERGE)"]
+    S4 -- "Clean & Valid" --> S5["Create application + attribution to first valid source"]
+    S6["Queue AI scoring"]
+    S7([Application SUBMITTED])
+    S8["Mark CONSENT_REJECTED / EXPIRED, notify affiliate"]
   end
   subgraph L2["Candidate"]
     direction TB
-    K1{Confirm consent?}
+    K1{"Confirm consent?"}
   end
   F2 --> S1
   S3 --> K1
   K1 -- Accept --> S4
-  K1 -- Decline / no answer --> S7
-  S4 --> S5
+  K1 -- "Decline / no answer" --> S8
   S5 --> S6
+  S6 --> S7
   S2 -.-> F2
 classDef default fill:#EAF2FB,stroke:#1B365D,color:#1F2A3C
