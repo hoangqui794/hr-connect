@@ -142,25 +142,30 @@ export const ClientShell: React.FC = () => {
 
         <nav aria-label="Điều hướng chính" className="flex-1 overflow-y-auto px-3 pb-4 pt-3">
           <ul className="m-0 list-none space-y-0.5 p-0">
-            {NAV.map((item) => (
+            {NAV.map((item) => {
+              const forceActive = item.to === '/client/warranty' && location.pathname.startsWith('/client/placements');
+              return (
               <li key={item.to}>
                 <Tooltip title={collapsed ? item.label : ''} placement="right">
                   <NavLink
                     to={item.to}
-                    className={({ isActive }) =>
-                      [
+                    className={({ isActive }) => {
+                      const active = isActive || forceActive;
+                      return [
                         'relative flex h-11 items-center gap-3 rounded-lg px-3 text-sm no-underline transition-colors duration-150',
                         focusRing,
                         collapsed ? 'justify-center' : '',
-                        isActive
+                        active
                           ? 'font-bold text-[#0284C7]'
                           : 'font-medium text-slate-700 hover:bg-slate-100/80 hover:text-[#0284C7]',
-                      ].join(' ')
-                    }
+                      ].join(' ');
+                    }}
                   >
-                    {({ isActive }) => (
+                    {({ isActive }) => {
+                      const active = isActive || forceActive;
+                      return (
                       <>
-                        {isActive && (
+                        {active && (
                           <motion.span
                             layoutId="client-sidebar-active-pill"
                             transition={{ type: 'spring', stiffness: 420, damping: 34 }}
@@ -171,11 +176,13 @@ export const ClientShell: React.FC = () => {
                         <span className="relative z-10 text-[16px]" aria-hidden>{item.icon}</span>
                         {!collapsed && <span className="relative z-10 truncate">{item.label}</span>}
                       </>
-                    )}
+                      );
+                    }}
                   </NavLink>
                 </Tooltip>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </nav>
 

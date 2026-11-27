@@ -20,7 +20,15 @@
  *   *                  → redirect /
  */
 import React from 'react';
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, useParams } from 'react-router-dom';
+
+const PlacementDrawerRedirect: React.FC<{ basePath: string }> = ({ basePath }) => {
+  const { placementId } = useParams<{ placementId: string }>();
+  const target = placementId
+    ? `${basePath}?placementId=${encodeURIComponent(placementId)}`
+    : basePath;
+  return <Navigate to={target} replace />;
+};
 import { Spin } from 'antd';
 import { UserRole } from '@/types/roles';
 import { AppShell } from '@/components/layout/AppShell';
@@ -371,7 +379,7 @@ export const router = createBrowserRouter([
       { path: 'billing', element: <AppRoutes.ClientBillingPage /> },
       { path: 'services', element: <ServicesPage /> },
       { path: 'billing/vnpay-return', element: <AppRoutes.ClientVnPayReturnPage /> },
-      { path: 'placements/:placementId', element: <AppRoutes.PlacementDetailPage /> },
+      { path: 'placements/:placementId', element: <PlacementDrawerRedirect basePath="/client/warranty" /> },
     ],
   },
 
@@ -403,7 +411,7 @@ export const router = createBrowserRouter([
       { path: 'placements/reconciliation', element: <Navigate to="/hr/placement-reconciliations" replace /> },
       { path: 'warranty-tracking', element: <AppRoutes.HrWarrantyPlaceholder /> },
       { path: 'warranties', element: <Navigate to="/hr/warranty-tracking" replace /> },
-      { path: 'placements/:placementId', element: <AppRoutes.PlacementDetailPage /> },
+      { path: 'placements/:placementId', element: <PlacementDrawerRedirect basePath="/hr/warranty-tracking" /> },
     ],
   },
 
