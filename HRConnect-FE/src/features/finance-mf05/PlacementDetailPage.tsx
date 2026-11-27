@@ -31,7 +31,7 @@ export const PlacementDetailPage: React.FC = () => {
   };
 
   return (
-    <div className={`placement-detail-page max-w-5xl mx-auto px-4 py-6 space-y-5 ${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
+    <div className={`placement-detail-page w-full space-y-5 ${FONT} animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
       {/* Breadcrumb Navigation */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <Breadcrumb
@@ -41,9 +41,9 @@ export const PlacementDetailPage: React.FC = () => {
                 <button
                   type="button"
                   className="cursor-pointer inline-flex items-center gap-1 border-0 bg-transparent p-0 text-slate-500 hover:text-[#0C4A6E] [font:inherit]"
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate(mode === 'client' ? '/client/dashboard' : '/dashboard')}
                 >
-                  <HomeOutlined /> Bàn làm việc
+                  <HomeOutlined /> {mode === 'client' ? 'Tổng quan' : 'Bàn làm việc'}
                 </button>
               ),
             },
@@ -54,7 +54,7 @@ export const PlacementDetailPage: React.FC = () => {
                   className="cursor-pointer inline-flex items-center gap-1 border-0 bg-transparent p-0 text-slate-500 hover:text-[#0C4A6E] [font:inherit]"
                   onClick={handleBack}
                 >
-                  <SafetyCertificateOutlined /> Theo dõi bảo hành
+                  <SafetyCertificateOutlined /> {mode === 'client' ? 'Bảo hành' : 'Theo dõi bảo hành'}
                 </button>
               ),
             },

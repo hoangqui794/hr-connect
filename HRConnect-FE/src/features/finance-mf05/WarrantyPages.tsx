@@ -85,9 +85,10 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
   }, [list.data?.items, hasSearch, searchText, slotByPlacementId]);
 
   useEffect(() => {
+    const placementIdParam = searchParams.get('placementId');
     const highlightParam = searchParams.get('highlight');
     const statusParam = searchParams.get('status')?.toUpperCase() ?? null;
-    if (!highlightParam && !statusParam) return;
+    if (!placementIdParam && !highlightParam && !statusParam) return;
 
     const validStatus: WarrantyStatus | 'all' | null =
       statusParam === 'ACTIVE' || statusParam === 'CLAIMED' || statusParam === 'PASSED' || statusParam === 'VOIDED'
@@ -101,6 +102,10 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
       setPage(1);
     }
 
+    if (placementIdParam) {
+      setDetailPlacementId(placementIdParam);
+    }
+
     if (highlightParam) {
       setSearchText('');
       setPendingHighlight({ id: highlightParam, status: validStatus, refetched: false });
@@ -108,6 +113,7 @@ const WarrantyList: React.FC<{ mode: Mode }> = ({ mode }) => {
     }
 
     const next = new URLSearchParams(searchParams);
+    next.delete('placementId');
     next.delete('highlight');
     next.delete('status');
     setSearchParams(next, { replace: true });

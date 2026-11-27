@@ -233,9 +233,9 @@ export const PlacementDetailView: React.FC<PlacementDetailViewProps> = ({
   // Progress calculations
   const calculateProgress = (startDateStr?: string | null, endDateStr?: string | null) => {
     if (!startDateStr || !endDateStr) return { percent: 0, daysTotal: 0, daysPassed: 0, daysLeft: 0, isExpired: false };
-    const start = dayjs(startDateStr);
-    const end = dayjs(endDateStr);
-    const now = dayjs();
+    const start = dayjs(startDateStr).startOf('day');
+    const end = dayjs(endDateStr).startOf('day');
+    const now = dayjs().startOf('day');
 
     const daysTotal = Math.max(1, end.diff(start, 'day'));
     const daysPassed = Math.max(0, Math.min(daysTotal, now.diff(start, 'day')));

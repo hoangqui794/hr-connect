@@ -4,13 +4,14 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App as AntApp, Button, Descriptions, Drawer, Form, Input, Modal, Radio, Select, Table } from 'antd';
+import { Alert, App as AntApp, Button, DatePicker, Descriptions, Drawer, Form, Input, Modal, Radio, Select, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { CheckCircleOutlined, ExclamationCircleOutlined, EyeOutlined, FormOutlined, SearchOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import dayjs, { type Dayjs } from 'dayjs';
+import { useSearchParams } from 'react-router-dom';
 import { getApiError, getApiErrorMessage } from '@/services/apiClient';
-import { placementReconciliationApi } from '@/services/api/hrApi';
+import { placementCorrectionApi, placementReconciliationApi } from '@/services/api/hrApi';
+import { placementApi } from '@/services/api/placementApi';
 import type {
   PlacementReconciliationItem,
   PlacementReconciliationStatus,
@@ -49,11 +50,19 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
   const [selected, setSelected] = useState<PlacementReconciliationItem | null>(null);
   const [highlightedRecId, setHighlightedRecId] = useState<string | null>(null);
   const [actionOpen, setActionOpen] = useState(false);
+  const [startDateModalOpen, setStartDateModalOpen] = useState(false);
   const [form] = Form.useForm<ActionValues>();
+  const [startDateForm] = Form.useForm<{ actualStartDate: Dayjs; reason: string }>();
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { message } = AntApp.useApp();
+
+  const placementDetail = useQuery({
+    queryKey: ['placement-detail-inline', selected?.placementId],
+    queryFn: () => placementApi.getPlacementDetail(selected!.placementId!),
+    enabled: Boolean(selected?.placementId),
+    staleTime: 30_000,
+  });
 
   useEffect(() => setPage(1), [status]);
   const list = useQuery({
@@ -160,6 +169,38 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
     },
   });
   const activeMutation = admin ? resolve : reconcile;
+
+  const correctStartDate = useMutation({
+    mutationFn: (values: { actualStartDate: Dayjs; reason: string }) =>
+      placementCorrectionApi.correctStartDate(selected!.placementId!, {
+        actualStartDate: values.actualStartDate.format('YYYY-MM-DD'),
+        reason: values.reason.trim(),
+      }),
+    onSuccess: async (_data, values) => {
+      message.success('Đã cập nhật ngày đi làm và tính lại hạn bảo hành / hạn phí.');
+      setStartDateModalOpen(false);
+      startDateForm.resetFields();
+      setSelected((prev) =>
+        prev ? { ...prev, actualStartDate: values.actualStartDate.format('YYYY-MM-DD') } : prev
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['placement-reconciliations'] }),
+        queryClient.invalidateQueries({ queryKey: ['placement-detail-inline', selected?.placementId] }),
+        queryClient.invalidateQueries({ queryKey: ['placements'] }),
+        queryClient.invalidateQueries({ queryKey: ['mf05-warranties'] }),
+        queryClient.invalidateQueries({ queryKey: ['mf05-fees'] }),
+      ]);
+    },
+  });
+
+  const openStartDateModal = () => {
+    if (!selected?.placementId) return;
+    startDateForm.setFieldsValue({
+      actualStartDate: selected.actualStartDate ? dayjs(selected.actualStartDate) : dayjs(),
+      reason: '',
+    });
+    setStartDateModalOpen(true);
+  };
 
   const openAction = (decision?: ActionValues['decision']) => {
     form.setFieldsValue(admin
@@ -284,7 +325,10 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
         {selected && <>
           <Descriptions column={1} size="small" bordered>
             <Descriptions.Item label="Ứng viên">{selected.candidateName}</Descriptions.Item>
-            <Descriptions.Item label="Email">{selected.candidateEmail ?? '—'}</Descriptions.Item>
+            <Descriptions.Item label="Email">{placementDetail.data?.candidate?.email || selected.candidateEmail || '—'}</Descriptions.Item>
+            {placementDetail.data?.candidate?.phone && (
+              <Descriptions.Item label="Số điện thoại">{placementDetail.data.candidate.phone}</Descriptions.Item>
+            )}
             <Descriptions.Item label="Công việc">{selected.jobTitle} · {selected.companyName}</Descriptions.Item>
             <Descriptions.Item label="Affiliate">{selected.affiliateName ?? '—'}</Descriptions.Item>
             <Descriptions.Item label="Client khai">{selected.claimedOutcome === 'STARTED' ? `Đã đi làm từ ${date(selected.actualStartDate)}` : 'Không đi làm'}</Descriptions.Item>
@@ -300,11 +344,37 @@ const PlacementReconciliationPage: React.FC<{ admin?: boolean }> = ({ admin = fa
           {!admin && selected.status === 'PENDING' && <div className="mt-5 flex flex-wrap gap-2">
             <Button type="primary" icon={<CheckCircleOutlined />} onClick={() => openAction('CONFIRM')}>Xác nhận đúng</Button>
             <Button danger icon={<ExclamationCircleOutlined />} onClick={() => openAction('FLAG')}>Báo không khớp</Button>
-            {selected.placementId && <Button icon={<FormOutlined />} onClick={() => navigate(`/hr/placement-review?highlight=${selected.placementId}`)}>Xem liên hệ &amp; sửa ngày</Button>}
+            {selected.placementId && <Button icon={<FormOutlined />} onClick={openStartDateModal}>Sửa ngày đi làm</Button>}
           </div>}
-          {admin && selected.status === 'FLAGGED' && <div className="mt-5"><Button type="primary" onClick={() => openAction()}>Ghi nhận đã xử lý</Button></div>}
+          {admin && selected.status === 'FLAGGED' && <div className="mt-5 flex flex-wrap gap-2">
+            <Button type="primary" onClick={() => openAction()}>Ghi nhận đã xử lý</Button>
+            {selected.placementId && <Button icon={<FormOutlined />} onClick={openStartDateModal}>Sửa ngày đi làm</Button>}
+          </div>}
         </>}
       </Drawer>
+
+      <Modal
+        title="Sửa ngày đi làm thực tế"
+        open={startDateModalOpen}
+        okText="Lưu ngày đi làm"
+        cancelText="Hủy"
+        confirmLoading={correctStartDate.isPending}
+        onOk={async () => {
+          const values = await startDateForm.validateFields();
+          correctStartDate.mutate(values);
+        }}
+        onCancel={() => setStartDateModalOpen(false)}
+      >
+        {correctStartDate.isError && <Alert className="mb-4" type="error" showIcon message={getApiErrorMessage(correctStartDate.error)} />}
+        <Form form={startDateForm} layout="vertical" requiredMark="optional">
+          <Form.Item name="actualStartDate" label="Ngày đi làm mới" rules={[{ required: true, message: 'Chọn ngày đi làm mới.' }]}>
+            <DatePicker format="DD/MM/YYYY" className="w-full" />
+          </Form.Item>
+          <Form.Item name="reason" label="Lý do điều chỉnh" rules={[{ required: true, message: 'Nhập lý do điều chỉnh ngày đi làm.' }]}>
+            <Input.TextArea rows={3} placeholder="Ví dụ: Client nhập nhầm ngày đi làm thực tế của ứng viên." />
+          </Form.Item>
+        </Form>
+      </Modal>
 
       <Modal
         title={admin ? 'Hoàn tất xử lý đối soát' : decision === 'FLAG' ? 'Báo thông tin không khớp' : 'Xác nhận kết quả nhận việc'}
