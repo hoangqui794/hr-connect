@@ -12,13 +12,13 @@
 
 1. **Kích hoạt & Hàng đợi Retry (`IMf03ScoringTrigger` → `Mf03ScoringDispatcher`):**
    - Ngay khi hồ sơ ứng tuyển (`Application`) được tạo ở trạng thái `SUBMITTED` (hoặc khi Internal HR bấm chấm lại `RetryAiScoringCommand`), hệ thống khởi tạo trạng thái chấm điểm `PENDING` và đưa vào hàng đợi xử lý nền.
-   - `Mf03ScoringDispatcher` gửi yêu cầu chấm điểm sang dịch vụ Python `ai-service-v2` kèm chữ ký xác thực nội bộ `X-Service-Token` (so khớp bằng `CryptographicOperations.FixedTimeEquals` tại `InternalServiceAuthFilter`).
+   - `Mf03ScoringDispatcher` đọc đồng thời 5 tham số trọng số & trần điểm động từ `IAdminBusinessSettings` (`mf03.ai_scoring.must_have_weight`, `should_have_weight`, `semantic_weight`, `llm_fit_weight`, `knockout_cap_score` — Platform Admin cấu hình trực tiếp tại `/admin/settings` với ràng buộc tổng 4 trọng số = 1.0) rồi gửi yêu cầu sang dịch vụ Python `ai-service-v2` (`POST /api/v1/scoring-jobs`) kèm `scoringOverrides` và header xác thực `X-Service-Token` (so khớp bằng `CryptographicOperations.FixedTimeEquals` tại `InternalServiceAuthFilter`).
    - Nếu dịch vụ AI tạm thời gián đoạn hoặc timeout, worker tự động thử lại theo cơ chế **Exponential Backoff** (từ 30 giây tăng dần tới tối đa 15 phút, giới hạn số lần thử); khi vượt ngưỡng tối đa sẽ chuyển sang `FAILED` để người sàng lọc đánh giá thủ công.
 
 2. **Xử lý kết quả & Hậu kiểm bằng chứng (`AiResultCallbackProcessor` & `verification.py`):**
    - `ai-service-v2` trích xuất văn bản từ CV PDF (qua presigned URL độc lập, kiểm tra magic bytes `%PDF`), đối chiếu với các tiêu chí `MUST_HAVE` và `SHOULD_HAVE` của Job.
    - **Chống ảo giác LLM (Hallucination Guard):** Bộ hậu kiểm `verification.py` kiểm tra từng câu trích dẫn (`evidence_quotes`) có thực sự xuất hiện trong văn bản CV gốc hay không; nếu không khớp sẽ tự động hạ kết quả tiêu chí xuống `NOT_FOUND` (`LLM_UNVERIFIED`) và bật cờ `RequiresManualReview = true`.
-   - Callback `POST /api/v1/internal/ai/applications/{applicationId}/result` lưu bản ghi `AiMatchResult` gồm:
+   - Callback `POST /api/v1/internal/ai-results` lưu bản ghi `AiMatchResult` gồm:
      - `OverallScore` (`0–100`) và `MatchTier` theo 4 mức chuẩn: `HIGH` (`>= 80`), `MEDIUM_HIGH` (`70–79`), `MEDIUM` (`60–69`), `LOW` (`< 60`).
      - Chi tiết từng tiêu chí (`AiMatchRequirementResult`), `MustHaveResult`, `ShouldHaveResult`, `CandidateHighlight`, `MatchingReasons`, `MissingRequirements`, cùng `FailureCode` / `ErrorMessage` nếu lỗi.
 
@@ -37,7 +37,7 @@ AI chỉ đóng vai trò hỗ trợ ra quyết định, **không tự động lo
 ### Chuyển trạng thái sàng lọc (`UpdateApplicationScreeningStatusCommandHandler`)
 - **Bắt đầu xem xét (`POST .../start-screening`):** Chuyển `SUBMITTED → SCREENING` (idempotent).
 - **Quyết định sàng lọc (`PATCH .../status` kèm `ConcurrencyToken`):**
-  - **Đạt (`SHORTLISTED`):** Mở khóa bước tiếp theo (chuyển sang MF-04 với `CV_APPLICATION` / `HEADHUNT_COD`, hoặc sẵn sàng bàn giao CV với `CV_SOURCING`).
+  - **Đạt (`SHORTLISTED`):** Mở khóa bước tiếp theo (chuyển sang MF-04 với `CV_APPLICATION` / `HEADHUNT_COD`, hoặc sẵn sàng bàn giao CV với `CV_SOURCING`), hỗ trợ Internal HR đính kèm **nhận xét/ghi chú chuyên môn tùy chọn (`reason`)** lưu vào `StatusReason` và Timeline để Client tham khảo (đặc biệt hữu ích khi HR chọn ứng viên có điểm AI thấp hoặc khi AI gián đoạn).
   - **Không đạt (`REJECTED`):** Bắt buộc truyền mã lý do chuẩn (`SKILL_MISMATCH`, `INSUFFICIENT_EXPERIENCE`, `SALARY_MISMATCH`, `LOCATION_MISMATCH`, `LANGUAGE_REQUIREMENT`, `CANDIDATE_UNREACHABLE`, `POSITION_FILLED`, hoặc `OTHER` kèm ghi chú bắt buộc).
 
 ---

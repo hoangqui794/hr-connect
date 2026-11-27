@@ -30,7 +30,7 @@
 2. **Bản nháp trên trình duyệt & Thao tác ở Frontend:**
    - Bản nháp CV Builder được lưu tự động vào `localStorage` theo key `hrconnect.cv-builder.draft.v2:<userId>:<cvId|new>` và khôi phục ở **cả hai chế độ** `create` và `edit`.
    - Modal nộp đơn (`ApplyModal` trong `JobApplyActions.tsx`) **chỉ hiển thị các CV đã lưu trên server** (lọc bỏ bản nháp local `cv_builder_...`).
-   - Hỗ trợ đầy đủ `?action=preview` / `?action=download` khi mở CV Builder từ Kho CV, và công tắc **"Đặt làm CV chính"** đồng bộ cả ở `CvTopbar`, Kho CV lẫn trang Tổng quan Candidate.
+   - Hỗ trợ đầy đủ `?action=preview` / `?action=download` khi mở CV Builder từ Kho CV, công tắc **"Đặt làm CV chính"** đồng bộ trên Kho CV, và công tắc **Bật/Tắt quyền cho phép Affiliate tái sử dụng CV** (`PATCH /api/v1/candidates/me/affiliate-cvs/{cvId}/reuse`) ngay tại trang chi tiết CV đối tác gửi kèm (`/candidate/affiliate-cvs/:cvId`).
 
 ---
 
@@ -79,7 +79,7 @@
 2. **Bảo vệ PII:** Các API xem danh sách/chi tiết ca nghi trùng luôn che email/phone và không làm lộ danh tính Affiliate đối phương.
 3. **Phân quyền xử lý (`DecideMyCandidateDuplicateCase` & `ResolveCandidateDuplicateCase`):**
    - **Candidate:** Có thể xác nhận `MERGE` (chuyển sang `UNDER_REVIEW` chờ Admin duyệt), nhưng **bị chặn `409 DUPLICATE_CASE_REQUIRES_ADMIN_REVIEW` nếu cố `DISMISS` ca `RiskLevel == "HIGH"` hoặc ca gắn `JobId`**.
-   - **Admin:** Xem trước xung đột & ràng buộc tài chính (`PreviewCandidateDuplicateMerge`), thực hiện `MERGE` hoặc `DISMISS`. Khi `MERGE`, chọn `CanonicalCandidate`, lưu trữ hồ sơ nguồn (`MergedIntoCandidateId`), và gọi `FinalizeIdentityReviewedSubmissionService` để giải phóng các Submission `PENDING_IDENTITY_REVIEW` theo thứ tự xác nhận sớm nhất (`EARLIEST_CANDIDATE_CONFIRMED_VALID_SUBMISSION`), đồng thời đẩy thông báo + SignalR cho Candidate & Affiliate.
+   - **Admin (`/admin/candidate-identity-claims?tab=duplicates`):** Xem trước xung đột & ràng buộc tài chính (`PreviewCandidateDuplicateMerge`), thực hiện `MERGE`, `DISMISS` hoặc `NEED_MORE_EVIDENCE`. Khi `MERGE`, chọn `CanonicalCandidate`, lưu trữ hồ sơ nguồn (`MergedIntoCandidateId`), gọi `FinalizeIdentityReviewedSubmissionService` để giải phóng đơn hợp lệ được ứng viên xác nhận sớm nhất, đồng thời tự động chuyển toàn bộ các đơn nộp trùng còn lại (gồm cả `PENDING_IDENTITY_REVIEW`, `PENDING_CONSENT` và `ACCEPTED`) sang **`BLOCKED_DUPLICATE`** (đóng luôn `Consent` đang `PENDING` sang `CANCELLED`; hoặc chuyển `CandidateId` về hồ sơ gốc nếu cả hai bên đều chưa có đơn nào xác nhận), và đẩy thông báo SignalR.
 4. **Khóa cập nhật hồ sơ đã merge:** `UpdateCandidateProfileCommandHandler` từ chối cập nhật nếu Candidate không ở trạng thái `ACTIVE` hoặc đã có `MergedIntoCandidateId`.
 
 ---

@@ -1,96 +1,48 @@
 # HR Connect AI Service v2
 
-Bản thử nghiệm thay thế `ai-service` (v1). Dùng **LLM (Claude) để đọc CV và đánh giá từng yêu cầu**, giữ
-**Sentence-BERT** cho điểm ngữ nghĩa (yêu cầu đề tài), và **điểm số do code tính**, không do LLM tự cho.
+Microservice độc lập viết bằng **Python FastAPI** chịu trách nhiệm chấm điểm mức độ phù hợp giữa CV – JD và tính điểm tương đồng ngữ nghĩa cho tính năng Gợi ý việc làm (MF-03).
 
-## Vì sao có v2
+---
 
-Đánh giá v1 ngày 2026-10-14 (19 CV thật, JD Senior Fullstack và JD Social Media Marketing) cho thấy:
+## 1. Kiến Trúc & Nguyên Tắc Thiết Kế Cốt Lõi
 
-- JD ngoài IT chấm sai: kinh nghiệm "2 năm marketing" được tính **ĐẠT** cho CV IT và CV Logistics, vì bộ chấm
-  kinh nghiệm chỉ biết các ngành IT.
-- CV dạng ảnh: OCR đọc sai nhiều chữ và mất 13–28 giây mỗi CV.
-- Yêu cầu mềm và từ đồng nghĩa (locking ≈ concurrency, Kafka ≈ messaging) phải thêm tay vào từ điển.
+1. **Multi-Provider LLM + Sentence-BERT Hybrid:**
+   - Hỗ trợ **Google Gemini** (`LLM_PROVIDER=gemini`, mặc định dùng `gemini-4-hydrogen` / `gemini-3.5-flash-lite` kèm danh sách model dự phòng `GEMINI_FALLBACK_MODELS`), và tự động chuyển đổi dự phòng sang **OpenAI** hoặc **Anthropic** qua `LLM_FALLBACK_PROVIDERS`.
+   - Sử dụng **Sentence-BERT** (`sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`) để tính điểm tương đồng ngữ nghĩa đa ngôn ngữ Việt – Anh.
+2. **Deterministic Scoring (LLM không bao giờ tự cho con số tổng điểm):**
+   - LLM chỉ đánh giá trạng thái từng yêu cầu (`MATCHED`, `PARTIAL`, `NOT_FOUND`, `UNKNOWN`), trích xuất số năm kinh nghiệm liên quan, mức phù hợp tổng thể (`1–5`) và **câu trích dẫn nguyên văn (`evidence_quotes`)** từ CV.
+   - Bộ hậu kiểm `app/verification.py` dùng `PyMuPDF` đọc văn bản gốc của CV để kiểm chứng từng câu trích dẫn (`quote_min_token_ratio = 0.85`) và kiểm tra ngưỡng năm kinh nghiệm (`years_tolerance = 0.25`). Trích dẫn không khớp bị hạ xuống `PARTIAL`/`NOT_FOUND` (`LLM_UNVERIFIED`) và bật cờ `requiresManualReview = true`.
+   - Bộ tính điểm `app/scoring.py` tính điểm tất định (0–100) theo 4 trọng số và áp dụng **trần điểm Knockout (`knockout_score_cap`, mặc định `59.0`)** nếu thiếu bất kỳ tiêu chí `MUST_HAVE` nào.
+3. **Trọng số Động từ Backend (`scoringOverrides`) & Hàng đợi Bền vững Blue/Green:**
+   - Khi Backend gửi yêu cầu qua `POST /api/v1/scoring-jobs`, `Mf03ScoringDispatcher` đọc 5 tham số cấu hình từ trang **Cài đặt hệ thống (`/admin/settings`)** (`mf03.ai_scoring.must_have_weight`, `should_have_weight`, `semantic_weight`, `llm_fit_weight`, `knockout_cap_score`) và truyền trong trường `scoringOverrides`. Nếu không truyền, dịch vụ dùng giá trị mặc định trong `app/config.py`.
+   - Hàng đợi công việc đang nhận được lưu bền vững xuống tệp JSON (`SCORING_QUEUE_FILE`, trên Production là `/var/lib/hrconnect-ai/pending-scoring-jobs.json`) và tuân thủ khóa `SCORING_ACTIVE_COLOR_FILE` khi chuyển đổi Blue/Green để không làm rơi job lúc tái triển khai.
 
-## Luồng xử lý
+---
 
-```
-CV (PDF / DOCX / ảnh) ──► Claude đọc CV (cả PDF scan và ảnh) và đánh giá từng yêu cầu,
-                          kèm câu trích nguyên văn làm bằng chứng
-                                   │
-                                   ▼
-                     Code kiểm tra câu trích có thật trong CV
-                     (so với chữ đọc bằng PyMuPDF; sai thì hạ xuống PARTIAL + cần người xem)
-                                   │
-              ┌────────────────────┴────────────────────┐
-              ▼                                         ▼
-   Sentence-BERT: độ giống nghĩa CV–JD        Công thức điểm trong code
-                                              (MUST_HAVE / SHOULD_HAVE / ngữ nghĩa,
-                                               thiếu MUST_HAVE thì trần 59)
-              └────────────────────┬────────────────────┘
-                                   ▼
-                  Điểm + bằng chứng → HR quyết định
-```
+## 2. Hợp Đồng API Nội Bộ
 
-Các chốt an toàn:
+Tất cả endpoint (trừ `/health`) đều bắt buộc header xác thực nội bộ `X-Service-Token`:
 
-- LLM **không cho điểm**; chỉ trả trạng thái từng yêu cầu. `scoring.py` tính điểm.
-- Câu trích không tìm thấy trong CV **không bao giờ làm tăng điểm** (`LLM_UNVERIFIED`).
-- Ngưỡng số năm kinh nghiệm được **code kiểm tra lại** (`LLM_YEARS_BELOW_MIN`).
-- CV ảnh/scan luôn được đánh dấu **cần người xem**: không có bản chữ độc lập để đối chiếu.
-- LLM lỗi (hết hạn mức, từ chối, bị cắt) → trả 503 và hồ sơ chuyển HR xem thủ công, không bao giờ bị loại.
+| Method | Route | Mô tả |
+| :--- | :--- | :--- |
+| `GET` | `/health` | Kiểm tra tiến trình FastAPI sẵn sàng (phục vụ Docker & Blue/Green healthcheck). |
+| `POST` | `/api/v1/scoring-jobs` | Nhận yêu cầu chấm điểm bất đồng bộ từ Backend (`202 Accepted`), tải JD (`GET /api/v1/internal/jobs/{jobId}/jd`) & CV Presigned URL, chấm điểm và gửi callback kết quả về `POST /api/v1/internal/ai-results` (có retry exponential backoff khi lỗi mạng/`429`/`5xx`). |
+| `POST` | `/api/v1/semantic-match` | Chấm điểm tương đồng ngữ nghĩa hàng loạt bằng Sentence-BERT (không gọi LLM) phục vụ `JobMatchWorker` gợi ý việc làm tự động cho Candidate. |
+| `POST` | `/api/v1/match-file` | Chấm điểm trực tiếp từ tệp tải lên phục vụ công cụ đánh giá nội bộ (`tools/evaluate.py`). |
 
-## API
+---
 
-Cùng hợp đồng với v1: `POST /api/v1/match-file` (multipart: `file` + `metadata` JSON có `requestId`,
-`applicationId`, `attemptNo`, `job`). Response có `parseResult` và `matchingResult` (`matchScore`,
-`semanticScore`, `mustHaveResult`, `shouldHaveResult`, `requiresManualReview`, `reviewReasons`, ...).
+## 3. Khởi Chạy & Kiểm Thử
 
-**Bảo vệ (17/10):** mặc định `match-file` cần header `X-Service-Token` (giống `scoring-jobs`) và không có `/docs`.
-Muốn mở Swagger và gọi `match-file` không cần token khi test trên máy, thêm vào `.env`:
-`ALLOW_UNAUTHENTICATED_TEST_ENDPOINTS=true`. **Không bật trên Render hoặc khi đang mở tunnel.**
-
-**Thời gian:** mỗi lần gọi Gemini dừng sau `LLM_TIMEOUT_SECONDS` (120 giây); cả lượt chấm dừng sau
-`SCORING_JOB_TIMEOUT_SECONDS` (300 giây) và báo backend `FAILED` / `AI_TIMEOUT`, hồ sơ chuyển HR xem tay.
-Hàng đợi nằm trong RAM: dịch vụ khởi động lại thì việc đang chờ mất, backend tự gửi lại sau
-`Mf03Integration__ProcessingTimeoutMinutes` (tối đa `MaxDispatchAttempts` lần) rồi chuyển HR xem tay.
-
-## Chạy
-
-```powershell
+```bash
 python -m venv .venv
-.\.venv\Scripts\pip install -r requirements.txt
-copy .env.example .env      # rồi điền ANTHROPIC_API_KEY
-.\.venv\Scripts\uvicorn app.main:app --port 8002
+# Windows: .\.venv\Scripts\pip install -r requirements.txt
+# Linux/macOS: ./.venv/bin/pip install -r requirements.txt
+cp .env.example .env
+
+# Chạy dịch vụ ở cổng 8001 (khớp với MF03_BASE_URL của Backend)
+uvicorn app.main:app --host 127.0.0.1 --port 8001
+
+# Chạy bộ kiểm thử tự động (không gọi LLM thật, không tốn chi phí)
+pytest -q
 ```
-
-Test (không gọi LLM thật, không tốn phí): `.\.venv\Scripts\python -m pytest -q`
-
-So với HR (gọi LLM thật, tốn phí theo số CV):
-
-```powershell
-.\.venv\Scripts\python tools\evaluate.py ..\ai-service\evaluation\private\manifest-senior-fullstack.json --limit 3
-```
-
-## Chi phí và dữ liệu cá nhân
-
-- Mỗi CV là một lần gọi Claude (CV + JD đầu vào, kết quả JSON đầu ra). JD và system prompt được cache, nên chấm
-  nhiều CV cho cùng một job rẻ hơn. Đổi `LLM_MODEL` để cân bằng chất lượng và chi phí; đo bằng `tools/evaluate.py`.
-- CV (có thông tin liên hệ) được gửi tới Anthropic. Điều khoản consent của ứng viên phải nêu rõ việc này
-  (Nghị định 13/2023).
-
-## Nối với backend HR Connect (thay v1)
-
-v2 nhận việc chấm điểm từ backend **giống hệt v1**, nên backend không phải sửa gì:
-
-1. Backend gọi `POST /api/v1/scoring-jobs` (header `X-Service-Token`) → v2 trả `202 ACCEPTED`, đưa vào hàng chờ.
-2. Worker tải JD (`/api/v1/internal/jobs/{jobId}/jd`) và CV (`/api/v1/internal/cvs/{cvId}/download-url`).
-3. Chấm điểm, rồi gửi kết quả về `POST /api/v1/internal/ai-results`:
-   - `COMPLETED`: điểm, `mustHaveResult` / `shouldHaveResult` (giữ các key của v1 và thêm câu trích, lý do),
-     `candidateHighlights` (tóm tắt + mức phù hợp tổng thể + câu trích), `missingRequirements`, `matchingReasons`.
-   - `FAILED` với `AI_PROVIDER_UNAVAILABLE` khi LLM hết quota hoặc lỗi: hồ sơ chuyển cho HR xem tay, **không bị loại**.
-
-Chạy cùng cổng 8001 như v1, nên `Mf03Integration:BaseUrl` của backend giữ nguyên. Chỉ chạy **một** trong hai
-service (v1 hoặc v2) ở cổng này. Biến môi trường: xem `.env.example` (`HRCONNECT_BASE_URL`, `HRCONNECT_SERVICE_TOKEN`).
-
-v1 (`ai-service/`) vẫn được giữ trong repo để tham khảo, không còn phát triển tiếp.
