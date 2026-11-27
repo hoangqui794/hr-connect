@@ -2211,23 +2211,25 @@ export const JobFormPage: React.FC = () => {
                         Số lượng hồ sơ <span className="text-red-500 font-bold">*</span>
                       </label>
                     </div>
-                    <Form.Item
-                      name="targetCandidateCount"
-                      rules={[
-                        { required: true, message: 'Vui lòng nhập số hồ sơ muốn nhận.' },
-                        { type: 'number', min: 1, max: 1000, message: 'Số lượng từ 1 đến 1000 hồ sơ.' },
-                      ]}
-                      className="mb-0"
-                    >
-                      <InputNumber
-                        size="large"
-                        min={1}
-                        max={1000}
-                        className="w-full max-w-xs"
-                        placeholder="Ví dụ: 10"
-                        suffix="hồ sơ"
-                      />
-                    </Form.Item>
+                    <div className="flex items-center gap-2.5">
+                      <Form.Item
+                        name="targetCandidateCount"
+                        rules={[
+                          { required: true, message: 'Vui lòng nhập số hồ sơ muốn nhận.' },
+                          { type: 'number', min: 1, max: 1000, message: 'Số lượng từ 1 đến 1000 hồ sơ.' },
+                        ]}
+                        className="mb-0 w-full max-w-[220px]"
+                      >
+                        <InputNumber
+                          size="large"
+                          min={1}
+                          max={1000}
+                          className="w-full"
+                          placeholder="Ví dụ: 10"
+                        />
+                      </Form.Item>
+                      <span className="whitespace-nowrap text-sm font-medium text-slate-600">hồ sơ</span>
+                    </div>
                   </div>
 
                   {/* Proposed Fee Block */}
@@ -2236,18 +2238,22 @@ export const JobFormPage: React.FC = () => {
                       <h3 className="m-0 text-[16px] font-bold text-slate-900">Mức phí đề xuất</h3>
                     </div>
 
-                    <div className="grid gap-x-4 md:grid-cols-2">
-                      <Form.Item
-                        name="sourcingPricePerCv"
-                        label="Phí đề xuất / hồ sơ"
-                        rules={[{ type: 'number', min: 0, message: 'Không được âm.' }]}
-                      >
-                        <InputNumber<number>
-                          size="large"
-                          {...moneyInputProps}
-                          placeholder="Ví dụ: 500.000"
-                          suffix="₫ / hồ sơ"
-                        />
+                    <div className="grid items-start gap-4 md:grid-cols-2">
+                      <Form.Item label="Phí đề xuất / hồ sơ" className="mb-0">
+                        <div className="flex items-center gap-2.5">
+                          <Form.Item
+                            name="sourcingPricePerCv"
+                            className="mb-0 min-w-0 flex-1"
+                            rules={[{ type: 'number', min: 0, message: 'Không được âm.' }]}
+                          >
+                            <InputNumber<number>
+                              size="large"
+                              {...moneyInputProps}
+                              placeholder="Ví dụ: 500.000"
+                            />
+                          </Form.Item>
+                          <span className="whitespace-nowrap text-sm font-medium text-slate-600">₫ / hồ sơ</span>
+                        </div>
                       </Form.Item>
 
                       {/* Quick Estimated Calculation */}
@@ -2300,38 +2306,50 @@ export const JobFormPage: React.FC = () => {
                       <h3 className="m-0 text-[16px] font-bold text-slate-900">Mức phí đề xuất</h3>
                     </div>
 
-                    {/* Fee Multiplier */}
-                    <div className="max-w-md">
-                      <Form.Item
-                        name="feeMultiplier"
-                        label="Phí tuyển thành công"
-                        rules={[{ type: 'number', min: 0, max: 12, message: 'Từ 0 đến 12 tháng.' }]}
-                      >
-                        <Select
-                          size="large"
-                          className="w-full"
-                          placeholder="Chọn mức phí đề xuất"
-                          options={HEADHUNT_FEE_OPTIONS}
-                        />
-                      </Form.Item>
-                    </div>
-
-                    {/* Warranty Days & Payment Due Days */}
-                    <div className="grid gap-x-4 md:grid-cols-2">
-                      <Form.Item
-                        name="warrantyDays"
-                        label="Thời hạn bảo hành"
-                        rules={[{ type: 'number', min: 0, max: 365, message: 'Từ 0 đến 365 ngày.' }]}
-                      >
-                        <Select size="large" allowClear placeholder="Chính sách chuẩn" options={WARRANTY_DAY_OPTIONS} />
+                    {/* Fee Multiplier, Warranty Days & Payment Due Days — horizontal row, auto-wraps on smaller screens */}
+                    <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
+                      <Form.Item label="Phí tuyển thành công" className="mb-0 shrink-0">
+                        <div className="flex items-center gap-2.5">
+                          <Form.Item
+                            name="feeMultiplier"
+                            className="mb-0 w-[130px] shrink-0"
+                            rules={[{ type: 'number', min: 0, max: 12, message: 'Từ 0 đến 12 tháng.' }]}
+                          >
+                            <Select
+                              size="large"
+                              className="w-full"
+                              placeholder="Chọn số"
+                              options={HEADHUNT_FEE_OPTIONS}
+                            />
+                          </Form.Item>
+                          <span className="whitespace-nowrap text-sm font-medium text-slate-600">tháng lương</span>
+                        </div>
                       </Form.Item>
 
-                      <Form.Item
-                        name="paymentDueDays"
-                        label="Hạn thanh toán"
-                        rules={[{ type: 'number', min: 0, max: 180, message: 'Từ 0 đến 180 ngày.' }]}
-                      >
-                        <Select size="large" allowClear placeholder="Chính sách chuẩn" options={PAYMENT_DUE_DAY_OPTIONS} />
+                      <Form.Item label="Thời hạn bảo hành" className="mb-0 shrink-0">
+                        <div className="flex items-center gap-2.5">
+                          <Form.Item
+                            name="warrantyDays"
+                            className="mb-0 w-[130px] shrink-0"
+                            rules={[{ type: 'number', min: 0, max: 365, message: 'Từ 0 đến 365 ngày.' }]}
+                          >
+                            <Select size="large" allowClear placeholder="Chọn số" options={WARRANTY_DAY_OPTIONS} />
+                          </Form.Item>
+                          <span className="whitespace-nowrap text-sm font-medium text-slate-600">ngày</span>
+                        </div>
+                      </Form.Item>
+
+                      <Form.Item label="Hạn thanh toán" className="mb-0 shrink-0">
+                        <div className="flex items-center gap-2.5">
+                          <Form.Item
+                            name="paymentDueDays"
+                            className="mb-0 w-[130px] shrink-0"
+                            rules={[{ type: 'number', min: 0, max: 180, message: 'Từ 0 đến 180 ngày.' }]}
+                          >
+                            <Select size="large" allowClear placeholder="Chọn số" options={PAYMENT_DUE_DAY_OPTIONS} />
+                          </Form.Item>
+                          <span className="whitespace-nowrap text-sm font-medium text-slate-600">ngày kể từ ngày ứng viên đi làm</span>
+                        </div>
                       </Form.Item>
                     </div>
 

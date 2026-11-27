@@ -71,20 +71,20 @@ export const WORKING_TIME_OPTIONS = [
 
 export const WARRANTY_DAY_OPTIONS = [30, 45, 60, 90, 120].map((value) => ({
   value,
-  label: `${value} ngày`,
+  label: String(value),
 }));
 
 export const PAYMENT_DUE_DAY_OPTIONS = [7, 15, 20, 30, 45, 60].map((value) => ({
   value,
-  label: `${value} ngày kể từ ngày ứng viên đi làm`,
+  label: String(value),
 }));
 
 export const HEADHUNT_FEE_OPTIONS = [
-  { value: 1, label: '1 tháng lương' },
-  { value: 1.5, label: '1,5 tháng lương' },
-  { value: 2, label: '2 tháng lương' },
-  { value: 2.5, label: '2,5 tháng lương' },
-  { value: 3, label: '3 tháng lương' },
+  { value: 1, label: '1' },
+  { value: 1.5, label: '1.5' },
+  { value: 2, label: '2' },
+  { value: 2.5, label: '2.5' },
+  { value: 3, label: '3' },
 ];
 
 /** Salary ranges offered in the job form (VND, gross per month); "CUSTOM" opens the from/to inputs. */
