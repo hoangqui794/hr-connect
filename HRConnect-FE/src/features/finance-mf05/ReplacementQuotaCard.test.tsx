@@ -192,6 +192,8 @@ describe('ReplacementQuotaCard', () => {
     expect(screen.queryByRole('button', { name: /Hồ sơ người thay/i })).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: /Xem tin/i }));
+    const openJobsBtn = await screen.findByRole('button', { name: /Mở trang Tin tuyển dụng/i });
+    fireEvent.click(openJobsBtn);
     expect(mockNavigate).toHaveBeenCalledWith('/client/jobs?highlight=job-101&openDetail=true');
   });
 

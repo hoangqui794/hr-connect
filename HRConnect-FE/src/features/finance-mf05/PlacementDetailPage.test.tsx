@@ -304,13 +304,13 @@ describe('PlacementDetailPage & PlacementDetailView', () => {
 
     // Modal opens
     await waitFor(() => {
-      expect(screen.getByText(/Xác minh báo nghỉ việc của Doanh nghiệp/i)).toBeInTheDocument();
+      expect(screen.getByText(/Xác minh báo nghỉ việc/i)).toBeInTheDocument();
     });
 
-    const noteInput = screen.getByPlaceholderText(/Ghi chú đối soát/i);
+    const noteInput = screen.getByPlaceholderText(/Ghi chú xác minh/i);
     fireEvent.change(noteInput, { target: { value: 'Đã đối soát xong với HR MB Bank' } });
 
-    const submitBtn = screen.getByRole('button', { name: /Lưu kết quả xác minh/i });
+    const submitBtn = screen.getByRole('button', { name: /Xác nhận/i });
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
