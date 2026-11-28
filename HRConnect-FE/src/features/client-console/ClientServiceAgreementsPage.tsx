@@ -192,7 +192,9 @@ export const ClientServiceAgreementsPage: React.FC = () => {
 
   const eligibleJobs = useMemo(() => {
     return allJobs.filter(
-      (j) => j.serviceTypeCode === 'HEADHUNT_COD' || j.serviceTypeCode === 'CV_SOURCING'
+      (j) =>
+        j.status !== 'DRAFT' &&
+        (j.serviceTypeCode === 'HEADHUNT_COD' || j.serviceTypeCode === 'CV_SOURCING')
     );
   }, [allJobs]);
 
