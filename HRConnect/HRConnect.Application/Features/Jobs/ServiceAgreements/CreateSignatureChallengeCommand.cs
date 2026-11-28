@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
+using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using MediatR;
@@ -39,6 +40,7 @@ public sealed class CreateSignatureChallengeCommandHandler : IRequestHandler<Cre
     private readonly IOtpService _otpService;
     private readonly IEmailService _emailService;
     private readonly IUnitOfWork _uow;
+    private readonly IJobRepository? _jobs;
 
     public CreateSignatureChallengeCommandHandler(
         IServiceAgreementRepository agreements,
@@ -46,7 +48,8 @@ public sealed class CreateSignatureChallengeCommandHandler : IRequestHandler<Cre
         IUserRepository users,
         IOtpService otpService,
         IEmailService emailService,
-        IUnitOfWork uow)
+        IUnitOfWork uow,
+        IJobRepository? jobs = null)
     {
         _agreements = agreements;
         _companyUsers = companyUsers;
@@ -54,6 +57,7 @@ public sealed class CreateSignatureChallengeCommandHandler : IRequestHandler<Cre
         _otpService = otpService;
         _emailService = emailService;
         _uow = uow;
+        _jobs = jobs;
     }
 
     public async Task<SignatureChallengeResponse> Handle(CreateSignatureChallengeCommand request, CancellationToken ct)
@@ -62,6 +66,17 @@ public sealed class CreateSignatureChallengeCommandHandler : IRequestHandler<Cre
         if (agreement == null || agreement.JobId != request.JobId)
         {
             throw new NotFoundException("Không tìm thấy thỏa thuận dịch vụ yêu cầu.");
+        }
+
+        if (_jobs != null)
+        {
+            var job = await _jobs.GetByIdAsync(agreement.JobId, ct);
+            if (job != null && JobDates.IsApplicationDeadlineExpired(job.ApplicationDeadline))
+            {
+                throw new ConflictException(
+                    "Tin tuyển dụng đã quá hạn nhận hồ sơ. Vui lòng gia hạn hạn nộp hồ sơ hoặc đóng tin.",
+                    "JOB_DEADLINE_EXPIRED");
+            }
         }
 
         if (!agreement.IsCurrent || (

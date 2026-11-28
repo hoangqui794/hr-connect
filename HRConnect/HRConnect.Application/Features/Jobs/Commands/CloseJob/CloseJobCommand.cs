@@ -49,30 +49,70 @@ public sealed class CloseJobCommandHandler : IRequestHandler<CloseJobCommand, Jo
     private readonly IUnitOfWork _uow;
     private readonly IFinanceRepository? _financeRepository;
     private readonly IAuditLogService? _auditLogService;
+    private readonly IServiceAgreementRepository? _agreements;
+    private readonly IAppNotifier? _notifier;
 
     public CloseJobCommandHandler(
         IJobRepository jobs,
         ICompanyUserRepository members,
         IUnitOfWork uow,
         IFinanceRepository? financeRepository = null,
-        IAuditLogService? auditLogService = null)
+        IAuditLogService? auditLogService = null,
+        IServiceAgreementRepository? agreements = null,
+        IAppNotifier? notifier = null)
     {
         _jobs = jobs;
         _members = members;
         _uow = uow;
         _financeRepository = financeRepository;
         _auditLogService = auditLogService;
+        _agreements = agreements;
+        _notifier = notifier;
     }
 
     public async Task<JobActionResponse> Handle(CloseJobCommand request, CancellationToken ct)
     {
         var job = await JobHandlerGuards.GetOwnedJobAsync(_jobs, _members, request.JobId, request.UserId, ct);
-        JobHandlerGuards.RequireStatus(job, JobStatuses.Active, JobStatuses.Paused, JobStatuses.PendingPayment);
+        JobHandlerGuards.RequireStatus(job, JobStatuses.Active, JobStatuses.Paused, JobStatuses.PendingPayment, JobStatuses.PendingAgreement);
         JobTransitions.RequireCurrentToken(job, request.ConcurrencyToken);
 
         var wasPendingPayment = string.Equals(job.Status, JobStatuses.PendingPayment, StringComparison.OrdinalIgnoreCase);
+        var wasPendingAgreement = string.Equals(job.Status, JobStatuses.PendingAgreement, StringComparison.OrdinalIgnoreCase);
         var oldStatus = job.Status;
         var now = DateTime.UtcNow;
+
+        if (wasPendingAgreement)
+        {
+            if (_agreements != null)
+            {
+                var currentAgreement = await _agreements.GetCurrentByJobIdAsync(job.JobId, ct);
+                if (currentAgreement != null &&
+                    !string.Equals(currentAgreement.Status, ServiceAgreementStatuses.Signed, StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(currentAgreement.Status, ServiceAgreementStatuses.Void, StringComparison.OrdinalIgnoreCase))
+                {
+                    currentAgreement.Status = ServiceAgreementStatuses.Void;
+                    currentAgreement.IsCurrent = false;
+                    currentAgreement.VoidedAt = now;
+                    currentAgreement.VoidedByUserId = request.UserId;
+                    currentAgreement.VoidReason = $"Doanh nghiệp đóng tin trước khi ký thỏa thuận: {request.ReasonText.Trim()}";
+                    currentAgreement.ConcurrencyToken = Guid.NewGuid();
+                }
+            }
+
+            job.CurrentServiceAgreementId = null;
+
+            if (_notifier != null)
+            {
+                await _notifier.NotifyRoleAsync("INTERNAL_HR", new AppNotice(
+                    "JOB",
+                    "Doanh nghiệp đã đóng tin chờ ký thỏa thuận",
+                    $"Doanh nghiệp đã đóng tin \"{job.Title}\" khi chưa ký thỏa thuận dịch vụ. Dự thảo thỏa thuận đã được tự động hủy.",
+                    "JOB",
+                    job.JobId,
+                    $"/hr/jobs?highlight={job.JobId}"
+                ), ct);
+            }
+        }
 
         if (wasPendingPayment)
         {

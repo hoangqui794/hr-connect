@@ -51,18 +51,24 @@ import {
   formatMoney,
   jobQueryKeys,
   useCurrentServiceAgreement,
+  useJobMutations,
   useMyJobs,
   useServiceAgreementHistory,
 } from '@/features/jobs-mf01/useJobQueries';
 import {
+  CLOSE_REASONS,
   JOB_STATUS,
   SERVICE_AGREEMENT_STATUS,
   SERVICE_TYPE_LABEL,
+  formatDate,
   isAwaitingSourcingDeposit,
+  isDeadlineExpired,
   sourcingDepositAmount,
 } from '@/features/jobs-mf01/jobDisplay';
+import { ExtendDeadlineModal } from '@/features/jobs-mf01/ExtendDeadlineModal';
 import { PaymentDemoModal } from '@/features/jobs-mf01/PaymentDemoModal';
-import type { Job, ServiceAgreementDto } from '@/types/api/jobs';
+import { ReasonModal } from '@/features/jobs-mf01/ReasonModal';
+import type { Job, JobCloseReasonCode, ServiceAgreementDto } from '@/types/api/jobs';
 
 const { Text, Paragraph } = Typography;
 
@@ -492,6 +498,14 @@ export const ClientServiceAgreementsPage: React.FC = () => {
   );
 
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [extendDeadlineOpen, setExtendDeadlineOpen] = useState(false);
+  const [closeJobModalOpen, setCloseJobModalOpen] = useState(false);
+  const jobMutations = useJobMutations();
+  const isJobDeadlineExpired = Boolean(
+    activeJob &&
+      activeJob.status === 'PENDING_AGREEMENT' &&
+      isDeadlineExpired(activeJob.applicationDeadline)
+  );
 
   return (
     <div className={`space-y-6 ${FONT} max-w-full animate-[admin-page-in_220ms_cubic-bezier(0.2,0.8,0.2,1)_both]`}>
@@ -761,14 +775,18 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                             className={`mt-2 pt-1.5 border-t ${
                               isSignedPendingReview
                                 ? 'border-teal-100 text-teal-700'
-                                : 'border-amber-200 text-amber-800'
+                                : isDeadlineExpired(job.applicationDeadline)
+                                  ? 'border-rose-200 text-rose-700'
+                                  : 'border-amber-200 text-amber-800'
                             } flex items-center gap-1.5 text-[11px] font-semibold`}
                           >
                             <SafetyCertificateOutlined />
                             <span>
                               {isSignedPendingReview
                                 ? 'Đã nộp bản ký · Chờ HR duyệt'
-                                : 'Cần ký & tải lên hợp đồng'}
+                                : isDeadlineExpired(job.applicationDeadline)
+                                  ? 'Quá hạn nộp · Đã khóa ký'
+                                  : 'Cần ký & tải lên hợp đồng'}
                             </span>
                           </div>
                         )}
@@ -893,12 +911,44 @@ export const ClientServiceAgreementsPage: React.FC = () => {
 
                   {/* ── Status Banner Cards ── */}
                   {isPendingResponse && !currentAgreement.hasSignedDocument && !isPendingPayment && (
-                    <div className="rounded-xl border border-sky-200 bg-sky-50/60 p-4 flex items-center gap-3 text-sm text-sky-950">
-                      <InfoCircleOutlined className="text-sky-600 text-base shrink-0" />
-                      <span>
-                        HR Connect đã chuẩn bị hợp đồng dịch vụ. Quý doanh nghiệp vui lòng <strong>xem / tải về</strong>, ký kết và <strong>tải lên bản đã ký</strong> để kích hoạt tin tuyển dụng.
-                      </span>
-                    </div>
+                    isJobDeadlineExpired ? (
+                      <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-4 text-rose-950 text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                        <div className="flex items-start gap-3">
+                          <InfoCircleOutlined className="text-rose-600 text-lg mt-0.5 shrink-0" />
+                          <div className="space-y-1">
+                            <div className="font-bold text-rose-900">
+                              Tin đã quá hạn nhận hồ sơ ({formatDate(activeJob?.applicationDeadline)}) — Đã khóa ký hợp đồng
+                            </div>
+                            <div className="text-xs text-rose-800 leading-relaxed">
+                              Không thể ký thỏa thuận cho tin đã hết hạn nộp hồ sơ. Vui lòng <strong>gia hạn hạn nộp</strong> sang ngày ở tương lai để mở khóa ký, hoặc <strong>đóng tin</strong> (hệ thống sẽ tự động hủy dự thảo thỏa thuận và thông báo cho HR).
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+                          <Button
+                            type="primary"
+                            className="!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 text-white !rounded-xl font-bold !h-9 px-3.5"
+                            onClick={() => setExtendDeadlineOpen(true)}
+                          >
+                            Gia hạn hạn nộp
+                          </Button>
+                          <Button
+                            danger
+                            className="!rounded-xl font-bold !h-9 px-3.5"
+                            onClick={() => setCloseJobModalOpen(true)}
+                          >
+                            Đóng tin
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-sky-200 bg-sky-50/60 p-4 flex items-center gap-3 text-sm text-sky-950">
+                        <InfoCircleOutlined className="text-sky-600 text-base shrink-0" />
+                        <span>
+                          HR Connect đã chuẩn bị hợp đồng dịch vụ. Quý doanh nghiệp vui lòng <strong>xem / tải về</strong>, ký kết và <strong>tải lên bản đã ký</strong> để kích hoạt tin tuyển dụng.
+                        </span>
+                      </div>
+                    )
                   )}
 
                   {isPendingPayment ? (
@@ -1282,10 +1332,18 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           <Button
                             type={currentAgreement.hasSignedDocument ? 'default' : 'primary'}
                             icon={<UploadOutlined />}
+                            disabled={isJobDeadlineExpired && !currentAgreement.hasSignedDocument}
+                            title={
+                              isJobDeadlineExpired && !currentAgreement.hasSignedDocument
+                                ? 'Tin tuyển dụng đã quá hạn nhận hồ sơ. Vui lòng gia hạn hạn nộp hoặc đóng tin.'
+                                : undefined
+                            }
                             className={
-                              currentAgreement.hasSignedDocument
-                                ? '!h-9 rounded-xl font-semibold text-slate-700 border-slate-200'
-                                : '!bg-[#0369A1] hover:!bg-[#075985] !border-0 text-white rounded-xl shadow-2xs transition-all active:scale-[0.98] font-bold !h-9 px-4'
+                              isJobDeadlineExpired && !currentAgreement.hasSignedDocument
+                                ? '!h-9 rounded-xl font-semibold !bg-slate-100 !text-slate-400 !border-slate-200 cursor-not-allowed'
+                                : currentAgreement.hasSignedDocument
+                                  ? '!h-9 rounded-xl font-semibold text-slate-700 border-slate-200'
+                                  : '!bg-[#0369A1] hover:!bg-[#075985] !border-0 text-white rounded-xl shadow-2xs transition-all active:scale-[0.98] font-bold !h-9 px-4'
                             }
                             onClick={() => setUploadModalOpen(true)}
                           >
@@ -1596,6 +1654,63 @@ export const ClientServiceAgreementsPage: React.FC = () => {
               refetchCurrent(),
               refetchHistory(),
             ]);
+          }}
+        />
+      )}
+
+      {/* ── Modal: Gia hạn hạn nộp hồ sơ ── */}
+      {activeJob && (
+        <ExtendDeadlineModal
+          open={extendDeadlineOpen}
+          jobTitle={activeJob.title}
+          currentDeadline={activeJob.applicationDeadline}
+          loading={Boolean(jobMutations.extendDeadline?.isPending)}
+          onCancel={() => setExtendDeadlineOpen(false)}
+          onConfirm={async (newDeadlineIso) => {
+            try {
+              const res = await jobMutations.extendDeadline.mutateAsync({
+                jobId: activeJob.jobId,
+                token: activeJob.concurrencyToken,
+                applicationDeadline: newDeadlineIso,
+              });
+              message.success(res.message || 'Gia hạn hạn nộp hồ sơ thành công.');
+              setExtendDeadlineOpen(false);
+              await Promise.all([refetchJobs(), refetchCurrent(), refetchHistory()]);
+            } catch (err) {
+              message.error(getApiErrorMessage(err));
+            }
+          }}
+        />
+      )}
+
+      {/* ── Modal: Đóng tin chưa ký thỏa thuận ── */}
+      {activeJob && (
+        <ReasonModal
+          open={closeJobModalOpen}
+          title="Đóng tin tuyển dụng"
+          description="Tin chưa ký thỏa thuận sẽ được đóng, dự thảo thỏa thuận dịch vụ đi kèm sẽ tự động hủy (VOID) và thông báo cho HR Connect ngừng theo dõi."
+          confirmText="Đóng tin"
+          danger
+          reasonOptions={CLOSE_REASONS.filter(
+            (r) => r.value === 'CLOSED_EXPIRED' || r.value === 'CLOSED_BY_CLIENT' || r.value === 'CLOSED_OTHER'
+          )}
+          textRequired
+          loading={jobMutations.close.isPending}
+          onCancel={() => setCloseJobModalOpen(false)}
+          onConfirm={async ({ reasonCode, reasonText }) => {
+            try {
+              const res = await jobMutations.close.mutateAsync({
+                jobId: activeJob.jobId,
+                token: activeJob.concurrencyToken,
+                reasonCode: reasonCode as JobCloseReasonCode,
+                reasonText,
+              });
+              message.success(res.message || 'Đóng tin tuyển dụng thành công.');
+              setCloseJobModalOpen(false);
+              await Promise.all([refetchJobs(), refetchCurrent(), refetchHistory()]);
+            } catch (err) {
+              message.error(getApiErrorMessage(err));
+            }
           }}
         />
       )}

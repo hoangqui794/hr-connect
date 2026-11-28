@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
 using HRConnect.Infrastructure.Services.Jobs;
@@ -137,6 +138,151 @@ public class JobExpirationWorkerTests
                 !n.Message.Contains("30 ngày") &&
                 n.Message.Contains("Gói Tiêu Chuẩn (STANDARD)")),
                 It.IsAny<CancellationToken>()), Times.Once);
+        }
+    }
+
+    [Fact]
+    public async Task ExpireJobsBatchAsync_PendingAgreementOverduePast3Days_ShouldVoidDraftAndCloseJob()
+    {
+        var (provider, notifications) = BuildWorkerHost(Guid.NewGuid().ToString());
+        await using (provider)
+        {
+            var jobId = Guid.NewGuid();
+            var agreementId = Guid.NewGuid();
+            var companyId = Guid.NewGuid();
+            var creatorId = Guid.NewGuid();
+            var serviceTypeId = Guid.NewGuid();
+
+            await using (var seedScope = provider.CreateAsyncScope())
+            {
+                var db = seedScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                db.ServiceTypes.Add(new ServiceType
+                {
+                    ServiceTypeId = serviceTypeId,
+                    Code = ServiceTypeCodes.HeadhuntCod,
+                    Name = "Headhunt COD",
+                    IsActive = true,
+                });
+                db.Companies.Add(new Company
+                {
+                    CompanyId = companyId,
+                    CompanyName = "Test Co",
+                    VerificationStatus = "VERIFIED",
+                    CreatedAt = DateTime.UtcNow.AddDays(-20),
+                    UpdatedAt = DateTime.UtcNow.AddDays(-20),
+                });
+                db.Jobs.Add(new Job
+                {
+                    JobId = jobId,
+                    CompanyId = companyId,
+                    ServiceTypeId = serviceTypeId,
+                    CreatedBy = creatorId,
+                    Title = "E-commerce Operations",
+                    Status = JobStatuses.PendingAgreement,
+                    CurrentServiceAgreementId = agreementId,
+                    Quantity = 2,
+                    CurrencyCode = "VND",
+                    ApplicationDeadline = DateTime.UtcNow.AddDays(-5),
+                    ConcurrencyToken = Guid.NewGuid(),
+                    CreatedAt = DateTime.UtcNow.AddDays(-15),
+                    UpdatedAt = DateTime.UtcNow.AddDays(-10),
+                });
+                db.ServiceAgreements.Add(new ServiceAgreement
+                {
+                    ServiceAgreementId = agreementId,
+                    JobId = jobId,
+                    CompanyId = companyId,
+                    ServiceTypeCode = ServiceTypeCodes.HeadhuntCod,
+                    Version = 1,
+                    IsCurrent = true,
+                    Status = ServiceAgreementStatuses.SentToClient,
+                    VerificationCode = "AG-TEST-001",
+                    CreatedByUserId = Guid.NewGuid(),
+                    CompanyNameSnapshot = "Test Co",
+                    ConcurrencyToken = Guid.NewGuid(),
+                    CreatedAt = DateTime.UtcNow.AddDays(-10),
+                });
+                await db.SaveChangesAsync();
+            }
+
+            var worker = new JobExpirationWorker(
+                provider.GetRequiredService<IServiceScopeFactory>(),
+                NullLogger<JobExpirationWorker>.Instance);
+
+            var count = await worker.ExpireJobsBatchAsync(CancellationToken.None);
+
+            count.Should().Be(1);
+            await using var verifyScope = provider.CreateAsyncScope();
+            var verifyDb = verifyScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var job = await verifyDb.Jobs.SingleAsync(j => j.JobId == jobId);
+            var agreement = await verifyDb.ServiceAgreements.SingleAsync(a => a.ServiceAgreementId == agreementId);
+
+            job.Status.Should().Be(JobStatuses.Closed);
+            job.StatusReasonCode.Should().Be(JobReasonCodes.ClosedExpired);
+            job.CurrentServiceAgreementId.Should().BeNull();
+            agreement.Status.Should().Be(ServiceAgreementStatuses.Void);
+            agreement.IsCurrent.Should().BeFalse();
+            notifications.Verify(x => x.AddAsync(It.Is<Notification>(n => n.RelatedEntityId == jobId), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        }
+    }
+
+    [Fact]
+    public async Task ExpireJobsBatchAsync_PendingAgreementOverdueWithin3Days_ShouldNotCloseYet()
+    {
+        var (provider, _) = BuildWorkerHost(Guid.NewGuid().ToString());
+        await using (provider)
+        {
+            var jobId = Guid.NewGuid();
+            var companyId = Guid.NewGuid();
+            var serviceTypeId = Guid.NewGuid();
+
+            await using (var seedScope = provider.CreateAsyncScope())
+            {
+                var db = seedScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                db.ServiceTypes.Add(new ServiceType
+                {
+                    ServiceTypeId = serviceTypeId,
+                    Code = ServiceTypeCodes.HeadhuntCod,
+                    Name = "Headhunt COD",
+                    IsActive = true,
+                });
+                db.Companies.Add(new Company
+                {
+                    CompanyId = companyId,
+                    CompanyName = "Test Co",
+                    VerificationStatus = "VERIFIED",
+                    CreatedAt = DateTime.UtcNow.AddDays(-10),
+                    UpdatedAt = DateTime.UtcNow.AddDays(-10),
+                });
+                db.Jobs.Add(new Job
+                {
+                    JobId = jobId,
+                    CompanyId = companyId,
+                    ServiceTypeId = serviceTypeId,
+                    CreatedBy = Guid.NewGuid(),
+                    Title = "Recent Overdue Job",
+                    Status = JobStatuses.PendingAgreement,
+                    Quantity = 1,
+                    CurrencyCode = "VND",
+                    ApplicationDeadline = DateTime.UtcNow.AddDays(-1),
+                    ConcurrencyToken = Guid.NewGuid(),
+                    CreatedAt = DateTime.UtcNow.AddDays(-5),
+                    UpdatedAt = DateTime.UtcNow.AddDays(-2),
+                });
+                await db.SaveChangesAsync();
+            }
+
+            var worker = new JobExpirationWorker(
+                provider.GetRequiredService<IServiceScopeFactory>(),
+                NullLogger<JobExpirationWorker>.Instance);
+
+            var count = await worker.ExpireJobsBatchAsync(CancellationToken.None);
+
+            count.Should().Be(0);
+            await using var verifyScope = provider.CreateAsyncScope();
+            var verifyDb = verifyScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var job = await verifyDb.Jobs.SingleAsync(j => j.JobId == jobId);
+            job.Status.Should().Be(JobStatuses.PendingAgreement);
         }
     }
 }

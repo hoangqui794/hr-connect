@@ -47,6 +47,7 @@ import { getApiErrorMessage } from '@/services/apiClient';
 import { jobsApi } from '@/services/api/jobsApi';
 import { formatMoney, useJobDetail, useJobMutations, useMyJobs } from './useJobQueries';
 import { JobDetailPanel, JobStatusTag } from './JobDetailPanel';
+import { ExtendDeadlineModal } from './ExtendDeadlineModal';
 import { PaymentDemoModal } from './PaymentDemoModal';
 import { ReasonModal } from './ReasonModal';
 import {
@@ -79,7 +80,7 @@ const jobStatusTooltip = (job: Job): string => {
 type StatusFilter = 'ALL' | JobStatus;
 const FILTER_ORDER: JobStatus[] = ['DRAFT', 'PENDING_REVIEW', 'PENDING_AGREEMENT', 'PENDING_PAYMENT', 'ACTIVE', 'PAUSED', 'CLOSED', 'REJECTED'];
 
-type PendingAction = { kind: 'pause' | 'close'; job: Job } | null;
+type PendingAction = { kind: 'pause' | 'close' | 'extendDeadline'; job: Job } | null;
 
 const ServiceTypeTag: React.FC<{ code?: string | null }> = ({ code }) => {
   if (!code || !SERVICE_TYPE_LABEL[code as ServiceTypeCode]) return null;
@@ -335,6 +336,9 @@ export const ClientJobsListPage: React.FC = () => {
       ...(job.serviceTypeCode === 'CV_SOURCING' ? [{ key: 'sourcing', icon: <TeamOutlined />, label: 'Kho CV tìm kiếm' }] : []),
       ...(can.canPause ? [{ key: 'pause', label: 'Tạm dừng tuyển' }] : []),
       ...(can.canResume ? [{ key: 'resume', label: 'Mở lại tuyển' }] : []),
+      ...(can.canExtendDeadline && isDeadlineExpired(job.applicationDeadline)
+        ? [{ key: 'extendDeadline', label: 'Gia hạn hạn nộp' }]
+        : []),
       ...(can.canClose ? [{ key: 'close', label: 'Đóng tin', danger: true }] : []),
     ];
     return (
@@ -400,7 +404,7 @@ export const ClientJobsListPage: React.FC = () => {
               if (key === 'agreement') navigate(`/client/agreements?jobId=${job.jobId}`);
               if (key === 'sourcing') navigate(`/client/jobs/${job.jobId}/sourcing`);
               if (key === 'resume') resume(job);
-              if (key === 'pause' || key === 'close') setPending({ kind: key, job });
+              if (key === 'pause' || key === 'close' || key === 'extendDeadline') setPending({ kind: key, job });
             },
           }}
         >
@@ -809,6 +813,35 @@ export const ClientJobsListPage: React.FC = () => {
                               Xem hợp đồng
                             </Button>
                           </div>
+                        ) : isDeadlineExpired(job.applicationDeadline) ? (
+                          <div className="flex flex-col gap-2 rounded-xl bg-rose-50/90 border border-rose-200/90 p-3 text-xs text-rose-900 mb-3.5 shadow-2xs">
+                            <div>
+                              <div className="font-bold text-rose-800 text-xs">
+                                Đã quá hạn nộp hồ sơ — Đã khóa ký hợp đồng
+                              </div>
+                              <div className="text-[11px] text-rose-700 mt-0.5 leading-snug">
+                                Gia hạn hạn nộp để mở khóa ký, hoặc đóng tin (tự động hủy dự thảo).
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 pt-1.5 border-0 border-t border-solid border-rose-200/70">
+                              <Button
+                                type="primary"
+                                size="small"
+                                className="!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 text-white rounded-lg shadow-sm font-semibold !text-xs !h-8"
+                                onClick={() => setPending({ kind: 'extendDeadline', job })}
+                              >
+                                Gia hạn hạn nộp
+                              </Button>
+                              <Button
+                                danger
+                                size="small"
+                                className="rounded-lg font-semibold !text-xs !h-8"
+                                onClick={() => setPending({ kind: 'close', job })}
+                              >
+                                Đóng tin
+                              </Button>
+                            </div>
+                          </div>
                         ) : (
                           <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200/90 p-3 text-xs text-slate-800 mb-3.5 shadow-2xs">
                             <span className="font-semibold text-xs">Hợp đồng dịch vụ sẵn sàng ký kết</span>
@@ -1058,14 +1091,20 @@ export const ClientJobsListPage: React.FC = () => {
         description={
           pending?.job.status === 'PENDING_PAYMENT'
             ? 'Tin chưa thanh toán sẽ được hủy và các khoản phí/cọc chờ thanh toán đi kèm sẽ được hủy tự động.'
-            : 'Đóng tin là thao tác không hoàn tác: tin sẽ không nhận hồ sơ nữa và không mở lại được.'
+            : pending?.job.status === 'PENDING_AGREEMENT'
+              ? 'Tin chưa ký thỏa thuận sẽ được đóng, dự thảo thỏa thuận dịch vụ đi kèm sẽ tự động hủy (VOID) và thông báo cho HR Connect ngừng theo dõi.'
+              : 'Đóng tin là thao tác không hoàn tác: tin sẽ không nhận hồ sơ nữa và không mở lại được.'
         }
         confirmText="Đóng tin"
         danger
         reasonOptions={
           pending?.job.status === 'PENDING_PAYMENT'
             ? CLOSE_REASONS.filter((r) => r.value === 'CLOSED_BY_CLIENT' || r.value === 'CLOSED_OTHER')
-            : CLOSE_REASONS
+            : pending?.job.status === 'PENDING_AGREEMENT'
+              ? CLOSE_REASONS.filter(
+                  (r) => r.value === 'CLOSED_EXPIRED' || r.value === 'CLOSED_BY_CLIENT' || r.value === 'CLOSED_OTHER'
+                )
+              : CLOSE_REASONS
         }
         textRequired
         loading={mutations.close.isPending}
@@ -1083,6 +1122,28 @@ export const ClientJobsListPage: React.FC = () => {
               message.success(res.message);
               queryClient.invalidateQueries({ queryKey: ['client-billing'] });
               queryClient.invalidateQueries({ queryKey: ['posting-fees'] });
+              setPending(null);
+            })
+            .catch(notifyError)
+        }
+      />
+
+      <ExtendDeadlineModal
+        open={pending?.kind === 'extendDeadline'}
+        jobTitle={pending?.job.title ?? ''}
+        currentDeadline={pending?.job.applicationDeadline}
+        loading={Boolean(mutations.extendDeadline?.isPending)}
+        onCancel={() => setPending(null)}
+        onConfirm={(newDeadlineIso) =>
+          pending &&
+          mutations.extendDeadline
+            .mutateAsync({
+              jobId: pending.job.jobId,
+              token: pending.job.concurrencyToken,
+              applicationDeadline: newDeadlineIso,
+            })
+            .then((res) => {
+              message.success(res.message || 'Gia hạn hạn nộp hồ sơ thành công.');
               setPending(null);
             })
             .catch(notifyError)

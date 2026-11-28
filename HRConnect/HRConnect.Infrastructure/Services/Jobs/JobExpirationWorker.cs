@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Features.Jobs.Common;
+using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using HRConnect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,8 @@ namespace HRConnect.Infrastructure.Services.Jobs;
 /// </summary>
 public sealed class JobExpirationWorker : BackgroundService
 {
+    public const int PendingAgreementGraceDays = 3;
+
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<JobExpirationWorker> _logger;
 
@@ -68,8 +71,6 @@ public sealed class JobExpirationWorker : BackgroundService
                 .Select(j => j.JobId)
                 .ToListAsync(cancellationToken);
         }
-
-        if (expiredJobIds.Count == 0) return 0;
 
         var expiredCount = 0;
         foreach (var jobId in expiredJobIds)
@@ -150,7 +151,162 @@ public sealed class JobExpirationWorker : BackgroundService
             _logger.LogInformation("Đã tự động đóng {Count} tin tuyển dụng hết hạn hiển thị.", expiredCount);
         }
 
+        expiredCount += await ExpireStalePendingAgreementJobsAsync(now, cancellationToken);
+
         return expiredCount;
+    }
+
+    internal async Task<int> ExpireStalePendingAgreementJobsAsync(DateTime nowUtc, CancellationToken cancellationToken)
+    {
+        List<Guid> candidateJobIds;
+        await using (var discoveryScope = _scopeFactory.CreateAsyncScope())
+        {
+            var discoveryContext = discoveryScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var pendingJobs = await discoveryContext.Jobs.AsNoTracking()
+                .Where(j => j.Status == JobStatuses.PendingAgreement && j.ApplicationDeadline != null)
+                .Select(j => new { j.JobId, j.ApplicationDeadline })
+                .ToListAsync(cancellationToken);
+
+            candidateJobIds = pendingJobs
+                .Where(j =>
+                {
+                    var effective = JobDates.GetEffectiveDeadlineUtc(j.ApplicationDeadline);
+                    return effective.HasValue && effective.Value.AddDays(PendingAgreementGraceDays) <= nowUtc;
+                })
+                .Take(100)
+                .Select(j => j.JobId)
+                .ToList();
+        }
+
+        if (candidateJobIds.Count == 0) return 0;
+
+        var closedCount = 0;
+        foreach (var jobId in candidateJobIds)
+        {
+            await using var itemScope = _scopeFactory.CreateAsyncScope();
+            var context = itemScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var notifications = itemScope.ServiceProvider.GetRequiredService<INotificationRepository>();
+
+            var job = await context.Jobs
+                .Include(j => j.JobStatusHistories)
+                .SingleOrDefaultAsync(j => j.JobId == jobId, cancellationToken);
+
+            if (job == null || job.Status != JobStatuses.PendingAgreement || job.ApplicationDeadline == null)
+            {
+                continue;
+            }
+
+            var effectiveDeadline = JobDates.GetEffectiveDeadlineUtc(job.ApplicationDeadline);
+            if (!effectiveDeadline.HasValue || effectiveDeadline.Value.AddDays(PendingAgreementGraceDays) > nowUtc)
+            {
+                continue;
+            }
+
+            var unsignedAgreements = await context.ServiceAgreements
+                .Where(a => a.JobId == job.JobId &&
+                            a.Status != ServiceAgreementStatuses.Signed &&
+                            a.Status != ServiceAgreementStatuses.Void)
+                .ToListAsync(cancellationToken);
+
+            foreach (var agreement in unsignedAgreements)
+            {
+                agreement.Status = ServiceAgreementStatuses.Void;
+                agreement.IsCurrent = false;
+                agreement.VoidedAt = nowUtc;
+                agreement.VoidReason = $"Tin tuyển dụng chưa ký thỏa thuận đã quá hạn nhận hồ sơ quá {PendingAgreementGraceDays} ngày nên hệ thống tự động hủy dự thảo.";
+                agreement.ConcurrencyToken = Guid.NewGuid();
+            }
+
+            var oldStatus = job.Status;
+            job.CurrentServiceAgreementId = null;
+            job.Status = JobStatuses.Closed;
+            job.ClosedAt = nowUtc;
+            job.StatusReason = $"Tin tuyển dụng chưa ký thỏa thuận đã quá hạn nhận hồ sơ quá {PendingAgreementGraceDays} ngày nên hệ thống tự động hủy dự thảo và đóng tin.";
+            job.StatusReasonCode = JobReasonCodes.ClosedExpired;
+            job.StatusChangedAt = nowUtc;
+            job.UpdatedAt = nowUtc;
+            job.ConcurrencyToken = Guid.NewGuid();
+
+            await context.JobStatusHistories.AddAsync(new JobStatusHistory
+            {
+                JobStatusHistoryId = Guid.NewGuid(),
+                JobId = job.JobId,
+                OldStatus = oldStatus,
+                NewStatus = JobStatuses.Closed,
+                ChangedBy = null,
+                ReasonCode = JobReasonCodes.ClosedExpired,
+                ReasonText = $"Tự động hủy dự thảo thỏa thuận và đóng tin do quá hạn nhận hồ sơ quá {PendingAgreementGraceDays} ngày",
+                ChangedAt = nowUtc
+            }, cancellationToken);
+
+            var companyUserIds = await context.CompanyUsers.AsNoTracking()
+                .Where(cu => cu.CompanyId == job.CompanyId && cu.Status == "ACTIVE")
+                .Select(cu => cu.UserId)
+                .ToListAsync(cancellationToken);
+            var companyRecipients = companyUserIds.Count > 0 ? companyUserIds.Distinct().ToList() : new List<Guid> { job.CreatedBy };
+
+            foreach (var recipientId in companyRecipients)
+            {
+                await notifications.AddAsync(new Notification
+                {
+                    NotificationId = Guid.NewGuid(),
+                    UserId = recipientId,
+                    NotificationType = "JOB",
+                    Title = "Tin chờ ký thỏa thuận đã tự động đóng do quá hạn",
+                    Message = $"Tin tuyển dụng \"{job.Title}\" chưa ký thỏa thuận đã quá hạn nhận hồ sơ quá {PendingAgreementGraceDays} ngày. Hệ thống đã tự động hủy dự thảo thỏa thuận và đóng tin.",
+                    RelatedEntityType = "JOB",
+                    RelatedEntityId = job.JobId,
+                    Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        jobId = job.JobId,
+                        status = JobStatuses.Closed,
+                        reason = "EXPIRED_PENDING_AGREEMENT",
+                        actionRoute = $"/client/jobs?highlight={job.JobId}&openDetail=true"
+                    }),
+                    IsRead = false,
+                    CreatedAt = nowUtc
+                }, cancellationToken);
+            }
+
+            var hrUserIds = await context.UserRoles.AsNoTracking()
+                .Where(ur => ur.Status == "ACTIVE" && ur.Role.IsActive && ur.Role.Code == "INTERNAL_HR" && ur.User.Status == "ACTIVE")
+                .Select(ur => ur.UserId)
+                .Distinct()
+                .ToListAsync(cancellationToken);
+
+            foreach (var hrId in hrUserIds)
+            {
+                await notifications.AddAsync(new Notification
+                {
+                    NotificationId = Guid.NewGuid(),
+                    UserId = hrId,
+                    NotificationType = "JOB",
+                    Title = "Tự động đóng tin chờ ký thỏa thuận quá hạn",
+                    Message = $"Tin \"{job.Title}\" quá hạn nộp hồ sơ quá {PendingAgreementGraceDays} ngày khi chưa ký thỏa thuận nên hệ thống đã tự động hủy dự thảo và đóng tin.",
+                    RelatedEntityType = "JOB",
+                    RelatedEntityId = job.JobId,
+                    Metadata = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        jobId = job.JobId,
+                        status = JobStatuses.Closed,
+                        reason = "EXPIRED_PENDING_AGREEMENT",
+                        routeHint = $"/hr/jobs?highlight={job.JobId}"
+                    }),
+                    IsRead = false,
+                    CreatedAt = nowUtc
+                }, cancellationToken);
+            }
+
+            await context.SaveChangesAsync(cancellationToken);
+            closedCount++;
+        }
+
+        if (closedCount > 0)
+        {
+            _logger.LogInformation("Đã tự động hủy dự thảo và đóng {Count} tin chờ ký thỏa thuận quá hạn nộp quá {Days} ngày.", closedCount, PendingAgreementGraceDays);
+        }
+
+        return closedCount;
     }
 
     internal static string BuildExpirationNotificationMessage(Job job)

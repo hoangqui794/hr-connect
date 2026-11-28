@@ -87,7 +87,7 @@ export const jobsApi = {
     return res.data;
   },
 
-  /** POST /jobs/{id}/close — ACTIVE/PAUSED → CLOSED. */
+  /** POST /jobs/{id}/close — ACTIVE/PAUSED/PENDING_PAYMENT/PENDING_AGREEMENT → CLOSED. */
   async close(
     jobId: string,
     concurrencyToken: string,
@@ -98,6 +98,19 @@ export const jobsApi = {
       concurrencyToken,
       reasonCode,
       reasonText,
+    });
+    return res.data;
+  },
+
+  /** PATCH /jobs/{id}/deadline — extend application deadline for PENDING_AGREEMENT / PENDING_PAYMENT jobs. */
+  async extendDeadline(
+    jobId: string,
+    concurrencyToken: string,
+    applicationDeadline: string
+  ): Promise<JobActionResponse> {
+    const res = await apiClient.patch<JobActionResponse>(`/jobs/${jobId}/deadline`, {
+      concurrencyToken,
+      applicationDeadline,
     });
     return res.data;
   },

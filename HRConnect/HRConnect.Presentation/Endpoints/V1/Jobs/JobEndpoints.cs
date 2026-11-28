@@ -4,6 +4,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Features.Jobs.Commands.ApproveJob;
 using HRConnect.Application.Features.Jobs.Commands.CloseJob;
 using HRConnect.Application.Features.Jobs.Commands.CreateJob;
+using HRConnect.Application.Features.Jobs.Commands.ExtendJobDeadline;
 using HRConnect.Application.Features.Jobs.Commands.PauseJob;
 using HRConnect.Application.Features.Jobs.Commands.RejectJob;
 using HRConnect.Application.Features.Jobs.Commands.ResumeJob;
@@ -94,7 +95,15 @@ public static class JobEndpoints
             var invalid = await Validate(command, validator, ct); return invalid ?? await Run(async () => Results.Ok(await sender.Send(command, ct)));
         }
         ).WithName("CloseJob").WithSummary("Đóng Job")
-        .WithDescription("Chỉ Client sở hữu Job. Chỉ đóng được Job ACTIVE hoặc PAUSED; gửi ReasonCode (CLOSED_POSITION_FILLED, CLOSED_BY_CLIENT hoặc CLOSED_OTHER) và ReasonText; chuyển sang CLOSED.");
+        .WithDescription("Chỉ Client sở hữu Job. Chỉ đóng được Job ACTIVE, PAUSED, PENDING_PAYMENT hoặc PENDING_AGREEMENT; gửi ReasonCode (CLOSED_POSITION_FILLED, CLOSED_BY_CLIENT hoặc CLOSED_OTHER) và ReasonText; chuyển sang CLOSED.");
+
+        jobs.MapPatch("/{jobId:guid}/deadline", async (Guid jobId, ClaimsPrincipal user, [FromBody] ExtendJobDeadlineCommand command, ISender sender, IValidator<ExtendJobDeadlineCommand> validator, CancellationToken ct) =>
+        {
+            command.JobId = jobId; var id = UserId(user); if (id == null) return Results.Unauthorized(); if (!ClientCan(user, "job.update_own")) return Forbidden(); command.UserId = id.Value;
+            var invalid = await Validate(command, validator, ct); return invalid ?? await Run(async () => Results.Ok(await sender.Send(command, ct)));
+        })
+        .WithName("ExtendJobDeadline").WithSummary("Gia hạn hạn nộp hồ sơ của tin chờ ký thỏa thuận / chờ thanh toán")
+        .WithDescription("Chỉ Client sở hữu Job đang ở trạng thái PENDING_AGREEMENT hoặc PENDING_PAYMENT được phép gia hạn hạn nộp hồ sơ sang ngày ở tương lai.");
 
         jobs.MapGet("/posting-packages", async (ISender sender, CancellationToken ct) =>
         {

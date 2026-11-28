@@ -8,6 +8,7 @@ using HRConnect.Application.Common.Exceptions;
 using HRConnect.Application.Common.Interfaces;
 using HRConnect.Application.Common.Interfaces.Repositories;
 using HRConnect.Application.Common.Models;
+using HRConnect.Application.Features.Jobs.Common;
 using HRConnect.Domain.Constants;
 using HRConnect.Domain.Entities;
 using MediatR;
@@ -104,6 +105,13 @@ public sealed class UploadSignedServiceAgreementCommandHandler : IRequestHandler
             throw new ConflictException(
                 "Thỏa thuận dịch vụ đang được yêu cầu điều chỉnh, không thể tải lên bản ký kết.",
                 "AGREEMENT_CHANGE_REQUESTED");
+        }
+
+        if (JobDates.IsApplicationDeadlineExpired(job.ApplicationDeadline))
+        {
+            throw new ConflictException(
+                "Tin tuyển dụng đã quá hạn nhận hồ sơ. Vui lòng gia hạn hạn nộp hồ sơ hoặc đóng tin.",
+                "JOB_DEADLINE_EXPIRED");
         }
 
         var companyUser = await _companyUsers.GetByUserIdAsync(request.UserId, ct);

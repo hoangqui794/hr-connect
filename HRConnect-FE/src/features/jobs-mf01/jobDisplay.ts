@@ -199,7 +199,12 @@ export const clientActions = (status: JobStatus) => ({
   canSubmit: status === 'DRAFT' || status === 'REJECTED',
   canPause: status === 'ACTIVE',
   canResume: status === 'PAUSED',
-  canClose: status === 'ACTIVE' || status === 'PAUSED' || status === 'PENDING_PAYMENT',
+  canClose:
+    status === 'ACTIVE' ||
+    status === 'PAUSED' ||
+    status === 'PENDING_PAYMENT' ||
+    status === 'PENDING_AGREEMENT',
+  canExtendDeadline: status === 'PENDING_AGREEMENT' || status === 'PENDING_PAYMENT',
   canPay: status === 'PENDING_PAYMENT',
 });
 

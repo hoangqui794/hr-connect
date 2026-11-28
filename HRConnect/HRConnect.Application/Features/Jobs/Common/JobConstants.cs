@@ -37,6 +37,8 @@ public static class EmploymentTypes
 /// </summary>
 public static class JobDates
 {
+    private static readonly TimeSpan VietnamOffset = TimeSpan.FromHours(7);
+
     public static DateTime? ToUtc(DateTime? value) => value?.Kind switch
     {
         null => null,
@@ -44,6 +46,27 @@ public static class JobDates
         DateTimeKind.Local => value.Value.ToUniversalTime(),
         _ => DateTime.SpecifyKind(value!.Value, DateTimeKind.Utc),
     };
+
+    /// <summary>
+    /// Computes the effective UTC expiration moment for an application deadline
+    /// (treating date-only timestamps as end-of-day in Vietnam timezone UTC+7).
+    /// </summary>
+    public static DateTime? GetEffectiveDeadlineUtc(DateTime? deadline)
+    {
+        if (!deadline.HasValue) return null;
+        var utc = ToUtc(deadline)!.Value;
+        var vnLocal = utc + VietnamOffset;
+        var endOfVnDayUtc = DateTime.SpecifyKind(
+            new DateTime(vnLocal.Year, vnLocal.Month, vnLocal.Day, 23, 59, 59, 999, DateTimeKind.Unspecified) - VietnamOffset,
+            DateTimeKind.Utc);
+        return utc > endOfVnDayUtc ? utc : endOfVnDayUtc;
+    }
+
+    public static bool IsApplicationDeadlineExpired(DateTime? deadline, DateTime? nowUtc = null)
+    {
+        var effectiveDeadlineUtc = GetEffectiveDeadlineUtc(deadline);
+        return effectiveDeadlineUtc.HasValue && effectiveDeadlineUtc.Value < (nowUtc ?? DateTime.UtcNow);
+    }
 }
 
 public static class JobReasonCodes

@@ -138,6 +138,15 @@ public sealed class SignServiceAgreementCommandHandler : IRequestHandler<SignSer
 
         var now = DateTime.UtcNow;
 
+        // Fetch job early and block expired deadline before consuming OTP
+        var job = await _jobs.GetByIdAsync(agreement.JobId, ct);
+        if (job != null && JobDates.IsApplicationDeadlineExpired(job.ApplicationDeadline, now))
+        {
+            throw new ConflictException(
+                "Tin tuyển dụng đã quá hạn nhận hồ sơ. Vui lòng gia hạn hạn nộp hồ sơ hoặc đóng tin.",
+                "JOB_DEADLINE_EXPIRED");
+        }
+
         // Verify OTP challenge
         var challenge = await _agreements.GetActiveChallengeAsync(agreement.ServiceAgreementId, request.UserId, now, ct);
         if (challenge == null)
@@ -171,8 +180,6 @@ public sealed class SignServiceAgreementCommandHandler : IRequestHandler<SignSer
         challenge.IsConsumed = true;
         challenge.ConsumedAt = now;
 
-        // Fetch job for term copying and transition
-        var job = await _jobs.GetByIdAsync(agreement.JobId, ct);
         if (job == null)
         {
             throw new NotFoundException("Không tìm thấy tin tuyển dụng liên quan.");

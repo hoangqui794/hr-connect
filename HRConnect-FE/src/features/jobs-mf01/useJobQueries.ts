@@ -236,6 +236,11 @@ export const useJobMutations = () => {
         jobsApi.close(v.jobId, v.token, v.reasonCode, v.reasonText),
       onSuccess: refresh,
     }),
+    extendDeadline: useMutation({
+      mutationFn: (v: { jobId: string; token: string; applicationDeadline: string }) =>
+        jobsApi.extendDeadline(v.jobId, v.token, v.applicationDeadline),
+      onSuccess: refresh,
+    }),
     approve: useMutation({
       mutationFn: (v: { jobId: string; token: string; input?: ApproveJobInput }) =>
         jobsApi.approve(v.jobId, v.token, v.input),

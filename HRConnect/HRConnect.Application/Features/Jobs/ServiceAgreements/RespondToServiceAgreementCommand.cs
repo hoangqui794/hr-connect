@@ -87,6 +87,13 @@ public sealed class RespondToServiceAgreementCommandHandler : IRequestHandler<Re
 
         if (normalizedAction == ServiceAgreementResponseActions.Accept)
         {
+            if (JobDates.IsApplicationDeadlineExpired(job.ApplicationDeadline, now))
+            {
+                throw new ConflictException(
+                    "Tin tuyển dụng đã quá hạn nhận hồ sơ. Vui lòng gia hạn hạn nộp hồ sơ hoặc đóng tin.",
+                    "JOB_DEADLINE_EXPIRED");
+            }
+
             agreement.Status = ServiceAgreementStatuses.Accepted;
             agreement.RespondedAt = now;
             agreement.ChangeRequestReason = null;
