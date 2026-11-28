@@ -208,6 +208,12 @@ public sealed class JobExpirationWorker : BackgroundService
                             a.Status != ServiceAgreementStatuses.Void)
                 .ToListAsync(cancellationToken);
 
+            // Never auto-void or auto-close a job whose Client has already signed/uploaded a signed agreement copy.
+            if (unsignedAgreements.Any(a => !string.IsNullOrWhiteSpace(a.SignedDocumentStorageKey)))
+            {
+                continue;
+            }
+
             foreach (var agreement in unsignedAgreements)
             {
                 agreement.Status = ServiceAgreementStatuses.Void;

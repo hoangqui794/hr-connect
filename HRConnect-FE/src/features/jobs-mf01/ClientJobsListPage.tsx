@@ -784,17 +784,47 @@ export const ClientJobsListPage: React.FC = () => {
                       )}
                       {job.status === 'PENDING_AGREEMENT' &&
                         (job.hasSignedAgreement ? (
-                          <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200/90 p-3 text-xs text-slate-800 mb-3.5 shadow-2xs">
-                            <span className="font-semibold text-xs">Đã nộp hợp đồng · Đang chờ duyệt tin</span>
-                            <Button
-                              type="primary"
-                              size="small"
-                              className="!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 text-white rounded-lg shadow-sm font-semibold !text-xs !h-8 whitespace-nowrap ml-2"
-                              onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
-                            >
-                              Xem hợp đồng
-                            </Button>
-                          </div>
+                          isDeadlineExpired(job.applicationDeadline) ? (
+                            <div className="flex flex-col gap-2 rounded-xl bg-amber-50/90 border border-amber-200/90 p-3 text-xs text-amber-950 mb-3.5 shadow-2xs">
+                              <div>
+                                <div className="font-bold text-amber-900 text-xs">
+                                  Đã nộp bản ký · Cần gia hạn hạn nộp để HR duyệt
+                                </div>
+                                <div className="text-[11px] text-amber-800 mt-0.5 leading-snug">
+                                  Tin đã quá hạn nộp hồ sơ. Hãy gia hạn hạn nộp mới (bản hợp đồng đã ký vẫn được giữ nguyên).
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 pt-1.5 border-0 border-t border-solid border-amber-200/70">
+                                <Button
+                                  type="primary"
+                                  size="small"
+                                  className="!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 text-white rounded-lg shadow-sm font-semibold !text-xs !h-8"
+                                  onClick={() => setPending({ kind: 'extendDeadline', job })}
+                                >
+                                  Gia hạn hạn nộp
+                                </Button>
+                                <Button
+                                  size="small"
+                                  className="rounded-lg font-medium !text-xs !h-8 border-amber-300 text-amber-900"
+                                  onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
+                                >
+                                  Xem hợp đồng
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200/90 p-3 text-xs text-slate-800 mb-3.5 shadow-2xs">
+                              <span className="font-semibold text-xs">Đã nộp hợp đồng · Đang chờ duyệt tin</span>
+                              <Button
+                                type="primary"
+                                size="small"
+                                className="!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 text-white rounded-lg shadow-sm font-semibold !text-xs !h-8 whitespace-nowrap ml-2"
+                                onClick={() => navigate(`/client/agreements?jobId=${job.jobId}`)}
+                              >
+                                Xem hợp đồng
+                              </Button>
+                            </div>
+                          )
                         ) : job.agreementStatus === 'CHANGE_REQUESTED' ? (
                           <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200/90 p-3 text-xs text-slate-800 mb-3.5 shadow-2xs">
                             <span className="min-w-0">

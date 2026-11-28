@@ -151,13 +151,17 @@ public sealed class UploadSignedServiceAgreementCommandHandler : IRequestHandler
         agreement.SignerEmailSnapshot = user?.Email;
         agreement.ConcurrencyToken = Guid.NewGuid();
 
+        var deadlineHint = job.ApplicationDeadline.HasValue
+            ? $" (Hạn nộp hồ sơ: {job.ApplicationDeadline.Value.AddHours(7):dd/MM/yyyy})"
+            : string.Empty;
+
         // Gửi thông báo cho Internal HR và Doanh nghiệp
         if (_notifier != null)
         {
             await _notifier.NotifyRoleAsync("INTERNAL_HR", new AppNotice(
                 "JOB",
                 "Doanh nghiệp đã tải lên hợp đồng đã ký",
-                $"Doanh nghiệp {agreement.CompanyNameSnapshot} đã tải lên văn bản hợp đồng đã ký cho tin \"{job.Title}\". Vui lòng xem xét và công khai tin tuyển dụng.",
+                $"Doanh nghiệp {agreement.CompanyNameSnapshot} đã tải lên văn bản hợp đồng đã ký cho tin \"{job.Title}\"{deadlineHint}. Vui lòng xem xét và công khai tin tuyển dụng.",
                 "JOB",
                 job.JobId,
                 $"/hr/jobs?status=PENDING_AGREEMENT&highlight={job.JobId}"

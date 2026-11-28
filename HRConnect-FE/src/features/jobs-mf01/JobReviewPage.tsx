@@ -550,6 +550,10 @@ export const JobReviewPage: React.FC = () => {
       message.warning('Doanh nghiệp chưa tải lên bản hợp đồng đã ký kết trên hệ thống. Không thể duyệt khi chưa có bản ký.');
       return;
     }
+    if (isDeadlineExpired(job.applicationDeadline)) {
+      message.error('Tin tuyển dụng đã quá hạn nhận hồ sơ. Vui lòng thông báo Doanh nghiệp gia hạn hạn nộp (bản hợp đồng đã ký vẫn được giữ nguyên) hoặc từ chối tin.');
+      return;
+    }
     const isSourcing = job.serviceTypeCode === 'CV_SOURCING';
     const isPaidPackage = isStandardUnpaid;
     const requiresDepositOrPayment = isSourcing || isPaidPackage;
@@ -868,16 +872,31 @@ export const JobReviewPage: React.FC = () => {
                         >
                           Từ chối tin
                         </Button>
-                        <Button
-                          type="primary"
-                          className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm active:scale-[0.98] font-medium border-0"
-                          icon={<CheckOutlined />}
-                          loading={approve.isPending}
-                          disabled={reject.isPending}
-                          onClick={confirmApprove}
-                        >
-                          {needsTerms ? 'Duyệt & Soạn thỏa thuận' : 'Duyệt tin tuyển dụng'}
-                        </Button>
+                        {!needsTerms && isDeadlineExpired(job.applicationDeadline) ? (
+                          <Tooltip title={`Tin đã quá hạn nhận hồ sơ (${formatDate(job.applicationDeadline)}). Không thể duyệt công bố — vui lòng từ chối để Doanh nghiệp cập nhật hạn nộp mới.`}>
+                            <span className="inline-block cursor-not-allowed">
+                              <Button
+                                type="primary"
+                                className="rounded-lg font-medium"
+                                icon={<CheckOutlined />}
+                                disabled
+                              >
+                                Duyệt tin tuyển dụng
+                              </Button>
+                            </span>
+                          </Tooltip>
+                        ) : (
+                          <Button
+                            type="primary"
+                            className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm active:scale-[0.98] font-medium border-0"
+                            icon={<CheckOutlined />}
+                            loading={approve.isPending}
+                            disabled={reject.isPending}
+                            onClick={confirmApprove}
+                          >
+                            {needsTerms ? 'Duyệt & Soạn thỏa thuận' : 'Duyệt tin tuyển dụng'}
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -986,6 +1005,8 @@ export const JobReviewPage: React.FC = () => {
                             : 'Chỉnh sửa hợp đồng'}
                         </Button>
                         {!isAgreementChangeRequested && (() => {
+                          const isJobDeadlineExpired = isDeadlineExpired(job.applicationDeadline);
+                          const canApproveNow = isSigned && !isJobDeadlineExpired;
                           const buttonText =
                             job.serviceTypeCode === 'CV_SOURCING'
                               ? 'Duyệt HĐ & Yêu cầu đặt cọc'
@@ -995,14 +1016,16 @@ export const JobReviewPage: React.FC = () => {
 
                           const tooltipTitle = !isSigned
                             ? 'Doanh nghiệp chưa tải lên bản hợp đồng đã ký kết. Cần có bản ký để duyệt hợp đồng và tiếp tục quy trình.'
-                            : undefined;
+                            : isJobDeadlineExpired
+                              ? `Tin đã quá hạn nhận hồ sơ (${formatDate(job.applicationDeadline)}). Cần Doanh nghiệp gia hạn hạn nộp trước khi duyệt (bản hợp đồng đã ký vẫn được giữ nguyên).`
+                              : undefined;
 
                           const approveButton = (
                             <Button
                               type="primary"
-                              disabled={!isSigned}
+                              disabled={!canApproveNow}
                               className={
-                                isSigned
+                                canApproveNow
                                   ? '!bg-blue-600 hover:!bg-blue-700 !border-blue-600 text-white rounded-lg shadow-sm transition-all active:scale-[0.98] font-semibold h-9'
                                   : 'rounded-lg font-semibold h-9'
                               }
@@ -1014,16 +1037,35 @@ export const JobReviewPage: React.FC = () => {
                             </Button>
                           );
 
-                          return tooltipTitle ? (
-                            <Tooltip title={tooltipTitle}>
-                              <span className="inline-block cursor-not-allowed">{approveButton}</span>
-                            </Tooltip>
-                          ) : (
-                            approveButton
+                          return (
+                            <>
+                              {isJobDeadlineExpired && (
+                                <Button
+                                  className="bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg font-medium shadow-none hover:!border-rose-300 hover:!text-rose-700 h-9"
+                                  icon={<CloseOutlined />}
+                                  disabled={busy}
+                                  onClick={() => setRejectOpen(true)}
+                                >
+                                  Từ chối tin
+                                </Button>
+                              )}
+                              {tooltipTitle ? (
+                                <Tooltip title={tooltipTitle}>
+                                  <span className="inline-block cursor-not-allowed">{approveButton}</span>
+                                </Tooltip>
+                              ) : (
+                                approveButton
+                              )}
+                            </>
                           );
                         })()}
                       </div>
                     </div>
+                    {isSigned && isDeadlineExpired(job.applicationDeadline) && (
+                      <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50/90 px-3.5 py-2 text-xs text-rose-800 leading-relaxed">
+                        <strong>Đã khóa duyệt thẳng:</strong> Tin tuyển dụng đã quá hạn nhận hồ sơ ({formatDate(job.applicationDeadline)}). Vui lòng thông báo Doanh nghiệp <strong>gia hạn hạn nộp</strong> để tiếp tục duyệt (bản hợp đồng đã ký vẫn được giữ nguyên), hoặc bấm <strong>Từ chối tin</strong> nếu Doanh nghiệp dừng tuyển.
+                      </div>
+                    )}
                   </div>
                 ) : job.status === 'PENDING_PAYMENT' ? (
                   <div className="job-review-action-bar flex flex-col gap-3 border-0 border-b border-solid border-slate-200 bg-slate-50/95 px-6 py-4">

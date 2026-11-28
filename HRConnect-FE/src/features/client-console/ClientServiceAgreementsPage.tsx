@@ -198,9 +198,7 @@ export const ClientServiceAgreementsPage: React.FC = () => {
 
   const eligibleJobs = useMemo(() => {
     return allJobs.filter(
-      (j) =>
-        j.status !== 'DRAFT' &&
-        (j.serviceTypeCode === 'HEADHUNT_COD' || j.serviceTypeCode === 'CV_SOURCING')
+      (j) => j.serviceTypeCode === 'HEADHUNT_COD' || j.serviceTypeCode === 'CV_SOURCING'
     );
   }, [allJobs]);
 
@@ -473,8 +471,8 @@ export const ClientServiceAgreementsPage: React.FC = () => {
   // Detection of pending deposit or posting fee
   const isAwaitingDeposit = Boolean(
     activeJob &&
-      (isAwaitingSourcingDeposit(activeJob) ||
-        (activeJob.serviceTypeCode === 'CV_SOURCING' && activeJob.status === 'PENDING_PAYMENT'))
+    (isAwaitingSourcingDeposit(activeJob) ||
+      (activeJob.serviceTypeCode === 'CV_SOURCING' && activeJob.status === 'PENDING_PAYMENT'))
   );
   const isAwaitingPostingPayment = Boolean(
     activeJob && activeJob.status === 'PENDING_PAYMENT' && !isAwaitingDeposit
@@ -503,8 +501,8 @@ export const ClientServiceAgreementsPage: React.FC = () => {
   const jobMutations = useJobMutations();
   const isJobDeadlineExpired = Boolean(
     activeJob &&
-      activeJob.status === 'PENDING_AGREEMENT' &&
-      isDeadlineExpired(activeJob.applicationDeadline)
+    activeJob.status === 'PENDING_AGREEMENT' &&
+    isDeadlineExpired(activeJob.applicationDeadline)
   );
 
   return (
@@ -559,13 +557,12 @@ export const ClientServiceAgreementsPage: React.FC = () => {
               role="radio"
               aria-checked={selected}
               onClick={() => handleStatusFilterChange(key)}
-              className={`group relative cursor-pointer rounded-xl border p-3 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0284C7] ${
-                selected
-                  ? 'border-[#0284C7] bg-white shadow-sm ring-2 ring-[#0284C7]/20'
-                  : needsAction
+              className={`group relative cursor-pointer rounded-xl border p-3 text-left transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0284C7] ${selected
+                ? 'border-[#0284C7] bg-white shadow-sm ring-2 ring-[#0284C7]/20'
+                : needsAction
                   ? 'border-amber-300/80 bg-gradient-to-b from-amber-50/70 to-amber-50/30 hover:bg-white hover:border-slate-300'
                   : 'border-transparent bg-transparent hover:bg-white hover:border-slate-200 hover:shadow-2xs'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between gap-1">
                 <span className={`text-xs ${selected ? 'font-bold text-[#0284C7]' : 'font-medium text-slate-600'}`}>
@@ -632,11 +629,10 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                 </div>
                 {activeJob?.serviceTypeCode && SERVICE_TYPE_LABEL[activeJob.serviceTypeCode] && (
                   <span
-                    className={`m-0 text-xs font-semibold rounded-full px-2.5 py-0.5 border ${
-                      activeJob.serviceTypeCode === 'HEADHUNT_COD'
-                        ? 'bg-sky-50 text-sky-700 border-sky-200'
-                        : 'bg-purple-50 text-purple-700 border-purple-200'
-                    }`}
+                    className={`m-0 text-xs font-semibold rounded-full px-2.5 py-0.5 border ${activeJob.serviceTypeCode === 'HEADHUNT_COD'
+                      ? 'bg-sky-50 text-sky-700 border-sky-200'
+                      : 'bg-purple-50 text-purple-700 border-purple-200'
+                      }`}
                   >
                     {SERVICE_TYPE_LABEL[activeJob.serviceTypeCode].label}
                   </span>
@@ -675,10 +671,10 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                       !isVoidedActive &&
                       Boolean(
                         job.hasSignedAgreement ||
-                          (job.jobId === activeJobId &&
-                            (currentAgreement?.status === 'SIGNED' ||
-                              Boolean(currentAgreement?.hasSignedDocument) ||
-                              Boolean(currentAgreement?.signedAt)))
+                        (job.jobId === activeJobId &&
+                          (currentAgreement?.status === 'SIGNED' ||
+                            Boolean(currentAgreement?.hasSignedDocument) ||
+                            Boolean(currentAgreement?.signedAt)))
                       );
                     const isAwaitingAction =
                       job.status === 'PENDING_AGREEMENT' || job.status === 'PENDING_PAYMENT';
@@ -691,22 +687,20 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           setActiveJobId(job.jobId);
                           setSearchParams({ jobId: job.jobId }, { replace: true });
                         }}
-                        className={`w-full cursor-pointer text-left rounded-xl p-3.5 transition-all border relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0284C7] ${
-                          isSelected
-                            ? 'border-[#0284C7] bg-sky-50/70 shadow-2xs ring-2 ring-[#0284C7]/20 border-l-4 border-l-[#0284C7]'
-                            : isSignedPendingReview
+                        className={`w-full cursor-pointer text-left rounded-xl p-3.5 transition-all border relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0284C7] ${isSelected
+                          ? 'border-[#0284C7] bg-sky-50/70 shadow-2xs ring-2 ring-[#0284C7]/20 border-l-4 border-l-[#0284C7]'
+                          : isSignedPendingReview
                             ? 'border-teal-200/90 bg-teal-50/30 hover:border-teal-300 hover:bg-teal-50/50'
                             : isAwaitingAction
-                            ? 'border-amber-300/80 bg-amber-50/30 hover:border-amber-400 hover:bg-amber-50/50'
-                            : 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/70'
-                        }`}
+                              ? 'border-amber-300/80 bg-amber-50/30 hover:border-amber-400 hover:bg-amber-50/50'
+                              : 'border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/70'
+                          }`}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <Text
                             strong
-                            className={`text-sm line-clamp-1 ${
-                              isSelected ? 'text-[#0284C7] font-bold' : 'text-slate-900'
-                            }`}
+                            className={`text-sm line-clamp-1 ${isSelected ? 'text-[#0284C7] font-bold' : 'text-slate-900'
+                              }`}
                           >
                             {job.title}
                           </Text>
@@ -772,13 +766,12 @@ export const ClientServiceAgreementsPage: React.FC = () => {
 
                         {job.status === 'PENDING_AGREEMENT' && (
                           <div
-                            className={`mt-2 pt-1.5 border-t ${
-                              isSignedPendingReview
-                                ? 'border-teal-100 text-teal-700'
-                                : isDeadlineExpired(job.applicationDeadline)
-                                  ? 'border-rose-200 text-rose-700'
-                                  : 'border-amber-200 text-amber-800'
-                            } flex items-center gap-1.5 text-[11px] font-semibold`}
+                            className={`mt-2 pt-1.5 border-t ${isSignedPendingReview
+                              ? 'border-teal-100 text-teal-700'
+                              : isDeadlineExpired(job.applicationDeadline)
+                                ? 'border-rose-200 text-rose-700'
+                                : 'border-amber-200 text-amber-800'
+                              } flex items-center gap-1.5 text-[11px] font-semibold`}
                           >
                             <SafetyCertificateOutlined />
                             <span>
@@ -792,9 +785,8 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                         )}
                         {job.status === 'PENDING_PAYMENT' && (
                           <div
-                            className={`mt-2 pt-1.5 border-t ${
-                              isDeposited(job) ? 'border-blue-100 text-blue-700' : 'border-amber-200 text-amber-800'
-                            } flex items-center gap-1.5 text-[11px] font-semibold`}
+                            className={`mt-2 pt-1.5 border-t ${isDeposited(job) ? 'border-blue-100 text-blue-700' : 'border-amber-200 text-amber-800'
+                              } flex items-center gap-1.5 text-[11px] font-semibold`}
                           >
                             {isDeposited(job) ? <CheckCircleFilled /> : <ClockCircleOutlined />}
                             <span>{isDeposited(job) ? 'Đã nộp cọc · Chờ HR duyệt' : 'Đã ký · Chờ nộp tiền cọc'}</span>
@@ -893,8 +885,8 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           {isDeposited(activeJob)
                             ? 'Đã nộp cọc (Chờ HR duyệt)'
                             : isAwaitingDeposit
-                            ? (depositText ? `Đặt cọc (${depositText})` : 'Đặt cọc')
-                            : 'Thanh toán phí đăng tin'}
+                              ? (depositText ? `Đặt cọc (${depositText})` : 'Đặt cọc')
+                              : 'Thanh toán phí đăng tin'}
                         </Button>
                       )}
                       {isPendingResponse && (
@@ -1001,16 +993,39 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                       </div>
                     )
                   ) : isPendingResponse && currentAgreement.hasSignedDocument ? (
-                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 text-emerald-950 text-sm flex items-start gap-3">
-                      <CheckCircleFilled className="text-emerald-600 text-lg mt-0.5 shrink-0" />
-                      <div className="space-y-1">
-                        <div className="font-bold">Đã tải lên hợp đồng đã ký thành công</div>
-                        <div className="text-xs text-emerald-800 leading-relaxed">
-                          Doanh nghiệp đã nộp bản hợp đồng ký kết{currentAgreement.signedAt ? ` vào ngày ${dayjs(currentAgreement.signedAt).format('DD/MM/YYYY HH:mm')}` : ''}.
-                          Đội ngũ HR Connect đang đối soát và sẽ công khai tin tuyển dụng trong thời gian sớm nhất.
+                    isJobDeadlineExpired ? (
+                      <div className="rounded-xl border border-amber-300 bg-amber-50/80 p-4 text-amber-950 text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                        <div className="flex items-start gap-3">
+                          <InfoCircleOutlined className="text-amber-600 text-lg mt-0.5 shrink-0" />
+                          <div className="space-y-1">
+                            <div className="font-bold text-amber-900">
+                              Đã nộp bản ký nhưng tin đã quá hạn nhận hồ sơ ({formatDate(activeJob?.applicationDeadline)})
+                            </div>
+                            <div className="text-xs text-amber-800 leading-relaxed">
+                              HR Connect chưa thể duyệt công bố tin đã quá hạn nộp. Vui lòng bấm <strong>Gia hạn hạn nộp</strong> sang ngày ở tương lai để HR tiếp tục duyệt (bản hợp đồng bạn đã ký vẫn được giữ nguyên, không cần ký lại).
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          type="primary"
+                          className="!bg-[#0284C7] hover:!bg-[#0369A1] !border-0 text-white !rounded-xl font-bold !h-9 px-4 shrink-0 self-start sm:self-center"
+                          onClick={() => setExtendDeadlineOpen(true)}
+                        >
+                          Gia hạn hạn nộp
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 text-emerald-950 text-sm flex items-start gap-3">
+                        <CheckCircleFilled className="text-emerald-600 text-lg mt-0.5 shrink-0" />
+                        <div className="space-y-1">
+                          <div className="font-bold">Đã tải lên hợp đồng đã ký thành công</div>
+                          <div className="text-xs text-emerald-800 leading-relaxed">
+                            Doanh nghiệp đã nộp bản hợp đồng ký kết{currentAgreement.signedAt ? ` vào ngày ${dayjs(currentAgreement.signedAt).format('DD/MM/YYYY HH:mm')}` : ''}.
+                            Đội ngũ HR Connect đang đối soát và sẽ công khai tin tuyển dụng trong thời gian sớm nhất.
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )
                   ) : null}
 
                   {currentAgreement.status === 'CHANGE_REQUESTED' && (
@@ -1257,17 +1272,15 @@ export const ClientServiceAgreementsPage: React.FC = () => {
 
                     {/* Row 2: Signed document from client */}
                     <div
-                      className={`flex flex-col sm:flex-row sm:items-center gap-3 p-4 ${
-                        currentAgreement.hasSignedDocument ? 'bg-emerald-50/30' : 'bg-slate-50/40'
-                      }`}
+                      className={`flex flex-col sm:flex-row sm:items-center gap-3 p-4 ${currentAgreement.hasSignedDocument ? 'bg-emerald-50/30' : 'bg-slate-50/40'
+                        }`}
                     >
                       <div className="flex items-center gap-3 flex-1 min-w-0">
                         <div
-                          className={`w-11 h-11 rounded-xl flex items-center justify-center text-2xl shrink-0 border ${
-                            currentAgreement.hasSignedDocument
-                              ? 'bg-emerald-100 border-emerald-200 text-emerald-600'
-                              : 'bg-white border-dashed border-slate-300 text-slate-400'
-                          }`}
+                          className={`w-11 h-11 rounded-xl flex items-center justify-center text-2xl shrink-0 border ${currentAgreement.hasSignedDocument
+                            ? 'bg-emerald-100 border-emerald-200 text-emerald-600'
+                            : 'bg-white border-dashed border-slate-300 text-slate-400'
+                            }`}
                         >
                           {currentAgreement.hasSignedDocument ? <CheckCircleFilled /> : <FileTextOutlined />}
                         </div>
@@ -1283,18 +1296,18 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                           <div className="text-xs text-slate-500 mt-0.5">
                             {currentAgreement.hasSignedDocument
                               ? (() => {
-                                  const time = formatAgreementTime(currentAgreement.signedAt);
-                                  if (
-                                    currentAgreement.status === 'SIGNED' ||
-                                    currentAgreement.status === 'LEGACY_CONFIRMED'
-                                  ) {
-                                    return `${time ? `Ký lúc ${time} · ` : ''}Đã xác nhận hiệu lực`;
-                                  }
-                                  if (currentAgreement.status === 'VOID') {
-                                    return `${time ? `Nộp lúc ${time} · ` : ''}Phiên bản đã hủy`;
-                                  }
-                                  return `${time ? `Nộp lúc ${time} · ` : ''}Đang chờ HR Connect duyệt`;
-                                })()
+                                const time = formatAgreementTime(currentAgreement.signedAt);
+                                if (
+                                  currentAgreement.status === 'SIGNED' ||
+                                  currentAgreement.status === 'LEGACY_CONFIRMED'
+                                ) {
+                                  return `${time ? `Ký lúc ${time} · ` : ''}Đã xác nhận hiệu lực`;
+                                }
+                                if (currentAgreement.status === 'VOID') {
+                                  return `${time ? `Nộp lúc ${time} · ` : ''}Phiên bản đã hủy`;
+                                }
+                                return `${time ? `Nộp lúc ${time} · ` : ''}Đang chờ HR Connect duyệt`;
+                              })()
                               : 'Bản hợp đồng có chữ ký / con dấu của doanh nghiệp'}
                           </div>
                         </div>
@@ -1324,8 +1337,8 @@ export const ClientServiceAgreementsPage: React.FC = () => {
                             {isDeposited(activeJob)
                               ? 'Đã nộp cọc'
                               : isAwaitingDeposit
-                              ? 'Đặt cọc'
-                              : 'Thanh toán'}
+                                ? 'Đặt cọc'
+                                : 'Thanh toán'}
                           </Button>
                         )}
                         {isPendingResponse && (

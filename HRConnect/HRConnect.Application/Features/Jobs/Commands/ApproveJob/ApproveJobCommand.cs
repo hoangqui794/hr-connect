@@ -62,6 +62,13 @@ public sealed class ApproveJobCommandHandler : IRequestHandler<ApproveJobCommand
 
         var serviceTypeCode = job.ServiceType?.Code ?? await _jobs.GetActiveServiceTypeCodeAsync(job.ServiceTypeId, ct);
         var now = DateTime.UtcNow;
+
+        if (JobDates.IsApplicationDeadlineExpired(job.ApplicationDeadline, now))
+        {
+            throw new ConflictException(
+                "Tin tuyển dụng đã quá hạn nhận hồ sơ nên không thể duyệt công bố. Vui lòng yêu cầu Doanh nghiệp gia hạn hạn nộp (bản hợp đồng đã ký vẫn được giữ nguyên) hoặc từ chối tin.",
+                "JOB_DEADLINE_EXPIRED");
+        }
         var requiresPayment = false;
         decimal standardPrice = 0m;
         // CV_SOURCING: the job opens only after the Client pays the deposit (decision 2026-10-17).
